@@ -51,7 +51,7 @@ public class ConfigMTreeStore implements IMTreeStore<IConfigMNode> {
   }
 
   @Override
-  public IConfigMNode generatePrefix(PartialPath storageGroupPath) {
+  public IConfigMNode generatePrefix(PartialPath databasePath) {
     throw new UnsupportedOperationException();
   }
 

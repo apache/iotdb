@@ -63,13 +63,13 @@ public class SchemaRegionUtils {
           String.format(
               "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
     }
-    final File storageGroupDir = schemaRegionDir.getParentFile();
-    if (Objects.requireNonNull(storageGroupDir.listFiles()).length == 0) {
+    final File databaseDir = schemaRegionDir.getParentFile();
+    if (Objects.requireNonNull(databaseDir.listFiles()).length == 0) {
       try {
-        Files.delete(storageGroupDir.toPath());
-        logger.info("Delete database schema folder {}", storageGroupDir.getAbsolutePath());
+        Files.delete(databaseDir.toPath());
+        logger.info("Delete database schema folder {}", databaseDir.getAbsolutePath());
       } catch (IOException e) {
-        logger.warn("Delete database schema folder {} failed", storageGroupDir.getAbsolutePath());
+        logger.warn("Delete database schema folder {} failed", databaseDir.getAbsolutePath());
       }
     }
   }

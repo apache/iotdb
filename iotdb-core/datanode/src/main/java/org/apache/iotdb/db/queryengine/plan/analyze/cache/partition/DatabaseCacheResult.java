@@ -64,7 +64,7 @@ public abstract class DatabaseCacheResult<K, V> {
     this.map = new HashMap<>();
   }
 
-  /** reset storageGroupCacheResult */
+  /** reset databaseCacheResult */
   public void reset() {
     this.success = true;
     this.missedDevices = new ArrayList<>();

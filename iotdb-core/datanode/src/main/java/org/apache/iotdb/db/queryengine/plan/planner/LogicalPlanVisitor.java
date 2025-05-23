@@ -820,12 +820,12 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitSeriesSchemaFetch(
       SeriesSchemaFetchStatement seriesSchemaFetchStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-    List<String> storageGroupList =
+    List<String> databaseList =
         new ArrayList<>(analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet());
     return planBuilder
-        .planSchemaFetchMerge(storageGroupList)
+        .planSchemaFetchMerge(databaseList)
         .planSeriesSchemaFetchSource(
-            storageGroupList,
+            databaseList,
             seriesSchemaFetchStatement.getPatternTree(),
             seriesSchemaFetchStatement.getTemplateMap(),
             seriesSchemaFetchStatement.isWithTags(),
@@ -839,12 +839,12 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitDeviceSchemaFetch(
       DeviceSchemaFetchStatement deviceSchemaFetchStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-    List<String> storageGroupList =
+    List<String> databaseList =
         new ArrayList<>(analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet());
     return planBuilder
-        .planSchemaFetchMerge(storageGroupList)
+        .planSchemaFetchMerge(databaseList)
         .planDeviceSchemaFetchSource(
-            storageGroupList,
+            databaseList,
             deviceSchemaFetchStatement.getPatternTree(),
             deviceSchemaFetchStatement.getAuthorityScope())
         .getRoot();

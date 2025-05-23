@@ -60,7 +60,7 @@ public class SizeTieredCompactionSelector
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  protected String storageGroupName;
+  protected String databaseName;
   protected String dataRegionId;
   protected final CompactionScheduleContext context;
   protected long timePartition;
@@ -70,13 +70,13 @@ public class SizeTieredCompactionSelector
   protected boolean hasNextTimePartition;
 
   public SizeTieredCompactionSelector(
-      String storageGroupName,
+      String databaseName,
       String dataRegionId,
       long timePartition,
       boolean sequence,
       TsFileManager tsFileManager,
       CompactionScheduleContext context) {
-    this.storageGroupName = storageGroupName;
+    this.databaseName = databaseName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.sequence = sequence;

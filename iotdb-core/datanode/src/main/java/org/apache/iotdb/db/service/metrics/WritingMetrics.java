@@ -759,8 +759,8 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void recordFlushingMemTableStatus(
-      String storageGroup, long memSize, long seriesNum, long totalPointsNum, long avgSeriesNum) {
-    DataRegionId dataRegionId = getDataRegionIdFromStorageGroupStr(storageGroup);
+      String database, long memSize, long seriesNum, long totalPointsNum, long avgSeriesNum) {
+    DataRegionId dataRegionId = getDataRegionIdFromDatabaseStr(database);
     if (dataRegionId == null) {
       return;
     }
@@ -795,8 +795,8 @@ public class WritingMetrics implements IMetricSet {
     avgPointHistogram.update(avgSeriesNum);
   }
 
-  public void recordFlushTsFileSize(String storageGroup, long size) {
-    DataRegionId dataRegionId = getDataRegionIdFromStorageGroupStr(storageGroup);
+  public void recordFlushTsFileSize(String database, long size) {
+    DataRegionId dataRegionId = getDataRegionIdFromDatabaseStr(database);
     if (dataRegionId == null) {
       return;
     }
@@ -811,15 +811,15 @@ public class WritingMetrics implements IMetricSet {
             dataRegionId.toString());
   }
 
-  private DataRegionId getDataRegionIdFromStorageGroupStr(String storageGroup) {
-    if (Objects.isNull(storageGroup)) {
+  private DataRegionId getDataRegionIdFromDatabaseStr(String database) {
+    if (Objects.isNull(database)) {
       return null;
     }
-    int idx = storageGroup.lastIndexOf('-');
+    int idx = database.lastIndexOf('-');
     if (idx == -1) {
       return null;
     }
-    String dataRegionIdStr = storageGroup.substring(idx + 1);
+    String dataRegionIdStr = database.substring(idx + 1);
     return new DataRegionId(Integer.parseInt(dataRegionIdStr));
   }
 

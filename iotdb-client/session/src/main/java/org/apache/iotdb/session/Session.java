@@ -688,39 +688,39 @@ public class Session implements ISession {
   }
 
   @Override
-  public void setStorageGroup(String storageGroup)
+  public void setDatabase(String database)
       throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.setStorageGroup(storageGroup);
-  }
-
-  @Override
-  public void deleteStorageGroup(String storageGroup)
-      throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.deleteStorageGroups(Collections.singletonList(storageGroup));
-  }
-
-  @Override
-  public void deleteStorageGroups(List<String> storageGroups)
-      throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.deleteStorageGroups(storageGroups);
-  }
-
-  @Override
-  public void createDatabase(String database)
-      throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.setStorageGroup(database);
+    defaultSessionConnection.setDatabase(database);
   }
 
   @Override
   public void deleteDatabase(String database)
       throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.deleteStorageGroups(Collections.singletonList(database));
+    defaultSessionConnection.deleteDatabases(Collections.singletonList(database));
   }
 
   @Override
   public void deleteDatabases(List<String> databases)
       throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.deleteStorageGroups(databases);
+    defaultSessionConnection.deleteDatabases(databases);
+  }
+
+  @Override
+  public void createDatabase(String database)
+      throws IoTDBConnectionException, StatementExecutionException {
+    defaultSessionConnection.setDatabase(database);
+  }
+
+  @Override
+  public void deleteDatabase(String database)
+      throws IoTDBConnectionException, StatementExecutionException {
+    defaultSessionConnection.deleteDatabases(Collections.singletonList(database));
+  }
+
+  @Override
+  public void deleteDatabases(List<String> databases)
+      throws IoTDBConnectionException, StatementExecutionException {
+    defaultSessionConnection.deleteDatabases(databases);
   }
 
   @Override

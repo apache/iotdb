@@ -36,7 +36,7 @@ public class SchemaPartitionResp implements DataSet {
 
   private final boolean allPartitionsExist;
 
-  // Map<StorageGroup, SchemaPartitionTable>
+  // Map<Database, SchemaPartitionTable>
   // TODO: Replace this map with new SchemaPartition
   private final Map<String, SchemaPartitionTable> schemaPartition;
 
@@ -70,8 +70,8 @@ public class SchemaPartitionResp implements DataSet {
           new ConcurrentHashMap<>();
 
       schemaPartition.forEach(
-          (storageGroup, schemaPartitionTable) ->
-              schemaPartitionMap.put(storageGroup, schemaPartitionTable.getSchemaPartitionMap()));
+          (database, schemaPartitionTable) ->
+              schemaPartitionMap.put(database, schemaPartitionTable.getSchemaPartitionMap()));
 
       resp.setSchemaPartitionTable(schemaPartitionMap);
     }

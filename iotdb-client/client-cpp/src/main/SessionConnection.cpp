@@ -466,20 +466,20 @@ void SessionConnection::deleteData(const TSDeleteDataReq& request) {
     callWithRetryAndVerify<TSStatus>(rpc);
 }
 
-void SessionConnection::setStorageGroup(const string& storageGroupId) {
-    auto rpc = [this, &storageGroupId]() {
+void SessionConnection::setDatabase(const string& databaseId) {
+    auto rpc = [this, &databaseId]() {
         TSStatus ret;
-        client->setStorageGroup(ret, sessionId, storageGroupId);
+        client->setDatabase(ret, sessionId, databaseId);
         return ret;
     };
     auto ret = callWithRetryAndReconnect<TSStatus>(rpc);
     RpcUtils::verifySuccess(ret.getResult());
 }
 
-void SessionConnection::deleteStorageGroups(const vector<string>& storageGroups) {
-    auto rpc = [this, &storageGroups]() {
+void SessionConnection::deleteDatabases(const vector<string>& databases) {
+    auto rpc = [this, &databases]() {
         TSStatus ret;
-        client->deleteStorageGroups(ret, sessionId, storageGroups);
+        client->deleteDatabases(ret, sessionId, databases);
         return ret;
     };
     auto ret = callWithRetryAndReconnect<TSStatus>(rpc);

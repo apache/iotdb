@@ -75,10 +75,10 @@ public class CompactionTaskManager implements IService {
   private final FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       new CompactionTaskQueue(
           config.getCandidateCompactionTaskQueueSize(), new DefaultCompactionTaskComparatorImpl());
-  // <StorageGroup-DataRegionId,futureSet>, it is used to store all compaction tasks under each
-  // virtualStorageGroup
+  // <Database-DataRegionId,futureSet>, it is used to store all compaction tasks under each
+  // virtualDatabase
   private final Map<String, Map<AbstractCompactionTask, Future<CompactionTaskSummary>>>
-      storageGroupTasks = new ConcurrentHashMap<>();
+      databaseTasks = new ConcurrentHashMap<>();
   private final AtomicInteger finishedTaskNum = new AtomicInteger(0);
 
   private final RateLimiter mergeWriteRateLimiter =
@@ -159,7 +159,7 @@ public class CompactionTaskManager implements IService {
       taskExecutionPool.shutdownNow();
       logger.info("Waiting for task taskExecutionPool to shut down");
       waitTermination();
-      storageGroupTasks.clear();
+      databaseTasks.clear();
       candidateCompactionTaskQueue.clear();
     }
   }
@@ -172,7 +172,7 @@ public class CompactionTaskManager implements IService {
       awaitTermination(taskExecutionPool, milliseconds);
       logger.info("Waiting for task taskExecutionPool to shut down in {} ms", milliseconds);
       waitTermination();
-      storageGroupTasks.clear();
+      databaseTasks.clear();
     }
   }
 
@@ -185,7 +185,7 @@ public class CompactionTaskManager implements IService {
       while (true) {
         int totalSize = 0;
         for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> taskMap :
-            storageGroupTasks.values()) {
+            databaseTasks.values()) {
           totalSize += taskMap.size();
         }
         if (totalSize > 0) {
@@ -199,7 +199,7 @@ public class CompactionTaskManager implements IService {
           break;
         }
       }
-      storageGroupTasks.clear();
+      databaseTasks.clear();
       taskExecutionPool = tmpThreadPool;
       logger.info("All compaction task finish");
     }
@@ -223,7 +223,7 @@ public class CompactionTaskManager implements IService {
     taskExecutionPool = null;
     subCompactionTaskExecutionPool = null;
     init = false;
-    storageGroupTasks.clear();
+    databaseTasks.clear();
     logger.info("CompactionManager stopped");
   }
 
@@ -276,8 +276,8 @@ public class CompactionTaskManager implements IService {
   }
 
   private boolean isTaskRunning(AbstractCompactionTask task) {
-    String regionWithSG = getSgWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
-    return storageGroupTasks
+    String regionWithSG = getSgWithRegionId(task.getDatabaseName(), task.getDataRegionId());
+    return databaseTasks
         .computeIfAbsent(regionWithSG, x -> new ConcurrentHashMap<>())
         .containsKey(task);
   }
@@ -317,9 +317,9 @@ public class CompactionTaskManager implements IService {
   }
 
   public synchronized void removeRunningTaskFuture(AbstractCompactionTask task) {
-    String regionWithSG = getSgWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
-    if (storageGroupTasks.containsKey(regionWithSG)) {
-      storageGroupTasks.get(regionWithSG).remove(task);
+    String regionWithSG = getSgWithRegionId(task.getDatabaseName(), task.getDataRegionId());
+    if (databaseTasks.containsKey(regionWithSG)) {
+      databaseTasks.get(regionWithSG).remove(task);
     }
     finishedTaskNum.incrementAndGet();
   }
@@ -337,17 +337,17 @@ public class CompactionTaskManager implements IService {
    * the compaction threads for the database are interrupted immediately. The outer caller can use
    * function isAnyTaskInListStillRunning to determine whether the tasks in list are finished.
    */
-  public synchronized List<AbstractCompactionTask> abortCompaction(String storageGroupName) {
+  public synchronized List<AbstractCompactionTask> abortCompaction(String databaseName) {
     List<AbstractCompactionTask> compactionTaskOfCurSG = new ArrayList<>();
-    if (storageGroupTasks.containsKey(storageGroupName)) {
+    if (databaseTasks.containsKey(databaseName)) {
       for (Map.Entry<AbstractCompactionTask, Future<CompactionTaskSummary>> compactionTaskEntry :
-          storageGroupTasks.get(storageGroupName).entrySet()) {
+          databaseTasks.get(databaseName).entrySet()) {
         compactionTaskEntry.getValue().cancel(true);
         compactionTaskOfCurSG.add(compactionTaskEntry.getKey());
       }
     }
 
-    storageGroupTasks.remove(storageGroupName);
+    databaseTasks.remove(databaseName);
 
     candidateCompactionTaskQueue.clear();
     return compactionTaskOfCurSG;
@@ -364,7 +364,7 @@ public class CompactionTaskManager implements IService {
   public int getExecutingTaskCount() {
     int runningTaskCnt = 0;
     for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> runningTaskMap :
-        storageGroupTasks.values()) {
+        databaseTasks.values()) {
       runningTaskCnt += runningTaskMap.size();
     }
     return runningTaskCnt;
@@ -381,7 +381,7 @@ public class CompactionTaskManager implements IService {
   public synchronized List<AbstractCompactionTask> getRunningCompactionTaskList() {
     List<AbstractCompactionTask> tasks = new ArrayList<>();
     for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> runningTaskMap :
-        storageGroupTasks.values()) {
+        databaseTasks.values()) {
       tasks.addAll(runningTaskMap.keySet());
     }
     return tasks;
@@ -392,9 +392,9 @@ public class CompactionTaskManager implements IService {
   }
 
   public void recordTask(AbstractCompactionTask task, Future<CompactionTaskSummary> summary) {
-    storageGroupTasks
+    databaseTasks
         .computeIfAbsent(
-            getSgWithRegionId(task.getStorageGroupName(), task.getDataRegionId()),
+            getSgWithRegionId(task.getDatabaseName(), task.getDataRegionId()),
             x -> new ConcurrentHashMap<>())
         .put(task, summary);
   }
@@ -435,8 +435,8 @@ public class CompactionTaskManager implements IService {
     return statistic;
   }
 
-  public static String getSgWithRegionId(String storageGroupName, String dataRegionId) {
-    return storageGroupName + "-" + dataRegionId;
+  public static String getSgWithRegionId(String databaseName, String dataRegionId) {
+    return databaseName + "-" + dataRegionId;
   }
 
   public void restart() throws InterruptedException {
@@ -479,15 +479,15 @@ public class CompactionTaskManager implements IService {
   @TestOnly
   public Future<CompactionTaskSummary> getCompactionTaskFutureMayBlock(AbstractCompactionTask task)
       throws InterruptedException, TimeoutException {
-    String regionWithSG = getSgWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
+    String regionWithSG = getSgWithRegionId(task.getDatabaseName(), task.getDataRegionId());
     long startTime = System.currentTimeMillis();
-    while (!storageGroupTasks.containsKey(regionWithSG)
-        || !storageGroupTasks.get(regionWithSG).containsKey(task)) {
+    while (!databaseTasks.containsKey(regionWithSG)
+        || !databaseTasks.get(regionWithSG).containsKey(task)) {
       Thread.sleep(10);
       if (System.currentTimeMillis() - startTime > 20_000) {
         throw new TimeoutException("Timeout when waiting for task future");
       }
     }
-    return storageGroupTasks.get(regionWithSG).get(task);
+    return databaseTasks.get(regionWithSG).get(task);
   }
 }

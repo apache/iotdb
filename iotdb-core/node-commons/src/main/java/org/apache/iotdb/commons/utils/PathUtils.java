@@ -182,8 +182,8 @@ public class PathUtils {
     return PathVisitor.isRealNumber(str);
   }
 
-  public static boolean isStartWith(final IDeviceID deviceID, final String storageGroup) {
-    return deviceID.segmentNum() > 0 && deviceID.matchDatabaseName(storageGroup);
+  public static boolean isStartWith(final IDeviceID deviceID, final String database) {
+    return deviceID.segmentNum() > 0 && deviceID.matchDatabaseName(database);
   }
 
   /** Remove the back quotes of a measurement if necessary */

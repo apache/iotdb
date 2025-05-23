@@ -73,7 +73,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       ICompactionPerformer performer,
       long serialId) {
     super(
-        tsFileManager.getStorageGroupName(),
+        tsFileManager.getDatabaseName(),
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
@@ -93,7 +93,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       ICompactionPerformer performer,
       long serialId) {
     super(
-        tsFileManager.getStorageGroupName(),
+        tsFileManager.getDatabaseName(),
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
@@ -236,7 +236,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     LOGGER.info(
         "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, "
             + "total file size is {} MB, estimated memory cost is {} MB",
-        storageGroupName,
+        databaseName,
         dataRegionId,
         filesView.sequence ? "Sequence" : "Unsequence",
         filesView.sourceFilesInCompactionPerformer.size(),
@@ -253,7 +253,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         compactionLogger.force();
         LOGGER.info(
             "{}-{} [Compaction] compaction with selected files {}, skipped files {}",
-            storageGroupName,
+            databaseName,
             dataRegionId,
             filesView.sourceFilesInCompactionPerformer,
             filesView.skippedSourceFiles);
@@ -264,7 +264,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
                 + "target files are {},"
                 + "time cost is {} s, "
                 + "compaction speed is {} MB/s, {}",
-            storageGroupName,
+            databaseName,
             dataRegionId,
             filesView.sequence ? "Sequence" : "Unsequence",
             filesView.targetFilesInLog,
@@ -394,7 +394,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
     if (Thread.currentThread().isInterrupted() || summary.isCancel()) {
       throw new InterruptedException(
-          String.format("%s-%s [Compaction] abort", storageGroupName, dataRegionId));
+          String.format("%s-%s [Compaction] abort", databaseName, dataRegionId));
     }
 
     validateCompactionResult(
@@ -452,7 +452,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     CompactionUtils.moveTargetFile(
         filesView.targetFilesInPerformer,
         getCompactionTaskType(),
-        storageGroupName + "-" + dataRegionId);
+        databaseName + "-" + dataRegionId);
 
     CompactionUtils.combineModsInInnerCompaction(
         filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
@@ -625,7 +625,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public String toString() {
-    return storageGroupName
+    return databaseName
         + "-"
         + dataRegionId
         + "-"

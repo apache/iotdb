@@ -279,21 +279,19 @@ public interface ISessionPool {
    * @deprecated
    */
   @Deprecated
-  void setStorageGroup(String storageGroupId)
-      throws IoTDBConnectionException, StatementExecutionException;
+  void setDatabase(String databaseId) throws IoTDBConnectionException, StatementExecutionException;
 
   /**
    * @deprecated
    */
   @Deprecated
-  void deleteStorageGroup(String storageGroup)
-      throws IoTDBConnectionException, StatementExecutionException;
+  void deleteDatabase(String database) throws IoTDBConnectionException, StatementExecutionException;
 
   /**
    * @deprecated
    */
   @Deprecated
-  void deleteStorageGroups(List<String> storageGroup)
+  void deleteDatabases(List<String> database)
       throws IoTDBConnectionException, StatementExecutionException;
 
   void createDatabase(String database) throws IoTDBConnectionException, StatementExecutionException;

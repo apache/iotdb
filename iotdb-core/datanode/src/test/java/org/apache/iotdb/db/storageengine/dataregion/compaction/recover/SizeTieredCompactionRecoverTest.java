@@ -179,7 +179,7 @@ public class SizeTieredCompactionRecoverTest {
     dataDirsField.set(config, dataDirs);
   }
 
-  /** Test when a file that is not a directory exists under virtual storageGroup dir. */
+  /** Test when a file that is not a directory exists under virtual database dir. */
   @Test
   public void testRecoverWithUncorrectTimePartionDir() throws StartupException {
     StorageEngine.getInstance().start();

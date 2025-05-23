@@ -194,12 +194,12 @@ public class OverlapStatisticTool {
       return;
     }
 
-    for (File storageGroupDir : Objects.requireNonNull(dataDirWithIsSequence.listFiles())) {
-      if (!storageGroupDir.isDirectory()) {
+    for (File databaseDir : Objects.requireNonNull(dataDirWithIsSequence.listFiles())) {
+      if (!databaseDir.isDirectory()) {
         continue;
       }
-      String storageGroup = storageGroupDir.getName();
-      for (File dataRegionDir : Objects.requireNonNull(storageGroupDir.listFiles())) {
+      String database = databaseDir.getName();
+      for (File dataRegionDir : Objects.requireNonNull(databaseDir.listFiles())) {
         if (!dataRegionDir.isDirectory()) {
           continue;
         }
@@ -210,7 +210,7 @@ public class OverlapStatisticTool {
           }
 
           String timePartitionKey =
-              calculateTimePartitionKey(storageGroup, dataRegion, timePartitionDir.getName());
+              calculateTimePartitionKey(database, dataRegion, timePartitionDir.getName());
           Pair<List<String>, List<String>> timePartitionFiles =
               timePartitionFileMap.computeIfAbsent(
                   timePartitionKey, v -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
@@ -242,7 +242,7 @@ public class OverlapStatisticTool {
   }
 
   private String calculateTimePartitionKey(
-      String storageGroup, String dataRegion, String timePartition) {
-    return storageGroup + "-" + dataRegion + "-" + timePartition;
+      String database, String dataRegion, String timePartition) {
+    return database + "-" + dataRegion + "-" + timePartition;
   }
 }

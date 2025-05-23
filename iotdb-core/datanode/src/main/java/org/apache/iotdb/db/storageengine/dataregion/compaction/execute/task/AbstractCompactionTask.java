@@ -65,7 +65,7 @@ public abstract class AbstractCompactionTask {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   protected String dataRegionId;
-  protected String storageGroupName;
+  protected String databaseName;
   protected long timePartition;
   protected final TsFileManager tsFileManager;
   protected ICompactionPerformer performer;
@@ -85,12 +85,12 @@ public abstract class AbstractCompactionTask {
   protected long compactionConfigVersion = Long.MAX_VALUE;
 
   protected AbstractCompactionTask(
-      String storageGroupName,
+      String databaseName,
       String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
       long serialId) {
-    this.storageGroupName = storageGroupName;
+    this.databaseName = databaseName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
@@ -140,7 +140,7 @@ public abstract class AbstractCompactionTask {
         || e instanceof CompactionValidationFailedException) {
       logger.error(
           "{}-{} [Compaction] {} task meets error: {}.",
-          storageGroupName,
+          databaseName,
           dataRegionId,
           getCompactionTaskType(),
           e.getMessage());
@@ -167,14 +167,14 @@ public abstract class AbstractCompactionTask {
         || !tsFileManager.isAllowCompaction()) {
       logger.warn(
           "{}-{} [Compaction] {} task interrupted",
-          storageGroupName,
+          databaseName,
           dataRegionId,
           getCompactionTaskType());
       Thread.currentThread().interrupt();
     } else {
       logger.error(
           "{}-{} [Compaction] {} task meets error: {}.",
-          storageGroupName,
+          databaseName,
           dataRegionId,
           getCompactionTaskType(),
           e);
@@ -234,8 +234,8 @@ public abstract class AbstractCompactionTask {
     return isSuccess;
   }
 
-  public String getStorageGroupName() {
-    return this.storageGroupName;
+  public String getDatabaseName() {
+    return this.databaseName;
   }
 
   public String getDataRegionId() {
@@ -299,7 +299,7 @@ public abstract class AbstractCompactionTask {
   protected void checkInterrupted() throws InterruptedException {
     if (Thread.currentThread().isInterrupted()) {
       throw new InterruptedException(
-          String.format("%s-%s [Compaction] abort", storageGroupName, dataRegionId));
+          String.format("%s-%s [Compaction] abort", databaseName, dataRegionId));
     }
   }
 

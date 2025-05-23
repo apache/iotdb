@@ -58,8 +58,8 @@ public class IoTDBExampleIT {
       statement.execute("CREATE DATABASE root.sg");
       try (ResultSet resultSet = statement.executeQuery("show databases")) {
         if (resultSet.next()) {
-          String storageGroupPath = resultSet.getString(ColumnHeaderConstant.DATABASE);
-          Assert.assertEquals("root.sg", storageGroupPath);
+          String databasePath = resultSet.getString(ColumnHeaderConstant.DATABASE);
+          Assert.assertEquals("root.sg", databasePath);
         } else {
           Assert.fail("This ResultSet is empty.");
         }

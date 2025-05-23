@@ -56,7 +56,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       InsertionCrossCompactionTaskResource taskResource,
       long serialId) {
     super(
-        tsFileManager.getStorageGroupName(),
+        tsFileManager.getDatabaseName(),
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
@@ -123,7 +123,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
             + "nearest seq files are {}, "
             + "target file name timestamp is {}, "
             + "file size is {} MB.",
-        storageGroupName,
+        databaseName,
         dataRegionId,
         unseqFileToInsert,
         selectedSeqFiles,
@@ -139,7 +139,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     } catch (IOException e) {
       LOGGER.error(
           "{}-{} [InsertionCrossSpaceCompactionTask] failed to generate target file name, source unseq file is {}",
-          storageGroupName,
+          databaseName,
           dataRegionId,
           unseqFileToInsert);
       return false;
@@ -171,7 +171,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           "{}-{} [Compaction] InsertionCrossSpaceCompaction task finishes successfully, "
               + "target file is {},"
               + "time cost is {} s.",
-          storageGroupName,
+          databaseName,
           dataRegionId,
           targetFile,
           String.format("%.2f", costTime));

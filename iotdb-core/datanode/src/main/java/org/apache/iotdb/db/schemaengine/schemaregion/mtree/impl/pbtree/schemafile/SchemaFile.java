@@ -65,7 +65,7 @@ public class SchemaFile implements ISchemaFile {
   // attributes for this pbtree file
   private final String filePath;
   private final String logPath;
-  private String storageGroupName;
+  private String databaseName;
   // TODO: Useless
   private long dataTTL;
   private boolean isEntity;
@@ -100,7 +100,7 @@ public class SchemaFile implements ISchemaFile {
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
     String dirPath = getDirPath(sgName, schemaRegionId);
-    this.storageGroupName = sgName;
+    this.databaseName = sgName;
     this.filePath = dirPath + File.separator + SchemaConstant.PBTREE_FILE_NAME;
     this.logPath = dirPath + File.separator + SchemaConstant.PBTREE_LOG_FILE_NAME;
 
@@ -183,9 +183,9 @@ public class SchemaFile implements ISchemaFile {
   public ICachedMNode init() throws MetadataException {
     ICachedMNode resNode;
     String[] sgPathNodes =
-        storageGroupName == null
+        databaseName == null
             ? new String[] {"noName"}
-            : PathUtils.splitPathToDetachedNodes(storageGroupName);
+            : PathUtils.splitPathToDetachedNodes(databaseName);
     if (isEntity) {
       resNode =
           setNodeAddress(
@@ -200,7 +200,7 @@ public class SchemaFile implements ISchemaFile {
                   .getAsMNode(),
               0L);
     }
-    resNode.setFullPath(storageGroupName);
+    resNode.setFullPath(databaseName);
     return resNode;
   }
 
@@ -311,8 +311,8 @@ public class SchemaFile implements ISchemaFile {
                 + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
                 + "==  Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)\n"
                 + "=============================\n"
-                + "Belong to StorageGroup: [%s], segment of SG:%s, total pages:%d\n",
-            storageGroupName == null ? "NOT SPECIFIED" : storageGroupName,
+                + "Belong to Database: [%s], segment of SG:%s, total pages:%d\n",
+            databaseName == null ? "NOT SPECIFIED" : databaseName,
             Long.toHexString(lastSGAddr),
             lastPageIndex + 1);
     if (pw == null) {
@@ -338,7 +338,7 @@ public class SchemaFile implements ISchemaFile {
    *       <ul>
    *         <li><s>a. var length string (less than 200 bytes): path to root(SG) node</s>
    *         <li>a. 1 long (8 bytes): dataTTL {@link #dataTTL}
-   *         <li>b. 1 bool (1 byte): isEntityStorageGroup {@link #isEntity}
+   *         <li>b. 1 bool (1 byte): isEntityDatabase {@link #isEntity}
    *         <li>c. 1 int (4 bytes): hash code of template name {@link #sgNodeTemplateIdWithState}
    *         <li>d. 1 long (8 bytes): last segment address of database {@link #lastSGAddr}
    *         <li>e. 1 int (4 bytes): version of pbtree file {@linkplain

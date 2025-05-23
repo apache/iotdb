@@ -138,7 +138,7 @@ public class CompactionScheduler {
       return 0;
     }
 
-    String storageGroupName = tsFileManager.getStorageGroupName();
+    String databaseName = tsFileManager.getDatabaseName();
     String dataRegionId = tsFileManager.getDataRegionId();
 
     long compactionConfigVersionWhenSelectTask =
@@ -148,14 +148,12 @@ public class CompactionScheduler {
       innerSpaceCompactionSelector =
           config
               .getInnerSequenceCompactionSelector()
-              .createInstance(
-                  storageGroupName, dataRegionId, timePartition, tsFileManager, context);
+              .createInstance(databaseName, dataRegionId, timePartition, tsFileManager, context);
     } else {
       innerSpaceCompactionSelector =
           config
               .getInnerUnsequenceCompactionSelector()
-              .createInstance(
-                  storageGroupName, dataRegionId, timePartition, tsFileManager, context);
+              .createInstance(databaseName, dataRegionId, timePartition, tsFileManager, context);
     }
     long startTime = System.currentTimeMillis();
     List<InnerSpaceCompactionTask> innerSpaceTaskList =
@@ -235,11 +233,11 @@ public class CompactionScheduler {
     if (!tsFileManager.isAllowCompaction() || !config.isEnableCrossSpaceCompaction()) {
       return 0;
     }
-    String logicalStorageGroupName = tsFileManager.getStorageGroupName();
+    String logicalDatabaseName = tsFileManager.getDatabaseName();
     String dataRegionId = tsFileManager.getDataRegionId();
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(
-            logicalStorageGroupName, dataRegionId, timePartition, tsFileManager, context);
+            logicalDatabaseName, dataRegionId, timePartition, tsFileManager, context);
 
     List<CrossCompactionTaskResource> selectedTasks =
         selector.selectInsertionCrossSpaceTask(
@@ -273,7 +271,7 @@ public class CompactionScheduler {
     if (!CompactionTaskManager.getInstance().shouldSelectCrossSpaceCompactionTask()) {
       return 0;
     }
-    String logicalStorageGroupName = tsFileManager.getStorageGroupName();
+    String logicalDatabaseName = tsFileManager.getDatabaseName();
     String dataRegionId = tsFileManager.getDataRegionId();
     long compactionConfigVersionWhenSelectTask =
         CompactionTaskManager.getInstance().getCurrentCompactionConfigVersion();
@@ -281,7 +279,7 @@ public class CompactionScheduler {
         config
             .getCrossCompactionSelector()
             .createInstance(
-                logicalStorageGroupName, dataRegionId, timePartition, tsFileManager, context);
+                logicalDatabaseName, dataRegionId, timePartition, tsFileManager, context);
 
     List<CrossCompactionTaskResource> taskList =
         crossSpaceCompactionSelector.selectCrossSpaceTask(
@@ -320,16 +318,11 @@ public class CompactionScheduler {
     if (!config.isEnableSeqSpaceCompaction() && !config.isEnableUnseqSpaceCompaction()) {
       return 0;
     }
-    String logicalStorageGroupName = tsFileManager.getStorageGroupName();
+    String logicalDatabaseName = tsFileManager.getDatabaseName();
     String dataRegionId = tsFileManager.getDataRegionId();
     SettleSelectorImpl settleSelector =
         new SettleSelectorImpl(
-            heavySelect,
-            logicalStorageGroupName,
-            dataRegionId,
-            timePartition,
-            tsFileManager,
-            context);
+            heavySelect, logicalDatabaseName, dataRegionId, timePartition, tsFileManager, context);
     long startTime = System.currentTimeMillis();
     List<AbstractCompactionTask> taskList = new ArrayList<>();
     if (config.isEnableSeqSpaceCompaction()) {

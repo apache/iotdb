@@ -56,13 +56,13 @@ public class ShowTTLTask implements IConfigTask {
   }
 
   public static void buildTSBlock(
-      Map<String, Long> storageGroupToTTL, SettableFuture<ConfigTaskResult> future) {
+      Map<String, Long> databaseToTTL, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showTTLColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (Map.Entry<String, Long> entry : storageGroupToTTL.entrySet()) {
+    for (Map.Entry<String, Long> entry : databaseToTTL.entrySet()) {
       builder.getTimeColumnBuilder().writeLong(0);
       builder
           .getColumnBuilder(0)

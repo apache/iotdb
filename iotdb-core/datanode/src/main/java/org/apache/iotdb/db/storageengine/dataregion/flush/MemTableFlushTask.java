@@ -80,7 +80,7 @@ public class MemTableFlushTask {
           ? new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing())
           : new LinkedBlockingQueue<>();
 
-  private String storageGroup;
+  private String database;
   private String dataRegionId;
 
   private IMemTable memTable;
@@ -94,16 +94,13 @@ public class MemTableFlushTask {
   /**
    * @param memTable the memTable to flush
    * @param writer the writer where memTable will be flushed to (current tsfile writer or vm writer)
-   * @param storageGroup current database
+   * @param database current database
    */
   public MemTableFlushTask(
-      IMemTable memTable,
-      RestorableTsFileIOWriter writer,
-      String storageGroup,
-      String dataRegionId) {
+      IMemTable memTable, RestorableTsFileIOWriter writer, String database, String dataRegionId) {
     this.memTable = memTable;
     this.writer = writer;
-    this.storageGroup = storageGroup;
+    this.database = database;
     this.dataRegionId = dataRegionId;
     this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
@@ -120,7 +117,7 @@ public class MemTableFlushTask {
             TARGET_CHUNK_SIZE);
     LOGGER.debug(
         "flush task of database {} memtable is created, flushing to file {}.",
-        storageGroup,
+        database,
         writer.getFile().getName());
   }
 
@@ -132,7 +129,7 @@ public class MemTableFlushTask {
             ? 0
             : memTable.getTotalPointsNum() / memTable.getSeriesNumber();
     WRITING_METRICS.recordFlushingMemTableStatus(
-        storageGroup,
+        database,
         memTable.memSize(),
         memTable.getSeriesNumber(),
         memTable.getTotalPointsNum(),
@@ -186,7 +183,7 @@ public class MemTableFlushTask {
     encodingTaskQueue.put(new TaskEnd());
     LOGGER.debug(
         "Database {} memtable flushing into file {}: data sort time cost {} ms.",
-        storageGroup,
+        database,
         writer.getFile().getName(),
         sortTime);
     WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_SORT, sortTime);
@@ -237,7 +234,7 @@ public class MemTableFlushTask {
         public void run() {
           LOGGER.debug(
               "Database {} memtable flushing to file {} starts to encoding data.",
-              storageGroup,
+              database,
               writer.getFile().getName());
           while (true) {
 
@@ -257,7 +254,7 @@ public class MemTableFlushTask {
                   InterruptedException e) {
                 LOGGER.error(
                     "Database {} memtable flushing to file {}, encoding task is interrupted.",
-                    storageGroup,
+                    database,
                     writer.getFile().getName(),
                     e);
                 // generally it is because the thread pool is shutdown so the task should be aborted
@@ -284,7 +281,7 @@ public class MemTableFlushTask {
             Thread.currentThread().interrupt();
           }
 
-          DataRegion.getNonSystemDatabaseName(storageGroup)
+          DataRegion.getNonSystemDatabaseName(database)
               .ifPresent(
                   databaseName ->
                       recordFlushPointsMetricInternal(
@@ -294,13 +291,13 @@ public class MemTableFlushTask {
       };
 
   public static void recordFlushPointsMetricInternal(
-      long totalPointsNum, String storageGroupName, String dataRegionId) {
+      long totalPointsNum, String databaseName, String dataRegionId) {
     long currentTime = CommonDateTimeUtils.currentTime();
     // compute the flush points
     long writeTime =
         flushPointsCache.compute(
-            storageGroupName,
-            (storageGroup, lastTime) -> {
+            databaseName,
+            (database, lastTime) -> {
               if (lastTime == null || lastTime != currentTime) {
                 return currentTime;
               } else {
@@ -315,7 +312,7 @@ public class MemTableFlushTask {
             MetricLevel.CORE,
             writeTime,
             Tag.DATABASE.toString(),
-            storageGroupName,
+            databaseName,
             Tag.TYPE.toString(),
             "flush",
             Tag.REGION.toString(),
@@ -328,7 +325,7 @@ public class MemTableFlushTask {
       () -> {
         LOGGER.debug(
             "Database {} memtable flushing to file {} start io.",
-            storageGroup,
+            database,
             writer.getFile().getName());
         while (true) {
           Object ioMessage = null;
@@ -353,8 +350,7 @@ public class MemTableFlushTask {
               ((IChunkWriter) ioMessage).writeToFileWriter(this.writer);
             }
           } catch (IOException e) {
-            LOGGER.error(
-                "Database {} memtable {}, io task meets error.", storageGroup, memTable, e);
+            LOGGER.error("Database {} memtable {}, io task meets error.", database, memTable, e);
             return;
           }
           long subTaskTime = System.currentTimeMillis() - starTime;
@@ -364,9 +360,9 @@ public class MemTableFlushTask {
         LOGGER.debug(
             "flushing a memtable to file {} in database {}, io cost {}ms",
             writer.getFile().getName(),
-            storageGroup,
+            database,
             ioTime);
-        WRITING_METRICS.recordFlushTsFileSize(storageGroup, writer.getFile().length());
+        WRITING_METRICS.recordFlushTsFileSize(database, writer.getFile().length());
         WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_IO, ioTime);
       };
 

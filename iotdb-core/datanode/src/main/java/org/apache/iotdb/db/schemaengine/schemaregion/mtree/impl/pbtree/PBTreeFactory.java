@@ -49,13 +49,13 @@ public class PBTreeFactory {
   private PBTreeFactory() {}
 
   public CachedMTreeStore createNewCachedMTreeStore(
-      PartialPath storageGroup,
+      PartialPath database,
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
       SchemaRegionCachedMetric metric,
       Runnable flushCallback)
       throws MetadataException, IOException {
-    SchemaFile schemaFile = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
+    SchemaFile schemaFile = SchemaFile.initSchemaFile(database.getFullPath(), schemaRegionId);
     schemaFile.setMetric(metric);
     return createCachedMTreeStore(
         schemaRegionId, regionStatistics, metric, flushCallback, schemaFile);
@@ -63,13 +63,13 @@ public class PBTreeFactory {
 
   public CachedMTreeStore createCachedMTreeStoreFromSnapshot(
       File snapshotDir,
-      String storageGroup,
+      String database,
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
       SchemaRegionCachedMetric metric,
       Runnable flushCallback)
       throws MetadataException, IOException {
-    SchemaFile schemaFile = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
+    SchemaFile schemaFile = SchemaFile.loadSnapshot(snapshotDir, database, schemaRegionId);
     schemaFile.setMetric(metric);
     return createCachedMTreeStore(
         schemaRegionId, regionStatistics, metric, flushCallback, schemaFile);

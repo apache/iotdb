@@ -138,7 +138,7 @@ import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 
 /**
  * The {@link ClusterSchemaInfo} stores cluster schemaEngine. The cluster schemaEngine including: 1.
- * StorageGroupSchema 2. Template (Not implement yet)
+ * DatabaseSchema 2. Template (Not implement yet)
  */
 public class ClusterSchemaInfo implements SnapshotProcessor {
 
@@ -191,7 +191,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final PartialPath partialPathName = getQualifiedDatabasePartialPath(databaseSchema.getName());
 
       final ConfigMTree mTree = databaseSchema.isIsTableModel() ? tableModelMTree : treeModelMTree;
-      mTree.setStorageGroup(partialPathName);
+      mTree.setDatabase(partialPathName);
 
       // Set DatabaseSchema
       mTree
@@ -663,17 +663,17 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final String database, final TConsensusGroupType consensusGroupType) {
     databaseReadWriteLock.readLock().lock();
     try {
-      final TDatabaseSchema storageGroupSchema =
+      final TDatabaseSchema databaseSchema =
           (PathUtils.isTableModelDatabase(database) ? tableModelMTree : treeModelMTree)
               .getDatabaseNodeByDatabasePath(getQualifiedDatabasePartialPath(database))
               .getAsMNode()
               .getDatabaseSchema();
       switch (consensusGroupType) {
         case SchemaRegion:
-          return storageGroupSchema.getMinSchemaRegionGroupNum();
+          return databaseSchema.getMinSchemaRegionGroupNum();
         case DataRegion:
         default:
-          return storageGroupSchema.getMinDataRegionGroupNum();
+          return databaseSchema.getMinDataRegionGroupNum();
       }
     } catch (final MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
@@ -694,17 +694,17 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final String database, final TConsensusGroupType consensusGroupType) {
     databaseReadWriteLock.readLock().lock();
     try {
-      final TDatabaseSchema storageGroupSchema =
+      final TDatabaseSchema databaseSchema =
           (PathUtils.isTableModelDatabase(database) ? tableModelMTree : treeModelMTree)
               .getDatabaseNodeByDatabasePath(getQualifiedDatabasePartialPath(database))
               .getAsMNode()
               .getDatabaseSchema();
       switch (consensusGroupType) {
         case SchemaRegion:
-          return storageGroupSchema.getMaxSchemaRegionGroupNum();
+          return databaseSchema.getMaxSchemaRegionGroupNum();
         case DataRegion:
         default:
-          return storageGroupSchema.getMaxDataRegionGroupNum();
+          return databaseSchema.getMaxDataRegionGroupNum();
       }
     } catch (final MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);

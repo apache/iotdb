@@ -39,11 +39,11 @@ import java.util.function.Consumer;
 public interface IMTreeStore<N extends IMNode<N>> {
 
   /**
-   * Generate the ancestor nodes of storageGroupNode
+   * Generate the ancestor nodes of databaseNode
    *
    * @return root node
    */
-  N generatePrefix(PartialPath storageGroupPath);
+  N generatePrefix(PartialPath databasePath);
 
   N getRoot();
 

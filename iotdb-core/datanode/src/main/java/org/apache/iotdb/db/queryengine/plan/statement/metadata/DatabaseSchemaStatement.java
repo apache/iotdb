@@ -155,8 +155,8 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
 
   @Override
   public String toString() {
-    return "SetStorageGroupStatement{"
-        + "storageGroupPath="
+    return "SetDatabaseStatement{"
+        + "databasePath="
         + databasePath
         + ", ttl="
         + ttl

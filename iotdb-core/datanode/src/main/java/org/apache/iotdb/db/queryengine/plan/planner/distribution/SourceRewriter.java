@@ -537,15 +537,15 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     List<PartialPath> pathPatternList = seed.getPathPatternList();
     Set<TRegionReplicaSet> regionsOfSystemDatabase = new HashSet<>();
     if (pathPatternList.size() == 1) {
-      // the path pattern overlaps with all storageGroup or storageGroup.**
+      // the path pattern overlaps with all database or database.**
       TreeSet<TRegionReplicaSet> schemaRegions =
           new TreeSet<>(Comparator.comparingInt(region -> region.getRegionId().getId()));
       analysis
           .getSchemaPartitionInfo()
           .getSchemaPartitionMap()
           .forEach(
-              (storageGroup, deviceGroup) -> {
-                if (storageGroup.equals(SchemaConstant.SYSTEM_DATABASE)) {
+              (database, deviceGroup) -> {
+                if (database.equals(SchemaConstant.SYSTEM_DATABASE)) {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfSystemDatabase.add(schemaRegionReplicaSet));
@@ -572,34 +572,33 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   context.queryContext.getQueryId().genPlanNodeId(),
                   seed));
     } else {
-      // the path pattern may only overlap with part of storageGroup or storageGroup.**, need filter
+      // the path pattern may only overlap with part of database or database.**, need filter
       PathPatternTree patternTree = new PathPatternTree();
       for (PartialPath pathPattern : pathPatternList) {
         patternTree.appendPathPattern(pathPattern);
       }
-      Map<String, Set<TRegionReplicaSet>> storageGroupSchemaRegionMap = new HashMap<>();
+      Map<String, Set<TRegionReplicaSet>> databaseSchemaRegionMap = new HashMap<>();
       analysis
           .getSchemaPartitionInfo()
           .getSchemaPartitionMap()
           .forEach(
-              (storageGroup, deviceGroup) -> {
-                if (storageGroup.equals(SchemaConstant.SYSTEM_DATABASE)) {
+              (database, deviceGroup) -> {
+                if (database.equals(SchemaConstant.SYSTEM_DATABASE)) {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfSystemDatabase.add(schemaRegionReplicaSet));
                 } else {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
-                          storageGroupSchemaRegionMap
-                              .computeIfAbsent(storageGroup, k -> new HashSet<>())
+                          databaseSchemaRegionMap
+                              .computeIfAbsent(database, k -> new HashSet<>())
                               .add(schemaRegionReplicaSet));
                 }
               });
 
-      storageGroupSchemaRegionMap.forEach(
-          (storageGroup, schemaRegionSet) -> {
-            List<PartialPath> filteredPathPatternList =
-                filterPathPattern(patternTree, storageGroup);
+      databaseSchemaRegionMap.forEach(
+          (database, schemaRegionSet) -> {
+            List<PartialPath> filteredPathPatternList = filterPathPattern(patternTree, database);
             schemaRegionSet.forEach(
                 region ->
                     addSchemaSourceNode(
@@ -633,11 +632,11 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     // extract the patterns overlap with current database
     Set<PartialPath> filteredPathPatternSet = new HashSet<>();
     try {
-      PartialPath storageGroupPath = new PartialPath(database);
-      filteredPathPatternSet.addAll(patternTree.getOverlappedPathPatterns(storageGroupPath));
+      PartialPath databasePath = new PartialPath(database);
+      filteredPathPatternSet.addAll(patternTree.getOverlappedPathPatterns(databasePath));
       filteredPathPatternSet.addAll(
           patternTree.getOverlappedPathPatterns(
-              storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD)));
+              databasePath.concatNode(MULTI_LEVEL_PATH_WILDCARD)));
     } catch (IllegalPathException ignored) {
       // won't reach here
     }
@@ -667,7 +666,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         .getSchemaPartitionInfo()
         .getSchemaPartitionMap()
         .forEach(
-            (storageGroup, deviceGroup) ->
+            (database, deviceGroup) ->
                 deviceGroup.forEach(
                     (deviceGroupId, schemaRegionReplicaSet) ->
                         schemaRegions.add(schemaRegionReplicaSet)));
@@ -879,22 +878,21 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   public List<PlanNode> visitSchemaFetchMerge(
       SchemaFetchMergeNode node, DistributionPlanContext context) {
     SchemaFetchMergeNode root = (SchemaFetchMergeNode) node.clone();
-    Map<String, Set<TRegionReplicaSet>> storageGroupSchemaRegionMap = new HashMap<>();
+    Map<String, Set<TRegionReplicaSet>> databaseSchemaRegionMap = new HashMap<>();
     analysis
         .getSchemaPartitionInfo()
         .getSchemaPartitionMap()
         .forEach(
-            (storageGroup, deviceGroup) -> {
-              storageGroupSchemaRegionMap.put(storageGroup, new HashSet<>());
+            (database, deviceGroup) -> {
+              databaseSchemaRegionMap.put(database, new HashSet<>());
               deviceGroup.forEach(
                   (deviceGroupId, schemaRegionReplicaSet) ->
-                      storageGroupSchemaRegionMap.get(storageGroup).add(schemaRegionReplicaSet));
+                      databaseSchemaRegionMap.get(database).add(schemaRegionReplicaSet));
             });
 
     for (PlanNode child : node.getChildren()) {
       for (TRegionReplicaSet schemaRegion :
-          storageGroupSchemaRegionMap.get(
-              ((SchemaFetchScanNode) child).getStorageGroup().getFullPath())) {
+          databaseSchemaRegionMap.get(((SchemaFetchScanNode) child).getDatabase().getFullPath())) {
         SchemaFetchScanNode schemaFetchScanNode = (SchemaFetchScanNode) child.clone();
         schemaFetchScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
         schemaFetchScanNode.setRegionReplicaSet(schemaRegion);

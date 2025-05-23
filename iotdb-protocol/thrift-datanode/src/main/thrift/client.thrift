@@ -583,7 +583,7 @@ service IClientRPCService {
 
   ServerProperties getProperties();
 
-  common.TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
+  common.TSStatus setDatabase(1:i64 sessionId, 2:string database);
 
   common.TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
 
@@ -593,7 +593,7 @@ service IClientRPCService {
 
   common.TSStatus deleteTimeseries(1:i64 sessionId, 2:list<string> path)
 
-  common.TSStatus deleteStorageGroups(1:i64 sessionId, 2:list<string> storageGroup);
+  common.TSStatus deleteDatabases(1:i64 sessionId, 2:list<string> database);
 
   common.TSStatus insertRecord(1:TSInsertRecordReq req);
 

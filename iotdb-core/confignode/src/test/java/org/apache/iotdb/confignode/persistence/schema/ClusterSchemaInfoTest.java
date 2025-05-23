@@ -84,15 +84,15 @@ public class ClusterSchemaInfoTest {
 
   @Test
   public void testSnapshot() throws IOException, IllegalPathException {
-    Set<String> storageGroupPathList = new TreeSet<>();
-    storageGroupPathList.add("root.sg");
-    storageGroupPathList.add("root.a.sg");
-    storageGroupPathList.add("root.a.b.sg");
-    storageGroupPathList.add("root.a.a.a.b.sg");
+    Set<String> databasePathList = new TreeSet<>();
+    databasePathList.add("root.sg");
+    databasePathList.add("root.a.sg");
+    databasePathList.add("root.a.b.sg");
+    databasePathList.add("root.a.a.a.b.sg");
 
     Map<String, TDatabaseSchema> testMap = new TreeMap<>();
     int i = 0;
-    for (String path : storageGroupPathList) {
+    for (String path : databasePathList) {
       TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
       tDatabaseSchema.setName(path);
       tDatabaseSchema.setDataReplicationFactor(i);
@@ -107,17 +107,16 @@ public class ClusterSchemaInfoTest {
     clusterSchemaInfo.clear();
     clusterSchemaInfo.processLoadSnapshot(snapshotDir);
 
-    Assert.assertEquals(
-        storageGroupPathList.size(), clusterSchemaInfo.getDatabaseNames(null).size());
+    Assert.assertEquals(databasePathList.size(), clusterSchemaInfo.getDatabaseNames(null).size());
 
-    GetDatabasePlan getStorageGroupReq =
+    GetDatabasePlan getDatabaseReq =
         new GetDatabasePlan(
             Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")),
             ALL_MATCH_SCOPE,
             false,
             false);
     Map<String, TDatabaseSchema> reloadResult =
-        clusterSchemaInfo.getMatchedDatabaseSchemas(getStorageGroupReq).getSchemaMap();
+        clusterSchemaInfo.getMatchedDatabaseSchemas(getDatabaseReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);
   }
 

@@ -23,21 +23,21 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 public class RegionReplicaSetInfo {
   private TRegionReplicaSet regionReplicaSet;
-  private String storageGroup;
+  private String database;
 
   public RegionReplicaSetInfo(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
   }
 
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
+  public void setDatabase(String database) {
+    this.database = database;
   }
 
   public TRegionReplicaSet getRegionReplicaSet() {
     return regionReplicaSet;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public String getDatabase() {
+    return database;
   }
 }

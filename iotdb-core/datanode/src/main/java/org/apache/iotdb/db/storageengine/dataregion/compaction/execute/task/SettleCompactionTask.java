@@ -109,7 +109,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     if (fullyDirtyFiles.isEmpty() && filesView.sourceFilesInCompactionPerformer.isEmpty()) {
       LOGGER.info(
           "{}-{} [Compaction] Settle compaction file list is empty, end it",
-          storageGroupName,
+          databaseName,
           dataRegionId);
     }
     long startTime = System.currentTimeMillis();
@@ -121,7 +121,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
             + "Fully_dirty files size is {} MB, "
             + "partially_dirty file size is {} MB. "
             + "Memory cost is {} MB.",
-        storageGroupName,
+        databaseName,
         dataRegionId,
         fullyDirtyFiles.size(),
         filesView.sourceFilesInCompactionPerformer.size(),
@@ -160,7 +160,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
           LOGGER.info(
               "{}-{} [Compaction] SettleCompaction task finishes successfully, time cost is {} s."
                   + "Fully_dirty files num is {}.",
-              storageGroupName,
+              databaseName,
               dataRegionId,
               String.format("%.2f", costTime),
               fullyDirtyFiles.size());
@@ -168,7 +168,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
           LOGGER.info(
               "{}-{} [Compaction] SettleCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s."
                   + "Fully_dirty files num is {} and partially_dirty files num is {}.",
-              storageGroupName,
+              databaseName,
               dataRegionId,
               String.format("%.2f", costTime),
               String.format("%.2f", (partiallyDirtyFileSize) / 1024.0d / 1024.0d / costTime),
@@ -179,7 +179,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
         LOGGER.info(
             "{}-{} [Compaction] SettleCompaction task finishes with some error, time cost is {} s."
                 + "Fully_dirty files num is {} and there are {} files fail to delete.",
-            storageGroupName,
+            databaseName,
             dataRegionId,
             String.format("%.2f", costTime),
             fullyDirtyFiles.size(),
@@ -241,7 +241,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     LOGGER.info(
         "{}-{} [Compaction] Start to settle {} {} partially_dirty files, "
             + "total file size is {} MB",
-        storageGroupName,
+        databaseName,
         dataRegionId,
         filesView.sourceFilesInCompactionPerformer.size(),
         filesView.sequence ? "Sequence" : "Unsequence",
@@ -254,7 +254,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
             + "target file is {},"
             + "time cost is {} s, "
             + "compaction speed is {} MB/s, {}",
-        storageGroupName,
+        databaseName,
         dataRegionId,
         filesView.sourceFilesInCompactionPerformer.size(),
         filesView.sequence ? "Sequence" : "Unsequence",
@@ -268,7 +268,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   public void recover() {
     LOGGER.info(
         "{}-{} [Compaction][Recover] Start to recover settle compaction.",
-        storageGroupName,
+        databaseName,
         dataRegionId);
     try {
       if (needRecoverTaskInfoFromLogFile) {
@@ -278,7 +278,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       recoverPartiallyDirtyFiles();
       LOGGER.info(
           "{}-{} [Compaction][Recover] Finish to recover settle compaction successfully.",
-          storageGroupName,
+          databaseName,
           dataRegionId);
       if (needRecoverTaskInfoFromLogFile) {
         Files.deleteIfExists(logFile.toPath());
@@ -304,10 +304,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
 
   public void recoverSettleTaskInfoFromLogFile() throws IOException {
     LOGGER.info(
-        "{}-{} [Compaction][Recover] compaction log is {}",
-        storageGroupName,
-        dataRegionId,
-        logFile);
+        "{}-{} [Compaction][Recover] compaction log is {}", databaseName, dataRegionId, logFile);
     CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(this.logFile);
     logAnalyzer.analyze();
     List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
@@ -373,7 +370,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
 
   @Override
   public String toString() {
-    return storageGroupName
+    return databaseName
         + "-"
         + dataRegionId
         + "-"

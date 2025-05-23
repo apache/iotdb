@@ -156,16 +156,16 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * @param storageGroupName database name
+   * @param databaseName database name
    * @return ALL SUCCESS OR NOT
    * @throws IOException IOE
    * @throws TException Thrift IOE
    */
-  public boolean invalidateCache(final String storageGroupName) throws IOException, TException {
+  public boolean invalidateCache(final String databaseName) throws IOException, TException {
     List<TDataNodeConfiguration> allDataNodes = getNodeManager().getRegisteredDataNodes();
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
-    invalidateCacheReq.setStorageGroup(true);
-    invalidateCacheReq.setFullPath(storageGroupName);
+    invalidateCacheReq.setDatabase(true);
+    invalidateCacheReq.setFullPath(databaseName);
     for (TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
       int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
 
@@ -428,12 +428,11 @@ public class ConfigNodeProcedureEnv {
     int requestId = 0;
     for (Map.Entry<String, List<TRegionReplicaSet>> sgRegionsEntry :
         createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
-      String storageGroup = sgRegionsEntry.getKey();
+      String database = sgRegionsEntry.getKey();
       List<TRegionReplicaSet> regionReplicaSets = sgRegionsEntry.getValue();
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-          clientHandler.putRequest(
-              requestId, genCreateSchemaRegionReq(storageGroup, regionReplicaSet));
+          clientHandler.putRequest(requestId, genCreateSchemaRegionReq(database, regionReplicaSet));
           clientHandler.putNodeLocation(requestId, dataNodeLocation);
           requestId += 1;
         }
@@ -451,12 +450,11 @@ public class ConfigNodeProcedureEnv {
     int requestId = 0;
     for (Map.Entry<String, List<TRegionReplicaSet>> sgRegionsEntry :
         createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
-      String storageGroup = sgRegionsEntry.getKey();
+      String database = sgRegionsEntry.getKey();
       List<TRegionReplicaSet> regionReplicaSets = sgRegionsEntry.getValue();
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-          clientHandler.putRequest(
-              requestId, genCreateDataRegionReq(storageGroup, regionReplicaSet));
+          clientHandler.putRequest(requestId, genCreateDataRegionReq(database, regionReplicaSet));
           clientHandler.putNodeLocation(requestId, dataNodeLocation);
           requestId += 1;
         }
@@ -467,17 +465,17 @@ public class ConfigNodeProcedureEnv {
   }
 
   private TCreateSchemaRegionReq genCreateSchemaRegionReq(
-      String storageGroup, TRegionReplicaSet regionReplicaSet) {
+      String database, TRegionReplicaSet regionReplicaSet) {
     TCreateSchemaRegionReq req = new TCreateSchemaRegionReq();
-    req.setStorageGroup(storageGroup);
+    req.setDatabase(database);
     req.setRegionReplicaSet(regionReplicaSet);
     return req;
   }
 
   private TCreateDataRegionReq genCreateDataRegionReq(
-      String storageGroup, TRegionReplicaSet regionReplicaSet) {
+      String database, TRegionReplicaSet regionReplicaSet) {
     TCreateDataRegionReq req = new TCreateDataRegionReq();
-    req.setStorageGroup(storageGroup);
+    req.setDatabase(database);
     req.setRegionReplicaSet(regionReplicaSet);
     return req;
   }
@@ -546,8 +544,8 @@ public class ConfigNodeProcedureEnv {
                 .collect(Collectors.toList()));
   }
 
-  public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {
-    return getPartitionManager().getAllReplicaSets(storageGroup);
+  public List<TRegionReplicaSet> getAllReplicaSets(String database) {
+    return getPartitionManager().getAllReplicaSets(database);
   }
 
   public List<TSStatus> createTriggerOnDataNodes(

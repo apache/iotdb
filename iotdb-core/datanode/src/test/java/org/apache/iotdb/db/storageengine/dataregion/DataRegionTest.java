@@ -102,7 +102,7 @@ public class DataRegionTest {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(DataRegionTest.class);
 
-  private String storageGroup = "root.vehicle.d0";
+  private String database = "root.vehicle.d0";
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
   private String deviceId = "root.vehicle.d0";
 
@@ -124,7 +124,7 @@ public class DataRegionTest {
   public void setUp() throws Exception {
     config.setWriteMemoryVariationReportProportion(0);
     EnvironmentUtils.envSetUp();
-    dataRegion = new DummyDataRegion(systemDir, storageGroup);
+    dataRegion = new DummyDataRegion(systemDir, database);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
     CompactionTaskManager.getInstance().start();
     seqSelector = config.getInnerSequenceCompactionSelector();
@@ -1181,7 +1181,7 @@ public class DataRegionTest {
 
   @Ignore
   @Test
-  public void testDeleteStorageGroupWhenCompacting() throws Exception {
+  public void testDeleteDatabaseWhenCompacting() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(10);
     try {
       for (int j = 0; j < 10; j++) {
@@ -1206,7 +1206,7 @@ public class DataRegionTest {
       List<DataRegion> dataRegions = StorageEngine.getInstance().getAllDataRegions();
       List<DataRegion> regionsToBeDeleted = new ArrayList<>();
       for (DataRegion region : dataRegions) {
-        if (region.getDatabaseName().equals(storageGroup)) {
+        if (region.getDatabaseName().equals(database)) {
           regionsToBeDeleted.add(region);
         }
       }
@@ -1405,7 +1405,7 @@ public class DataRegionTest {
     List<DataRegion> dataRegions = StorageEngine.getInstance().getAllDataRegions();
     List<DataRegion> regionsToBeDeleted = new ArrayList<>();
     for (DataRegion region : dataRegions) {
-      if (region.getDatabaseName().equals(storageGroup)) {
+      if (region.getDatabaseName().equals(database)) {
         regionsToBeDeleted.add(region);
       }
     }
@@ -1657,9 +1657,8 @@ public class DataRegionTest {
 
   public static class DummyDataRegion extends DataRegion {
 
-    public DummyDataRegion(String systemInfoDir, String storageGroupName)
-        throws DataRegionException {
-      super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
+    public DummyDataRegion(String systemInfoDir, String databaseName) throws DataRegionException {
+      super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), databaseName);
     }
   }
 

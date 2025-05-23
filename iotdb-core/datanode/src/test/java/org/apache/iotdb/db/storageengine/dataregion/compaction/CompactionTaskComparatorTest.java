@@ -337,8 +337,7 @@ public class CompactionTaskComparatorTest {
       for (int i = 0; i < 10; ++i) {
         AbstractCompactionTask task = compactionTaskQueue.take();
         String id =
-            CompactionTaskManager.getSgWithRegionId(
-                task.getStorageGroupName(), task.getDataRegionId());
+            CompactionTaskManager.getSgWithRegionId(task.getDatabaseName(), task.getDataRegionId());
         taskCount.get(id).incrementAndGet();
       }
       cnt++;
@@ -493,7 +492,7 @@ public class CompactionTaskComparatorTest {
   private static class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
 
     public FakedInnerSpaceCompactionTask(
-        String storageGroupName,
+        String databaseName,
         long timePartition,
         TsFileManager tsFileManager,
         boolean sequence,
@@ -522,7 +521,7 @@ public class CompactionTaskComparatorTest {
   private static class FakeCrossSpaceCompactionTask extends CrossSpaceCompactionTask {
 
     public FakeCrossSpaceCompactionTask(
-        String fullStorageGroupName,
+        String fullDatabaseName,
         long timePartition,
         TsFileManager tsFileManager,
         List<TsFileResource> selectedSequenceFiles,

@@ -42,7 +42,7 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNo
   }
 
   @Override
-  public ICachedMNode generatePrefix(PartialPath storageGroupPath) {
+  public ICachedMNode generatePrefix(PartialPath databasePath) {
     throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
   }
 

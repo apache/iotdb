@@ -36,19 +36,19 @@ import java.util.Objects;
 /** This class defines the scanned result merge task of schema fetcher. */
 public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
 
-  private List<String> storageGroupList;
+  private List<String> databaseList;
 
-  public SchemaFetchMergeNode(PlanNodeId id, List<String> storageGroupList) {
+  public SchemaFetchMergeNode(PlanNodeId id, List<String> databaseList) {
     super(id);
-    this.storageGroupList = storageGroupList;
+    this.databaseList = databaseList;
   }
 
-  public List<String> getStorageGroupList() {
-    return storageGroupList;
+  public List<String> getDatabaseList() {
+    return databaseList;
   }
 
-  public void setStorageGroupList(List<String> storageGroupList) {
-    this.storageGroupList = storageGroupList;
+  public void setDatabaseList(List<String> databaseList) {
+    this.databaseList = databaseList;
   }
 
   @Override
@@ -58,35 +58,35 @@ public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
 
   @Override
   public PlanNode clone() {
-    return new SchemaFetchMergeNode(getPlanNodeId(), storageGroupList);
+    return new SchemaFetchMergeNode(getPlanNodeId(), databaseList);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SCHEMA_FETCH_MERGE.serialize(byteBuffer);
-    ReadWriteIOUtils.write(storageGroupList.size(), byteBuffer);
-    for (String storageGroup : storageGroupList) {
-      ReadWriteIOUtils.write(storageGroup, byteBuffer);
+    ReadWriteIOUtils.write(databaseList.size(), byteBuffer);
+    for (String database : databaseList) {
+      ReadWriteIOUtils.write(database, byteBuffer);
     }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SCHEMA_FETCH_MERGE.serialize(stream);
-    ReadWriteIOUtils.write(storageGroupList.size(), stream);
-    for (String storageGroup : storageGroupList) {
-      ReadWriteIOUtils.write(storageGroup, stream);
+    ReadWriteIOUtils.write(databaseList.size(), stream);
+    for (String database : databaseList) {
+      ReadWriteIOUtils.write(database, stream);
     }
   }
 
   public static PlanNode deserialize(ByteBuffer byteBuffer) {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> storageGroupList = new ArrayList<>(size);
+    List<String> databaseList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
-      storageGroupList.add(ReadWriteIOUtils.readString(byteBuffer));
+      databaseList.add(ReadWriteIOUtils.readString(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaFetchMergeNode(planNodeId, storageGroupList);
+    return new SchemaFetchMergeNode(planNodeId, databaseList);
   }
 
   @Override
@@ -105,11 +105,11 @@ public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     SchemaFetchMergeNode that = (SchemaFetchMergeNode) o;
-    return Objects.equals(storageGroupList, that.storageGroupList);
+    return Objects.equals(databaseList, that.databaseList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), storageGroupList);
+    return Objects.hash(super.hashCode(), databaseList);
   }
 }

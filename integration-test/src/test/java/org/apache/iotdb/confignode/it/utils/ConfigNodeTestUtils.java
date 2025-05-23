@@ -118,24 +118,24 @@ public class ConfigNodeTestUtils {
   }
 
   public static Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> constructPartitionSlotsMap(
-      String storageGroup,
+      String database,
       int seriesSlotStart,
       int seriesSlotEnd,
       long timeSlotStart,
       long timeSlotEnd,
       long timePartitionInterval) {
     Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> result = new HashMap<>();
-    result.put(storageGroup, new HashMap<>());
+    result.put(database, new HashMap<>());
 
     for (int i = seriesSlotStart; i < seriesSlotEnd; i++) {
       TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);
       result
-          .get(storageGroup)
+          .get(database)
           .put(seriesPartitionSlot, new TTimeSlotList().setTimePartitionSlots(new ArrayList<>()));
       for (long j = timeSlotStart; j < timeSlotEnd; j++) {
         TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(j * timePartitionInterval);
         result
-            .get(storageGroup)
+            .get(database)
             .get(seriesPartitionSlot)
             .getTimePartitionSlots()
             .add(timePartitionSlot);
@@ -146,7 +146,7 @@ public class ConfigNodeTestUtils {
   }
 
   public static void checkDataPartitionTable(
-      String storageGroup,
+      String database,
       int seriesSlotStart,
       int seriesSlotEnd,
       long timeSlotStart,
@@ -155,12 +155,12 @@ public class ConfigNodeTestUtils {
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
           dataPartitionTable) {
 
-    // Check the existence of StorageGroup
-    Assert.assertTrue(dataPartitionTable.containsKey(storageGroup));
+    // Check the existence of Database
+    Assert.assertTrue(dataPartitionTable.containsKey(database));
 
     // Check the number of SeriesPartitionSlot
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
-        seriesPartitionTable = dataPartitionTable.get(storageGroup);
+        seriesPartitionTable = dataPartitionTable.get(database);
     Assert.assertEquals(seriesSlotEnd - seriesSlotStart, seriesPartitionTable.size());
 
     for (int i = seriesSlotStart; i < seriesSlotEnd; i++) {

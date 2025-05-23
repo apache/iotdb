@@ -245,8 +245,8 @@ public class DataRegion implements IDataRegionForQuery {
   /** Data region has been deleted or not. */
   private volatile boolean deleted = false;
 
-  /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
-  private final Object closeStorageGroupCondition = new Object();
+  /** closeDatabaseCondition is used to wait for all currently closing TsFiles to be done. */
+  private final Object closeDatabaseCondition = new Object();
 
   /**
    * Avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a read is executed.
@@ -1933,11 +1933,11 @@ public class DataRegion implements IDataRegionForQuery {
     long startTime = System.currentTimeMillis();
     while (!closingSequenceTsFileProcessor.isEmpty()
         || !closingUnSequenceTsFileProcessor.isEmpty()) {
-      synchronized (closeStorageGroupCondition) {
+      synchronized (closeDatabaseCondition) {
         // double check to avoid unnecessary waiting
         if (!closingSequenceTsFileProcessor.isEmpty()
             || !closingUnSequenceTsFileProcessor.isEmpty()) {
-          closeStorageGroupCondition.wait(60_000);
+          closeDatabaseCondition.wait(60_000);
         }
       }
       if (System.currentTimeMillis() - startTime > 60_000) {
@@ -2764,13 +2764,13 @@ public class DataRegion implements IDataRegionForQuery {
 
     // closingSequenceTsFileProcessor is a thread safety class.
 
-    synchronized (closeStorageGroupCondition) {
+    synchronized (closeDatabaseCondition) {
       if (closingSequenceTsFileProcessor.contains(tsFileProcessor)) {
         closingSequenceTsFileProcessor.remove(tsFileProcessor);
       } else {
         closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
       }
-      closeStorageGroupCondition.notifyAll();
+      closeDatabaseCondition.notifyAll();
     }
     if (!isValidateTsFileFailed) {
       TsFileResource tsFileResource = tsFileProcessor.getTsFileResource();
@@ -3379,11 +3379,11 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /**
-   * Get the storageGroupPath with dataRegionId.
+   * Get the databasePath with dataRegionId.
    *
    * @return data region path, like root.sg1/0
    */
-  public String getStorageGroupPath() {
+  public String getDatabasePath() {
     return databaseName + File.separator + dataRegionId;
   }
 

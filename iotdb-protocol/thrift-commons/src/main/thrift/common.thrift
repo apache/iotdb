@@ -118,7 +118,7 @@ enum TRegionMaintainTaskStatus {
 
 struct TFlushReq {
    1: optional string isSeq
-   2: optional list<string> storageGroups
+   2: optional list<string> databases
    3: optional list<string> regionIds
 }
 

@@ -260,43 +260,43 @@ public class SchemaEngine {
   }
 
   public synchronized void createSchemaRegion(
-      final String storageGroup, final SchemaRegionId schemaRegionId) throws MetadataException {
+      final String database, final SchemaRegionId schemaRegionId) throws MetadataException {
     final ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
-      if (schemaRegion.getDatabaseFullPath().equals(storageGroup)) {
+      if (schemaRegion.getDatabaseFullPath().equals(database)) {
         return;
       } else {
         throw new MetadataException(
             String.format(
                 "SchemaRegion [%s] is duplicated between [%s] and [%s], "
                     + "and the former one has been recovered.",
-                schemaRegionId, schemaRegion.getDatabaseFullPath(), storageGroup));
+                schemaRegionId, schemaRegion.getDatabaseFullPath(), database));
       }
     }
     schemaRegionMap.put(
-        schemaRegionId, createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId));
+        schemaRegionId, createSchemaRegionWithoutExistenceCheck(database, schemaRegionId));
   }
 
   private Callable<ISchemaRegion> recoverSchemaRegionTask(
-      final String storageGroup, final SchemaRegionId schemaRegionId) {
+      final String database, final SchemaRegionId schemaRegionId) {
     // this method is called for concurrent recovery of schema regions
     return () -> {
       long timeRecord = System.currentTimeMillis();
       try {
         // TODO: handle duplicated regionId across different database
         ISchemaRegion schemaRegion =
-            createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
+            createSchemaRegionWithoutExistenceCheck(database, schemaRegionId);
         timeRecord = System.currentTimeMillis() - timeRecord;
         logger.info(
             "Recover [{}] spend: {} ms",
-            storageGroup + TsFileConstant.PATH_SEPARATOR + schemaRegionId.toString(),
+            database + TsFileConstant.PATH_SEPARATOR + schemaRegionId.toString(),
             timeRecord);
         return schemaRegion;
       } catch (final MetadataException e) {
         logger.error(
             String.format(
-                "SchemaRegion [%d] in StorageGroup [%s] failed to recover.",
-                schemaRegionId.getId(), storageGroup));
+                "SchemaRegion [%d] in Database [%s] failed to recover.",
+                schemaRegionId.getId(), database));
         throw new RuntimeException(e);
       }
     };

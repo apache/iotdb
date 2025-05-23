@@ -48,21 +48,21 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
 
   private int currentIndex;
 
-  private boolean isReadingStorageGroupInfo;
+  private boolean isReadingDatabaseInfo;
 
-  private final List<String> storageGroupList;
+  private final List<String> databaseList;
 
   public SchemaFetchMergeOperator(
-      OperatorContext operatorContext, List<Operator> children, List<String> storageGroupList) {
+      OperatorContext operatorContext, List<Operator> children, List<String> databaseList) {
     this.operatorContext = operatorContext;
     this.children = children;
     this.childrenCount = children.size();
 
     this.currentIndex = 0;
 
-    this.isReadingStorageGroupInfo = true;
+    this.isReadingDatabaseInfo = true;
 
-    this.storageGroupList = storageGroupList;
+    this.databaseList = databaseList;
   }
 
   @Override
@@ -72,9 +72,9 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    if (isReadingStorageGroupInfo) {
-      isReadingStorageGroupInfo = false;
-      return generateStorageGroupInfo();
+    if (isReadingDatabaseInfo) {
+      isReadingDatabaseInfo = false;
+      return generateDatabaseInfo();
     }
 
     if (children.get(currentIndex).hasNextWithTimer()) {
@@ -87,12 +87,12 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return isReadingStorageGroupInfo || currentIndex < childrenCount;
+    return isReadingDatabaseInfo || currentIndex < childrenCount;
   }
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return isReadingStorageGroupInfo || currentIndex >= children.size()
+    return isReadingDatabaseInfo || currentIndex >= children.size()
         ? NOT_BLOCKED
         : children.get(currentIndex).isBlocked();
   }
@@ -109,15 +109,15 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
     }
   }
 
-  private TsBlock generateStorageGroupInfo() {
+  private TsBlock generateDatabaseInfo() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
       // to indicate this binary data is database info
       ReadWriteIOUtils.write((byte) 0, outputStream);
 
-      ReadWriteIOUtils.write(storageGroupList.size(), outputStream);
-      for (String storageGroup : storageGroupList) {
-        ReadWriteIOUtils.write(storageGroup, outputStream);
+      ReadWriteIOUtils.write(databaseList.size(), outputStream);
+      for (String database : databaseList) {
+        ReadWriteIOUtils.write(database, outputStream);
       }
     } catch (IOException e) {
       // Totally memory operation. This case won't happen.
@@ -164,6 +164,6 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
         + children.stream()
             .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
             .sum()
-        + storageGroupList.stream().mapToLong(RamUsageEstimator::sizeOf).sum();
+        + databaseList.stream().mapToLong(RamUsageEstimator::sizeOf).sum();
   }
 }

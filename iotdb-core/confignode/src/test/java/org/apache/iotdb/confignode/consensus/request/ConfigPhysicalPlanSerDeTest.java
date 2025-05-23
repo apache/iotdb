@@ -286,7 +286,7 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void DeleteStorageGroupPlanTest() throws IOException {
+  public void DeleteDatabasePlanTest() throws IOException {
     // TODO: Add serialize and deserialize test
     DeleteDatabasePlan req0 = new DeleteDatabasePlan("root.sg");
     DeleteDatabasePlan req1 =
@@ -414,14 +414,14 @@ public class ConfigPhysicalPlanSerDeTest {
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
-    String storageGroup = "root.sg0";
+    String database = "root.sg0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
     TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0);
 
     Map<String, SchemaPartitionTable> assignedSchemaPartition = new HashMap<>();
     Map<TSeriesPartitionSlot, TConsensusGroupId> schemaPartitionMap = new HashMap<>();
     schemaPartitionMap.put(seriesPartitionSlot, consensusGroupId);
-    assignedSchemaPartition.put(storageGroup, new SchemaPartitionTable(schemaPartitionMap));
+    assignedSchemaPartition.put(database, new SchemaPartitionTable(schemaPartitionMap));
 
     CreateSchemaPartitionPlan req0 = new CreateSchemaPartitionPlan();
     req0.setAssignedSchemaPartition(assignedSchemaPartition);
@@ -440,7 +440,7 @@ public class ConfigPhysicalPlanSerDeTest {
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
-    String storageGroup = "root.sg0";
+    String database = "root.sg0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
     TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
@@ -455,7 +455,7 @@ public class ConfigPhysicalPlanSerDeTest {
         timePartitionSlot,
         Collections.singletonList(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0)));
     dataPartitionMap.put(seriesPartitionSlot, new SeriesPartitionTable(seriesPartitionMap));
-    assignedDataPartition.put(storageGroup, new DataPartitionTable(dataPartitionMap));
+    assignedDataPartition.put(database, new DataPartitionTable(dataPartitionMap));
 
     CreateDataPartitionPlan req0 = new CreateDataPartitionPlan();
     req0.setAssignedDataPartition(assignedDataPartition);
@@ -670,7 +670,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void updateProcedureTest() throws IOException {
-    // test procedure equals DeleteStorageGroupProcedure
+    // test procedure equals DeleteDatabaseProcedure
     DeleteDatabaseProcedure deleteDatabaseProcedure = new DeleteDatabaseProcedure(false);
     deleteDatabaseProcedure.setDeleteDatabaseSchema(new TDatabaseSchema("root.sg"));
     UpdateProcedurePlan updateProcedurePlan0 = new UpdateProcedurePlan();

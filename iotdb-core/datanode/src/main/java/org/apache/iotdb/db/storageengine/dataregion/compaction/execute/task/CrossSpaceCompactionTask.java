@@ -74,7 +74,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       long memoryCost,
       long serialId) {
     super(
-        tsFileManager.getStorageGroupName(),
+        tsFileManager.getDatabaseName(),
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
@@ -147,7 +147,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     if (selectedSequenceFiles.isEmpty() || selectedUnsequenceFiles.isEmpty()) {
       LOGGER.info(
           "{}-{} [Compaction] Cross space compaction file list is empty, end it",
-          storageGroupName,
+          databaseName,
           dataRegionId);
       return true;
     }
@@ -158,7 +158,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             + "Sequence files size is {} MB, "
             + "unsequence file size is {} MB, "
             + "total size is {} MB",
-        storageGroupName,
+        databaseName,
         dataRegionId,
         selectedSequenceFiles.size(),
         selectedUnsequenceFiles.size(),
@@ -196,9 +196,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         CompactionUtils.updateProgressIndexAndMark(
             targetTsfileResourceList, selectedSequenceFiles, selectedUnsequenceFiles);
         CompactionUtils.moveTargetFile(
-            targetTsfileResourceList,
-            CompactionTaskType.CROSS,
-            storageGroupName + "-" + dataRegionId);
+            targetTsfileResourceList, CompactionTaskType.CROSS, databaseName + "-" + dataRegionId);
         CompactionUtils.combineModsInCrossCompaction(
             selectedSequenceFiles, selectedUnsequenceFiles, targetTsfileResourceList);
 
@@ -244,7 +242,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             "{}-{} [Compaction] CrossSpaceCompaction task finishes successfully, "
                 + "time cost is {} s, "
                 + "compaction speed is {} MB/s, {}",
-            storageGroupName,
+            databaseName,
             dataRegionId,
             String.format("%.2f", costTime),
             String.format(
@@ -377,7 +375,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public String toString() {
-    return storageGroupName
+    return databaseName
         + "-"
         + dataRegionId
         + "-"

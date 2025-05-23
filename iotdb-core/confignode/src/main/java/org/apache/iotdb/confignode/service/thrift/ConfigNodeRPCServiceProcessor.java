@@ -526,7 +526,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         (CountDatabaseResp) configManager.countMatchedDatabases(plan);
 
     final TCountDatabaseResp resp = new TCountDatabaseResp();
-    countDatabaseResp.convertToRPCCountStorageGroupResp(resp);
+    countDatabaseResp.convertToRPCCountDatabaseResp(resp);
     return resp;
   }
 
@@ -545,7 +545,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     final DatabaseSchemaResp databaseSchemaResp =
         (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
-    return databaseSchemaResp.convertToRPCStorageGroupSchemaResp();
+    return databaseSchemaResp.convertToRPCDatabaseSchemaResp();
   }
 
   @Override
@@ -935,12 +935,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus flush(final TFlushReq req) throws TException {
-    if (req.storageGroups != null) {
+    if (req.databases != null) {
       final List<String> noExistSg =
-          configManager.getPartitionManager().filterUnExistDatabases(req.storageGroups);
+          configManager.getPartitionManager().filterUnExistDatabases(req.databases);
       if (!noExistSg.isEmpty()) {
         final StringBuilder sb = new StringBuilder();
-        noExistSg.forEach(storageGroup -> sb.append(storageGroup).append(","));
+        noExistSg.forEach(database -> sb.append(database).append(","));
         return RpcUtils.getStatus(
             TSStatusCode.DATABASE_NOT_EXIST,
             "Database " + sb.subSequence(0, sb.length() - 1) + " does not exist");

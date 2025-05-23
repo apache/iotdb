@@ -30,9 +30,8 @@ public class TsFileProcessorInfoMetrics implements IMetricSet {
   private final String databaseName;
   private final TsFileProcessorInfo tsFileProcessorInfo;
 
-  public TsFileProcessorInfoMetrics(
-      String storageGroupName, TsFileProcessorInfo tsFileProcessorInfo) {
-    this.databaseName = storageGroupName;
+  public TsFileProcessorInfoMetrics(String databaseName, TsFileProcessorInfo tsFileProcessorInfo) {
+    this.databaseName = databaseName;
     this.tsFileProcessorInfo = tsFileProcessorInfo;
   }
 

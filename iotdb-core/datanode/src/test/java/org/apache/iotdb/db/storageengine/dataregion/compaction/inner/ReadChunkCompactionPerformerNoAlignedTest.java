@@ -68,7 +68,7 @@ import java.util.Set;
  * timeseries.
  */
 public class ReadChunkCompactionPerformerNoAlignedTest {
-  private final String storageGroup = "root.compactionTest";
+  private final String database = "root.compactionTest";
   private final String[] devices = new String[] {"device0", "device1", "device2", "device3"};
   private PartialPath[] devicePath = new PartialPath[devices.length];
   private final String[] measurements = new String[] {"s0", "s1", "s2", "s3", "s4"};
@@ -150,7 +150,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
               measurements[i], TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
     }
     for (int i = 0; i < devices.length; ++i) {
-      devicePath[i] = new PartialPath(storageGroup + "." + devices[i]);
+      devicePath[i] = new PartialPath(database + "." + devices[i]);
     }
     for (PartialPath device : devicePath) {
       for (IMeasurementSchema schema : schemas) {
@@ -200,7 +200,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(
-          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       long[] points = new long[fileNum];
       for (int i = 1; i <= fileNum; i++) {
@@ -287,7 +287,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(
-          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -376,7 +376,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(
-          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -452,7 +452,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(
-          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -557,7 +557,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(
-          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -633,7 +633,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(
-          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -712,7 +712,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(
-          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -784,7 +784,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(
-          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -859,7 +859,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(
-          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {

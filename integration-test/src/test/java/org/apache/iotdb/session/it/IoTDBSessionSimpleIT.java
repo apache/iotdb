@@ -402,11 +402,11 @@ public class IoTDBSessionSimpleIT {
         session.close();
         return;
       }
-      String storageGroup = "root.存储组1";
+      String database = "root.存储组1";
       String[] devices = new String[] {"设备1.指标1", "设备1.s2", "d2.s1", "d2.指标2"};
-      session.setStorageGroup(storageGroup);
+      session.setDatabase(database);
       for (String path : devices) {
-        String fullPath = storageGroup + TsFileConstant.PATH_SEPARATOR + path;
+        String fullPath = database + TsFileConstant.PATH_SEPARATOR + path;
         session.createTimeseries(
             fullPath, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
       }
@@ -414,7 +414,7 @@ public class IoTDBSessionSimpleIT {
       for (String path : devices) {
         for (int i = 0; i < 10; i++) {
           String[] ss = path.split("\\.");
-          StringBuilder deviceId = new StringBuilder(storageGroup);
+          StringBuilder deviceId = new StringBuilder(database);
           for (int j = 0; j < ss.length - 1; j++) {
             deviceId.append(TsFileConstant.PATH_SEPARATOR).append(ss[j]);
           }
@@ -437,7 +437,7 @@ public class IoTDBSessionSimpleIT {
         count++;
       }
       assertEquals(10, count);
-      session.deleteStorageGroup(storageGroup);
+      session.deleteDatabase(database);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -753,8 +753,8 @@ public class IoTDBSessionSimpleIT {
         session.close();
         return;
       }
-      String storageGroup = "root.sg";
-      session.setStorageGroup(storageGroup);
+      String database = "root.sg";
+      session.setDatabase(database);
 
       session.createTimeseries(
           "root.sg.`my.device.with.colon:`.s",
@@ -765,7 +765,7 @@ public class IoTDBSessionSimpleIT {
       final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
       assertTrue(dataSet.hasNext());
 
-      session.deleteStorageGroup(storageGroup);
+      session.deleteDatabase(database);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -781,8 +781,8 @@ public class IoTDBSessionSimpleIT {
         session.close();
         return;
       }
-      String storageGroup = "root.sg";
-      session.setStorageGroup(storageGroup);
+      String database = "root.sg";
+      session.setDatabase(database);
 
       try {
         session.createTimeseries(
@@ -800,7 +800,7 @@ public class IoTDBSessionSimpleIT {
       final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES root.sg.**");
       assertFalse(dataSet.hasNext());
 
-      session.deleteStorageGroup(storageGroup);
+      session.deleteDatabase(database);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1550,7 +1550,7 @@ public class IoTDBSessionSimpleIT {
       }
 
       try {
-        session.setStorageGroup("root..sg");
+        session.setDatabase("root..sg");
         fail("Exception expected");
       } catch (StatementExecutionException e) {
         assertTrue(

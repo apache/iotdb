@@ -37,7 +37,7 @@ import java.util.Random;
 
 public class TestUtilsForAlignedSeries {
   public static void registerTimeSeries(
-      String storageGroup, String[] devices, IMeasurementSchema[] schemas, boolean[] isAligned)
+      String database, String[] devices, IMeasurementSchema[] schemas, boolean[] isAligned)
       throws MetadataException {}
 
   public static void writeTsFile(

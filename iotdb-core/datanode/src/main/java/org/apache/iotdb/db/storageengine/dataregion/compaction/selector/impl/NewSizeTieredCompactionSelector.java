@@ -61,13 +61,13 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   private boolean isActiveTimePartition;
 
   public NewSizeTieredCompactionSelector(
-      String storageGroupName,
+      String databaseName,
       String dataRegionId,
       long timePartition,
       boolean sequence,
       TsFileManager tsFileManager,
       CompactionScheduleContext context) {
-    super(storageGroupName, dataRegionId, timePartition, sequence, tsFileManager, context);
+    super(databaseName, dataRegionId, timePartition, sequence, tsFileManager, context);
     double availableDiskSpaceInByte =
         MetricService.getInstance()
             .getAutoGauge(

@@ -296,15 +296,15 @@ public class CNPhysicalPlanGeneratorTest {
     setupClusterSchemaInfo();
     setupTTLInfo();
     final Set<Integer> answerSet = new HashSet<>();
-    final Set<String> storageGroupPathList = new TreeSet<>();
-    storageGroupPathList.add("root.sg");
-    storageGroupPathList.add("root.ln");
-    storageGroupPathList.add("root.a.sg");
-    storageGroupPathList.add("root.a.b.sg");
-    storageGroupPathList.add("root.a.a.a.b.sg");
+    final Set<String> databasePathList = new TreeSet<>();
+    databasePathList.add("root.sg");
+    databasePathList.add("root.ln");
+    databasePathList.add("root.a.sg");
+    databasePathList.add("root.a.b.sg");
+    databasePathList.add("root.a.a.a.b.sg");
 
     int i = 0;
-    for (String path : storageGroupPathList) {
+    for (String path : databasePathList) {
       final TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
       tDatabaseSchema.setName(path);
       tDatabaseSchema.setTTL(i + 1);
@@ -415,14 +415,14 @@ public class CNPhysicalPlanGeneratorTest {
     setupClusterSchemaInfo();
     setupTTLInfo();
     final Set<Integer> answerSet = new HashSet<>();
-    final Set<String> storageGroupPathList = new TreeSet<>();
-    storageGroupPathList.add("root.sg");
-    storageGroupPathList.add("root.a.sg");
-    storageGroupPathList.add("root.a.b.sg");
-    storageGroupPathList.add("root.a.a.a.b.sg");
+    final Set<String> databasePathList = new TreeSet<>();
+    databasePathList.add("root.sg");
+    databasePathList.add("root.a.sg");
+    databasePathList.add("root.a.b.sg");
+    databasePathList.add("root.a.a.a.b.sg");
 
     int i = 0;
-    for (String path : storageGroupPathList) {
+    for (String path : databasePathList) {
       final TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
       tDatabaseSchema.setName(path);
       tDatabaseSchema.setTTL(i + 1);

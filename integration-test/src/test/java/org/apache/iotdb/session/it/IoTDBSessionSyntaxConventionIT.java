@@ -69,8 +69,8 @@ public class IoTDBSessionSyntaxConventionIT {
   @Test
   public void createTimeSeriesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String storageGroup = "root.sg";
-      session.setStorageGroup(storageGroup);
+      String database = "root.sg";
+      session.setDatabase(database);
 
       try {
         session.createTimeseries(
@@ -91,7 +91,7 @@ public class IoTDBSessionSyntaxConventionIT {
       final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
       assertFalse(dataSet.hasNext());
 
-      session.deleteStorageGroup(storageGroup);
+      session.deleteDatabase(database);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

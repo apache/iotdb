@@ -63,19 +63,19 @@ public class ShowDBTask implements IConfigTask {
   }
 
   public static void buildTSBlock(
-      final Map<String, TDatabaseInfo> storageGroupInfoMap,
+      final Map<String, TDatabaseInfo> databaseInfoMap,
       final SettableFuture<ConfigTaskResult> future,
       final boolean isDetails,
       final Predicate<String> canSeenDB) {
     if (isDetails) {
-      buildTSBlockForDetails(storageGroupInfoMap, future, canSeenDB);
+      buildTSBlockForDetails(databaseInfoMap, future, canSeenDB);
     } else {
-      buildTSBlockForNonDetails(storageGroupInfoMap, future, canSeenDB);
+      buildTSBlockForNonDetails(databaseInfoMap, future, canSeenDB);
     }
   }
 
   private static void buildTSBlockForNonDetails(
-      final Map<String, TDatabaseInfo> storageGroupInfoMap,
+      final Map<String, TDatabaseInfo> databaseInfoMap,
       final SettableFuture<ConfigTaskResult> future,
       final Predicate<String> canSeenDB) {
     final List<TSDataType> outputDataTypes =
@@ -85,16 +85,16 @@ public class ShowDBTask implements IConfigTask {
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     InformationSchemaUtils.buildDatabaseTsBlock(canSeenDB, builder, false, true);
-    for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
+    for (final Map.Entry<String, TDatabaseInfo> entry : databaseInfoMap.entrySet()) {
       final String dbName = entry.getKey();
       if (Boolean.FALSE.equals(canSeenDB.test(dbName))) {
         continue;
       }
-      final TDatabaseInfo storageGroupInfo = entry.getValue();
+      final TDatabaseInfo databaseInfo = entry.getValue();
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
 
-      if (Long.MAX_VALUE == storageGroupInfo.getTTL()) {
+      if (Long.MAX_VALUE == databaseInfo.getTTL()) {
         builder
             .getColumnBuilder(1)
             .writeBinary(new Binary(IoTDBConstant.TTL_INFINITE, TSFileConfig.STRING_CHARSET));
@@ -102,11 +102,11 @@ public class ShowDBTask implements IConfigTask {
         builder
             .getColumnBuilder(1)
             .writeBinary(
-                new Binary(String.valueOf(storageGroupInfo.getTTL()), TSFileConfig.STRING_CHARSET));
+                new Binary(String.valueOf(databaseInfo.getTTL()), TSFileConfig.STRING_CHARSET));
       }
-      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getSchemaReplicationFactor());
-      builder.getColumnBuilder(3).writeInt(storageGroupInfo.getDataReplicationFactor());
-      builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
+      builder.getColumnBuilder(2).writeInt(databaseInfo.getSchemaReplicationFactor());
+      builder.getColumnBuilder(3).writeInt(databaseInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(4).writeLong(databaseInfo.getTimePartitionInterval());
       builder.declarePosition();
     }
 
@@ -115,7 +115,7 @@ public class ShowDBTask implements IConfigTask {
   }
 
   private static void buildTSBlockForDetails(
-      final Map<String, TDatabaseInfo> storageGroupInfoMap,
+      final Map<String, TDatabaseInfo> databaseInfoMap,
       final SettableFuture<ConfigTaskResult> future,
       final Predicate<String> canSeenDB) {
     final List<TSDataType> outputDataTypes =
@@ -125,16 +125,16 @@ public class ShowDBTask implements IConfigTask {
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     InformationSchemaUtils.buildDatabaseTsBlock(canSeenDB, builder, true, true);
-    for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
+    for (final Map.Entry<String, TDatabaseInfo> entry : databaseInfoMap.entrySet()) {
       final String dbName = entry.getKey();
       if (!canSeenDB.test(dbName)) {
         continue;
       }
-      final TDatabaseInfo storageGroupInfo = entry.getValue();
+      final TDatabaseInfo databaseInfo = entry.getValue();
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
 
-      if (Long.MAX_VALUE == storageGroupInfo.getTTL()) {
+      if (Long.MAX_VALUE == databaseInfo.getTTL()) {
         builder
             .getColumnBuilder(1)
             .writeBinary(new Binary(IoTDBConstant.TTL_INFINITE, TSFileConfig.STRING_CHARSET));
@@ -142,13 +142,13 @@ public class ShowDBTask implements IConfigTask {
         builder
             .getColumnBuilder(1)
             .writeBinary(
-                new Binary(String.valueOf(storageGroupInfo.getTTL()), TSFileConfig.STRING_CHARSET));
+                new Binary(String.valueOf(databaseInfo.getTTL()), TSFileConfig.STRING_CHARSET));
       }
-      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getSchemaReplicationFactor());
-      builder.getColumnBuilder(3).writeInt(storageGroupInfo.getDataReplicationFactor());
-      builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
-      builder.getColumnBuilder(5).writeInt(storageGroupInfo.getSchemaRegionNum());
-      builder.getColumnBuilder(6).writeInt(storageGroupInfo.getDataRegionNum());
+      builder.getColumnBuilder(2).writeInt(databaseInfo.getSchemaReplicationFactor());
+      builder.getColumnBuilder(3).writeInt(databaseInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(4).writeLong(databaseInfo.getTimePartitionInterval());
+      builder.getColumnBuilder(5).writeInt(databaseInfo.getSchemaRegionNum());
+      builder.getColumnBuilder(6).writeInt(databaseInfo.getDataRegionNum());
       builder.declarePosition();
     }
 

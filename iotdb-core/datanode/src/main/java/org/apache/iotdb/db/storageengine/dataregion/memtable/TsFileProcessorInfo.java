@@ -24,7 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
 /** The TsFileProcessorInfo records the memory cost of this TsFileProcessor. */
 public class TsFileProcessorInfo {
 
-  /** Once tspInfo updated, report to storageGroupInfo that this TSP belongs to. */
+  /** Once tspInfo updated, report to databaseInfo that this TSP belongs to. */
   private final DataRegionInfo dataRegionInfo;
 
   /** memory occupation of unsealed TsFileResource, ChunkMetadata, WAL */
@@ -43,18 +43,18 @@ public class TsFileProcessorInfo {
   /** called in each insert */
   public void addTSPMemCost(long cost) {
     memCost += cost;
-    dataRegionInfo.addStorageGroupMemCost(cost);
+    dataRegionInfo.addDatabaseMemCost(cost);
   }
 
   /** called when meet exception */
   public void releaseTSPMemCost(long cost) {
-    dataRegionInfo.releaseStorageGroupMemCost(cost);
+    dataRegionInfo.releaseDatabaseMemCost(cost);
     memCost -= cost;
   }
 
   /** called when closing TSP */
   public void clear() {
-    dataRegionInfo.releaseStorageGroupMemCost(memCost);
+    dataRegionInfo.releaseDatabaseMemCost(memCost);
     memCost = 0L;
     MetricService.getInstance().removeMetricSet(metrics);
   }

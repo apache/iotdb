@@ -52,13 +52,13 @@ public class CompactionRecoverManager {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final TsFileManager tsFileManager;
-  private final String logicalStorageGroupName;
+  private final String logicalDatabaseName;
   private final String dataRegionId;
 
   public CompactionRecoverManager(
-      TsFileManager tsFileManager, String logicalStorageGroupName, String dataRegionId) {
+      TsFileManager tsFileManager, String logicalDatabaseName, String dataRegionId) {
     this.tsFileManager = tsFileManager;
-    this.logicalStorageGroupName = logicalStorageGroupName;
+    this.logicalDatabaseName = logicalDatabaseName;
     this.dataRegionId = dataRegionId;
   }
 
@@ -70,17 +70,16 @@ public class CompactionRecoverManager {
 
     for (List<String> dataDirs : dataDirLists) {
       for (String dir : dataDirs) {
-        File storageGroupDir =
-            new File(
-                dir + File.separator + logicalStorageGroupName + File.separator + dataRegionId);
+        File databaseDir =
+            new File(dir + File.separator + logicalDatabaseName + File.separator + dataRegionId);
         logger.info(
             "{} [Compaction][Recover] recover compaction in data region dir {}",
-            logicalStorageGroupName,
-            storageGroupDir.getAbsolutePath());
-        if (!storageGroupDir.exists()) {
+            logicalDatabaseName,
+            databaseDir.getAbsolutePath());
+        if (!databaseDir.exists()) {
           return;
         }
-        File[] timePartitionDirs = storageGroupDir.listFiles();
+        File[] timePartitionDirs = databaseDir.listFiles();
         if (timePartitionDirs == null) {
           return;
         }
@@ -91,7 +90,7 @@ public class CompactionRecoverManager {
           }
           logger.info(
               "{} [Compaction][Recover] recover compaction in time partition dir {}",
-              logicalStorageGroupName,
+              logicalDatabaseName,
               timePartitionDir.getAbsolutePath());
           // including repair task
           recoverCompaction(CompactionTaskType.INNER_SEQ, timePartitionDir);
@@ -140,22 +139,21 @@ public class CompactionRecoverManager {
         case INNER_UNSEQ:
         case REPAIR:
           new CompactionRecoverTask(
-                  logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, true)
+                  logicalDatabaseName, dataRegionId, tsFileManager, compactionLog, true)
               .doCompaction();
           break;
         case CROSS:
           new CompactionRecoverTask(
-                  logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, false)
+                  logicalDatabaseName, dataRegionId, tsFileManager, compactionLog, false)
               .doCompaction();
           break;
         case INSERTION:
           new InsertionCrossSpaceCompactionTask(
-                  logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog)
+                  logicalDatabaseName, dataRegionId, tsFileManager, compactionLog)
               .recover();
           break;
         case SETTLE:
-          new SettleCompactionTask(
-                  logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog)
+          new SettleCompactionTask(logicalDatabaseName, dataRegionId, tsFileManager, compactionLog)
               .recover();
           break;
         default:

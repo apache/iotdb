@@ -28,11 +28,11 @@ public class GetDatabasePlan extends CountDatabasePlan {
   private final boolean isShowDatabasePlan;
 
   public GetDatabasePlan(
-      final List<String> storageGroupPathPattern,
+      final List<String> databasePathPattern,
       final PathPatternTree scope,
       final boolean isTableModel,
       final boolean isShowDatabasePlan) {
-    super(ConfigPhysicalPlanType.GetDatabase, storageGroupPathPattern, scope, isTableModel);
+    super(ConfigPhysicalPlanType.GetDatabase, databasePathPattern, scope, isTableModel);
     this.isShowDatabasePlan = isShowDatabasePlan;
   }
 

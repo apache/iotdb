@@ -117,7 +117,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       boolean isAllCached = true;
 
       ClusterSchemaTree cachedSchema;
-      Set<String> storageGroupSet = new HashSet<>();
+      Set<String> databaseSet = new HashSet<>();
       if (!explicitDevicePatternList.isEmpty()) {
         for (PartialPath explicitDevicePattern : explicitDevicePatternList) {
           cachedSchema = schemaCache.getMatchedSchemaWithTemplate(explicitDevicePattern);
@@ -126,7 +126,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             break;
           } else {
             schemaTree.mergeSchemaTree(cachedSchema);
-            storageGroupSet.addAll(cachedSchema.getDatabases());
+            databaseSet.addAll(cachedSchema.getDatabases());
           }
         }
       }
@@ -144,13 +144,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             break;
           } else {
             schemaTree.mergeSchemaTree(cachedSchema);
-            storageGroupSet.addAll(cachedSchema.getDatabases());
+            databaseSet.addAll(cachedSchema.getDatabases());
           }
         }
       }
 
       if (isAllCached) {
-        schemaTree.setDatabases(storageGroupSet);
+        schemaTree.setDatabases(databaseSet);
         return schemaTree;
       }
 

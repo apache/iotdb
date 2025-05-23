@@ -105,8 +105,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   @Override
-  public ICachedMNode generatePrefix(PartialPath storageGroupPath) {
-    String[] nodes = storageGroupPath.getNodes();
+  public ICachedMNode generatePrefix(PartialPath databasePath) {
+    String[] nodes = databasePath.getNodes();
     // nodes[0] must be root
     ICachedMNode res = nodeFactory.createAboveDatabaseMNode(null, nodes[0]);
     ICachedMNode cur = res;

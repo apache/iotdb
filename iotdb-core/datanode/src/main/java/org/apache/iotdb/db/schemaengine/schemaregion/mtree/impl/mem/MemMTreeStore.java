@@ -74,8 +74,8 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public IMemMNode generatePrefix(final PartialPath storageGroupPath) {
-    final String[] nodes = storageGroupPath.getNodes();
+  public IMemMNode generatePrefix(final PartialPath databasePath) {
+    final String[] nodes = databasePath.getNodes();
     // nodes[0] must be root
     final IMemMNode res = nodeFactory.createAboveDatabaseMNode(null, nodes[0]);
     IMemMNode cur = res;
