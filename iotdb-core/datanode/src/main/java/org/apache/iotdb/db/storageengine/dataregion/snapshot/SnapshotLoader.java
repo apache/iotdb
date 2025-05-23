@@ -48,14 +48,14 @@ import java.util.Set;
 
 public class SnapshotLoader {
   private Logger LOGGER = LoggerFactory.getLogger(SnapshotLoader.class);
-  private String databaseName;
+  private String storageGroupName;
   private String snapshotPath;
   private String dataRegionId;
   private SnapshotLogAnalyzer logAnalyzer;
 
-  public SnapshotLoader(String snapshotPath, String databaseName, String dataRegionId) {
+  public SnapshotLoader(String snapshotPath, String storageGroupName, String dataRegionId) {
     this.snapshotPath = snapshotPath;
-    this.databaseName = databaseName;
+    this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
   }
 
@@ -66,10 +66,10 @@ public class SnapshotLoader {
               + File.separator
               + "databases"
               + File.separator
-              + databaseName,
+              + storageGroupName,
           dataRegionId,
           StorageEngine.getInstance().getFileFlushPolicy(),
-          databaseName);
+          storageGroupName);
     } catch (Exception e) {
       LOGGER.error("Exception occurs while load snapshot from {}", snapshotPath, e);
       return null;
@@ -98,7 +98,7 @@ public class SnapshotLoader {
   public DataRegion loadSnapshotForStateMachine() {
     LOGGER.info(
         "Loading snapshot for {}-{}, source directory is {}",
-        databaseName,
+        storageGroupName,
         dataRegionId,
         snapshotPath);
 
@@ -125,7 +125,7 @@ public class SnapshotLoader {
       return loadSnapshot();
     } catch (IOException | DiskSpaceInsufficientException e) {
       LOGGER.error(
-          "Exception occurs when loading snapshot for {}-{}", databaseName, dataRegionId, e);
+          "Exception occurs when loading snapshot for {}-{}", storageGroupName, dataRegionId, e);
       return null;
     }
   }
@@ -173,7 +173,7 @@ public class SnapshotLoader {
                   + File.separator
                   + IoTDBConstant.SEQUENCE_FOLDER_NAME
                   + File.separator
-                  + databaseName
+                  + storageGroupName
                   + File.separator
                   + dataRegionId);
       if (seqDataDirForThisRegion.exists()) {
@@ -189,7 +189,7 @@ public class SnapshotLoader {
                   + File.separator
                   + IoTDBConstant.UNSEQUENCE_FOLDER_NAME
                   + File.separator
-                  + databaseName
+                  + storageGroupName
                   + File.separator
                   + dataRegionId);
 
@@ -208,7 +208,7 @@ public class SnapshotLoader {
     } catch (IOException e) {
       LOGGER.error(
           "Exception occurs when deleting time partition directory for {}-{}",
-          databaseName,
+          storageGroupName,
           dataRegionId,
           e);
       throw e;
@@ -222,7 +222,7 @@ public class SnapshotLoader {
             sourceDir,
             IoTDBConstant.SEQUENCE_FOLDER_NAME
                 + File.separator
-                + databaseName
+                + storageGroupName
                 + File.separator
                 + dataRegionId);
     File unseqFileDir =
@@ -230,7 +230,7 @@ public class SnapshotLoader {
             sourceDir,
             IoTDBConstant.UNSEQUENCE_FOLDER_NAME
                 + File.separator
-                + databaseName
+                + storageGroupName
                 + File.separator
                 + dataRegionId);
     if (!seqFileDir.exists() && !unseqFileDir.exists()) {
@@ -253,7 +253,7 @@ public class SnapshotLoader {
         String targetSuffix =
             IoTDBConstant.SEQUENCE_FOLDER_NAME
                 + File.separator
-                + databaseName
+                + storageGroupName
                 + File.separator
                 + dataRegionId
                 + File.separator
@@ -272,7 +272,7 @@ public class SnapshotLoader {
         String targetSuffix =
             IoTDBConstant.UNSEQUENCE_FOLDER_NAME
                 + File.separator
-                + databaseName
+                + storageGroupName
                 + File.separator
                 + dataRegionId
                 + File.separator
@@ -325,7 +325,7 @@ public class SnapshotLoader {
               + File.separator
               + IoTDBConstant.SNAPSHOT_FOLDER_NAME
               + File.separator
-              + databaseName
+              + storageGroupName
               + "-"
               + dataRegionId
               + File.separator
@@ -348,7 +348,7 @@ public class SnapshotLoader {
                 + File.separator
                 + IoTDBConstant.SEQUENCE_FOLDER_NAME
                 + File.separator
-                + databaseName
+                + storageGroupName
                 + File.separator
                 + dataRegionId);
     File[] timePartitionFolders = sequenceTimePartitionFolders.listFiles();
@@ -365,7 +365,7 @@ public class SnapshotLoader {
                     + File.separator
                     + IoTDBConstant.SEQUENCE_FOLDER_NAME
                     + File.separator
-                    + databaseName
+                    + storageGroupName
                     + File.separator
                     + dataRegionId
                     + File.separator
@@ -381,7 +381,7 @@ public class SnapshotLoader {
                 + File.separator
                 + IoTDBConstant.UNSEQUENCE_FOLDER_NAME
                 + File.separator
-                + databaseName
+                + storageGroupName
                 + File.separator
                 + dataRegionId);
     timePartitionFolders = unsequenceTimePartitionFolders.listFiles();
@@ -398,7 +398,7 @@ public class SnapshotLoader {
                     + File.separator
                     + IoTDBConstant.UNSEQUENCE_FOLDER_NAME
                     + File.separator
-                    + databaseName
+                    + storageGroupName
                     + File.separator
                     + dataRegionId
                     + File.separator
@@ -461,7 +461,7 @@ public class SnapshotLoader {
                 + File.separator
                 + IoTDBConstant.SNAPSHOT_FOLDER_NAME
                 + File.separator
-                + databaseName
+                + storageGroupName
                 + "-"
                 + dataRegionId
                 + File.separator

@@ -61,7 +61,7 @@ public class SettleSelectorImpl implements ISettleSelector {
   // high-cost selection has a lower triggering frequency, while the low-cost selection has a higher
   // triggering frequency.
   private final boolean heavySelect;
-  private final String databaseName;
+  private final String storageGroupName;
   private final String dataRegionId;
   private final long timePartition;
   private final TsFileManager tsFileManager;
@@ -70,13 +70,13 @@ public class SettleSelectorImpl implements ISettleSelector {
 
   public SettleSelectorImpl(
       boolean heavySelect,
-      String databaseName,
+      String storageGroupName,
       String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
       CompactionScheduleContext context) {
     this.heavySelect = heavySelect;
-    this.databaseName = databaseName;
+    this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
@@ -188,7 +188,8 @@ public class SettleSelectorImpl implements ISettleSelector {
       partiallyDirtyResourceList.add(settleTaskResource);
       return createTask(partiallyDirtyResourceList);
     } catch (Exception e) {
-      LOGGER.error("{}-{} cannot select file for settle compaction", databaseName, dataRegionId, e);
+      LOGGER.error(
+          "{}-{} cannot select file for settle compaction", storageGroupName, dataRegionId, e);
     }
     return Collections.emptyList();
   }
@@ -233,7 +234,7 @@ public class SettleSelectorImpl implements ISettleSelector {
       if (tableName.startsWith("root.")) {
         ttl = DataNodeTTLCache.getInstance().getTTLForTree(device);
       } else {
-        ttl = DataNodeTTLCache.getInstance().getTTLForTable(databaseName, tableName);
+        ttl = DataNodeTTLCache.getInstance().getTTLForTable(storageGroupName, tableName);
       }
       boolean hasSetTTL = ttl != Long.MAX_VALUE;
 

@@ -102,9 +102,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
-      final Map<String, List<IDeviceID>> databaseToDeviceMap =
+      final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
           partitionCache.getDatabaseToDevice(deviceIDs, true, false, null);
-      SchemaPartition schemaPartition = partitionCache.getSchemaPartition(databaseToDeviceMap);
+      SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         final TSchemaPartitionTableResp schemaPartitionTableResp =
             client.getSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
@@ -133,9 +133,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
-      final Map<String, List<IDeviceID>> databaseToDeviceMap =
+      final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
           partitionCache.getDatabaseToDevice(deviceIDs, true, true, userName);
-      SchemaPartition schemaPartition = partitionCache.getSchemaPartition(databaseToDeviceMap);
+      SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         final TSchemaPartitionTableResp schemaPartitionTableResp =
             client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree));

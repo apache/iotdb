@@ -43,7 +43,7 @@ public enum InnerUnsequenceCompactionSelector {
 
   @SuppressWarnings("squid:S1301")
   public IInnerUnseqSpaceSelector createInstance(
-      String databaseName,
+      String storageGroupName,
       String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
@@ -51,11 +51,11 @@ public enum InnerUnsequenceCompactionSelector {
     switch (this) {
       case SIZE_TIERED_MULTI_TARGET:
         return new NewSizeTieredCompactionSelector(
-            databaseName, dataRegionId, timePartition, false, tsFileManager, context);
+            storageGroupName, dataRegionId, timePartition, false, tsFileManager, context);
       case SIZE_TIERED_SINGLE_TARGET:
       default:
         return new SizeTieredCompactionSelector(
-            databaseName, dataRegionId, timePartition, false, tsFileManager, context);
+            storageGroupName, dataRegionId, timePartition, false, tsFileManager, context);
     }
   }
 }

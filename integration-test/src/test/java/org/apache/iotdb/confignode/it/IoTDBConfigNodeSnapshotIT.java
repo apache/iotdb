@@ -107,7 +107,7 @@ public class IoTDBConfigNodeSnapshotIT {
   @Test
   public void testPartitionInfoSnapshot() throws Exception {
     final String sg = "root.sg";
-    final int databaseNum = 10;
+    final int storageGroupNum = 10;
     final int seriesPartitionSlotsNum = 10;
     final int timePartitionSlotsNum = 10;
 
@@ -119,10 +119,10 @@ public class IoTDBConfigNodeSnapshotIT {
 
       Set<TCQEntry> expectedCQEntries = createCQs(client);
 
-      for (int i = 0; i < databaseNum; i++) {
-        String database = sg + i;
-        TDatabaseSchema databaseSchema = new TDatabaseSchema(database);
-        TSStatus status = client.setDatabase(databaseSchema);
+      for (int i = 0; i < storageGroupNum; i++) {
+        String storageGroup = sg + i;
+        TDatabaseSchema storageGroupSchema = new TDatabaseSchema(storageGroup);
+        TSStatus status = client.setDatabase(storageGroupSchema);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
         for (int j = 0; j < seriesPartitionSlotsNum; j++) {
@@ -130,7 +130,7 @@ public class IoTDBConfigNodeSnapshotIT {
 
           // Create SchemaPartition
           ByteBuffer patternTree =
-              generatePatternTreeBuffer(new String[] {database + ".d" + j + ".s"});
+              generatePatternTreeBuffer(new String[] {storageGroup + ".d" + j + ".s"});
           TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq(patternTree);
           TSchemaPartitionTableResp schemaPartitionTableResp =
               client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
@@ -140,8 +140,10 @@ public class IoTDBConfigNodeSnapshotIT {
               schemaPartitionTableResp.getStatus().getCode());
           Assert.assertNotNull(schemaPartitionTableResp.getSchemaPartitionTable());
           assertEquals(1, schemaPartitionTableResp.getSchemaPartitionTableSize());
-          Assert.assertNotNull(schemaPartitionTableResp.getSchemaPartitionTable().get(database));
-          assertEquals(1, schemaPartitionTableResp.getSchemaPartitionTable().get(database).size());
+          Assert.assertNotNull(
+              schemaPartitionTableResp.getSchemaPartitionTable().get(storageGroup));
+          assertEquals(
+              1, schemaPartitionTableResp.getSchemaPartitionTable().get(storageGroup).size());
 
           for (int k = 0; k < timePartitionSlotsNum; k++) {
             TTimePartitionSlot timePartitionSlot =
@@ -150,9 +152,9 @@ public class IoTDBConfigNodeSnapshotIT {
             // Create DataPartition
             Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
                 new HashMap<>();
-            partitionSlotsMap.put(database, new HashMap<>());
+            partitionSlotsMap.put(storageGroup, new HashMap<>());
             partitionSlotsMap
-                .get(database)
+                .get(storageGroup)
                 .put(
                     seriesPartitionSlot,
                     new TTimeSlotList()
@@ -166,18 +168,19 @@ public class IoTDBConfigNodeSnapshotIT {
                 dataPartitionTableResp.getStatus().getCode());
             Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
             assertEquals(1, dataPartitionTableResp.getDataPartitionTableSize());
-            Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable().get(database));
-            assertEquals(1, dataPartitionTableResp.getDataPartitionTable().get(database).size());
+            Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable().get(storageGroup));
+            assertEquals(
+                1, dataPartitionTableResp.getDataPartitionTable().get(storageGroup).size());
             Assert.assertNotNull(
                 dataPartitionTableResp
                     .getDataPartitionTable()
-                    .get(database)
+                    .get(storageGroup)
                     .get(seriesPartitionSlot));
             assertEquals(
                 1,
                 dataPartitionTableResp
                     .getDataPartitionTable()
-                    .get(database)
+                    .get(storageGroup)
                     .get(seriesPartitionSlot)
                     .size());
           }

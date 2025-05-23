@@ -32,19 +32,20 @@ import java.util.Collections;
 import java.util.List;
 
 public abstract class SchemaFetchScanNode extends SourceNode {
-  protected final PartialPath database;
+  protected final PartialPath storageGroup;
   protected final PathPatternTree patternTree;
   protected TRegionReplicaSet schemaRegionReplicaSet;
 
-  protected SchemaFetchScanNode(PlanNodeId id, PartialPath database, PathPatternTree patternTree) {
+  protected SchemaFetchScanNode(
+      PlanNodeId id, PartialPath storageGroup, PathPatternTree patternTree) {
     super(id);
-    this.database = database;
+    this.storageGroup = storageGroup;
     this.patternTree = patternTree;
     this.patternTree.constructTree();
   }
 
-  public PartialPath getDatabase() {
-    return database;
+  public PartialPath getStorageGroup() {
+    return storageGroup;
   }
 
   public PathPatternTree getPatternTree() {

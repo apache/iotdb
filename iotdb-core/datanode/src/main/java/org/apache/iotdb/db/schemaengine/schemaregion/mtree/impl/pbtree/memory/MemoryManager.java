@@ -234,10 +234,10 @@ public class MemoryManager implements IMemoryManager {
    * @return null if not exist
    */
   @Override
-  public IDatabaseMNode<ICachedMNode> collectUpdatedDatabaseMNodes() {
-    IDatabaseMNode<ICachedMNode> databaseMNode = nodeBuffer.getUpdatedDatabaseMNode();
+  public IDatabaseMNode<ICachedMNode> collectUpdatedStorageGroupMNodes() {
+    IDatabaseMNode<ICachedMNode> storageGroupMNode = nodeBuffer.getUpdatedDatabaseMNode();
     nodeBuffer.removeUpdatedDatabaseNode();
-    return databaseMNode;
+    return storageGroupMNode;
   }
 
   @Override

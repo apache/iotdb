@@ -195,8 +195,8 @@ public class TsFileOverlapValidationAndRepairTool {
   }
 
   private static String calculateTimePartitionKey(
-      String database, String dataRegion, String timePartition) {
-    return database + "-" + dataRegion + "-" + timePartition;
+      String storageGroup, String dataRegion, String timePartition) {
+    return storageGroup + "-" + dataRegion + "-" + timePartition;
   }
 
   @SuppressWarnings("OptionalGetWithoutIsPresent")

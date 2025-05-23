@@ -554,12 +554,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus createSchemaRegion(final TCreateSchemaRegionReq req) {
-    return regionManager.createSchemaRegion(req.getRegionReplicaSet(), req.getDatabase());
+    return regionManager.createSchemaRegion(req.getRegionReplicaSet(), req.getStorageGroup());
   }
 
   @Override
   public TSStatus createDataRegion(TCreateDataRegionReq req) {
-    return regionManager.createDataRegion(req.getRegionReplicaSet(), req.getDatabase());
+    return regionManager.createDataRegion(req.getRegionReplicaSet(), req.getStorageGroup());
   }
 
   @Override
@@ -607,12 +607,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         executeSchemaBlackListTask(
             req.getSchemaRegionIdList(),
             consensusGroupId -> {
-              final String database =
+              final String storageGroup =
                   schemaEngine
                       .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                       .getDatabaseFullPath();
               final PathPatternTree filteredPatternTree =
-                  filterPathPatternTree(patternTree, database);
+                  filterPathPatternTree(patternTree, storageGroup);
               if (filteredPatternTree.isEmpty()) {
                 return new TSStatus(TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode());
               }
@@ -640,11 +640,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId -> {
-          String database =
+          String storageGroup =
               schemaEngine
                   .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                   .getDatabaseFullPath();
-          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, database);
+          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
           if (filteredPatternTree.isEmpty()) {
             return RpcUtils.SUCCESS_STATUS;
           }
@@ -741,11 +741,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId -> {
-          String database =
+          String storageGroup =
               schemaEngine
                   .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                   .getDatabaseFullPath();
-          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, database);
+          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
           if (filteredPatternTree.isEmpty()) {
             return RpcUtils.SUCCESS_STATUS;
           }
@@ -812,12 +812,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       Map<PartialPath, List<Integer>> templateSetInfo, TConsensusGroupId consensusGroupId) {
 
     Map<PartialPath, List<Integer>> result = new HashMap<>();
-    PartialPath databasePath = getDatabasePath(consensusGroupId);
-    if (null != databasePath) {
-      PartialPath databasePattern = databasePath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
+    PartialPath storageGroupPath = getStorageGroupPath(consensusGroupId);
+    if (null != storageGroupPath) {
+      PartialPath storageGroupPattern = storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
       templateSetInfo.forEach(
           (k, v) -> {
-            if (databasePattern.overlapWith(k) || databasePath.overlapWith(k)) {
+            if (storageGroupPattern.overlapWith(k) || storageGroupPath.overlapWith(k)) {
               result.put(k, v);
             }
           });
@@ -825,10 +825,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return result;
   }
 
-  private PartialPath getDatabasePath(TConsensusGroupId consensusGroupId) {
-    PartialPath databasePath = null;
+  private PartialPath getStorageGroupPath(TConsensusGroupId consensusGroupId) {
+    PartialPath storageGroupPath = null;
     try {
-      databasePath =
+      storageGroupPath =
           new PartialPath(
               schemaEngine
                   .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
@@ -836,7 +836,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (IllegalPathException ignored) {
       // Won't reach here
     }
-    return databasePath;
+    return storageGroupPath;
   }
 
   @Override
@@ -1022,12 +1022,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         executeInternalSchemaTask(
             req.getSchemaRegionIdList(),
             consensusGroupId -> {
-              final String database =
+              final String storageGroup =
                   schemaEngine
                       .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                       .getDatabaseFullPath();
               final PathPatternTree filteredPatternTree =
-                  filterPathPatternTree(patternTree, database);
+                  filterPathPatternTree(patternTree, storageGroup);
               if (filteredPatternTree.isEmpty()) {
                 return RpcUtils.SUCCESS_STATUS;
               }
@@ -1055,11 +1055,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId -> {
-          final String database =
+          final String storageGroup =
               schemaEngine
                   .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                   .getDatabaseFullPath();
-          final PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, database);
+          final PathPatternTree filteredPatternTree =
+              filterPathPatternTree(patternTree, storageGroup);
           if (filteredPatternTree.isEmpty()) {
             return RpcUtils.SUCCESS_STATUS;
           }
@@ -1079,11 +1080,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId -> {
-          String database =
+          String storageGroup =
               schemaEngine
                   .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                   .getDatabaseFullPath();
-          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, database);
+          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
           if (filteredPatternTree.isEmpty()) {
             return RpcUtils.SUCCESS_STATUS;
           }
@@ -1916,11 +1917,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String database) {
+  private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {
     PathPatternTree filteredPatternTree = new PathPatternTree();
     try {
-      PartialPath databasePattern = new PartialPath(database).concatNode(MULTI_LEVEL_PATH_WILDCARD);
-      for (PartialPath pathPattern : patternTree.getOverlappedPathPatterns(databasePattern)) {
+      PartialPath storageGroupPattern =
+          new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD);
+      for (PartialPath pathPattern : patternTree.getOverlappedPathPatterns(storageGroupPattern)) {
         filteredPatternTree.appendPathPattern(pathPattern);
       }
       filteredPatternTree.constructTree();
@@ -2469,7 +2471,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                         location.getDataNodeId(),
                         getConsensusEndPoint(location, regionId)))
             .collect(Collectors.toList());
-    TSStatus status = createNewRegion(regionId, req.getDatabase());
+    TSStatus status = createNewRegion(regionId, req.getStorageGroup());
     if (!isSucceed(status)) {
       return status;
     }
@@ -2547,8 +2549,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  private TSStatus createNewRegion(ConsensusGroupId regionId, String database) {
-    return regionManager.createNewRegion(regionId, database);
+  private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup) {
+    return regionManager.createNewRegion(regionId, storageGroup);
   }
 
   @Override

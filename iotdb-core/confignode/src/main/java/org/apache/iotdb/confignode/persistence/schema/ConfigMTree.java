@@ -134,7 +134,7 @@ public class ConfigMTree {
    *
    * @param path path
    */
-  public void setDatabase(final PartialPath path) throws MetadataException {
+  public void setStorageGroup(final PartialPath path) throws MetadataException {
     final String[] nodeNames = path.getNodes();
     MetaFormatUtils.checkDatabase(path.getFullPath());
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
@@ -397,18 +397,18 @@ public class ConfigMTree {
     String[] nodeNames = path.getNodes();
     IConfigMNode cur = root;
     IConfigMNode child;
-    boolean hasDatabase = false;
+    boolean hasStorageGroup = false;
     for (int i = 1; i < nodeNames.length; i++) {
       child = store.getChild(cur, nodeNames[i]);
       if (child == null) {
-        if (hasDatabase) {
+        if (hasStorageGroup) {
           child =
               store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
         } else {
           throw new DatabaseNotSetException(path.getFullPath());
         }
       } else if (child.isDatabase()) {
-        hasDatabase = true;
+        hasStorageGroup = true;
       }
 
       cur = child;
@@ -1063,15 +1063,15 @@ public class ConfigMTree {
   }
 
   private void serializeDatabaseNode(
-      final IDatabaseMNode<IConfigMNode> databaseNode, final OutputStream outputStream)
+      final IDatabaseMNode<IConfigMNode> storageGroupNode, final OutputStream outputStream)
       throws IOException {
-    serializeChildren(databaseNode.getAsMNode(), outputStream);
+    serializeChildren(storageGroupNode.getAsMNode(), outputStream);
 
     ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
-    ReadWriteIOUtils.write(databaseNode.getName(), outputStream);
-    ReadWriteIOUtils.write(databaseNode.getAsMNode().getSchemaTemplateId(), outputStream);
+    ReadWriteIOUtils.write(storageGroupNode.getName(), outputStream);
+    ReadWriteIOUtils.write(storageGroupNode.getAsMNode().getSchemaTemplateId(), outputStream);
     ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(
-        databaseNode.getAsMNode().getDatabaseSchema(), outputStream);
+        storageGroupNode.getAsMNode().getDatabaseSchema(), outputStream);
   }
 
   private void serializeTableNode(final ConfigTableNode tableNode, final OutputStream outputStream)

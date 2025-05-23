@@ -37,7 +37,7 @@ import java.util.Objects;
 
 public class RegionCreateTask extends RegionMaintainTask {
 
-  private String database;
+  private String storageGroup;
   private TRegionReplicaSet regionReplicaSet;
 
   public RegionCreateTask() {
@@ -45,15 +45,15 @@ public class RegionCreateTask extends RegionMaintainTask {
   }
 
   public RegionCreateTask(
-      TDataNodeLocation targetDataNode, String database, TRegionReplicaSet regionReplicaSet) {
+      TDataNodeLocation targetDataNode, String storageGroup, TRegionReplicaSet regionReplicaSet) {
     super(RegionMaintainType.CREATE);
     this.targetDataNode = targetDataNode;
-    this.database = database;
+    this.storageGroup = storageGroup;
     this.regionReplicaSet = regionReplicaSet;
   }
 
-  public String getDatabase() {
-    return database;
+  public String getStorageGroup() {
+    return storageGroup;
   }
 
   public TRegionReplicaSet getRegionReplicaSet() {
@@ -70,14 +70,14 @@ public class RegionCreateTask extends RegionMaintainTask {
     stream.writeInt(RegionMaintainType.CREATE.ordinal());
 
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(targetDataNode, stream);
-    ReadWriteIOUtils.write(database, stream);
+    ReadWriteIOUtils.write(storageGroup, stream);
     ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, stream);
   }
 
   @Override
   protected void deserialize(ByteBuffer buffer) throws IOException {
     this.targetDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer);
-    this.database = ReadWriteIOUtils.readString(buffer);
+    this.storageGroup = ReadWriteIOUtils.readString(buffer);
     this.regionReplicaSet = ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
   }
 
@@ -87,7 +87,7 @@ public class RegionCreateTask extends RegionMaintainTask {
     ReadWriteIOUtils.write(RegionMaintainType.CREATE.ordinal(), outputStream);
 
     this.targetDataNode.write(protocol);
-    ReadWriteIOUtils.write(database, outputStream);
+    ReadWriteIOUtils.write(storageGroup, outputStream);
     this.regionReplicaSet.write(protocol);
   }
 
@@ -96,7 +96,7 @@ public class RegionCreateTask extends RegionMaintainTask {
       throws TException, IOException {
     this.targetDataNode = new TDataNodeLocation();
     this.targetDataNode.read(protocol);
-    this.database = ReadWriteIOUtils.readString(inputStream);
+    this.storageGroup = ReadWriteIOUtils.readString(inputStream);
     this.regionReplicaSet = new TRegionReplicaSet();
     this.regionReplicaSet.read(protocol);
   }
@@ -107,11 +107,11 @@ public class RegionCreateTask extends RegionMaintainTask {
     if (!(o instanceof RegionCreateTask)) return false;
     if (!super.equals(o)) return false;
     RegionCreateTask that = (RegionCreateTask) o;
-    return database.equals(that.database) && regionReplicaSet.equals(that.regionReplicaSet);
+    return storageGroup.equals(that.storageGroup) && regionReplicaSet.equals(that.regionReplicaSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), database, regionReplicaSet);
+    return Objects.hash(super.hashCode(), storageGroup, regionReplicaSet);
   }
 }

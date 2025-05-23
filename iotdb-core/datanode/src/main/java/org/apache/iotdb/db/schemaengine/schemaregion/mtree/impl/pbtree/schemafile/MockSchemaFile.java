@@ -39,31 +39,31 @@ import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mn
 
 public class MockSchemaFile implements ISchemaFile {
 
-  private PartialPath databasePath;
-  private IDatabaseMNode<ICachedMNode> databaseMNode;
+  private PartialPath storageGroupPath;
+  private IDatabaseMNode<ICachedMNode> storageGroupMNode;
   private static final IMNodeFactory<ICachedMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
 
   private long fileTail = 0;
   private final Map<Long, Map<String, ICachedMNode>> mockFile = new HashMap<>();
 
-  public MockSchemaFile(PartialPath databasePath) {
-    this.databasePath = databasePath;
+  public MockSchemaFile(PartialPath storageGroupPath) {
+    this.storageGroupPath = storageGroupPath;
   }
 
   @Override
   public ICachedMNode init() {
-    databaseMNode = nodeFactory.createDatabaseMNode(null, databasePath.getTailNode());
-    ICachedMNodeContainer container = getCachedMNodeContainer(databaseMNode.getAsMNode());
+    storageGroupMNode = nodeFactory.createDatabaseMNode(null, storageGroupPath.getTailNode());
+    ICachedMNodeContainer container = getCachedMNodeContainer(storageGroupMNode.getAsMNode());
     container.transferAllBufferReceivingToFlushing();
-    writeMNode(databaseMNode.getAsMNode());
-    return cloneMNode(databaseMNode.getAsMNode());
+    writeMNode(storageGroupMNode.getAsMNode());
+    return cloneMNode(storageGroupMNode.getAsMNode());
   }
 
   @Override
   public synchronized boolean updateDatabaseNode(IDatabaseMNode<ICachedMNode> sgNode)
       throws IOException {
-    this.databaseMNode = cloneMNode(sgNode.getAsMNode()).getAsDatabaseMNode();
+    this.storageGroupMNode = cloneMNode(sgNode.getAsMNode()).getAsDatabaseMNode();
     return true;
   }
 

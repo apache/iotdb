@@ -28,31 +28,33 @@ import java.util.List;
 
 public class CountDatabasePlan extends ConfigPhysicalReadPlan {
 
-  private final String[] databasePattern;
+  private final String[] storageGroupPattern;
   private final PathPatternTree scope;
   private final boolean isTableModel;
 
   public CountDatabasePlan(
-      final List<String> databasePattern, final PathPatternTree scope, final boolean isTableModel) {
+      final List<String> storageGroupPattern,
+      final PathPatternTree scope,
+      final boolean isTableModel) {
     super(ConfigPhysicalPlanType.CountDatabase);
-    this.databasePattern = databasePattern.toArray(new String[0]);
+    this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
     this.scope = scope;
     this.isTableModel = isTableModel;
   }
 
   public CountDatabasePlan(
       final ConfigPhysicalPlanType type,
-      final List<String> databasePattern,
+      final List<String> storageGroupPattern,
       final PathPatternTree scope,
       final boolean isTableModel) {
     super(type);
-    this.databasePattern = databasePattern.toArray(new String[0]);
+    this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
     this.scope = scope;
     this.isTableModel = isTableModel;
   }
 
   public String[] getDatabasePattern() {
-    return databasePattern;
+    return storageGroupPattern;
   }
 
   public PathPatternTree getScope() {
@@ -72,11 +74,11 @@ public class CountDatabasePlan extends ConfigPhysicalReadPlan {
       return false;
     }
     final CountDatabasePlan that = (CountDatabasePlan) o;
-    return Arrays.equals(databasePattern, that.databasePattern);
+    return Arrays.equals(storageGroupPattern, that.storageGroupPattern);
   }
 
   @Override
   public int hashCode() {
-    return Arrays.hashCode(databasePattern);
+    return Arrays.hashCode(storageGroupPattern);
   }
 }

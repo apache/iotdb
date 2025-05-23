@@ -68,7 +68,7 @@ public class DataPartitionResp implements DataSet {
           dataPartitionMap = new ConcurrentHashMap<>();
 
       dataPartition.forEach(
-          (database, dataPartitionTable) -> {
+          (storageGroup, dataPartitionTable) -> {
             Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
                 seriesPartitionSlotMap = new ConcurrentHashMap<>();
 
@@ -79,7 +79,7 @@ public class DataPartitionResp implements DataSet {
                         seriesPartitionSlotMap.put(
                             seriesPartitionSlot, seriesPartitionTable.getSeriesPartitionMap()));
 
-            dataPartitionMap.put(database, seriesPartitionSlotMap);
+            dataPartitionMap.put(storageGroup, seriesPartitionSlotMap);
           });
 
       resp.setDataPartitionTable(dataPartitionMap);

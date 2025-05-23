@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.exception;
 
-public class DatabaseNotReadyException extends StorageEngineException {
+public class StorageGroupNotReadyException extends StorageEngineException {
 
-  public DatabaseNotReadyException(String database, int errorCode) {
-    super("the sg " + database + " may not ready now, please wait and retry later", errorCode);
+  public StorageGroupNotReadyException(String storageGroup, int errorCode) {
+    super("the sg " + storageGroup + " may not ready now, please wait and retry later", errorCode);
   }
 }

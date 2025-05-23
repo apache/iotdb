@@ -1088,35 +1088,35 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planSchemaFetchMerge(List<String> databaseList) {
-    this.root = new SchemaFetchMergeNode(context.getQueryId().genPlanNodeId(), databaseList);
+  public LogicalPlanBuilder planSchemaFetchMerge(List<String> storageGroupList) {
+    this.root = new SchemaFetchMergeNode(context.getQueryId().genPlanNodeId(), storageGroupList);
     return this;
   }
 
   @SuppressWarnings({"checkstyle:Indentation", "checkstyle:CommentsIndentation"})
   public LogicalPlanBuilder planSeriesSchemaFetchSource(
-      List<String> databaseList,
+      List<String> storageGroupList,
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
       boolean withAttributes,
       boolean withTemplate,
       boolean withAliasForce) {
-    PartialPath databasePath;
-    for (String database : databaseList) {
+    PartialPath storageGroupPath;
+    for (String storageGroup : storageGroupList) {
       try {
-        databasePath = new PartialPath(database);
+        storageGroupPath = new PartialPath(storageGroup);
         PathPatternTree overlappedPatternTree = new PathPatternTree();
         for (PartialPath pathPattern :
             patternTree.getOverlappedPathPatterns(
-                databasePath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
+                storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
           // pathPattern has been deduplicated, no need to deduplicate again
           overlappedPatternTree.appendFullPath(pathPattern);
         }
         this.root.addChild(
             new SeriesSchemaFetchScanNode(
                 context.getQueryId().genPlanNodeId(),
-                databasePath,
+                storageGroupPath,
                 overlappedPatternTree,
                 templateMap,
                 withTags,
@@ -1133,22 +1133,22 @@ public class LogicalPlanBuilder {
 
   @SuppressWarnings({"checkstyle:Indentation", "checkstyle:CommentsIndentation"})
   public LogicalPlanBuilder planDeviceSchemaFetchSource(
-      List<String> databaseList, PathPatternTree patternTree, PathPatternTree authorityScope) {
-    PartialPath databasePath;
-    for (String database : databaseList) {
+      List<String> storageGroupList, PathPatternTree patternTree, PathPatternTree authorityScope) {
+    PartialPath storageGroupPath;
+    for (String storageGroup : storageGroupList) {
       try {
-        databasePath = new PartialPath(database);
+        storageGroupPath = new PartialPath(storageGroup);
         PathPatternTree overlappedPatternTree = new PathPatternTree();
         for (PartialPath pathPattern :
             patternTree.getOverlappedPathPatterns(
-                databasePath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
+                storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
           // pathPattern has been deduplicated, no need to deduplicate again
           overlappedPatternTree.appendFullPath(pathPattern);
         }
         this.root.addChild(
             new DeviceSchemaFetchScanNode(
                 context.getQueryId().genPlanNodeId(),
-                databasePath,
+                storageGroupPath,
                 overlappedPatternTree,
                 authorityScope));
       } catch (IllegalPathException e) {

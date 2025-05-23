@@ -312,17 +312,19 @@ public class SessionConnection {
     return zoneId.toString();
   }
 
-  protected void setDatabase(String database)
+  protected void setStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
     final TSStatus status =
-        callWithRetryAndReconnect(() -> client.setDatabase(sessionId, database)).getResult();
+        callWithRetryAndReconnect(() -> client.setStorageGroup(sessionId, storageGroup))
+            .getResult();
     RpcUtils.verifySuccess(status);
   }
 
-  protected void deleteDatabases(List<String> databases)
+  protected void deleteStorageGroups(List<String> storageGroups)
       throws IoTDBConnectionException, StatementExecutionException {
     final TSStatus status =
-        callWithRetryAndReconnect(() -> client.deleteDatabases(sessionId, databases)).getResult();
+        callWithRetryAndReconnect(() -> client.deleteStorageGroups(sessionId, storageGroups))
+            .getResult();
     RpcUtils.verifySuccess(status);
   }
 

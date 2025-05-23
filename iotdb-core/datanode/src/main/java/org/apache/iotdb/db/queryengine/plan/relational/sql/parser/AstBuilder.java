@@ -1396,17 +1396,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitFlushStatement(final RelationalSqlParser.FlushStatementContext ctx) {
     final FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
-    List<String> databases = null;
+    List<String> storageGroups = null;
     if (ctx.booleanValue() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.booleanValue().getText()));
     }
     flushStatement.setOnCluster(
         ctx.localOrClusterMode() == null || ctx.localOrClusterMode().LOCAL() == null);
     if (ctx.identifier() != null) {
-      databases =
+      storageGroups =
           getIdentifiers(ctx.identifier()).stream().map(Identifier::getValue).collect(toList());
     }
-    flushStatement.setDatabases(databases);
+    flushStatement.setDatabases(storageGroups);
     return new Flush(flushStatement, null);
   }
 

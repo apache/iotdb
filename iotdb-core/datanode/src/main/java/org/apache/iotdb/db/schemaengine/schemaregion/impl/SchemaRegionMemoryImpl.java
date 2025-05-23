@@ -193,12 +193,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private boolean isRecovering = true;
   private volatile boolean initialized = false;
 
-  private final String databaseDirPath;
+  private final String storageGroupDirPath;
   private final String schemaRegionDirPath;
 
   // For table model db: without "root."
   // For tree model db: with "root."
-  private final String databaseFullPath;
+  private final String storageGroupFullPath;
   private final SchemaRegionId schemaRegionId;
 
   // the log file writer
@@ -219,11 +219,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public SchemaRegionMemoryImpl(final ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
 
-    databaseFullPath = schemaRegionParams.getDatabase();
+    storageGroupFullPath = schemaRegionParams.getDatabase();
     this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
-    databaseDirPath = config.getSchemaDir() + File.separator + databaseFullPath;
-    schemaRegionDirPath = databaseDirPath + File.separator + schemaRegionId.getId();
+    storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
+    schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
 
     // In ratis mode, no matter create schemaRegion or recover schemaRegion, the working dir should
     // be clear first
@@ -236,7 +236,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     this.regionStatistics =
         new MemSchemaRegionStatistics(
             schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
-    this.metric = new SchemaRegionMemMetric(regionStatistics, databaseFullPath);
+    this.metric = new SchemaRegionMemMetric(regionStatistics, storageGroupFullPath);
     init();
   }
 
@@ -267,11 +267,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
       deviceAttributeCacheUpdater =
           new DeviceAttributeCacheUpdater(
-              regionStatistics, PathUtils.unQualifyDatabaseName(databaseFullPath));
+              regionStatistics, PathUtils.unQualifyDatabaseName(storageGroupFullPath));
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mTree =
           new MTreeBelowSGMemoryImpl(
-              PartialPath.getQualifiedDatabasePartialPath(databaseFullPath),
+              PartialPath.getQualifiedDatabasePartialPath(storageGroupFullPath),
               tagManager::readTags,
               tagManager::readAttributes,
               regionStatistics,
@@ -297,14 +297,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void initDir() throws SchemaDirCreationFailureException {
-    final File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(databaseDirPath);
+    final File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create database schema folder {}", databaseDirPath);
+        logger.info("create database schema folder {}", storageGroupDirPath);
       } else {
         if (!sgSchemaFolder.exists()) {
-          logger.error("create database schema folder {} failed.", databaseDirPath);
-          throw new SchemaDirCreationFailureException(databaseDirPath);
+          logger.error("create database schema folder {} failed.", storageGroupDirPath);
+          throw new SchemaDirCreationFailureException(storageGroupDirPath);
         }
       }
     }
@@ -394,11 +394,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         logger.debug(
             "spend {} ms to deserialize {} mtree from mlog.bin",
             System.currentTimeMillis() - time,
-            databaseFullPath);
+            storageGroupFullPath);
         return idx;
       } catch (final Exception e) {
         e.printStackTrace();
-        throw new IOException("Failed to parse " + databaseFullPath + " mlog.bin for err:" + e);
+        throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin for err:" + e);
       }
     } else {
       return 0;
@@ -465,7 +465,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public String getDatabaseFullPath() {
-    return databaseFullPath;
+    return storageGroupFullPath;
   }
 
   @Override
@@ -570,7 +570,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       snapshotStartTime = System.currentTimeMillis();
       deviceAttributeCacheUpdater =
-          new DeviceAttributeCacheUpdater(regionStatistics, databaseFullPath);
+          new DeviceAttributeCacheUpdater(regionStatistics, storageGroupFullPath);
       deviceAttributeCacheUpdater.loadFromSnapshot(latestSnapshotRootDir);
       logger.info(
           "Device attribute remote updater snapshot loading of schemaRegion {} costs {}ms.",
@@ -589,7 +589,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       mTree =
           MTreeBelowSGMemoryImpl.loadFromSnapshot(
               latestSnapshotRootDir,
-              databaseFullPath,
+              storageGroupFullPath,
               regionStatistics,
               metric,
               measurementMNode -> {
@@ -606,7 +606,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 } catch (final IOException e) {
                   logger.error(
                       "Failed to recover tagIndex for {} in schemaRegion {}.",
-                      databaseFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
+                      storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
                       schemaRegionId);
                 }
               },
@@ -888,7 +888,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws SchemaQuotaExceededException {
     final int notExistNum = mTree.getTableDeviceNotExistNum(tableName, deviceIdList);
     schemaQuotaManager.check(
-        (long) DataNodeTableCache.getInstance().getTable(databaseFullPath, tableName).getFieldNum()
+        (long)
+                DataNodeTableCache.getInstance()
+                    .getTable(storageGroupFullPath, tableName)
+                    .getFieldNum()
             * notExistNum,
         notExistNum);
   }
@@ -1409,7 +1412,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void createOrUpdateTableDevice(final CreateOrUpdateTableDeviceNode node)
       throws MetadataException {
     for (int i = 0; i < node.getDeviceIdList().size(); i++) {
-      final String databaseName = databaseFullPath;
+      final String databaseName = storageGroupFullPath;
       final String tableName = node.getTableName();
       final String[] deviceId =
           Arrays.stream(node.getDeviceIdList().get(i))
@@ -1600,14 +1603,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     final List<PartialPath> paths =
         DeleteDevice.constructPaths(
-            databaseFullPath,
+            storageGroupFullPath,
             constructTableDevicesBlackListNode.getTableName(),
             constructTableDevicesBlackListNode.getPatternInfo());
     final DeviceBlackListConstructor constructor =
         DeleteDevice.constructDevicePredicateUpdater(
-            databaseFullPath,
+            storageGroupFullPath,
             DataNodeTableCache.getInstance()
-                .getTable(databaseFullPath, constructTableDevicesBlackListNode.getTableName()),
+                .getTable(storageGroupFullPath, constructTableDevicesBlackListNode.getTableName()),
             constructTableDevicesBlackListNode.getFilterInfo(),
             (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name),
             regionStatistics);
@@ -1628,7 +1631,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     final List<PartialPath> paths =
         DeleteDevice.constructPaths(
-            PathUtils.unQualifyDatabaseName(databaseFullPath),
+            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
             rollbackTableDevicesBlackListNode.getTableName(),
             rollbackTableDevicesBlackListNode.getPatternInfo());
     for (final PartialPath pattern : paths) {
@@ -1643,7 +1646,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     final List<PartialPath> paths =
         DeleteDevice.constructPaths(
-            PathUtils.unQualifyDatabaseName(databaseFullPath),
+            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
             rollbackTableDevicesBlackListNode.getTableName(),
             rollbackTableDevicesBlackListNode.getPatternInfo());
     for (final PartialPath pattern : paths) {

@@ -843,11 +843,11 @@ public:
 
     void deleteData(const std::vector<std::string>& paths, int64_t startTime, int64_t endTime);
 
-    void setDatabase(const std::string& databaseId);
+    void setStorageGroup(const std::string& storageGroupId);
 
-    void deleteDatabase(const std::string& database);
+    void deleteStorageGroup(const std::string& storageGroup);
 
-    void deleteDatabases(const std::vector<std::string>& databases);
+    void deleteStorageGroups(const std::vector<std::string>& storageGroups);
 
     void createDatabase(const std::string& database);
 

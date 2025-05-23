@@ -176,7 +176,7 @@ public class IoTDBFlushQueryIT {
             "FLUSH root.noexist.nodatagroup1,root.notExistGroup1,root.notExistGroup2");
       } catch (SQLException sqe) {
         String expectedMsg =
-            "322: 322: database root.notExistGroup1,root.notExistGroup2 does not exist";
+            "322: 322: storageGroup root.notExistGroup1,root.notExistGroup2 does not exist";
         sqe.printStackTrace();
         assertTrue(sqe.getMessage().contains(expectedMsg));
       }

@@ -27,7 +27,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** The databaseInfo records the total memory cost of the database. */
+/** The storageGroupInfo records the total memory cost of the database. */
 public class DataRegionInfo {
 
   private final DataRegion dataRegion;
@@ -39,7 +39,7 @@ public class DataRegionInfo {
   private final AtomicLong memoryCost;
 
   /** The threshold of reporting it's size to SystemInfo */
-  private final long databaseSizeReportThreshold =
+  private final long storageGroupSizeReportThreshold =
       (long)
           (IoTDBDescriptor.getInstance().getConfig().getWriteMemoryVariationReportProportion()
               * IoTDBDescriptor.getInstance()
@@ -69,11 +69,11 @@ public class DataRegionInfo {
     reportedTsps.add(tsFileProcessor);
   }
 
-  public void addDatabaseMemCost(long cost) {
+  public void addStorageGroupMemCost(long cost) {
     memoryCost.getAndAdd(cost);
   }
 
-  public void releaseDatabaseMemCost(long cost) {
+  public void releaseStorageGroupMemCost(long cost) {
     memoryCost.getAndAdd(-cost);
   }
 
@@ -87,7 +87,7 @@ public class DataRegionInfo {
 
   public boolean needToReportToSystem() {
     boolean needToReport =
-        memoryCost.get() - lastReportedSize.get() > databaseSizeReportThreshold
+        memoryCost.get() - lastReportedSize.get() > storageGroupSizeReportThreshold
             || needToReportToSystem.get();
     // report once and then reset flag to false
     if (needToReportToSystem.get()) {
@@ -112,6 +112,6 @@ public class DataRegionInfo {
    */
   public void closeTsFileProcessorAndReportToSystem(TsFileProcessor tsFileProcessor) {
     reportedTsps.remove(tsFileProcessor);
-    SystemInfo.getInstance().resetDatabaseStatus(this);
+    SystemInfo.getInstance().resetStorageGroupStatus(this);
   }
 }

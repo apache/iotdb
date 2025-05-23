@@ -37,7 +37,7 @@ public class SchemaNodeManagementResp implements DataSet {
 
   private TSStatus status;
 
-  // Map<Database, SchemaPartitionTable>
+  // Map<StorageGroup, SchemaPartitionTable>
   // TODO: Replace this map with new SchemaPartition
   private Map<String, SchemaPartitionTable> schemaPartition;
 
@@ -74,7 +74,7 @@ public class SchemaNodeManagementResp implements DataSet {
           new ConcurrentHashMap<>();
 
       schemaPartition.forEach(
-          (database, schemaPartitionTable) -> {
+          (storageGroup, schemaPartitionTable) -> {
             Map<TSeriesPartitionSlot, TRegionReplicaSet> seriesPartitionSlotMap =
                 new ConcurrentHashMap<>();
 
@@ -85,7 +85,7 @@ public class SchemaNodeManagementResp implements DataSet {
                         seriesPartitionSlotMap.put(
                             seriesPartitionSlot, replicaSetMap.get(consensusGroupId)));
 
-            schemaPartitionMap.put(database, seriesPartitionSlotMap);
+            schemaPartitionMap.put(storageGroup, seriesPartitionSlotMap);
           });
 
       resp.setSchemaRegionMap(schemaPartitionMap);

@@ -38,10 +38,10 @@ public class DeviceSchemaFetchScanNode extends SchemaFetchScanNode {
 
   public DeviceSchemaFetchScanNode(
       PlanNodeId id,
-      PartialPath database,
+      PartialPath storageGroup,
       PathPatternTree patternTree,
       PathPatternTree authorityScope) {
-    super(id, database, patternTree);
+    super(id, storageGroup, patternTree);
     this.authorityScope = authorityScope;
     this.authorityScope.constructTree();
   }
@@ -57,20 +57,23 @@ public class DeviceSchemaFetchScanNode extends SchemaFetchScanNode {
 
   @Override
   public PlanNode clone() {
-    return new DeviceSchemaFetchScanNode(getPlanNodeId(), database, patternTree, authorityScope);
+    return new DeviceSchemaFetchScanNode(
+        getPlanNodeId(), storageGroup, patternTree, authorityScope);
   }
 
   @Override
   public String toString() {
     return String.format(
-        "DeviceSchemaFetchScanNode-%s:[Database: %s, DataRegion: %s]",
-        this.getPlanNodeId(), database, PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
+        "DeviceSchemaFetchScanNode-%s:[StorageGroup: %s, DataRegion: %s]",
+        this.getPlanNodeId(),
+        storageGroup,
+        PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.DEVICE_SCHEMA_FETCH_SCAN.serialize(byteBuffer);
-    database.serialize(byteBuffer);
+    storageGroup.serialize(byteBuffer);
     patternTree.serialize(byteBuffer);
     authorityScope.serialize(byteBuffer);
   }
@@ -78,17 +81,17 @@ public class DeviceSchemaFetchScanNode extends SchemaFetchScanNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.DEVICE_SCHEMA_FETCH_SCAN.serialize(stream);
-    database.serialize(stream);
+    storageGroup.serialize(stream);
     patternTree.serialize(stream);
     authorityScope.serialize(stream);
   }
 
   public static DeviceSchemaFetchScanNode deserialize(ByteBuffer byteBuffer) {
-    PartialPath database = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+    PartialPath storageGroup = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
     PathPatternTree authorityScope = PathPatternTree.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new DeviceSchemaFetchScanNode(planNodeId, database, patternTree, authorityScope);
+    return new DeviceSchemaFetchScanNode(planNodeId, storageGroup, patternTree, authorityScope);
   }
 
   @Override

@@ -31,9 +31,9 @@ public class MemTableManager {
     return InstanceHolder.INSTANCE;
   }
 
-  public synchronized IMemTable getAvailableMemTable(String database, String dataRegionId) {
+  public synchronized IMemTable getAvailableMemTable(String storageGroup, String dataRegionId) {
     currentMemtableNumber++;
-    return new PrimitiveMemTable(database, dataRegionId);
+    return new PrimitiveMemTable(storageGroup, dataRegionId);
   }
 
   public int getCurrentMemtableNumber() {

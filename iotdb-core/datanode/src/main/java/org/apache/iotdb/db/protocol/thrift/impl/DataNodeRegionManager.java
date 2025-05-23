@@ -104,12 +104,12 @@ public class DataNodeRegionManager {
   }
 
   public TSStatus createSchemaRegion(
-      final TRegionReplicaSet regionReplicaSet, final String database) {
+      final TRegionReplicaSet regionReplicaSet, final String storageGroup) {
     TSStatus tsStatus;
     final SchemaRegionId schemaRegionId =
         new SchemaRegionId(regionReplicaSet.getRegionId().getId());
     try {
-      schemaEngine.createSchemaRegion(database, schemaRegionId);
+      schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
       schemaRegionLockMap.put(schemaRegionId, new ReentrantReadWriteLock(false));
       final List<Peer> peers = new ArrayList<>();
       for (final TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
@@ -122,11 +122,11 @@ public class DataNodeRegionManager {
       SchemaRegionConsensusImpl.getInstance().createLocalPeer(schemaRegionId, peers);
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final IllegalPathException e1) {
-      LOGGER.error("Create Schema Region {} failed because path is illegal.", database);
+      LOGGER.error("Create Schema Region {} failed because path is illegal.", storageGroup);
       tsStatus = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
-      tsStatus.setMessage("Create Schema Region failed because database path is illegal.");
+      tsStatus.setMessage("Create Schema Region failed because storageGroup path is illegal.");
     } catch (final MetadataException e2) {
-      LOGGER.error("Create Schema Region {} failed because {}", database, e2.getMessage());
+      LOGGER.error("Create Schema Region {} failed because {}", storageGroup, e2.getMessage());
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(
           String.format("Create Schema Region failed because of %s", e2.getMessage()));
@@ -140,11 +140,11 @@ public class DataNodeRegionManager {
     return tsStatus;
   }
 
-  public TSStatus createDataRegion(TRegionReplicaSet regionReplicaSet, String database) {
+  public TSStatus createDataRegion(TRegionReplicaSet regionReplicaSet, String storageGroup) {
     TSStatus tsStatus;
     DataRegionId dataRegionId = new DataRegionId(regionReplicaSet.getRegionId().getId());
     try {
-      storageEngine.createDataRegion(dataRegionId, database);
+      storageEngine.createDataRegion(dataRegionId, storageGroup);
       dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock(false));
       List<Peer> peers = new ArrayList<>();
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
@@ -157,7 +157,7 @@ public class DataNodeRegionManager {
       DataRegionConsensusImpl.getInstance().createLocalPeer(dataRegionId, peers);
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (DataRegionException e) {
-      LOGGER.error("Create Data Region {} failed because {}", database, e.getMessage());
+      LOGGER.error("Create Data Region {} failed because {}", storageGroup, e.getMessage());
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(String.format("Create Data Region failed because of %s", e.getMessage()));
     } catch (ConsensusGroupAlreadyExistException e) {
@@ -170,17 +170,17 @@ public class DataNodeRegionManager {
     return tsStatus;
   }
 
-  public TSStatus createNewRegion(final ConsensusGroupId regionId, final String database) {
+  public TSStatus createNewRegion(final ConsensusGroupId regionId, final String storageGroup) {
     final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     LOGGER.info("start to create new region {}", regionId);
     try {
       if (regionId instanceof DataRegionId) {
         final DataRegionId dataRegionId = (DataRegionId) regionId;
-        storageEngine.createDataRegion(dataRegionId, database);
+        storageEngine.createDataRegion(dataRegionId, storageGroup);
         dataRegionLockMap.putIfAbsent(dataRegionId, new ReentrantReadWriteLock(false));
       } else {
         SchemaRegionId schemaRegionId = (SchemaRegionId) regionId;
-        schemaEngine.createSchemaRegion(database, schemaRegionId);
+        schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
         schemaRegionLockMap.putIfAbsent(schemaRegionId, new ReentrantReadWriteLock(false));
       }
     } catch (final Exception e) {

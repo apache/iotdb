@@ -72,24 +72,24 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
   /** Test if creating a time series will cause the database with same name to disappear */
   @Test
   public void testCreateTimeseries() throws Exception {
-    String database = "root.sg1.a.b.c";
+    String storageGroup = "root.sg1.a.b.c";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(String.format("CREATE DATABASE %s", database));
+      statement.execute(String.format("CREATE DATABASE %s", storageGroup));
       statement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-              database));
+              storageGroup));
 
     } catch (Exception ignored) {
     }
 
     // ensure that current database in cache is right.
-    createTimeSeriesTool(database);
+    createTimeSeriesTool(storageGroup);
   }
 
-  private void createTimeSeriesTool(String database) throws SQLException {
+  private void createTimeSeriesTool(String storageGroup) throws SQLException {
     Set<String> resultList = new HashSet<>();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
@@ -99,7 +99,7 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
         resultList.add(str);
       }
     }
-    Assert.assertFalse(resultList.contains(database));
+    Assert.assertFalse(resultList.contains(storageGroup));
     resultList.clear();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
@@ -109,7 +109,7 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
         resultList.add(res);
       }
     }
-    Assert.assertTrue(resultList.contains(database));
+    Assert.assertTrue(resultList.contains(storageGroup));
   }
 
   @Test

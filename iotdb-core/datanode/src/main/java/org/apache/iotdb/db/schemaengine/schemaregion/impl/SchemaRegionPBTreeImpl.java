@@ -160,9 +160,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   private volatile boolean initialized = false;
   private boolean isClearing = false;
 
-  private final String databaseDirPath;
+  private final String storageGroupDirPath;
   private final String schemaRegionDirPath;
-  private final String databaseFullPath;
+  private final String storageGroupFullPath;
   private final SchemaRegionId schemaRegionId;
 
   // the log file writer
@@ -182,11 +182,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegionPBTreeImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
 
-    databaseFullPath = schemaRegionParams.getDatabase();
+    storageGroupFullPath = schemaRegionParams.getDatabase();
     this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
-    databaseDirPath = config.getSchemaDir() + File.separator + databaseFullPath;
-    schemaRegionDirPath = databaseDirPath + File.separator + schemaRegionId.getId();
+    storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
+    schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
     this.regionStatistics =
         new CachedSchemaRegionStatistics(
             schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
@@ -221,7 +221,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mtree =
           new MTreeBelowSGCachedImpl(
-              new PartialPath(databaseFullPath),
+              new PartialPath(storageGroupFullPath),
               tagManager::readTags,
               tagManager::readAttributes,
               this::flushCallback,
@@ -244,7 +244,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     } catch (IOException e) {
       logger.error(
           "Cannot recover all MTree from {} file, we try to recover as possible as we can",
-          databaseFullPath,
+          storageGroupFullPath,
           e);
     }
     initialized = true;
@@ -265,7 +265,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       } catch (IOException e) {
         logger.error(
             "Failed to recover tagIndex for {} in schemaRegion {}.",
-            databaseFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
+            storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
             schemaRegionId);
       }
     };
@@ -296,14 +296,14 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   private void initDir() throws SchemaDirCreationFailureException {
-    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(databaseDirPath);
+    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create database schema folder {}", databaseDirPath);
+        logger.info("create database schema folder {}", storageGroupDirPath);
       } else {
         if (!sgSchemaFolder.exists()) {
-          logger.error("create database schema folder {} failed.", databaseDirPath);
-          throw new SchemaDirCreationFailureException(databaseDirPath);
+          logger.error("create database schema folder {} failed.", storageGroupDirPath);
+          throw new SchemaDirCreationFailureException(storageGroupDirPath);
         }
       }
     }
@@ -401,10 +401,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         logger.debug(
             "spend {} ms to deserialize {} mtree from mlog.bin",
             System.currentTimeMillis() - time,
-            databaseFullPath);
+            storageGroupFullPath);
       } catch (Exception e) {
         e.printStackTrace();
-        throw new IOException("Failed to parse " + databaseFullPath + " mlog.bin for err:" + e);
+        throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin for err:" + e);
       }
     }
   }
@@ -473,7 +473,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public String getDatabaseFullPath() {
-    return databaseFullPath;
+    return storageGroupFullPath;
   }
 
   @Override
@@ -555,7 +555,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       mtree =
           MTreeBelowSGCachedImpl.loadFromSnapshot(
               latestSnapshotRootDir,
-              databaseFullPath,
+              storageGroupFullPath,
               schemaRegionId.getId(),
               regionStatistics,
               metric,

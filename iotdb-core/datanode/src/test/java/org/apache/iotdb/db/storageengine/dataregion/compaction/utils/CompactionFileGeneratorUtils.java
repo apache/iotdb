@@ -89,7 +89,7 @@ public class CompactionFileGeneratorUtils {
   }
 
   public static TsFileResource generateTsFileResource(
-      boolean sequence, int index, String databaseName) {
+      boolean sequence, int index, String storageGroupName) {
     if (sequence) {
       return new TsFileResource(
           new File(
@@ -99,7 +99,7 @@ public class CompactionFileGeneratorUtils {
                   .concat(File.separator)
                   .concat("sequence")
                   .concat(File.separator)
-                  .concat(databaseName)
+                  .concat(storageGroupName)
                   .concat(File.separator)
                   .concat("0")
                   .concat(File.separator)
@@ -123,7 +123,7 @@ public class CompactionFileGeneratorUtils {
                   .concat(File.separator)
                   .concat("unsequence")
                   .concat(File.separator)
-                  .concat(databaseName)
+                  .concat(storageGroupName)
                   .concat(File.separator)
                   .concat("0")
                   .concat(File.separator)

@@ -77,9 +77,9 @@ public:
 
     void deleteData(const TSDeleteDataReq& request);
 
-    void setDatabase(const string& databaseId);
+    void setStorageGroup(const string& storageGroupId);
 
-    void deleteDatabases(const vector<string>& databases);
+    void deleteStorageGroups(const vector<string>& storageGroups);
 
     void createTimeseries(TSCreateTimeseriesReq& req);
 

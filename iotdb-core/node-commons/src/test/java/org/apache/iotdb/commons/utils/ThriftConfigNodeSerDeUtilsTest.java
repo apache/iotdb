@@ -38,17 +38,18 @@ public class ThriftConfigNodeSerDeUtilsTest {
   }
 
   @Test
-  public void readWriteTDatabaseSchemaTest() {
-    TDatabaseSchema databaseSchema0 = new TDatabaseSchema();
-    databaseSchema0.setName("root.sg");
-    databaseSchema0.setSchemaReplicationFactor(3);
-    databaseSchema0.setDataReplicationFactor(3);
-    databaseSchema0.setTimePartitionInterval(604800);
+  public void readWriteTStorageGroupSchemaTest() {
+    TDatabaseSchema storageGroupSchema0 = new TDatabaseSchema();
+    storageGroupSchema0.setName("root.sg");
+    storageGroupSchema0.setSchemaReplicationFactor(3);
+    storageGroupSchema0.setDataReplicationFactor(3);
+    storageGroupSchema0.setTimePartitionInterval(604800);
 
-    ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(databaseSchema0, buffer);
+    ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(storageGroupSchema0, buffer);
     buffer.flip();
-    TDatabaseSchema databaseSchema1 = ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(buffer);
-    Assert.assertEquals(databaseSchema0, databaseSchema1);
+    TDatabaseSchema storageGroupSchema1 =
+        ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(buffer);
+    Assert.assertEquals(storageGroupSchema0, storageGroupSchema1);
   }
 
   @Test

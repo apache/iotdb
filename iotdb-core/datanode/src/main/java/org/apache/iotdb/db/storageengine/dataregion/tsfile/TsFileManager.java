@@ -40,7 +40,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileManager {
-  private final String databaseName;
+  private final String storageGroupName;
   private String dataRegionId;
   private final String dataRegionSysDir;
 
@@ -56,8 +56,8 @@ public class TsFileManager {
   private volatile boolean allowCompaction = true;
   private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
-  public TsFileManager(String databaseName, String dataRegionId, String dataRegionSysDir) {
-    this.databaseName = databaseName;
+  public TsFileManager(String storageGroupName, String dataRegionId, String dataRegionSysDir) {
+    this.storageGroupName = storageGroupName;
     this.dataRegionSysDir = dataRegionSysDir;
     this.dataRegionId = dataRegionId;
   }
@@ -371,8 +371,8 @@ public class TsFileManager {
     writeLockHolder = "";
   }
 
-  public String getDatabaseName() {
-    return databaseName;
+  public String getStorageGroupName() {
+    return storageGroupName;
   }
 
   public String getDataRegionSysDir() {
@@ -432,7 +432,7 @@ public class TsFileManager {
     try {
       FileTimeIndexCacheRecorder.getInstance()
           .compactFileTimeIndexIfNeeded(
-              databaseName,
+              storageGroupName,
               Integer.parseInt(dataRegionId),
               currentResourceSize,
               sequenceFiles,

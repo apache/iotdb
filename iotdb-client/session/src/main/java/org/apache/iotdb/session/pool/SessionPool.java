@@ -2082,23 +2082,23 @@ public class SessionPool implements ISessionPool {
    */
   @Deprecated
   @Override
-  public void setDatabase(String databaseId)
+  public void setStorageGroup(String storageGroupId)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        session.setDatabase(databaseId);
+        session.setStorageGroup(storageGroupId);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        LOGGER.warn("setDatabase failed", e);
+        LOGGER.warn("setStorageGroup failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        LOGGER.error("unexpected error in setDatabase", e);
+        LOGGER.error("unexpected error in setStorageGroup", e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -2110,23 +2110,23 @@ public class SessionPool implements ISessionPool {
    */
   @Deprecated
   @Override
-  public void deleteDatabase(String database)
+  public void deleteStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        session.deleteDatabase(database);
+        session.deleteStorageGroup(storageGroup);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        LOGGER.warn("deleteDatabase failed", e);
+        LOGGER.warn("deleteStorageGroup failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        LOGGER.error("unexpected error in deleteDatabase", e);
+        LOGGER.error("unexpected error in deleteStorageGroup", e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -2138,23 +2138,23 @@ public class SessionPool implements ISessionPool {
    */
   @Deprecated
   @Override
-  public void deleteDatabases(List<String> database)
+  public void deleteStorageGroups(List<String> storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        session.deleteDatabases(database);
+        session.deleteStorageGroups(storageGroup);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        LOGGER.warn("deleteDatabases failed", e);
+        LOGGER.warn("deleteStorageGroups failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        LOGGER.error("unexpected error in deleteDatabases", e);
+        LOGGER.error("unexpected error in deleteStorageGroups", e);
         putBack(session);
         throw new RuntimeException(e);
       }

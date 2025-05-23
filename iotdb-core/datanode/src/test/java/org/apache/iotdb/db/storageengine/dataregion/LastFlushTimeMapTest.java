@@ -46,14 +46,14 @@ public class LastFlushTimeMapTest {
 
   private DataRegion dataRegion;
 
-  private String database = "root.vehicle.d0";
+  private String storageGroup = "root.vehicle.d0";
   private String measurementId = "s0";
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    dataRegion = new DataRegionTest.DummyDataRegion(systemDir, database);
+    dataRegion = new DataRegionTest.DummyDataRegion(systemDir, storageGroup);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
     CompactionTaskManager.getInstance().start();
   }
@@ -170,7 +170,7 @@ public class LastFlushTimeMapTest {
             .getFlushedTime(0, IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d0")));
 
     // recover from disk
-    dataRegion = new DataRegionTest.DummyDataRegion(systemDir, database);
+    dataRegion = new DataRegionTest.DummyDataRegion(systemDir, storageGroup);
     Assert.assertEquals(
         604_800_000,
         dataRegion

@@ -261,7 +261,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  /** get Database -> DataRegionIdList map from data/system directory. */
+  /** get StorageGroup -> DataRegionIdList map from data/system directory. */
   public Map<String, List<DataRegionId>> getLocalDataRegionInfo() {
     File system = SystemFileFactory.INSTANCE.getFile(systemDir);
     File[] sgDirs = system.listFiles();
@@ -655,11 +655,11 @@ public class StorageEngine implements IService {
   public void operateFlush(TFlushReq req) {
     if (req.getRegionIds() != null && !req.getRegionIds().isEmpty()) {
       StorageEngine.getInstance().syncCloseProcessorsInRegion(req.getRegionIds());
-    } else if (req.databases == null || req.databases.isEmpty()) {
+    } else if (req.storageGroups == null || req.storageGroups.isEmpty()) {
       StorageEngine.getInstance().syncCloseAllProcessor();
       WALManager.getInstance().syncDeleteOutdatedFilesInWALNodes();
     } else {
-      for (String databaseName : req.databases) {
+      for (String databaseName : req.storageGroups) {
         if (req.isSeq == null) {
           StorageEngine.getInstance().syncCloseProcessorsInDatabase(databaseName);
         } else {

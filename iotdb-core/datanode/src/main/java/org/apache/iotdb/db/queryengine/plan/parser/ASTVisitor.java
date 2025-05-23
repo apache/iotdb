@@ -888,7 +888,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new CountNodesStatement(path, level);
   }
 
-  // Count Database ========================================================================
+  // Count StorageGroup ========================================================================
   @Override
   public Statement visitCountDatabases(CountDatabasesContext ctx) {
     PartialPath path;
@@ -3419,18 +3419,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitFlush(final IoTDBSqlParser.FlushContext ctx) {
     final FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
-    List<String> databases = null;
+    List<String> storageGroups = null;
     if (ctx.boolean_literal() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     }
     flushStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.prefixPath(0) != null) {
-      databases = new ArrayList<>();
+      storageGroups = new ArrayList<>();
       for (final IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
-        databases.add(parsePrefixPath(prefixPathContext).getFullPath());
+        storageGroups.add(parsePrefixPath(prefixPathContext).getFullPath());
       }
     }
-    flushStatement.setDatabases(databases);
+    flushStatement.setDatabases(storageGroups);
     return flushStatement;
   }
 
@@ -3586,14 +3586,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (ctx.OF() != null) {
-      List<PartialPath> databases = null;
+      List<PartialPath> storageGroups = null;
       if (ctx.prefixPath(0) != null) {
-        databases = new ArrayList<>();
+        storageGroups = new ArrayList<>();
         for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
-          databases.add(parsePrefixPath(prefixPathContext));
+          storageGroups.add(parsePrefixPath(prefixPathContext));
         }
       }
-      showRegionStatement.setDatabases(databases);
+      showRegionStatement.setDatabases(storageGroups);
     } else {
       showRegionStatement.setDatabases(null);
     }

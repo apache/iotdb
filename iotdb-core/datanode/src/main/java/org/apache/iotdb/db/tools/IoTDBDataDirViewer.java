@@ -87,28 +87,29 @@ public class IoTDBDataDirViewer {
 
   private static void printFilesInSeqOrUnseqDir(File seqOrUnseqDir, PrintWriter pw)
       throws IOException {
-    File[] databaseDirs = seqOrUnseqDir.listFiles();
-    if (databaseDirs == null) {
+    File[] storageGroupDirs = seqOrUnseqDir.listFiles();
+    if (storageGroupDirs == null) {
       throw new IOException(
           "Irregular data dir structure.There should be database directories under "
               + "the sequence/unsequence directory "
               + seqOrUnseqDir.getName());
     }
-    List<File> fileList = Arrays.asList(databaseDirs);
+    List<File> fileList = Arrays.asList(storageGroupDirs);
     fileList.sort((Comparator.comparing(File::getName)));
-    for (File database : databaseDirs) {
-      printlnBoth(pw, "|  |--" + database.getName());
-      printFilesInDatabaseDir(database, pw);
+    for (File storageGroup : storageGroupDirs) {
+      printlnBoth(pw, "|  |--" + storageGroup.getName());
+      printFilesInStorageGroupDir(storageGroup, pw);
     }
   }
 
-  private static void printFilesInDatabaseDir(File database, PrintWriter pw) throws IOException {
-    File[] files = database.listFiles();
+  private static void printFilesInStorageGroupDir(File storageGroup, PrintWriter pw)
+      throws IOException {
+    File[] files = storageGroup.listFiles();
     if (files == null) {
       throw new IOException(
           "Irregular data dir structure.There should be dataRegion directories under "
               + "the database directory "
-              + database.getName());
+              + storageGroup.getName());
     }
     List<File> fileList = Arrays.asList(files);
     fileList.sort((Comparator.comparing(File::getName)));

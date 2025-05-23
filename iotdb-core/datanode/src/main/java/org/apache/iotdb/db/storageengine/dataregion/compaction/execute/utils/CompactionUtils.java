@@ -78,12 +78,12 @@ public class CompactionUtils {
    * @throws IOException if io errors occurred
    */
   public static void moveTargetFile(
-      List<TsFileResource> targetResources, CompactionTaskType type, String fullDatabaseName)
+      List<TsFileResource> targetResources, CompactionTaskType type, String fullStorageGroupName)
       throws IOException {
     String fileSuffix = getTmpFileSuffix(type);
     for (TsFileResource targetResource : targetResources) {
       if (targetResource != null) {
-        moveOneTargetFile(targetResource, fileSuffix, fullDatabaseName);
+        moveOneTargetFile(targetResource, fileSuffix, fullStorageGroupName);
       }
     }
   }
@@ -105,13 +105,13 @@ public class CompactionUtils {
   }
 
   private static void moveOneTargetFile(
-      TsFileResource targetResource, String tmpFileSuffix, String fullDatabaseName)
+      TsFileResource targetResource, String tmpFileSuffix, String fullStorageGroupName)
       throws IOException {
     // move to target file and delete old tmp target file
     if (!targetResource.getTsFile().exists()) {
       logger.info(
           "{} [Compaction] Tmp target tsfile {} may be deleted after compaction.",
-          fullDatabaseName,
+          fullStorageGroupName,
           targetResource.getTsFilePath());
       return;
     }
@@ -280,14 +280,15 @@ public class CompactionUtils {
   }
 
   public static boolean deleteTsFilesInDisk(
-      Collection<TsFileResource> mergeTsFiles, String databaseName) {
-    logger.info("{} [Compaction] Compaction starts to delete real file ", databaseName);
+      Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
+    logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
     boolean result = true;
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       if (!mergeTsFile.remove()) {
         result = false;
       }
-      logger.info("{} [Compaction] delete TsFile {}", databaseName, mergeTsFile.getTsFilePath());
+      logger.info(
+          "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
     return result;
   }
@@ -299,8 +300,8 @@ public class CompactionUtils {
    */
   @TestOnly
   public static void deleteModificationForSourceFile(
-      Collection<TsFileResource> sourceFiles, String databaseName) throws IOException {
-    logger.info("{} [Compaction] Start to delete modifications of source files", databaseName);
+      Collection<TsFileResource> sourceFiles, String storageGroupName) throws IOException {
+    logger.info("{} [Compaction] Start to delete modifications of source files", storageGroupName);
     for (TsFileResource tsFileResource : sourceFiles) {
       tsFileResource.removeModFile();
     }

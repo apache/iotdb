@@ -87,7 +87,7 @@ public class TsFileProcessorTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private TsFileProcessor processor;
-  private final String database = "root.vehicle";
+  private final String storageGroup = "root.vehicle";
   private DataRegionInfo sgInfo;
   private final String filePath = TestConstant.getTestTsFilePath("root.vehicle", 0, 0, 0);
   private final String deviceId = "root.vehicle.d0";
@@ -112,7 +112,7 @@ public class TsFileProcessorTest {
     defaultTargetChunkPointNum = config.getTargetChunkPointNum();
     defaultTargetChunkSize = config.getTargetChunkSize();
     EnvironmentUtils.envSetUp();
-    sgInfo = new DataRegionInfo(new DataRegionTest.DummyDataRegion(systemDir, database));
+    sgInfo = new DataRegionInfo(new DataRegionTest.DummyDataRegion(systemDir, storageGroup));
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
   }
 
@@ -139,7 +139,7 @@ public class TsFileProcessorTest {
     logger.info("testWriteAndFlush begin..");
     processor =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -149,7 +149,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     NonAlignedFullPath fullPath =
         new NonAlignedFullPath(
@@ -214,7 +214,7 @@ public class TsFileProcessorTest {
     config.setTargetChunkPointNum(40);
     processor =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -224,7 +224,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     NonAlignedFullPath fullPath =
         new NonAlignedFullPath(
@@ -289,7 +289,7 @@ public class TsFileProcessorTest {
     config.setTargetChunkSize(1536L);
     processor =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -299,7 +299,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     NonAlignedFullPath fullPath =
         new NonAlignedFullPath(
@@ -368,7 +368,7 @@ public class TsFileProcessorTest {
     config.setTargetChunkPointNum(40);
     processor =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -378,7 +378,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     AlignedFullPath fullPath =
         new AlignedFullPath(
@@ -454,7 +454,7 @@ public class TsFileProcessorTest {
     config.setTargetChunkSize(1536L);
     processor =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -464,7 +464,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     AlignedFullPath fullPath =
         new AlignedFullPath(
@@ -543,7 +543,7 @@ public class TsFileProcessorTest {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -553,7 +553,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     NonAlignedFullPath fullPath =
         new NonAlignedFullPath(
@@ -626,7 +626,7 @@ public class TsFileProcessorTest {
       throws IOException, WriteProcessException, MetadataException, ExecutionException {
     processor =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -636,7 +636,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     NonAlignedFullPath fullPath =
         new NonAlignedFullPath(
@@ -668,7 +668,7 @@ public class TsFileProcessorTest {
       throws MetadataException, WriteProcessException, IOException {
     processor =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -677,7 +677,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     // Test Tablet
     processor.insertTablet(
         genInsertTableNode(0, true),
@@ -719,7 +719,7 @@ public class TsFileProcessorTest {
       throws MetadataException, WriteProcessException, IOException {
     processor =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -728,7 +728,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     // Test Tablet
     processor.insertTablet(
         genInsertTableNode(0, true),
@@ -813,7 +813,7 @@ public class TsFileProcessorTest {
       throws MetadataException, WriteProcessException, IOException {
     processor =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -822,7 +822,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     // Test tablet
     processor.insertTablet(
         genInsertTableNode(0, false),
@@ -864,7 +864,7 @@ public class TsFileProcessorTest {
       throws MetadataException, WriteProcessException, IOException {
     TsFileProcessor processor1 =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -873,7 +873,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo1 = new TsFileProcessorInfo(sgInfo);
     processor1.setTsFileProcessorInfo(tsFileProcessorInfo1);
     this.sgInfo.initTsFileProcessorInfo(processor1);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor1);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor1);
     // insert 100 rows by insertRow
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(deviceId, i);
@@ -884,7 +884,7 @@ public class TsFileProcessorTest {
 
     TsFileProcessor processor2 =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -893,7 +893,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo2 = new TsFileProcessorInfo(sgInfo);
     processor2.setTsFileProcessorInfo(tsFileProcessorInfo2);
     this.sgInfo.initTsFileProcessorInfo(processor2);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor2);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor2);
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
     // insert 100 rows by insertRows
     for (int i = 1; i <= 100; i++) {
@@ -957,7 +957,7 @@ public class TsFileProcessorTest {
       throws MetadataException, WriteProcessException, IOException {
     TsFileProcessor processor1 =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -966,7 +966,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo1 = new TsFileProcessorInfo(sgInfo);
     processor1.setTsFileProcessorInfo(tsFileProcessorInfo1);
     this.sgInfo.initTsFileProcessorInfo(processor1);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor1);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor1);
     // insert 100 rows by insertRow
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(deviceId, i);
@@ -979,7 +979,7 @@ public class TsFileProcessorTest {
 
     TsFileProcessor processor2 =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -988,7 +988,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo2 = new TsFileProcessorInfo(sgInfo);
     processor2.setTsFileProcessorInfo(tsFileProcessorInfo2);
     this.sgInfo.initTsFileProcessorInfo(processor2);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor2);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor2);
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
     insertRowsNode.setAligned(true);
     // insert 100 rows by insertRows
@@ -1061,7 +1061,7 @@ public class TsFileProcessorTest {
       throws MetadataException, WriteProcessException, IOException {
     TsFileProcessor processor1 =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -1070,7 +1070,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo1 = new TsFileProcessorInfo(sgInfo);
     processor1.setTsFileProcessorInfo(tsFileProcessorInfo1);
     this.sgInfo.initTsFileProcessorInfo(processor1);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor1);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor1);
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRow
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i <= 50 ? deviceId : "root.vehicle.d2", i);
@@ -1085,7 +1085,7 @@ public class TsFileProcessorTest {
 
     TsFileProcessor processor2 =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -1094,7 +1094,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo2 = new TsFileProcessorInfo(sgInfo);
     processor2.setTsFileProcessorInfo(tsFileProcessorInfo2);
     this.sgInfo.initTsFileProcessorInfo(processor2);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor2);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor2);
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
     insertRowsNode.setAligned(true);
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRows
@@ -1121,7 +1121,7 @@ public class TsFileProcessorTest {
       throws MetadataException, WriteProcessException, IOException {
     TsFileProcessor processor1 =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -1130,7 +1130,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo1 = new TsFileProcessorInfo(sgInfo);
     processor1.setTsFileProcessorInfo(tsFileProcessorInfo1);
     this.sgInfo.initTsFileProcessorInfo(processor1);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor1);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor1);
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRow
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i <= 50 ? deviceId : "root.vehicle.d2", i);
@@ -1146,7 +1146,7 @@ public class TsFileProcessorTest {
 
     TsFileProcessor processor2 =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -1155,7 +1155,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo2 = new TsFileProcessorInfo(sgInfo);
     processor2.setTsFileProcessorInfo(tsFileProcessorInfo2);
     this.sgInfo.initTsFileProcessorInfo(processor2);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor2);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor2);
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
     insertRowsNode.setAligned(true);
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRows
@@ -1183,7 +1183,7 @@ public class TsFileProcessorTest {
       throws IOException, WriteProcessException, MetadataException, ExecutionException {
     processor =
         new TsFileProcessor(
-            database,
+            storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
@@ -1193,7 +1193,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportDatabaseStatus(sgInfo, processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     NonAlignedFullPath fullPath =

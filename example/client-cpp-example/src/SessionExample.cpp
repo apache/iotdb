@@ -351,11 +351,11 @@ void deleteTimeseries() {
     session->deleteTimeseries(paths);
 }
 
-void deleteDatabases() {
-    vector<string> databases;
-    databases.emplace_back("root.sg1");
-    databases.emplace_back("root.sg2");
-    session->deleteDatabases(databases);
+void deleteStorageGroups() {
+    vector<string> storageGroups;
+    storageGroups.emplace_back("root.sg1");
+    storageGroups.emplace_back("root.sg2");
+    session->deleteStorageGroups(storageGroups);
 }
 
 void queryLast() {
@@ -379,25 +379,25 @@ int main() {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session->open(false);
 
-    cout << "setDatabase: root.sg1\n" << endl;
+    cout << "setStorageGroup: root.sg1\n" << endl;
     try {
-        session->setDatabase("root.sg1");
+        session->setStorageGroup("root.sg1");
     }
     catch (IoTDBException &e) {
         string errorMessage(e.what());
-        if (errorMessage.find("DatabaseAlreadySetException") == string::npos) {
+        if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
             cout << errorMessage << endl;
         }
         //throw e;
     }
 
-    cout << "setDatabase: root.sg2\n" << endl;
+    cout << "setStorageGroup: root.sg2\n" << endl;
     try {
-        session->setDatabase("root.sg2");
+        session->setStorageGroup("root.sg2");
     }
     catch (IoTDBException &e) {
         string errorMessage(e.what());
-        if (errorMessage.find("DatabaseAlreadySetException") == string::npos) {
+        if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
             cout << errorMessage << endl;
         }
         //throw e;
@@ -448,8 +448,8 @@ int main() {
     cout << "deleteTimeseries\n" << endl;
     deleteTimeseries();
 
-    cout << "deleteDatabases\n" << endl;
-    deleteDatabases();
+    cout << "deleteStorageGroups\n" << endl;
+    deleteStorageGroups();
 
     cout << "session close\n" << endl;
     session->close();

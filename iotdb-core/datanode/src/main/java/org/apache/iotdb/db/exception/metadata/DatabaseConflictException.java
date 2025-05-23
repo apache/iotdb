@@ -26,20 +26,20 @@ public class DatabaseConflictException extends MetadataException {
 
   private final boolean isChild;
 
-  private final String databasePath;
+  private final String storageGroupPath;
 
   public DatabaseConflictException(final String path, final boolean isChild) {
     super(getMessage(path, isChild), TSStatusCode.DATABASE_CONFLICT.getStatusCode());
     this.isChild = isChild;
-    databasePath = path;
+    storageGroupPath = path;
   }
 
   public boolean isChild() {
     return isChild;
   }
 
-  public String getDatabasePath() {
-    return databasePath;
+  public String getStorageGroupPath() {
+    return storageGroupPath;
   }
 
   private static String getMessage(final String path, final boolean isChild) {

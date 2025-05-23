@@ -59,7 +59,7 @@ import java.util.Map;
 import java.util.Random;
 
 public class FastCompactionPerformerAlignedTest {
-  private static final String database = "root.testAlignedCompaction";
+  private static final String storageGroup = "root.testAlignedCompaction";
 
   private final ICompactionPerformer performer = new FastCompactionPerformer(false);
   private static File dataDirectory =
@@ -67,7 +67,7 @@ public class FastCompactionPerformerAlignedTest {
           TestConstant.BASE_OUTPUT_PATH
               + "data".concat(File.separator)
               + "sequence".concat(File.separator)
-              + database.concat(File.separator)
+              + storageGroup.concat(File.separator)
               + "0".concat(File.separator)
               + "0".concat(File.separator));
 
@@ -93,7 +93,7 @@ public class FastCompactionPerformerAlignedTest {
   public void testSimpleAlignedTsFileCompaction() throws Exception {
     List<String> devices = new ArrayList<>();
     for (int i = 0; i < 5; ++i) {
-      devices.add(database + ".d" + i);
+      devices.add(storageGroup + ".d" + i);
     }
     boolean[] aligned = new boolean[] {true, true, true, true, true};
     List<IMeasurementSchema> schemas = new ArrayList<>();
@@ -105,7 +105,7 @@ public class FastCompactionPerformerAlignedTest {
     schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
 
     TestUtilsForAlignedSeries.registerTimeSeries(
-        database,
+        storageGroup,
         devices.toArray(new String[] {}),
         schemas.toArray(new IMeasurementSchema[] {}),
         aligned);
@@ -148,9 +148,9 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
@@ -161,7 +161,7 @@ public class FastCompactionPerformerAlignedTest {
   public void testAlignedTsFileWithModificationCompaction() throws Exception {
     List<String> devices = new ArrayList<>();
     for (int i = 0; i < 5; ++i) {
-      devices.add(database + ".d" + i);
+      devices.add(storageGroup + ".d" + i);
     }
     boolean[] aligned = new boolean[] {true, true, true, true, true};
     List<IMeasurementSchema> schemas = new ArrayList<>();
@@ -173,7 +173,7 @@ public class FastCompactionPerformerAlignedTest {
     schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
 
     TestUtilsForAlignedSeries.registerTimeSeries(
-        database,
+        storageGroup,
         devices.toArray(new String[] {}),
         schemas.toArray(new IMeasurementSchema[] {}),
         aligned);
@@ -222,7 +222,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
@@ -233,7 +233,7 @@ public class FastCompactionPerformerAlignedTest {
   public void testAlignedTsFileWithNullValueCompaction() throws Exception {
     List<String> devices = new ArrayList<>();
     for (int i = 0; i < 5; ++i) {
-      devices.add(database + ".d" + i);
+      devices.add(storageGroup + ".d" + i);
     }
     boolean[] aligned = new boolean[] {true, true, true, true, true};
     List<IMeasurementSchema> schemas = new ArrayList<>();
@@ -245,7 +245,7 @@ public class FastCompactionPerformerAlignedTest {
     schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
 
     TestUtilsForAlignedSeries.registerTimeSeries(
-        database,
+        storageGroup,
         devices.toArray(new String[] {}),
         schemas.toArray(new IMeasurementSchema[] {}),
         aligned);
@@ -288,7 +288,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
@@ -299,7 +299,7 @@ public class FastCompactionPerformerAlignedTest {
   public void testAlignedTsFileWithDifferentSchemaInDifferentTsFileCompaction() throws Exception {
     List<String> devices = new ArrayList<>();
     for (int i = 0; i < 5; ++i) {
-      devices.add(database + ".d" + i);
+      devices.add(storageGroup + ".d" + i);
     }
     boolean[] aligned = new boolean[] {true, true, true, true, true};
     List<IMeasurementSchema> schemas = new ArrayList<>();
@@ -311,7 +311,7 @@ public class FastCompactionPerformerAlignedTest {
     schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
 
     TestUtilsForAlignedSeries.registerTimeSeries(
-        database,
+        storageGroup,
         devices.toArray(new String[] {}),
         schemas.toArray(new IMeasurementSchema[] {}),
         aligned);
@@ -357,7 +357,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
@@ -368,7 +368,7 @@ public class FastCompactionPerformerAlignedTest {
   public void testAlignedTsFileWithDifferentDataTypeCompaction() throws Exception {
     List<String> devices = new ArrayList<>();
     for (int i = 0; i < 5; ++i) {
-      devices.add(database + ".d" + i);
+      devices.add(storageGroup + ".d" + i);
     }
     boolean[] aligned = new boolean[] {false, true, false, true, false};
     List<IMeasurementSchema> schemas = new ArrayList<>();
@@ -380,7 +380,7 @@ public class FastCompactionPerformerAlignedTest {
     schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
 
     TestUtilsForAlignedSeries.registerTimeSeries(
-        database,
+        storageGroup,
         devices.toArray(new String[] {}),
         schemas.toArray(new IMeasurementSchema[] {}),
         aligned);
@@ -424,7 +424,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
@@ -435,7 +435,7 @@ public class FastCompactionPerformerAlignedTest {
   public void testAlignedTsFileWithDifferentDataTypeInDifferentTsFileCompaction() throws Exception {
     List<String> devices = new ArrayList<>();
     for (int i = 0; i < 5; ++i) {
-      devices.add(database + ".d" + i);
+      devices.add(storageGroup + ".d" + i);
     }
     boolean[] aligned = new boolean[] {false, true, false, true, false};
     List<IMeasurementSchema> schemas = new ArrayList<>();
@@ -447,7 +447,7 @@ public class FastCompactionPerformerAlignedTest {
     schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
 
     TestUtilsForAlignedSeries.registerTimeSeries(
-        database,
+        storageGroup,
         devices.toArray(new String[] {}),
         schemas.toArray(new IMeasurementSchema[] {}),
         aligned);
@@ -493,7 +493,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
@@ -503,7 +503,7 @@ public class FastCompactionPerformerAlignedTest {
   @Test
   public void testAlignedTsFileWithBadSchemaCompaction() throws Exception {
     List<String> devices = new ArrayList<>();
-    devices.add(database + ".d" + 0);
+    devices.add(storageGroup + ".d" + 0);
     for (int i = 1; i < 5; ++i) {
       devices.add(devices.get(i - 1) + ".d" + i);
     }
@@ -517,7 +517,7 @@ public class FastCompactionPerformerAlignedTest {
     schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
 
     TestUtilsForAlignedSeries.registerTimeSeries(
-        database,
+        storageGroup,
         devices.toArray(new String[] {}),
         schemas.toArray(new IMeasurementSchema[] {}),
         aligned);
@@ -563,7 +563,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
@@ -573,7 +573,7 @@ public class FastCompactionPerformerAlignedTest {
   @Test
   public void testAlignedTsFileWithEmptyChunkGroup() throws Exception {
     List<String> devices = new ArrayList<>();
-    devices.add(database + ".d" + 0);
+    devices.add(storageGroup + ".d" + 0);
     for (int i = 1; i < 5; ++i) {
       devices.add(devices.get(i - 1) + ".d" + i);
     }
@@ -587,7 +587,7 @@ public class FastCompactionPerformerAlignedTest {
     schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
 
     TestUtilsForAlignedSeries.registerTimeSeries(
-        database,
+        storageGroup,
         devices.toArray(new String[] {}),
         schemas.toArray(new IMeasurementSchema[] {}),
         aligned);
@@ -644,7 +644,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, database);
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, Collections.singletonList(targetResource), new ArrayList<>());

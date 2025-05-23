@@ -85,19 +85,21 @@ public interface ISession extends AutoCloseable {
    * @deprecated Use {@link #createDatabase(String)} instead.
    */
   @Deprecated
-  void setDatabase(String database) throws IoTDBConnectionException, StatementExecutionException;
+  void setStorageGroup(String storageGroup)
+      throws IoTDBConnectionException, StatementExecutionException;
 
   /**
    * @deprecated Use {@link #deleteDatabase(String)} instead.
    */
   @Deprecated
-  void deleteDatabase(String database) throws IoTDBConnectionException, StatementExecutionException;
+  void deleteStorageGroup(String storageGroup)
+      throws IoTDBConnectionException, StatementExecutionException;
 
   /**
    * @deprecated Use {@link #deleteDatabases(List)} instead.
    */
   @Deprecated
-  void deleteDatabases(List<String> databases)
+  void deleteStorageGroups(List<String> storageGroups)
       throws IoTDBConnectionException, StatementExecutionException;
 
   void createDatabase(String database) throws IoTDBConnectionException, StatementExecutionException;

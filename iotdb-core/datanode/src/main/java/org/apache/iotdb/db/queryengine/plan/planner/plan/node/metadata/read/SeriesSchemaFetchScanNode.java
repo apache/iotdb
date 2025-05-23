@@ -48,14 +48,14 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
 
   public SeriesSchemaFetchScanNode(
       PlanNodeId id,
-      PartialPath database,
+      PartialPath storageGroup,
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
       boolean withAttributes,
       boolean withTemplate,
       boolean withAliasForce) {
-    super(id, database, patternTree);
+    super(id, storageGroup, patternTree);
     this.templateMap = templateMap;
     this.withTags = withTags;
     this.withAttributes = withAttributes;
@@ -76,7 +76,7 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
   public PlanNode clone() {
     return new SeriesSchemaFetchScanNode(
         getPlanNodeId(),
-        database,
+        storageGroup,
         patternTree,
         templateMap,
         withTags,
@@ -88,14 +88,16 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
   @Override
   public String toString() {
     return String.format(
-        "SeriesSchemaFetchScanNode-%s:[Database: %s, DataRegion: %s]",
-        this.getPlanNodeId(), database, PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
+        "SeriesSchemaFetchScanNode-%s:[StorageGroup: %s, DataRegion: %s]",
+        this.getPlanNodeId(),
+        storageGroup,
+        PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SERIES_SCHEMA_FETCH_SCAN.serialize(byteBuffer);
-    database.serialize(byteBuffer);
+    storageGroup.serialize(byteBuffer);
     patternTree.serialize(byteBuffer);
 
     ReadWriteIOUtils.write(templateMap.size(), byteBuffer);
@@ -111,7 +113,7 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SERIES_SCHEMA_FETCH_SCAN.serialize(stream);
-    database.serialize(stream);
+    storageGroup.serialize(stream);
     patternTree.serialize(stream);
     ReadWriteIOUtils.write(templateMap.size(), stream);
     for (Template template : templateMap.values()) {
@@ -124,7 +126,7 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
   }
 
   public static SeriesSchemaFetchScanNode deserialize(ByteBuffer byteBuffer) {
-    PartialPath database = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+    PartialPath storageGroup = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
 
     int templateNum = ReadWriteIOUtils.readInt(byteBuffer);
@@ -142,7 +144,7 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SeriesSchemaFetchScanNode(
         planNodeId,
-        database,
+        storageGroup,
         patternTree,
         templateMap,
         withTags,

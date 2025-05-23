@@ -198,7 +198,7 @@ public class SettleRequestHandler {
     private ConsistentSettleInfo calculateConsistentInfo(File tsFile) {
       ConsistentSettleInfo values = new ConsistentSettleInfo();
       values.dataRegionId = TsFileUtils.getDataRegionId(tsFile);
-      values.databaseName = TsFileUtils.getDatabase(tsFile);
+      values.storageGroupName = TsFileUtils.getStorageGroup(tsFile);
       values.timePartitionId = TsFileUtils.getTimePartition(tsFile);
       values.isValid = true;
 
@@ -300,7 +300,7 @@ public class SettleRequestHandler {
   private static class ConsistentSettleInfo {
     private int dataRegionId;
     private int level;
-    private String databaseName;
+    private String storageGroupName;
     private long timePartitionId;
     private boolean isValid;
 
@@ -309,9 +309,9 @@ public class SettleRequestHandler {
         return RpcUtils.getStatus(
             TSStatusCode.ILLEGAL_PATH, "DataRegion of files is not consistent.");
       }
-      if (!this.databaseName.equals(other.databaseName)) {
+      if (!this.storageGroupName.equals(other.storageGroupName)) {
         return RpcUtils.getStatus(
-            TSStatusCode.ILLEGAL_PATH, "Database of files is not consistent.");
+            TSStatusCode.ILLEGAL_PATH, "StorageGroup of files is not consistent.");
       }
       if (this.timePartitionId != other.timePartitionId) {
         return RpcUtils.getStatus(

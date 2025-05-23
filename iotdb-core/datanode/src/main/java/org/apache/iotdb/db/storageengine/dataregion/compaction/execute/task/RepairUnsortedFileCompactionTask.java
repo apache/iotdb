@@ -158,10 +158,12 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     CompactionUtils.moveTargetFile(
         filesView.targetFilesInPerformer,
         CompactionTaskType.REPAIR,
-        databaseName + "-" + dataRegionId);
+        storageGroupName + "-" + dataRegionId);
 
     LOGGER.info(
-        "{}-{} [InnerSpaceCompactionTask] start to rename mods file", databaseName, dataRegionId);
+        "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
+        storageGroupName,
+        dataRegionId);
 
     if (sourceFile.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE) {
       CompactionUtils.combineModsInInnerCompaction(

@@ -120,7 +120,7 @@ public class MTreeBelowSGCachedImpl {
   private final CachedMTreeStore store;
 
   @SuppressWarnings("java:S3077")
-  private volatile ICachedMNode databaseMNode;
+  private volatile ICachedMNode storageGroupMNode;
 
   private final ICachedMNode rootNode;
   private final Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter;
@@ -132,7 +132,7 @@ public class MTreeBelowSGCachedImpl {
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSGCachedImpl(
-      PartialPath databasePath,
+      PartialPath storageGroupPath,
       Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter,
       Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> attributeGetter,
       Runnable flushCallback,
@@ -148,17 +148,17 @@ public class MTreeBelowSGCachedImpl {
     store =
         PBTreeFactory.getInstance()
             .createNewCachedMTreeStore(
-                databasePath, schemaRegionId, regionStatistics, metric, flushCallback);
-    this.databaseMNode = store.getRoot();
-    this.databaseMNode.setParent(databaseMNode.getParent());
-    this.rootNode = store.generatePrefix(databasePath);
-    levelOfSG = databasePath.getNodeLength() - 1;
+                storageGroupPath, schemaRegionId, regionStatistics, metric, flushCallback);
+    this.storageGroupMNode = store.getRoot();
+    this.storageGroupMNode.setParent(storageGroupMNode.getParent());
+    this.rootNode = store.generatePrefix(storageGroupPath);
+    levelOfSG = storageGroupPath.getNodeLength() - 1;
 
     // recover MNode
     try (MNodeCollector<Void, ICachedMNode> collector =
         new MNodeCollector<Void, ICachedMNode>(
             this.rootNode,
-            new PartialPath(databaseMNode.getFullPath()),
+            new PartialPath(storageGroupMNode.getFullPath()),
             this.store,
             true,
             SchemaConstant.ALL_MATCH_SCOPE) {
@@ -178,7 +178,7 @@ public class MTreeBelowSGCachedImpl {
 
   /** Only used for load snapshot */
   private MTreeBelowSGCachedImpl(
-      PartialPath databasePath,
+      PartialPath storageGroupPath,
       CachedMTreeStore store,
       Consumer<IMeasurementMNode<ICachedMNode>> measurementProcess,
       Consumer<IDeviceMNode<ICachedMNode>> deviceProcess,
@@ -188,9 +188,9 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     this.store = store;
     this.regionStatistics = regionStatistics;
-    this.databaseMNode = store.getRoot();
-    this.rootNode = store.generatePrefix(databasePath);
-    levelOfSG = databaseMNode.getPartialPath().getNodeLength() - 1;
+    this.storageGroupMNode = store.getRoot();
+    this.rootNode = store.generatePrefix(storageGroupPath);
+    levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
     this.tagGetter = tagGetter;
     this.attributeGetter = attributeGetter;
 
@@ -198,7 +198,7 @@ public class MTreeBelowSGCachedImpl {
     try (MNodeCollector<Void, ICachedMNode> collector =
         new MNodeCollector<Void, ICachedMNode>(
             this.rootNode,
-            new PartialPath(databaseMNode.getFullPath()),
+            new PartialPath(storageGroupMNode.getFullPath()),
             this.store,
             true,
             SchemaConstant.ALL_MATCH_SCOPE) {
@@ -218,7 +218,7 @@ public class MTreeBelowSGCachedImpl {
 
   public void clear() {
     store.clear();
-    databaseMNode = null;
+    storageGroupMNode = null;
   }
 
   public boolean createSnapshot(File snapshotDir) {
@@ -227,7 +227,7 @@ public class MTreeBelowSGCachedImpl {
 
   public static MTreeBelowSGCachedImpl loadFromSnapshot(
       File snapshotDir,
-      String databaseFullPath,
+      String storageGroupFullPath,
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
       SchemaRegionCachedMetric metric,
@@ -238,11 +238,11 @@ public class MTreeBelowSGCachedImpl {
       Runnable flushCallback)
       throws IOException, MetadataException {
     return new MTreeBelowSGCachedImpl(
-        new PartialPath(databaseFullPath),
+        new PartialPath(storageGroupFullPath),
         PBTreeFactory.getInstance()
             .createCachedMTreeStoreFromSnapshot(
                 snapshotDir,
-                databaseFullPath,
+                storageGroupFullPath,
                 schemaRegionId,
                 regionStatistics,
                 metric,
@@ -595,7 +595,7 @@ public class MTreeBelowSGCachedImpl {
     if (nodeNames.length == levelOfSG + 1) {
       return null;
     }
-    ICachedMNode cur = databaseMNode;
+    ICachedMNode cur = storageGroupMNode;
     ICachedMNode child;
     String childName;
     try {
@@ -623,8 +623,8 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     if (deviceParent == null) {
       // device is sg
-      pinMNode(databaseMNode);
-      return databaseMNode;
+      pinMNode(storageGroupMNode);
+      return storageGroupMNode;
     }
     ICachedMNode device = store.getChild(deviceParent, deviceName);
     if (device == null) {
@@ -668,7 +668,7 @@ public class MTreeBelowSGCachedImpl {
    * Used when delete timeseries or deactivate template. The last survived ancestor will be
    * unpinned.
    *
-   * @param entityMNode delete empty InternalMNode from entityMNode to databaseMNode
+   * @param entityMNode delete empty InternalMNode from entityMNode to storageGroupMNode
    */
   private void deleteAndUnpinEmptyInternalMNode(IDeviceMNode<ICachedMNode> entityMNode)
       throws MetadataException {
@@ -832,7 +832,7 @@ public class MTreeBelowSGCachedImpl {
   public ICachedMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException {
     String[] nodeNames = deviceId.getNodes();
     MetaFormatUtils.checkTimeseries(deviceId);
-    ICachedMNode cur = databaseMNode;
+    ICachedMNode cur = storageGroupMNode;
     ICachedMNode child;
     try {
       for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
@@ -985,7 +985,7 @@ public class MTreeBelowSGCachedImpl {
    */
   public ICachedMNode getNodeByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
-    ICachedMNode cur = databaseMNode;
+    ICachedMNode cur = storageGroupMNode;
     ICachedMNode next;
     try {
       for (int i = levelOfSG + 1; i < nodes.length; i++) {
@@ -1166,7 +1166,7 @@ public class MTreeBelowSGCachedImpl {
   public void activateTemplate(PartialPath activatePath, Template template)
       throws MetadataException {
     String[] nodes = activatePath.getNodes();
-    ICachedMNode cur = databaseMNode;
+    ICachedMNode cur = storageGroupMNode;
     ICachedMNode child;
     IDeviceMNode<ICachedMNode> entityMNode;
 
@@ -1213,7 +1213,7 @@ public class MTreeBelowSGCachedImpl {
   public void activateTemplateWithoutCheck(
       PartialPath activatePath, int templateId, boolean isAligned) throws MetadataException {
     String[] nodes = activatePath.getNodes();
-    ICachedMNode cur = databaseMNode;
+    ICachedMNode cur = storageGroupMNode;
     ICachedMNode child;
     IDeviceMNode<ICachedMNode> entityMNode;
 

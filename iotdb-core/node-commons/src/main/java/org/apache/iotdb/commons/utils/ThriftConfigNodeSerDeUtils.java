@@ -67,41 +67,42 @@ public class ThriftConfigNodeSerDeUtils {
     return new TBinaryProtocol(tioStreamTransport);
   }
 
-  public static void serializeTDatabaseSchema(TDatabaseSchema databaseSchema, ByteBuffer buffer) {
+  public static void serializeTDatabaseSchema(
+      TDatabaseSchema storageGroupSchema, ByteBuffer buffer) {
     try {
-      databaseSchema.write(generateWriteProtocol(buffer));
+      storageGroupSchema.write(generateWriteProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TDatabaseSchema failed: ", e);
+      throw new ThriftSerDeException("Write TStorageGroupSchema failed: ", e);
     }
   }
 
   public static TDatabaseSchema deserializeTDatabaseSchema(ByteBuffer buffer) {
-    TDatabaseSchema databaseSchema = new TDatabaseSchema();
+    TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
     try {
-      databaseSchema.read(generateReadProtocol(buffer));
+      storageGroupSchema.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TDatabaseSchema failed: ", e);
+      throw new ThriftSerDeException("Read TStorageGroupSchema failed: ", e);
     }
-    return databaseSchema;
+    return storageGroupSchema;
   }
 
   public static void serializeTDatabaseSchema(
-      TDatabaseSchema databaseSchema, OutputStream outputStream) {
+      TDatabaseSchema storageGroupSchema, OutputStream outputStream) {
     try {
-      databaseSchema.write(generateWriteProtocol(outputStream));
+      storageGroupSchema.write(generateWriteProtocol(outputStream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TDatabaseSchema failed: ", e);
+      throw new ThriftSerDeException("Write TStorageGroupSchema failed: ", e);
     }
   }
 
   public static TDatabaseSchema deserializeTDatabaseSchema(InputStream inputStream) {
-    TDatabaseSchema databaseSchema = new TDatabaseSchema();
+    TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
     try {
-      databaseSchema.read(generateReadProtocol(inputStream));
+      storageGroupSchema.read(generateReadProtocol(inputStream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TDatabaseSchema failed: ", e);
+      throw new ThriftSerDeException("Read TStorageGroupSchema failed: ", e);
     }
-    return databaseSchema;
+    return storageGroupSchema;
   }
 
   public static void serializeTConfigNodeLocation(

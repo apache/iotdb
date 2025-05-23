@@ -59,7 +59,7 @@ import java.util.Map;
 
 public class MemChunkDeserializeTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private String database = "sg1";
+  private String storageGroup = "sg1";
   private String dataRegionId = "1";
 
   private IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("d1");
@@ -229,7 +229,7 @@ public class MemChunkDeserializeTest {
 
   @Test
   public void testAlignedSeries() throws IOException, QueryProcessException, MetadataException {
-    //    IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
+    //    IMemTable memTable = new PrimitiveMemTable(storageGroup, dataRegionId);
     List<String> measurementList = Arrays.asList("s1", "s2", "s3", "s4", "s5", "s6");
     List<IMeasurementSchema> schemaList =
         Arrays.asList(
@@ -299,7 +299,7 @@ public class MemChunkDeserializeTest {
     memChunkGroup.getMemChunkMap().put("s1", memChunk);
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = new HashMap<>();
     memTableMap.put(deviceID, memChunkGroup);
-    IMemTable memTable = new PrimitiveMemTable(database, dataRegionId, memTableMap);
+    IMemTable memTable = new PrimitiveMemTable(storageGroup, dataRegionId, memTableMap);
 
     QueryContext context = new QueryContext();
     NonAlignedFullPath nonAlignedFullPath =
@@ -323,7 +323,7 @@ public class MemChunkDeserializeTest {
         new AlignedWritableMemChunkGroup(memChunk, schemaList, false);
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = new HashMap<>();
     memTableMap.put(deviceID, memChunkGroup);
-    IMemTable memTable = new PrimitiveMemTable(database, dataRegionId, memTableMap);
+    IMemTable memTable = new PrimitiveMemTable(storageGroup, dataRegionId, memTableMap);
 
     QueryContext context = new QueryContext();
     AlignedFullPath alignedFullPath = new AlignedFullPath(deviceID, measurementList, schemaList);

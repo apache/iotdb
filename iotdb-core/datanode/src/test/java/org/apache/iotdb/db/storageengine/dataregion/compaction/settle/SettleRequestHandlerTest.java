@@ -61,7 +61,7 @@ public class SettleRequestHandlerTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private SettleRequestHandler reqHandler;
-  private String database = "root.sg.d1";
+  private String storageGroup = "root.sg.d1";
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
   private String deviceId = "root.sg.d1";
   private String measurementId = "s0";
@@ -76,7 +76,7 @@ public class SettleRequestHandlerTest {
     EnvironmentUtils.envSetUp();
     reqHandler = SettleRequestHandler.getInstance();
     reqHandler.setTestMode(true);
-    dataRegion = new DummyDataRegion(systemDir, database);
+    dataRegion = new DummyDataRegion(systemDir, storageGroup);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
     WALManager.getInstance().start();
     FlushManager.getInstance().start();
@@ -161,8 +161,8 @@ public class SettleRequestHandlerTest {
 
   static class DummyDataRegion extends DataRegion {
 
-    DummyDataRegion(String systemInfoDir, String databaseName) throws DataRegionException {
-      super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), databaseName);
+    DummyDataRegion(String systemInfoDir, String storageGroupName) throws DataRegionException {
+      super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
   }
 }

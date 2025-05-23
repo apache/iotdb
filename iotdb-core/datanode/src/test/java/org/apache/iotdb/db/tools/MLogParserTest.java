@@ -53,7 +53,7 @@ import java.util.Map;
 public class MLogParserTest {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private String[] databases = new String[] {"root.sg0", "root.sg1", "root.sg"};
+  private String[] storageGroups = new String[] {"root.sg0", "root.sg1", "root.sg"};
   private int[] schemaRegionIds = new int[] {0, 1, 2};
 
   /*
@@ -89,9 +89,9 @@ public class MLogParserTest {
   private void prepareData() throws Exception {
     // prepare data
     SchemaEngine schemaEngine = SchemaEngine.getInstance();
-    for (int i = 0; i < databases.length; i++) {
+    for (int i = 0; i < storageGroups.length; i++) {
       SchemaEngine.getInstance()
-          .createSchemaRegion(databases[i], new SchemaRegionId(schemaRegionIds[i]));
+          .createSchemaRegion(storageGroups[i], new SchemaRegionId(schemaRegionIds[i]));
     }
 
     for (int i = 0; i < 2; i++) {
@@ -151,17 +151,17 @@ public class MLogParserTest {
 
     SchemaEngine.getInstance().forceMlog();
 
-    for (int i = 0; i < databases.length; i++) {
-      testParseMLog(databases[i], schemaRegionIds[i], mlogLineNum[i]);
+    for (int i = 0; i < storageGroups.length; i++) {
+      testParseMLog(storageGroups[i], schemaRegionIds[i], mlogLineNum[i]);
     }
   }
 
-  private void testParseMLog(String database, int schemaRegionId, int expectedLineNum)
+  private void testParseMLog(String storageGroup, int schemaRegionId, int expectedLineNum)
       throws IOException {
     testParseLog(
         IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
             + File.separator
-            + database
+            + storageGroup
             + File.separator
             + schemaRegionId
             + File.separator

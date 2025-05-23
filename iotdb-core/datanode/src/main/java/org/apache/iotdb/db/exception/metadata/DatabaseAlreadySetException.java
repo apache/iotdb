@@ -24,16 +24,16 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 public class DatabaseAlreadySetException extends MetadataException {
 
-  private final String databasePath;
+  private final String storageGroupPath;
 
   public DatabaseAlreadySetException(final String path) {
     super(
         String.format("%s has already been created as database", path),
         TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
-    databasePath = path;
+    storageGroupPath = path;
   }
 
-  public String getDatabasePath() {
-    return databasePath;
+  public String getStorageGroupPath() {
+    return storageGroupPath;
   }
 }

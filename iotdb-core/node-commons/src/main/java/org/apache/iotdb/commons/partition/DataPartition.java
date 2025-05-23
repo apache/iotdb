@@ -47,7 +47,7 @@ public class DataPartition extends Partition {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataPartition.class);
   public static final TRegionReplicaSet NOT_ASSIGNED = new TRegionReplicaSet();
-  // Map<Database, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionMessage>>>>
+  // Map<StorageGroup, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionMessage>>>>
   private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
       dataPartitionMap;
 
@@ -97,16 +97,16 @@ public class DataPartition extends Partition {
 
   public List<List<TTimePartitionSlot>> getTimePartitionRange(
       IDeviceID deviceID, Filter timeFilter) {
-    String database = getDatabaseNameByDevice(deviceID);
+    String storageGroup = getDatabaseNameByDevice(deviceID);
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
-    if (!dataPartitionMap.containsKey(database)
-        || !dataPartitionMap.get(database).containsKey(seriesPartitionSlot)) {
+    if (!dataPartitionMap.containsKey(storageGroup)
+        || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
       return Collections.emptyList();
     }
 
     List<List<TTimePartitionSlot>> res = new ArrayList<>();
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> map =
-        dataPartitionMap.get(database).get(seriesPartitionSlot);
+        dataPartitionMap.get(storageGroup).get(seriesPartitionSlot);
     List<TTimePartitionSlot> timePartitionSlotList =
         map.keySet().stream()
             .filter(key -> TimePartitionUtils.satisfyPartitionStartTime(timeFilter, key.startTime))
@@ -140,13 +140,13 @@ public class DataPartition extends Partition {
 
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
       final IDeviceID deviceId, final Filter timeFilter) {
-    final String database = getDatabaseNameByDevice(deviceId);
+    final String storageGroup = getDatabaseNameByDevice(deviceId);
     final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceId);
-    if (!dataPartitionMap.containsKey(database)
-        || !dataPartitionMap.get(database).containsKey(seriesPartitionSlot)) {
+    if (!dataPartitionMap.containsKey(storageGroup)
+        || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
       return Collections.singletonList(NOT_ASSIGNED);
     }
-    return dataPartitionMap.get(database).get(seriesPartitionSlot).entrySet().stream()
+    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
         .filter(
             entry ->
                 TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime))
@@ -180,9 +180,9 @@ public class DataPartition extends Partition {
 
   public List<TRegionReplicaSet> getDataRegionReplicaSet(
       final IDeviceID deviceID, final TTimePartitionSlot tTimePartitionSlot) {
-    final String database = getDatabaseNameByDevice(deviceID);
+    final String storageGroup = getDatabaseNameByDevice(deviceID);
     final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dbMap =
-        dataPartitionMap.get(database);
+        dataPartitionMap.get(storageGroup);
     if (dbMap == null) {
       return Collections.singletonList(NOT_ASSIGNED);
     }
@@ -265,9 +265,9 @@ public class DataPartition extends Partition {
   }
 
   private String getDatabaseNameByDevice(IDeviceID deviceID) {
-    for (String database : dataPartitionMap.keySet()) {
-      if (PathUtils.isStartWith(deviceID, database)) {
-        return database;
+    for (String storageGroup : dataPartitionMap.keySet()) {
+      if (PathUtils.isStartWith(deviceID, storageGroup)) {
+        return storageGroup;
       }
     }
     // TODO: (xingtanzjr) how to handle this exception in IoTDB
@@ -279,7 +279,7 @@ public class DataPartition extends Partition {
     Map<TRegionReplicaSet, RegionReplicaSetInfo> distributionMap = new HashMap<>();
 
     dataPartitionMap.forEach(
-        (database, partition) -> {
+        (storageGroup, partition) -> {
           List<TRegionReplicaSet> ret =
               partition.entrySet().stream()
                   .flatMap(
@@ -288,7 +288,7 @@ public class DataPartition extends Partition {
           for (TRegionReplicaSet regionReplicaSet : ret) {
             distributionMap
                 .computeIfAbsent(regionReplicaSet, RegionReplicaSetInfo::new)
-                .setDatabase(database);
+                .setStorageGroup(storageGroup);
           }
         });
     return new ArrayList<>(distributionMap.values());

@@ -1435,17 +1435,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSStatus setDatabase(long sessionId, String database) {
+  public TSStatus setStorageGroup(long sessionId, String storageGroup) {
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInStatus();
       }
 
-      // Step 1: Create SetDatabaseStatement
-      DatabaseSchemaStatement statement = StatementGenerator.createStatement(database);
+      // Step 1: Create SetStorageGroupStatement
+      DatabaseSchemaStatement statement = StatementGenerator.createStatement(storageGroup);
       if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("create database %s", database), statement);
+        AuditLogger.log(String.format("create database %s", storageGroup), statement);
       }
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
@@ -1625,7 +1625,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      // Step 1: transfer from DeleteDatabasesReq to Statement
+      // Step 1: transfer from DeleteStorageGroupsReq to Statement
       DeleteTimeSeriesStatement statement =
           StatementGenerator.createDeleteTimeSeriesStatement(path);
 
@@ -1658,18 +1658,18 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSStatus deleteDatabases(long sessionId, List<String> databases) {
+  public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroups) {
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInStatus();
       }
 
-      // Step 1: transfer from DeleteDatabasesReq to Statement
-      DeleteDatabaseStatement statement = StatementGenerator.createStatement(databases);
+      // Step 1: transfer from DeleteStorageGroupsReq to Statement
+      DeleteDatabaseStatement statement = StatementGenerator.createStatement(storageGroups);
 
       if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("delete databases: %s", databases), statement);
+        AuditLogger.log(String.format("delete databases: %s", storageGroups), statement);
       }
 
       // permission check

@@ -36,7 +36,7 @@ import java.util.Map;
 // TODO: Remove this class
 public class SchemaPartition extends Partition {
 
-  // Map<Database, Map<TSeriesPartitionSlot, TSchemaRegionPlaceInfo>>
+  // Map<StorageGroup, Map<TSeriesPartitionSlot, TSchemaRegionPlaceInfo>>
   private Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap;
 
   public SchemaPartition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
@@ -85,19 +85,19 @@ public class SchemaPartition extends Partition {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
-    final String database = getDatabaseByDevice(deviceID);
+    final String storageGroup = getStorageGroupByDevice(deviceID);
     final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
-    if (schemaPartitionMap.get(database) == null) {
+    if (schemaPartitionMap.get(storageGroup) == null) {
       throw new RuntimeException(
           new IoTDBException("Path does not exist. ", TSStatusCode.PATH_NOT_EXIST.getStatusCode()));
     }
-    return schemaPartitionMap.get(database).get(seriesPartitionSlot);
+    return schemaPartitionMap.get(storageGroup).get(seriesPartitionSlot);
   }
 
-  private String getDatabaseByDevice(final IDeviceID deviceID) {
-    for (final String database : schemaPartitionMap.keySet()) {
-      if (PathUtils.isStartWith(deviceID, database)) {
-        return database;
+  private String getStorageGroupByDevice(final IDeviceID deviceID) {
+    for (final String storageGroup : schemaPartitionMap.keySet()) {
+      if (PathUtils.isStartWith(deviceID, storageGroup)) {
+        return storageGroup;
       }
     }
     // TODO: (xingtanzjr) how to handle this exception in IoTDB
@@ -108,11 +108,11 @@ public class SchemaPartition extends Partition {
   public List<RegionReplicaSetInfo> getDistributionInfo() {
     Map<TRegionReplicaSet, RegionReplicaSetInfo> distributionMap = new HashMap<>();
     schemaPartitionMap.forEach(
-        (database, partition) -> {
+        (storageGroup, partition) -> {
           for (TRegionReplicaSet regionReplicaSet : partition.values()) {
             distributionMap
                 .computeIfAbsent(regionReplicaSet, RegionReplicaSetInfo::new)
-                .setDatabase(database);
+                .setStorageGroup(storageGroup);
           }
         });
     return new ArrayList<>(distributionMap.values());

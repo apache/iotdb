@@ -1702,30 +1702,30 @@ void Session::deleteData(const vector<string>& paths, int64_t startTime, int64_t
     defaultSessionConnection_->deleteData(req);
 }
 
-void Session::setDatabase(const string& databaseId) {
-    defaultSessionConnection_->setDatabase(databaseId);
+void Session::setStorageGroup(const string& storageGroupId) {
+    defaultSessionConnection_->setStorageGroup(storageGroupId);
 }
 
-void Session::deleteDatabase(const string& database) {
-    vector<string> databases;
-    databases.push_back(database);
-    deleteDatabases(databases);
+void Session::deleteStorageGroup(const string& storageGroup) {
+    vector<string> storageGroups;
+    storageGroups.push_back(storageGroup);
+    deleteStorageGroups(storageGroups);
 }
 
-void Session::deleteDatabases(const vector<string>& databases) {
-    defaultSessionConnection_->deleteDatabases(databases);
+void Session::deleteStorageGroups(const vector<string>& storageGroups) {
+    defaultSessionConnection_->deleteStorageGroups(storageGroups);
 }
 
 void Session::createDatabase(const string& database) {
-    this->setDatabase(database);
+    this->setStorageGroup(database);
 }
 
 void Session::deleteDatabase(const string& database) {
-    this->deleteDatabases(vector<string>{database});
+    this->deleteStorageGroups(vector<string>{database});
 }
 
 void Session::deleteDatabases(const vector<string>& databases) {
-    this->deleteDatabases(databases);
+    this->deleteStorageGroups(databases);
 }
 
 void Session::createTimeseries(const string& path,

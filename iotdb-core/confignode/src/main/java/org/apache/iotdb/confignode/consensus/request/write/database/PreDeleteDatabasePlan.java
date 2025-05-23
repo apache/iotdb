@@ -29,25 +29,25 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PreDeleteDatabasePlan extends ConfigPhysicalPlan {
-  private String database;
+  private String storageGroup;
   private PreDeleteType preDeleteType;
 
   public PreDeleteDatabasePlan() {
     super(ConfigPhysicalPlanType.PreDeleteDatabase);
   }
 
-  public PreDeleteDatabasePlan(String database, PreDeleteType preDeleteType) {
+  public PreDeleteDatabasePlan(String storageGroup, PreDeleteType preDeleteType) {
     this();
-    this.database = database;
+    this.storageGroup = storageGroup;
     this.preDeleteType = preDeleteType;
   }
 
-  public String getDatabase() {
-    return database;
+  public String getStorageGroup() {
+    return storageGroup;
   }
 
-  public void setDatabase(String database) {
-    this.database = database;
+  public void setStorageGroup(String storageGroup) {
+    this.storageGroup = storageGroup;
   }
 
   public PreDeleteType getPreDeleteType() {
@@ -57,13 +57,13 @@ public class PreDeleteDatabasePlan extends ConfigPhysicalPlan {
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(database, stream);
+    BasicStructureSerDeUtil.write(storageGroup, stream);
     stream.write(preDeleteType.getType());
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.database = BasicStructureSerDeUtil.readString(buffer);
+    this.storageGroup = BasicStructureSerDeUtil.readString(buffer);
     this.preDeleteType = buffer.get() == (byte) 1 ? PreDeleteType.ROLLBACK : PreDeleteType.EXECUTE;
   }
 
@@ -79,12 +79,12 @@ public class PreDeleteDatabasePlan extends ConfigPhysicalPlan {
       return false;
     }
     PreDeleteDatabasePlan that = (PreDeleteDatabasePlan) o;
-    return database.equals(that.database) && preDeleteType == that.preDeleteType;
+    return storageGroup.equals(that.storageGroup) && preDeleteType == that.preDeleteType;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), database, preDeleteType);
+    return Objects.hash(super.hashCode(), storageGroup, preDeleteType);
   }
 
   public enum PreDeleteType {
