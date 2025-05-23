@@ -115,7 +115,8 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
         event instanceof EnrichedEvent ? ((EnrichedEvent) event).getReplicateIndexForIoTV2() : null,
         exception);
 
-    connector.addFailureEventToRetryQueue(event);
+    // IoTV2 ensures that only use PipeInsertionEvent, which is definitely EnrichedEvent.
+    connector.addFailureEventToRetryQueue((EnrichedEvent) event);
     metric.recordRetryCounter();
   }
 }
