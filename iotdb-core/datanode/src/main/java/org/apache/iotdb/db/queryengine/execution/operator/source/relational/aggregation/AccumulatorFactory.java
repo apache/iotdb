@@ -22,6 +22,11 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.execution.aggregation.VarianceAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.BinaryGroupedApproxMostFrequentAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.BlobGroupedApproxMostFrequentAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.BooleanGroupedApproxMostFrequentAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.DoubleGroupedApproxMostFrequentAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.FloatGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedApproxCountDistinctAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
@@ -41,6 +46,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedSumAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedUserDefinedAggregateAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedVarianceAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.IntGroupedApproxMostFrequentAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.LongGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -57,6 +64,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -246,6 +254,8 @@ public class AccumulatorFactory {
             inputDataTypes.get(0), VarianceAccumulator.VarianceType.VAR_POP);
       case APPROX_COUNT_DISTINCT:
         return new GroupedApproxCountDistinctAccumulator(inputDataTypes.get(0));
+      case APPROX_MOST_FREQUENT:
+        return getGroupedApproxMostFrequentAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -313,8 +323,60 @@ public class AccumulatorFactory {
             inputDataTypes.get(0), VarianceAccumulator.VarianceType.VAR_POP);
       case APPROX_COUNT_DISTINCT:
         return new ApproxCountDistinctAccumulator(inputDataTypes.get(0));
+      case APPROX_MOST_FREQUENT:
+        return getApproxMostFrequentAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
+    }
+  }
+
+  public static GroupedAccumulator getGroupedApproxMostFrequentAccumulator(TSDataType type) {
+    switch (type) {
+      case BOOLEAN:
+        return new BooleanGroupedApproxMostFrequentAccumulator();
+      case INT32:
+      case DATE:
+        return new IntGroupedApproxMostFrequentAccumulator();
+      case INT64:
+      case TIMESTAMP:
+        return new LongGroupedApproxMostFrequentAccumulator();
+      case FLOAT:
+        return new FloatGroupedApproxMostFrequentAccumulator();
+      case DOUBLE:
+        return new DoubleGroupedApproxMostFrequentAccumulator();
+      case TEXT:
+      case STRING:
+        return new BinaryGroupedApproxMostFrequentAccumulator();
+      case BLOB:
+        return new BlobGroupedApproxMostFrequentAccumulator();
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s", type));
+    }
+  }
+
+  public static TableAccumulator getApproxMostFrequentAccumulator(TSDataType type) {
+    switch (type) {
+      case BOOLEAN:
+        return new BooleanApproxMostFrequentAccumulator();
+      case INT32:
+      case DATE:
+        return new IntApproxMostFrequentAccumulator();
+      case INT64:
+      case TIMESTAMP:
+        return new LongApproxMostFrequentAccumulator();
+      case FLOAT:
+        return new FloatApproxMostFrequentAccumulator();
+      case DOUBLE:
+        return new DoubleApproxMostFrequentAccumulator();
+      case TEXT:
+      case STRING:
+        return new BinaryApproxMostFrequentAccumulator();
+      case BLOB:
+        return new BlobApproxMostFrequentAccumulator();
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s", type));
     }
   }
 

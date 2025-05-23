@@ -273,6 +273,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSe
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName.mapIdentifier;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
@@ -2977,11 +2978,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               || arguments.get(1) instanceof StringLiteral)) {
         throw new SemanticException(
             "The second argument of 'approx_count_distinct' function must be a literal");
+      } else if (name.toString().equalsIgnoreCase(APPROX_MOST_FREQUENT)) {
+        //        if (arguments.size() == 3
+        //            && !(arguments.get(0) instanceof DoubleLiteral
+        //                || arguments.get(0) instanceof LongLiteral
+        //                || arguments.get(0) instanceof StringLiteral)) {
+        //          throw new SemanticException(
+        //              "The third argument of 'approx_most_frequent' function must be a literal");
+        //        }
       }
     }
 
     return new FunctionCall(getLocation(ctx), name, distinct, arguments);
   }
+
+  public void isLiteral() {}
 
   @Override
   public Node visitDateBinGapFill(RelationalSqlParser.DateBinGapFillContext ctx) {
