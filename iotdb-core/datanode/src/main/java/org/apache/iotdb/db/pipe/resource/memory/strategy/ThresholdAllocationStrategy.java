@@ -33,16 +33,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 // relatively large memory share is released
 public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrategy {
 
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
+
   @Override
   public void dynamicallyAdjustMemory(final PipeDynamicMemoryBlock dynamicMemoryBlock) {
     final double deficitRatio = calculateDeficitRatio(dynamicMemoryBlock);
     final long oldMemoryUsageInBytes = dynamicMemoryBlock.getMemoryUsageInBytes();
     final long expectedMemory = (long) (oldMemoryUsageInBytes / deficitRatio);
+    final double memoryBlockUsageRatio = dynamicMemoryBlock.getMemoryBlockUsageRatio();
     final long maximumMemoryIncrease =
         (long)
             (dynamicMemoryBlock.getFixedMemoryCapacity()
-                * PipeConfig.getInstance()
-                    .getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio());
+                * PIPE_CONFIG.getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio());
 
     // Avoid overflow and infinite values
     if (deficitRatio <= 0.0 || oldMemoryUsageInBytes == 0 || expectedMemory == 0) {
@@ -56,16 +58,15 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
     // No matter what, give priority to applying for memory use, and adjust the memory size when the
     // memory is insufficient
     final double lowUsageThreshold =
-        PipeConfig.getInstance().getPipeThresholdAllocationStrategyLowUsageThreshold();
+        PIPE_CONFIG.getPipeThresholdAllocationStrategyLowUsageThreshold();
     if (dynamicMemoryBlock.getFixedMemoryBlockUsageRatio()
-        < PipeConfig.getInstance()
-            .getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold()) {
+        < PIPE_CONFIG.getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold()) {
       final long maxAvailableMemory =
           Math.min(expectedMemory, dynamicMemoryBlock.canAllocateMemorySize());
       long newMemoryRequest;
 
       // Need to ensure that you get memory in smaller chunks and get more memory faster
-      if (dynamicMemoryBlock.getMemoryBlockUsageRatio() > lowUsageThreshold) {
+      if (memoryBlockUsageRatio > lowUsageThreshold) {
         newMemoryRequest =
             Math.min(oldMemoryUsageInBytes + oldMemoryUsageInBytes / 2, maxAvailableMemory);
       } else {
@@ -96,8 +97,7 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
             .average()
             .orElse(1.0);
 
-    final double adjustmentThreshold =
-        PipeConfig.getInstance().getPipeDynamicMemoryAdjustmentThreshold();
+    final double adjustmentThreshold = PIPE_CONFIG.getPipeDynamicMemoryAdjustmentThreshold();
     // When memory is insufficient, try to ensure that smaller memory blocks apply for less memory,
     // and larger memory blocks release more memory.
     final double diff =
@@ -105,7 +105,7 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
             ? averageDeficitRatio - deficitRatio - adjustmentThreshold
             : averageDeficitRatio - deficitRatio;
 
-    if (Math.abs(diff) > PipeConfig.getInstance().getPipeDynamicMemoryAdjustmentThreshold()) {
+    if (Math.abs(diff) > PIPE_CONFIG.getPipeDynamicMemoryAdjustmentThreshold()) {
       final long mem = (long) ((dynamicMemoryBlock.getMemoryUsageInBytes() / deficitRatio) * diff);
       dynamicMemoryBlock.applyForDynamicMemory(dynamicMemoryBlock.getMemoryUsageInBytes() + mem);
       if (oldMemoryUsageInBytes != dynamicMemoryBlock.getMemoryUsageInBytes()) {
@@ -113,7 +113,9 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
             dynamicMemoryBlock.getMemoryUsageInBytes() / (double) expectedMemory;
         dynamicMemoryBlock.updateMemoryEfficiency(efficiencyRatio, efficiencyRatio);
       }
-    } else if (dynamicMemoryBlock.getMemoryBlockUsageRatio() > lowUsageThreshold) {
+    } else if (memoryBlockUsageRatio > lowUsageThreshold
+        && memoryBlockUsageRatio > dynamicMemoryBlock.getExpectedAverageAllocatedMemorySize()) {
+      // If there is insufficient memory, some memory must be released
       dynamicMemoryBlock.applyForDynamicMemory(oldMemoryUsageInBytes / 2);
       dynamicMemoryBlock.updateMemoryEfficiency(deficitRatio / 2, deficitRatio / 2);
     }
@@ -121,8 +123,7 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
 
   private double calculateDeficitRatio(final PipeDynamicMemoryBlock block) {
     final Pair<Double, Double> memoryEfficiency = block.getMemoryEfficiency();
-    double pipeDynamicMemoryHistoryWeight =
-        PipeConfig.getInstance().getPipeDynamicMemoryHistoryWeight();
+    double pipeDynamicMemoryHistoryWeight = PIPE_CONFIG.getPipeDynamicMemoryHistoryWeight();
     return (1 - pipeDynamicMemoryHistoryWeight) * memoryEfficiency.getRight()
         + pipeDynamicMemoryHistoryWeight * memoryEfficiency.getLeft();
   }

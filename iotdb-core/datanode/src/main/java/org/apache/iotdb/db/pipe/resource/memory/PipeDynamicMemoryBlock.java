@@ -83,6 +83,10 @@ public class PipeDynamicMemoryBlock {
     return fixedMemoryBlock.getMemoryUsageInBytes() - fixedMemoryBlock.getMemoryAllocatedInBytes();
   }
 
+  public synchronized long getExpectedAverageAllocatedMemorySize() {
+    return fixedMemoryBlock.getMemoryUsageInBytes() / fixedMemoryBlock.getMemoryBlocks().size();
+  }
+
   public void updateCurrentMemoryEfficiencyAdjustMem(double currentMemoryEfficiency) {
     synchronized (fixedMemoryBlock) {
       this.historyMemoryEfficiency = this.currentMemoryEfficiency;
