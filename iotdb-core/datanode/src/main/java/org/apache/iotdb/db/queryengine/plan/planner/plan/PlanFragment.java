@@ -58,7 +58,7 @@ public class PlanFragment {
 
   // indicate whether this PlanFragment is the root of the whole Fragment-Plan-Tree or not
   private boolean isRoot;
-  private int indexInFragmentInstanceList;
+  private int indexInFragmentInstanceList = -1;
 
   public PlanFragment(PlanFragmentId id, PlanNode planNodeTree) {
     this.id = id;
