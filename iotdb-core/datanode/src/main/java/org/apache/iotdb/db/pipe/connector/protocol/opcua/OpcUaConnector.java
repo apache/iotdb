@@ -99,7 +99,12 @@ public class OpcUaConnector implements PipeConnector {
             SINK_OPC_UA_MODEL_KEY,
             true,
             CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE,
-            CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE);
+            CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE)
+        .validateSynonymAttributes(
+            Arrays.asList(CONNECTOR_IOTDB_USER_KEY, SINK_IOTDB_USER_KEY),
+            Arrays.asList(CONNECTOR_IOTDB_USERNAME_KEY, SINK_IOTDB_USERNAME_KEY),
+            false);
+    ;
   }
 
   @Override
