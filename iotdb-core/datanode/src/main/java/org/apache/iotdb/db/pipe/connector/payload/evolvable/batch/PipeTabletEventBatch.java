@@ -127,11 +127,9 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       throws WALPipeException, IOException;
 
   public boolean shouldEmit() {
-    final long currentTimeMillis = System.currentTimeMillis();
-    if (totalBufferSize >= getMaxBatchSizeInBytes()
-        || currentTimeMillis - firstEventProcessingTime >= maxDelayInMs) {
-      allocatedMemoryBlock.updateCurrentMemoryEfficiencyAdjustMem(
-          (double) firstEventProcessingTime / currentTimeMillis);
+    final long diff = System.currentTimeMillis() - firstEventProcessingTime;
+    if (totalBufferSize >= getMaxBatchSizeInBytes() || diff >= maxDelayInMs) {
+      allocatedMemoryBlock.updateCurrentMemoryEfficiencyAdjustMem((double) diff / maxDelayInMs);
       return true;
     }
     return false;

@@ -103,13 +103,13 @@ public class PipeMemoryManager {
 
   public long getAllocatedMemorySizeInBytesOfWAL() {
     return (long)
-        (PipeConfig.getInstance().getPipeDataStructureWalMemoryProportion()
+        (PIPE_CONFIG.getPipeDataStructureWalMemoryProportion()
             * getTotalNonFloatingMemorySizeInBytes());
   }
 
   public long getAllocatedMemorySizeInBytesOfBatch() {
     return (long)
-        (PipeConfig.getInstance().getPipeDataStructureBatchMemoryProportion()
+        (PIPE_CONFIG.getPipeDataStructureBatchMemoryProportion()
             * getTotalNonFloatingMemorySizeInBytes());
   }
 

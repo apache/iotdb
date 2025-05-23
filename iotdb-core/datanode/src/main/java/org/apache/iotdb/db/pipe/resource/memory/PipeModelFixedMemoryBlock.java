@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.resource.memory;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.resource.memory.strategy.DynamicMemoryAllocationStrategy;
 
 import java.util.Collections;
@@ -62,7 +61,7 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
   public synchronized boolean expand() {
     // Ensure that the memory block that gets most of the memory is released first, which can reduce
     // the jitter of memory allocationIf the memory block is not expanded, it will not be expanded
-    // again
+    // again.This function not only completes the expansion but also the reduction.
     memoryBlocks.stream()
         .sorted((a, b) -> Long.compare(b.getMemoryUsageInBytes(), a.getMemoryUsageInBytes()))
         .forEach(PipeDynamicMemoryBlock::doExpand);
@@ -73,7 +72,6 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
     return memoryAllocatedInBytes;
   }
 
-  @TestOnly
   public synchronized Set<PipeDynamicMemoryBlock> getMemoryBlocks() {
     return memoryBlocks;
   }
