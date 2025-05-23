@@ -996,6 +996,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             : new HashMap<>();
 
     withAttributes.forEach(LoadTsFileConfigurator::validateParameters);
+    LoadTsFileConfigurator.validateSynonymParameters(withAttributes);
     return new LoadTsFile(
         getLocation(ctx), ((StringLiteral) visit(ctx.fileName)).getValue(), withAttributes);
   }
