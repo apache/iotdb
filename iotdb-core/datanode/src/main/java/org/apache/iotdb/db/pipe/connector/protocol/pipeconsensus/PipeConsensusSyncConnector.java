@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer;
 import org.apache.iotdb.commons.client.sync.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response.PipeConsensusTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
@@ -53,7 +54,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -146,11 +146,11 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
         pipeConsensusConnectorMetrics.recordRetryWALTransferTimer(duration);
       }
     } catch (final Exception e) {
-      throw new PipeConnectionException(
+      throw new PipeRuntimeConnectorRetryTimesConfigurableException(
           String.format(
               "Failed to transfer tablet insertion event %s, because %s.",
               tabletInsertionEvent, e.getMessage()),
-          e);
+          Integer.MAX_VALUE);
     }
   }
 
@@ -169,11 +169,11 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
       final long duration = System.nanoTime() - startTime;
       pipeConsensusConnectorMetrics.recordRetryTsFileTransferTimer(duration);
     } catch (Exception e) {
-      throw new PipeConnectionException(
+      throw new PipeRuntimeConnectorRetryTimesConfigurableException(
           String.format(
               "Failed to transfer tsfile insertion event %s, because %s.",
               tsFileInsertionEvent, e.getMessage()),
-          e);
+          Integer.MAX_VALUE);
     }
   }
 
@@ -215,14 +215,14 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
 
       tabletBatchBuilder.onSuccess();
     } catch (final Exception e) {
-      throw new PipeConnectionException(
+      throw new PipeRuntimeConnectorRetryTimesConfigurableException(
           String.format(
               PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT,
               getFollowerUrl().getIp(),
               getFollowerUrl().getPort(),
               TABLET_BATCH_SCENARIO,
               e.getMessage()),
-          e);
+          Integer.MAX_VALUE);
     }
   }
 
@@ -265,14 +265,14 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                   progressIndex,
                   thisDataNodeId));
     } catch (final Exception e) {
-      throw new PipeConnectionException(
+      throw new PipeRuntimeConnectorRetryTimesConfigurableException(
           String.format(
               PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT,
               getFollowerUrl().getIp(),
               getFollowerUrl().getPort(),
               DELETION_SCENARIO,
               e.getMessage()),
-          e);
+          Integer.MAX_VALUE);
     }
 
     final TSStatus status = resp.getStatus();
@@ -344,14 +344,14 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                     thisDataNodeId));
       }
     } catch (final Exception e) {
-      throw new PipeConnectionException(
+      throw new PipeRuntimeConnectorRetryTimesConfigurableException(
           String.format(
               PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT,
               getFollowerUrl().getIp(),
               getFollowerUrl().getPort(),
               TABLET_INSERTION_NODE_SCENARIO,
               e.getMessage()),
-          e);
+          Integer.MAX_VALUE);
     }
 
     final TSStatus status = resp.getStatus();
@@ -418,14 +418,14 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                     thisDataNodeId));
       }
     } catch (final Exception e) {
-      throw new PipeConnectionException(
+      throw new PipeRuntimeConnectorRetryTimesConfigurableException(
           String.format(
               PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT,
               getFollowerUrl().getIp(),
               getFollowerUrl().getPort(),
               TSFILE_SCENARIO,
               e.getMessage()),
-          e);
+          Integer.MAX_VALUE);
     }
 
     final TSStatus status = resp.getStatus();
@@ -483,10 +483,10 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                               tConsensusGroupId,
                               thisDataNodeId)));
         } catch (Exception e) {
-          throw new PipeConnectionException(
+          throw new PipeRuntimeConnectorRetryTimesConfigurableException(
               String.format(
                   "Network error when transfer file %s, because %s.", file, e.getMessage()),
-              e);
+              Integer.MAX_VALUE);
         }
 
         position += readLength;
