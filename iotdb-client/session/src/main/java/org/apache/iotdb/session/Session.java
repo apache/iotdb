@@ -56,6 +56,8 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.rpccompress.RpcCompressor;
+import org.apache.iotdb.session.rpccompress.encoder.RpcEncoder;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
@@ -217,6 +219,9 @@ public class Session implements ISession {
 
   protected static final String TABLE = "table";
   protected static final String TREE = "tree";
+
+  private CompressionType compressionType;
+  public Map<TSDataType, TSEncoding> columnEncodersMap;
 
   public Session(String host, int rpcPort) {
     this(
@@ -449,6 +454,9 @@ public class Session implements ISession {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
       this.enableQueryRedirection = builder.enableRedirection;
     }
+    this.enableRPCCompression = builder.isCompressed;
+    this.compressionType = builder.compressionType;
+    this.columnEncodersMap = builder.columnEncodersMap;
     this.enableRedirection = builder.enableRedirection;
     this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
     this.username = builder.username;
@@ -2812,6 +2820,7 @@ public class Session implements ISession {
     SessionConnection connection = entry.getKey();
     Tablet tablet = entry.getValue();
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
+    request.setCompressType(this.compressionType.ordinal());
     request.setWriteToTable(true);
     request.setColumnCategories(
         tablet.getColumnTypes().stream().map(t -> (byte) t.ordinal()).collect(Collectors.toList()));
@@ -2976,8 +2985,24 @@ public class Session implements ISession {
 
     request.setPrefixPath(tablet.getDeviceId());
     request.setIsAligned(isAligned);
-    request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
-    request.setValues(SessionUtils.getValueBuffer(tablet));
+
+    if (this.enableRPCCompression) {
+      request.setIsCompressed(true);
+      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+        if (measurementSchema.getMeasurementName() == null) {
+          throw new IllegalArgumentException("measurement should be non null value");
+        }
+        request.addToEncodingTypes(
+            this.columnEncodersMap.get(measurementSchema.getType()).ordinal());
+      }
+      RpcEncoder rpcEncoder = new RpcEncoder(this.columnEncodersMap);
+      RpcCompressor rpcCompressor = new RpcCompressor(this.compressionType);
+      request.setTimestamps(rpcCompressor.compress(rpcEncoder.encodeTimestamps(tablet)));
+      request.setValues(rpcCompressor.compress(rpcEncoder.encodeValues(tablet)));
+    } else {
+      request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
+      request.setValues(SessionUtils.getValueBuffer(tablet));
+    }
     request.setSize(tablet.getRowSize());
     return request;
   }
