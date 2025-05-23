@@ -43,6 +43,8 @@ import java.sql.Statement;
 import java.text.DateFormat;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -619,16 +621,19 @@ public class TestUtils {
   }
 
   public static void assertResultSetEqual(
-      ResultSet actualResultSet, String expectedHeader, Set<String> expectedRetSet) {
+      final ResultSet actualResultSet,
+      final String expectedHeader,
+      final Collection<String> expectedResult) {
     try {
-      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
-      StringBuilder header = new StringBuilder();
+      final ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+      final StringBuilder header = new StringBuilder();
       for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
         header.append(resultSetMetaData.getColumnName(i)).append(",");
       }
       assertEquals(expectedHeader, header.toString());
 
-      Set<String> actualRetSet = new HashSet<>();
+      final Collection<String> actualRetSet =
+          expectedResult instanceof Set ? new HashSet<>() : new ArrayList<>();
 
       while (actualResultSet.next()) {
         StringBuilder builder = new StringBuilder();
@@ -637,8 +642,8 @@ public class TestUtils {
         }
         actualRetSet.add(builder.toString());
       }
-      assertEquals(expectedRetSet, actualRetSet);
-    } catch (Exception e) {
+      assertEquals(expectedResult, actualRetSet);
+    } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));
     }
