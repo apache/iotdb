@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.QuerySchemaFetchFailedException;
 import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.DatabaseNotReadyException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
+import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.ainode.ModelException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
@@ -140,7 +140,7 @@ public class ErrorHandlingUtils {
   private static TSStatus tryCatchQueryException(Exception e) {
     Throwable rootCause = getRootCause(e);
     // ignore logging sg not ready exception
-    if (rootCause instanceof DatabaseNotReadyException) {
+    if (rootCause instanceof StorageGroupNotReadyException) {
       return RpcUtils.getStatus(TSStatusCode.STORAGE_ENGINE_NOT_READY, rootCause.getMessage());
     }
 
@@ -213,7 +213,7 @@ public class ErrorHandlingUtils {
     } else if (e instanceof IoTDBException) {
       Throwable rootCause = getRootCause(e);
       // ignore logging sg not ready exception
-      if (!(rootCause instanceof DatabaseNotReadyException)) {
+      if (!(rootCause instanceof StorageGroupNotReadyException)) {
         LOGGER.warn(message, e);
       }
       return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), rootCause.getMessage());

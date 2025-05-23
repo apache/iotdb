@@ -610,7 +610,7 @@ public class IoTDBConfig {
   private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
   /** Database level when creating schema automatically is enabled */
-  private int defaultDatabaseLevel = 1;
+  private int defaultStorageGroupLevel = 1;
 
   /** BOOLEAN encoding when creating schema automatically is enabled */
   private TSEncoding defaultBooleanEncoding = TSEncoding.RLE;
@@ -2219,23 +2219,24 @@ public class IoTDBConfig {
     this.nanStringInferType = nanStringInferType;
   }
 
-  public int getDefaultDatabaseLevel() {
-    return defaultDatabaseLevel;
+  public int getDefaultStorageGroupLevel() {
+    return defaultStorageGroupLevel;
   }
 
-  void setDefaultDatabaseLevel(int defaultDatabaseLevel, boolean startUp) {
-    if (defaultDatabaseLevel < 1) {
+  void setDefaultStorageGroupLevel(int defaultStorageGroupLevel, boolean startUp) {
+    if (defaultStorageGroupLevel < 1) {
       if (startUp) {
         logger.warn(
-            "Illegal defaultDatabaseLevel: {}, should >= 1, use default value 1",
-            defaultDatabaseLevel);
-        defaultDatabaseLevel = 1;
+            "Illegal defaultStorageGroupLevel: {}, should >= 1, use default value 1",
+            defaultStorageGroupLevel);
+        defaultStorageGroupLevel = 1;
       } else {
         throw new IllegalArgumentException(
-            String.format("Illegal defaultDatabaseLevel: %d, should >= 1", defaultDatabaseLevel));
+            String.format(
+                "Illegal defaultStorageGroupLevel: %d, should >= 1", defaultStorageGroupLevel));
       }
     }
-    this.defaultDatabaseLevel = defaultDatabaseLevel;
+    this.defaultStorageGroupLevel = defaultStorageGroupLevel;
   }
 
   public TSEncoding getDefaultBooleanEncoding() {

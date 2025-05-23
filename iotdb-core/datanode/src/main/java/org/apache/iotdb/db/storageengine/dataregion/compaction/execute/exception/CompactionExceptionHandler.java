@@ -45,7 +45,7 @@ public class CompactionExceptionHandler {
 
   @SuppressWarnings("squid:S107")
   public static void handleException(
-      String fullDatabaseName,
+      String fullStorageGroupName,
       File logFile,
       List<TsFileResource> targetResourceList,
       List<TsFileResource> seqResourceList,
@@ -66,7 +66,7 @@ public class CompactionExceptionHandler {
           "{} [Compaction][ExceptionHandler] {} space compaction start handling exception, "
               + "source seqFiles is {}, "
               + "source unseqFiles is {}.",
-          fullDatabaseName,
+          fullStorageGroupName,
           compactionType,
           seqResourceList,
           unseqResourceList);
@@ -88,7 +88,7 @@ public class CompactionExceptionHandler {
                 tsFileManager,
                 timePartition,
                 isTargetSequence,
-                fullDatabaseName);
+                fullStorageGroupName);
       } else {
         handleSuccess =
             handleWhenSomeSourceFilesLost(
@@ -96,7 +96,7 @@ public class CompactionExceptionHandler {
                 seqResourceList,
                 unseqResourceList,
                 lostSourceFiles,
-                fullDatabaseName);
+                fullStorageGroupName);
       }
 
       if (!handleSuccess) {
@@ -104,7 +104,7 @@ public class CompactionExceptionHandler {
             "[Compaction][ExceptionHandler] Fail to handle {} space compaction exception, "
                 + "storage group is {}",
             compactionType,
-            fullDatabaseName);
+            fullStorageGroupName);
       } else {
         FileUtils.delete(logFile);
       }
@@ -114,7 +114,7 @@ public class CompactionExceptionHandler {
           "[Compaction][ExceptionHandler] exception occurs when handling exception in {} space compaction. "
               + "storage group is {}",
           compactionType,
-          fullDatabaseName);
+          fullStorageGroupName);
     }
   }
 
@@ -143,7 +143,7 @@ public class CompactionExceptionHandler {
       TsFileManager tsFileManager,
       long timePartition,
       boolean isTargetSequence,
-      String fullDatabaseName)
+      String fullStorageGroupName)
       throws IOException {
     TsFileResourceList unseqTsFileResourceList =
         tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition);
@@ -166,7 +166,7 @@ public class CompactionExceptionHandler {
         if (!targetTsFile.remove()) {
           LOGGER.error(
               "{} [Compaction][Exception] fail to delete target tsfile {} when handling exception",
-              fullDatabaseName,
+              fullStorageGroupName,
               targetTsFile);
           removeAllTargetFile = false;
         }
@@ -214,10 +214,11 @@ public class CompactionExceptionHandler {
       List<TsFileResource> sourceSeqResourceList,
       List<TsFileResource> sourceUnseqResourceList,
       List<TsFileResource> lostSourceResourceList,
-      String fullDatabaseName)
+      String fullStorageGroupName)
       throws IOException {
     // check whether is all target files complete
-    if (!checkIsTargetFilesComplete(targetResourceList, lostSourceResourceList, fullDatabaseName)) {
+    if (!checkIsTargetFilesComplete(
+        targetResourceList, lostSourceResourceList, fullStorageGroupName)) {
       return false;
     }
 
@@ -233,7 +234,7 @@ public class CompactionExceptionHandler {
   private static boolean checkIsTargetFilesComplete(
       List<TsFileResource> targetResources,
       List<TsFileResource> lostSourceResources,
-      String fullDatabaseName)
+      String fullStorageGroupName)
       throws IOException {
     for (TsFileResource targetResource : targetResources) {
       if (targetResource.isDeleted()) {
@@ -248,7 +249,7 @@ public class CompactionExceptionHandler {
         LOGGER.error(
             "{} [Compaction][ExceptionHandler] target file {} is not complete, "
                 + "and some source files {} is lost, do nothing.",
-            fullDatabaseName,
+            fullStorageGroupName,
             targetResource,
             lostSourceResources);
         return false;

@@ -25,13 +25,16 @@ import org.apache.tsfile.utils.TsFileGeneratorUtils;
 /** like org.apache.tsfile.utils.TsFileGeneratorForTest */
 public class TsFileUtilsForRecoverTest {
   public static String getTestTsFilePath(
-      String logicalDatabaseName,
-      long VirtualDatabaseId,
+      String logicalStorageGroupName,
+      long VirtualStorageGroupId,
       long TimePartitionId,
       long tsFileVersion) {
     String filePath =
         String.format(
-            TestConstant.TEST_TSFILE_PATH, logicalDatabaseName, VirtualDatabaseId, TimePartitionId);
+            TestConstant.TEST_TSFILE_PATH,
+            logicalStorageGroupName,
+            VirtualStorageGroupId,
+            TimePartitionId);
     return TsFileGeneratorUtils.getTsFilePath(filePath, tsFileVersion);
   }
 }

@@ -2771,7 +2771,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 SchemaFetchMergeOperator.class.getSimpleName());
-    return new SchemaFetchMergeOperator(operatorContext, children, node.getDatabaseList());
+    return new SchemaFetchMergeOperator(operatorContext, children, node.getStorageGroupList());
   }
 
   @Override

@@ -41,9 +41,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
+public class IoTDBDeleteStorageGroupIT extends AbstractSchemaIT {
 
-  public IoTDBDeleteDatabaseIT(SchemaTestMode schemaTestMode) {
+  public IoTDBDeleteStorageGroupIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
 
@@ -65,7 +65,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void testDeleteDatabase() throws Exception {
+  public void testDeleteStorageGroup() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.ln.wf01.wt01");
@@ -90,7 +90,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void testDeleteMultipleDatabaseWithQuote() throws Exception {
+  public void testDeleteMultipleStorageGroupWithQuote() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.ln1.wf01.wt01");
@@ -113,7 +113,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
   }
 
   @Test(expected = SQLException.class)
-  public void deleteNonExistDatabase() throws Exception {
+  public void deleteNonExistStorageGroup() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.ln2.wf01.wt01");
@@ -122,7 +122,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void testDeleteDatabaseWithStar() throws Exception {
+  public void testDeleteStorageGroupWithStar() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.ln3.wf01.wt01");
@@ -145,7 +145,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void testDeleteAllDatabases() throws Exception {
+  public void testDeleteAllStorageGroups() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.ln4.wf01.wt01");
@@ -164,7 +164,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void testDeleteDatabaseAndThenQuery() throws Exception {
+  public void testDeleteStorageGroupAndThenQuery() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("insert into root.sg1.d1(time,s1) values(1,1);");
@@ -185,7 +185,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void testDeleteDatabaseInvalidateCache() throws Exception {
+  public void testDeleteStorageGroupInvalidateCache() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       try {

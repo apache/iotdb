@@ -101,7 +101,7 @@ public class IoTDBConfigNodeSwitchLeaderIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      // Set Databases
+      // Set StorageGroups
       status = client.setDatabase((new TDatabaseSchema(sg0)));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       status = client.setDatabase((new TDatabaseSchema(sg1)));

@@ -606,7 +606,7 @@ public class IoTDBSimpleQueryTableIT {
   }
 
   @Test
-  public void testDatabaseWithHyphenInName() {
+  public void testStorageGroupWithHyphenInName() {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {

@@ -542,9 +542,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
-    dnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);
-    cnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);
+  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    dnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
+    cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
     return this;
   }
 }

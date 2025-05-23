@@ -297,7 +297,7 @@ public class PartitionCache {
           } else {
             final PartialPath databaseNameNeedCreated =
                 MetaUtils.getDatabasePathByLevel(
-                    new PartialPath(deviceID), config.getDefaultDatabaseLevel());
+                    new PartialPath(deviceID), config.getDefaultStorageGroupLevel());
             databaseNamesNeedCreated.add(databaseNameNeedCreated.getFullPath());
           }
         }

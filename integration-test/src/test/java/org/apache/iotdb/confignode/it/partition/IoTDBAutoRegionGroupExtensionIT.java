@@ -99,9 +99,9 @@ public class IoTDBAutoRegionGroupExtensionIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      setDatabaseAndCheckRegionGroupDistribution(client);
+      setStorageGroupAndCheckRegionGroupDistribution(client);
 
-      // Delete all Databases
+      // Delete all StorageGroups
       for (int i = 0; i < TEST_DATABASE_NUM; i++) {
         String curSg = DATABASE + i;
         client.deleteDatabase(new TDeleteDatabaseReq(curSg));
@@ -119,11 +119,11 @@ public class IoTDBAutoRegionGroupExtensionIT {
       Assert.assertTrue(isAllRegionGroupDeleted);
 
       // Re-test for safety
-      setDatabaseAndCheckRegionGroupDistribution(client);
+      setStorageGroupAndCheckRegionGroupDistribution(client);
     }
   }
 
-  private void setDatabaseAndCheckRegionGroupDistribution(SyncConfigNodeIServiceClient client)
+  private void setStorageGroupAndCheckRegionGroupDistribution(SyncConfigNodeIServiceClient client)
       throws TException, IllegalPathException, IOException {
 
     for (int i = 0; i < TEST_DATABASE_NUM; i++) {

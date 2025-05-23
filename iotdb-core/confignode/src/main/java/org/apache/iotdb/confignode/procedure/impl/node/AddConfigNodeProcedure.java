@@ -137,8 +137,8 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
   }
 
   @Override
-  protected int getStateId(AddConfigNodeState deleteDatabaseState) {
-    return deleteDatabaseState.ordinal();
+  protected int getStateId(AddConfigNodeState deleteStorageGroupState) {
+    return deleteStorageGroupState.ordinal();
   }
 
   @Override

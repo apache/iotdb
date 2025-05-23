@@ -776,7 +776,7 @@ Import-CSV supports specify data type and no need quotation for text value
 * [IOTDB-1884] Distinguish between zero and null values in sum aggregation
 * [IOTDB-1924] Remove the operation of clearing the cache after the compaction is over
 * [IOTDB-1950] Add Bloom Filter cache for query 
-* [IOTDB-2001] Remove redundant DatabaseNotReadyException
+* [IOTDB-2001] Remove redundant StorageGroupNotReadyException
 * [IOTDB-2011] Update last cache while doing show latest timeseries query
 * [IOTDB-2022] SessionDataSet implements AutoCloseable
 * [IOTDB-2075] Accelerate the process of insertTablets by using thread pool
@@ -808,7 +808,7 @@ Import-CSV supports specify data type and no need quotation for text value
 * [IOTDB-2014] MicrometerPrometheusReporter#getReporterType return null 
 * [IOTDB-2043] refactor: remove haveSorted param from Session
 * [IOTDB-2154] add TsFileUtils.isTsFileComplete
-* [IOTDB-2206] Rename DatabaseProcessor to VirtualDatabaseProcessor
+* [IOTDB-2206] Rename StorageGroupProcessor to VirtualStorageGroupProcessor
 * [IOTDB-2208] Reconstruct the process of generating resultset header of query
 * [ISSUE-4047] Generic type in Statistics extend Serializable 
 * Add compaction version in cache key
@@ -1063,7 +1063,7 @@ Import-CSV supports specify data type and no need quotation for text value
 * [IOTDB-1494] fix compaction block flush bug
 * [IoTDB-1499] Remove series registration using IoTDBSink
 * [IoTDB-1501] Fix compaction recover delete tsfile bug
-* [IOTDB-1529] Fix mlog recover idx bug and synchronize setDatabase
+* [IOTDB-1529] Fix mlog recover idx bug and synchronize setStorageGroup
 * [IOTDB-1537] fix insertTablet permission
 * [IOTDB-1539] Fix delete operation with value filter is abnormal
 * [IOTDB-1540] Bug Fix: 500 when using IN operator
@@ -1072,7 +1072,7 @@ Import-CSV supports specify data type and no need quotation for text value
 * [IOTDB-1545] Query dataset memory leak on server caused by cpp client
 * [IOTDB-1546] Optimize the Upgrade Tool rewrite logic to reduce the temp memory cost
 * [IOTDB-1552] Only allow equivalent filter for TEXT data type
-* [IOTDB-1556] Abort auto create device when meet exception in setDatabase
+* [IOTDB-1556] Abort auto create device when meet exception in setStorageGroup
 * [IOTDB-1574] Deleted file handler leak
 * [IOTDB-1580] Error result of order by time desc when enable time partition
 * [IOTDB-1584] Doesn't support order by time desc in cluster mode
@@ -1124,7 +1124,7 @@ Import-CSV supports specify data type and no need quotation for text value
 * [IOTDB-1419] Remove redundant clearCompactionStatus, fix continuous compaction doesn't take effect when
   enablePartition
 * [IOTDB-1415] Fix OOM caused by ChunkCache
-* [IOTDB-1414] NPE occurred when call getDatabaseNodeByPath() method using not exist path
+* [IOTDB-1414] NPE occurred when call getStorageGroupNodeByPath() method using not exist path
 * [IOTDB-1412] Unclear exception message thrown when executing empty InsertTabletPlan
 * [IOTDB-1411] Fix thriftMaxFrameSize and thriftDefaultBufferSize does not in effect
 * [IOTDB-1398] Do not select unseq files when there are uncompacted old unseq files
@@ -1423,7 +1423,7 @@ Import-CSV supports specify data type and no need quotation for text value
 * IOTDB-947 Fix error when counting node with wildcard
 * IOTDB-949 Align by device doesn't support 'T*' in path.
 * IOTDB-956 Filter will be missed in group by time align by device
-* IOTDB-963 Redo deleteDatabasePlan failed when recovering
+* IOTDB-963 Redo deleteStorageGroupPlan failed when recovering
 * IOTDB-967 Fix xxx does not have the child node xxx Bug in count timeseries
 * IOTDB-970 Restrict log file number and size
 * IOTDB-971 More precise error messages of slimit and soffset 

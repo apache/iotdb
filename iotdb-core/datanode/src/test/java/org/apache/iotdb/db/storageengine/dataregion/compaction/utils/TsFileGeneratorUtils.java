@@ -57,7 +57,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.TIME_COLUMN_ID;
 import static org.apache.tsfile.utils.TsFileGeneratorUtils.getDataType;
 
 public class TsFileGeneratorUtils {
-  public static final String testDatabase = "root.testsg";
+  public static final String testStorageGroup = "root.testsg";
 
   public static List<IChunkWriter> createChunkWriter(
       List<PartialPath> timeseriesPaths,
@@ -109,12 +109,12 @@ public class TsFileGeneratorUtils {
       if (!isAligned) {
         timeseriesPath.add(
             new MeasurementPath(
-                testDatabase + PATH_SEPARATOR + "d" + deviceIndex + PATH_SEPARATOR + "s" + i,
+                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex + PATH_SEPARATOR + "s" + i,
                 dataTypes.get(i)));
       } else {
         timeseriesPath.add(
             new AlignedPath(
-                testDatabase + PATH_SEPARATOR + "d" + deviceIndex,
+                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex,
                 Collections.singletonList("s" + i),
                 Collections.singletonList(new MeasurementSchema("s" + i, dataTypes.get(i)))));
       }
@@ -131,12 +131,14 @@ public class TsFileGeneratorUtils {
         if (!isAligned) {
           timeseriesPath.add(
               new NonAlignedFullPath(
-                  IDeviceID.Factory.DEFAULT_FACTORY.create(testDatabase + PATH_SEPARATOR + "d" + d),
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      testStorageGroup + PATH_SEPARATOR + "d" + d),
                   new MeasurementSchema("s" + i, dataType)));
         } else {
           timeseriesPath.add(
               new AlignedFullPath(
-                  IDeviceID.Factory.DEFAULT_FACTORY.create(testDatabase + PATH_SEPARATOR + "d" + d),
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      testStorageGroup + PATH_SEPARATOR + "d" + d),
                   Collections.singletonList("s" + i),
                   Collections.singletonList(new MeasurementSchema("s" + i, dataType))));
         }

@@ -337,7 +337,7 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(DEVICE, TSDataType.TEXT), new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> showDatabasesColumnHeaders =
+  public static final List<ColumnHeader> showStorageGroupsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
@@ -345,7 +345,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TIME_PARTITION_ORIGIN, TSDataType.INT64),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
 
-  public static final List<ColumnHeader> showDatabasesDetailColumnHeaders =
+  public static final List<ColumnHeader> showStorageGroupsDetailColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
@@ -399,7 +399,7 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> countTimeSeriesColumnHeaders =
       ImmutableList.of(new ColumnHeader(COUNT_TIMESERIES, TSDataType.INT64));
 
-  public static final List<ColumnHeader> countDatabaseColumnHeaders =
+  public static final List<ColumnHeader> countStorageGroupColumnHeaders =
       ImmutableList.of(new ColumnHeader(COUNT_DATABASE, TSDataType.INT32));
 
   public static final List<ColumnHeader> showRegionColumnHeaders =

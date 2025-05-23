@@ -58,8 +58,8 @@ public class TsFileNameGenerator {
 
   public static String generateNewTsFilePathWithMkdir(
       boolean sequence,
-      String logicalDatabase,
-      String virtualDatabase,
+      String logicalStorageGroup,
+      String virtualStorageGroup,
       long timePartitionId,
       long time,
       long version,
@@ -68,8 +68,8 @@ public class TsFileNameGenerator {
       throws DiskSpaceInsufficientException {
     return generateNewTsFilePathWithMkdir(
         sequence,
-        logicalDatabase,
-        virtualDatabase,
+        logicalStorageGroup,
+        virtualStorageGroup,
         timePartitionId,
         time,
         version,
@@ -81,8 +81,8 @@ public class TsFileNameGenerator {
 
   public static String generateNewTsFilePathWithMkdir(
       boolean sequence,
-      String logicalDatabase,
-      String virtualDatabase,
+      String logicalStorageGroup,
+      String virtualStorageGroup,
       long timePartitionId,
       long time,
       long version,
@@ -92,7 +92,8 @@ public class TsFileNameGenerator {
       String customSuffix)
       throws DiskSpaceInsufficientException {
     String tsFileDir =
-        generateTsFileDir(sequence, logicalDatabase, virtualDatabase, timePartitionId, tierLevel);
+        generateTsFileDir(
+            sequence, logicalStorageGroup, virtualStorageGroup, timePartitionId, tierLevel);
     fsFactory.getFile(tsFileDir).mkdirs();
     return tsFileDir
         + File.separator
@@ -102,8 +103,8 @@ public class TsFileNameGenerator {
 
   public static String generateTsFileDir(
       boolean sequence,
-      String logicalDatabase,
-      String virtualDatabase,
+      String logicalStorageGroup,
+      String virtualStorageGroup,
       long timePartitionId,
       int tierLevel)
       throws DiskSpaceInsufficientException {
@@ -111,9 +112,9 @@ public class TsFileNameGenerator {
     String baseDir = tierManager.getNextFolderForTsFile(tierLevel, sequence);
     return baseDir
         + File.separator
-        + logicalDatabase
+        + logicalStorageGroup
         + File.separator
-        + virtualDatabase
+        + virtualStorageGroup
         + File.separator
         + timePartitionId;
   }

@@ -43,9 +43,9 @@ import java.util.Map;
 
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
- * IMemTable maintains all series belonging to one Database, corresponding to one DatabaseProcessor.
- * <br>
- * The concurrent control of IMemTable is based on the concurrent control of DatabaseProcessor,
+ * IMemTable maintains all series belonging to one StorageGroup, corresponding to one
+ * StorageGroupProcessor.<br>
+ * The concurrent control of IMemTable is based on the concurrent control of StorageGroupProcessor,
  * i.e., Writing and querying operations must already have gotten writeLock and readLock
  * respectively.<br>
  */

@@ -63,7 +63,7 @@ public class LoadTsFileConfigurator {
 
   public static final String DATABASE_LEVEL_KEY = "database-level";
   private static final int DATABASE_LEVEL_DEFAULT_VALUE =
-      IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
+      IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
   private static final int DATABASE_LEVEL_MIN_VALUE = 1;
 
   public static void validateDatabaseLevelParam(final String databaseLevel) {

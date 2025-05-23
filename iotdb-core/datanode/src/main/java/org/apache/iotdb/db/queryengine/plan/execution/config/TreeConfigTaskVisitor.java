@@ -32,7 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateFunc
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreatePipePluginTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateTriggerTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DatabaseSchemaTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DeleteDatabaseTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DeleteStorageGroupTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DeleteTimeSeriesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropContinuousQueryTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropFunctionTask;
@@ -230,18 +230,20 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
-  public IConfigTask visitDeleteDatabase(
+  public IConfigTask visitDeleteStorageGroup(
       DeleteDatabaseStatement statement, MPPQueryContext context) {
-    return new DeleteDatabaseTask(statement);
+    return new DeleteStorageGroupTask(statement);
   }
 
   @Override
-  public IConfigTask visitShowDatabase(ShowDatabaseStatement statement, MPPQueryContext context) {
+  public IConfigTask visitShowStorageGroup(
+      ShowDatabaseStatement statement, MPPQueryContext context) {
     return new ShowDatabaseTask(statement);
   }
 
   @Override
-  public IConfigTask visitCountDatabase(CountDatabaseStatement statement, MPPQueryContext context) {
+  public IConfigTask visitCountStorageGroup(
+      CountDatabaseStatement statement, MPPQueryContext context) {
     return new CountDatabaseTask(statement);
   }
 

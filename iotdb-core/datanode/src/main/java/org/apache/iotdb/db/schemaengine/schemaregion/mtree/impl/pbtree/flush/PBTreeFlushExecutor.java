@@ -57,7 +57,7 @@ public class PBTreeFlushExecutor {
       IMemoryManager memoryManager, ISchemaFile file, LockManager lockManager) {
     this.remainToFlush = null;
     this.subtreeRoots = memoryManager.collectVolatileSubtrees();
-    this.databaseMNode = memoryManager.collectUpdatedDatabaseMNodes();
+    this.databaseMNode = memoryManager.collectUpdatedStorageGroupMNodes();
     this.memoryManager = memoryManager;
     this.file = file;
     this.lockManager = lockManager;
@@ -70,7 +70,7 @@ public class PBTreeFlushExecutor {
       LockManager lockManager) {
     this.remainToFlush = remainToFlush;
     this.subtreeRoots = memoryManager.collectVolatileSubtrees();
-    this.databaseMNode = memoryManager.collectUpdatedDatabaseMNodes();
+    this.databaseMNode = memoryManager.collectUpdatedStorageGroupMNodes();
     this.memoryManager = memoryManager;
     this.file = file;
     this.lockManager = lockManager;
@@ -110,14 +110,14 @@ public class PBTreeFlushExecutor {
     return remainToFlush.decrementAndGet() >= 0;
   }
 
-  private void processFlushDatabase(IDatabaseMNode<ICachedMNode> updatedDatabaseMNode)
+  private void processFlushDatabase(IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode)
       throws IOException {
     try {
-      file.updateDatabaseNode(updatedDatabaseMNode);
+      file.updateDatabaseNode(updatedStorageGroupMNode);
     } catch (IOException e) {
       logger.warn(
-          "IOException occurred during updating DatabaseMNode {}",
-          updatedDatabaseMNode.getFullPath(),
+          "IOException occurred during updating StorageGroupMNode {}",
+          updatedStorageGroupMNode.getFullPath(),
           e);
       throw e;
     }

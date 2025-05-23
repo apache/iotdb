@@ -78,7 +78,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_T
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.isDatabaseType;
+import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
 import static org.apache.iotdb.db.schemaengine.schemaregion.tag.TagLogFile.parseByteBuffer;
 
 public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> {
@@ -289,7 +289,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         break;
       case STORAGE_GROUP_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
-        node = deserializer.deserializeDatabaseMNode(inputStream);
+        node = deserializer.deserializeStorageGroupMNode(inputStream);
         break;
       case ENTITY_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
@@ -297,7 +297,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         break;
       case STORAGE_GROUP_ENTITY_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
-        node = deserializer.deserializeDatabaseEntityMNode(inputStream);
+        node = deserializer.deserializeStorageGroupEntityMNode(inputStream);
         break;
       case MEASUREMENT_MNODE_TYPE:
         childrenNum = 0;
@@ -327,7 +327,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
       parent.addChild(node);
     }
 
-    if (childrenNum > 0 || isDatabaseType(type)) {
+    if (childrenNum > 0 || isStorageGroupType(type)) {
       ancestors.push(node);
       restChildrenNum.push(childrenNum);
     }

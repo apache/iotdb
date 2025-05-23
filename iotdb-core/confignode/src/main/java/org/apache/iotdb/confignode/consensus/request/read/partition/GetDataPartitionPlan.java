@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /** Get or create DataPartition by the specific partitionSlotsMap. */
 public class GetDataPartitionPlan extends ConfigPhysicalReadPlan {
 
-  // Map<Database, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
+  // Map<StorageGroup, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
   protected Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap;
 
   public GetDataPartitionPlan(final ConfigPhysicalPlanType configPhysicalPlanType) {

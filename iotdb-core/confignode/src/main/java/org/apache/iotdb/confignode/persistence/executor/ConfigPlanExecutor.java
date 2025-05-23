@@ -776,7 +776,7 @@ public class ConfigPlanExecutor {
     PartialPath partialPath;
     Set<TSchemaNode> alreadyMatchedNode;
     Set<PartialPath> needMatchedNode;
-    List<String> matchedDatabases = new ArrayList<>();
+    List<String> matchedStorageGroups = new ArrayList<>();
 
     GetNodePathsPartitionPlan getNodePathsPartitionPlan = (GetNodePathsPartitionPlan) req;
     partialPath = getNodePathsPartitionPlan.getPartialPath();
@@ -813,9 +813,10 @@ public class ConfigPlanExecutor {
       needMatchedNode = matchedChildInNextLevel.right;
     }
 
-    needMatchedNode.forEach(nodePath -> matchedDatabases.add(nodePath.getFullPath()));
+    needMatchedNode.forEach(nodePath -> matchedStorageGroups.add(nodePath.getFullPath()));
     SchemaNodeManagementResp schemaNodeManagementResp =
-        (SchemaNodeManagementResp) partitionInfo.getSchemaNodeManagementPartition(matchedDatabases);
+        (SchemaNodeManagementResp)
+            partitionInfo.getSchemaNodeManagementPartition(matchedStorageGroups);
     if (schemaNodeManagementResp.getStatus().getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       schemaNodeManagementResp.setMatchedNode(alreadyMatchedNode);
@@ -828,7 +829,7 @@ public class ConfigPlanExecutor {
     final TShowRegionReq showRegionReq = getRegionInfoListPlan.getShowRegionReq();
     if (showRegionReq != null && showRegionReq.isSetDatabases()) {
       final List<String> databases = showRegionReq.getDatabases();
-      final List<String> matchedDatabases =
+      final List<String> matchedStorageGroups =
           clusterSchemaInfo
               .getMatchedDatabaseSchemasByName(
                   databases,
@@ -838,8 +839,8 @@ public class ConfigPlanExecutor {
               .stream()
               .map(TDatabaseSchema::getName)
               .collect(Collectors.toList());
-      if (!matchedDatabases.isEmpty()) {
-        showRegionReq.setDatabases(matchedDatabases);
+      if (!matchedStorageGroups.isEmpty()) {
+        showRegionReq.setDatabases(matchedStorageGroups);
       }
     }
     return partitionInfo.getRegionInfoList(getRegionInfoListPlan);

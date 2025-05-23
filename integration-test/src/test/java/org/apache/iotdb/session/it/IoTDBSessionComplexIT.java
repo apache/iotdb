@@ -83,7 +83,7 @@ public class IoTDBSessionComplexIT {
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
 
-      session.setDatabase("root.sg1");
+      session.setStorageGroup("root.sg1");
       createTimeseries(session);
       insertByStr(session);
       insertViaSQL(session);
@@ -166,7 +166,7 @@ public class IoTDBSessionComplexIT {
   public void insertByObjectTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
 
-      session.setDatabase("root.sg1");
+      session.setStorageGroup("root.sg1");
       createTimeseries(session);
 
       String deviceId = "root.sg1.d1";
@@ -247,7 +247,7 @@ public class IoTDBSessionComplexIT {
   public void alignByDeviceTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
 
-      session.setDatabase("root.sg1");
+      session.setStorageGroup("root.sg1");
       createTimeseries(session);
       insertTablet(session, "root.sg1.d1");
       SessionDataSet sessionDataSet =
@@ -497,7 +497,7 @@ public class IoTDBSessionComplexIT {
     }
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection(nodeList)) {
-      session.setDatabase("root.sg1");
+      session.setStorageGroup("root.sg1");
 
       createTimeseries(session);
       insertByStr(session);

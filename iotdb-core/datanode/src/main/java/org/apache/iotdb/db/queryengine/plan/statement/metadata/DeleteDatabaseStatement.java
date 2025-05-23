@@ -77,7 +77,7 @@ public class DeleteDatabaseStatement extends Statement implements IConfigStateme
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitDeleteDatabase(this, context);
+    return visitor.visitDeleteStorageGroup(this, context);
   }
 
   public void setPrefixPath(List<String> prefixPathList) {

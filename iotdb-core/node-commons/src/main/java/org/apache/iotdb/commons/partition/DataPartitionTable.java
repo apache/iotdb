@@ -62,7 +62,7 @@ public class DataPartitionTable {
   }
 
   /**
-   * Thread-safely get DataPartition within the specific Database
+   * Thread-safely get DataPartition within the specific StorageGroup
    *
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
    * @param dataPartitionTable Store the matched Partitions
@@ -73,7 +73,7 @@ public class DataPartitionTable {
       DataPartitionTable dataPartitionTable) {
     AtomicBoolean result = new AtomicBoolean(true);
     if (partitionSlots.isEmpty()) {
-      // Return all DataPartitions in one Database when the queried PartitionSlots are empty
+      // Return all DataPartitions in one StorageGroup when the queried PartitionSlots are empty
       dataPartitionTable.getDataPartitionMap().putAll(dataPartitionMap);
     } else {
       // Return the DataPartition for each SeriesPartitionSlot
@@ -136,7 +136,7 @@ public class DataPartitionTable {
   }
 
   /**
-   * Create DataPartition within the specific Database
+   * Create DataPartition within the specific StorageGroup
    *
    * @param assignedDataPartition Assigned result
    * @return Map<TConsensusGroupId, Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count>>
@@ -160,7 +160,7 @@ public class DataPartitionTable {
 
   /**
    * Only Leader use this interface. Filter unassigned DataPartitionSlots within the specific
-   * Database
+   * StorageGroup
    *
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
    * @return Unassigned PartitionSlots

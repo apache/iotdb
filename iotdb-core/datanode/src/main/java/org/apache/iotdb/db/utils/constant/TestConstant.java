@@ -86,12 +86,13 @@ public class TestConstant {
   private TestConstant() {}
 
   public static String getTestTsFilePath(
-      String logicalDatabaseName,
-      long virtualDatabaseId,
+      String logicalStorageGroupName,
+      long virtualStorageGroupId,
       long timePartitionId,
       long tsFileVersion) {
     String filePath =
-        String.format(TEST_TSFILE_PATH, logicalDatabaseName, virtualDatabaseId, timePartitionId);
+        String.format(
+            TEST_TSFILE_PATH, logicalStorageGroupName, virtualStorageGroupId, timePartitionId);
     String fileName =
         System.currentTimeMillis()
             + FilePathUtils.FILE_NAME_SEPARATOR
@@ -101,9 +102,12 @@ public class TestConstant {
   }
 
   public static String getTestTsFileDir(
-      String logicalDatabaseName, long virtualDatabaseId, long timePartitionId) {
+      String logicalStorageGroupName, long virtualStorageGroupId, long timePartitionId) {
     return String.format(
-        TestConstant.TEST_TSFILE_PATH, logicalDatabaseName, virtualDatabaseId, timePartitionId);
+        TestConstant.TEST_TSFILE_PATH,
+        logicalStorageGroupName,
+        virtualStorageGroupId,
+        timePartitionId);
   }
 
   private static String baseOutputDirectory() {

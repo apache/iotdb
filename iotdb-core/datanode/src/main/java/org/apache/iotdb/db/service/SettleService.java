@@ -70,7 +70,7 @@ public class SettleService implements IService {
     }
     TsFileAndModSettleTool.findFilesToBeRecovered();
 
-    /* Classify the file paths by the SG, and then call the methods of DatabaseProcessor of each
+    /* Classify the file paths by the SG, and then call the methods of StorageGroupProcessor of each
     SG in turn to get the TsFileResources.*/
     Map<PartialPath, List<String>> tmpSgResourcesMap = new HashMap<>(); // sgPath -> tsFilePaths
     try {

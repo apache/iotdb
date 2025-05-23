@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.exception.DatabaseNotReadyException;
+import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -67,7 +67,7 @@ public class ErrorHandlingUtilsTest {
   public void onQueryExceptionTest() {
     TSStatus status =
         onQueryException(
-            new DatabaseNotReadyException("test-DatabaseNotReadyException", 0),
+            new StorageGroupNotReadyException("test-StorageGroupNotReadyException", 0),
             OperationType.EXECUTE_STATEMENT);
     assertEquals(TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode(), status.getCode());
 

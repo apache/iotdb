@@ -114,7 +114,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * @return Deep copy of all Regions' RegionReplicaSet within one Database
+   * @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup
    */
   public Stream<TRegionReplicaSet> getAllReplicaSets() {
     return regionGroupMap.values().stream().map(RegionGroup::getReplicaSet);
@@ -228,10 +228,10 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Get the number of RegionGroups currently owned by this Database.
+   * Get the number of RegionGroups currently owned by this StorageGroup.
    *
    * @param type SchemaRegion or DataRegion
-   * @return The number of Regions currently owned by this Database
+   * @return The number of Regions currently owned by this StorageGroup
    */
   public int getRegionGroupCount(TConsensusGroupType type) {
     AtomicInteger result = new AtomicInteger(0);
@@ -267,7 +267,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Thread-safely get SchemaPartition within the specific Database.
+   * Thread-safely get SchemaPartition within the specific StorageGroup.
    *
    * @param partitionSlots SeriesPartitionSlots
    * @param schemaPartition Where the results are stored
@@ -279,7 +279,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Thread-safely get DataPartition within the specific Database.
+   * Thread-safely get DataPartition within the specific StorageGroup.
    *
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
    * @param dataPartition Where the results are stored
@@ -316,7 +316,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Create SchemaPartition within the specific Database.
+   * Create SchemaPartition within the specific StorageGroup.
    *
    * @param assignedSchemaPartition Assigned result
    */
@@ -333,7 +333,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Create DataPartition within the specific Database.
+   * Create DataPartition within the specific StorageGroup.
    *
    * @param assignedDataPartition Assigned result
    */
@@ -351,7 +351,7 @@ public class DatabasePartitionTable {
 
   /**
    * Only Leader use this interface. Filter unassigned SchemaPartitionSlots within the specific
-   * Database.
+   * StorageGroup.
    *
    * @param partitionSlots List<TSeriesPartitionSlot>
    * @return Unassigned PartitionSlots
@@ -362,7 +362,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Get the DataNodes who contain the specific Database's Schema or Data.
+   * Get the DataNodes who contain the specific StorageGroup's Schema or Data.
    *
    * @param type SchemaRegion or DataRegion
    * @return Set<TDataNodeLocation>, the related DataNodes
@@ -380,7 +380,7 @@ public class DatabasePartitionTable {
 
   /**
    * Only Leader use this interface. Filter unassigned DataPartitionSlots within the specific
-   * Database.
+   * StorageGroup.
    *
    * @param partitionSlots List<TSeriesPartitionSlot>
    * @return Unassigned PartitionSlots

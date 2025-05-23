@@ -95,10 +95,10 @@ public class IoTDBPartitionCreationIT {
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
 
-    setDatabase();
+    setStorageGroup();
   }
 
-  private void setDatabase() throws Exception {
+  private void setStorageGroup() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TSStatus status = client.setDatabase(new TDatabaseSchema(sg));

@@ -1679,7 +1679,7 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "nan_string_infer_type",
                 ConfigurationFileUtils.getConfigurationDefaultValue("nan_string_infer_type"))));
-    conf.setDefaultDatabaseLevel(
+    conf.setDefaultStorageGroupLevel(
         Integer.parseInt(
             properties.getProperty(
                 "default_storage_group_level",

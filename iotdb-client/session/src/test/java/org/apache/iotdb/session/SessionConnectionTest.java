@@ -100,7 +100,7 @@ public class SessionConnectionTest {
     TSStatus tsStatusSuccess = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     tsStatus.setSubStatus(
         Arrays.asList(new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())));
-    Mockito.when(client.setDatabase(anyLong(), anyString())).thenReturn(tsStatus);
+    Mockito.when(client.setStorageGroup(anyLong(), anyString())).thenReturn(tsStatus);
     TSExecuteStatementResp execResp = new TSExecuteStatementResp(tsStatus);
     execResp.setColumns(Arrays.asList());
     execResp.setDataTypeList(Arrays.asList());
@@ -111,7 +111,7 @@ public class SessionConnectionTest {
     Mockito.when(client.executeQueryStatementV2(any())).thenReturn(execResp);
     Mockito.when(client.executeFastLastDataQueryForOneDeviceV2(any())).thenReturn(execResp);
     Mockito.when(client.executeLastDataQueryV2(any())).thenReturn(execResp);
-    Mockito.when(client.deleteDatabases(anyLong(), any())).thenReturn(tsStatus);
+    Mockito.when(client.deleteStorageGroups(anyLong(), any())).thenReturn(tsStatus);
     Mockito.when(client.createTimeseries(any())).thenReturn(tsStatus);
     Mockito.when(client.createAlignedTimeseries(any())).thenReturn(tsStatus);
     Mockito.when(client.createMultiTimeseries(any())).thenReturn(tsStatus);
@@ -200,14 +200,15 @@ public class SessionConnectionTest {
   }
 
   @Test
-  public void testSetDatabase() throws IoTDBConnectionException, StatementExecutionException {
+  public void testSetStorageGroup() throws IoTDBConnectionException, StatementExecutionException {
     sessionConnection.setTimeZone(ZoneId.systemDefault().getId());
-    sessionConnection.setDatabase("root.test1");
+    sessionConnection.setStorageGroup("root.test1");
   }
 
   @Test
-  public void testDeleteDatabases() throws IoTDBConnectionException, StatementExecutionException {
-    sessionConnection.deleteDatabases(Arrays.asList("root.test1"));
+  public void testDeleteStorageGroups()
+      throws IoTDBConnectionException, StatementExecutionException {
+    sessionConnection.deleteStorageGroups(Arrays.asList("root.test1"));
   }
 
   @Test

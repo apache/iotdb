@@ -1072,7 +1072,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void deleteDatabaseTest() {
+  public void deleteStorageGroupTest() {
     List<String> ret =
         Collections.singletonList(
             "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"

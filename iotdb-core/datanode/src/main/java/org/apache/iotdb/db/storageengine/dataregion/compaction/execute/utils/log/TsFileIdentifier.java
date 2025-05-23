@@ -36,7 +36,7 @@ import java.io.File;
  * some static methods to create instance of this class.
  */
 public class TsFileIdentifier {
-  private final String logicalDatabaseName;
+  private final String logicalStorageGroupName;
   private final String dataRegionId;
   private final String timePartitionId;
   private final boolean sequence;
@@ -59,12 +59,12 @@ public class TsFileIdentifier {
   private static final String UNSEQUENCE_STR = "unsequence";
 
   private TsFileIdentifier(
-      String logicalDatabaseName,
+      String logicalStorageGroupName,
       String dataRegionId,
       String timePartitionId,
       boolean sequence,
       String filename) {
-    this.logicalDatabaseName = logicalDatabaseName;
+    this.logicalStorageGroupName = logicalStorageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartitionId = timePartitionId;
     this.sequence = sequence;
@@ -127,7 +127,7 @@ public class TsFileIdentifier {
         "%s%s%s%s%s%s%s%s%s",
         sequence ? SEQUENCE_STR : UNSEQUENCE_STR,
         INFO_SEPARATOR,
-        logicalDatabaseName,
+        logicalStorageGroupName,
         INFO_SEPARATOR,
         dataRegionId,
         INFO_SEPARATOR,
@@ -143,7 +143,7 @@ public class TsFileIdentifier {
     }
     TsFileIdentifier otherInfo = (TsFileIdentifier) other;
     return otherInfo.sequence == this.sequence
-        && otherInfo.logicalDatabaseName.equals(this.logicalDatabaseName)
+        && otherInfo.logicalStorageGroupName.equals(this.logicalStorageGroupName)
         && otherInfo.dataRegionId.equals(this.dataRegionId)
         && otherInfo.timePartitionId.equals(this.timePartitionId)
         && otherInfo.filename.equals(this.filename);
@@ -163,7 +163,7 @@ public class TsFileIdentifier {
     String partialFileString =
         (sequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
             + File.separator
-            + logicalDatabaseName
+            + logicalStorageGroupName
             + File.separator
             + dataRegionId
             + File.separator
@@ -184,7 +184,7 @@ public class TsFileIdentifier {
     String partialFileString =
         (sequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
             + File.separator
-            + logicalDatabaseName
+            + logicalStorageGroupName
             + File.separator
             + dataRegionId
             + File.separator
@@ -216,7 +216,7 @@ public class TsFileIdentifier {
   public String getFilePath() {
     return (sequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
         + File.separator
-        + logicalDatabaseName
+        + logicalStorageGroupName
         + File.separator
         + dataRegionId
         + File.separator
@@ -225,8 +225,8 @@ public class TsFileIdentifier {
         + filename;
   }
 
-  public String getLogicalDatabaseName() {
-    return logicalDatabaseName;
+  public String getLogicalStorageGroupName() {
+    return logicalStorageGroupName;
   }
 
   public String getDataRegionId() {

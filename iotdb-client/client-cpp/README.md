@@ -141,8 +141,8 @@ mentioned above, the header file and the dynamic library:
         std::shared_ptr<Session> session(new Session("127.0.0.1", 6667, "root", "root"));
         session->open(false);
 
-        std::cout << "setDatabase: root.test01" << std::endl;
-        session->setDatabase("root.test01");
+        std::cout << "setStorageGroup: root.test01" << std::endl;
+        session->setStorageGroup("root.test01");
 
         if (!session->checkTimeseriesExists("root.test01.d0.s0")) {
             session->createTimeseries("root.test01.d0.s0", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);

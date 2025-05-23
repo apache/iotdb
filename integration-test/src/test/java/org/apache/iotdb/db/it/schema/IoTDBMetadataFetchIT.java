@@ -185,7 +185,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void showDatabaseTest() throws SQLException {
+  public void showStorageGroupTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] sqls =
@@ -592,7 +592,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void showCountDatabase() throws SQLException {
+  public void showCountStorageGroup() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] sqls =

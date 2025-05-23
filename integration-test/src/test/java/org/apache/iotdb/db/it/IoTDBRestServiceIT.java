@@ -393,7 +393,7 @@ public class IoTDBRestServiceIT {
     queryShowChildPaths(httpClient);
     queryShowNodes(httpClient);
     showAllTTL(httpClient);
-    showDatabase(httpClient);
+    showStorageGroup(httpClient);
     showFunctions(httpClient);
     showTimeseries(httpClient);
 
@@ -413,7 +413,7 @@ public class IoTDBRestServiceIT {
     queryShowChildPathsV2(httpClient);
     queryShowNodesV2(httpClient);
     showAllTTLV2(httpClient);
-    showDatabaseV2(httpClient);
+    showStorageGroupV2(httpClient);
     showFunctionsV2(httpClient);
     showTimeseriesV2(httpClient);
 
@@ -1084,7 +1084,7 @@ public class IoTDBRestServiceIT {
     Assert.assertEquals(values2, valuesResult.get(1));
   }
 
-  public void showDatabase(CloseableHttpClient httpClient) {
+  public void showStorageGroup(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"SHOW DATABASES root.*\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
@@ -1736,7 +1736,7 @@ public class IoTDBRestServiceIT {
     Assert.assertEquals(values2, valuesResult.get(1));
   }
 
-  public void showDatabaseV2(CloseableHttpClient httpClient) {
+  public void showStorageGroupV2(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"SHOW DATABASES root.*\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");

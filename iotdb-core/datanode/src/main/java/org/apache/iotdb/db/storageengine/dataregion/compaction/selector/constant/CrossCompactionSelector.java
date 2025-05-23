@@ -37,7 +37,7 @@ public enum CrossCompactionSelector {
 
   @SuppressWarnings("squid:S1301")
   public ICrossSpaceSelector createInstance(
-      String logicalDatabaseName,
+      String logicalStorageGroupName,
       String virtualGroupId,
       long timePartition,
       TsFileManager tsFileManager,
@@ -46,7 +46,7 @@ public enum CrossCompactionSelector {
       case REWRITE:
       default:
         return new RewriteCrossSpaceCompactionSelector(
-            logicalDatabaseName, virtualGroupId, timePartition, tsFileManager, context);
+            logicalStorageGroupName, virtualGroupId, timePartition, tsFileManager, context);
     }
   }
 }
