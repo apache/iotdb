@@ -47,9 +47,6 @@ private:
             std::shared_ptr<Column> timeColumn,
             std::vector<std::shared_ptr<Column>> valueColumns);
 
-    static TSDataType::TSDataType deserializeDataType(std::istream& reader);
-    static ColumnEncoding deserializeColumnEncoding(std::istream& reader);
-
     std::shared_ptr<Column> timeColumn_;
     std::vector<std::shared_ptr<Column>> valueColumns_;
     int32_t positionCount_;

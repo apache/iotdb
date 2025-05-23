@@ -64,24 +64,6 @@ std::shared_ptr<TsBlock> TsBlock::deserialize(const std::string& data) {
     return create(positionCount, std::move(timeColumn), std::move(valueColumns));
 }
 
-TSDataType::TSDataType TsBlock::deserializeDataType(std::istream& reader) {
-    uint8_t b;
-    reader.read(reinterpret_cast<char*>(&b), sizeof(uint8_t));
-    if (!reader) {
-        return TSDataType::UNKNOWN;
-    }
-    return static_cast<TSDataType::TSDataType>(b);
-}
-
-ColumnEncoding TsBlock::deserializeColumnEncoding(std::istream& reader) {
-    uint8_t b;
-    reader.read(reinterpret_cast<char*>(&b), sizeof(uint8_t));
-    if (!reader) {
-        return ColumnEncoding::Rle;
-    }
-    return static_cast<ColumnEncoding>(b);
-}
-
 TsBlock::TsBlock(int32_t positionCount,
                  std::shared_ptr<Column> timeColumn,
                  std::vector<std::shared_ptr<Column>> valueColumns)

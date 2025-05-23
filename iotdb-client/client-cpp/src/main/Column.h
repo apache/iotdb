@@ -78,7 +78,7 @@ inline std::shared_ptr<ColumnDecoder> getColumnDecoder(ColumnEncoding encoding) 
 inline ColumnEncoding getColumnEncodingByByte(uint8_t b) {
     auto it = kByteToEncoding.find(b);
     if (it == kByteToEncoding.end()) {
-        throw IoTDBException("Invalid value");
+        throw IoTDBException("Invalid encoding value: " + std::to_string(b));
     }
     return it->second;
 }

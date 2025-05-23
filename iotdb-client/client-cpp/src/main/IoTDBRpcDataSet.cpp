@@ -531,7 +531,11 @@ std::string IoTDBRpcDataSet::findColumnNameByIndex(int32_t columnIndex) {
         throw IoTDBException("column index should start from 1");
     }
     if (columnIndex > static_cast<int32_t>(columnNameList_.size())) {
-        throw IoTDBException("column index out of range");
+        throw IoTDBException(
+            "Column index " + std::to_string(columnIndex) +
+            " is out of range. Valid range is 0 to " +
+            std::to_string(columnNameList_.size() - 1)
+        );
     }
     return columnNameList_[columnIndex - 1];
 }
