@@ -1393,9 +1393,11 @@ public class PipeConsensusReceiver {
    * although events can arrive receiver in a random sequence.
    */
   private class RequestExecutor {
-    private static final String THIS_NODE = "sender dn restarts before this event was sent here";
-    private static final String PIPE_TASK = "pipe task restarts before this event was sent here";
-    private static final String REPLICATE_INDEX = "replicate index is out dated";
+    private static final String MSG_NODE_RESTART_INDEX_STALE =
+        "sender dn restarts before this event was sent here";
+    private static final String MSG_PIPE_RESTART_INDEX_STALE =
+        "pipe task restarts before this event was sent here";
+    private static final String MSG_STALE_REPLICATE_INDEX = "replicate index is out dated";
 
     // An ordered set that buffers transfer requests' TCommitId, whose length is not larger than
     // PIPE_CONSENSUS_PIPELINE_SIZE.
@@ -1435,18 +1437,18 @@ public class PipeConsensusReceiver {
       // the request with incremental rebootTimes, the {3} sent before the leader restart needs to
       // be discarded.
       if (tCommitId.getDataNodeRebootTimes() < connectorRebootTimes) {
-        return deprecatedResp(THIS_NODE, tCommitId);
+        return deprecatedResp(MSG_NODE_RESTART_INDEX_STALE, tCommitId);
       }
       // Similarly, check pipeTask restartTimes
       if (tCommitId.getDataNodeRebootTimes() == connectorRebootTimes
           && tCommitId.getPipeTaskRestartTimes() < pipeTaskRestartTimes) {
-        return deprecatedResp(PIPE_TASK, tCommitId);
+        return deprecatedResp(MSG_PIPE_RESTART_INDEX_STALE, tCommitId);
       }
       // Similarly, check replicationIndex
       if (tCommitId.getDataNodeRebootTimes() == connectorRebootTimes
           && tCommitId.getPipeTaskRestartTimes() == pipeTaskRestartTimes
           && tCommitId.getReplicateIndex() < onSyncedReplicateIndex + 1) {
-        return deprecatedResp(REPLICATE_INDEX, tCommitId);
+        return deprecatedResp(MSG_STALE_REPLICATE_INDEX, tCommitId);
       }
       // pass check
       return null;
@@ -1574,7 +1576,10 @@ public class PipeConsensusReceiver {
               // pipeTaskStartTimes or rebootTimes came in and refreshed the requestBuffer. In that
               // cases we need to discard these requests.
               if (!reqExecutionOrderBuffer.contains(requestMeta)) {
-                return deprecatedResp(String.format("%s or %s", THIS_NODE, PIPE_TASK), tCommitId);
+                return deprecatedResp(
+                    String.format(
+                        "%s or %s", MSG_NODE_RESTART_INDEX_STALE, MSG_PIPE_RESTART_INDEX_STALE),
+                    tCommitId);
               }
               // After waiting timeout, we suppose that the sender will not send any more events at
               // this time, that is, the sender has sent all events. At this point we apply the
