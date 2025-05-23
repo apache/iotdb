@@ -137,9 +137,14 @@ public class PipeDynamicMemoryBlock {
   }
 
   public void close() {
+    if (released) {
+      return;
+    }
     synchronized (fixedMemoryBlock) {
-      fixedMemoryBlock.releaseMemory(this);
-      released = true;
+      if (!released) {
+        fixedMemoryBlock.releaseMemory(this);
+        released = true;
+      }
     }
   }
 
