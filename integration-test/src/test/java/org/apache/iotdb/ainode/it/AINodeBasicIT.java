@@ -107,7 +107,7 @@ public class AINodeBasicIT {
   @Test
   public void aiNodeConnectionTest() {
     String sql = "SHOW AINODES";
-    String title = "NodeID,Status,RpcAddress,RpcPort";
+    String title = "NodeID,Status,InternalAddress,InternalPort";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 

@@ -193,7 +193,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
@@ -1033,8 +1035,18 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TShowDataNodes4InformationSchemaResp showDataNodes4InformationSchema() {
+    return configManager.showDataNodes4InformationSchema();
+  }
+
+  @Override
   public TShowConfigNodesResp showConfigNodes() {
     return configManager.showConfigNodes();
+  }
+
+  @Override
+  public TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema() {
+    return configManager.showConfigNodes4InformationSchema();
   }
 
   @Override

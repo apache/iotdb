@@ -47,6 +47,9 @@ public class InformationSchema {
   public static final String FUNCTIONS = "functions";
   public static final String CONFIGURATIONS = "configurations";
   public static final String KEYWORDS = "keywords";
+  public static final String NODES = "nodes";
+  public static final String CONFIG_NODES = "config_nodes";
+  public static final String DATA_NODES = "data_nodes";
 
   static {
     final TsTable queriesTable = new TsTable(QUERIES);
@@ -298,6 +301,64 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.RESERVED, TSDataType.INT32));
     keywordsTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(KEYWORDS, keywordsTable);
+
+    final TsTable nodesTable = new TsTable(NODES);
+    nodesTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.NODE_ID_TABLE_MODEL, TSDataType.INT32));
+    nodesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.NODE_TYPE_TABLE_MODEL, TSDataType.STRING));
+    nodesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    nodesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.INTERNAL_ADDRESS_TABLE_MODEL, TSDataType.STRING));
+    nodesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.INTERNAL_PORT_TABLE_MODEL, TSDataType.INT32));
+    nodesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.VERSION.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    nodesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.BUILD_INFO_TABLE_MODEL, TSDataType.STRING));
+    nodesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(NODES, nodesTable);
+
+    final TsTable configNodesTable = new TsTable(CONFIG_NODES);
+    configNodesTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.NODE_ID_TABLE_MODEL, TSDataType.INT32));
+    configNodesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.CONFIG_CONSENSUS_PORT_TABLE_MODEL, TSDataType.INT32));
+    configNodesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ROLE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    configNodesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(CONFIG_NODES, configNodesTable);
+
+    final TsTable dataNodesTable = new TsTable(DATA_NODES);
+    dataNodesTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.NODE_ID_TABLE_MODEL, TSDataType.INT32));
+    dataNodesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.DATA_REGION_NUM_TABLE_MODEL, TSDataType.INT32));
+    dataNodesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.SCHEMA_REGION_NUM_TABLE_MODEL, TSDataType.INT32));
+    dataNodesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.RPC_ADDRESS_TABLE_MODEL, TSDataType.STRING));
+    dataNodesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.RPC_PORT_TABLE_MODEL, TSDataType.INT32));
+    dataNodesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.MPP_PORT_TABLE_MODEL, TSDataType.INT32));
+    dataNodesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.DATA_CONSENSUS_PORT_TABLE_MODEL, TSDataType.INT32));
+    dataNodesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.SCHEMA_CONSENSUS_PORT_TABLE_MODEL, TSDataType.INT32));
+    dataNodesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(DATA_NODES, dataNodesTable);
   }
 
   public static Map<String, TsTable> getSchemaTables() {
