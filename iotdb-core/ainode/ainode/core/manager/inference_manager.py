@@ -52,6 +52,16 @@ class TimerXLStrategy(InferenceStrategy):
         df = pd.DataFrame(output[0])
         return convert_to_binary(df)
 
+class SundialStrategy(InferenceStrategy):
+    def infer(self, full_data, predict_length=96, **_):
+        data = full_data[1][0]
+        if data.dtype.byteorder not in ('=', '|'):
+            data = data.byteswap().newbyteorder()
+        seqs = torch.tensor(data).unsqueeze(0).float()
+        output = self.model.generate(seqs, max_new_tokens=96, num_samples=10, revin=True)
+        df = pd.DataFrame(output[0].mean(dim=0))
+        return convert_to_binary(df)
+
 
 class BuiltInStrategy(InferenceStrategy):
     def infer(self, full_data, **_):
@@ -94,6 +104,8 @@ class RegisteredStrategy(InferenceStrategy):
 def _get_strategy(model_id, model):
     if model_id == '_timerxl':
         return TimerXLStrategy(model)
+    if model_id == '_sundial':
+        return SundialStrategy(model)
     if model_id.startswith('_'):
         return BuiltInStrategy(model)
     return RegisteredStrategy(model)

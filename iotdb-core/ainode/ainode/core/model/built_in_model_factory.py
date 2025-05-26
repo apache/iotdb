@@ -30,6 +30,7 @@ from sktime.forecasting.trend import STLForecaster
 
 from ainode.TimerXL.models import timer_xl
 from ainode.TimerXL.models.configuration_timer import TimerxlConfig
+from ainode.core.model.sundial import modeling_sundial
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import AttributeName, BuiltInModelType
 from ainode.core.exception import InferenceModelInternalError
@@ -57,6 +58,8 @@ def get_model_attributes(model_id: str):
         attribute_map = stray_attribute_map
     elif model_id == BuiltInModelType.TIMER_XL.value:
         attribute_map = timerxl_attribute_map
+    elif model_id == BuiltInModelType.SUNDIAL.value:
+        attribute_map = sundial_attribute_map
     else:
         raise BuiltInModelNotSupportError(model_id)
     return attribute_map
@@ -99,6 +102,8 @@ def fetch_built_in_model(model_id, inference_attributes):
         model = STRAYModel(attributes)
     elif model_id == BuiltInModelType.TIMER_XL.value:
         model = timer_xl.Model(TimerxlConfig.from_dict(attributes))
+    elif model_id == BuiltInModelType.SUNDIAL.value:
+        model = modeling_sundial.SundialForPrediction.from_pretrained("/Users/yongzaodan/Downloads/models--thuml--sundial-base-128m/snapshots/03a967dd675f0dea6229fdee1bc89e4eb310df19")
     else:
         raise BuiltInModelNotSupportError(model_id)
 
@@ -321,6 +326,94 @@ def parse_attribute(input_attributes: Dict[str, str], attribute_map: Dict[str, A
                 raise e
     return attributes
 
+sundial_attribute_map = {
+    AttributeName.INPUT_TOKEN_LEN.value: IntAttribute(
+        name=AttributeName.INPUT_TOKEN_LEN.value,
+        default_value=16,
+        default_low=1,
+        default_high=5000
+    ),
+    AttributeName.HIDDEN_SIZE.value: IntAttribute(
+        name=AttributeName.HIDDEN_SIZE.value,
+        default_value=768,
+        default_low=1,
+        default_high=5000
+    ),
+    AttributeName.INTERMEDIATE_SIZE.value: IntAttribute(
+        name=AttributeName.INTERMEDIATE_SIZE.value,
+        default_value=3072,
+        default_low=1,
+        default_high=5000
+    ),
+    AttributeName.OUTPUT_TOKEN_LENS.value: ListAttribute(
+        name=AttributeName.OUTPUT_TOKEN_LENS.value,
+        default_value=[720],
+        value_type=int
+    ),
+    AttributeName.NUM_HIDDEN_LAYERS.value: IntAttribute(
+        name=AttributeName.NUM_HIDDEN_LAYERS.value,
+        default_value=12,
+        default_low=1,
+        default_high=16
+    ),
+    AttributeName.NUM_ATTENTION_HEADS.value: IntAttribute(
+        name=AttributeName.NUM_ATTENTION_HEADS.value,
+        default_value=12,
+        default_low=1,
+        default_high=192
+    ),
+    AttributeName.HIDDEN_ACT.value: StringAttribute(
+        name=AttributeName.HIDDEN_ACT.value,
+        default_value="silu",
+        value_choices=["relu", "gelu", "silu", "tanh"],
+    ),
+    AttributeName.USE_CACHE.value: BooleanAttribute(
+        name=AttributeName.USE_CACHE.value,
+        default_value=True,
+    ),
+    AttributeName.ROPE_THETA.value: IntAttribute(
+        name=AttributeName.ROPE_THETA.value,
+        default_value=10000,
+        default_low=1000,
+        default_high=50000
+    ),
+    AttributeName.DROPOUT_RATE.value: FloatAttribute(
+        name=AttributeName.DROPOUT_RATE.value,
+        default_value=0.1,
+        default_low=0.0,
+        default_high=1.0
+    ),
+    AttributeName.INITIALIZER_RANGE.value: FloatAttribute(
+        name=AttributeName.INITIALIZER_RANGE.value,
+        default_value=0.02,
+        default_low=0.0,
+        default_high=1.0
+    ),
+    AttributeName.MAX_POSITION_EMBEDDINGS.value: IntAttribute(
+        name=AttributeName.MAX_POSITION_EMBEDDINGS.value,
+        default_value=10000,
+        default_low=1,
+        default_high=50000
+    ),
+    AttributeName.FLOW_LOSS_DEPTH.value: IntAttribute(
+        name=AttributeName.FLOW_LOSS_DEPTH.value,
+        default_value=3,
+        default_low=1,
+        default_high=50
+    ),
+    AttributeName.NUM_SAMPLING_STEPS.value: IntAttribute(
+        name=AttributeName.NUM_SAMPLING_STEPS.value,
+        default_value=50,
+        default_low=1,
+        default_high=5000
+    ),
+    AttributeName.DIFFUSION_BATCH_MUL.value: IntAttribute(
+        name=AttributeName.DIFFUSION_BATCH_MUL.value,
+        default_value=4,
+        default_low=1,
+        default_high=5000
+    ),
+}
 
 timerxl_attribute_map = {
     AttributeName.INPUT_TOKEN_LEN.value: IntAttribute(
