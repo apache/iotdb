@@ -34,6 +34,7 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
 
   private static final String MEM_USAGE = "schema_region_mem_usage";
   private static final String SERIES_CNT = "schema_region_series_cnt";
+  private static final String NON_VIEW_SERIES_CNT = "schema_region_non_view_series_cnt";
   private static final String DEVICE_NUMBER = "schema_region_device_cnt";
   private static final String TEMPLATE_CNT = "activated_template_cnt";
   private static final String TEMPLATE_SERIES_CNT = "template_series_cnt";
@@ -82,6 +83,17 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         i -> i.getSeriesNumber(true),
         Tag.NAME.toString(),
         SERIES_CNT,
+        Tag.REGION.toString(),
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
+    metricService.createAutoGauge(
+        Metric.SCHEMA_REGION.toString(),
+        MetricLevel.IMPORTANT,
+        regionStatistics,
+        i -> i.getSeriesNumber(false),
+        Tag.NAME.toString(),
+        NON_VIEW_SERIES_CNT,
         Tag.REGION.toString(),
         regionTagValue,
         Tag.DATABASE.toString(),
