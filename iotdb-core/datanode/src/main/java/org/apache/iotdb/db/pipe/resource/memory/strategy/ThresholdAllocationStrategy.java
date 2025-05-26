@@ -61,6 +61,10 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
         PIPE_CONFIG.getPipeThresholdAllocationStrategyLowUsageThreshold();
     if (dynamicMemoryBlock.getFixedMemoryBlockUsageRatio()
         < PIPE_CONFIG.getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold()) {
+      if (deficitRatio >= 1.0) {
+        return;
+      }
+
       final long maxAvailableMemory =
           Math.min(expectedMemory, dynamicMemoryBlock.canAllocateMemorySize());
       long newMemoryRequest;
