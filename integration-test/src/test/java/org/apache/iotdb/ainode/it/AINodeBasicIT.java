@@ -179,9 +179,9 @@ public class AINodeBasicIT {
   @Test
   public void callInferenceTest2() {
     String sql =
-            "CALL INFERENCE(_holtwinters, \"select s0 from root.AI.data\", predict_length=6, generateTime=true)";
+        "CALL INFERENCE(_holtwinters, \"select s0 from root.AI.data\", predict_length=6, generateTime=true)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(resultSetMetaData, "Time,output0");
@@ -191,7 +191,7 @@ public class AINodeBasicIT {
         }
         assertEquals(6, count);
       }
-    }catch (SQLException e) {
+    } catch (SQLException e) {
       fail(e.getMessage());
     }
   }
