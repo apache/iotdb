@@ -108,6 +108,27 @@ public class PatternExpressionComputation {
     return computation.evaluate(values);
   }
 
+  /** ouput of `empty match` */
+  public Object computeEmpty(long matchNumber) {
+    List<Object> values = new ArrayList<>();
+
+    for (PhysicalValueAccessor accessor : valueAccessors) {
+      if (accessor instanceof PhysicalValuePointer) {
+        PhysicalValuePointer pointer = (PhysicalValuePointer) accessor;
+        int channel = pointer.getSourceChannel();
+        if (channel == MATCH_NUMBER) {
+          values.add(matchNumber);
+        }
+      }
+    }
+
+    if (!values.isEmpty()) {
+      return matchNumber;
+    } else {
+      return null;
+    }
+  }
+
   private Object getValueFromPartition(
       Partition partition, PhysicalValuePointer pointer, int position) {
     int channel = pointer.getSourceChannel();

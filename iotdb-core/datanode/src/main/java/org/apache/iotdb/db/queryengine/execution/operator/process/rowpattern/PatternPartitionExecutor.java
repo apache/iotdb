@@ -239,9 +239,13 @@ public final class PatternPartitionExecutor {
 
     // compute measures
     for (PatternExpressionComputation measureComputation : measureComputations) {
-      // TODO: need to add a computeEmpty method in PatternExpressionComputation
-      //  对于空匹配的输出还没有完善
-      // measureComputation.computeEmpty(builder.getColumnBuilder(channel), matchNumber);
+      Object result = measureComputation.computeEmpty(matchNumber);
+      if (result == null) {
+        builder.getColumnBuilder(channel).appendNull();
+      } else {
+        builder.getColumnBuilder(channel).writeObject(result);
+      }
+
       channel++;
     }
 
@@ -268,50 +272,6 @@ public final class PatternPartitionExecutor {
       Column column = tsBlock.getColumn(outputChannels.get(i));
       ColumnBuilder columnBuilder = builder.getColumnBuilder(i);
       columnBuilder.write(column, offsetInTsBlock);
-      //      columnBuilder.write(column, offsetInTsBlock);
-      //      if (column.getDataType() == TSDataType.TEXT) { // TEXT 底层就是 BinaryColumn
-      //        Binary b = column.getBinary(offsetInTsBlock);
-      //        System.out.println(b);
-      //        columnBuilder.writeBinary(b);
-      //      } else { // 兜底，把 Object 拿出来
-      //        Object o = column.getObject(offsetInTsBlock);
-      //        columnBuilder.writeObject(o);
-      //      }
-      // 25.5.20
-      // 检查数据类型
-      //      TSDataType columnType = column.getDataType();
-      //      switch (columnType) {
-      //        case TEXT:
-      //          // TEXT 类型底层是 BinaryColumn
-      //          Binary b = column.getBinary(offsetInTsBlock);
-      //          System.out.println("TEXT: " + b);
-      //          columnBuilder.writeBinary(b);
-      //          break;
-      //        case INT32:
-      //          int intValue = column.getInt(offsetInTsBlock);
-      //          columnBuilder.writeInt(intValue);
-      //          break;
-      //        case INT64:
-      //          long longValue = column.getLong(offsetInTsBlock);
-      //          columnBuilder.writeLong(longValue);
-      //          break;
-      //        case FLOAT:
-      //          float floatValue = column.getFloat(offsetInTsBlock);
-      //          columnBuilder.writeFloat(floatValue);
-      //          break;
-      //        case DOUBLE:
-      //          double doubleValue = column.getDouble(offsetInTsBlock);
-      //          columnBuilder.writeDouble(doubleValue);
-      //          break;
-      //        case BOOLEAN:
-      //          boolean boolValue = column.getBoolean(offsetInTsBlock);
-      //          columnBuilder.writeBoolean(boolValue);
-      //          break;
-      //        default:
-      //          Object o = column.getObject(offsetInTsBlock);
-      //          columnBuilder.writeObject(o);
-      //          break;
-      //      }
 
       channel++;
     }
