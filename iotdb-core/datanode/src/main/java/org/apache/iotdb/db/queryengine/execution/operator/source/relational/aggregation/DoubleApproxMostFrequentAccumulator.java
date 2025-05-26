@@ -14,6 +14,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.SpaceSaving;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.SpaceSavingStateFactory;
 
@@ -31,9 +32,7 @@ public class DoubleApproxMostFrequentAccumulator
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(DoubleApproxMostFrequentAccumulator.class);
 
-  public DoubleApproxMostFrequentAccumulator() {
-    this.state = SpaceSavingStateFactory.createSingleState();
-  }
+  public DoubleApproxMostFrequentAccumulator() {}
 
   @Override
   public long getEstimatedSize() {
@@ -51,6 +50,13 @@ public class DoubleApproxMostFrequentAccumulator
   public void addInput(Column[] arguments, AggregationMask mask) {
     int maxBuckets = arguments[1].getInt(0);
     int capacity = arguments[2].getInt(0);
+    if (maxBuckets <= 0 || capacity <= 0) {
+      throw new SemanticException(
+          "The second and third argument must be greater than 0, but got k="
+              + maxBuckets
+              + ", capacity="
+              + capacity);
+    }
     SpaceSaving<Double> spaceSaving = getOrCreateSpaceSaving(state, maxBuckets, capacity);
 
     int positionCount = mask.getPositionCount();

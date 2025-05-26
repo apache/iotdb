@@ -15,6 +15,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.SpaceSavingStateFactory;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.SpaceSavingBigArray;
 
 import com.google.gson.Gson;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -54,5 +55,13 @@ public abstract class AbstractGroupedApproxMostFrequentAccumulator<T>
   @Override
   public void reset() {
     state.getSpaceSavings().reset();
+  }
+
+  public SpaceSavingBigArray<T> getOrCreateSpaceSaving(
+      SpaceSavingStateFactory.GroupedSpaceSavingState<T> state) {
+    if (state.isEmpty()) {
+      state.setSpaceSavings(new SpaceSavingBigArray<>());
+    }
+    return state.getSpaceSavings();
   }
 }

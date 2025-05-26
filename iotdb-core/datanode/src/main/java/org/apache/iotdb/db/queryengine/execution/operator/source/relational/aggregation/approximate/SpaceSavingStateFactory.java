@@ -19,6 +19,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.SpaceSaving.getDefaultEstimatedSize;
 
 public class SpaceSavingStateFactory {
   public static <T> SingleSpaceSavingState<T> createSingleState() {
@@ -43,7 +44,9 @@ public class SpaceSavingStateFactory {
     }
 
     public long getEstimatedSize() {
-      return spaceSaving == null ? INSTANCE_SIZE : INSTANCE_SIZE + spaceSaving.getEstimatedSize();
+      return spaceSaving == null
+          ? INSTANCE_SIZE + getDefaultEstimatedSize()
+          : INSTANCE_SIZE + spaceSaving.getEstimatedSize();
     }
 
     public void merge(SpaceSaving<T> other) {

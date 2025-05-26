@@ -4256,6 +4256,14 @@ public class IoTDBTableAggregationIT {
         "select approx_count_distinct(province, 'test') from table1",
         "701: Second argument of Aggregate functions [approx_count_distinct] should be numberic type and do not use expression",
         DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_most_frequent(province, -10, 100) from table1",
+        "701: The second and third argument must be greater than 0, but got k=-10, capacity=100",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_most_frequent(province, 'test', 100) from table1",
+        "701: The second and third argument of 'approx_most_frequent' function must be numeric literal",
+        DATABASE_NAME);
   }
 
   // ==================================================================

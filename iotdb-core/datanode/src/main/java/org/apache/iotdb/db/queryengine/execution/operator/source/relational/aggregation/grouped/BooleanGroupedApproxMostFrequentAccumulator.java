@@ -14,10 +14,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.BooleanApproxMostFrequentAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.SpaceSaving;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.SpaceSavingStateFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.SpaceSavingBigArray;
 
 import org.apache.tsfile.block.column.Column;
@@ -38,6 +38,13 @@ public class BooleanGroupedApproxMostFrequentAccumulator
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     int maxBuckets = arguments[1].getInt(0);
     int capacity = arguments[2].getInt(0);
+    if (maxBuckets <= 0 || capacity <= 0) {
+      throw new SemanticException(
+          "The second and third argument must be greater than 0, but got k="
+              + maxBuckets
+              + ", capacity="
+              + capacity);
+    }
     SpaceSavingBigArray<Boolean> spaceSavingBigArray = getOrCreateSpaceSaving(state);
     Column column = arguments[0];
 
@@ -93,13 +100,5 @@ public class BooleanGroupedApproxMostFrequentAccumulator
         state.merge(groupIds[i], current);
       }
     }
-  }
-
-  public static SpaceSavingBigArray<Boolean> getOrCreateSpaceSaving(
-      SpaceSavingStateFactory.GroupedSpaceSavingState<Boolean> state) {
-    if (state.isEmpty()) {
-      state.setSpaceSavings(new SpaceSavingBigArray<>());
-    }
-    return state.getSpaceSavings();
   }
 }

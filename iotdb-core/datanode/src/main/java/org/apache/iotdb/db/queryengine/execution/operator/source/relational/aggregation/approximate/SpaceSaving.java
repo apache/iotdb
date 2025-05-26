@@ -38,8 +38,10 @@ public class SpaceSaving<K> {
   private final int maxBuckets;
   private final int capacity;
 
+  // Used to serialize and deserialize buckets for different types of keys
   private final ApproxMostFrequentBucketSerializer<K> serializer;
   private final ApproxMostFrequentBucketDeserializer<K> deserializer;
+  // Used to calculate the size of keys in bytes
   private final SpaceSavingByteCalculator<K> calculator;
 
   public SpaceSaving(
@@ -74,9 +76,17 @@ public class SpaceSaving<K> {
     }
   }
 
+  public static long getDefaultEstimatedSize() {
+    return INSTANCE_SIZE
+        + STREAM_SUMMARY_SIZE
+        // Long.BYTES as a proxy for the size of K
+        + 50 * (LIST_NODE2_SIZE + COUNTER_SIZE + Long.BYTES);
+  }
+
   public long getEstimatedSize() {
     return INSTANCE_SIZE
         + STREAM_SUMMARY_SIZE
+        // Long.BYTES as a proxy for the size of K
         + streamSummary.size() * (LIST_NODE2_SIZE + +COUNTER_SIZE + Long.BYTES);
   }
 
@@ -123,7 +133,6 @@ public class SpaceSaving<K> {
             + Integer.BYTES
             + keyBytesSize
             + counters.size() * (Long.BYTES + Long.BYTES);
-    // for variable length slices, it should work.
     ByteBuffer byteBuffer = ByteBuffer.allocate(estimatedTotalBytes);
     ReadWriteIOUtils.write(maxBuckets, byteBuffer);
     ReadWriteIOUtils.write(capacity, byteBuffer);
