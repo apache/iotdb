@@ -255,6 +255,12 @@ public class PipeConnectorConstant {
   public static final String SINK_MARK_AS_PIPE_REQUEST_KEY = "sink.mark-as-pipe-request";
   public static final boolean CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE = true;
 
+  public static final String CONNECTOR_MARK_AS_GENERAL_WRITE_REQUEST_KEY =
+      "connector.mark-as-general-write-request";
+  public static final String SINK_MARK_AS_GENERAL_WRITE_REQUEST_KEY =
+      "sink.mark-as-general-write-request";
+  public static final boolean CONNECTOR_MARK_AS_GENERAL_WRITE_REQUEST_DEFAULT_VALUE = false;
+
   public static final String CONNECTOR_SKIP_IF_KEY = "connector.skipif";
   public static final String SINK_SKIP_IF_KEY = "sink.skipif";
   public static final String CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES = "no-privileges";
