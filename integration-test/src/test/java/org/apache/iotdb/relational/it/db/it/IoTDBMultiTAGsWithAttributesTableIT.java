@@ -2785,7 +2785,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
 
     tableAssertTestFail(
         "select * from table0 asof full join table1 on table0.time<=table1.time",
-        "Tolerance in ASOF JOIN only supports FULL type now",
+        "ASOF JOIN does not support FULL type now",
         DATABASE_NAME);
   }
 
