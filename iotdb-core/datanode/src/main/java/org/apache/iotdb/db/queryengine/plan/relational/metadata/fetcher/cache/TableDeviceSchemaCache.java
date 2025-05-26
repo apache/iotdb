@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
@@ -233,8 +234,9 @@ public class TableDeviceSchemaCache {
     readWriteLock.readLock().lock();
     try {
       // Avoid stale table
-      if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName()))) {
+      final TsTable table =
+          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName());
+      if (Objects.isNull(table) || Boolean.FALSE.equals(table.getCachedNeedLastCache())) {
         return;
       }
       dualKeyCache.update(

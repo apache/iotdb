@@ -38,8 +38,8 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.countN
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.countTimeSeriesColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showChildNodesColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showChildPathsColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDatabasesColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDevicesColumnHeaders;
-import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showStorageGroupsColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTTLColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTimeSeriesColumnHeaders;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
@@ -160,9 +160,7 @@ public class IoTDBSeriesPermissionIT {
     // show/count databases
     resultSetEqualTest(
         "show databases",
-        showStorageGroupsColumnHeaders.stream()
-            .map(ColumnHeader::getColumnName)
-            .toArray(String[]::new),
+        showDatabasesColumnHeaders.stream().map(ColumnHeader::getColumnName).toArray(String[]::new),
         new String[] {"root.test,1,1,0,604800000,"},
         "test1",
         "test123");
