@@ -333,7 +333,7 @@ public class ForecastTableFunction implements TableFunction {
         }
       }
     } else {
-      String[] predictedColumnsArray = predicatedColumns.split(",");
+      String[] predictedColumnsArray = predicatedColumns.split(";");
       Map<String, Integer> inputColumnIndexMap = new HashMap<>();
       for (int i = 0, size = allInputColumnsName.size(); i < size; i++) {
         Optional<String> fieldName = allInputColumnsName.get(i);

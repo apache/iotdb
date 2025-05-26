@@ -85,7 +85,7 @@ def fetch_built_in_model(model_id, inference_attributes):
     # build the built-in model
     if model_id == BuiltInModelType.ARIMA.value:
         model = ArimaModel(attributes)
-    elif model_id == BuiltInModelType.EXPONENTIAL_SMOOTHING.value:
+    elif model_id == BuiltInModelType.EXPONENTIAL_SMOOTHING.value or model_id == BuiltInModelType.HOLTWINTERS.value:
         model = ExponentialSmoothingModel(attributes)
     elif model_id == BuiltInModelType.NAIVE_FORECASTER.value:
         model = NaiveForecasterModel(attributes)
@@ -460,7 +460,7 @@ arima_attribute_map = {
     ),
     AttributeName.ORDER.value: TupleAttribute(
         name=AttributeName.ORDER.value,
-        default_value=(1, 0, 0),
+        default_value=(96, 1, 96),
         value_type=int
     ),
     AttributeName.SEASONAL_ORDER.value: TupleAttribute(

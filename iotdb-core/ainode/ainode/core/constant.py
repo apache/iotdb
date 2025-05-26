@@ -139,6 +139,7 @@ class ModelInputName(Enum):
 class BuiltInModelType(Enum):
     # forecast models
     ARIMA = "_arima"
+    HOLTWINTERS = "_hotwinters"
     EXPONENTIAL_SMOOTHING = "_exponentialsmoothing"
     NAIVE_FORECASTER = "_naiveforecaster"
     STL_FORECASTER = "_stlforecaster"
