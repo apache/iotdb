@@ -82,6 +82,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorS
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveConfigNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
@@ -183,9 +185,7 @@ public class Coordinator {
     this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
     this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
-    this.statementRewrite =
-        new StatementRewriteFactory(LocalExecutionPlanner.getInstance().metadata, accessControl)
-            .getStatementRewrite();
+    this.statementRewrite = new StatementRewriteFactory().getStatementRewrite();
     this.logicalPlanOptimizers =
         new LogicalOptimizeFactory(
                 new PlannerContext(
@@ -411,6 +411,8 @@ public class Coordinator {
         || statement instanceof SetTableComment
         || statement instanceof SetColumnComment
         || statement instanceof DeleteDevice
+        || statement instanceof RenameColumn
+        || statement instanceof RenameTable
         || statement instanceof ShowCluster
         || statement instanceof ShowRegions
         || statement instanceof ShowDataNodes

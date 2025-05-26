@@ -904,6 +904,8 @@ public class SessionConnection {
         return new RetryResult<>(result, null, retryAttempt);
       }
 
+      logger.debug(
+          "Retry attempt #{}, result {}, exception {}", retryAttempt, result, lastTException);
       // prepare for the next retry
       if (lastTException != null
           || !availableNodes.get().contains(this.endPoint)
@@ -911,6 +913,7 @@ public class SessionConnection {
         // 1. the current datanode is unreachable (TException)
         // 2. the current datanode is partitioned with other nodes (not in availableNodes)
         // 3. asymmetric network partition
+        logger.debug("Retry attempt #{}, Reconnecting to other datanode", retryAttempt);
         reconnect();
       }
       try {

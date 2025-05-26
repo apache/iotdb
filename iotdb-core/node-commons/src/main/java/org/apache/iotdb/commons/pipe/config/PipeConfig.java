@@ -303,8 +303,28 @@ public class PipeConfig {
     return COMMON_CONFIG.isPipeEpochKeepTsFileAfterStuckRestartEnabled();
   }
 
+  public long getPipeFlushAfterTerminateCount() {
+    return COMMON_CONFIG.getPipeFlushAfterTerminateCount();
+  }
+
+  public long getPipeFlushAfterLastTerminateSeconds() {
+    return COMMON_CONFIG.getPipeFlushAfterLastTerminateSeconds();
+  }
+
   public long getPipeStorageEngineFlushTimeIntervalMs() {
     return COMMON_CONFIG.getPipeStorageEngineFlushTimeIntervalMs();
+  }
+
+  public int getPipeMaxAllowedRemainingInsertEventCountPerPipe() {
+    return COMMON_CONFIG.getPipeMaxAllowedRemainingInsertEventCountPerPipe();
+  }
+
+  public int getPipeMaxAllowedTotalRemainingInsertEventCount() {
+    return COMMON_CONFIG.getPipeMaxAllowedTotalRemainingInsertEventCount();
+  }
+
+  public int getPipeRemainingInsertEventCountSmoothingIntervalSeconds() {
+    return COMMON_CONFIG.getPipeRemainingInsertEventCountSmoothingIntervalSeconds();
   }
 
   /////////////////////////////// Logger ///////////////////////////////
@@ -530,8 +550,19 @@ public class PipeConfig {
     LOGGER.info(
         "PipeEpochKeepTsFileAfterStuckRestartEnabled: {}",
         isPipeEpochKeepTsFileAfterStuckRestartEnabled());
+    LOGGER.info("PipeFlushAfterTerminateCount: {}", getPipeFlushAfterTerminateCount());
+    LOGGER.info("PipeFlushAfterLastTerminateSeconds: {}", getPipeFlushAfterLastTerminateSeconds());
     LOGGER.info(
         "PipeStorageEngineFlushTimeIntervalMs: {}", getPipeStorageEngineFlushTimeIntervalMs());
+    LOGGER.info(
+        "PipeMaxAllowedRemainingInsertEventCountPerPipe: {}",
+        getPipeMaxAllowedRemainingInsertEventCountPerPipe());
+    LOGGER.info(
+        "PipeMaxAllowedTotalRemainingInsertEventCount: {}",
+        getPipeMaxAllowedTotalRemainingInsertEventCount());
+    LOGGER.info(
+        "PipeRemainingInsertEventCountSmoothingIntervalSeconds: {}",
+        getPipeRemainingInsertEventCountSmoothingIntervalSeconds());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());

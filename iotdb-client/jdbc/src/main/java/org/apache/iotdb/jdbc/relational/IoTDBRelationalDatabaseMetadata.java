@@ -212,13 +212,14 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     try {
       String sql =
           String.format(
-              "select * from information_schema.tables where database like '%s'", schemaPattern);
+              "select * from information_schema.tables where database like '%s' escape '\\'",
+              schemaPattern);
       rs = stmt.executeQuery(sql);
     } catch (SQLException e) {
       LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
 
       try {
-        String sql = String.format("show tables details from %s", schemaPattern);
+        String sql = String.format("show tables details from %s", removeEscape(schemaPattern));
         rs = stmt.executeQuery(sql);
         legacyMode = false;
       } catch (SQLException e1) {
@@ -318,6 +319,17 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         : null;
   }
 
+  /**
+   * some tools pass in parameters that will escape '_', but some syntax does not support escaping,
+   * such as dataGrip
+   *
+   * @param pattern eg. information\_schema
+   * @return eg. information_schema
+   */
+  public static String removeEscape(String pattern) {
+    return pattern.replaceAll("\\_", "_");
+  }
+
   @Override
   public ResultSet getColumns(
       String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
@@ -331,14 +343,16 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     try {
       String sql =
           String.format(
-              "select * from information_schema.columns where database like '%s' and table_name like '%s'",
+              "select * from information_schema.columns where database like '%s' escape '\\' and table_name like '%s' escape '\\'",
               schemaPattern, tableNamePattern);
       rs = stmt.executeQuery(sql);
     } catch (SQLException e) {
       LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
 
       try {
-        String sql = String.format("desc %s.%s details", schemaPattern, tableNamePattern);
+        String sql =
+            String.format(
+                "desc %s.%s details", removeEscape(schemaPattern), removeEscape(tableNamePattern));
         rs = stmt.executeQuery(sql);
         legacyMode = false;
       } catch (SQLException e1) {
@@ -351,29 +365,56 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     }
 
     // Setup Fields
-    Field[] fields = new Field[11];
-    fields[0] = new Field("", ORDINAL_POSITION, INT32);
-    fields[1] = new Field("", COLUMN_NAME, "TEXT");
-    fields[2] = new Field("", DATA_TYPE, INT32);
-    fields[3] = new Field("", TYPE_NAME, "TEXT");
-    fields[4] = new Field("", IS_AUTOINCREMENT, "TEXT");
-    fields[5] = new Field("", IS_NULLABLE, "TEXT");
-    fields[6] = new Field("", NULLABLE, INT32);
-    fields[7] = new Field("", COLUMN_SIZE, INT32);
+    Field[] fields = new Field[24];
+    fields[0] = new Field("", TABLE_CAT, "TEXT");
+    fields[1] = new Field("", TABLE_SCHEM, "TEXT");
+    fields[2] = new Field("", TABLE_NAME, "TEXT");
+    fields[3] = new Field("", COLUMN_NAME, "TEXT");
+    fields[4] = new Field("", DATA_TYPE, INT32);
+    fields[5] = new Field("", TYPE_NAME, "TEXT");
+    fields[6] = new Field("", COLUMN_SIZE, INT32);
+    fields[7] = new Field("", BUFFER_LENGTH, INT32);
     fields[8] = new Field("", DECIMAL_DIGITS, INT32);
-    fields[9] = new Field("", REMARKS, "TEXT");
-    fields[10] = new Field("", "COLUMN_DEF", "TEXT");
+    fields[9] = new Field("", NUM_PREC_RADIX, INT32);
+    fields[10] = new Field("", NULLABLE, INT32);
+    fields[11] = new Field("", REMARKS, "TEXT");
+    fields[12] = new Field("", COLUMN_DEF, "TEXT");
+    fields[13] = new Field("", SQL_DATA_TYPE, INT32);
+    fields[14] = new Field("", SQL_DATETIME_SUB, INT32);
+    fields[15] = new Field("", CHAR_OCTET_LENGTH, INT32);
+    fields[16] = new Field("", ORDINAL_POSITION, INT32);
+    fields[17] = new Field("", IS_NULLABLE, "TEXT");
+    fields[18] = new Field("", SCOPE_CATALOG, "TEXT");
+    fields[19] = new Field("", SCOPE_SCHEMA, "TEXT");
+    fields[20] = new Field("", SCOPE_TABLE, "TEXT");
+    fields[21] = new Field("", SOURCE_DATA_TYPE, "TEXT");
+    fields[22] = new Field("", IS_AUTOINCREMENT, "TEXT");
+    fields[23] = new Field("", IS_GENERATEDCOLUMN, "TEXT");
+
     List<TSDataType> tsDataTypeList =
         Arrays.asList(
-            TSDataType.INT32,
-            TSDataType.TEXT,
-            TSDataType.INT32,
             TSDataType.TEXT,
             TSDataType.TEXT,
             TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.TEXT,
             TSDataType.INT32,
             TSDataType.INT32,
             TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
             TSDataType.TEXT,
             TSDataType.TEXT);
     List<String> columnNameList = new ArrayList<>();
@@ -395,51 +436,68 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
         if (i == 0) {
-          valueInRow.add(count++);
-        } else if (i == 1) {
-          valueInRow.add(columnName);
-        } else if (i == 2) {
-          valueInRow.add(getSQLType(type));
-        } else if (i == 3) {
-          valueInRow.add(type);
-        } else if (i == 4) {
           valueInRow.add("");
+        } else if (i == 1) {
+          valueInRow.add(schemaPattern);
+        } else if (i == 2) {
+          valueInRow.add(tableNamePattern);
+        } else if (i == 3) {
+          valueInRow.add(columnName);
+        } else if (i == 4) {
+          valueInRow.add(getSQLType(type));
         } else if (i == 5) {
-          if (!columnName.equals("time")) {
-            valueInRow.add("YES");
-          } else {
-            valueInRow.add("NO");
-          }
+          valueInRow.add(type);
         } else if (i == 6) {
+          valueInRow.add(0);
+        } else if (i == 7) {
+          valueInRow.add(65535);
+        } else if (i == 8) {
+          valueInRow.add(getTypeScale(fields[i].getSqlType()));
+        } else if (i == 9) {
+          valueInRow.add(0);
+        } else if (i == 10) {
           if (!columnName.equals("time")) {
             valueInRow.add(ResultSetMetaData.columnNullableUnknown);
           } else {
             valueInRow.add(ResultSetMetaData.columnNoNulls);
           }
-        } else if (i == 7) {
-          // valueInRow.add(getTypePrecision(fields[i].getSqlType()));
-          valueInRow.add(0);
-        } else if (i == 8) {
-          valueInRow.add(getTypeScale(fields[i].getSqlType()));
-        } else if (i == 9) {
+        } else if (i == 11) {
           String comment = legacyMode ? rs.getString("comment") : rs.getString("Comment");
           if (comment != null && !comment.isEmpty()) {
             valueInRow.add(comment);
           } else {
             valueInRow.add("");
           }
-          // valueInRow.add(rs.getString("comment"));
-        } else if (i == 10) {
+        } else if (i == 12) {
           valueInRow.add("");
-        } else {
+        } else if (i == 13) {
+          valueInRow.add(0);
+        } else if (i == 14) {
+          valueInRow.add(0);
+        } else if (i == 15) {
+          valueInRow.add(65535);
+        } else if (i == 16) {
+          valueInRow.add(count++);
+        } else if (i == 17) {
           if (!columnName.equals("time")) {
             valueInRow.add("YES");
-            valueInRow.add(ResultSetMetaData.columnNullableUnknown);
           } else {
             valueInRow.add("NO");
-            valueInRow.add(ResultSetMetaData.columnNoNulls);
           }
-          break;
+        } else if (i == 18) {
+          valueInRow.add("");
+        } else if (i == 19) {
+          valueInRow.add("");
+        } else if (i == 20) {
+          valueInRow.add("");
+        } else if (i == 21) {
+          valueInRow.add(0);
+        } else if (i == 22) {
+          valueInRow.add("");
+        } else if (i == 23) {
+          valueInRow.add("");
+        } else {
+          valueInRow.add("");
         }
       }
       valuesList.add(valueInRow);
@@ -483,14 +541,16 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     try {
       String sql =
           String.format(
-              "select * from information_schema.columns where database like '%s' and table_name like '%s' and (category='TAG' or category='TIME')",
+              "select * from information_schema.columns where database like '%s'  escape '\\' and table_name like '%s' escape '\\' and (category='TAG' or category='TIME')",
               schemaPattern, tableNamePattern);
       rs = stmt.executeQuery(sql);
     } catch (SQLException e) {
       LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
 
       try {
-        String sql = String.format("desc %s.%s", schemaPattern, tableNamePattern);
+        String sql =
+            String.format(
+                "desc %s.%s", removeEscape(schemaPattern), removeEscape(tableNamePattern));
         rs = stmt.executeQuery(sql);
         legacyMode = false;
       } catch (SQLException e1) {
@@ -535,11 +595,11 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         List<Object> valueInRow = new ArrayList<>();
         for (int i = 0; i < fields.length; ++i) {
           if (i == 0) {
-            valueInRow.add("");
+            valueInRow.add(schemaPattern);
           } else if (i == 1) {
-            valueInRow.add("");
+            valueInRow.add(schemaPattern);
           } else if (i == 2) {
-            valueInRow.add("");
+            valueInRow.add(tableNamePattern);
           } else if (i == 3) {
             valueInRow.add(columnName);
           } else if (i == 4) {
@@ -590,6 +650,6 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
 
   @Override
   public String getSchemaTerm() throws SQLException {
-    return "database";
+    return "";
   }
 }

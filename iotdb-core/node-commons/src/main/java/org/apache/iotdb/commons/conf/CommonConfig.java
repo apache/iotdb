@@ -265,15 +265,20 @@ public class CommonConfig {
   private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
   private double pipeReceiverActualToEstimatedMemoryRatio = 3;
 
-  private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
-  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 5;
-  private int pipeMaxAllowedPinnedMemTableCount = 10; // per data region
-  private long pipeMaxAllowedLinkedTsFileCount = 300;
+  private int pipeMaxAllowedHistoricalTsFilePerDataRegion = Integer.MAX_VALUE; // Deprecated
+  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = Integer.MAX_VALUE; // Deprecated
+  private int pipeMaxAllowedPinnedMemTableCount = Integer.MAX_VALUE; // per data region
+  private long pipeMaxAllowedLinkedTsFileCount = Long.MAX_VALUE; // Deprecated
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
   private long pipeStuckRestartMinIntervalMs = 5 * 60 * 1000L; // 5 minutes
   private boolean pipeEpochKeepTsFileAfterStuckRestartEnabled = false;
+  private long pipeFlushAfterLastTerminateSeconds = 30;
+  private long pipeFlushAfterTerminateCount = 30;
   private long pipeStorageEngineFlushTimeIntervalMs = Long.MAX_VALUE;
+  private int pipeMaxAllowedRemainingInsertEventCountPerPipe = 10000;
+  private int pipeMaxAllowedTotalRemainingInsertEventCount = 50000;
+  private int pipeRemainingEventCountSmoothingIntervalSeconds = 15;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
   private int pipeMetaReportMaxLogIntervalRounds = 36;
@@ -1441,6 +1446,57 @@ public class CommonConfig {
     return pipeStorageEngineFlushTimeIntervalMs;
   }
 
+  public int getPipeMaxAllowedRemainingInsertEventCountPerPipe() {
+    return pipeMaxAllowedRemainingInsertEventCountPerPipe;
+  }
+
+  public void setPipeMaxAllowedRemainingInsertEventCountPerPipe(
+      int pipeMaxAllowedRemainingInsertEventCountPerPipe) {
+    if (this.pipeMaxAllowedRemainingInsertEventCountPerPipe
+        == pipeMaxAllowedRemainingInsertEventCountPerPipe) {
+      return;
+    }
+    this.pipeMaxAllowedRemainingInsertEventCountPerPipe =
+        pipeMaxAllowedRemainingInsertEventCountPerPipe;
+    logger.info(
+        "pipeMaxAllowedRemainingInsertEventCount is set to {}",
+        pipeMaxAllowedRemainingInsertEventCountPerPipe);
+  }
+
+  public int getPipeMaxAllowedTotalRemainingInsertEventCount() {
+    return pipeMaxAllowedTotalRemainingInsertEventCount;
+  }
+
+  public void setPipeMaxAllowedTotalRemainingInsertEventCount(
+      int pipeMaxAllowedTotalRemainingInsertEventCount) {
+    if (this.pipeMaxAllowedTotalRemainingInsertEventCount
+        == pipeMaxAllowedTotalRemainingInsertEventCount) {
+      return;
+    }
+    this.pipeMaxAllowedTotalRemainingInsertEventCount =
+        pipeMaxAllowedTotalRemainingInsertEventCount;
+    logger.info(
+        "pipeMaxAllowedTotalRemainingInsertEventCount is set to {}",
+        pipeMaxAllowedTotalRemainingInsertEventCount);
+  }
+
+  public int getPipeRemainingInsertEventCountSmoothingIntervalSeconds() {
+    return pipeRemainingEventCountSmoothingIntervalSeconds;
+  }
+
+  public void setPipeRemainingInsertEventCountSmoothingIntervalSeconds(
+      int pipeRemainingEventCountSmoothingIntervalSeconds) {
+    if (this.pipeRemainingEventCountSmoothingIntervalSeconds
+        == pipeRemainingEventCountSmoothingIntervalSeconds) {
+      return;
+    }
+    this.pipeRemainingEventCountSmoothingIntervalSeconds =
+        pipeRemainingEventCountSmoothingIntervalSeconds;
+    logger.info(
+        "pipeRemainingEventCountSmoothingIntervalSeconds is set to {}",
+        pipeRemainingEventCountSmoothingIntervalSeconds);
+  }
+
   public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
     if (this.pipeStuckRestartIntervalSeconds == pipeStuckRestartIntervalSeconds) {
       return;
@@ -1476,6 +1532,31 @@ public class CommonConfig {
     this.pipeStorageEngineFlushTimeIntervalMs = pipeStorageEngineFlushTimeIntervalMs;
     logger.info(
         "pipeStorageEngineFlushTimeIntervalMs is set to {}", pipeStorageEngineFlushTimeIntervalMs);
+  }
+
+  public long getPipeFlushAfterLastTerminateSeconds() {
+    return pipeFlushAfterLastTerminateSeconds;
+  }
+
+  public void setPipeFlushAfterLastTerminateSeconds(long pipeFlushAfterLastTerminateSeconds) {
+    if (this.pipeFlushAfterLastTerminateSeconds == pipeFlushAfterLastTerminateSeconds) {
+      return;
+    }
+    this.pipeFlushAfterLastTerminateSeconds = pipeFlushAfterLastTerminateSeconds;
+    logger.info(
+        "pipeFlushAfterLastTerminateSeconds is set to {}", pipeFlushAfterLastTerminateSeconds);
+  }
+
+  public long getPipeFlushAfterTerminateCount() {
+    return pipeFlushAfterTerminateCount;
+  }
+
+  public void setPipeFlushAfterTerminateCount(long pipeFlushAfterTerminateCount) {
+    if (this.pipeFlushAfterTerminateCount == pipeFlushAfterTerminateCount) {
+      return;
+    }
+    this.pipeFlushAfterTerminateCount = pipeFlushAfterTerminateCount;
+    logger.info("pipeFlushAfterTerminateCount is set to {}", pipeFlushAfterTerminateCount);
   }
 
   public int getPipeMetaReportMaxLogNumPerRound() {

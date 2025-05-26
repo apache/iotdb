@@ -426,11 +426,37 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_stuck_restart_interval_seconds",
                 String.valueOf(config.getPipeStuckRestartIntervalSeconds()))));
+    config.setPipeMaxAllowedRemainingInsertEventCountPerPipe(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_remaining_insert_event_count_per_pipe",
+                String.valueOf(config.getPipeMaxAllowedRemainingInsertEventCountPerPipe()))));
+    config.setPipeMaxAllowedTotalRemainingInsertEventCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_total_remaining_insert_event_count",
+                String.valueOf(config.getPipeMaxAllowedTotalRemainingInsertEventCount()))));
+    config.setPipeRemainingInsertEventCountSmoothingIntervalSeconds(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_remaining_insert_event_count_smoothing_interval_seconds",
+                String.valueOf(
+                    config.getPipeRemainingInsertEventCountSmoothingIntervalSeconds()))));
     config.setPipeStuckRestartMinIntervalMs(
         Long.parseLong(
             properties.getProperty(
                 "pipe_stuck_restart_min_interval_ms",
                 String.valueOf(config.getPipeStuckRestartMinIntervalMs()))));
+    config.setPipeFlushAfterLastTerminateSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_flush_after_last_terminate_seconds",
+                String.valueOf(config.getPipeFlushAfterLastTerminateSeconds()))));
+    config.setPipeFlushAfterTerminateCount(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_flush_after_terminate_count",
+                String.valueOf(config.getPipeFlushAfterTerminateCount()))));
     config.setPipeEpochKeepTsFileAfterStuckRestartEnabled(
         Boolean.parseBoolean(
             properties.getProperty(

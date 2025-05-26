@@ -46,7 +46,7 @@ public class PipeMemoryManager {
       PipeConfig.getInstance().getPipeMemoryManagementEnabled();
 
   // TODO @spricoder: consider combine memory block and used MemorySizeInBytes
-  private IMemoryBlock memoryBlock =
+  private final IMemoryBlock memoryBlock =
       IoTDBDescriptor.getInstance()
           .getMemoryConfig()
           .getPipeMemoryManager()

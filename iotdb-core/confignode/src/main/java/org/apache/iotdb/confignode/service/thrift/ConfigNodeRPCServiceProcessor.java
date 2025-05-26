@@ -81,6 +81,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListRe
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
@@ -113,6 +114,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -141,6 +143,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
@@ -404,83 +407,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus setDatabase(final TDatabaseSchema databaseSchema) {
-    TSStatus errorResp = null;
-    final boolean isSystemDatabase =
-        databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
-
-    if (databaseSchema.getTTL() < 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to create database. The TTL should be positive.");
+    final TSStatus setDefaultStatus =
+        ClusterSchemaManager.enrichDatabaseSchemaWithDefaultProperties(databaseSchema);
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != setDefaultStatus.getCode()) {
+      return setDefaultStatus;
     }
-
-    if (!databaseSchema.isSetSchemaReplicationFactor()) {
-      databaseSchema.setSchemaReplicationFactor(configNodeConfig.getSchemaReplicationFactor());
-    } else if (databaseSchema.getSchemaReplicationFactor() <= 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  "Failed to create database. The schemaReplicationFactor should be positive.");
-    }
-
-    if (!databaseSchema.isSetDataReplicationFactor()) {
-      databaseSchema.setDataReplicationFactor(configNodeConfig.getDataReplicationFactor());
-    } else if (databaseSchema.getDataReplicationFactor() <= 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  "Failed to create database. The dataReplicationFactor should be positive.");
-    }
-
-    if (!databaseSchema.isSetTimePartitionOrigin()) {
-      databaseSchema.setTimePartitionOrigin(commonConfig.getTimePartitionOrigin());
-    } else if (databaseSchema.getTimePartitionOrigin() < 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  "Failed to create database. The timePartitionOrigin should be non-negative.");
-    }
-
-    if (!databaseSchema.isSetTimePartitionInterval()) {
-      databaseSchema.setTimePartitionInterval(commonConfig.getTimePartitionInterval());
-    } else if (databaseSchema.getTimePartitionInterval() <= 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  "Failed to create database. The timePartitionInterval should be positive.");
-    }
-
-    if (isSystemDatabase) {
-      databaseSchema.setMinSchemaRegionGroupNum(1);
-    } else if (!databaseSchema.isSetMinSchemaRegionGroupNum()) {
-      databaseSchema.setMinSchemaRegionGroupNum(
-          configNodeConfig.getDefaultSchemaRegionGroupNumPerDatabase());
-    } else if (databaseSchema.getMinSchemaRegionGroupNum() <= 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  "Failed to create database. The schemaRegionGroupNum should be positive.");
-    }
-
-    if (isSystemDatabase) {
-      databaseSchema.setMinDataRegionGroupNum(1);
-    } else if (!databaseSchema.isSetMinDataRegionGroupNum()) {
-      databaseSchema.setMinDataRegionGroupNum(
-          configNodeConfig.getDefaultDataRegionGroupNumPerDatabase());
-    } else if (databaseSchema.getMinDataRegionGroupNum() <= 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to create database. The dataRegionGroupNum should be positive.");
-    }
-
-    if (errorResp != null) {
-      LOGGER.warn("Execute SetDatabase: {} with result: {}", databaseSchema, errorResp);
-      return errorResp;
-    }
-
-    // The maxRegionGroupNum is equal to the minRegionGroupNum when initialize
-    databaseSchema.setMaxSchemaRegionGroupNum(databaseSchema.getMinSchemaRegionGroupNum());
-    databaseSchema.setMaxDataRegionGroupNum(databaseSchema.getMinDataRegionGroupNum());
 
     final DatabaseSchemaPlan setPlan =
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema);
@@ -607,7 +538,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
     final GetDatabasePlan plan =
         new GetDatabasePlan(
-            req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
+            req.getDatabasePathPattern(),
+            scope,
+            req.isSetIsTableModel() && req.isIsTableModel(),
+            false);
     final DatabaseSchemaResp databaseSchemaResp =
         (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
@@ -1295,6 +1229,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus dropSubscriptionById(TDropSubscriptionReq req) {
+    return configManager.dropSubscriptionById(req);
+  }
+
+  @Override
   public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) {
     return configManager.showSubscription(req);
   }
@@ -1458,5 +1397,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
     return configManager.deleteDevice(req);
+  }
+
+  @Override
+  public TSStatus createTableView(final TCreateTableViewReq req) {
+    return configManager.createTableView(req);
   }
 }

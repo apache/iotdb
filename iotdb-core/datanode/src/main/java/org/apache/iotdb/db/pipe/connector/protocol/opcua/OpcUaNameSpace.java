@@ -29,6 +29,7 @@ import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -137,11 +138,11 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       transferTabletRowForClientServerModel(
           tablet.getDeviceId().split("\\."), newSchemas, timestamps, values);
     } else {
-      new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByTimestampIfNecessary();
+      new PipeTableModelTabletEventSorter(tablet).sortByTimestampIfNecessary();
 
       final List<Integer> columnIndexes = new ArrayList<>();
       for (int i = 0; i < schemas.size(); ++i) {
-        if (tablet.getColumnTypes().get(i) == Tablet.ColumnCategory.FIELD) {
+        if (tablet.getColumnTypes().get(i) == ColumnCategory.FIELD) {
           columnIndexes.add(i);
           newSchemas.add(schemas.get(i));
         }
@@ -342,8 +343,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
     // Use eventNode here because other nodes doesn't support values and times simultaneously
     for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); ++columnIndex) {
-      if (isTableModel
-          && !tablet.getColumnTypes().get(columnIndex).equals(Tablet.ColumnCategory.FIELD)) {
+      if (isTableModel && !tablet.getColumnTypes().get(columnIndex).equals(ColumnCategory.FIELD)) {
         continue;
       }
       final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();

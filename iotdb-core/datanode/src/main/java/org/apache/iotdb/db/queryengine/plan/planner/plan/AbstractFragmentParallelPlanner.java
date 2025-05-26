@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.partition.QueryExecutor;
 import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreach
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableModelQueryFragmentPlanner;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.tsfile.utils.Pair;
@@ -125,7 +127,8 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
           String.format(
               "All replicas for region[%s] are not available in these DataNodes[%s]",
               regionReplicaSet.getRegionId(), regionReplicaSet.getDataNodeLocations());
-      throw new IllegalArgumentException(errorMsg);
+      throw new IoTDBRuntimeException(
+          errorMsg, TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode(), true);
     }
     if (regionReplicaSet.getDataNodeLocationsSize() != availableDataNodes.size()) {
       LOGGER.info("available replicas: {}", availableDataNodes);

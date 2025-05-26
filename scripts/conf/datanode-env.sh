@@ -268,7 +268,7 @@ calculate_memory_sizes
 # off heap memory size
 #OFF_HEAP_MEMORY="512M"
 
-# configure JVM memory with set environment variable of IOTDB_JMX_OPTS
+# configure JVM memory with setting environment variable of IOTDB_JMX_OPTS
 if [[ "$IOTDB_JMX_OPTS" =~ -Xmx ]];then
     item_arr=(${IOTDB_JMX_OPTS})
     for item in ${item_arr[@]};do

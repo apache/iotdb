@@ -56,6 +56,13 @@ statement
     | descTableStatement
     | alterTableStatement
     | commentStatement
+    | showCreateTableStatement
+
+    // Table View Statement
+    | createViewStatement
+    | alterViewStatement
+    | dropViewStatement
+    | showCreateViewStatement
 
     // Index Statement
     | createIndexStatement
@@ -92,6 +99,7 @@ statement
     | dropTopicStatement
     | showTopicsStatement
     | showSubscriptionsStatement
+    | dropSubscriptionStatement
 
     // Show Statement
     | showDevicesStatement
@@ -152,7 +160,7 @@ statement
     | createModelStatement
     | showModelsStatement
 
-    // View, Trigger, pipe, CQ, Quota are not supported yet
+    // View, Trigger, CQ, Quota are not supported yet
     ;
 
 
@@ -231,7 +239,64 @@ alterTableStatement
 
 commentStatement
     : COMMENT ON TABLE qualifiedName IS (string | NULL) #commentTable
+    | COMMENT ON VIEW qualifiedName IS (string | NULL) #commentView
     | COMMENT ON COLUMN qualifiedName '.' column=identifier IS (string | NULL) #commentColumn
+    ;
+
+showCreateTableStatement
+    : SHOW CREATE TABLE qualifiedName
+    ;
+
+// ------------------------------------------- Table View Statement ---------------------------------------------------------
+createViewStatement
+    : CREATE (OR REPLACE)? VIEW qualifiedName
+        '(' (viewColumnDefinition (',' viewColumnDefinition)*)? ')'
+        comment?
+        (RESTRICT)?
+        (WITH properties)?
+        AS prefixPath
+    ;
+
+viewColumnDefinition
+    : identifier columnCategory=(TAG | TIME | FIELD) comment?
+    | identifier type (columnCategory=(TAG | TIME | FIELD))? comment?
+    | identifier (type)? (columnCategory=FIELD)? FROM original_measurement=identifier comment?
+    ;
+
+alterViewStatement
+    : ALTER VIEW (IF EXISTS)? from=qualifiedName RENAME TO to=identifier #renameTableView
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName ADD COLUMN (IF NOT EXISTS)? viewColumnDefinition #addViewColumn
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName RENAME COLUMN (IF EXISTS)? from=identifier TO to=identifier #renameViewColumn
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier #dropViewColumn
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName SET PROPERTIES propertyAssignments #setTableViewProperties
+    ;
+
+dropViewStatement
+    : DROP VIEW (IF EXISTS)? qualifiedName
+    ;
+
+showCreateViewStatement
+    : SHOW CREATE VIEW qualifiedName
+    ;
+
+// IoTDB Objects
+
+prefixPath
+    : ROOT ('.' nodeName)*
+    ;
+
+nodeName
+    : wildcard
+    | nodeNameWithoutWildcard
+    ;
+
+nodeNameWithoutWildcard
+    : identifier
+    ;
+
+wildcard
+    : '*'
+    | '**'
     ;
 
 // ------------------------------------------- Index Statement ---------------------------------------------------------
@@ -433,6 +498,10 @@ showTopicsStatement
 
 showSubscriptionsStatement
     : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    ;
+
+dropSubscriptionStatement
+    : DROP SUBSCRIPTION (IF EXISTS)? subscriptionId=identifier
     ;
 
 
@@ -899,6 +968,7 @@ relation
       ( CROSS JOIN right=aliasedRelation
       | joinType JOIN rightRelation=relation joinCriteria
       | NATURAL joinType JOIN right=aliasedRelation
+      | ASOF ('(' TOLERANCE timeDuration ')')? joinType JOIN rightRelation=relation joinCriteria
       )                                                     #joinRelation
     | aliasedRelation                                       #relationDefault
     ;
@@ -1178,9 +1248,9 @@ nonReserved
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
     | QUERIES | QUERY | QUOTES
-    | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT  | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROW | ROWS | RUNNING
+    | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROOT | ROW | ROWS | RUNNING
     | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
-    | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
+    | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
     | TABLES | TABLESAMPLE | TAG | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
     | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | USE | USED | USER | UTF16 | UTF32 | UTF8
     | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
@@ -1202,6 +1272,7 @@ ANY: 'ANY';
 ARRAY: 'ARRAY';
 AS: 'AS';
 ASC: 'ASC';
+ASOF: 'ASOF';
 AT: 'AT';
 ATTRIBUTE: 'ATTRIBUTE';
 AUTHORIZATION: 'AUTHORIZATION';
@@ -1480,6 +1551,7 @@ ROLE: 'ROLE';
 ROLES: 'ROLES';
 ROLLBACK: 'ROLLBACK';
 ROLLUP: 'ROLLUP';
+ROOT: 'ROOT';
 ROW: 'ROW';
 ROWS: 'ROWS';
 RUNNING: 'RUNNING';
@@ -1504,6 +1576,7 @@ SQL_DIALECT: 'SQL_DIALECT';
 START: 'START';
 STATS: 'STATS';
 STOP: 'STOP';
+SUBSCRIPTION: 'SUBSCRIPTION';
 SUBSCRIPTIONS: 'SUBSCRIPTIONS';
 SUBSET: 'SUBSET';
 SUBSTRING: 'SUBSTRING';
@@ -1526,6 +1599,7 @@ TIMESERIES: 'TIMESERIES';
 TIMESLOTID: 'TIMESLOTID';
 TIMESTAMP: 'TIMESTAMP';
 TO: 'TO';
+TOLERANCE: 'TOLERANCE';
 TOPIC: 'TOPIC';
 TOPICS: 'TOPICS';
 TRAILING: 'TRAILING';

@@ -21,8 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionTableSchemaNotMatchException;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.file.metadata.TableSchema;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;

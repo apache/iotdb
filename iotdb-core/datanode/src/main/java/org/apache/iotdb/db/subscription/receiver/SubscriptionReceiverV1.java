@@ -112,6 +112,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
   private final ThreadLocal<PollTimer> pollTimerThreadLocal = new ThreadLocal<>();
 
+  private static final String SQL_DIALECT_TABLE_VALUE = "table";
+
   @Override
   public final TPipeSubscribeResp handle(final TPipeSubscribeReq req) {
     final short reqType = req.getType();
@@ -749,7 +751,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           new TSubscribeReq()
               .setConsumerId(consumerConfig.getConsumerId())
               .setConsumerGroupId(consumerConfig.getConsumerGroupId())
-              .setTopicNames(topicNames);
+              .setTopicNames(topicNames)
+              .setIsTableModel(
+                  Objects.equals(consumerConfig.getSqlDialect(), SQL_DIALECT_TABLE_VALUE));
       final TSStatus tsStatus = configNodeClient.createSubscription(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
@@ -789,7 +793,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           new TUnsubscribeReq()
               .setConsumerId(consumerConfig.getConsumerId())
               .setConsumerGroupId(consumerConfig.getConsumerGroupId())
-              .setTopicNames(topicNames);
+              .setTopicNames(topicNames)
+              .setIsTableModel(
+                  Objects.equals(consumerConfig.getSqlDialect(), SQL_DIALECT_TABLE_VALUE));
       final TSStatus tsStatus = configNodeClient.dropSubscription(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
