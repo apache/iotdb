@@ -74,6 +74,8 @@ public class ModelInfo implements SnapshotProcessor {
 
   private static final Set<String> builtInAnomalyDetectionModel = new HashSet<>();
 
+  private static final int timerXLInputLength = 2880;
+
   static {
     builtInForecastModel.add("_TimerXL");
     builtInForecastModel.add("_ARIMA");
@@ -270,6 +272,9 @@ public class ModelInfo implements SnapshotProcessor {
       // check if it's a built-in model
       if ((modelType = checkModelType(modelName)) != ModelType.USER_DEFINED) {
         modelInformation = new ModelInformation(modelType, modelName);
+        if (modelName.equalsIgnoreCase("_timerxl")) {
+          modelInformation.setInputLength(timerXLInputLength);
+        }
       } else {
         modelInformation = modelTable.getModelInformationById(modelName);
       }
