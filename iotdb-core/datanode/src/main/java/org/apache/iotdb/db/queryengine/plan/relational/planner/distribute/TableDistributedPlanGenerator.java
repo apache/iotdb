@@ -565,7 +565,7 @@ public class TableDistributedPlanGenerator
                         node.getOutputSymbols(),
                         node.getAssignments(),
                         new ArrayList<>(),
-                        node.getIdAndAttributeIndexMap(),
+                        node.getTagAndAttributeIndexMap(),
                         node.getScanOrder(),
                         node.getTimePredicate().orElse(null),
                         node.getPushDownPredicate(),
@@ -640,7 +640,7 @@ public class TableDistributedPlanGenerator
                           node.getOutputSymbols(),
                           node.getAssignments(),
                           new ArrayList<>(),
-                          node.getIdAndAttributeIndexMap(),
+                          node.getTagAndAttributeIndexMap(),
                           node.getScanOrder(),
                           node.getTimePredicate().orElse(null),
                           node.getPushDownPredicate(),
@@ -727,7 +727,7 @@ public class TableDistributedPlanGenerator
                   node.getOutputSymbols(),
                   node.getAssignments(),
                   new ArrayList<>(),
-                  node.getIdAndAttributeIndexMap(),
+                  node.getTagAndAttributeIndexMap(),
                   node.getScanOrder(),
                   node.getTimePredicate().orElse(null),
                   node.getPushDownPredicate(),
@@ -749,7 +749,7 @@ public class TableDistributedPlanGenerator
                   node.getOutputSymbols(),
                   node.getAssignments(),
                   new ArrayList<>(),
-                  node.getIdAndAttributeIndexMap(),
+                  node.getTagAndAttributeIndexMap(),
                   node.getScanOrder(),
                   node.getTimePredicate().orElse(null),
                   node.getPushDownPredicate(),
@@ -1166,7 +1166,7 @@ public class TableDistributedPlanGenerator
                               partialAggTableScanNode.getOutputSymbols(),
                               partialAggTableScanNode.getAssignments(),
                               new ArrayList<>(),
-                              partialAggTableScanNode.getIdAndAttributeIndexMap(),
+                              partialAggTableScanNode.getTagAndAttributeIndexMap(),
                               partialAggTableScanNode.getScanOrder(),
                               partialAggTableScanNode.getTimePredicate().orElse(null),
                               partialAggTableScanNode.getPushDownPredicate(),
@@ -1186,7 +1186,7 @@ public class TableDistributedPlanGenerator
                               partialAggTableScanNode.getOutputSymbols(),
                               partialAggTableScanNode.getAssignments(),
                               new ArrayList<>(),
-                              partialAggTableScanNode.getIdAndAttributeIndexMap(),
+                              partialAggTableScanNode.getTagAndAttributeIndexMap(),
                               partialAggTableScanNode.getScanOrder(),
                               partialAggTableScanNode.getTimePredicate().orElse(null),
                               partialAggTableScanNode.getPushDownPredicate(),
@@ -1267,7 +1267,7 @@ public class TableDistributedPlanGenerator
         newSortOrders.add(expectedOrderingScheme.getOrdering(symbol));
         lastIsTimeRelated = true;
         break;
-      } else if (!deviceTableScanNode.getIdAndAttributeIndexMap().containsKey(symbol)) {
+      } else if (!deviceTableScanNode.getTagAndAttributeIndexMap().containsKey(symbol)) {
         break;
       }
 
@@ -1284,7 +1284,7 @@ public class TableDistributedPlanGenerator
         createTreeDeviceIdColumnValueExtractor(deviceTableScanNode);
     final List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
     for (final Symbol symbol : newOrderingSymbols) {
-      final Integer idx = deviceTableScanNode.getIdAndAttributeIndexMap().get(symbol);
+      final Integer idx = deviceTableScanNode.getTagAndAttributeIndexMap().get(symbol);
       if (idx == null) {
         // time column or date_bin column
         break;
