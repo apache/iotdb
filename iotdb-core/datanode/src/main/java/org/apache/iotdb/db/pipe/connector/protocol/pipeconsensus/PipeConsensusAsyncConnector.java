@@ -24,9 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
-import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.client.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
@@ -158,7 +156,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
             nodeUrls, consensusGroupId, thisDataNodeId, pipeConsensusConnectorMetrics);
     retryConnector.customize(parameters, configuration);
     asyncTransferClientManager =
-        PipeConsensusClientMgrContainer.getInstance().getGlobalAsyncClientManager();
+        IoTV2GlobalComponentContainer.getInstance().getGlobalAsyncClientManager();
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder =
@@ -170,10 +168,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     // currently, tablet batch is false by default in PipeConsensus;
     isTabletBatchModeEnabled = false;
-
-    backgroundTaskService =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.PIPE_CONSENSUS_BACKGROUND_TASK_EXECUTOR.getName());
+    this.backgroundTaskService =
+        IoTV2GlobalComponentContainer.getInstance().getBackgroundTaskService();
   }
 
   /**
@@ -702,19 +698,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();
-    }
-
-    backgroundTaskService.shutdownNow();
-    try {
-      if (!backgroundTaskService.awaitTermination(30, TimeUnit.SECONDS)) {
-        LOGGER.warn(
-            "PipeConsensus-{} background service did not terminate within {}s",
-            consensusPipeName,
-            30);
-      }
-    } catch (InterruptedException e) {
-      LOGGER.warn("Background Thread {} still doesn't exit after 30s", consensusPipeName);
-      Thread.currentThread().interrupt();
     }
 
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
