@@ -309,6 +309,7 @@ public class PartitionMetrics implements IMetricSet {
     List<String> databases = getClusterSchemaManager().getDatabaseNames(null);
     for (String database : databases) {
       unbindDatabaseRelatedMetricsWhenUpdate(metricService, database);
+      unbindDatabaseTableMetrics(metricService, database);
     }
   }
 
@@ -466,6 +467,24 @@ public class PartitionMetrics implements IMetricSet {
     metricService.getOrCreateGauge(
         Metric.BASE_TABLE_NUM.toString(),
         MetricLevel.CORE,
+        Tag.TYPE.toString(),
+        TableType.BASE_TABLE.getName(),
+        Tag.DATABASE.toString(),
+        database);
+  }
+
+  public static void unbindDatabaseTableMetrics(
+      final AbstractMetricService metricService, final String database) {
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.TREE_VIEW_TABLE_NUM.toString(),
+        Tag.TYPE.toString(),
+        TableType.VIEW_FROM_TREE.getName(),
+        Tag.DATABASE.toString(),
+        database);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.BASE_TABLE_NUM.toString(),
         Tag.TYPE.toString(),
         TableType.BASE_TABLE.getName(),
         Tag.DATABASE.toString(),

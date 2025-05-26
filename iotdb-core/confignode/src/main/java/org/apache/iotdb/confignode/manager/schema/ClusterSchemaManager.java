@@ -197,6 +197,7 @@ public class ClusterSchemaManager {
           schema.getName(),
           schema.getDataReplicationFactor(),
           schema.getSchemaReplicationFactor());
+      PartitionMetrics.bindDatabaseTableMetrics(MetricService.getInstance(), schema.getName());
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
     } catch (final ConsensusException e) {
