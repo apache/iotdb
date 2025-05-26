@@ -107,6 +107,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionTreeRe
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
+    session_src.executeNonQueryStatement("flush");
   }
 
   @Test
@@ -191,7 +192,8 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionTreeRe
     AWAIT.untilAsserted(
         () -> {
           for (int i = 0; i < deviceCount; i++) {
-            assertEquals(rowCounts.get(i).get(), 10, devices.get(i) + ".s_0");
+            // NOTE: consider leader change
+            assertGte(rowCounts.get(i).get(), 10, devices.get(i) + ".s_0");
           }
         });
     // Unsubscribe
@@ -216,7 +218,8 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionTreeRe
     AWAIT.untilAsserted(
         () -> {
           for (int i = 0; i < deviceCount; i++) {
-            assertEquals(rowCounts.get(i).get(), 25, devices.get(i) + ".s_0");
+            // NOTE: consider leader change
+            assertGte(rowCounts.get(i).get(), 25, devices.get(i) + ".s_0");
           }
         });
     System.out.println(FORMAT.format(new Date()) + " onReceived: " + onReceiveCount.get());

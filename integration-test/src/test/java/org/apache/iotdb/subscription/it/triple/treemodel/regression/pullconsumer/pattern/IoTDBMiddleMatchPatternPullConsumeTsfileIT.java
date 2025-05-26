@@ -41,6 +41,7 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /***
@@ -151,11 +152,7 @@ public class IoTDBMiddleMatchPatternPullConsumeTsfileIT
     devices.add(device);
     devices.add(device2);
     devices.add(database2 + ".d_2");
-
-    List<Integer> rowCounts = consume_tsfile(consumer, devices);
-    assertEquals(rowCounts.get(0), 10);
-    assertEquals(rowCounts.get(1), 1);
-    assertEquals(rowCounts.get(2), 1);
+    consume_tsfile_await(consumer, devices, Arrays.asList(10, 1, 1));
     // Unsubscribe
     consumer.unsubscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 0, "Show subscriptions after cancellation");
@@ -165,14 +162,6 @@ public class IoTDBMiddleMatchPatternPullConsumeTsfileIT
     insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
     // Consumption data: Progress is not retained after canceling and re-subscribing. Full
     // synchronization.
-    rowCounts = consume_tsfile(consumer, devices);
-
-    assertEquals(
-        rowCounts.get(0),
-        15,
-        "Unsubscribe and resubscribe, progress is not retained. Full synchronization.");
-    assertEquals(
-        rowCounts.get(1), 1, "Cancel subscription and subscribe again," + database + ".d_1");
-    assertEquals(rowCounts.get(2), 1, "Unsubscribe and resubscribe," + database2 + ".d_2");
+    consume_tsfile_await(consumer, devices, Arrays.asList(15, 1, 1));
   }
 }
