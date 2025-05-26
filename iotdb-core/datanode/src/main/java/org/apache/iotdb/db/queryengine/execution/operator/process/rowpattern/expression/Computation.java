@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.ex
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
@@ -102,6 +103,9 @@ public abstract class Computation {
         return new ReferenceComputation(index);
       } else if (expression instanceof LongLiteral) {
         LongLiteral constExpr = (LongLiteral) expression;
+        return new ConstantComputation(constExpr.getParsedValue());
+      } else if (expression instanceof DoubleLiteral) {
+        DoubleLiteral constExpr = (DoubleLiteral) expression;
         return new ConstantComputation(constExpr.getValue());
       } else if (expression instanceof BooleanLiteral) {
         // undefined pattern variable is 'true'

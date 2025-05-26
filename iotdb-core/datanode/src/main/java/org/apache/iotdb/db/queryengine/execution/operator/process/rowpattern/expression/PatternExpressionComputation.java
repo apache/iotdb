@@ -108,7 +108,7 @@ public class PatternExpressionComputation {
     return computation.evaluate(values);
   }
 
-  /** ouput of `empty match` */
+  /** output of empty match */
   public Object computeEmpty(long matchNumber) {
     List<Object> values = new ArrayList<>();
 

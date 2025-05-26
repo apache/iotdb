@@ -76,6 +76,27 @@ public class IoTDBPatternRecognitionIT {
         "INSERT INTO t1 VALUES (2025-01-01T00:02:00, 80)",
         "INSERT INTO t1 VALUES (2025-01-01T00:03:00, 70)",
         "INSERT INTO t1 VALUES (2025-01-01T00:04:00, 70)",
+
+        // TABLE: t2
+        "CREATE TABLE t2(totalprice DOUBLE FIELD)",
+        "INSERT INTO t2 VALUES (2025-01-01T00:01:00, 10)",
+        "INSERT INTO t2 VALUES (2025-01-01T00:02:00, 20)",
+        "INSERT INTO t2 VALUES (2025-01-01T00:03:00, 30)",
+
+        // TABLE: t3
+        "CREATE TABLE t3(totalprice DOUBLE FIELD)",
+        "INSERT INTO t3 VALUES (2025-01-01T00:01:00, 10)",
+        "INSERT INTO t3 VALUES (2025-01-01T00:02:00, 20)",
+        "INSERT INTO t3 VALUES (2025-01-01T00:03:00, 30)",
+        "INSERT INTO t3 VALUES (2025-01-01T00:04:00, 30)",
+        "INSERT INTO t3 VALUES (2025-01-01T00:05:00, 40)",
+
+        // TABLE: t4
+        "CREATE TABLE t4(totalprice DOUBLE FIELD)",
+        "INSERT INTO t4 VALUES (2025-01-01T00:01:00, 90)",
+        "INSERT INTO t4 VALUES (2025-01-01T00:02:00, 80)",
+        "INSERT INTO t4 VALUES (2025-01-01T00:03:00, 70)",
+        "INSERT INTO t4 VALUES (2025-01-01T00:04:00, 80)",
       };
 
   private static void insertData() {
@@ -180,11 +201,23 @@ public class IoTDBPatternRecognitionIT {
     String[] expectedHeader = new String[] {"match", "price", "label"};
     String[] retArray1 =
         new String[] {
-          "1,null,null,", "2,80.0,B,", "2,70.0,B,", "3,null,null,",
+          "1,null,null,", "2,70.0,B,", "3,null,null,",
         };
     String[] retArray2 =
         new String[] {
+          "1,null,null,", "2,80.0,B,", "2,70.0,B,", "3,null,null,",
+        };
+    String[] retArray3 =
+        new String[] {
           "1,80.0,B,", "1,70.0,B,",
+        };
+    String[] retArray4 =
+        new String[] {
+          "2,80.0,B,", "2,70.0,B,",
+        };
+    String[] retArray5 =
+        new String[] {
+          "null,null,null,", "1,80.0,B,", "1,70.0,B,", "null,null,null,",
         };
 
     String sql =
@@ -203,15 +236,267 @@ public class IoTDBPatternRecognitionIT {
             + ") AS m";
 
     tableResultSetEqualTest(
+        format(sql, "ONE ROW PER MATCH", "PATTERN (B*)"), expectedHeader, retArray1, DATABASE_NAME);
+
+    tableResultSetEqualTest(
         format(sql, "ALL ROWS PER MATCH", "PATTERN (B*)"),
         expectedHeader,
-        retArray1,
+        retArray2,
         DATABASE_NAME);
 
     tableResultSetEqualTest(
         format(sql, "ALL ROWS PER MATCH", "PATTERN (B+)"),
         expectedHeader,
-        retArray2,
+        retArray3,
         DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "ALL ROWS PER MATCH OMIT EMPTY MATCHES", "PATTERN (B*)"),
+        expectedHeader,
+        retArray4,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "ALL ROWS PER MATCH WITH UNMATCHED ROWS", "PATTERN (B+)"),
+        expectedHeader,
+        retArray5,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLogicalNavigationFunction() {
+    String[] expectedHeader = new String[] {"time", "price"};
+    String[] retArray1 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,10.0,",
+          "2025-01-01T00:02:00.000Z,20.0,",
+          "2025-01-01T00:03:00.000Z,30.0,",
+        };
+    String[] retArray2 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,30.0,",
+          "2025-01-01T00:02:00.000Z,30.0,",
+          "2025-01-01T00:03:00.000Z,30.0,",
+        };
+    String[] retArray3 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,10.0,",
+          "2025-01-01T00:02:00.000Z,10.0,",
+          "2025-01-01T00:03:00.000Z,10.0,",
+        };
+    String[] retArray4 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,null,",
+          "2025-01-01T00:02:00.000Z,null,",
+          "2025-01-01T00:03:00.000Z,10.0,",
+        };
+    String[] retArray5 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,10.0,",
+          "2025-01-01T00:02:00.000Z,10.0,",
+          "2025-01-01T00:03:00.000Z,10.0,",
+        };
+    String[] retArray6 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,30.0,",
+          "2025-01-01T00:02:00.000Z,30.0,",
+          "2025-01-01T00:03:00.000Z,30.0,",
+        };
+
+    String sql =
+        "SELECT m.time, m.price "
+            + "FROM t2 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        %s AS price "
+            + "    ALL ROWS PER MATCH "
+            + "    AFTER MATCH SKIP PAST LAST ROW "
+            + "    PATTERN (A+) "
+            + "    DEFINE "
+            + "        A AS true "
+            + ") AS m";
+    // LAST(totalprice)
+    tableResultSetEqualTest(format(sql, "totalprice"), expectedHeader, retArray1, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql, "RPR_LAST(totalprice)"), expectedHeader, retArray1, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql, "RPR_LAST(totalprice, 0)"), expectedHeader, retArray1, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql, "RUNNING RPR_LAST(totalprice)"), expectedHeader, retArray1, DATABASE_NAME);
+
+    // FINAL LAST(totalprice)
+    tableResultSetEqualTest(
+        format(sql, "FINAL RPR_LAST(totalprice)"), expectedHeader, retArray2, DATABASE_NAME);
+
+    // FIRST(totalprice)
+    tableResultSetEqualTest(
+        format(sql, "RPR_FIRST(totalprice)"), expectedHeader, retArray3, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql, "RPR_FIRST(totalprice, 0)"), expectedHeader, retArray3, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql, "RUNNING RPR_FIRST(totalprice)"), expectedHeader, retArray3, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql, "FINAL RPR_FIRST(totalprice)"), expectedHeader, retArray3, DATABASE_NAME);
+
+    // LAST(totalprice, 2)
+    tableResultSetEqualTest(
+        format(sql, "RPR_LAST(totalprice, 2)"), expectedHeader, retArray4, DATABASE_NAME);
+
+    // FINAL LAST(totalprice, 2)
+    tableResultSetEqualTest(
+        format(sql, "FINAL RPR_LAST(totalprice, 2)"), expectedHeader, retArray5, DATABASE_NAME);
+
+    // FIRST(totalprice, 2)
+    tableResultSetEqualTest(
+        format(sql, "RPR_FIRST(totalprice, 2)"), expectedHeader, retArray6, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql, "FINAL RPR_FIRST(totalprice, 2)"), expectedHeader, retArray6, DATABASE_NAME);
+  }
+
+  @Test
+  public void testPhysicalNavigationFunction() {
+    String[] expectedHeader1 = new String[] {"time", "price"};
+    String[] retArray1 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,null,",
+          "2025-01-01T00:02:00.000Z,10.0,",
+          "2025-01-01T00:03:00.000Z,20.0,",
+        };
+    String[] retArray2 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,null,",
+          "2025-01-01T00:02:00.000Z,null,",
+          "2025-01-01T00:03:00.000Z,10.0,",
+        };
+    String[] retArray3 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,20.0,",
+          "2025-01-01T00:02:00.000Z,30.0,",
+          "2025-01-01T00:03:00.000Z,null,",
+        };
+    String[] retArray4 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,30.0,",
+          "2025-01-01T00:02:00.000Z,null,",
+          "2025-01-01T00:03:00.000Z,null,",
+        };
+    String[] retArray5 =
+        new String[] {
+          "30.0,",
+        };
+    String[] retArray6 =
+        new String[] {
+          "20.0,",
+        };
+    String[] retArray7 =
+        new String[] {
+          "40.0,",
+        };
+    String[] retArray8 =
+        new String[] {
+          "null,",
+        };
+
+    String sql1 =
+        "SELECT m.time, m.price "
+            + "FROM t2 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        %s AS price "
+            + "    ALL ROWS PER MATCH "
+            + "    AFTER MATCH SKIP PAST LAST ROW "
+            + "    PATTERN (A+) "
+            + "    DEFINE "
+            + "        A AS true "
+            + ") AS m";
+    // PREV(totalprice)
+    tableResultSetEqualTest(
+        format(sql1, "PREV(totalprice)"), expectedHeader1, retArray1, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql1, "PREV(totalprice, 1)"), expectedHeader1, retArray1, DATABASE_NAME);
+
+    // PREV(totalprice, 2)
+    tableResultSetEqualTest(
+        format(sql1, "PREV(totalprice, 2)"), expectedHeader1, retArray2, DATABASE_NAME);
+
+    // NEXT(totalprice)
+    tableResultSetEqualTest(
+        format(sql1, "NEXT(totalprice)"), expectedHeader1, retArray3, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql1, "NEXT(totalprice, 1)"), expectedHeader1, retArray3, DATABASE_NAME);
+
+    // NEXT(totalprice, 2)
+    tableResultSetEqualTest(
+        format(sql1, "NEXT(totalprice, 2)"), expectedHeader1, retArray4, DATABASE_NAME);
+
+    String[] expectedHeader2 = new String[] {"price"};
+    String sql2 =
+        "SELECT m.price "
+            + "FROM t3 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        %s AS price "
+            + "    ONE ROW PER MATCH "
+            + "    AFTER MATCH SKIP PAST LAST ROW "
+            + "    PATTERN (A) "
+            + "    DEFINE "
+            + "        A AS A.totalprice = PREV(A.totalprice) "
+            + ") AS m";
+    // PREV(A.totalprice)
+    tableResultSetEqualTest(
+        format(sql2, "PREV(A.totalprice)"), expectedHeader2, retArray5, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql2, "PREV(A.totalprice, 1)"), expectedHeader2, retArray5, DATABASE_NAME);
+
+    // PREV(A.totalprice, 2)
+    tableResultSetEqualTest(
+        format(sql2, "PREV(A.totalprice, 2)"), expectedHeader2, retArray6, DATABASE_NAME);
+
+    // NEXT(A.totalprice)
+    tableResultSetEqualTest(
+        format(sql2, "NEXT(A.totalprice)"), expectedHeader2, retArray7, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql2, "NEXT(A.totalprice, 1)"), expectedHeader2, retArray7, DATABASE_NAME);
+
+    // out of partition
+    tableResultSetEqualTest(
+        format(sql2, "PREV(A.totalprice, 4)"), expectedHeader2, retArray8, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql2, "NEXT(A.totalprice, 2)"), expectedHeader2, retArray8, DATABASE_NAME);
+  }
+
+  @Test
+  public void testClassifierFunction() {
+    String[] expectedHeader = new String[] {"time", "match", "price", "lower_or_higher", "label"};
+    String[] retArray1 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,1,90.0,H,H,",
+          "2025-01-01T00:02:00.000Z,1,80.0,H,A,",
+          "2025-01-01T00:03:00.000Z,2,70.0,L,L,",
+          "2025-01-01T00:04:00.000Z,2,80.0,L,A,",
+        };
+
+    String sql =
+        "SELECT m.time, m.match, m.price, m.lower_or_higher, m.label "
+            + "FROM t4 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        RUNNING RPR_LAST(totalprice) AS price, "
+            + "        CLASSIFIER(U) AS lower_or_higher, "
+            + "        CLASSIFIER(W) AS label "
+            + "    ALL ROWS PER MATCH "
+            + "    AFTER MATCH SKIP PAST LAST ROW "
+            + "    PATTERN ((L | H) A) "
+            + "    SUBSET "
+            + "        U = (L, H), "
+            + "        W = (A, L, H) "
+            + "    DEFINE "
+            + "        A AS A.totalprice = 80, "
+            + "        L AS L.totalprice < 80, "
+            + "        H AS H.totalprice > 80 "
+            + ") AS m";
+
+    tableResultSetEqualTest(sql, expectedHeader, retArray1, DATABASE_NAME);
   }
 }
