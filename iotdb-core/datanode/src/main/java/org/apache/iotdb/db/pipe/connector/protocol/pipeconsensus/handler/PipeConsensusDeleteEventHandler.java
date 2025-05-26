@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
@@ -105,6 +106,14 @@ public class PipeConsensusDeleteEventHandler
         event.getReplicateIndexForIoTV2(),
         e);
 
+    if (RetryUtils.needRetryWithIncreasingInterval(e)) {
+      // just in case for overflow
+      if (event.getRetryInterval() << 2 <= 0) {
+        event.setRetryInterval(1000L * 20);
+      } else {
+        event.setRetryInterval(Math.min(1000L * 20, event.getRetryInterval() << 2));
+      }
+    }
     // IoTV2 ensures that only use PipeInsertionEvent, which is definitely EnrichedEvent.
     connector.addFailureEventToRetryQueue(event);
     metric.recordRetryCounter();
