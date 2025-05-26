@@ -105,6 +105,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -244,25 +245,34 @@ public class TableDistributedPlanGenerator
         // We only process FULL Join here, other type will be processed in visitJoinNode()
         if (joinNode.getJoinType() == JoinNode.JoinType.FULL
             && !joinNode.getAsofCriteria().isPresent()) {
-          Map<Expression, Symbol> reversedMap = new HashMap<>();
-          node.getAssignments().getMap().forEach((k, v) -> reversedMap.put(v, k));
-          List<Symbol> coalesces = new ArrayList<>();
+          Map<Symbol, Expression> assignmentsMap = node.getAssignments().getMap();
+          // If these Coalesces are all appear in ProjectNode, the ProjectNode is ordered
+          int coalescesSize = joinNode.getCriteria().size();
 
+          // We use map to memorize Symbol of according Coalesce, use linked to avoid twice query of
+          // this Map when constructOrderingSchema
+          Map<Expression, Symbol> orderedCoalesces = new LinkedHashMap<>(coalescesSize);
           for (JoinNode.EquiJoinClause clause : joinNode.getCriteria()) {
-            Symbol coalesce =
-                reversedMap.get(
-                    new CoalesceExpression(
-                        ImmutableList.of(
-                            clause.getLeft().toSymbolReference(),
-                            clause.getRight().toSymbolReference())));
-            if (coalesce != null) {
-              coalesces.add(coalesce);
-            } else {
-              break;
+            orderedCoalesces.put(
+                new CoalesceExpression(
+                    ImmutableList.of(
+                        clause.getLeft().toSymbolReference(),
+                        clause.getRight().toSymbolReference())),
+                null);
+          }
+
+          for (Map.Entry<Symbol, Expression> assignment : assignmentsMap.entrySet()) {
+            if (orderedCoalesces.containsKey(assignment.getValue())) {
+              coalescesSize--;
+              orderedCoalesces.put(assignment.getValue(), assignment.getKey());
             }
           }
-          if (coalesces.size() == joinNode.getCriteria().size()) {
-            nodeOrderingMap.put(node.getPlanNodeId(), constructOrderingSchema(coalesces));
+
+          // All Coalesces appear in ProjectNode
+          if (coalescesSize == 0) {
+            nodeOrderingMap.put(
+                node.getPlanNodeId(),
+                constructOrderingSchema(new ArrayList<>(orderedCoalesces.values())));
           }
         }
       }
