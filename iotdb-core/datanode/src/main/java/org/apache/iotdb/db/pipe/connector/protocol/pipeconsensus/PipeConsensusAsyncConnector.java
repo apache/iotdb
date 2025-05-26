@@ -25,6 +25,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
@@ -76,6 +78,7 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -106,6 +109,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
   // We use enrichedEvent here to make use of EnrichedEvent.equalsInPipeConsensus
   private final BlockingQueue<EnrichedEvent> transferBuffer =
       new LinkedBlockingDeque<>(IOTDB_CONFIG.getIotConsensusV2PipelineSize());
+  private ScheduledExecutorService backgroundTaskService;
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final int thisDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private PipeConsensusConnectorMetrics pipeConsensusConnectorMetrics;
@@ -166,6 +170,10 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     // currently, tablet batch is false by default in PipeConsensus;
     isTabletBatchModeEnabled = false;
+
+    backgroundTaskService =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.PIPE_CONSENSUS_BACKGROUND_TASK_EXECUTOR.getName());
   }
 
   /**
@@ -504,36 +512,58 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     tabletBatchBuilder.onSuccess();
   }
 
-  /**
-   * Transfer queued {@link Event}s which are waiting for retry.
-   * TODO: do it in single thread pool.
-   */
+  /** Transfer queued {@link Event}s which are waiting for retry. */
   private void asyncTransferQueuedEventsIfNecessary() {
+    long retryStartTime = System.currentTimeMillis();
     while (!retryEventQueue.isEmpty()) {
       synchronized (this) {
         if (isClosed.get() || retryEventQueue.isEmpty()) {
           return;
         }
-        // remove this event from queue
+        if (System.currentTimeMillis() - retryStartTime > TimeUnit.SECONDS.toMillis(20)) {
+          // just in case that some events are polled and re-added into queue again and again,
+          // causing this loop to run forever.
+          LOGGER.warn(
+              "PipeConsensus-ConsensusGroup-{}: retryEventQueue is not empty after 20 seconds. retryQueue size: {}",
+              consensusGroupId,
+              retryEventQueue.size());
+          return;
+        }
+
+        // remove this event from queue. If retry fail as well, event will be re-added into
+        // retryQueue.
         final EnrichedEvent peekedEvent = retryEventQueue.poll();
-        if (peekedEvent.getRetryInterval() > EnrichedEvent.INITIAL_RETRY_INTERVAL_FOR_IOTV2) {
-          // retry with interval when necessarily
-          Thread.sleep(peekedEvent.getRetryInterval());
-        }
-        // do transfer
-        if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-          retryTransfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
-        } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
-          retryTransfer((PipeTsFileInsertionEvent) peekedEvent);
-        } else if (peekedEvent instanceof PipeDeleteDataNodeEvent) {
-          retryTransfer((PipeDeleteDataNodeEvent) peekedEvent);
-        } else {
-          if (LOGGER.isWarnEnabled()) {
-            LOGGER.warn(
-                "PipeConsensusAsyncConnector does not support transfer generic event: {}.",
-                peekedEvent);
-          }
-        }
+        // retry with interval when necessarily
+        long retryInterval =
+            peekedEvent.getRetryInterval() > EnrichedEvent.INITIAL_RETRY_INTERVAL_FOR_IOTV2
+                ? peekedEvent.getRetryInterval()
+                : 0L;
+        LOGGER.info(
+            "PipeConsensus-ConsensusGroup-{}: retry with interval {} for {}",
+            consensusGroupId,
+            retryInterval,
+            peekedEvent);
+        // need to retry in background service, otherwise the retryInterval will block the sender
+        // procedure.
+        backgroundTaskService.schedule(
+            () -> {
+              // do transfer
+              if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+                retryTransfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
+              } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
+                retryTransfer((PipeTsFileInsertionEvent) peekedEvent);
+              } else if (peekedEvent instanceof PipeDeleteDataNodeEvent) {
+                retryTransfer((PipeDeleteDataNodeEvent) peekedEvent);
+              } else {
+                if (LOGGER.isWarnEnabled()) {
+                  LOGGER.warn(
+                      "PipeConsensusAsyncConnector does not support transfer generic event: {}.",
+                      peekedEvent);
+                }
+              }
+            },
+            retryInterval,
+            TimeUnit.MILLISECONDS);
       }
     }
   }
@@ -606,9 +636,9 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     retryEventQueue.offer(event);
     LOGGER.info(
-            "PipeConsensus-ConsensusGroup-{}: Event {} transfer failed, will be added to retry queue.",
-            consensusGroupId,
-            event);
+        "PipeConsensus-ConsensusGroup-{}: Event {} transfer failed, will be added to retry queue.",
+        consensusGroupId,
+        event);
 
     if (isClosed.get()) {
       event.clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
@@ -672,6 +702,19 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();
+    }
+
+    backgroundTaskService.shutdownNow();
+    try {
+      if (!backgroundTaskService.awaitTermination(30, TimeUnit.SECONDS)) {
+        LOGGER.warn(
+            "PipeConsensus-{} background service did not terminate within {}s",
+            consensusPipeName,
+            30);
+      }
+    } catch (InterruptedException e) {
+      LOGGER.warn("Background Thread {} still doesn't exit after 30s", consensusPipeName);
+      Thread.currentThread().interrupt();
     }
 
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())

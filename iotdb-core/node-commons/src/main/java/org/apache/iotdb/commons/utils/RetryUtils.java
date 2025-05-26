@@ -37,7 +37,8 @@ public class RetryUtils {
   }
 
   public static boolean needRetryWithIncreasingInterval(Exception e) {
-    return e instanceof ConnectException || e instanceof PipeConsensusRetryWithIncreasingIntervalException;
+    return e instanceof ConnectException
+        || e instanceof PipeConsensusRetryWithIncreasingIntervalException;
   }
 
   public static boolean notNeedRetryForConsensus(int statusCode) {

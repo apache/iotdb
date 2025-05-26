@@ -432,7 +432,7 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public long getRetryInterval() {
-    return retryInterval;
+    return this.retryInterval;
   }
 
   public long setRetryInterval(final long retryInterval) {
