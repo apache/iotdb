@@ -84,6 +84,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -231,10 +232,42 @@ public class TableDistributedPlanGenerator
           ImmutableSet.copyOf(node.getOutputSymbols()).containsAll(childOrdering.getOrderBy());
     }
     if (childrenNodes.size() == 1) {
+      PlanNode child = childrenNodes.get(0);
       if (containAllSortItem) {
         nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
       }
-      node.setChild(childrenNodes.get(0));
+
+      // Now the join implement but CROSS is MergeSortJoin, so it can keep order
+      if (child instanceof JoinNode) {
+        JoinNode joinNode = (JoinNode) child;
+
+        // We only process FULL Join here, other type will be processed in visitJoinNode()
+        if (joinNode.getJoinType() == JoinNode.JoinType.FULL
+            && !joinNode.getAsofCriteria().isPresent()) {
+          Map<Expression, Symbol> reversedMap = new HashMap<>();
+          node.getAssignments().getMap().forEach((k, v) -> reversedMap.put(v, k));
+          List<Symbol> coalesces = new ArrayList<>();
+
+          for (JoinNode.EquiJoinClause clause : joinNode.getCriteria()) {
+            Symbol coalesce =
+                reversedMap.get(
+                    new CoalesceExpression(
+                        ImmutableList.of(
+                            clause.getLeft().toSymbolReference(),
+                            clause.getRight().toSymbolReference())));
+            if (coalesce != null) {
+              coalesces.add(coalesce);
+            } else {
+              break;
+            }
+          }
+          if (coalesces.size() == joinNode.getCriteria().size()) {
+            nodeOrderingMap.put(node.getPlanNodeId(), constructOrderingSchema(coalesces));
+          }
+        }
+      }
+
+      node.setChild(child);
       return Collections.singletonList(node);
     }
 
@@ -481,14 +514,36 @@ public class TableDistributedPlanGenerator
           rightChildrenNodes.size() == 1,
           "The size of right children node of JoinNode should be 1");
     }
+
+    OrderingScheme leftChildOrdering = nodeOrderingMap.get(node.getLeftChild().getPlanNodeId());
+    OrderingScheme rightChildOrdering = nodeOrderingMap.get(node.getRightChild().getPlanNodeId());
+
     // For CrossJoinNode, we need to merge children nodes(It's safe for other JoinNodes here since
     // the size of their children is always 1.)
-    node.setLeftChild(
-        mergeChildrenViaCollectOrMergeSort(
-            nodeOrderingMap.get(node.getLeftChild().getPlanNodeId()), leftChildrenNodes));
-    node.setRightChild(
-        mergeChildrenViaCollectOrMergeSort(
-            nodeOrderingMap.get(node.getRightChild().getPlanNodeId()), rightChildrenNodes));
+    node.setLeftChild(mergeChildrenViaCollectOrMergeSort(leftChildOrdering, leftChildrenNodes));
+    node.setRightChild(mergeChildrenViaCollectOrMergeSort(rightChildOrdering, rightChildrenNodes));
+
+    // Now the join implement but CROSS is MergeSortJoin, so it can keep order
+    if (!node.isCrossJoin() && !node.getAsofCriteria().isPresent()) {
+      switch (node.getJoinType()) {
+        case FULL:
+          // If join type is FULL Join, we will process SortProperties in ProjectNode above this
+          // node.
+          break;
+        case INNER:
+        case LEFT:
+          if (ImmutableSet.copyOf(node.getLeftOutputSymbols())
+              .containsAll(leftChildOrdering.getOrderBy())) {
+            nodeOrderingMap.put(node.getPlanNodeId(), leftChildOrdering);
+          }
+          break;
+        case RIGHT:
+          throw new IllegalStateException(
+              "RIGHT Join should be transformed to LEFT Join in previous process");
+        default:
+          throw new UnsupportedOperationException("Unsupported Join Type: " + node.getJoinType());
+      }
+    }
     return Collections.singletonList(node);
   }
 
