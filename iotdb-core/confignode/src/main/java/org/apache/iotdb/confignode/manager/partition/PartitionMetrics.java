@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.partition;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -30,6 +31,7 @@ import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.persistence.schema.ConfigSchemaStatistics;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -267,18 +269,23 @@ public class PartitionMetrics implements IMetricSet {
 
   // region Database Partition Metrics
 
-  private void bindDatabaseRelatedMetrics(AbstractMetricService metricService) {
-    ClusterSchemaManager clusterSchemaManager = getClusterSchemaManager();
+  private void bindDatabaseRelatedMetrics(final AbstractMetricService metricService) {
+    final ClusterSchemaManager clusterSchemaManager = getClusterSchemaManager();
+    final ConfigSchemaStatistics statistics = clusterSchemaManager.getConfigSchemaStatistics();
     // Count the number of Databases
     metricService.createAutoGauge(
         Metric.DATABASE_NUM.toString(),
         MetricLevel.CORE,
-        clusterSchemaManager,
-        // Add 1 for information schema
-        c -> c.getDatabaseNames(null).size() + 1);
+        statistics,
+        s -> s.getTableDatabaseNum() + s.getTreeDatabaseNum());
+    metricService.createAutoGauge(
+        Metric.TABLE_DATABASE_NUM.toString(),
+        MetricLevel.CORE,
+        statistics,
+        ConfigSchemaStatistics::getTableDatabaseNum);
 
-    List<String> databases = clusterSchemaManager.getDatabaseNames(null);
-    for (String database : databases) {
+    final List<String> databases = clusterSchemaManager.getDatabaseNames(null);
+    for (final String database : databases) {
       int dataReplicationFactor = 1;
       int schemaReplicationFactor = 1;
       try {
@@ -291,6 +298,7 @@ public class PartitionMetrics implements IMetricSet {
       }
       bindDatabaseRelatedMetricsWhenUpdate(
           metricService, configManager, database, dataReplicationFactor, schemaReplicationFactor);
+      bindDatabaseTableMetrics(metricService, database);
     }
   }
 
@@ -444,6 +452,24 @@ public class PartitionMetrics implements IMetricSet {
             Tag.DATABASE.toString(),
             database)
         .set(schemaReplicationFactor);
+  }
+
+  public static void bindDatabaseTableMetrics(
+      final AbstractMetricService metricService, final String database) {
+    metricService.getOrCreateGauge(
+        Metric.TREE_VIEW_TABLE_NUM.toString(),
+        MetricLevel.CORE,
+        Tag.TYPE.toString(),
+        TableType.VIEW_FROM_TREE.getName(),
+        Tag.DATABASE.toString(),
+        database);
+    metricService.getOrCreateGauge(
+        Metric.BASE_TABLE_NUM.toString(),
+        MetricLevel.CORE,
+        Tag.TYPE.toString(),
+        TableType.BASE_TABLE.getName(),
+        Tag.DATABASE.toString(),
+        database);
   }
 
   // endregion
