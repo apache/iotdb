@@ -2775,7 +2775,17 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
 
     tableAssertTestFail(
         "select * from table0 asof (tolerance 1s) left join table1 on table0.time<=table1.time",
-        "Tolerance in ASOF JOIN is only support INNER type now",
+        "Tolerance in ASOF JOIN only supports INNER type now",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 asof right join table1 on table0.time<=table1.time",
+        "ASOF JOIN does not support RIGHT type now",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 asof full join table1 on table0.time<=table1.time",
+        "Tolerance in ASOF JOIN only supports FULL type now",
         DATABASE_NAME);
   }
 
