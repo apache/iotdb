@@ -337,7 +337,7 @@ public final class PatternPartitionExecutor {
         builder.getColumnBuilder(channel).appendNull();
       } else if (result instanceof String) { // special handling for CLASSIFIER()
         String str = (String) result;
-        byte[] bytes = str.getBytes(StandardCharsets.UTF_8); // 指定字符编码
+        byte[] bytes = str.getBytes(StandardCharsets.UTF_8); // specified character encoding
         Binary binary = new Binary(bytes);
         builder.getColumnBuilder(channel).writeBinary(binary);
       } else {
