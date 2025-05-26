@@ -2121,6 +2121,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           LoadTsFileConfigurator.validateParameters(key, value);
           loadTsFileAttributes.put(key, value);
         }
+        LoadTsFileConfigurator.validateSynonymParameters(loadTsFileAttributes);
 
         loadTsFileStatement.setLoadAttributes(loadTsFileAttributes);
         return loadTsFileStatement;
