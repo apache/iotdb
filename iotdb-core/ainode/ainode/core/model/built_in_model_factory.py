@@ -460,7 +460,7 @@ arima_attribute_map = {
     ),
     AttributeName.ORDER.value: TupleAttribute(
         name=AttributeName.ORDER.value,
-        default_value=(96, 1, 96),
+        default_value=(1, 0, 0),
         value_type=int
     ),
     AttributeName.SEASONAL_ORDER.value: TupleAttribute(
