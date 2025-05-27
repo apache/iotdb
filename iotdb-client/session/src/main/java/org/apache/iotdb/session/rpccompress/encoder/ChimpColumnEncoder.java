@@ -8,65 +8,30 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-public class GorillaColumnEncoder implements ColumnEncoder {
+public class ChimpColumnEncoder implements ColumnEncoder {
   private final Encoder encoder;
   private final TSDataType dataType;
   private ColumnEntry columnEntry;
 
-  public GorillaColumnEncoder(TSDataType dataType) {
+  public ChimpColumnEncoder(TSDataType dataType) {
     this.dataType = dataType;
-    this.encoder = getEncoder(dataType, TSEncoding.GORILLA);
+    this.encoder = getEncoder(dataType, TSEncoding.CHIMP);
     columnEntry = new ColumnEntry();
   }
 
   @Override
   public void encode(boolean[] values, ByteArrayOutputStream out) {
-    // 1. Calculate the uncompressed size in bytes for the column of data.
-    int unCompressedSize = getUncompressedDataSize(values.length);
-    PublicBAOS outputStream = new PublicBAOS(unCompressedSize);
-    try {
-      // 2. Encodes the input array using the corresponding encoder from TsFile.
-      for (boolean value : values) {
-        encoder.encode(value, outputStream);
-      }
-      // 3.Flushes any buffered encoding data into the outputStream.
-      encoder.flush(outputStream);
-      byte[] encodedData = outputStream.toByteArray();
-      // 4. Set column entry metadata
-      setColumnEntry(encodedData.length, unCompressedSize);
-      if (out != null) {
-        out.write(encodedData);
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    throw new UnSupportedDataTypeException("CHIMP doesn't support data type: " + dataType);
   }
 
   @Override
   public void encode(short[] values, ByteArrayOutputStream out) {
-    // 1. Calculate the uncompressed size in bytes for the column of data.
-    int unCompressedSize = getUncompressedDataSize(values.length);
-    PublicBAOS outputStream = new PublicBAOS(unCompressedSize);
-    try {
-      // 2. Encodes the input array using the corresponding encoder from TsFile.
-      for (short value : values) {
-        encoder.encode(value, outputStream);
-      }
-      // 3.Flushes any buffered encoding data into the outputStream.
-      encoder.flush(outputStream);
-      byte[] encodedData = outputStream.toByteArray();
-      // 4. Set column entry metadata
-      setColumnEntry(encodedData.length, unCompressedSize);
-      if (out != null) {
-        out.write(encodedData);
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    throw new UnSupportedDataTypeException("CHIMP doesn't support data type: " + dataType);
   }
 
   @Override
@@ -163,25 +128,7 @@ public class GorillaColumnEncoder implements ColumnEncoder {
 
   @Override
   public void encode(Binary[] values, ByteArrayOutputStream out) {
-    // 1. Calculate the uncompressed size in bytes for the column of data.
-    int unCompressedSize = getUncompressedDataSize(values.length, values);
-    PublicBAOS outputStream = new PublicBAOS(unCompressedSize);
-    try {
-      // 2. Encodes the input array using the corresponding encoder from TsFile.
-      for (Binary value : values) {
-        encoder.encode(value, outputStream);
-      }
-      // 3.Flushes any buffered encoding data into the outputStream.
-      encoder.flush(outputStream);
-      byte[] encodedData = outputStream.toByteArray();
-      // 4. Set column entry metadata
-      setColumnEntry(encodedData.length, unCompressedSize);
-      if (out != null) {
-        out.write(encodedData);
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    throw new UnSupportedDataTypeException("CHIMP doesn't support data type: " + dataType);
   }
 
   @Override
@@ -191,7 +138,7 @@ public class GorillaColumnEncoder implements ColumnEncoder {
 
   @Override
   public TSEncoding getEncodingType() {
-    return TSEncoding.GORILLA;
+    return TSEncoding.CHIMP;
   }
 
   @Override
@@ -201,7 +148,7 @@ public class GorillaColumnEncoder implements ColumnEncoder {
 
   @Override
   public ColumnEntry getColumnEntry() {
-    return null;
+    return columnEntry;
   }
 
   private int getUncompressedDataSize(int len) {

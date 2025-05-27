@@ -2,20 +2,21 @@ package org.apache.iotdb.session.rpccompress.decoder;
 
 import org.apache.iotdb.session.rpccompress.ColumnEntry;
 
-import org.apache.tsfile.encoding.decoder.*;
+import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 
-public class GorillaColumnDecoder implements ColumnDecoder {
+public class ChimpColumnDecoder implements ColumnDecoder {
   private final Decoder decoder;
   private final TSDataType dataType;
 
-  public GorillaColumnDecoder(TSDataType dataType) {
+  public ChimpColumnDecoder(TSDataType dataType) {
     this.dataType = dataType;
-    this.decoder = getDecoder(dataType, TSEncoding.GORILLA);
+    this.decoder = getDecoder(dataType, TSEncoding.CHIMP);
   }
 
   @Override
@@ -29,17 +30,16 @@ public class GorillaColumnDecoder implements ColumnDecoder {
       case DATE:
         return decodeIntColumn(buffer, columnEntry, rowCount);
       case INT64:
-      case VECTOR:
       case TIMESTAMP:
         return decodeLongColumn(buffer, columnEntry, rowCount);
       default:
-        throw new UnsupportedOperationException("Gorilla doesn't support data type: " + dataType);
+        throw new UnSupportedDataTypeException("CHIMP doesn't support data type: " + dataType);
     }
   }
 
   @Override
   public boolean[] decodeBooleanColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
-    throw new UnsupportedOperationException("Gorilla doesn't support data type: " + dataType);
+    throw new UnSupportedDataTypeException("CHIMP doesn't support data type: " + dataType);
   }
 
   @Override
@@ -80,7 +80,7 @@ public class GorillaColumnDecoder implements ColumnDecoder {
 
   @Override
   public Binary[] decodeBinaryColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
-    throw new UnsupportedOperationException("Gorilla doesn't support data type: " + dataType);
+    throw new UnSupportedDataTypeException("CHIMP doesn't support data type: " + dataType);
   }
 
   @Override

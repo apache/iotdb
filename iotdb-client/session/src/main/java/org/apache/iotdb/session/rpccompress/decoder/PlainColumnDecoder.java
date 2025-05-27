@@ -21,7 +21,6 @@ package org.apache.iotdb.session.rpccompress.decoder;
 import org.apache.iotdb.session.rpccompress.ColumnEntry;
 
 import org.apache.tsfile.encoding.decoder.Decoder;
-import org.apache.tsfile.encoding.decoder.PlainDecoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
