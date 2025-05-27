@@ -89,7 +89,7 @@ public final class SymbolsExtractor {
   }
 
   public static Set<Symbol> extractUnique(WindowNode.Function function) {
-      return ImmutableSet.copyOf(extractAll(function));
+    return ImmutableSet.copyOf(extractAll(function));
   }
 
   public static List<Symbol> extractAll(Expression expression) {
@@ -110,15 +110,15 @@ public final class SymbolsExtractor {
   }
 
   public static List<Symbol> extractAll(WindowNode.Function function) {
-      ImmutableList.Builder<Symbol> builder = ImmutableList.builder();
-      for (Expression argument : function.getArguments()) {
-          builder.addAll(extractAll(argument));
-      }
-      function.getFrame().getEndValue().ifPresent(builder::add);
-      function.getFrame().getSortKeyCoercedForFrameEndComparison().ifPresent(builder::add);
-      function.getFrame().getStartValue().ifPresent(builder::add);
-      function.getFrame().getSortKeyCoercedForFrameStartComparison().ifPresent(builder::add);
-      return builder.build();
+    ImmutableList.Builder<Symbol> builder = ImmutableList.builder();
+    for (Expression argument : function.getArguments()) {
+      builder.addAll(extractAll(argument));
+    }
+    function.getFrame().getEndValue().ifPresent(builder::add);
+    function.getFrame().getSortKeyCoercedForFrameEndComparison().ifPresent(builder::add);
+    function.getFrame().getStartValue().ifPresent(builder::add);
+    function.getFrame().getSortKeyCoercedForFrameStartComparison().ifPresent(builder::add);
+    return builder.build();
   }
 
   // to extract qualified name with prefix

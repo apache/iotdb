@@ -160,8 +160,8 @@ public class RangeFrameTest {
             FrameInfo.FrameBoundType.CURRENT_ROW,
             -1,
             0,
-            SortOrder.ASC_NULLS_LAST  // Sort channel does not matter
-        );
+            SortOrder.ASC_NULLS_LAST // Sort channel does not matter
+            );
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
 
@@ -761,8 +761,8 @@ public class RangeFrameTest {
             FrameInfo.FrameBoundType.CURRENT_ROW,
             -1,
             0,
-            SortOrder.ASC_NULLS_LAST  // Sort Order doest not matter
-        );
+            SortOrder.ASC_NULLS_LAST // Sort Order doest not matter
+            );
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
 
@@ -898,7 +898,7 @@ public class RangeFrameTest {
             FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING,
             0,
             SortOrder.ASC_NULLS_FIRST // Sort channel does not matter
-        );
+            );
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
 
