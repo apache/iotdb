@@ -41,4 +41,6 @@ public interface DataNodeConfig {
   DataNodeConfig setEnableMQTTService(boolean enableMQTTService);
 
   DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
+
+  DataNodeConfig setLoadLastCacheStrategy(String strategyName);
 }

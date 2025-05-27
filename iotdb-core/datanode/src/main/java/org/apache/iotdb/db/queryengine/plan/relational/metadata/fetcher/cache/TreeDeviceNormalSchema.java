@@ -59,6 +59,10 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
 
   public int update(final String[] measurements, final IMeasurementSchema[] schemas) {
     int diff = 0;
+    if (schemas == null) {
+      return diff;
+    }
+
     final int length = measurements.length;
 
     for (int i = 0; i < length; ++i) {

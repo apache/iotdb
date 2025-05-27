@@ -107,4 +107,10 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     setProperty("mqtt_payload_formatter", String.valueOf(mqttPayloadFormatter));
     return this;
   }
+
+  @Override
+  public DataNodeConfig setLoadLastCacheStrategy(String strategyName) {
+    setProperty("last_cache_operation_on_load", strategyName);
+    return this;
+  }
 }

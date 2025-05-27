@@ -30,6 +30,7 @@ import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -1147,6 +1148,8 @@ public class IoTDBConfig {
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
   private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
+
+  private LastCacheLoadStrategy lastCacheLoadStrategy = LastCacheLoadStrategy.UPDATE;
 
   IoTDBConfig() {}
 
@@ -4067,5 +4070,13 @@ public class IoTDBConfig {
 
   public void setWALCompressionAlgorithm(CompressionType WALCompressionAlgorithm) {
     this.WALCompressionAlgorithm = WALCompressionAlgorithm;
+  }
+
+  public LastCacheLoadStrategy getLastCacheLoadStrategy() {
+    return lastCacheLoadStrategy;
+  }
+
+  public void setLastCacheLoadStrategy(LastCacheLoadStrategy lastCacheLoadStrategy) {
+    this.lastCacheLoadStrategy = lastCacheLoadStrategy;
   }
 }

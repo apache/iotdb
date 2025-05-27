@@ -68,4 +68,9 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
     return this;
   }
+
+  @Override
+  public DataNodeConfig setLoadLastCacheStrategy(String strategyName) {
+    return this;
+  }
 }

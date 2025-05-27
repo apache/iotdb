@@ -517,7 +517,7 @@ public class LoadTsFileManager {
         final DataRegion dataRegion = entry.getKey().getDataRegion();
         final TsFileResource tsFileResource = dataPartition2Resource.get(entry.getKey());
         endTsFileResource(writer, tsFileResource, progressIndex);
-        dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe);
+        dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe, false);
 
         // Metrics
         dataRegion
