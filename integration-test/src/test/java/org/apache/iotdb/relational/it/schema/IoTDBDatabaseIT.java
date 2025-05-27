@@ -123,6 +123,9 @@ public class IoTDBDatabaseIT {
         assertEquals(databaseNames.length, cnt);
       }
 
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count databases"), "count,", Collections.singleton("2,"));
+
       final int[] schemaRegionGroupNum = new int[] {0};
       final int[] dataRegionGroupNum = new int[] {0};
       // show
