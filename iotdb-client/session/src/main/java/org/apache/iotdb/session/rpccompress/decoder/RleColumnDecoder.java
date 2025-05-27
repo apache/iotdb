@@ -39,58 +39,52 @@ public class RleColumnDecoder implements ColumnDecoder {
   @Override
   public Object decode(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
     switch (dataType) {
-      case BOOLEAN:
-        {
-          boolean[] result = new boolean[rowCount];
-          for (int i = 0; i < rowCount; i++) {
-            result[i] = decoder.readBoolean(buffer);
-          }
-          return result;
+      case BOOLEAN: {
+        boolean[] result = new boolean[rowCount];
+        for (int i = 0; i < rowCount; i++) {
+          result[i] = decoder.readBoolean(buffer);
         }
+        return result;
+      }
       case INT32:
-      case DATE:
-        {
-          int[] result = new int[rowCount];
-          for (int i = 0; i < rowCount; i++) {
-            result[i] = decoder.readInt(buffer);
-          }
-          return result;
+      case DATE: {
+        int[] result = new int[rowCount];
+        for (int i = 0; i < rowCount; i++) {
+          result[i] = decoder.readInt(buffer);
         }
+        return result;
+      }
       case INT64:
-      case TIMESTAMP:
-        {
-          long[] result = new long[rowCount];
-          for (int i = 0; i < rowCount; i++) {
-            result[i] = decoder.readLong(buffer);
-          }
-          return result;
+      case TIMESTAMP: {
+        long[] result = new long[rowCount];
+        for (int i = 0; i < rowCount; i++) {
+          result[i] = decoder.readLong(buffer);
         }
-      case FLOAT:
-        {
-          float[] result = new float[rowCount];
-          for (int i = 0; i < rowCount; i++) {
-            result[i] = decoder.readFloat(buffer);
-          }
-          return result;
+        return result;
+      }
+      case FLOAT: {
+        float[] result = new float[rowCount];
+        for (int i = 0; i < rowCount; i++) {
+          result[i] = decoder.readFloat(buffer);
         }
-      case DOUBLE:
-        {
-          double[] result = new double[rowCount];
-          for (int i = 0; i < rowCount; i++) {
-            result[i] = decoder.readDouble(buffer);
-          }
-          return result;
+        return result;
+      }
+      case DOUBLE: {
+        double[] result = new double[rowCount];
+        for (int i = 0; i < rowCount; i++) {
+          result[i] = decoder.readDouble(buffer);
         }
+        return result;
+      }
       case TEXT:
       case STRING:
-      case BLOB:
-        {
-          Binary[] result = new Binary[rowCount];
-          for (int i = 0; i < rowCount; i++) {
-            result[i] = decoder.readBinary(buffer);
-          }
-          return result;
+      case BLOB: {
+        Binary[] result = new Binary[rowCount];
+        for (int i = 0; i < rowCount; i++) {
+          result[i] = decoder.readBinary(buffer);
         }
+        return result;
+      }
       default:
         throw new UnsupportedOperationException("PLAIN doesn't support data type: " + dataType);
     }
@@ -152,6 +146,6 @@ public class RleColumnDecoder implements ColumnDecoder {
 
   @Override
   public Decoder getDecoder(TSDataType type, TSEncoding encodingType) {
-    return null;
+    return Decoder.getDecoderByType(encodingType, type);
   }
 }

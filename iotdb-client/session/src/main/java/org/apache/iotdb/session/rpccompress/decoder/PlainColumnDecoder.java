@@ -153,6 +153,6 @@ public class PlainColumnDecoder implements ColumnDecoder {
 
   @Override
   public Decoder getDecoder(TSDataType type, TSEncoding encodingType) {
-    return new PlainDecoder();
+    return Decoder.getDecoderByType(encodingType, type);
   }
 }

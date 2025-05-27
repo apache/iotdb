@@ -79,7 +79,6 @@ public class RleColumnEncoder implements ColumnEncoder {
       byte[] encodedData = outputStream.toByteArray();
       // 4. Set column entry metadata
       setColumnEntry(encodedData.length, unCompressedSize);
-      // TODO 这种复制效率不高，可以将 getUncompressedDataSize 提到上一级，此函数取消临时 PublicBAOS outputStream
       if (out != null) {
         out.write(encodedData);
       }
