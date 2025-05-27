@@ -14,8 +14,29 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate;
 
-import java.util.List;
+public class ListNode2<T> {
 
-public interface SpaceSavingByteCalculator<K> {
-  int calculateBytes(List<Counter<K>> counters);
+  protected T value;
+  protected ListNode2<T> prev;
+  protected ListNode2<T> next;
+
+  public ListNode2(T value) {
+    this.value = value;
+  }
+
+  public ListNode2<T> getPrev() {
+    return prev;
+  }
+
+  public ListNode2<T> getNext() {
+    return next;
+  }
+
+  public T getValue() {
+    return value;
+  }
+
+  public void setValue(T value) {
+    this.value = value;
+  }
 }

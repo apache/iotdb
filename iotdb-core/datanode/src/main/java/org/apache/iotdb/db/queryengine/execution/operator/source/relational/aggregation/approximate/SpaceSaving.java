@@ -14,9 +14,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate;
 
-import com.clearspring.analytics.stream.Counter;
-import com.clearspring.analytics.stream.StreamSummary;
-import com.clearspring.analytics.util.ListNode2;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

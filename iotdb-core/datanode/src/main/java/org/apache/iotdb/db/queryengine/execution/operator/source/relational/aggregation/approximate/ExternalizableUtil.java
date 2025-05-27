@@ -14,8 +14,18 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate;
 
-import java.util.List;
+import java.io.ByteArrayOutputStream;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 
-public interface SpaceSavingByteCalculator<K> {
-  int calculateBytes(List<Counter<K>> counters);
+public class ExternalizableUtil {
+
+  public static byte[] toBytes(Externalizable o) throws IOException {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    ObjectOutputStream out = new ObjectOutputStream(baos);
+    o.writeExternal(out);
+    out.flush();
+    return baos.toByteArray();
+  }
 }
