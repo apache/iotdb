@@ -62,8 +62,6 @@ public final class PatternPartitionExecutor {
   private int currentGroupIndex = -1;
   private int currentPosition;
 
-  // private final boolean needPeerGroup;// RPR 不需要 peer group
-
   // Row Pattern Recognition
   private final RowsPerMatch rowsPerMatch;
   private final SkipToPosition skipToPosition;

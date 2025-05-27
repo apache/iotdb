@@ -41,7 +41,9 @@ public class ExpressionAndValuePointers {
   public static final ExpressionAndValuePointers TRUE =
       new ExpressionAndValuePointers(TRUE_LITERAL, ImmutableList.of());
 
+  // there may be multiple functions in an expression in the MEASURES or DEFINE clause
   private final Expression expression;
+  // `Assignment` indicates which symbol a function pointer has been assigned to
   private final List<Assignment> assignments;
 
   public ExpressionAndValuePointers(Expression expression, List<Assignment> assignments) {

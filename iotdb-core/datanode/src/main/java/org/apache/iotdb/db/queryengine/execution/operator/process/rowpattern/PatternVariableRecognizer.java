@@ -113,7 +113,12 @@ public class PatternVariableRecognizer {
       this.labelNames = requireNonNull(labelNames, "labelNames is null");
     }
 
-    // TODO: 2.12
+    /**
+     * The compute method is used to calculate the expressions in RPR.
+     *
+     * <p>The identification of a label defined in the DEFINE clause is a Boolean expression and the
+     * calculated Boolean value is the result we need.
+     */
     public boolean test(
         ArrayView matchedLabels,
         int partitionStart,
@@ -122,17 +127,8 @@ public class PatternVariableRecognizer {
         int patternStart,
         long matchNumber,
         Partition partition) {
-
-      // 计算当前匹配到哪一行了
       int currentRow = patternStart + matchedLabels.length() - 1;
 
-      // compute 方法用于计算 RPR 中的表达式
-      // DEFINE 子句中定义的识别一个 label 就是一个布尔表达式
-      // 计算得到的布尔值就是我们需要的结果
-
-      // TODO: Done by 2.17
-      //  感觉没必要传入 partition 对象？？
-      //  A: 需要的，因为需要访问 partition 中的数据。也就是访问行中的数据
       Object result =
           this.compute(
               currentRow,
@@ -145,7 +141,6 @@ public class PatternVariableRecognizer {
               labelNames,
               partition);
 
-      // ADD 2.17: 因为是一个布尔表达式，所以 result 一定是一个布尔值
       return (boolean) result;
     }
   }

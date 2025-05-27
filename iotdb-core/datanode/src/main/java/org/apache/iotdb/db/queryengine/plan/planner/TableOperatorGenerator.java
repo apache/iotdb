@@ -222,6 +222,7 @@ import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import javax.validation.constraints.NotNull;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -249,8 +250,6 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-
-import javax.validation.constraints.NotNull;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -3177,6 +3176,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     // - for ALL ROWS PER MATCH: partition by symbols, order by symbols, measures, remaining input
     // symbols.
 
+    // all output column types of the input table
     List<TSDataType> inputDataTypes =
         getOutputColumnTypes(node.getChild(), context.getTypeProvider());
 
@@ -3224,8 +3224,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     // 2. rewrite pattern to program
     Program program = IrRowPatternToProgramRewriter.rewrite(node.getPattern(), mapping);
 
-    // 3. prepare patternVariableComputation (PatternVariableRecognizer is to be instantiated once
-    // per Partition)
+    // 3. DEFINE: prepare patternVariableComputation (PatternVariableRecognizer is to be
+    // instantiated once per partition)
     ImmutableList.Builder<PatternVariableRecognizer.PatternVariableComputation> evaluationsBuilder =
         ImmutableList.builder();
 
@@ -3234,11 +3234,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       String variableName = entry.getKey().getName();
       ExpressionAndValuePointers expressionAndValuePointers = entry.getValue();
 
-      // 3a. 转换 assignments 为 PhysicalValueAccessor 列表
+      // convert the `ValuePointer` in the `Assignment` to `PhysicalValueAccessor`
       List<PhysicalValueAccessor> valueAccessors = new ArrayList<>();
       for (ExpressionAndValuePointers.Assignment assignment :
           expressionAndValuePointers.getAssignments()) {
-        // ValuePointer -> PhysicalValuePointer
         ValuePointer pointer = assignment.getValuePointer();
         if (pointer instanceof MatchNumberValuePointer) {
           valueAccessors.add(
@@ -3262,11 +3261,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         }
       }
 
-      // 3b. 解析 Expression 得到 Computation 表达式树
+      // transform the symbolic expression tree in the logical planning stage into a parametric
+      // expression tree
       Computation computation =
           Computation.ComputationParser.parse(expressionAndValuePointers.getExpression());
 
-      // 3c. 构造 Evaluation 对象
+      // construct a `PatternVariableComputation` object, where valueAccessors is a parameter list
+      // and computation is a parametric expression tree, encapsulating the computation logic
       PatternVariableRecognizer.PatternVariableComputation patternVariableComputation =
           new PatternVariableRecognizer.PatternVariableComputation(
               valueAccessors, computation, labelNames);
@@ -3274,7 +3275,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       evaluationsBuilder.add(patternVariableComputation);
     }
 
-    // 4. prepare measures computations
+    // 4. MEASURES: prepare measures computations
     ImmutableList.Builder<PatternExpressionComputation> measureComputationsBuilder =
         ImmutableList.builder();
 
@@ -3282,11 +3283,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       ExpressionAndValuePointers expressionAndValuePointers =
           measure.getExpressionAndValuePointers();
 
-      // 4a. 转换 assignments 为 PhysicalValueAccessor 列表
+      // convert the `ValuePointer` in the `Assignment` to `PhysicalValueAccessor`
       List<PhysicalValueAccessor> valueAccessors = new ArrayList<>();
       for (ExpressionAndValuePointers.Assignment assignment :
           expressionAndValuePointers.getAssignments()) {
-        // ValuePointer -> PhysicalValuePointer
         ValuePointer pointer = assignment.getValuePointer();
         if (pointer instanceof MatchNumberValuePointer) {
           valueAccessors.add(
@@ -3310,11 +3310,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         }
       }
 
-      // 4b. 解析 Expression 得到 Computation 表达式树
+      // transform the symbolic expression tree in the logical planning stage into a parametric
+      // expression tree
       Computation computation =
           Computation.ComputationParser.parse(expressionAndValuePointers.getExpression());
 
-      // 4c. 构造 PatternExpressionComputation 对象
+      // construct a `PatternExpressionComputation` object, where valueAccessors is a parameter
+      // list
+      // and computation is a parametric expression tree, encapsulating the computation logic
       PatternExpressionComputation measureComputation =
           new PatternExpressionComputation(valueAccessors, computation);
 

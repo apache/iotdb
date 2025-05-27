@@ -97,6 +97,10 @@ public class IoTDBPatternRecognitionIT {
         "INSERT INTO t4 VALUES (2025-01-01T00:02:00, 80)",
         "INSERT INTO t4 VALUES (2025-01-01T00:03:00, 70)",
         "INSERT INTO t4 VALUES (2025-01-01T00:04:00, 80)",
+
+        // TABLE: t5
+        "CREATE TABLE t5(part STRING TAG, num INT32 FIELD, totalprice DOUBLE FIELD)",
+        "INSERT INTO t5 VALUES (2025-01-01T00:01:00, 'p1', 1, 10.0)",
       };
 
   private static void insertData() {
@@ -194,6 +198,43 @@ public class IoTDBPatternRecognitionIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+  }
+
+  @Test
+  public void testOutputLayout() {
+    // ONE ROW PER MATCH: PK, Measures
+    String[] expectedHeader1 = new String[] {"part", "match", "label"};
+    String[] retArray1 =
+        new String[] {
+          "p1,1,A,",
+        };
+
+    // ALL ROWS PER MATCH: PK, OK, Measures, Others
+    String[] expectedHeader2 = new String[] {"part", "num", "match", "label", "time", "totalprice"};
+    String[] retArray2 =
+        new String[] {
+          "p1,1,1,A,2025-01-01T00:01:00.000Z,10.0,",
+        };
+
+    String sql =
+        "SELECT * "
+            + "FROM t5 "
+            + "MATCH_RECOGNIZE ( "
+            + "    PARTITION BY part "
+            + "    ORDER BY num "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        CLASSIFIER() AS label "
+            + "    %s "
+            + "    PATTERN (A+) "
+            + "    DEFINE "
+            + "        A AS true "
+            + ") AS m ";
+
+    tableResultSetEqualTest(
+        format(sql, "ONE ROW PER MATCH"), expectedHeader1, retArray1, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql, "ALL ROWS PER MATCH"), expectedHeader2, retArray2, DATABASE_NAME);
   }
 
   @Test
@@ -466,7 +507,140 @@ public class IoTDBPatternRecognitionIT {
   }
 
   @Test
-  public void testClassifierFunction() {
+  public void testNestedNavigation() {
+    String[] expectedHeader = new String[] {"time", "price"};
+    String[] retArray1 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,null,",
+          "2025-01-01T00:02:00.000Z,null,",
+          "2025-01-01T00:03:00.000Z,null,",
+        };
+    String[] retArray2 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,20.0,",
+          "2025-01-01T00:02:00.000Z,20.0,",
+          "2025-01-01T00:03:00.000Z,20.0,",
+        };
+    String[] retArray3 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,10.0,",
+          "2025-01-01T00:02:00.000Z,10.0,",
+          "2025-01-01T00:03:00.000Z,10.0,",
+        };
+    String[] retArray4 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,null,",
+          "2025-01-01T00:02:00.000Z,10.0,",
+          "2025-01-01T00:03:00.000Z,20.0,",
+        };
+    String[] retArray5 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,null,",
+          "2025-01-01T00:02:00.000Z,null,",
+          "2025-01-01T00:03:00.000Z,10.0,",
+        };
+    String[] retArray6 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,30.0,",
+          "2025-01-01T00:02:00.000Z,30.0,",
+          "2025-01-01T00:03:00.000Z,30.0,",
+        };
+    String[] retArray7 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,20.0,",
+          "2025-01-01T00:02:00.000Z,30.0,",
+          "2025-01-01T00:03:00.000Z,null,",
+        };
+    String[] retArray8 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,30.0,",
+          "2025-01-01T00:02:00.000Z,null,",
+          "2025-01-01T00:03:00.000Z,null,",
+        };
+    String[] retArray9 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,null,",
+          "2025-01-01T00:02:00.000Z,null,",
+          "2025-01-01T00:03:00.000Z,20.0,",
+        };
+    String[] retArray10 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,null,",
+          "2025-01-01T00:02:00.000Z,null,",
+          "2025-01-01T00:03:00.000Z,30.0,",
+        };
+
+    String sql =
+        "SELECT m.time, m.price "
+            + "FROM t2 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        %s AS price "
+            + "    ALL ROWS PER MATCH "
+            + "    AFTER MATCH SKIP PAST LAST ROW "
+            + "    PATTERN (A+) "
+            + "    DEFINE "
+            + "        A AS true "
+            + ") AS m";
+    // PREV(FIRST(totalprice))
+    tableResultSetEqualTest(
+        format(sql, "PREV(RPR_FIRST(totalprice))"), expectedHeader, retArray1, DATABASE_NAME);
+    // PREV(FIRST(totalprice), 2)
+    tableResultSetEqualTest(
+        format(sql, "PREV(RPR_FIRST(totalprice), 2)"), expectedHeader, retArray1, DATABASE_NAME);
+
+    // PREV(FIRST(totalprice, 2))
+    tableResultSetEqualTest(
+        format(sql, "PREV(RPR_FIRST(totalprice, 2))"), expectedHeader, retArray2, DATABASE_NAME);
+    // PREV(FIRST(totalprice, 2), 2)
+    tableResultSetEqualTest(
+        format(sql, "PREV(RPR_FIRST(totalprice, 2), 2)"), expectedHeader, retArray3, DATABASE_NAME);
+
+    // PREV(LAST(totalprice))
+    tableResultSetEqualTest(
+        format(sql, "PREV(RPR_LAST(totalprice))"), expectedHeader, retArray4, DATABASE_NAME);
+    // PREV(LAST(totalprice), 2)
+    tableResultSetEqualTest(
+        format(sql, "PREV(RPR_LAST(totalprice), 2)"), expectedHeader, retArray5, DATABASE_NAME);
+
+    // PREV(LAST(totalprice, 1))
+    tableResultSetEqualTest(
+        format(sql, "PREV(RPR_LAST(totalprice, 1))"), expectedHeader, retArray5, DATABASE_NAME);
+    // PREV(LAST(totalprice, 1), 2)
+    tableResultSetEqualTest(
+        format(sql, "PREV(RPR_LAST(totalprice, 1), 2)"), expectedHeader, retArray1, DATABASE_NAME);
+
+    // NEXT(FIRST(totalprice))
+    tableResultSetEqualTest(
+        format(sql, "NEXT(RPR_FIRST(totalprice))"), expectedHeader, retArray2, DATABASE_NAME);
+    // NEXT(FIRST(totalprice), 2)
+    tableResultSetEqualTest(
+        format(sql, "NEXT(RPR_FIRST(totalprice), 2)"), expectedHeader, retArray6, DATABASE_NAME);
+
+    // NEXT(FIRST(totalprice, 1))
+    tableResultSetEqualTest(
+        format(sql, "NEXT(RPR_FIRST(totalprice, 1))"), expectedHeader, retArray6, DATABASE_NAME);
+    // NEXT(FIRST(totalprice, 1), 2)
+    tableResultSetEqualTest(
+        format(sql, "NEXT(RPR_FIRST(totalprice, 1), 2)"), expectedHeader, retArray1, DATABASE_NAME);
+
+    // NEXT(LAST(totalprice))
+    tableResultSetEqualTest(
+        format(sql, "NEXT(RPR_LAST(totalprice))"), expectedHeader, retArray7, DATABASE_NAME);
+    // NEXT(LAST(totalprice), 2)
+    tableResultSetEqualTest(
+        format(sql, "NEXT(RPR_LAST(totalprice), 2)"), expectedHeader, retArray8, DATABASE_NAME);
+
+    // NEXT(LAST(totalprice, 2))
+    tableResultSetEqualTest(
+        format(sql, "NEXT(RPR_LAST(totalprice, 2))"), expectedHeader, retArray9, DATABASE_NAME);
+    // NEXT(LAST(totalprice, 2), 2)
+    tableResultSetEqualTest(
+        format(sql, "NEXT(RPR_LAST(totalprice, 2), 2)"), expectedHeader, retArray10, DATABASE_NAME);
+  }
+
+  @Test
+  public void testUnionVariable() {
     String[] expectedHeader = new String[] {"time", "match", "price", "lower_or_higher", "label"};
     String[] retArray1 =
         new String[] {
@@ -491,6 +665,76 @@ public class IoTDBPatternRecognitionIT {
             + "    SUBSET "
             + "        U = (L, H), "
             + "        W = (A, L, H) "
+            + "    DEFINE "
+            + "        A AS A.totalprice = 80, "
+            + "        L AS L.totalprice < 80, "
+            + "        H AS H.totalprice > 80 "
+            + ") AS m";
+
+    tableResultSetEqualTest(sql, expectedHeader, retArray1, DATABASE_NAME);
+  }
+
+  @Test
+  public void testClassifierFunction() {
+    String[] expectedHeader =
+        new String[] {"time", "match", "price", "label", "prev_label", "next_label"};
+    // The scope of the CLASSIFIER() is within match
+    String[] retArray1 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,1,90.0,H,null,A,",
+          "2025-01-01T00:02:00.000Z,1,80.0,A,H,null,",
+          "2025-01-01T00:03:00.000Z,2,70.0,L,null,A,",
+          "2025-01-01T00:04:00.000Z,2,80.0,A,L,null,",
+        };
+
+    String sql =
+        "SELECT m.time, m.match, m.price, m.label, m.prev_label, m.next_label "
+            + "FROM t4 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        RUNNING RPR_LAST(totalprice) AS price, "
+            + "        CLASSIFIER() AS label, "
+            + "        PREV(CLASSIFIER()) AS prev_label, "
+            + "        NEXT(CLASSIFIER()) AS next_label "
+            + "    ALL ROWS PER MATCH "
+            + "    AFTER MATCH SKIP PAST LAST ROW "
+            + "    PATTERN ((L | H) A) "
+            + "    DEFINE "
+            + "        A AS A.totalprice = 80, "
+            + "        L AS L.totalprice < 80, "
+            + "        H AS H.totalprice > 80 "
+            + ") AS m";
+
+    tableResultSetEqualTest(sql, expectedHeader, retArray1, DATABASE_NAME);
+  }
+
+  // TODO
+  @Test
+  public void testPatternQuantifier() {
+    String[] expectedHeader =
+        new String[] {"time", "match", "price", "label", "prev_label", "next_label"};
+    String[] retArray1 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,1,90.0,H,null,A,",
+          "2025-01-01T00:02:00.000Z,1,80.0,A,H,null,",
+          "2025-01-01T00:03:00.000Z,2,70.0,L,null,A,",
+          "2025-01-01T00:04:00.000Z,2,80.0,A,L,null,",
+        };
+
+    String sql =
+        "SELECT m.time, m.match, m.price, m.label, m.prev_label, m.next_label "
+            + "FROM t4 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        RUNNING RPR_LAST(totalprice) AS price, "
+            + "        CLASSIFIER() AS label, "
+            + "        PREV(CLASSIFIER()) AS prev_label, "
+            + "        NEXT(CLASSIFIER()) AS next_label "
+            + "    ALL ROWS PER MATCH "
+            + "    AFTER MATCH SKIP PAST LAST ROW "
+            + "    PATTERN ((L | H) A) "
             + "    DEFINE "
             + "        A AS A.totalprice = 80, "
             + "        L AS L.totalprice < 80, "
