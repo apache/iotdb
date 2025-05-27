@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
@@ -481,6 +482,9 @@ public class PartitionMetrics implements IMetricSet {
       final AbstractMetricService metricService,
       final ConfigSchemaStatistics statistics,
       final String database) {
+    if (!PathUtils.isTableModelDatabase(database)) {
+      return;
+    }
     metricService.createAutoGauge(
         Metric.TABLE_NUM.toString(),
         MetricLevel.CORE,
@@ -503,6 +507,9 @@ public class PartitionMetrics implements IMetricSet {
 
   public static void unbindDatabaseTableMetrics(
       final AbstractMetricService metricService, final String database) {
+    if (!PathUtils.isTableModelDatabase(database)) {
+      return;
+    }
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.TABLE_NUM.toString(),
