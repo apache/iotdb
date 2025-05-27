@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.partition;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -284,6 +285,17 @@ public class PartitionMetrics implements IMetricSet {
         statistics,
         ConfigSchemaStatistics::getTableDatabaseNum);
 
+    // Enable table num gauge for information_schema
+    metricService
+        .getOrCreateGauge(
+            Metric.TABLE_NUM.toString(),
+            MetricLevel.CORE,
+            Tag.TYPE.toString(),
+            TableType.SYSTEM_VIEW.getName(),
+            Tag.DATABASE.toString(),
+            InformationSchema.INFORMATION_DATABASE)
+        .set(InformationSchema.getSchemaTables().size());
+
     final List<String> databases = clusterSchemaManager.getDatabaseNames(null);
     for (final String database : databases) {
       int dataReplicationFactor = 1;
@@ -305,6 +317,16 @@ public class PartitionMetrics implements IMetricSet {
   private void unbindDatabaseRelatedMetrics(AbstractMetricService metricService) {
     // Remove the number of Databases
     metricService.remove(MetricType.AUTO_GAUGE, Metric.DATABASE_NUM.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.TABLE_DATABASE_NUM.toString());
+
+    // Remove gauge for information_schema
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.TABLE_NUM.toString(),
+        Tag.TYPE.toString(),
+        TableType.SYSTEM_VIEW.getName(),
+        Tag.DATABASE.toString(),
+        InformationSchema.INFORMATION_DATABASE);
 
     List<String> databases = getClusterSchemaManager().getDatabaseNames(null);
     for (String database : databases) {
@@ -460,7 +482,7 @@ public class PartitionMetrics implements IMetricSet {
       final ConfigSchemaStatistics statistics,
       final String database) {
     metricService.createAutoGauge(
-        Metric.TREE_VIEW_TABLE_NUM.toString(),
+        Metric.TABLE_NUM.toString(),
         MetricLevel.CORE,
         statistics,
         s -> s.getTreeViewTableNum(database),
@@ -469,7 +491,7 @@ public class PartitionMetrics implements IMetricSet {
         Tag.DATABASE.toString(),
         database);
     metricService.createAutoGauge(
-        Metric.BASE_TABLE_NUM.toString(),
+        Metric.TABLE_NUM.toString(),
         MetricLevel.CORE,
         statistics,
         s -> s.getBaseTableNum(database),
@@ -483,14 +505,14 @@ public class PartitionMetrics implements IMetricSet {
       final AbstractMetricService metricService, final String database) {
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.TREE_VIEW_TABLE_NUM.toString(),
+        Metric.TABLE_NUM.toString(),
         Tag.TYPE.toString(),
         TableType.VIEW_FROM_TREE.getName(),
         Tag.DATABASE.toString(),
         database);
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.BASE_TABLE_NUM.toString(),
+        Metric.TABLE_NUM.toString(),
         Tag.TYPE.toString(),
         TableType.BASE_TABLE.getName(),
         Tag.DATABASE.toString(),
