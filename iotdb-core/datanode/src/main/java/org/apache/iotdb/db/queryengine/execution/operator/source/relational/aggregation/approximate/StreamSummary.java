@@ -14,11 +14,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate;
 
-//
-// Source code recreated from a .class file by IntelliJ IDEA
-// (powered by FernFlower decompiler)
-//
-
 import java.io.ByteArrayInputStream;
 import java.io.Externalizable;
 import java.io.IOException;
