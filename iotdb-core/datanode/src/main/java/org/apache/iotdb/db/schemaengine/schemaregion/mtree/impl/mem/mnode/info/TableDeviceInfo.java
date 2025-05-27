@@ -87,7 +87,7 @@ public class TableDeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
 
   @Override
   public int getSchemaTemplateIdWithState() {
-    return 0;
+    return -1;
   }
 
   @Override
