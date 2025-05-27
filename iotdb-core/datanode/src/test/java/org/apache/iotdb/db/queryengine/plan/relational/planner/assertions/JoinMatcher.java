@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import com.google.common.collect.ImmutableList;
@@ -38,6 +39,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.asofJoinClause;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.equiJoinClause;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.node;
 
@@ -46,12 +48,14 @@ public final class JoinMatcher implements Matcher {
   private final List<ExpectedValueProvider<JoinNode.EquiJoinClause>> equiCriteria;
   private final boolean ignoreEquiCriteria;
   private final Optional<Expression> filter;
+  private final Optional<AsofJoinClauseProvider> asofCriteria;
 
   JoinMatcher(
       JoinNode.JoinType joinType,
       List<ExpectedValueProvider<JoinNode.EquiJoinClause>> equiCriteria,
       boolean ignoreEquiCriteria,
-      Optional<Expression> filter) {
+      Optional<Expression> filter,
+      Optional<AsofJoinClauseProvider> asofCriteria) {
     this.joinType = requireNonNull(joinType, "joinType is null");
     this.equiCriteria = requireNonNull(equiCriteria, "equiCriteria is null");
     if (ignoreEquiCriteria && !equiCriteria.isEmpty()) {
@@ -59,6 +63,7 @@ public final class JoinMatcher implements Matcher {
     }
     this.ignoreEquiCriteria = ignoreEquiCriteria;
     this.filter = requireNonNull(filter, "filter cannot be null");
+    this.asofCriteria = requireNonNull(asofCriteria, "asofCriteria cannot be null");
   }
 
   @Override
@@ -114,6 +119,17 @@ public final class JoinMatcher implements Matcher {
       }
     }
 
+    if (asofCriteria.isPresent()) {
+      if (!joinNode.getAsofCriteria().isPresent()) {
+        return NO_MATCH;
+      }
+      if (!new ExpressionVerifier(symbolAliases)
+          .process(
+              joinNode.getAsofCriteria().get().toExpression(), asofCriteria.get().toExpression())) {
+        return NO_MATCH;
+      }
+    }
+
     return MatchResult.match();
   }
 
@@ -135,6 +151,7 @@ public final class JoinMatcher implements Matcher {
     private PlanMatchPattern right;
     private Optional<Expression> filter = Optional.empty();
     private boolean ignoreEquiCriteria;
+    private Optional<AsofJoinClauseProvider> asofJoinCriteria = Optional.empty();
 
     public Builder(JoinNode.JoinType joinType) {
       this.joinType = joinType;
@@ -151,6 +168,13 @@ public final class JoinMatcher implements Matcher {
     @CanIgnoreReturnValue
     public Builder equiCriteria(String left, String right) {
       this.equiCriteria = Optional.of(ImmutableList.of(equiJoinClause(left, right)));
+
+      return this;
+    }
+
+    @CanIgnoreReturnValue
+    public Builder asofCriteria(ComparisonExpression.Operator operator, String left, String right) {
+      this.asofJoinCriteria = Optional.of(asofJoinClause(operator, left, right));
 
       return this;
     }
@@ -185,7 +209,11 @@ public final class JoinMatcher implements Matcher {
       return node(JoinNode.class, left, right)
           .with(
               new JoinMatcher(
-                  joinType, equiCriteria.orElse(ImmutableList.of()), ignoreEquiCriteria, filter));
+                  joinType,
+                  equiCriteria.orElse(ImmutableList.of()),
+                  ignoreEquiCriteria,
+                  filter,
+                  asofJoinCriteria));
     }
   }
 }

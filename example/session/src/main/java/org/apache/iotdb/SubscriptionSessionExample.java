@@ -272,7 +272,7 @@ public class SubscriptionSessionExample {
                         .buildPushConsumer()) {
                   consumer3.open();
                   consumer3.subscribe(TOPIC_3);
-                  while (!consumer3.allSnapshotTopicMessagesHaveBeenConsumed()) {
+                  while (!consumer3.allTopicMessagesHaveBeenConsumed()) {
                     LockSupport.parkNanos(SLEEP_NS); // wait some time
                   }
                 }
@@ -314,7 +314,7 @@ public class SubscriptionSessionExample {
                         .buildPullConsumer()) {
                   consumer4.open();
                   consumer4.subscribe(TOPIC_4);
-                  while (!consumer4.allSnapshotTopicMessagesHaveBeenConsumed()) {
+                  while (!consumer4.allTopicMessagesHaveBeenConsumed()) {
                     for (final SubscriptionMessage message : consumer4.poll(POLL_TIMEOUT_MS)) {
                       final SubscriptionTsFileHandler handler = message.getTsFileHandler();
                       handler.moveFile(

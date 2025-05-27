@@ -165,20 +165,10 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 12: show queries
-    // user1 with select on information_schema.queries
-    tableAssertTestFail(
-        "SHOW QUERIES",
-        TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
-        USER_1,
-        PASSWORD);
-    // user2 without select on information_schema.queries
-    tableAssertTestFail(
-        "SHOW QUERIES",
-        TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
-        USER_2,
-        PASSWORD);
+    // non-root users can access its own queries
+    expectedHeader =
+        new String[] {"query_id", "start_time", "datanode_id", "elapsed_time", "statement", "user"};
+    tableQueryNoVerifyResultTest("show queries", expectedHeader, USER_2, PASSWORD);
 
     // case 13: kill query
     // user2

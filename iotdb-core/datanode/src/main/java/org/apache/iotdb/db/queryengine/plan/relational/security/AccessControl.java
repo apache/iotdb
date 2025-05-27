@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 
@@ -135,6 +136,15 @@ public interface AccessControl {
    * @throws AccessDeniedException if not allowed
    */
   void checkCanShowOrDescTable(String userName, QualifiedObjectName tableName);
+
+  /**
+   * Check if user is allowed to create view under the specific tree path.
+   *
+   * @param userName name of user
+   * @param path the tree path scope the view can select from
+   * @throws AccessDeniedException if not allowed
+   */
+  void checkCanCreateViewFromTreePath(final String userName, final PartialPath path);
 
   /**
    * Check if user can run relational author statement.

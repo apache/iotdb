@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -59,5 +60,8 @@ public abstract class AbstractCrossSpaceEstimator extends AbstractCompactionEsti
   }
 
   public abstract long roughEstimateCrossCompactionMemory(
-      List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException;
+      CompactionScheduleContext context,
+      List<TsFileResource> seqResources,
+      List<TsFileResource> unseqResources)
+      throws IOException;
 }

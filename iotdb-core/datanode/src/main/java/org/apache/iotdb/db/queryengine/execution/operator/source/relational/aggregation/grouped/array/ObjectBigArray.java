@@ -36,19 +36,12 @@ public final class ObjectBigArray<T> {
   private static final long INSTANCE_SIZE = shallowSizeOfInstance(ObjectBigArray.class);
   private static final long SIZE_OF_SEGMENT = sizeOfObjectArray(SEGMENT_SIZE);
 
-  private final Object initialValue;
-
   private Object[][] array;
   private long capacity;
   private int segments;
 
   /** Creates a new big array containing one initial segment */
   public ObjectBigArray() {
-    this(null);
-  }
-
-  public ObjectBigArray(Object initialValue) {
-    this.initialValue = initialValue;
     array = new Object[INITIAL_SEGMENTS][];
     allocateNewSegment();
   }
@@ -121,9 +114,13 @@ public final class ObjectBigArray<T> {
   }
 
   public void reset() {
-    fill((T) initialValue);
+    fill(null);
   }
 
+  /**
+   * Attention: the element in Array may be null!!! You have to handle this case like {@link
+   * MapBigArray#reset()} in input action.
+   */
   public void forEach(Consumer<T> action) {
     for (Object[] segment : array) {
       if (segment == null) {
@@ -185,9 +182,6 @@ public final class ObjectBigArray<T> {
 
   private void allocateNewSegment() {
     Object[] newSegment = new Object[SEGMENT_SIZE];
-    if (initialValue != null) {
-      Arrays.fill(newSegment, initialValue);
-    }
     array[segments] = newSegment;
     capacity += SEGMENT_SIZE;
     segments++;

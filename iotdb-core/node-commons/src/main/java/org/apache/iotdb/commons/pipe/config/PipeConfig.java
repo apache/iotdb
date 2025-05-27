@@ -69,10 +69,13 @@ public class PipeConfig {
   }
 
   public double getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() {
+    // To avoid too much parsed events causing OOM. If total tablet memory size exceeds this
+    // threshold, allocations of memory block for tablets will be rejected.
     return COMMON_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
   }
 
   public double getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() {
+    // Used to control the memory allocated for managing slice tsfile.
     return COMMON_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
   }
 
@@ -87,7 +90,7 @@ public class PipeConfig {
   }
 
   public int getPipeRealTimeQueuePollHistoricalTsFileThreshold() {
-    return COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
+    return Math.max(COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold(), 1);
   }
 
   /////////////////////////////// Subtask Executor ///////////////////////////////
@@ -300,8 +303,28 @@ public class PipeConfig {
     return COMMON_CONFIG.isPipeEpochKeepTsFileAfterStuckRestartEnabled();
   }
 
+  public long getPipeFlushAfterTerminateCount() {
+    return COMMON_CONFIG.getPipeFlushAfterTerminateCount();
+  }
+
+  public long getPipeFlushAfterLastTerminateSeconds() {
+    return COMMON_CONFIG.getPipeFlushAfterLastTerminateSeconds();
+  }
+
   public long getPipeStorageEngineFlushTimeIntervalMs() {
     return COMMON_CONFIG.getPipeStorageEngineFlushTimeIntervalMs();
+  }
+
+  public int getPipeMaxAllowedRemainingInsertEventCountPerPipe() {
+    return COMMON_CONFIG.getPipeMaxAllowedRemainingInsertEventCountPerPipe();
+  }
+
+  public int getPipeMaxAllowedTotalRemainingInsertEventCount() {
+    return COMMON_CONFIG.getPipeMaxAllowedTotalRemainingInsertEventCount();
+  }
+
+  public int getPipeRemainingInsertEventCountSmoothingIntervalSeconds() {
+    return COMMON_CONFIG.getPipeRemainingInsertEventCountSmoothingIntervalSeconds();
   }
 
   /////////////////////////////// Logger ///////////////////////////////
@@ -527,8 +550,19 @@ public class PipeConfig {
     LOGGER.info(
         "PipeEpochKeepTsFileAfterStuckRestartEnabled: {}",
         isPipeEpochKeepTsFileAfterStuckRestartEnabled());
+    LOGGER.info("PipeFlushAfterTerminateCount: {}", getPipeFlushAfterTerminateCount());
+    LOGGER.info("PipeFlushAfterLastTerminateSeconds: {}", getPipeFlushAfterLastTerminateSeconds());
     LOGGER.info(
         "PipeStorageEngineFlushTimeIntervalMs: {}", getPipeStorageEngineFlushTimeIntervalMs());
+    LOGGER.info(
+        "PipeMaxAllowedRemainingInsertEventCountPerPipe: {}",
+        getPipeMaxAllowedRemainingInsertEventCountPerPipe());
+    LOGGER.info(
+        "PipeMaxAllowedTotalRemainingInsertEventCount: {}",
+        getPipeMaxAllowedTotalRemainingInsertEventCount());
+    LOGGER.info(
+        "PipeRemainingInsertEventCountSmoothingIntervalSeconds: {}",
+        getPipeRemainingInsertEventCountSmoothingIntervalSeconds());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());

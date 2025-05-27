@@ -162,6 +162,11 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
+  public void bindProgressIndex(final ProgressIndex progressIndex) {
+    event.bindProgressIndex(progressIndex);
+  }
+
+  @Override
   public ProgressIndex getProgressIndex() {
     return event.getProgressIndex();
   }

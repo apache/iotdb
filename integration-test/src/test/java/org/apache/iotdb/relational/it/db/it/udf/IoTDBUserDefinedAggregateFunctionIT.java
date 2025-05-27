@@ -42,7 +42,7 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBUserDefinedAggregateFunctionIT {
   private static final String DATABASE_NAME = "test";
-  private static final String[] sqls =
+  protected static final String[] sqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
@@ -679,12 +679,12 @@ public class IoTDBUserDefinedAggregateFunctionIT {
         };
 
     tableResultSetEqualTest(
-        "select device_id, first_two_sum(s1, s2, time) as sum from table1 group by device_id",
+        "select device_id, first_two_sum(s1, s2, time) as sum from table1 group by device_id order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
     tableResultSetEqualTest(
-        "select device_id, first_two_sum(s1, s2, s9) as sum from table1 group by device_id",
+        "select device_id, first_two_sum(s1, s2, s9) as sum from table1 group by device_id order by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);

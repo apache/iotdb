@@ -51,7 +51,7 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
       List<DeviceEntry> deviceEntries,
-      Map<Symbol, Integer> idAndAttributeIndexMap,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
       Expression pushDownPredicate,
@@ -73,7 +73,7 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,
@@ -140,7 +140,7 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,
@@ -188,7 +188,7 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
 
   public static AggregationTreeDeviceViewScanNode deserialize(ByteBuffer byteBuffer) {
     AggregationTreeDeviceViewScanNode node = new AggregationTreeDeviceViewScanNode();
-    AggregationTableScanNode.deserializeMemberVariables(byteBuffer, node, false);
+    AggregationTableScanNode.deserializeMemberVariables(byteBuffer, node);
 
     node.treeDBName = ReadWriteIOUtils.readString(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);

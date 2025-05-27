@@ -41,7 +41,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
@@ -387,11 +386,6 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
 
     final Map<String, String> extractorAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
@@ -432,13 +426,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
       // Ensure the deleted table won't be created
       // Now the database will also be created at receiver
-      try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
-        statement.executeQuery("describe db.t1");
-        fail();
-      } catch (final SQLException ignore) {
-        // Expected
-      }
+      TestUtils.assertAlwaysFail(receiverEnv, "describe db.t1");
     }
   }
 
@@ -447,11 +435,6 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
 
     final Map<String, String> extractorAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
@@ -501,13 +484,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
       // Ensure the table without insert privilege won't be created
       // Now the database will also be created at receiver
-      try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
-        statement.executeQuery("describe db.t1");
-        fail();
-      } catch (final SQLException ignore) {
-        // Expected
-      }
+      TestUtils.assertAlwaysFail(receiverEnv, "describe db.t1");
     }
   }
 }

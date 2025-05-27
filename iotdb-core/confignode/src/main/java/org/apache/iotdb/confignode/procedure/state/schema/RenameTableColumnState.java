@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.state.schema;
 public enum RenameTableColumnState {
   COLUMN_CHECK,
   PRE_RELEASE,
-  RENAME_COLUMN_ON_SCHEMA_REGION,
-  RENAME_COLUMN_ON_CONFIG_NODE,
+  RENAME_COLUMN,
   COMMIT_RELEASE
 }

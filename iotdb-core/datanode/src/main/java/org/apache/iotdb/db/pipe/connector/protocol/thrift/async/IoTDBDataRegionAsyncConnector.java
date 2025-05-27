@@ -44,6 +44,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -101,14 +102,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
   private final PipeDataRegionEventCounter retryEventQueueEventCounter =
       new PipeDataRegionEventCounter();
-  private final int forcedRetryTsFileEventQueueSizeThreshold =
-      PipeConfig.getInstance().getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold();
-  private final int forcedRetryTabletEventQueueSizeThreshold =
-      PipeConfig.getInstance().getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold();
-  private final int forcedRetryTotalEventQueueSizeThreshold =
-      PipeConfig.getInstance().getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold();
-  private final long maxRetryExecutionTimeMsPerCall =
-      PipeConfig.getInstance().getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall();
 
   private IoTDBDataNodeAsyncClientManager clientManager;
 
@@ -438,6 +431,15 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
+  @Override
+  public TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
+    if (Objects.isNull(compressionTimer)) {
+      compressionTimer =
+          PipeDataRegionConnectorMetrics.getInstance().getCompressionTimer(attributeSortedString);
+    }
+    return super.compressIfNeeded(req);
+  }
+
   //////////////////////////// Leader cache update ////////////////////////////
 
   public void updateLeaderCache(final String deviceId, final TEndPoint endPoint) {
@@ -468,10 +470,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     if (retryEventQueue.isEmpty()
         || (!forced
             && retryEventQueueEventCounter.getTabletInsertionEventCount()
-                < forcedRetryTabletEventQueueSizeThreshold
+                < PipeConfig.getInstance()
+                    .getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold()
             && retryEventQueueEventCounter.getTsFileInsertionEventCount()
-                < forcedRetryTsFileEventQueueSizeThreshold
-            && retryEventQueue.size() < forcedRetryTotalEventQueueSizeThreshold)) {
+                < PipeConfig.getInstance()
+                    .getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold()
+            && retryEventQueue.size()
+                < PipeConfig.getInstance()
+                    .getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold())) {
       return;
     }
 
@@ -515,12 +521,17 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       }
 
       // Stop retrying if the execution time exceeds the threshold for better realtime performance
-      if (System.currentTimeMillis() - retryStartTime > maxRetryExecutionTimeMsPerCall) {
+      if (System.currentTimeMillis() - retryStartTime
+          > PipeConfig.getInstance().getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall()) {
         if (retryEventQueueEventCounter.getTabletInsertionEventCount()
-                < forcedRetryTabletEventQueueSizeThreshold
+                < PipeConfig.getInstance()
+                    .getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold()
             && retryEventQueueEventCounter.getTsFileInsertionEventCount()
-                < forcedRetryTsFileEventQueueSizeThreshold
-            && retryEventQueue.size() < forcedRetryTotalEventQueueSizeThreshold) {
+                < PipeConfig.getInstance()
+                    .getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold()
+            && retryEventQueue.size()
+                < PipeConfig.getInstance()
+                    .getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold()) {
           return;
         }
 
@@ -696,6 +707,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   public int getRetryEventQueueSize() {
     return retryEventQueue.size();
+  }
+
+  public int getBatchSize() {
+    return tabletBatchBuilder.size();
+  }
+
+  public int getPendingHandlersSize() {
+    return pendingHandlers.size();
   }
 
   //////////////////////// APIs provided for PipeTransferTrackableHandler ////////////////////////

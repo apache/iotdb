@@ -92,7 +92,7 @@ public class PhiAccrualDetector implements IFailureDetector {
       }
       builder.append(phiAccrual.timeElapsedSinceLastHeartbeat / 1000_000);
       builder.append("]");
-      LOGGER.info(String.format("Node Down, heartbeat history (ms): %s", builder));
+      LOGGER.info(String.format("Node %s Down, heartbeat history (ms): %s", id, builder));
     }
 
     return isAvailable;

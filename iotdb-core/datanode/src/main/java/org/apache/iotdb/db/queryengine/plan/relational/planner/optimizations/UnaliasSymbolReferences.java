@@ -182,7 +182,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newOutputs,
               newAssignments,
               node.getDeviceEntries(),
-              node.getIdAndAttributeIndexMap(),
+              node.getTagAndAttributeIndexMap(),
               node.getScanOrder(),
               node.getTimePredicate().orElse(null),
               node.getPushDownPredicate(),
@@ -217,7 +217,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newOutputs,
               newAssignments,
               node.getDeviceEntries(),
-              node.getIdAndAttributeIndexMap(),
+              node.getTagAndAttributeIndexMap(),
               node.getScanOrder(),
               node.getTimePredicate().orElse(null),
               node.getPushDownPredicate(),
@@ -780,6 +780,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               rewrittenLeft.getRoot(),
               rewrittenRight.getRoot(),
               newCriteria,
+              node.getAsofCriteria(),
               newLeftOutputSymbols,
               newRightOutputSymbols,
               newFilter,
@@ -870,7 +871,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
           new TableFunctionNode(
               node.getPlanNodeId(),
               node.getName(),
-              node.getArguments(),
+              node.getTableFunctionHandle(),
               newProperOutputs,
               newSources.build(),
               newTableArgumentProperties.build()),
@@ -893,7 +894,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                 ImmutableList.of(),
                 Optional.empty(),
                 node.isRowSemantic(),
-                node.getArguments(),
+                node.getTableFunctionHandle(),
                 node.isRequireRecordSnapshot()),
             mapping);
       }
@@ -930,7 +931,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newRequiredSymbols,
               newSpecification,
               node.isRowSemantic(),
-              node.getArguments(),
+              node.getTableFunctionHandle(),
               node.isRequireRecordSnapshot());
 
       return new PlanAndMappings(rewrittenTableFunctionProcessor, mapping);

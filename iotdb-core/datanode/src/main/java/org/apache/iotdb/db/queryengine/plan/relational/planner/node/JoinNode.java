@@ -45,12 +45,14 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.EquiJoinClause.flipBatch;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
 
 public class JoinNode extends TwoChildProcessNode {
 
   private final JoinType joinType;
   private final List<EquiJoinClause> criteria;
+  private final Optional<AsofJoinClause> asofCriteria;
   private final List<Symbol> leftOutputSymbols;
   private final List<Symbol> rightOutputSymbols;
   // some filter like 'a.xx_column < b.yy_column'
@@ -69,6 +71,7 @@ public class JoinNode extends TwoChildProcessNode {
       PlanNode leftChild,
       PlanNode rightChild,
       List<EquiJoinClause> criteria,
+      Optional<AsofJoinClause> asofCriteria,
       List<Symbol> leftOutputSymbols,
       List<Symbol> rightOutputSymbols,
       Optional<Expression> filter,
@@ -96,6 +99,7 @@ public class JoinNode extends TwoChildProcessNode {
     this.leftChild = leftChild;
     this.rightChild = rightChild;
     this.criteria = ImmutableList.copyOf(criteria);
+    this.asofCriteria = asofCriteria;
     this.leftOutputSymbols = ImmutableList.copyOf(leftOutputSymbols);
     this.rightOutputSymbols = ImmutableList.copyOf(rightOutputSymbols);
     this.filter = filter;
@@ -135,6 +139,7 @@ public class JoinNode extends TwoChildProcessNode {
       PlanNodeId id,
       JoinType joinType,
       List<EquiJoinClause> criteria,
+      Optional<AsofJoinClause> asofCriteria,
       List<Symbol> leftOutputSymbols,
       List<Symbol> rightOutputSymbols) {
     super(id);
@@ -148,6 +153,24 @@ public class JoinNode extends TwoChildProcessNode {
 
     this.joinType = joinType;
     this.criteria = criteria;
+    this.asofCriteria = asofCriteria;
+  }
+
+  /**
+   * @return a new JoinNode with the flipped attributes
+   */
+  public JoinNode flip() {
+    return new JoinNode(
+        id,
+        joinType.flip(),
+        rightChild,
+        leftChild,
+        flipBatch(criteria),
+        asofCriteria,
+        rightOutputSymbols,
+        leftOutputSymbols,
+        filter,
+        spillable);
   }
 
   @Override
@@ -164,6 +187,7 @@ public class JoinNode extends TwoChildProcessNode {
         newChildren.get(0),
         newChildren.get(1),
         criteria,
+        asofCriteria,
         leftOutputSymbols,
         rightOutputSymbols,
         filter,
@@ -187,6 +211,7 @@ public class JoinNode extends TwoChildProcessNode {
             getLeftChild(),
             getRightChild(),
             criteria,
+            asofCriteria,
             leftOutputSymbols,
             rightOutputSymbols,
             filter,
@@ -213,6 +238,16 @@ public class JoinNode extends TwoChildProcessNode {
       Symbol.serialize(equiJoinClause.getRight(), byteBuffer);
     }
 
+    if (asofCriteria.isPresent()) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      AsofJoinClause asofJoinClause = asofCriteria.get();
+      ReadWriteIOUtils.write(asofJoinClause.getOperator().ordinal(), byteBuffer);
+      Symbol.serialize(asofJoinClause.getLeft(), byteBuffer);
+      Symbol.serialize(asofJoinClause.getRight(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
+
     ReadWriteIOUtils.write(leftOutputSymbols.size(), byteBuffer);
     for (Symbol leftOutputSymbol : leftOutputSymbols) {
       Symbol.serialize(leftOutputSymbol, byteBuffer);
@@ -235,6 +270,16 @@ public class JoinNode extends TwoChildProcessNode {
       Symbol.serialize(equiJoinClause.getRight(), stream);
     }
 
+    if (asofCriteria.isPresent()) {
+      ReadWriteIOUtils.write(true, stream);
+      AsofJoinClause asofJoinClause = asofCriteria.get();
+      ReadWriteIOUtils.write(asofJoinClause.getOperator().ordinal(), stream);
+      Symbol.serialize(asofJoinClause.getLeft(), stream);
+      Symbol.serialize(asofJoinClause.getRight(), stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+
     ReadWriteIOUtils.write(leftOutputSymbols.size(), stream);
     for (Symbol leftOutputSymbol : leftOutputSymbols) {
       Symbol.serialize(leftOutputSymbol, stream);
@@ -254,6 +299,16 @@ public class JoinNode extends TwoChildProcessNode {
           new EquiJoinClause(Symbol.deserialize(byteBuffer), Symbol.deserialize(byteBuffer)));
     }
 
+    Optional<AsofJoinClause> asofJoinClause = Optional.empty();
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      asofJoinClause =
+          Optional.of(
+              new AsofJoinClause(
+                  ComparisonExpression.Operator.values()[ReadWriteIOUtils.readInt(byteBuffer)],
+                  Symbol.deserialize(byteBuffer),
+                  Symbol.deserialize(byteBuffer)));
+    }
+
     size = ReadWriteIOUtils.readInt(byteBuffer);
     List<Symbol> leftOutputSymbols = new ArrayList<>(size);
     while (size-- > 0) {
@@ -267,7 +322,8 @@ public class JoinNode extends TwoChildProcessNode {
     }
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new JoinNode(planNodeId, joinType, criteria, leftOutputSymbols, rightOutputSymbols);
+    return new JoinNode(
+        planNodeId, joinType, criteria, asofJoinClause, leftOutputSymbols, rightOutputSymbols);
   }
 
   public JoinType getJoinType() {
@@ -276,6 +332,10 @@ public class JoinNode extends TwoChildProcessNode {
 
   public List<EquiJoinClause> getCriteria() {
     return criteria;
+  }
+
+  public Optional<AsofJoinClause> getAsofCriteria() {
+    return asofCriteria;
   }
 
   public List<Symbol> getLeftOutputSymbols() {
@@ -295,7 +355,10 @@ public class JoinNode extends TwoChildProcessNode {
   }
 
   public boolean isCrossJoin() {
-    return criteria.isEmpty() && !filter.isPresent() && joinType == INNER;
+    return !asofCriteria.isPresent()
+        && criteria.isEmpty()
+        && !filter.isPresent()
+        && joinType == INNER;
   }
 
   @Override
@@ -329,6 +392,12 @@ public class JoinNode extends TwoChildProcessNode {
       return new EquiJoinClause(right, left);
     }
 
+    public static List<EquiJoinClause> flipBatch(List<EquiJoinClause> input) {
+      ImmutableList.Builder<EquiJoinClause> builder = ImmutableList.builder();
+      input.forEach(clause -> builder.add(clause.flip()));
+      return builder.build();
+    }
+
     @Override
     public boolean equals(Object obj) {
       if (this == obj) {
@@ -355,6 +424,79 @@ public class JoinNode extends TwoChildProcessNode {
     }
   }
 
+  public static class AsofJoinClause {
+    private final Symbol left;
+    private final Symbol right;
+    private final ComparisonExpression.Operator operator;
+
+    public AsofJoinClause(ComparisonExpression.Operator operator, Symbol left, Symbol right) {
+      this.operator = operator;
+      this.left = requireNonNull(left, "left is null");
+      this.right = requireNonNull(right, "right is null");
+    }
+
+    public Symbol getLeft() {
+      return left;
+    }
+
+    public Symbol getRight() {
+      return right;
+    }
+
+    public ComparisonExpression.Operator getOperator() {
+      return operator;
+    }
+
+    public ComparisonExpression toExpression() {
+      return new ComparisonExpression(
+          operator, left.toSymbolReference(), right.toSymbolReference());
+    }
+
+    public AsofJoinClause flip() {
+      return new AsofJoinClause(operator.flip(), right, left);
+    }
+
+    public boolean isOperatorContainsGreater() {
+      switch (operator) {
+        case GREATER_THAN:
+        case GREATER_THAN_OR_EQUAL:
+          return true;
+        case LESS_THAN:
+        case LESS_THAN_OR_EQUAL:
+          return false;
+        default:
+          throw new IllegalArgumentException("Invalid operator type: " + operator);
+      }
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      }
+
+      if (obj == null || !this.getClass().equals(obj.getClass())) {
+        return false;
+      }
+
+      AsofJoinClause other = (AsofJoinClause) obj;
+
+      return Objects.equals(this.operator, other.operator)
+          && Objects.equals(this.left, other.left)
+          && Objects.equals(this.right, other.right);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(operator, left, right);
+    }
+
+    @Override
+    public String toString() {
+      return format("%s %s %s", left, operator.getValue(), right);
+    }
+  }
+
   public enum JoinType {
     INNER("InnerJoin"),
     LEFT("LeftJoin"),
@@ -369,6 +511,21 @@ public class JoinNode extends TwoChildProcessNode {
 
     public String getJoinLabel() {
       return joinLabel;
+    }
+
+    public JoinType flip() {
+      switch (this) {
+        case INNER:
+          return INNER;
+        case FULL:
+          return FULL;
+        case LEFT:
+          return RIGHT;
+        case RIGHT:
+          return LEFT;
+        default:
+      }
+      throw new IllegalArgumentException("Unsupported join type: " + this);
     }
   }
 }

@@ -59,6 +59,9 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
     if (node instanceof AggregationTableScanNode) {
       return Optional.empty();
     }
+    if (node instanceof TreeDeviceViewScanNode && referencedOutputs.isEmpty()) {
+      return Optional.empty();
+    }
     List<Symbol> newOutputs = new ArrayList<>();
     Map<Symbol, ColumnSchema> newAssignments = new LinkedHashMap<>();
     for (Symbol symbol : node.getOutputSymbols()) {
@@ -98,7 +101,7 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 newOutputs,
                 newAssignments,
                 deviceTableScanNode.getDeviceEntries(),
-                deviceTableScanNode.getIdAndAttributeIndexMap(),
+                deviceTableScanNode.getTagAndAttributeIndexMap(),
                 deviceTableScanNode.getScanOrder(),
                 deviceTableScanNode.getTimePredicate().orElse(null),
                 deviceTableScanNode.getPushDownPredicate(),
@@ -116,7 +119,7 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 newOutputs,
                 newAssignments,
                 deviceTableScanNode.getDeviceEntries(),
-                deviceTableScanNode.getIdAndAttributeIndexMap(),
+                deviceTableScanNode.getTagAndAttributeIndexMap(),
                 deviceTableScanNode.getScanOrder(),
                 deviceTableScanNode.getTimePredicate().orElse(null),
                 deviceTableScanNode.getPushDownPredicate(),

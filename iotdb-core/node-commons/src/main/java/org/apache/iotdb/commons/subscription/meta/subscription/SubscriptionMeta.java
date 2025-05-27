@@ -19,36 +19,34 @@
 
 package org.apache.iotdb.commons.subscription.meta.subscription;
 
-import org.apache.tsfile.utils.PublicBAOS;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 
-import java.io.DataOutputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.util.HashSet;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 /** SubscriptionMeta is created for show subscription and is not stored in meta keeper. */
 public class SubscriptionMeta {
 
-  private String topicName;
+  private TopicMeta topicMeta;
   private String consumerGroupId;
   private Set<String> consumerIds;
+  private Long creationTime;
 
   private SubscriptionMeta() {
     // Empty constructor
   }
 
-  public SubscriptionMeta(String topicName, String consumerGroupId, Set<String> consumerIds) {
-    this.topicName = topicName;
+  public SubscriptionMeta(
+      TopicMeta topicMeta, String consumerGroupId, Set<String> consumerIds, Long creationTime) {
+    this.topicMeta = topicMeta;
     this.consumerGroupId = consumerGroupId;
     this.consumerIds = consumerIds;
+    this.creationTime = creationTime;
   }
 
-  public String getTopicName() {
-    return topicName;
+  public TopicMeta getTopicMeta() {
+    return topicMeta;
   }
 
   public String getConsumerGroupId() {
@@ -59,60 +57,14 @@ public class SubscriptionMeta {
     return consumerIds;
   }
 
-  public ByteBuffer serialize() throws IOException {
-    PublicBAOS byteArrayOutputStream = new PublicBAOS();
-    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
-    serialize(outputStream);
-    return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+  public Optional<Long> getCreationTime() {
+    return Objects.nonNull(creationTime) ? Optional.of(creationTime) : Optional.empty();
   }
 
-  public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(topicName, outputStream);
-    ReadWriteIOUtils.write(consumerGroupId, outputStream);
-
-    ReadWriteIOUtils.write(consumerIds.size(), outputStream);
-    for (String consumerId : consumerIds) {
-      ReadWriteIOUtils.write(consumerId, outputStream);
-    }
-  }
-
-  public void serialize(FileOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(topicName, outputStream);
-    ReadWriteIOUtils.write(consumerGroupId, outputStream);
-
-    ReadWriteIOUtils.write(consumerIds.size(), outputStream);
-    for (String consumerId : consumerIds) {
-      ReadWriteIOUtils.write(consumerId, outputStream);
-    }
-  }
-
-  public static SubscriptionMeta deserialize(InputStream inputStream) throws IOException {
-    final SubscriptionMeta subscriptionMeta = new SubscriptionMeta();
-
-    subscriptionMeta.topicName = ReadWriteIOUtils.readString(inputStream);
-    subscriptionMeta.consumerGroupId = ReadWriteIOUtils.readString(inputStream);
-    subscriptionMeta.consumerIds = new HashSet<>();
-
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    for (int i = 0; i < size; i++) {
-      subscriptionMeta.consumerIds.add(ReadWriteIOUtils.readString(inputStream));
-    }
-
-    return subscriptionMeta;
-  }
-
-  public static SubscriptionMeta deserialize(ByteBuffer byteBuffer) {
-    final SubscriptionMeta subscriptionMeta = new SubscriptionMeta();
-
-    subscriptionMeta.topicName = ReadWriteIOUtils.readString(byteBuffer);
-    subscriptionMeta.consumerGroupId = ReadWriteIOUtils.readString(byteBuffer);
-    subscriptionMeta.consumerIds = new HashSet<>();
-
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < size; i++) {
-      subscriptionMeta.consumerIds.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
-
-    return subscriptionMeta;
+  public String getSubscriptionId() {
+    final StringBuilder subscriptionId =
+        new StringBuilder(topicMeta.getTopicName() + "_" + consumerGroupId);
+    getCreationTime().ifPresent(creationTime -> subscriptionId.append("_").append(creationTime));
+    return subscriptionId.toString();
   }
 }

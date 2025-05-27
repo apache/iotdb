@@ -244,7 +244,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
     } else {
       // right table doesn't have this time, just append null for right table
       for (int i = leftColumnCount; i < outputColumnCount; i++) {
-        resultBuilder.getColumnBuilder(i).appendNull();
+        resultBuilder.getColumnBuilder(getOutputColumnIndex(i, false)).appendNull();
       }
     }
     return true;

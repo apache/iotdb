@@ -21,8 +21,6 @@ package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 
 import org.apache.thrift.annotation.Nullable;
 import org.slf4j.Logger;
@@ -32,8 +30,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
  * Procedure described by a series of steps.
@@ -51,7 +49,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   private static final int EOF_STATE = Integer.MIN_VALUE;
 
   private Flow stateFlow = Flow.HAS_MORE_STATE;
-  private final LinkedList<Integer> states = new LinkedList<>();
+  private final ConcurrentLinkedDeque<Integer> states = new ConcurrentLinkedDeque<>();
 
   private final List<Procedure<?>> subProcList = new ArrayList<>();
 
@@ -90,8 +88,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
    * @return Flow.NO_MORE_STATE if the procedure is completed, Flow.HAS_MORE_STATE if there is
    *     another step.
    */
-  protected abstract Flow executeFromState(Env env, TState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException;
+  protected abstract Flow executeFromState(Env env, TState state) throws InterruptedException;
 
   /**
    * Called to perform the rollback of the specified state.
@@ -144,8 +141,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   @Override
-  protected Procedure<Env>[] execute(final Env env)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+  protected Procedure<Env>[] execute(final Env env) throws InterruptedException {
     updateTimestamp();
     try {
       if (noMoreState() || isFailed()) {
@@ -271,8 +267,11 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
-    stream.writeInt(states.size());
-    for (int state : states) {
+
+    // Ensure that the Size does not differ from the actual length during the reading process
+    final ArrayList<Integer> copyStates = new ArrayList<>(states);
+    stream.writeInt(copyStates.size());
+    for (int state : copyStates) {
       stream.writeInt(state);
     }
   }

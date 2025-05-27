@@ -21,6 +21,9 @@ package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -62,7 +65,7 @@ public class TsTable {
 
   public static final String TTL_PROPERTY = "ttl";
   public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
-  private final String tableName;
+  private String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
   private final Map<String, Integer> idColumnIndexMap = new HashMap<>();
@@ -74,7 +77,7 @@ public class TsTable {
   // Cache, avoid string parsing
   private transient long ttlValue = Long.MIN_VALUE;
   private transient int idNums = 0;
-  private transient int measurementNum = 0;
+  private transient int fieldNum = 0;
 
   public TsTable(final String tableName) {
     this.tableName = tableName;
@@ -125,6 +128,16 @@ public class TsTable {
     }
   }
 
+  // Currently only supports device view
+  public void renameTable(final String newName) {
+    readWriteLock.writeLock().lock();
+    try {
+      tableName = newName;
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   public void addColumnSchema(final TsTableColumnSchema columnSchema) {
     readWriteLock.writeLock().lock();
     try {
@@ -133,20 +146,45 @@ public class TsTable {
         idNums++;
         idColumnIndexMap.put(columnSchema.getColumnName(), idNums - 1);
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
-        measurementNum++;
+        fieldNum++;
       }
     } finally {
       readWriteLock.writeLock().unlock();
     }
   }
 
-  // Currently only supports attribute column
   public void renameColumnSchema(final String oldName, final String newName) {
     readWriteLock.writeLock().lock();
     try {
       // Ensures idempotency
       if (columnSchemaMap.containsKey(oldName)) {
-        columnSchemaMap.put(newName, columnSchemaMap.remove(oldName));
+        final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
+        final Map<String, String> oldProps = schema.getProps();
+        oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
+        switch (schema.getColumnCategory()) {
+          case TAG:
+            columnSchemaMap.put(
+                newName, new TagColumnSchema(newName, schema.getDataType(), oldProps));
+            break;
+          case FIELD:
+            columnSchemaMap.put(
+                newName,
+                new FieldColumnSchema(
+                    newName,
+                    schema.getDataType(),
+                    ((FieldColumnSchema) schema).getEncoding(),
+                    ((FieldColumnSchema) schema).getCompressor(),
+                    oldProps));
+            break;
+          case ATTRIBUTE:
+            columnSchemaMap.put(
+                newName, new AttributeColumnSchema(newName, schema.getDataType(), oldProps));
+            break;
+          case TIME:
+          default:
+            // Do nothing
+            columnSchemaMap.put(oldName, schema);
+        }
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -159,11 +197,11 @@ public class TsTable {
       final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
       if (columnSchema != null
           && columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
-        throw new SchemaExecutionException("Cannot remove an id column: " + columnName);
+        throw new SchemaExecutionException("Cannot remove an tag column: " + columnName);
       } else if (columnSchema != null) {
         columnSchemaMap.remove(columnName);
         if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
-          measurementNum--;
+          fieldNum--;
         }
       }
     } finally {
@@ -180,7 +218,7 @@ public class TsTable {
     }
   }
 
-  public int getIdNums() {
+  public int getTagNum() {
     readWriteLock.readLock().lock();
     try {
       return idNums;
@@ -189,10 +227,10 @@ public class TsTable {
     }
   }
 
-  public int getMeasurementNum() {
+  public int getFieldNum() {
     readWriteLock.readLock().lock();
     try {
-      return measurementNum;
+      return fieldNum;
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -209,28 +247,30 @@ public class TsTable {
 
   // This shall only be called on DataNode, where the tsTable is replaced completely thus an old
   // cache won't pollute the newest value
-  public long getTableTTL() {
+  public long getCachedTableTTL() {
     // Cache for performance
     if (ttlValue < 0) {
-      final long ttl = getTableTTLInMS();
-      ttlValue =
-          ttl == Long.MAX_VALUE
-              ? ttl
-              : CommonDateTimeUtils.convertMilliTimeWithPrecision(
-                  ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+      ttlValue = getTableTTL();
     }
     return ttlValue;
   }
 
-  private long getTableTTLInMS() {
+  public long getTableTTL() {
     final Optional<String> ttl = getPropValue(TTL_PROPERTY);
     return ttl.isPresent() && !ttl.get().equalsIgnoreCase(TTL_INFINITE)
-        ? Long.parseLong(ttl.get())
+        ? CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            Long.parseLong(ttl.get()),
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision())
         : Long.MAX_VALUE;
   }
 
   public Map<String, String> getProps() {
-    return props;
+    readWriteLock.readLock().lock();
+    try {
+      return props;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
   }
 
   public Optional<String> getPropValue(final String propKey) {

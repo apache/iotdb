@@ -145,7 +145,7 @@ public abstract class DeviceEntry implements Accountable {
       case ALIGNED:
         return new AlignedDeviceEntry(deviceID, attributeColumnValues);
       case NON_ALIGNED:
-        return new NonAlignedAlignedDeviceEntry(deviceID, attributeColumnValues);
+        return new NonAlignedDeviceEntry(deviceID, attributeColumnValues);
       default:
         throw new UnsupportedOperationException(
             "Unknown AlignedDeviceEntry Type: " + DeviceEntryType.values()[ordinal]);

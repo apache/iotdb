@@ -32,12 +32,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
@@ -661,11 +663,51 @@ public final class SqlFormatter {
 
       node.getCharsetName().ifPresent(charset -> builder.append(" CHARSET ").append(charset));
 
+      if (Objects.nonNull(node.getComment())) {
+        builder.append(" COMMENT '").append(node.getComment()).append("'");
+      }
+
       builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      return null;
+    }
+
+    @Override
+    protected Void visitCreateView(final CreateView node, final Integer indent) {
+      builder.append("CREATE ");
+      if (node.isReplace()) {
+        builder.append("OR REPLACE ");
+      }
+      builder.append("VIEW ");
+      final String tableName = formatName(node.getName());
+      builder.append(tableName).append(" (\n");
+
+      final String elementIndent = indentString(indent + 1);
+      final String columnList =
+          node.getElements().stream()
+              .map(
+                  element -> {
+                    if (element != null) {
+                      return elementIndent + formatColumnDefinition(element);
+                    }
+
+                    throw new UnsupportedOperationException("unknown table element: " + element);
+                  })
+              .collect(joining(",\n"));
+      builder.append(columnList);
+      builder.append("\n").append(")");
 
       if (Objects.nonNull(node.getComment())) {
         builder.append(" COMMENT '").append(node.getComment()).append("'");
       }
+
+      if (node.isRestrict()) {
+        builder.append(" RESTRICT");
+      }
+
+      builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      builder.append(" AS ").append(node.getPrefixPath().toString());
 
       return null;
     }
@@ -719,7 +761,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitDropTable(final DropTable node, final Integer indent) {
-      builder.append("DROP TABLE ");
+      builder.append("DROP");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.isExists()) {
         builder.append("IF EXISTS ");
       }
@@ -730,7 +773,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitRenameTable(final RenameTable node, final Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -752,6 +796,8 @@ public final class SqlFormatter {
           builder.append("TABLE ");
         case MATERIALIZED_VIEW:
           builder.append("MATERIALIZED VIEW ");
+        case TREE_VIEW:
+          builder.append("VIEW ");
       }
       if (node.ifExists()) {
         builder.append("IF EXISTS ");
@@ -779,7 +825,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitRenameColumn(RenameColumn node, Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -799,7 +846,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitDropColumn(final DropColumn node, final Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -816,7 +864,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitAddColumn(final AddColumn node, final Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -834,7 +883,8 @@ public final class SqlFormatter {
     @Override
     protected Void visitSetTableComment(final SetTableComment node, final Integer indent) {
       builder
-          .append("COMMENT ON TABLE ")
+          .append("COMMENT ON")
+          .append(node.isView() ? " VIEW " : " TABLE ")
           .append(formatName(node.getTableName()))
           .append(" IS ")
           .append(node.getComment());
@@ -1208,6 +1258,28 @@ public final class SqlFormatter {
     }
 
     @Override
+    protected Void visitShowSubscriptions(ShowSubscriptions node, Integer context) {
+      if (Objects.isNull(node.getTopicName())) {
+        builder.append("SHOW SUBSCRIPTIONS");
+      } else {
+        builder.append("SHOW SUBSCRIPTIONS ON ").append(node.getTopicName());
+      }
+
+      return null;
+    }
+
+    @Override
+    protected Void visitDropSubscription(DropSubscription node, Integer context) {
+      builder.append("DROP SUBSCRIPTION ");
+      if (node.hasIfExistsCondition()) {
+        builder.append("IF EXISTS ");
+      }
+      builder.append(node.getSubscriptionId());
+
+      return null;
+    }
+
+    @Override
     protected Void visitRelationalAuthorPlan(RelationalAuthorStatement node, Integer context) {
       switch (node.getAuthorType()) {
         case GRANT_USER_ANY:
@@ -1426,17 +1498,6 @@ public final class SqlFormatter {
         default:
           break;
       }
-      return null;
-    }
-
-    @Override
-    protected Void visitShowSubscriptions(ShowSubscriptions node, Integer context) {
-      if (Objects.isNull(node.getTopicName())) {
-        builder.append("SHOW SUBSCRIPTIONS");
-      } else {
-        builder.append("SHOW SUBSCRIPTIONS ON ").append(node.getTopicName());
-      }
-
       return null;
     }
 
