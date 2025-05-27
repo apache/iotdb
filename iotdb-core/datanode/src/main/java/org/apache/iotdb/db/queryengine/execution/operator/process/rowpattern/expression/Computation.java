@@ -24,9 +24,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -89,6 +92,14 @@ public abstract class Computation {
         Computation right = parse(comparisonExpr.getRight(), counter, symbolToIndex);
         ComparisonOperator op = mapComparisonOperator(comparisonExpr.getOperator());
         return new BinaryComputation(left, right, op);
+      } else if (expression instanceof LogicalExpression) {
+        LogicalExpression logicalExpr = (LogicalExpression) expression;
+        List<Computation> computations = new ArrayList<>();
+        for (Expression term : logicalExpr.getTerms()) {
+          computations.add(parse(term, counter, symbolToIndex));
+        }
+        NaryOperator op = mapLogicalOperator(logicalExpr.getOperator());
+        return new NaryComputation(computations, op);
       } else if (expression instanceof SymbolReference) {
         // Upon encountering a SymbolReference type, it is converted into a ReferenceComputation.
         // B.value < LAST(B.value) -> b_0 < b_1
@@ -106,6 +117,9 @@ public abstract class Computation {
         return new ConstantComputation(constExpr.getParsedValue());
       } else if (expression instanceof DoubleLiteral) {
         DoubleLiteral constExpr = (DoubleLiteral) expression;
+        return new ConstantComputation(constExpr.getValue());
+      } else if (expression instanceof StringLiteral) {
+        StringLiteral constExpr = (StringLiteral) expression;
         return new ConstantComputation(constExpr.getValue());
       } else if (expression instanceof BooleanLiteral) {
         // undefined pattern variable is 'true'
@@ -154,6 +168,17 @@ public abstract class Computation {
           return ComparisonOperator.IS_DISTINCT_FROM;
         default:
           throw new IllegalArgumentException("Unsupported comparison operator: " + operator);
+      }
+    }
+
+    private static LogicalOperator mapLogicalOperator(LogicalExpression.Operator operator) {
+      switch (operator) {
+        case AND:
+          return LogicalOperator.AND;
+        case OR:
+          return LogicalOperator.OR;
+        default:
+          throw new IllegalArgumentException("Unsupported logical operator: " + operator);
       }
     }
   }

@@ -19,20 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
-// TODO: only int type operations are supported. It can be expanded in the future
 public enum ArithmeticOperator implements BinaryOperator {
   ADD {
     @Override
     public Object apply(Object left, Object right) {
       if (left == null || right == null) return null;
-      return ((Number) left).intValue() + ((Number) right).intValue();
+      return normalizeToDouble(left) + normalizeToDouble(right);
     }
   },
   SUBTRACT {
     @Override
     public Object apply(Object left, Object right) {
       if (left == null || right == null) return null;
-      return ((Number) left).intValue() - ((Number) right).intValue();
+      return normalizeToDouble(left) - normalizeToDouble(right);
     }
   },
   MULTIPLY {
@@ -46,22 +45,37 @@ public enum ArithmeticOperator implements BinaryOperator {
     @Override
     public Object apply(Object left, Object right) {
       if (left == null || right == null) return null;
-      int r = ((Number) right).intValue();
-      if (r == 0) {
+      double r = normalizeToDouble(right);
+      if (r == 0.0) {
         throw new ArithmeticException("Division by zero");
       }
-      return ((Number) left).intValue() / r;
+      return normalizeToDouble(left) / r;
     }
   },
   MODULUS {
     @Override
     public Object apply(Object left, Object right) {
       if (left == null || right == null) return null;
-      int r = ((Number) right).intValue();
-      if (r == 0) {
+      double r = normalizeToDouble(right);
+      if (r == 0.0) {
         throw new ArithmeticException("Modulus by zero");
       }
-      return ((Number) left).intValue() % r;
+      return normalizeToDouble(left) % r;
     }
   };
+
+  private static double normalizeToDouble(Object obj) {
+    if (obj instanceof Number) {
+      return ((Number) obj).doubleValue();
+    } else if (obj instanceof String) {
+      try {
+        return Double.parseDouble((String) obj);
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException("Cannot parse String to double: " + obj);
+      }
+    } else {
+      throw new IllegalArgumentException(
+          "Unsupported type for arithmetic operation: " + obj.getClass());
+    }
+  }
 }

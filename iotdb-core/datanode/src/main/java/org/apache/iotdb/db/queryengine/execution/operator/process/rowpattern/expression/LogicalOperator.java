@@ -19,13 +19,35 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
-public interface BinaryOperator {
-  /**
-   * Apply the operator to the left and right operands.
-   *
-   * @param left the left operand
-   * @param right the right operand
-   * @return the result of the operation
-   */
-  Object apply(Object left, Object right);
+import java.util.List;
+
+public enum LogicalOperator implements NaryOperator {
+  AND {
+    @Override
+    public Object apply(List<Object> operands) {
+      for (Object operand : operands) {
+        if (!(operand instanceof Boolean)) {
+          throw new IllegalArgumentException("AND operator only accepts Boolean operands");
+        }
+        if (!((Boolean) operand)) {
+          return false; // short-circuit
+        }
+      }
+      return true;
+    }
+  },
+  OR {
+    @Override
+    public Object apply(List<Object> operands) {
+      for (Object operand : operands) {
+        if (!(operand instanceof Boolean)) {
+          throw new IllegalArgumentException("OR operator only accepts Boolean operands");
+        }
+        if ((Boolean) operand) {
+          return true; // short-circuit
+        }
+      }
+      return false;
+    }
+  };
 }

@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
-public interface BinaryOperator {
+import java.util.List;
+
+public interface NaryOperator {
   /**
-   * Apply the operator to the left and right operands.
+   * Apply the operator to a list of operand values.
    *
-   * @param left the left operand
-   * @param right the right operand
+   * @param operands the list of operand values
    * @return the result of the operation
    */
-  Object apply(Object left, Object right);
+  Object apply(List<Object> operands);
 }

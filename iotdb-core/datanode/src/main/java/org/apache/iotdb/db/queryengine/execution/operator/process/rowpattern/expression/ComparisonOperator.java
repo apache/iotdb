@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
+import org.apache.tsfile.utils.Binary;
+
+import java.nio.charset.StandardCharsets;
+
 public enum ComparisonOperator implements BinaryOperator {
   LESS_THAN {
     @Override
@@ -93,7 +97,8 @@ public enum ComparisonOperator implements BinaryOperator {
     enum Type {
       DOUBLE,
       STRING,
-      BOOLEAN
+      BOOLEAN,
+      BINARY
     }
 
     final Type type;
@@ -113,6 +118,8 @@ public enum ComparisonOperator implements BinaryOperator {
           return ((String) value).compareTo((String) other.value);
         case BOOLEAN:
           return Boolean.compare((Boolean) value, (Boolean) other.value);
+        case BINARY:
+          return ((Binary) value).compareTo((Binary) other.value);
         default:
           throw new IllegalStateException("Unknown type: " + type);
       }
@@ -123,15 +130,14 @@ public enum ComparisonOperator implements BinaryOperator {
   private static NormalizedValue normalize(Object obj) {
     if (obj instanceof String) {
       String s = (String) obj;
-      try {
-        return new NormalizedValue(NormalizedValue.Type.DOUBLE, Double.valueOf(s));
-      } catch (NumberFormatException e) {
-        return new NormalizedValue(NormalizedValue.Type.STRING, s);
-      }
+      Binary binary = new Binary(s, StandardCharsets.UTF_8);
+      return new NormalizedValue(NormalizedValue.Type.BINARY, binary);
     } else if (obj instanceof Number) {
       return new NormalizedValue(NormalizedValue.Type.DOUBLE, ((Number) obj).doubleValue());
     } else if (obj instanceof Boolean) {
       return new NormalizedValue(NormalizedValue.Type.BOOLEAN, obj);
+    } else if (obj instanceof Binary) {
+      return new NormalizedValue(NormalizedValue.Type.BINARY, obj);
     } else {
       throw new IllegalArgumentException("Unsupported type: " + obj.getClass());
     }
