@@ -26,7 +26,6 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 class PatternCaptures {
   private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Captures.class);
 
-  // TODO: 描述成员变量作用
   private final IntMultimap captures;
   private final IntMultimap labels;
 

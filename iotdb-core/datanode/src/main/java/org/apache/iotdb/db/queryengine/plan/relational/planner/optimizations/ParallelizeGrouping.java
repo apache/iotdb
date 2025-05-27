@@ -200,14 +200,6 @@ public class ParallelizeGrouping implements PlanOptimizer {
           context.canOptimized = TO_SORT;
           return node;
         }
-        //        Optional<DataOrganizationSpecification> dataOrganizationSpecification =
-        //            node.getDataOrganizationSpecification();
-        //
-        //        if (!dataOrganizationSpecification.isPresent()) {
-        //          context.canOptimized = TO_SORT;
-        //        } else {
-        //          checkPrefixMatch(context, dataOrganizationSpecification.get().getPartitionBy());
-        //        }
 
         List<Symbol> partitionBy = node.getPartitionBy();
         Optional<OrderingScheme> orderingScheme = node.getOrderingScheme();

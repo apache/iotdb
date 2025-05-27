@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
-// TODO: 目前只支持 int 类型运算，后续可根据需要扩展
+// TODO: only int type operations are supported. It can be expanded in the future
 public enum ArithmeticOperator implements BinaryOperator {
   ADD {
     @Override
     public Object apply(Object left, Object right) {
       if (left == null || right == null) return null;
-      // 这里简单以 int 计算，实际可根据类型进行更精细的处理
       return ((Number) left).intValue() + ((Number) right).intValue();
     }
   },

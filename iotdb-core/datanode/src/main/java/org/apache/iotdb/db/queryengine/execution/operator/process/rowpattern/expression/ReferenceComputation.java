@@ -32,7 +32,7 @@ public class ReferenceComputation extends Computation {
   public Object evaluate(List<Object> values) {
     if (index >= values.size()) {
       return null;
-    } else { // 直接返回参数列表中对应位置的值
+    } else { // directly return the value at the corresponding position in the parameter list
       return values.get(index);
     }
   }

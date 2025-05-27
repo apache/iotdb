@@ -74,29 +74,6 @@ public enum ComparisonOperator implements BinaryOperator {
     }
   };
 
-  /** 如果 obj 是 String，就尝试 parse 成 Double，否则原样返回。 */
-  //  @SuppressWarnings("unchecked")
-  //  private static Comparable<?> castComparable(Object obj) {
-  //    if (obj instanceof String) {
-  //      String s = (String) obj;
-  //      try {
-  //        return Double.valueOf(s);
-  //      } catch (NumberFormatException e) {
-  //        return s; // 不是数字，就保留字符串
-  //      }
-  //    }
-  //    if (obj instanceof Double) {
-  //      return (Double) obj; // 已经是 Double，直接用
-  //    }
-  //    if (obj instanceof Number) {
-  //      return ((Number) obj).doubleValue(); // 其他数字类型，转成 double
-  //    }
-  //    if (obj instanceof Comparable) {
-  //      return (Comparable<?>) obj;
-  //    }
-  //    throw new IllegalArgumentException("Cannot compare object: " + obj);
-  //  }
-
   private static int compare(Object left, Object right) {
     if (left == null || right == null) return -1; // null cases are left to the caller for handling
 
