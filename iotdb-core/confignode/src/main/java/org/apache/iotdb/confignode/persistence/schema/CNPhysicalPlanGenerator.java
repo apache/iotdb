@@ -72,8 +72,8 @@ import java.util.Set;
 import java.util.Stack;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.schema.SchemaConstant.DATABASE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 import static org.apache.iotdb.commons.utils.IOUtils.readString;
 
@@ -418,7 +418,7 @@ public class CNPhysicalPlanGenerator
 
       final Set<TsTable> tableSet = new HashSet<>();
 
-      if (type == STORAGE_GROUP_MNODE_TYPE) {
+      if (type == DATABASE_MNODE_TYPE) {
         databaseMNode = deserializeDatabaseMNode(bufferedInputStream);
         name = databaseMNode.getName();
         stack.push(new Pair<>(databaseMNode, true));
@@ -450,7 +450,7 @@ public class CNPhysicalPlanGenerator
             stack.push(new Pair<>(internalMNode, hasDB));
             name = internalMNode.getName();
             break;
-          case STORAGE_GROUP_MNODE_TYPE:
+          case DATABASE_MNODE_TYPE:
             databaseMNode = deserializeDatabaseMNode(bufferedInputStream).getAsMNode();
             while (!stack.isEmpty() && !stack.peek().right) {
               databaseMNode.addChild(stack.pop().left);
