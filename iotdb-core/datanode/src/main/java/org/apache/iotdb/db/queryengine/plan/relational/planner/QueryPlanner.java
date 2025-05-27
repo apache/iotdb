@@ -663,7 +663,6 @@ public class QueryPlanner {
                 coercions.get(sortKey).toSymbolReference(),
                 toSqlType(expectedType),
                 false,
-                // TODO: type coercion
                 analysis.getType(sortKey).equals(expectedType));
         Symbol castSymbol = symbolAllocator.newSymbol(cast, expectedType);
         sortKeyCoercions.put(expectedType, castSymbol);

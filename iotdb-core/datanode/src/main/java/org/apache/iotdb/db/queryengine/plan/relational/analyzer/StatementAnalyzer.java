@@ -1106,7 +1106,6 @@ public class StatementAnalyzer {
         }
 
         Analysis.ResolvedWindow window = analysis.getWindow(windowFunction);
-        // TODO get function requirements from window function metadata when we have it
         String name = windowFunction.getName().toString().toLowerCase(ENGLISH);
         if (name.equals("lag") || name.equals("lead")) {
           if (!window.getOrderBy().isPresent()) {

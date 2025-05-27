@@ -51,7 +51,6 @@ public class FunctionNullability {
     return new FunctionNullability(true, Collections.nCopies(argumentsNumber, true));
   }
 
-  // TODO modify for each window function
   public static FunctionNullability getWindowFunctionNullability(int argumentsNumber) {
     return new FunctionNullability(true, Collections.nCopies(argumentsNumber, true));
   }
