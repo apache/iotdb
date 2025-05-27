@@ -166,6 +166,15 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
+        NON_VIEW_SERIES_CNT,
+        Tag.REGION.toString(),
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SCHEMA_REGION.toString(),
+        Tag.NAME.toString(),
         TEMPLATE_CNT,
         Tag.REGION.toString(),
         regionTagValue,
