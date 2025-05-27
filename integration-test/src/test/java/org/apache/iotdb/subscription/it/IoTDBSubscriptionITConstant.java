@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.subscription.it;
 
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.session.Session;
 
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public class IoTDBSubscriptionITConstant {
 
@@ -55,4 +58,14 @@ public class IoTDBSubscriptionITConstant {
           assertions.get();
         });
   }
+
+  public static Consumer<BaseEnv> FORCE_SCALABLE_SINGLE_NODE_MODE =
+      env ->
+          env.getConfig()
+              .getCommonConfig()
+              .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+              .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+              .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+              .setSchemaReplicationFactor(1)
+              .setDataReplicationFactor(1);
 }

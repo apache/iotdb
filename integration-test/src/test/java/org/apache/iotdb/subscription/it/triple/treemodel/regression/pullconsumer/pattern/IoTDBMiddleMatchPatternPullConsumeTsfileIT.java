@@ -24,6 +24,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionTreeRegressio
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
@@ -93,6 +94,15 @@ public class IoTDBMiddleMatchPatternPullConsumeTsfileIT
     schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
     subs.getTopics().forEach((System.out::println));
     assertTrue(subs.getTopic(topicName).isPresent(), "Create show topics");
+  }
+
+  @Override
+  protected void setUpConfig() {
+    super.setUpConfig();
+
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(sender);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver1);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver2);
   }
 
   @Override

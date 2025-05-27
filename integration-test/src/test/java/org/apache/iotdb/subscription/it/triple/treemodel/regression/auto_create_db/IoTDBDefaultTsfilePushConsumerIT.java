@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
@@ -79,6 +80,15 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionTreeRe
     for (int i = 0; i < deviceCount; i++) {
       session_src.executeNonQueryStatement("create database " + databasePrefix + i);
     }
+  }
+
+  @Override
+  protected void setUpConfig() {
+    super.setUpConfig();
+
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(sender);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver1);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver2);
   }
 
   @Override
@@ -192,8 +202,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionTreeRe
     AWAIT.untilAsserted(
         () -> {
           for (int i = 0; i < deviceCount; i++) {
-            // NOTE: consider leader change
-            assertGte(rowCounts.get(i).get(), 10, devices.get(i) + ".s_0");
+            assertEquals(rowCounts.get(i).get(), 10, devices.get(i) + ".s_0");
           }
         });
     // Unsubscribe
@@ -218,8 +227,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionTreeRe
     AWAIT.untilAsserted(
         () -> {
           for (int i = 0; i < deviceCount; i++) {
-            // NOTE: consider leader change
-            assertGte(rowCounts.get(i).get(), 25, devices.get(i) + ".s_0");
+            assertEquals(rowCounts.get(i).get(), 10, devices.get(i) + ".s_0");
           }
         });
     System.out.println(FORMAT.format(new Date()) + " onReceived: " + onReceiveCount.get());
