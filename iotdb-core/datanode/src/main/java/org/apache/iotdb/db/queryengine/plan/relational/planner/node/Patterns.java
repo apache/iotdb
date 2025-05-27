@@ -225,7 +225,7 @@ public final class Patterns {
     return typeOf(TableFunctionProcessorNode.class);
   }
 
-  public static Pattern<WindowNode> windowFunction() {
+  public static Pattern<WindowNode> window() {
     return typeOf(WindowNode.class);
   }
 
