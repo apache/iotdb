@@ -41,6 +41,7 @@ class SundialConfig(PretrainedConfig):
         flow_loss_depth: int = 3,
         num_sampling_steps: int = 50,
         diffusion_batch_mul: int = 4,
+        ckpt_path: str = None,              # weight path
         **kwargs,
     ):
         self.input_token_len = input_token_len
@@ -58,6 +59,7 @@ class SundialConfig(PretrainedConfig):
         self.flow_loss_depth = flow_loss_depth
         self.num_sampling_steps = num_sampling_steps
         self.diffusion_batch_mul = diffusion_batch_mul
+        self.ckpt_path = ckpt_path
 
         super().__init__(
             **kwargs,

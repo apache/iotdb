@@ -261,7 +261,7 @@ class AttributeName(Enum):
     ATTENTION_DROPOUT = "attention_dropout"
     INITIALIZER_RANGE = "initializer_range"
     MAX_POSITION_EMBEDDINGS = "max_position_embeddings"
-    TIMERXL_CKPT_PATH = "ckpt_path"
+    CKPT_PATH = "ckpt_path"
 
     # sundial
     DROPOUT_RATE = "dropout_rate"

@@ -16,6 +16,7 @@
 # under the License.
 #
 
+import os
 from typing import Optional, Tuple, List, Union
 import torch
 from torch import nn
@@ -28,6 +29,11 @@ from .configuration_sundial import SundialConfig
 from .ts_generation_mixin import TSGenerationMixin
 from .flow_loss import FlowLoss
 
+from safetensors.torch import load_file as load_safetensors
+from huggingface_hub import hf_hub_download
+
+from ainode.core.log import Logger
+logger = Logger()
 
 def rotate_half(x):
     x1 = x[..., : x.shape[-1] // 2]
@@ -416,11 +422,34 @@ class SundialModel(SundialPreTrainedModel):
 class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
     def __init__(self, config: SundialConfig):
         super().__init__(config)
-        self.config = config
-        self.model = SundialModel(self.config)
-        self.flow_loss = FlowLoss(self.config.output_token_lens[-1], self.config.hidden_size,
-                                  self.config.flow_loss_depth, self.config.hidden_size, self.config.num_sampling_steps)
-        self.post_init()
+        # self.config = config
+        # self.model = SundialModel(self.config)
+        # self.flow_loss = FlowLoss(self.config.output_token_lens[-1], self.config.hidden_size,
+        #                           self.config.flow_loss_depth, self.config.hidden_size, self.config.num_sampling_steps)
+        # TODO: Unify data loader
+        if not os.path.exists(config.ckpt_path):
+            os.mkdir(config.ckpt_path)
+        if not os.path.exists(os.path.join(config.ckpt_path, "config.json")):
+            logger.info(f"Config not found at {config.ckpt_path}, downloading from HuggingFace...")
+            repo_id = "thuml/sundial-base-128m"
+            try:
+                hf_hub_download(repo_id=repo_id, filename="config.json", local_dir=config.ckpt_path)
+                logger.info(f"Got config to {config.ckpt_path}")
+            except Exception as e:
+                logger.error(f"Failed to download config to {config.ckpt_path} due to {e}")
+                raise e
+        if not os.path.exists(os.path.join(config.ckpt_path, "model.safetensors")):
+            logger.info(f"Weight not found at {config.ckpt_path}, downloading from HuggingFace...")
+            repo_id = "thuml/sundial-base-128m"
+            try:
+                hf_hub_download(repo_id=repo_id, filename="model.safetensors", local_dir=config.ckpt_path)
+                logger.info(f"Got weight to {config.ckpt_path}")
+            except Exception as e:
+                logger.error(f"Failed to download weight to {config.ckpt_path} due to {e}")
+                raise e
+        print(config.ckpt_path, type(config.ckpt_path))
+        self.from_pretrained(config.ckpt_path)
+        # self.post_init()
 
     def set_decoder(self, decoder):
         self.model = decoder

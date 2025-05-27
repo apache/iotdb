@@ -37,6 +37,7 @@ from ainode.core.exception import InferenceModelInternalError
 from ainode.core.exception import WrongAttributeTypeError, NumericalRangeException, StringRangeException, \
     ListRangeException, BuiltInModelNotSupportError
 from ainode.core.log import Logger
+from ainode.core.model.sundial.configuration_sundial import SundialConfig
 
 logger = Logger()
 
@@ -103,7 +104,7 @@ def fetch_built_in_model(model_id, inference_attributes):
     elif model_id == BuiltInModelType.TIMER_XL.value:
         model = timer_xl.Model(TimerxlConfig.from_dict(attributes))
     elif model_id == BuiltInModelType.SUNDIAL.value:
-        model = modeling_sundial.SundialForPrediction.from_pretrained("/Users/yongzaodan/Downloads/models--thuml--sundial-base-128m/snapshots/03a967dd675f0dea6229fdee1bc89e4eb310df19")
+        model = modeling_sundial.SundialForPrediction(SundialConfig.from_dict(attributes))
     else:
         raise BuiltInModelNotSupportError(model_id)
 
@@ -413,6 +414,12 @@ sundial_attribute_map = {
         default_low=1,
         default_high=5000
     ),
+    AttributeName.CKPT_PATH.value: StringAttribute(
+        name=AttributeName.CKPT_PATH.value,
+        default_value=os.path.join(os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir(), 'weights',
+                                   'sundial'),
+        value_choices=['']
+    )
 }
 
 timerxl_attribute_map = {
@@ -484,8 +491,8 @@ timerxl_attribute_map = {
         default_low=1,
         default_high=50000
     ),
-    AttributeName.TIMERXL_CKPT_PATH.value: StringAttribute(
-        name=AttributeName.TIMERXL_CKPT_PATH.value,
+    AttributeName.CKPT_PATH.value: StringAttribute(
+        name=AttributeName.CKPT_PATH.value,
         default_value=os.path.join(os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir(), 'weights',
                                    'timerxl', 'model.safetensors'),
         value_choices=['']
