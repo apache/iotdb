@@ -32,6 +32,11 @@ public class CountDB extends Statement {
   }
 
   @Override
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
+    return visitor.visitCountDB(this, context);
+  }
+
+  @Override
   public List<? extends Node> getChildren() {
     return ImmutableList.of();
   }

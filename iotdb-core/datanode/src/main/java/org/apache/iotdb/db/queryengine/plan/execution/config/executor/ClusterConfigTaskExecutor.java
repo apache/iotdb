@@ -3556,7 +3556,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
       CountDatabaseTask.buildTSBlock(
-          (int) resp.getDatabaseInfoMap().keySet().stream().filter(canSeenDB).count(), future);
+          (int) resp.getDatabaseInfoMap().keySet().stream().filter(canSeenDB).count() + 1, future);
     } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
