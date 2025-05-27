@@ -451,7 +451,7 @@ public class CNPhysicalPlanGenerator
             name = internalMNode.getName();
             break;
           case DATABASE_MNODE_TYPE:
-            databaseMNode = deserializeDatabaseMNode(bufferedInputStream).getAsMNode();
+            databaseMNode = deserializeDatabaseMNode(bufferedInputStream);
             while (!stack.isEmpty() && !stack.peek().right) {
               databaseMNode.addChild(stack.pop().left);
             }

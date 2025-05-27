@@ -1136,7 +1136,7 @@ public class ConfigMTree {
           name = internalMNode.getName();
           break;
         case DATABASE_MNODE_TYPE:
-          databaseMNode = deserializeDatabaseMNode(inputStream).getAsMNode();
+          databaseMNode = deserializeDatabaseMNode(inputStream);
           while (!stack.isEmpty() && Boolean.FALSE.equals(stack.peek().right)) {
             final IConfigMNode node = stack.pop().left;
             databaseMNode.addChild(node);
