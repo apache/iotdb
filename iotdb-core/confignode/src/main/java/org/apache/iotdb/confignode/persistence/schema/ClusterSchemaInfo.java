@@ -788,14 +788,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         TREE_SNAPSHOT_FILENAME,
         stream -> {
           treeModelMTree.clear();
-          treeModelMTree.deserialize(stream);
+          treeModelMTree.deserialize(stream, configSchemaStatistics);
         });
     processMTreeLoadSnapshot(
         snapshotDir,
         TABLE_SNAPSHOT_FILENAME,
         stream -> {
           tableModelMTree.clear();
-          tableModelMTree.deserialize(stream);
+          tableModelMTree.deserialize(stream, configSchemaStatistics);
         });
     templateTable.processLoadSnapshot(snapshotDir);
     templatePreSetTable.processLoadSnapshot(snapshotDir);
@@ -1174,7 +1174,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         () -> {
           tableModelMTree.preCreateTable(
               getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTable());
-          configSchemaStatistics.addBaseTableNum(plan.getDatabase());
+          configSchemaStatistics.increaseBaseTableNum(plan.getDatabase());
         });
   }
 
@@ -1185,7 +1185,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
               getQualifiedDatabasePartialPath(plan.getDatabase()),
               plan.getTable(),
               plan.getStatus());
-          configSchemaStatistics.addTreeViewTableNum(plan.getDatabase());
+          configSchemaStatistics.increaseTreeViewTableNum(plan.getDatabase());
         });
   }
 

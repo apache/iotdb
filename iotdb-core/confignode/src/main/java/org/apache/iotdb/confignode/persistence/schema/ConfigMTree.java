@@ -1087,7 +1087,8 @@ public class ConfigMTree {
     }
   }
 
-  public void deserialize(final InputStream inputStream) throws IOException {
+  public void deserialize(final InputStream inputStream, final ConfigSchemaStatistics statistics)
+      throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
 
     String name;
@@ -1095,11 +1096,16 @@ public class ConfigMTree {
     final Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
     IConfigMNode databaseMNode;
     IConfigMNode internalMNode;
-    IConfigMNode tableNode;
+    ConfigTableNode tableNode;
 
     if (type == STORAGE_GROUP_MNODE_TYPE) {
       databaseMNode = deserializeDatabaseMNode(inputStream);
       name = databaseMNode.getName();
+      if (isTableModel) {
+        statistics.increaseTableDatabaseNum();
+      } else {
+        statistics.increaseTreeDatabaseNum();
+      }
       stack.push(new Pair<>(databaseMNode, true));
     } else if (type == TABLE_MNODE_TYPE) {
       tableNode = deserializeTableMNode(inputStream);
@@ -1132,13 +1138,24 @@ public class ConfigMTree {
         case STORAGE_GROUP_MNODE_TYPE:
           databaseMNode = deserializeDatabaseMNode(inputStream).getAsMNode();
           while (!stack.isEmpty() && Boolean.FALSE.equals(stack.peek().right)) {
-            databaseMNode.addChild(stack.pop().left);
+            final ConfigTableNode node = (ConfigTableNode) stack.pop().left;
+            databaseMNode.addChild(node);
+            if (TreeViewSchema.isTreeViewTable(node.getTable())) {
+              statistics.increaseTreeViewTableNum(databaseMNode.getName());
+            } else {
+              statistics.increaseBaseTableNum(databaseMNode.getName());
+            }
+          }
+          if (isTableModel) {
+            statistics.increaseTableDatabaseNum();
+          } else {
+            statistics.increaseTreeDatabaseNum();
           }
           stack.push(new Pair<>(databaseMNode, true));
           name = databaseMNode.getName();
           break;
         case TABLE_MNODE_TYPE:
-          tableNode = deserializeTableMNode(inputStream).getAsMNode();
+          tableNode = deserializeTableMNode(inputStream);
           stack.push(new Pair<>(tableNode, false));
           name = tableNode.getName();
           break;
