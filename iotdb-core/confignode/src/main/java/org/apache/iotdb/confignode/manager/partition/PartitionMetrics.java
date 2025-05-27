@@ -298,7 +298,7 @@ public class PartitionMetrics implements IMetricSet {
       }
       bindDatabaseRelatedMetricsWhenUpdate(
           metricService, configManager, database, dataReplicationFactor, schemaReplicationFactor);
-      bindDatabaseTableMetrics(metricService, database);
+      bindDatabaseTableMetrics(metricService, statistics, database);
     }
   }
 
@@ -456,17 +456,23 @@ public class PartitionMetrics implements IMetricSet {
   }
 
   public static void bindDatabaseTableMetrics(
-      final AbstractMetricService metricService, final String database) {
-    metricService.getOrCreateGauge(
+      final AbstractMetricService metricService,
+      final ConfigSchemaStatistics statistics,
+      final String database) {
+    metricService.createAutoGauge(
         Metric.TREE_VIEW_TABLE_NUM.toString(),
         MetricLevel.CORE,
+        statistics,
+        s -> s.getTreeViewTableNum(database),
         Tag.TYPE.toString(),
         TableType.VIEW_FROM_TREE.getName(),
         Tag.DATABASE.toString(),
         database);
-    metricService.getOrCreateGauge(
+    metricService.createAutoGauge(
         Metric.BASE_TABLE_NUM.toString(),
         MetricLevel.CORE,
+        statistics,
+        s -> s.getBaseTableNum(database),
         Tag.TYPE.toString(),
         TableType.BASE_TABLE.getName(),
         Tag.DATABASE.toString(),

@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * related metrics, to prevent too much scanning and lock acquisition, and to simplify the metric
  * getter logic.
  *
- * <p>2. Reserve for potential mem-control and quota functionalities expansion.
+ * <p>2. Be reserved for potential mem-control and quota functionalities expansion.
  *
  * <p>3. Be in consistency with SchemaRegionMemMetric in dataNode.
  */
