@@ -22,42 +22,43 @@ import org.apache.iotdb.session.rpccompress.ColumnEntry;
 
 import org.apache.tsfile.encoding.decoder.*;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 
 import java.nio.ByteBuffer;
 
-public class GorillaColumnDecoder implements ColumnDecoder {
+public class RlbeColumnDecoder implements ColumnDecoder {
   private final Decoder decoder;
   private final TSDataType dataType;
 
-  public GorillaColumnDecoder(TSDataType dataType) {
+  public RlbeColumnDecoder(TSDataType dataType) {
     this.dataType = dataType;
-    this.decoder = getDecoder(dataType, TSEncoding.GORILLA);
+    this.decoder = getDecoder(dataType, TSEncoding.RLBE);
   }
 
   @Override
   public Object decode(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
     switch (dataType) {
-      case FLOAT:
-        return decodeFloatColumn(buffer, columnEntry, rowCount);
-      case DOUBLE:
-        return decodeDoubleColumn(buffer, columnEntry, rowCount);
       case INT32:
       case DATE:
         return decodeIntColumn(buffer, columnEntry, rowCount);
       case INT64:
-      case VECTOR:
       case TIMESTAMP:
         return decodeLongColumn(buffer, columnEntry, rowCount);
+      case FLOAT:
+        return decodeFloatColumn(buffer, columnEntry, rowCount);
+      case DOUBLE:
+        return decodeDoubleColumn(buffer, columnEntry, rowCount);
       default:
-        throw new UnsupportedOperationException("Gorilla doesn't support data type: " + dataType);
+        throw new TsFileDecodingException(
+            String.format("RLBE doesn't support data type: " + dataType));
     }
   }
 
   @Override
   public boolean[] decodeBooleanColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
-    throw new UnsupportedOperationException("Gorilla doesn't support data type: " + dataType);
+    throw new TsFileDecodingException(String.format("RLBE doesn't support data type: " + dataType));
   }
 
   @Override
@@ -98,7 +99,7 @@ public class GorillaColumnDecoder implements ColumnDecoder {
 
   @Override
   public Binary[] decodeBinaryColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
-    throw new UnsupportedOperationException("Gorilla doesn't support data type: " + dataType);
+    throw new TsFileDecodingException(String.format("RLBE doesn't support data type: " + dataType));
   }
 
   @Override
