@@ -304,7 +304,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.ski
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.skipToFirst;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.skipToLast;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.skipToNextRow;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;

@@ -94,11 +94,12 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import javax.annotation.Nonnull;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
+
+import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
 import java.util.Collections;
