@@ -301,6 +301,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showDatabases(
       final ShowDB showDB, final Predicate<String> canSeenDB);
 
+  SettableFuture<ConfigTaskResult> countDatabases(final Predicate<String> canSeenDB);
+
   SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
 
   SettableFuture<ConfigTaskResult> useDatabase(final Use useDB, final IClientSession clientSession);

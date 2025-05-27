@@ -3543,6 +3543,27 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> countDatabases(final Predicate<String> canSeenDB) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Construct request using statement
+    final List<String> databasePathPattern = Arrays.asList(ALL_RESULT_NODES);
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      final TGetDatabaseReq req =
+          new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize())
+              .setIsTableModel(true);
+      final TShowDatabaseResp resp = client.showDatabase(req);
+      // build TSBlock
+      CountDatabaseTask.buildTSBlock(
+          (int) resp.getDatabaseInfoMap().keySet().stream().filter(canSeenDB).count(), future);
+    } catch (final IOException | ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> showCluster(final ShowCluster showCluster) {
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.

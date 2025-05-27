@@ -329,6 +329,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitCountDB(final CountDB node, final C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitCreateTable(final CreateTable node, final C context) {
     return visitStatement(node, context);
   }

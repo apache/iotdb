@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
@@ -526,6 +527,13 @@ public final class SqlFormatter {
     @Override
     protected Void visitShowDB(ShowDB node, Integer indent) {
       builder.append("SHOW DATABASE");
+
+      return null;
+    }
+
+    @Override
+    protected Void visitCountDB(final CountDB node, final Integer context) {
+      builder.append("COUNT DATABASE");
 
       return null;
     }
