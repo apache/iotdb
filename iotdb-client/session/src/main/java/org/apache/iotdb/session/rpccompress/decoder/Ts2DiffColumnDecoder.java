@@ -24,6 +24,7 @@ import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 
@@ -39,98 +40,64 @@ public class Ts2DiffColumnDecoder implements ColumnDecoder {
   @Override
   public Object decode(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
     switch (dataType) {
-      case BOOLEAN:
-        {
-          boolean[] result = new boolean[rowCount];
-          for (int i = 0; i < rowCount; i++) {
-            result[i] = decoder.readBoolean(buffer);
-          }
-          return result;
-        }
       case INT32:
       case DATE:
-        {
-          int[] result = new int[rowCount];
-          for (int i = 0; i < rowCount; i++) {
-            result[i] = decoder.readInt(buffer);
-          }
-          return result;
-        }
+        return decodeIntColumn(buffer, columnEntry, rowCount);
       case INT64:
       case TIMESTAMP:
-        {
-          long[] result = new long[rowCount];
-          for (int i = 0; i < rowCount; i++) {
-            result[i] = decoder.readLong(buffer);
-          }
-          return result;
-        }
+        return decodeLongColumn(buffer, columnEntry, rowCount);
       case FLOAT:
-        {
-          float[] result = new float[rowCount];
-          for (int i = 0; i < rowCount; i++) {
-            result[i] = decoder.readFloat(buffer);
-          }
-          return result;
-        }
       case DOUBLE:
-        {
-          double[] result = new double[rowCount];
-          for (int i = 0; i < rowCount; i++) {
-            result[i] = decoder.readDouble(buffer);
-          }
-          return result;
-        }
-      case TEXT:
-      case STRING:
-      case BLOB:
-        {
-          Binary[] result = new Binary[rowCount];
-          for (int i = 0; i < rowCount; i++) {
-            int binarySize = buffer.getInt();
-            byte[] binaryValue = new byte[binarySize];
-            buffer.get(binaryValue);
-            result[i] = decoder.readBinary(buffer);
-          }
-          return result;
-        }
+        return decodeFloatColumn(buffer, columnEntry, rowCount);
       default:
-        throw new UnsupportedOperationException("PLAIN doesn't support data type: " + dataType);
+        throw new UnSupportedDataTypeException("TS_2DIFF doesn't support data type: " + dataType);
     }
   }
 
   @Override
   public boolean[] decodeBooleanColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
-    return new boolean[0];
+    throw new UnSupportedDataTypeException("TS_2DIFF doesn't support data type: " + dataType);
   }
 
   @Override
   public int[] decodeIntColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
-    return new int[0];
+    int[] result = new int[rowCount];
+    for (int i = 0; i < rowCount; i++) {
+      result[i] = decoder.readInt(buffer);
+    }
+    return result;
   }
 
   @Override
   public long[] decodeLongColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
-    return new long[0];
+    long[] result = new long[rowCount];
+    for (int i = 0; i < rowCount; i++) {
+      result[i] = decoder.readLong(buffer);
+    }
+    return result;
   }
 
   @Override
   public float[] decodeFloatColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
-    return new float[0];
+    float[] result = new float[rowCount];
+    for (int i = 0; i < rowCount; i++) {
+      result[i] = decoder.readFloat(buffer);
+    }
+    return result;
   }
 
   @Override
   public double[] decodeDoubleColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
-    return new double[0];
+    throw new UnSupportedDataTypeException("TS_2DIFF doesn't support data type: " + dataType);
   }
 
   @Override
   public Binary[] decodeBinaryColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
-    return new Binary[0];
+    throw new UnSupportedDataTypeException("TS_2DIFF doesn't support data type: " + dataType);
   }
 
   @Override
   public Decoder getDecoder(TSDataType type, TSEncoding encodingType) {
-    return null;
+    return Decoder.getDecoderByType(encodingType, type);
   }
 }
