@@ -50,6 +50,7 @@ public enum Metric {
   THRIFT_CONNECTIONS("thrift_connections"),
   THRIFT_ACTIVE_THREADS("thrift_active_threads"),
   CLIENT_MANAGER("client_manager"),
+  THRIFT_RPC_COMPRESS("thrift_rpc_compress"),
   // consensus related
   STAGE("stage"),
   IOT_CONSENSUS("iot_consensus"),

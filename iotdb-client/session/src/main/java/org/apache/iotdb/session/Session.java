@@ -2995,10 +2995,15 @@ public class Session implements ISession {
         request.addToEncodingTypes(
             this.columnEncodersMap.get(measurementSchema.getType()).ordinal());
       }
-      RpcEncoder rpcEncoder = new RpcEncoder(this.columnEncodersMap);
-      RpcCompressor rpcCompressor = new RpcCompressor(this.compressionType);
-      request.setTimestamps(rpcCompressor.compress(rpcEncoder.encodeTimestamps(tablet)));
-      request.setValues(rpcCompressor.compress(rpcEncoder.encodeValues(tablet)));
+      final long startTime = System.nanoTime();
+      try {
+        RpcEncoder rpcEncoder = new RpcEncoder(this.columnEncodersMap);
+        RpcCompressor rpcCompressor = new RpcCompressor(this.compressionType);
+        request.setTimestamps(rpcCompressor.compress(rpcEncoder.encodeTimestamps(tablet)));
+        request.setValues(rpcCompressor.compress(rpcEncoder.encodeValues(tablet)));
+      } finally {
+        System.out.println(System.nanoTime() - startTime);
+      }
     } else {
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));

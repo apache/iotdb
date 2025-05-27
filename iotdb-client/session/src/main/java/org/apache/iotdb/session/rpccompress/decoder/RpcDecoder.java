@@ -21,6 +21,7 @@ package org.apache.iotdb.session.rpccompress.decoder;
 import org.apache.iotdb.session.rpccompress.ColumnEntry;
 import org.apache.iotdb.session.rpccompress.EncodingTypeNotSupportedException;
 import org.apache.iotdb.session.rpccompress.MetaHead;
+import org.apache.iotdb.session.rpccompress.encoder.*;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -106,6 +107,18 @@ public class RpcDecoder {
         return new RleColumnDecoder(dataType);
       case TS_2DIFF:
         return new Ts2DiffColumnDecoder(dataType);
+      case GORILLA:
+        return new GorillaColumnDecoder(dataType);
+      case ZIGZAG:
+        return new ZigzagColumnDecoder(dataType);
+      case CHIMP:
+        return new ChimpColumnDecoder(dataType);
+      case SPRINTZ:
+        return new SprintzColumnDecoder(dataType);
+      case RLBE:
+        return new RlbeColumnDecoder(dataType);
+      case DICTIONARY:
+        return new DictionaryColumnDecoder(dataType);
       default:
         throw new EncodingTypeNotSupportedException(encodingType.name());
     }

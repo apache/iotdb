@@ -102,6 +102,18 @@ public class RpcEncoder {
         return new RleColumnEncoder(dataType);
       case TS_2DIFF:
         return new Ts2DiffColumnEncoder(dataType);
+      case GORILLA:
+        return new GorillaColumnEncoder(dataType);
+      case ZIGZAG:
+        return new ZigzagColumnEncoder(dataType);
+      case CHIMP:
+        return new ChimpColumnEncoder(dataType);
+      case SPRINTZ:
+        return new SprintzColumnEncoder(dataType);
+      case RLBE:
+        return new RlbeColumnEncoder(dataType);
+      case DICTIONARY:
+        return new DictionaryColumnEncoder(dataType);
       default:
         throw new EncodingTypeNotSupportedException(encodingType.name());
     }
