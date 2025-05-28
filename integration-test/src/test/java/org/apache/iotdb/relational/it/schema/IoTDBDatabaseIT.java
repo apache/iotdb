@@ -659,7 +659,7 @@ public class IoTDBDatabaseIT {
           "model_id,",
           new HashSet<>(
               Arrays.asList(
-                  "_timerxl,",
+                  "_TimerXL,",
                   "_STLForecaster,",
                   "_NaiveForecaster,",
                   "_HoltWinters,",
