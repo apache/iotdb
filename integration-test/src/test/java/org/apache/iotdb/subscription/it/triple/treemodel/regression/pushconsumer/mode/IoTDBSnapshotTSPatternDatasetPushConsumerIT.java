@@ -101,6 +101,16 @@ public class IoTDBSnapshotTSPatternDatasetPushConsumerIT
     assertTrue(subs.getTopic(topicName).isPresent(), "Create show topics");
   }
 
+  // TODO: remove it later
+  @Override
+  protected void setUpConfig() {
+    super.setUpConfig();
+
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(sender);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver1);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver2);
+  }
+
   @Override
   @After
   public void tearDown() throws Exception {

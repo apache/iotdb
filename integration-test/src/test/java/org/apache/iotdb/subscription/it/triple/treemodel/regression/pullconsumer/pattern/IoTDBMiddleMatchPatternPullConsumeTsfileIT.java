@@ -96,6 +96,7 @@ public class IoTDBMiddleMatchPatternPullConsumeTsfileIT
     assertTrue(subs.getTopic(topicName).isPresent(), "Create show topics");
   }
 
+  // TODO: remove it later
   @Override
   protected void setUpConfig() {
     super.setUpConfig();
