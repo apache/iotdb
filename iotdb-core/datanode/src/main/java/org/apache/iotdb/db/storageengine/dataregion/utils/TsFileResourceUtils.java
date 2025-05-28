@@ -42,12 +42,14 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
 import org.apache.tsfile.read.reader.page.ValuePageReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +64,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class TsFileResourceUtils {
+
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceUtils.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String VALIDATE_FAILED = "validate failed,";
@@ -409,27 +412,63 @@ public class TsFileResourceUtils {
   }
 
   public static void updateTsFileResource(
-      TsFileSequenceReader reader, TsFileResource tsFileResource) throws IOException {
-    updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource);
+      TsFileSequenceReader reader, TsFileResource tsFileResource, boolean cacheLastValues)
+      throws IOException {
+    updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource, cacheLastValues);
     tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
     tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
   }
 
   public static void updateTsFileResource(
-      Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata, TsFileResource tsFileResource) {
+      Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata,
+      TsFileResource tsFileResource,
+      boolean cacheLastValue) {
     // For async recover tsfile, there might be a FileTimeIndex, we need a new newTimeIndex
     ITimeIndex newTimeIndex =
         tsFileResource.getTimeIndex().getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE
             ? config.getTimeIndexLevel().getTimeIndex()
             : tsFileResource.getTimeIndex();
+    Map<IDeviceID, List<Pair<String, TimeValuePair>>> deviceLastValues =
+        tsFileResource.getLastValues();
+    if (cacheLastValue && deviceLastValues == null) {
+      deviceLastValues = new HashMap<>(device2Metadata.size());
+    }
     for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
+      List<Pair<String, TimeValuePair>> seriesLastValues = null;
+      if (cacheLastValue) {
+        seriesLastValues = new ArrayList<>(entry.getValue().size());
+      }
+
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
         newTimeIndex.updateStartTime(
             entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
         newTimeIndex.updateEndTime(entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
+        if (cacheLastValue) {
+          if (timeseriesMetaData.getTsDataType() != TSDataType.BLOB) {
+            TsPrimitiveType value;
+            value =
+                TsPrimitiveType.getByType(
+                    timeseriesMetaData.getTsDataType() == TSDataType.VECTOR
+                        ? TSDataType.INT64
+                        : timeseriesMetaData.getTsDataType(),
+                    timeseriesMetaData.getStatistics().getLastValue());
+            seriesLastValues.add(
+                new Pair<>(
+                    timeseriesMetaData.getMeasurementId(),
+                    new TimeValuePair(timeseriesMetaData.getStatistics().getEndTime(), value)));
+          } else {
+            seriesLastValues.add(new Pair<>(timeseriesMetaData.getMeasurementId(), null));
+          }
+        }
+      }
+      if (cacheLastValue) {
+        deviceLastValues
+            .computeIfAbsent(entry.getKey(), deviceID -> new ArrayList<>())
+            .addAll(seriesLastValues);
       }
     }
     tsFileResource.setTimeIndex(newTimeIndex);
+    tsFileResource.setLastValues(deviceLastValues);
   }
 
   /**

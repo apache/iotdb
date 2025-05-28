@@ -2267,6 +2267,11 @@ public class IoTDBDescriptor {
         LastCacheLoadStrategy.valueOf(
             properties.getProperty(
                 "last_cache_operation_on_load", LastCacheLoadStrategy.UPDATE.name())));
+
+    conf.setCacheLastValuesForLoad(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "cache_last_values_for_load", String.valueOf(conf.isCacheLastValuesForLoad()))));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {

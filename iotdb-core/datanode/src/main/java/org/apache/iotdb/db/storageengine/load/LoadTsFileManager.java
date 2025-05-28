@@ -54,9 +54,13 @@ import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyT
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,12 +72,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
@@ -533,12 +539,52 @@ public class LoadTsFileManager {
         TsFileIOWriter writer, TsFileResource tsFileResource, ProgressIndex progressIndex)
         throws IOException {
       // Update time index by chunk groups still in memory
+      Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues = null;
+      if (IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad()) {
+        deviceLastValues = new HashMap<>();
+      }
       for (final ChunkGroupMetadata chunkGroupMetadata : writer.getChunkGroupMetadataList()) {
         final IDeviceID device = chunkGroupMetadata.getDevice();
         for (final ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
           tsFileResource.updateStartTime(device, chunkMetadata.getStartTime());
           tsFileResource.updateEndTime(device, chunkMetadata.getEndTime());
+          if (deviceLastValues != null) {
+            deviceLastValues
+                .computeIfAbsent(device, d -> new HashMap<>())
+                .compute(
+                    chunkMetadata.getMeasurementUid(),
+                    (m, oldPair) -> {
+                      if (oldPair != null && oldPair.getTimestamp() > chunkMetadata.getEndTime()) {
+                        return oldPair;
+                      }
+                      TsPrimitiveType lastValue =
+                          chunkMetadata.getStatistics() != null
+                                  && chunkMetadata.getDataType() != TSDataType.BLOB
+                              ? TsPrimitiveType.getByType(
+                                  chunkMetadata.getDataType() == TSDataType.VECTOR
+                                      ? TSDataType.INT64
+                                      : chunkMetadata.getDataType(),
+                                  chunkMetadata.getStatistics().getLastValue())
+                              : null;
+                      return new TimeValuePair(chunkMetadata.getEndTime(), lastValue);
+                    });
+          }
         }
+      }
+      if (deviceLastValues != null) {
+        Map<IDeviceID, List<Pair<String, TimeValuePair>>> finalDeviceLastValues;
+        finalDeviceLastValues = new HashMap<>(deviceLastValues.size());
+        for (final Map.Entry<IDeviceID, Map<String, TimeValuePair>> entry :
+            deviceLastValues.entrySet()) {
+          final IDeviceID device = entry.getKey();
+          Map<String, TimeValuePair> lastValues = entry.getValue();
+          List<Pair<String, TimeValuePair>> pairList =
+              lastValues.entrySet().stream()
+                  .map(e -> new Pair<>(e.getKey(), e.getValue()))
+                  .collect(Collectors.toList());
+          finalDeviceLastValues.put(device, pairList);
+        }
+        tsFileResource.setLastValues(finalDeviceLastValues);
       }
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       tsFileResource.setProgressIndex(progressIndex);

@@ -519,7 +519,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       // Update time index no matter if resource file exists or not, because resource file may be
       // untrusted
-      TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+      TsFileResourceUtils.updateTsFileResource(
+          device2TimeseriesMetadata,
+          tsFileResource,
+          IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad());
       getOrCreateTreeSchemaVerifier().setCurrentTimeIndex(tsFileResource.getTimeIndex());
 
       if (isAutoCreateSchemaOrVerifySchemaEnabled) {
@@ -578,7 +581,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       // Update time index no matter if resource file exists or not, because resource file may be
       // untrusted
-      TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+      TsFileResourceUtils.updateTsFileResource(
+          device2TimeseriesMetadata,
+          tsFileResource,
+          IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad());
       getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
 
       for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {

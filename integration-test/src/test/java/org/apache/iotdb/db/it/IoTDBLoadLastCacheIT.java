@@ -27,6 +27,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ColumnSchema;
@@ -55,13 +56,17 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+@SuppressWarnings({"ResultOfMethodCallIgnored", "UnstableApiUsage"})
 @RunWith(Parameterized.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBLoadLastCacheIT {
@@ -276,8 +281,6 @@ public class IoTDBLoadLastCacheIT {
 
   @Test
   public void testTableModelLoadWithLastCache() throws Exception {
-    registerSchema();
-
     final String database = SchemaConfig.DATABASE_0;
     final String table = SchemaConfig.TABLE_0;
     final String measurement = SchemaConfig.MEASUREMENT_00.getMeasurementName();
@@ -348,6 +351,184 @@ public class IoTDBLoadLastCacheIT {
         }
       }
     }
+  }
+
+  private static class PerformanceSchemas {
+
+    private final String database;
+    private final TableSchema tableSchema;
+    private final List<String> columnNames;
+    private final List<TSDataType> dataTypes;
+
+    public PerformanceSchemas(String database, String tableName, int measurementNum) {
+      this.database = database;
+      List<ColumnSchema> columnSchemas = new ArrayList<>(measurementNum);
+      columnNames = new ArrayList<>(measurementNum);
+      dataTypes = new ArrayList<>(measurementNum);
+
+      columnSchemas.add(new ColumnSchema("device_id", TSDataType.STRING, ColumnCategory.TAG));
+      columnNames.add("device_id");
+      dataTypes.add(TSDataType.STRING);
+      for (int i = 0; i < measurementNum; i++) {
+        columnSchemas.add(new ColumnSchema("s" + i, TSDataType.INT64, ColumnCategory.FIELD));
+        columnNames.add("s" + i);
+        dataTypes.add(TSDataType.INT64);
+      }
+      tableSchema = new TableSchema(tableName, columnSchemas);
+    }
+  }
+
+  private void generateAndLoadOne(
+      int deviceCnt,
+      int measurementCnt,
+      int pointCnt,
+      int offset,
+      PerformanceSchemas schemas,
+      int fileNum)
+      throws Exception {
+    File file = new File("target" + File.separator + fileNum + ".tsfile");
+    try (ITsFileWriter tsFileWriter =
+        new TsFileWriterBuilder().file(file).tableSchema(schemas.tableSchema).build()) {
+      Tablet tablet = new Tablet(schemas.columnNames, schemas.dataTypes, pointCnt * deviceCnt);
+      int rowIndex = 0;
+      for (int i = 0; i < deviceCnt; i++) {
+        for (int j = 0; j < pointCnt; j++) {
+          tablet.addTimestamp(rowIndex, j + offset);
+          tablet.addValue(rowIndex, 0, "d" + i);
+          for (int k = 0; k < measurementCnt; k++) {
+            tablet.addValue(rowIndex, k + 1, (long) j + offset);
+          }
+          rowIndex++;
+        }
+      }
+      tsFileWriter.write(tablet);
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getTableConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("USE " + schemas.database);
+      statement.execute(
+          String.format(
+              "load '%s' with ('database-name'='%s')", file.getAbsolutePath(), schemas.database));
+    }
+    file.delete();
+  }
+
+  private void generateAndLoadAll(
+      int deviceCnt, int measurementCnt, int pointCnt, PerformanceSchemas schemas, int fileNum)
+      throws Exception {
+    for (int i = 0; i < fileNum; i++) {
+      generateAndLoadOne(deviceCnt, measurementCnt, pointCnt, pointCnt * i, schemas, fileNum);
+    }
+  }
+
+  private long queryLastOnce(int deviceNum, int measurementNum, PerformanceSchemas schemas)
+      throws SQLException {
+    try (final Connection connection = EnvFactory.getEnv().getTableConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("USE " + schemas.database);
+
+      try (final ResultSet resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select last(%s) from %s where device_id='%s'",
+                  "s" + measurementNum, schemas.tableSchema.getTableName(), "d" + deviceNum))) {
+        if (resultSet.next()) {
+          return resultSet.getLong("_col0");
+        } else {
+          return -1;
+        }
+      } catch (SQLException e) {
+        if (!e.getMessage().contains("does not exist")) {
+          throw e;
+        }
+      }
+    }
+    return -1;
+  }
+
+  @SuppressWarnings("BusyWait")
+  private void queryAll(
+      int deviceCnt,
+      int measurementCnt,
+      int pointCnt,
+      int fileCnt,
+      PerformanceSchemas schemas,
+      RateLimiter rateLimiter)
+      throws SQLException {
+    Random random = new Random();
+    long totalStart = System.currentTimeMillis();
+    List<Long> timeConsumptions = new ArrayList<>();
+
+    while (true) {
+      int deviceNum = random.nextInt(deviceCnt);
+      int measurementNum = random.nextInt(measurementCnt);
+      rateLimiter.acquire();
+      long start = System.currentTimeMillis();
+      long result = queryLastOnce(deviceNum, measurementNum, schemas);
+      long timeConsumption = System.currentTimeMillis() - start;
+      if (result == -1) {
+        try {
+          Thread.sleep(1000);
+          continue;
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+      System.out.printf("%s: %s %s%n", new Date(), result, timeConsumption);
+      timeConsumptions.add(timeConsumption);
+      if (result == (long) pointCnt * fileCnt - 1) {
+        break;
+      }
+    }
+    System.out.printf(
+        "Synchronization ends after %dms%n, query latency avg %f",
+        System.currentTimeMillis() - totalStart,
+        timeConsumptions.stream().mapToLong(i -> i).average().orElse(0.0));
+  }
+
+  // @Ignore("Performance")
+  @Test
+  public void testTableLoadPerformance() throws Exception {
+    int deviceCnt = 1000;
+    int measurementCnt = 100;
+    int pointCnt = 100;
+    int fileCnt = 100;
+    int queryPerSec = 10;
+
+    PerformanceSchemas schemas = new PerformanceSchemas("test", "test_table", measurementCnt);
+
+    try (final Connection connection = EnvFactory.getEnv().getTableConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE IF NOT EXISTS " + schemas.database);
+    }
+
+    Thread loadThread =
+        new Thread(
+            () -> {
+              try {
+                generateAndLoadAll(deviceCnt, measurementCnt, pointCnt, schemas, fileCnt);
+              } catch (Exception e) {
+                e.printStackTrace();
+              }
+            });
+
+    RateLimiter rateLimiter = RateLimiter.create(queryPerSec);
+    Thread queryThread =
+        new Thread(
+            () -> {
+              try {
+                queryAll(deviceCnt, measurementCnt, pointCnt, fileCnt, schemas, rateLimiter);
+              } catch (SQLException e) {
+                e.printStackTrace();
+              }
+            });
+
+    loadThread.start();
+    queryThread.start();
+
+    loadThread.join();
+    queryThread.join();
   }
 
   private static class SchemaConfig {

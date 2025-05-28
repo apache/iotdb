@@ -1151,6 +1151,8 @@ public class IoTDBConfig {
 
   private LastCacheLoadStrategy lastCacheLoadStrategy = LastCacheLoadStrategy.UPDATE;
 
+  private boolean cacheLastValuesForLoad = true;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -4078,5 +4080,15 @@ public class IoTDBConfig {
 
   public void setLastCacheLoadStrategy(LastCacheLoadStrategy lastCacheLoadStrategy) {
     this.lastCacheLoadStrategy = lastCacheLoadStrategy;
+  }
+
+  public boolean isCacheLastValuesForLoad() {
+    return (lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
+            || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
+        && cacheLastValuesForLoad;
+  }
+
+  public void setCacheLastValuesForLoad(boolean cacheLastValuesForLoad) {
+    this.cacheLastValuesForLoad = cacheLastValuesForLoad;
   }
 }

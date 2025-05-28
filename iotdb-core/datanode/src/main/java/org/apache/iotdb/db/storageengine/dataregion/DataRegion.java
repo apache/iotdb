@@ -3131,6 +3131,28 @@ public class DataRegion implements IDataRegionForQuery {
       throws Exception {
     boolean isTableModel = isTableModelDatabase(databaseName);
 
+    Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues =
+        newTsFileResource.getLastValues();
+    if (lastValues != null) {
+      for (Entry<IDeviceID, List<Pair<String, TimeValuePair>>> entry : lastValues.entrySet()) {
+        IDeviceID deviceID = entry.getKey();
+        String[] measurements = entry.getValue().stream().map(Pair::getLeft).toArray(String[]::new);
+        TimeValuePair[] timeValuePairs =
+            entry.getValue().stream().map(Pair::getRight).toArray(TimeValuePair[]::new);
+        if (isTableModel) {
+          TableDeviceSchemaCache.getInstance()
+              .updateLastCacheIfExists(databaseName, deviceID, measurements, timeValuePairs);
+        } else {
+          // we do not update schema here, so aligned is not relevant
+          TreeDeviceSchemaCacheManager.getInstance()
+              .updateLastCacheIfExists(
+                  databaseName, deviceID, measurements, timeValuePairs, false, null);
+        }
+      }
+      newTsFileResource.setLastValues(null);
+      return;
+    }
+
     try (TsFileLastReader lastReader =
         new TsFileLastReader(newTsFileResource.getTsFilePath(), true, ignoreBlob)) {
       while (lastReader.hasNext()) {
