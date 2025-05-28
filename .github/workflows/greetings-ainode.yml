@@ -14,37 +14,48 @@ on:
       - master
       - 'rel/*'
       - 'rc/*'
+      - 'force_ci/**'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
   # allow manually run the action:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
 jobs:
   check-style:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - name: Build AINode
+        shell: bash
+        run: mvn clean package -DskipTests -P with-ainode
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install dependencies
+      - name: Activate python venv
+        shell: bash
         run: |
-          cd iotdb-core/ainode
-          poetry install
+          cd iotdb-core/ainode && source venv/bin/activate && poetry install
 
       - name: Check code formatting (Black)
         run: |
-          cd iotdb-core/ainode
-          black --check .
+          cd iotdb-core/ainode && black --check .
         continue-on-error: false
 
       - name: Check import order (Isort)
         run: |
-          cd iotdb-core/ainode
-          isort --check-only --profile black .
+          cd iotdb-core/ainode && isort --check-only --profile black .
         continue-on-error: false
