@@ -216,8 +216,10 @@ public class CommonConfig {
 
   private int pipeDataStructureTabletRowSize = 2048;
   private int pipeDataStructureTabletSizeInBytes = 2097152;
-  private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.4;
-  private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.4;
+  private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.2;
+  private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.2;
+  private double pipeDataStructureWalMemoryProportion = 0.2;
+  private double PipeDataStructureBatchMemoryProportion = 0.2;
   private double pipeTotalFloatingMemoryProportion = 0.2;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
@@ -253,7 +255,7 @@ public class CommonConfig {
       (int) (RpcUtils.THRIFT_FRAME_MAX_SIZE * 0.8);
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
-  private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
+  private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 30;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
   private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 1;
@@ -302,6 +304,11 @@ public class CommonConfig {
   private PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
       PipeRemainingTimeRateAverageTime.MEAN;
   private double pipeTsFileScanParsingThreshold = 0.05;
+  private double pipeDynamicMemoryHistoryWeight = 0.5;
+  private double pipeDynamicMemoryAdjustmentThreshold = 0.05;
+  private double pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio = 0.1d;
+  private double pipeThresholdAllocationStrategyLowUsageThreshold = 0.2d;
+  private double pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold = 0.8d;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -839,6 +846,34 @@ public class CommonConfig {
     logger.info(
         "pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold is set to {}.",
         pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold);
+  }
+
+  public double getPipeDataStructureWalMemoryProportion() {
+    return pipeDataStructureWalMemoryProportion;
+  }
+
+  public void setPipeDataStructureWalMemoryProportion(double pipeDataStructureWalMemoryProportion) {
+    if (this.pipeDataStructureWalMemoryProportion == pipeDataStructureWalMemoryProportion) {
+      return;
+    }
+    this.pipeDataStructureWalMemoryProportion = pipeDataStructureWalMemoryProportion;
+    logger.info(
+        "pipeDataStructureWalMemoryProportion is set to {}.", pipeDataStructureWalMemoryProportion);
+  }
+
+  public double getPipeDataStructureBatchMemoryProportion() {
+    return PipeDataStructureBatchMemoryProportion;
+  }
+
+  public void setPipeDataStructureBatchMemoryProportion(
+      double PipeDataStructureBatchMemoryProportion) {
+    if (this.PipeDataStructureBatchMemoryProportion == PipeDataStructureBatchMemoryProportion) {
+      return;
+    }
+    this.PipeDataStructureBatchMemoryProportion = PipeDataStructureBatchMemoryProportion;
+    logger.info(
+        "PipeDataStructureBatchMemoryProportion is set to {}.",
+        PipeDataStructureBatchMemoryProportion);
   }
 
   public double getPipeTotalFloatingMemoryProportion() {
@@ -1822,6 +1857,82 @@ public class CommonConfig {
     }
     this.pipeTsFileScanParsingThreshold = pipeTsFileScanParsingThreshold;
     logger.info("pipeTsFileScanParsingThreshold is set to {}", pipeTsFileScanParsingThreshold);
+  }
+
+  public double getPipeDynamicMemoryHistoryWeight() {
+    return pipeDynamicMemoryHistoryWeight;
+  }
+
+  public void setPipeDynamicMemoryHistoryWeight(double pipeDynamicMemoryHistoryWeight) {
+    if (this.pipeDynamicMemoryHistoryWeight == pipeDynamicMemoryHistoryWeight) {
+      return;
+    }
+    this.pipeDynamicMemoryHistoryWeight = pipeDynamicMemoryHistoryWeight;
+    logger.info("PipeDynamicMemoryHistoryWeight is set to {}", pipeDynamicMemoryHistoryWeight);
+  }
+
+  public double getPipeDynamicMemoryAdjustmentThreshold() {
+    return pipeDynamicMemoryAdjustmentThreshold;
+  }
+
+  public void setPipeDynamicMemoryAdjustmentThreshold(double pipeDynamicMemoryAdjustmentThreshold) {
+    if (this.pipeDynamicMemoryAdjustmentThreshold == pipeDynamicMemoryAdjustmentThreshold) {
+      return;
+    }
+    this.pipeDynamicMemoryAdjustmentThreshold = pipeDynamicMemoryAdjustmentThreshold;
+    logger.info(
+        "pipeDynamicMemoryAdjustmentThreshold is set to {}", pipeDynamicMemoryAdjustmentThreshold);
+  }
+
+  public double getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio() {
+    return pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio;
+  }
+
+  public void setPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio(
+      double pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio) {
+    if (this.pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio
+        == pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio) {
+      return;
+    }
+    this.pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio =
+        pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio;
+    logger.info(
+        "pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio is set to {}",
+        pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio);
+  }
+
+  public double getPipeThresholdAllocationStrategyLowUsageThreshold() {
+    return pipeThresholdAllocationStrategyLowUsageThreshold;
+  }
+
+  public void setPipeThresholdAllocationStrategyLowUsageThreshold(
+      double pipeThresholdAllocationStrategyLowUsageThreshold) {
+    if (this.pipeThresholdAllocationStrategyLowUsageThreshold
+        == pipeThresholdAllocationStrategyLowUsageThreshold) {
+      return;
+    }
+    this.pipeThresholdAllocationStrategyLowUsageThreshold =
+        pipeThresholdAllocationStrategyLowUsageThreshold;
+    logger.info(
+        "pipeMemoryBlockLowUsageThreshold is set to {}",
+        pipeThresholdAllocationStrategyLowUsageThreshold);
+  }
+
+  public double getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold() {
+    return pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold;
+  }
+
+  public void setPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold(
+      double pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold) {
+    if (this.pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold
+        == pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold) {
+      return;
+    }
+    this.pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold =
+        pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold;
+    logger.info(
+        "pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold is set to {}",
+        pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold);
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {
