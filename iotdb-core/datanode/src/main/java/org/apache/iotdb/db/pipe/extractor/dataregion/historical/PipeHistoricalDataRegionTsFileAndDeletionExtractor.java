@@ -457,9 +457,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     // 2. origin is HybridProgressIndex
     else if (origin instanceof HybridProgressIndex) {
       HybridProgressIndex toBeTransformed = (HybridProgressIndex) origin;
+      // if hybridProgressIndex contains recoverProgressIndex, which is what we expected.
       if (toBeTransformed
           .getType2Index()
           .containsKey(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType())) {
+        // 2.1. transform recoverProgressIndex
         RecoverProgressIndex specificToBeTransformed =
             (RecoverProgressIndex)
                 toBeTransformed
@@ -474,12 +476,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                                 .getKey()
                                 .equals(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
-
+        // 2.2. modify the hybridProgressIndex
+        // keep origin is immutable to ensure data consistency.
         HybridProgressIndex result = new HybridProgressIndex(toBeTransformed);
         result.modifySpecificType(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType(), transformed);
         return result;
       }
-      // fallback
+      // if hybridProgressIndex doesn't contain recoverProgressIndex, which is not what we expected,
+      // fallback.
       return origin;
     } else {
       // fallback
