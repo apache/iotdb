@@ -21,6 +21,9 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.historical;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -34,6 +37,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
@@ -304,7 +308,12 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
-    startIndex = environment.getPipeTaskMeta().getProgressIndex();
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      startIndex =
+          constructLocalProgressIndexForIoTV2(environment.getPipeTaskMeta().getProgressIndex());
+    } else {
+      startIndex = environment.getPipeTaskMeta().getProgressIndex();
+    }
 
     dataRegionId = environment.getRegionId();
     synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
@@ -423,6 +432,58 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       dataRegion.syncCloseAllWorkingTsFileProcessors();
     } finally {
       dataRegion.writeUnlock();
+    }
+  }
+
+  /**
+   * IoTV2 will only resend event that contains un-replicated local write data. So we only extract
+   * ProgressIndex containing local writes for comparison to prevent misjudgment on whether
+   * high-level tsFiles with mixed progressIndexes need to be retransmitted
+   */
+  private ProgressIndex constructLocalProgressIndexForIoTV2(ProgressIndex origin) {
+    // There are only 2 cases:
+    // 1. origin is RecoverProgressIndex
+    if (origin instanceof RecoverProgressIndex) {
+      RecoverProgressIndex toBeTransformed = (RecoverProgressIndex) origin;
+      return new RecoverProgressIndex(
+          toBeTransformed.getDataNodeId2LocalIndex().entrySet().stream()
+              .filter(
+                  entry ->
+                      entry
+                          .getKey()
+                          .equals(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()))
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+    }
+    // 2. origin is HybridProgressIndex
+    else if (origin instanceof HybridProgressIndex) {
+      HybridProgressIndex toBeTransformed = (HybridProgressIndex) origin;
+      if (toBeTransformed
+          .getType2Index()
+          .containsKey(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType())) {
+        RecoverProgressIndex specificToBeTransformed =
+            (RecoverProgressIndex)
+                toBeTransformed
+                    .getType2Index()
+                    .get(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType());
+        RecoverProgressIndex transformed =
+            new RecoverProgressIndex(
+                specificToBeTransformed.getDataNodeId2LocalIndex().entrySet().stream()
+                    .filter(
+                        entry ->
+                            entry
+                                .getKey()
+                                .equals(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+
+        HybridProgressIndex result = new HybridProgressIndex(toBeTransformed);
+        result.modifySpecificType(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType(), transformed);
+        return result;
+      }
+      // fallback
+      return origin;
+    } else {
+      // fallback
+      return origin;
     }
   }
 
