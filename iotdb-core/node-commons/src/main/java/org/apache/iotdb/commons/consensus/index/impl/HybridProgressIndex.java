@@ -56,10 +56,6 @@ public class HybridProgressIndex extends ProgressIndex {
     this(Collections.emptyMap());
   }
 
-  public HybridProgressIndex(final HybridProgressIndex hybridProgressIndex) {
-    this.type2Index = new HashMap<>(hybridProgressIndex.type2Index);
-  }
-
   public HybridProgressIndex(final ProgressIndex progressIndex) {
     this(Collections.singletonMap(progressIndex.getType().getType(), progressIndex));
   }
@@ -70,10 +66,6 @@ public class HybridProgressIndex extends ProgressIndex {
 
   public Map<Short, ProgressIndex> getType2Index() {
     return ImmutableMap.copyOf(type2Index);
-  }
-
-  public void modifySpecificType(final Short type, final ProgressIndex progressIndex) {
-    this.type2Index.put(type, progressIndex);
   }
 
   @Override

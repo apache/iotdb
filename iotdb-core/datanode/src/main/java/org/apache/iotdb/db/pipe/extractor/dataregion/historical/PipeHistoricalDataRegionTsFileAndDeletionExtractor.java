@@ -310,7 +310,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     pipeTaskMeta = environment.getPipeTaskMeta();
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       startIndex =
-          constructLocalProgressIndexForIoTV2(environment.getPipeTaskMeta().getProgressIndex());
+          tryToExtractLocalProgressIndexForIoTV2(environment.getPipeTaskMeta().getProgressIndex());
     } else {
       startIndex = environment.getPipeTaskMeta().getProgressIndex();
     }
@@ -439,8 +439,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
    * IoTV2 will only resend event that contains un-replicated local write data. So we only extract
    * ProgressIndex containing local writes for comparison to prevent misjudgment on whether
    * high-level tsFiles with mixed progressIndexes need to be retransmitted
+   *
+   * @return recoverProgressIndex dedicated in local DataNodeId or origin for fallback.
    */
-  private ProgressIndex constructLocalProgressIndexForIoTV2(ProgressIndex origin) {
+  private ProgressIndex tryToExtractLocalProgressIndexForIoTV2(ProgressIndex origin) {
     // There are only 2 cases:
     // 1. origin is RecoverProgressIndex
     if (origin instanceof RecoverProgressIndex) {
@@ -467,20 +469,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                 toBeTransformed
                     .getType2Index()
                     .get(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType());
-        RecoverProgressIndex transformed =
-            new RecoverProgressIndex(
-                specificToBeTransformed.getDataNodeId2LocalIndex().entrySet().stream()
-                    .filter(
-                        entry ->
-                            entry
-                                .getKey()
-                                .equals(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()))
-                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
-        // 2.2. modify the hybridProgressIndex
-        // keep origin is immutable to ensure data consistency.
-        HybridProgressIndex result = new HybridProgressIndex(toBeTransformed);
-        result.modifySpecificType(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType(), transformed);
-        return result;
+        return new RecoverProgressIndex(
+            specificToBeTransformed.getDataNodeId2LocalIndex().entrySet().stream()
+                .filter(
+                    entry ->
+                        entry
+                            .getKey()
+                            .equals(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
       }
       // if hybridProgressIndex doesn't contain recoverProgressIndex, which is not what we expected,
       // fallback.
@@ -682,8 +678,19 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     if (startIndex instanceof StateProgressIndex) {
       startIndex = ((StateProgressIndex) startIndex).getInnerProgressIndex();
     }
-    return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
-        && !startIndex.equals(resource.getMaxProgressIndexAfterClose());
+
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      // For consensus pipe, we only focus on the progressIndex that is generated from local write
+      // instead of replication or something else.
+      ProgressIndex dedicatedProgressIndex =
+          tryToExtractLocalProgressIndexForIoTV2(resource.getMaxProgressIndexAfterClose());
+      return greaterThanStartIndex(dedicatedProgressIndex);
+    }
+    return greaterThanStartIndex(resource.getMaxProgressIndexAfterClose());
+  }
+
+  private boolean greaterThanStartIndex(ProgressIndex progressIndex) {
+    return !startIndex.isAfter(progressIndex) && !startIndex.equals(progressIndex);
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
@@ -777,12 +784,26 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     // For deletions that are filtered and will not be sent, we should manually decrease its
     // reference count. Because the initial value of referenceCount is `ReplicaNum - 1`
     allDeletionResources.stream()
-        .filter(resource -> startIndex.isAfter(resource.getProgressIndex()))
+        .filter(
+            resource -> {
+              ProgressIndex toBeCompared = resource.getProgressIndex();
+              if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+                toBeCompared = tryToExtractLocalProgressIndexForIoTV2(toBeCompared);
+              }
+              return !greaterThanStartIndex(toBeCompared);
+            })
         .forEach(DeletionResource::decreaseReference);
     // Get deletions that should be sent.
     allDeletionResources =
         allDeletionResources.stream()
-            .filter(resource -> !startIndex.isAfter(resource.getProgressIndex()))
+            .filter(
+                resource -> {
+                  ProgressIndex toBeCompared = resource.getProgressIndex();
+                  if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+                    toBeCompared = tryToExtractLocalProgressIndexForIoTV2(toBeCompared);
+                  }
+                  return greaterThanStartIndex(toBeCompared);
+                })
             .collect(Collectors.toList());
     resourceList.addAll(allDeletionResources);
     LOGGER.info(
