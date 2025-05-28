@@ -248,7 +248,7 @@ final class AbstractSubscriptionProviders {
         final PipeSubscribeHeartbeatResp resp = provider.heartbeat();
         // update subscribed topics
         consumer.subscribedTopics = resp.getTopics();
-        // actively unsubscribe terminated topics
+        // unsubscribe completed topics
         for (final String topicName : resp.getTopicNamesToUnsubscribe()) {
           LOGGER.info(
               "Termination occurred when SubscriptionConsumer {} polling topics, unsubscribe topic {} automatically",
