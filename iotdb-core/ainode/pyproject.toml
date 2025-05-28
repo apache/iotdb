@@ -63,32 +63,6 @@ apache-iotdb = "2.0.4.dev0"
 einops = "^0.8.1"
 safetensors = "^0.5.1"
 huggingface_hub = "^0.30.1"
-black = ">=23.3.0, <24.0.0"
-isort = ">=5.10.1, <6.0.0"
 
 [tool.poetry.scripts]
 ainode = "ainode.core.script:main"
-
-[tool.black]
-target-version = ['py39', 'py310', 'py311', 'py312']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/
-'''
-
-[tool.isort]
-profile = "black"
-force_sort_within_sections = true
-multi_line_output = 3
-include_trailing_comma = true
-use_parentheses = true
