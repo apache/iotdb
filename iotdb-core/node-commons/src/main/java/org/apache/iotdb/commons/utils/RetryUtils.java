@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.pipe.api.exception.PipeConsensusRetryWithIncreasingIntervalException;
+import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.net.ConnectException;
