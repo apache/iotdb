@@ -21,14 +21,12 @@ package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertionEventHandler;
 import org.apache.iotdb.db.pipe.consensus.metric.PipeConsensusConnectorMetrics;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -37,23 +35,23 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeConsensusTransferResp>
-    implements AsyncMethodCallback<E> {
+public class PipeConsensusDeleteEventHandler
+    implements AsyncMethodCallback<TPipeConsensusTransferResp> {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConsensusTabletInsertionEventHandler.class);
+      LoggerFactory.getLogger(PipeConsensusDeleteEventHandler.class);
 
-  protected final TabletInsertionEvent event;
+  private final PipeDeleteDataNodeEvent event;
 
-  protected final TPipeConsensusTransferReq req;
+  private final TPipeConsensusTransferReq req;
 
-  protected final PipeConsensusAsyncConnector connector;
+  private final PipeConsensusAsyncConnector connector;
 
-  protected final PipeConsensusConnectorMetrics metric;
+  private final PipeConsensusConnectorMetrics metric;
 
   private final long createTime;
 
-  protected PipeConsensusTabletInsertionEventHandler(
-      TabletInsertionEvent event,
+  public PipeConsensusDeleteEventHandler(
+      PipeDeleteDataNodeEvent event,
       TPipeConsensusTransferReq req,
       PipeConsensusAsyncConnector connector,
       PipeConsensusConnectorMetrics metric) {
@@ -65,11 +63,8 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
   }
 
   public void transfer(AsyncPipeConsensusServiceClient client) throws TException {
-    doTransfer(client, req);
+    client.pipeConsensusTransfer(req, this);
   }
-
-  protected abstract void doTransfer(
-      AsyncPipeConsensusServiceClient client, TPipeConsensusTransferReq req) throws TException;
 
   @Override
   public void onComplete(TPipeConsensusTransferResp response) {
@@ -86,16 +81,13 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
           && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         connector.statusHandler().handle(status, status.getMessage(), event.toString());
       }
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event)
-            .decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);
-      }
+      event.decreaseReferenceCount(PipeConsensusDeleteEventHandler.class.getName(), true);
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info(
-            "InsertNodeTransfer: no.{} event successfully processed!",
-            ((EnrichedEvent) event).getReplicateIndexForIoTV2());
-        connector.removeEventFromBuffer((EnrichedEvent) event);
+            "DeleteNodeTransfer: no.{} event successfully processed!",
+            event.getReplicateIndexForIoTV2());
+        connector.removeEventFromBuffer(event);
       }
 
       long duration = System.nanoTime() - createTime;
@@ -106,16 +98,15 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
   }
 
   @Override
-  public void onError(Exception exception) {
-    EnrichedEvent event = (EnrichedEvent) this.event;
+  public void onError(Exception e) {
     LOGGER.warn(
-        "Failed to transfer TabletInsertionEvent {} (committer key={}, replicate index={}).",
+        "Failed to transfer PipeDeleteNodeEvent {} (committer key={}, replicate index={}).",
         event.coreReportMessage(),
         event.getCommitterKey(),
         event.getReplicateIndexForIoTV2(),
-        exception);
+        e);
 
-    if (RetryUtils.needRetryWithIncreasingInterval(exception)) {
+    if (RetryUtils.needRetryWithIncreasingInterval(e)) {
       // just in case for overflow
       if (event.getRetryInterval() << 2 <= 0) {
         event.setRetryInterval(1000L * 20);
@@ -124,7 +115,7 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
       }
     }
     // IoTV2 ensures that only use PipeInsertionEvent, which is definitely EnrichedEvent.
-    connector.addFailureEventToRetryQueue((EnrichedEvent) event);
+    connector.addFailureEventToRetryQueue(event);
     metric.recordRetryCounter();
   }
 }
