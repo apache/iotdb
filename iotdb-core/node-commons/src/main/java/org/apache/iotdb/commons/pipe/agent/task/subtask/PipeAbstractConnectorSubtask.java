@@ -262,6 +262,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           LOGGER.warn("Interrupted while waiting for the high priority lock task.", e);
+          break;
         }
       }
     }
