@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
-import org.apache.iotdb.pipe.api.exception.PipeConsensusRetryWithIncreasingIntervalException;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -124,8 +123,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
     // Notice that the PipeRuntimeConnectorCriticalException must be thrown here
     // because the upper layer relies on this to stop all the related pipe tasks
     // Other exceptions may cause the subtask to stop forever and can not be restarted
-    if (throwable instanceof PipeRuntimeConnectorCriticalException
-        || throwable instanceof PipeConsensusRetryWithIncreasingIntervalException) {
+    if (throwable instanceof PipeRuntimeConnectorCriticalException) {
       super.onFailure(throwable);
     } else {
       // Print stack trace for better debugging
