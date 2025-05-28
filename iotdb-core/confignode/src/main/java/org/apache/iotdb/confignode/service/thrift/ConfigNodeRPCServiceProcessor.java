@@ -1395,6 +1395,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TIsTableExistResp isTableExist(final String database, final String tableName) {
+    return configManager.isTableExist(database, tableName);
+  }
+
+  @Override
   public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
     return configManager.deleteDevice(req);
   }

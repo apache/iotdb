@@ -2901,6 +2901,25 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TIsTableExistResp isTableExist(final String database, final String tableName) {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (!clusterSchemaManager.isDatabaseExist(database)) {
+        return new TIsTableExistResp(status, false);
+      }
+      try {
+        return new TIsTableExistResp(
+            status,
+            clusterSchemaManager.getTableIfExists(database, tableName).orElse(null) == null);
+      } catch (MetadataException e) {
+        LOGGER.error(e.getMessage());
+        return new TIsTableExistResp(status, false);
+      }
+    }
+    return new TIsTableExistResp(status, false);
+  }
+
+  @Override
   public DataSet registerAINode(TAINodeRegisterReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

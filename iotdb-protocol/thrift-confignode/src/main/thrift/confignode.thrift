@@ -1222,6 +1222,11 @@ struct TTableInfo {
    5: optional i32 type
 }
 
+struct TIsTableExistResp {
+  1: required common.TSStatus status
+  2: required bool isExist
+}
+
 struct TCreateTableViewReq {
     1: required binary tableInfo
     2: required bool replace
@@ -1994,6 +1999,8 @@ service IConfigNodeRPCService {
   TDescTable4InformationSchemaResp descTables4InformationSchema()
 
   TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
+
+  TIsTableExistResp isTableExist(String database, String tableName)
 
   TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
 

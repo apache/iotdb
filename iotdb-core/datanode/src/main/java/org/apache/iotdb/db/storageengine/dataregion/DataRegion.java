@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -50,11 +51,15 @@ import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
+import org.apache.iotdb.db.exception.runtime.RegisterTableSchemaFailureException;
+import org.apache.iotdb.db.exception.runtime.TableNotExistsRuntimeException;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -69,6 +74,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -1394,9 +1401,49 @@ public class DataRegion implements IDataRegionForQuery {
     if (tableName != null) {
       tsFileProcessor.registerToTsFile(
           tableName,
-          t ->
-              TableSchema.of(DataNodeTableCache.getInstance().getTable(getDatabaseName(), t))
-                  .toTsFileTableSchemaNoAttribute());
+          t -> {
+            TsTable tsTable = DataNodeTableCache.getInstance().getTable(getDatabaseName(), t);
+            if (tsTable == null) {
+              // There is a high probability that the leader node has been executed and is currently
+              // located in the follower node.
+              if (node.isGeneratedByRemoteConsensusLeader()) {
+                // If current node is follower, after request config node and get the answer that
+                // table is exist or not, then tell leader node when table is not exist.
+                boolean isTableExist = false;
+                try {
+                  TIsTableExistResp resp =
+                      ConfigNodeClientManager.getInstance()
+                          .borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)
+                          .isTableExist(getDatabaseName(), tableName);
+                  isTableExist = (resp != null) && resp.isExist;
+                } catch (Exception e) {
+                  // As the last plan instead of request config node for get schema.
+                  logger.error(
+                      String.format(
+                          "Remote request config node  failed that judgment if table is exist, occur exception. %s",
+                          e.getMessage()));
+                  TableMetadataImpl metadata = new TableMetadataImpl();
+                  QualifiedObjectName qualifiedObjectName =
+                      new QualifiedObjectName(getDatabaseName(), tableName);
+                  isTableExist = metadata.tableExists(qualifiedObjectName);
+                }
+                if (!isTableExist) {
+                  throw new TableNotExistsRuntimeException(getDatabaseName(), tableName);
+                } else {
+                  logger.error(
+                      "Due tsTable is null, table schema can't be got, it's no way to register it.");
+                  throw new RegisterTableSchemaFailureException(getDatabaseName(), tableName);
+                }
+              } else {
+                // here may be invoked by leader node, the table is very unexpected not exist in the
+                // DataNodeTableCache
+                logger.error(
+                    "Due tsTable is null, table schema can't be got, leader node occur special situation need to resolve.");
+                throw new TableNotExistsRuntimeException(getDatabaseName(), tableName);
+              }
+            }
+            return TableSchema.of(tsTable).toTsFileTableSchemaNoAttribute();
+          });
     }
   }
 

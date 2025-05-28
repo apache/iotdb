@@ -882,4 +882,6 @@ public interface IManager {
   TDescTable4InformationSchemaResp describeTable4InformationSchema();
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
+
+  TIsTableExistResp isTableExist(final String database, final String tableName);
 }
