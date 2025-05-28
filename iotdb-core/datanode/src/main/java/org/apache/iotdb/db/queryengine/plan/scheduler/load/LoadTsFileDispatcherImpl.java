@@ -222,7 +222,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   public Future<FragInstanceDispatchResult> dispatchCommand(
-      TLoadCommandReq loadCommandReq, Set<TRegionReplicaSet> replicaSets) {
+      TLoadCommandReq originalLoadCommandReq, Set<TRegionReplicaSet> replicaSets) {
     Set<TEndPoint> allEndPoint = new HashSet<>();
     for (TRegionReplicaSet replicaSet : replicaSets) {
       for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
@@ -231,23 +231,27 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     }
 
     for (TEndPoint endPoint : allEndPoint) {
+      // duplicate for progress index binary serialization
+      final TLoadCommandReq duplicatedLoadCommandReq = originalLoadCommandReq.deepCopy();
       try (SetThreadName threadName =
           new SetThreadName(
               "load-dispatcher"
                   + "-"
-                  + LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType]
+                  + LoadTsFileScheduler.LoadCommand.values()[duplicatedLoadCommandReq.commandType]
                   + "-"
-                  + loadCommandReq.uuid)) {
+                  + duplicatedLoadCommandReq.uuid)) {
         if (isDispatchedToLocal(endPoint)) {
-          dispatchLocally(loadCommandReq);
+          dispatchLocally(duplicatedLoadCommandReq);
         } else {
-          dispatchRemote(loadCommandReq, endPoint);
+          dispatchRemote(duplicatedLoadCommandReq, endPoint);
         }
       } catch (FragmentInstanceDispatchException e) {
-        LOGGER.warn("Cannot dispatch LoadCommand for load operation {}", loadCommandReq, e);
+        LOGGER.warn(
+            "Cannot dispatch LoadCommand for load operation {}", duplicatedLoadCommandReq, e);
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
       } catch (Exception t) {
-        LOGGER.warn("Cannot dispatch LoadCommand for load operation {}", loadCommandReq, t);
+        LOGGER.warn(
+            "Cannot dispatch LoadCommand for load operation {}", duplicatedLoadCommandReq, t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
