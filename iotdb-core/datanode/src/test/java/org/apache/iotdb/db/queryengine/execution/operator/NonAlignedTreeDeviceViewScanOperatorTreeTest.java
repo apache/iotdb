@@ -652,8 +652,8 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
       assignments.put(symbol, columnSchemaMap.get(symbol));
     }
 
-    Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>();
-    idAndAttributeIndexMap.put(new Symbol("tag1"), 0);
+    Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>();
+    tagAndAttributeIndexMap.put(new Symbol("tag1"), 0);
 
     List<DeviceEntry> deviceEntries =
         Arrays.asList(
@@ -684,7 +684,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         Ordering.ASC,
         timePredicate,
         pushDownPredicate,

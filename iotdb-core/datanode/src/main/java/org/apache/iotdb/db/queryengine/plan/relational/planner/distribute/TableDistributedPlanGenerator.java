@@ -84,6 +84,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -104,6 +105,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -231,10 +233,51 @@ public class TableDistributedPlanGenerator
           ImmutableSet.copyOf(node.getOutputSymbols()).containsAll(childOrdering.getOrderBy());
     }
     if (childrenNodes.size() == 1) {
+      PlanNode child = childrenNodes.get(0);
       if (containAllSortItem) {
         nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
       }
-      node.setChild(childrenNodes.get(0));
+
+      // Now the join implement but CROSS is MergeSortJoin, so it can keep order
+      if (child instanceof JoinNode) {
+        JoinNode joinNode = (JoinNode) child;
+
+        // We only process FULL Join here, other type will be processed in visitJoinNode()
+        if (joinNode.getJoinType() == JoinNode.JoinType.FULL
+            && !joinNode.getAsofCriteria().isPresent()) {
+          Map<Symbol, Expression> assignmentsMap = node.getAssignments().getMap();
+          // If these Coalesces are all appear in ProjectNode, the ProjectNode is ordered
+          int coalescesSize = joinNode.getCriteria().size();
+
+          // We use map to memorize Symbol of according Coalesce, use linked to avoid twice query of
+          // this Map when constructOrderingSchema
+          Map<Expression, Symbol> orderedCoalesces = new LinkedHashMap<>(coalescesSize);
+          for (JoinNode.EquiJoinClause clause : joinNode.getCriteria()) {
+            orderedCoalesces.put(
+                new CoalesceExpression(
+                    ImmutableList.of(
+                        clause.getLeft().toSymbolReference(),
+                        clause.getRight().toSymbolReference())),
+                null);
+          }
+
+          for (Map.Entry<Symbol, Expression> assignment : assignmentsMap.entrySet()) {
+            if (orderedCoalesces.containsKey(assignment.getValue())) {
+              coalescesSize--;
+              orderedCoalesces.put(assignment.getValue(), assignment.getKey());
+            }
+          }
+
+          // All Coalesces appear in ProjectNode
+          if (coalescesSize == 0) {
+            nodeOrderingMap.put(
+                node.getPlanNodeId(),
+                constructOrderingSchema(new ArrayList<>(orderedCoalesces.values())));
+          }
+        }
+      }
+
+      node.setChild(child);
       return Collections.singletonList(node);
     }
 
@@ -481,14 +524,36 @@ public class TableDistributedPlanGenerator
           rightChildrenNodes.size() == 1,
           "The size of right children node of JoinNode should be 1");
     }
+
+    OrderingScheme leftChildOrdering = nodeOrderingMap.get(node.getLeftChild().getPlanNodeId());
+    OrderingScheme rightChildOrdering = nodeOrderingMap.get(node.getRightChild().getPlanNodeId());
+
     // For CrossJoinNode, we need to merge children nodes(It's safe for other JoinNodes here since
     // the size of their children is always 1.)
-    node.setLeftChild(
-        mergeChildrenViaCollectOrMergeSort(
-            nodeOrderingMap.get(node.getLeftChild().getPlanNodeId()), leftChildrenNodes));
-    node.setRightChild(
-        mergeChildrenViaCollectOrMergeSort(
-            nodeOrderingMap.get(node.getRightChild().getPlanNodeId()), rightChildrenNodes));
+    node.setLeftChild(mergeChildrenViaCollectOrMergeSort(leftChildOrdering, leftChildrenNodes));
+    node.setRightChild(mergeChildrenViaCollectOrMergeSort(rightChildOrdering, rightChildrenNodes));
+
+    // Now the join implement but CROSS is MergeSortJoin, so it can keep order
+    if (!node.isCrossJoin() && !node.getAsofCriteria().isPresent()) {
+      switch (node.getJoinType()) {
+        case FULL:
+          // If join type is FULL Join, we will process SortProperties in ProjectNode above this
+          // node.
+          break;
+        case INNER:
+        case LEFT:
+          if (ImmutableSet.copyOf(node.getLeftOutputSymbols())
+              .containsAll(leftChildOrdering.getOrderBy())) {
+            nodeOrderingMap.put(node.getPlanNodeId(), leftChildOrdering);
+          }
+          break;
+        case RIGHT:
+          throw new IllegalStateException(
+              "RIGHT Join should be transformed to LEFT Join in previous process");
+        default:
+          throw new UnsupportedOperationException("Unsupported Join Type: " + node.getJoinType());
+      }
+    }
     return Collections.singletonList(node);
   }
 
@@ -565,7 +630,7 @@ public class TableDistributedPlanGenerator
                         node.getOutputSymbols(),
                         node.getAssignments(),
                         new ArrayList<>(),
-                        node.getIdAndAttributeIndexMap(),
+                        node.getTagAndAttributeIndexMap(),
                         node.getScanOrder(),
                         node.getTimePredicate().orElse(null),
                         node.getPushDownPredicate(),
@@ -640,7 +705,7 @@ public class TableDistributedPlanGenerator
                           node.getOutputSymbols(),
                           node.getAssignments(),
                           new ArrayList<>(),
-                          node.getIdAndAttributeIndexMap(),
+                          node.getTagAndAttributeIndexMap(),
                           node.getScanOrder(),
                           node.getTimePredicate().orElse(null),
                           node.getPushDownPredicate(),
@@ -727,7 +792,7 @@ public class TableDistributedPlanGenerator
                   node.getOutputSymbols(),
                   node.getAssignments(),
                   new ArrayList<>(),
-                  node.getIdAndAttributeIndexMap(),
+                  node.getTagAndAttributeIndexMap(),
                   node.getScanOrder(),
                   node.getTimePredicate().orElse(null),
                   node.getPushDownPredicate(),
@@ -749,7 +814,7 @@ public class TableDistributedPlanGenerator
                   node.getOutputSymbols(),
                   node.getAssignments(),
                   new ArrayList<>(),
-                  node.getIdAndAttributeIndexMap(),
+                  node.getTagAndAttributeIndexMap(),
                   node.getScanOrder(),
                   node.getTimePredicate().orElse(null),
                   node.getPushDownPredicate(),
@@ -1166,7 +1231,7 @@ public class TableDistributedPlanGenerator
                               partialAggTableScanNode.getOutputSymbols(),
                               partialAggTableScanNode.getAssignments(),
                               new ArrayList<>(),
-                              partialAggTableScanNode.getIdAndAttributeIndexMap(),
+                              partialAggTableScanNode.getTagAndAttributeIndexMap(),
                               partialAggTableScanNode.getScanOrder(),
                               partialAggTableScanNode.getTimePredicate().orElse(null),
                               partialAggTableScanNode.getPushDownPredicate(),
@@ -1186,7 +1251,7 @@ public class TableDistributedPlanGenerator
                               partialAggTableScanNode.getOutputSymbols(),
                               partialAggTableScanNode.getAssignments(),
                               new ArrayList<>(),
-                              partialAggTableScanNode.getIdAndAttributeIndexMap(),
+                              partialAggTableScanNode.getTagAndAttributeIndexMap(),
                               partialAggTableScanNode.getScanOrder(),
                               partialAggTableScanNode.getTimePredicate().orElse(null),
                               partialAggTableScanNode.getPushDownPredicate(),
@@ -1267,7 +1332,7 @@ public class TableDistributedPlanGenerator
         newSortOrders.add(expectedOrderingScheme.getOrdering(symbol));
         lastIsTimeRelated = true;
         break;
-      } else if (!deviceTableScanNode.getIdAndAttributeIndexMap().containsKey(symbol)) {
+      } else if (!deviceTableScanNode.getTagAndAttributeIndexMap().containsKey(symbol)) {
         break;
       }
 
@@ -1284,7 +1349,7 @@ public class TableDistributedPlanGenerator
         createTreeDeviceIdColumnValueExtractor(deviceTableScanNode);
     final List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
     for (final Symbol symbol : newOrderingSymbols) {
-      final Integer idx = deviceTableScanNode.getIdAndAttributeIndexMap().get(symbol);
+      final Integer idx = deviceTableScanNode.getTagAndAttributeIndexMap().get(symbol);
       if (idx == null) {
         // time column or date_bin column
         break;
