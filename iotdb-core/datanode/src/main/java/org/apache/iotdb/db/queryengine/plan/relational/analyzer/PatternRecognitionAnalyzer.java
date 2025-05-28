@@ -88,8 +88,6 @@ public class PatternRecognitionAnalyzer {
             String.format("union pattern variable name: %s is declared twice", subset.getName()));
       }
       for (Identifier element : subset.getIdentifiers()) {
-        // TODO can there be repetitions in the list of subset elements? (currently repetitions are
-        // supported)
         if (!primaryLabels.contains(label(element))) {
           throw new SemanticException(
               String.format("subset element: %s is not a primary pattern variable", element));

@@ -51,7 +51,6 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.MAX_RESERVED_MEMORY;
 
-// TODO:
 public class PatternRecognitionOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =

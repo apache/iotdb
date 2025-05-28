@@ -49,7 +49,6 @@ public class RowComparator {
     return equal(column, dataTypes.get(0), offset1, offset2);
   }
 
-  // TODO: need to add timestamp and other data types
   private boolean equal(Column column, TSDataType dataType, int offset1, int offset2) {
     switch (dataType) {
       case BOOLEAN:

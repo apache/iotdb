@@ -101,6 +101,9 @@ public class IoTDBPatternRecognitionIT {
         // TABLE: t5
         "CREATE TABLE t5(part STRING TAG, num INT32 FIELD, totalprice DOUBLE FIELD)",
         "INSERT INTO t5 VALUES (2025-01-01T00:01:00, 'p1', 1, 10.0)",
+
+        // TABLE: t6
+
       };
 
   private static void insertData() {
@@ -710,6 +713,35 @@ public class IoTDBPatternRecognitionIT {
   }
 
   @Test
+  public void testRowPattern() {
+    String[] expectedHeader = new String[] {"time", "match", "price", "label"};
+    String[] retArray1 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,1,null,null,",
+          "2025-01-01T00:02:00.000Z,2,80.0,B,",
+          "2025-01-01T00:03:00.000Z,2,70.0,B,",
+          "2025-01-01T00:04:00.000Z,2,70.0,B,",
+        };
+
+    String sql =
+        "SELECT m.time, m.match, m.price, m.label "
+            + "FROM t1 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        RUNNING RPR_LAST(totalprice) AS price,  "
+            + "        CLASSIFIER() AS label "
+            + "    ALL ROWS PER MATCH "
+            + "    AFTER MATCH SKIP PAST LAST ROW "
+            + "    %s " // PATTERN
+            + "    DEFINE "
+            + "        B AS B.totalprice <= PREV(B.totalprice) "
+            + ") AS m";
+
+    tableResultSetEqualTest(format(sql, "PATTERN (B*)"), expectedHeader, retArray1, DATABASE_NAME);
+  }
+
+  @Test
   public void testPatternQuantifier() {
     String[] expectedHeader = new String[] {"time", "match", "price", "label"};
     String[] retArray1 =
@@ -745,6 +777,10 @@ public class IoTDBPatternRecognitionIT {
           "2025-01-01T00:03:00.000Z,3,70.0,B,",
           "2025-01-01T00:04:00.000Z,4,70.0,B,",
         };
+    String[] retArray6 =
+        new String[] {
+          "2025-01-01T00:02:00.000Z,1,80.0,B,", "2025-01-01T00:03:00.000Z,1,70.0,B,",
+        };
 
     String sql =
         "SELECT m.time, m.match, m.price, m.label "
@@ -774,9 +810,74 @@ public class IoTDBPatternRecognitionIT {
     tableResultSetEqualTest(format(sql, "PATTERN (B??)"), expectedHeader, retArray2, DATABASE_NAME);
 
     tableResultSetEqualTest(
-        format(sql, "PATTERN (B{,}?)"), expectedHeader, retArray2, DATABASE_NAME);
+        format(sql, "PATTERN (B{,})"), expectedHeader, retArray1, DATABASE_NAME);
 
     tableResultSetEqualTest(
         format(sql, "PATTERN (B{,}?)"), expectedHeader, retArray2, DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (B{1,})"), expectedHeader, retArray3, DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (B{1,}?)"), expectedHeader, retArray4, DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (B{2,})"), expectedHeader, retArray3, DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (B{2,}?)"), expectedHeader, retArray6, DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (B{5,})"), expectedHeader, new String[] {}, DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (B{5,}?)"), expectedHeader, new String[] {}, DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (B{,1})"), expectedHeader, retArray5, DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (B{,1}?)"), expectedHeader, retArray2, DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (B{1,1})"), expectedHeader, retArray4, DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (B{1,1}?)"), expectedHeader, retArray4, DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (B{1})"), expectedHeader, retArray4, DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (B{1}?)"), expectedHeader, retArray4, DATABASE_NAME);
+  }
+
+  @Test
+  public void testPatternExclusion() {
+    String[] expectedHeader = new String[] {"time", "match", "price", "label"};
+    String[] retArray1 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,1,null,null,",
+          "2025-01-01T00:02:00.000Z,2,80.0,B,",
+          "2025-01-01T00:03:00.000Z,2,70.0,B,",
+          "2025-01-01T00:04:00.000Z,2,70.0,B,",
+        };
+
+    String sql =
+        "SELECT m.time, m.match, m.price, m.label "
+            + "FROM t1 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        RUNNING RPR_LAST(totalprice) AS price,  "
+            + "        CLASSIFIER() AS label "
+            + "    ALL ROWS PER MATCH "
+            + "    AFTER MATCH SKIP PAST LAST ROW "
+            + "    %s " // PATTERN
+            + "    DEFINE "
+            + "        B AS B.totalprice <= PREV(B.totalprice) "
+            + ") AS m";
+
+    tableResultSetEqualTest(format(sql, "PATTERN (B*)"), expectedHeader, retArray1, DATABASE_NAME);
   }
 }

@@ -30,6 +30,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrRowP
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.Test;
 
 import java.util.Map;
@@ -43,6 +45,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.Patterns.questionMarkQuantified;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.Patterns.starQuantified;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.Patterns.start;
+import static org.mockito.Mockito.mock;
 
 public class MatcherTest {
   private static final Map<IrLabel, Integer> LABEL_MAPPING =
@@ -168,7 +171,7 @@ public class MatcherTest {
     private final int[] input;
 
     public testPatternVariableRecognizer(int[] input) {
-      super(0, 0, 0, 0, 1, ImmutableList.of(), new Partition(ImmutableList.of(), -1, -1));
+      super(0, 0, 0, 0, 1, ImmutableList.of(), createDummyPartition());
       this.input = input;
     }
 
@@ -195,6 +198,12 @@ public class MatcherTest {
     public boolean evaluateLabel(ArrayView matchedLabels) {
       int position = matchedLabels.length() - 1;
       return input[position] == matchedLabels.get(position);
+    }
+
+    private static Partition createDummyPartition() {
+      Column dummyColumn = mock(Column.class);
+      TsBlock dummyBlock = new TsBlock(1, dummyColumn);
+      return new Partition(ImmutableList.of(dummyBlock), 0, 1);
     }
   }
 }

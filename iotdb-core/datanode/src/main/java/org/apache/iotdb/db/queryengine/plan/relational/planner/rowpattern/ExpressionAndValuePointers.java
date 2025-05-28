@@ -80,14 +80,6 @@ public class ExpressionAndValuePointers {
           inputSymbols.add(symbol);
         }
       }
-      // TODO: need to support Aggregation later
-      //      else if (valuePointer instanceof AggregationValuePointer) {
-      //        AggregationValuePointer pointer = (AggregationValuePointer) valuePointer;
-      //        inputSymbols.addAll(
-      //            pointer.getInputSymbols().stream()
-      //                .filter(symbol -> !localInputs.contains(symbol))
-      //                .collect(Collectors.toList()));
-      //      }
     }
 
     return inputSymbols.build();

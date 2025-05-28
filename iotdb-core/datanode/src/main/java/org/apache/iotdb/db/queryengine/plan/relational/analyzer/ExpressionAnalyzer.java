@@ -98,11 +98,10 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
+import javax.annotation.Nullable;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.UnknownType;
-
-import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1063,7 +1062,6 @@ public class ExpressionAnalyzer {
         FunctionCall node, StackableAstVisitorContext<Context> context, String name) {
       validateNavigationFunctionArguments(node);
 
-      // TODO: this should only be done at the root of a pattern recognition function call tree
       checkNoNestedAggregations(node);
       validateNavigationNesting(node);
 
@@ -1086,15 +1084,6 @@ public class ExpressionAnalyzer {
                               navigation.getLogicalOffset(),
                               offset))));
 
-      // TODO: this should only be done at the root of a pattern recognition function call tree
-      //      if (!validateLabelConsistency(node, 0).hasLabel()) {
-      //        throw new SemanticException(
-      //            String.format(
-      //                "Pattern navigation function '%s' must contain at least one column reference
-      // or CLASSIFIER()",
-      //                name));
-      //      }
-
       patternNavigationFunctions.add(NodeRef.of(node));
 
       return type;
@@ -1104,7 +1093,6 @@ public class ExpressionAnalyzer {
         FunctionCall node, StackableAstVisitorContext<Context> context, String name) {
       validateNavigationFunctionArguments(node);
 
-      // TODO: this should only be done at the root of a pattern recognition function call tree
       checkNoNestedAggregations(node);
       validateNavigationNesting(node);
 
@@ -1136,15 +1124,6 @@ public class ExpressionAnalyzer {
                                   .getPatternRecognitionContext()
                                   .getNavigation()
                                   .getPhysicalOffset()))));
-
-      // TODO: this should only be done at the root of a pattern recognition function call tree
-      //      if (!validateLabelConsistency(node, 0).hasLabel()) {
-      //        throw new SemanticException(
-      //            String.format(
-      //                "Pattern navigation function '%s' must contain at least one column reference
-      // or CLASSIFIER()",
-      //                name));
-      //      }
 
       patternNavigationFunctions.add(NodeRef.of(node));
 
@@ -1200,8 +1179,6 @@ public class ExpressionAnalyzer {
                 "%s pattern recognition function requires 1 or 2 arguments", node.getName()));
       }
       if (node.getArguments().size() == 2) {
-        // TODO the offset argument must be effectively constant, not necessarily a number. This
-        // could be extended with the use of ConstantAnalyzer.
         if (!(node.getArguments().get(1) instanceof LongLiteral)) {
           throw new SemanticException(
               String.format(
@@ -1480,9 +1457,7 @@ public class ExpressionAnalyzer {
       return type;
     }
 
-    /**
-     * @return the common supertype between the value type and subquery type
-     */
+    /** @return the common supertype between the value type and subquery type */
     private Type analyzePredicateWithSubquery(
         Expression node,
         Type declaredValueType,
@@ -1553,10 +1528,7 @@ public class ExpressionAnalyzer {
       Scope subqueryScope = Scope.builder().withParent(context.getContext().getScope()).build();
 
       List<RowType.Field> fields =
-          analyzer
-              .analyze(node.getSubquery(), subqueryScope)
-              .getRelationType()
-              .getAllFields()
+          analyzer.analyze(node.getSubquery(), subqueryScope).getRelationType().getAllFields()
               .stream()
               .map(
                   field -> {

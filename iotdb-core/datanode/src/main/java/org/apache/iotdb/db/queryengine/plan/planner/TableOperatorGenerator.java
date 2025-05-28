@@ -222,6 +222,7 @@ import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import javax.validation.constraints.NotNull;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -249,8 +250,6 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-
-import javax.validation.constraints.NotNull;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -3142,7 +3141,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     }
   }
 
-  // TODO
   @Override
   public Operator visitPatternRecognition(
       PatternRecognitionNode node, LocalExecutionPlanContext context) {
