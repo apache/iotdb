@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.plugin.PipeDataNodePluginAgent;
 import org.apache.iotdb.db.pipe.agent.receiver.PipeDataNodeReceiverAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeDataNodeRuntimeAgent;
@@ -39,6 +40,10 @@ public class PipeDataNodeAgent {
     pipeDataNodeTaskAgent = new PipeDataNodeTaskAgent();
     pipeDataNodeRuntimeAgent = new PipeDataNodeRuntimeAgent();
     pipeDataNodeReceiverAgent = new PipeDataNodeReceiverAgent();
+
+    // bind runtime agent's period executor to pipe config for pipeTaskMeta persist progressIndex,
+    // due to project structure reasons.
+    PipeConfig.getInstance().setPipePeriodicalJobExecutor(runtime().getPipePeriodicalJobExecutor());
   }
 
   /** The singleton holder of {@link PipeDataNodeAgent}. */

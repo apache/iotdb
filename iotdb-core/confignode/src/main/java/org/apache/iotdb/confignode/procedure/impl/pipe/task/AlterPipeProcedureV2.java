@@ -167,7 +167,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           (taskId, pipeTaskMeta) -> {
             updatedConsensusGroupIdToTaskMetaMap.put(
                 taskId,
-                new PipeTaskMeta(pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderNodeId()));
+                new PipeTaskMeta(
+                    pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderNodeId(), taskId));
           });
     } else {
       // data regions & schema regions
@@ -188,7 +189,10 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   // Pipe only collect user's data, filter metric database here.
                   updatedConsensusGroupIdToTaskMetaMap.put(
                       regionGroupId.getId(),
-                      new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
+                      new PipeTaskMeta(
+                          currentPipeTaskMeta.getProgressIndex(),
+                          regionLeaderNodeId,
+                          regionGroupId.getId()));
                 }
               });
 
@@ -204,7 +208,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             new PipeTaskMeta(
                 configRegionTaskMeta.getProgressIndex(),
                 // The leader of the config region is the config node itself
-                ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+                ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+                configRegionTaskMeta.getProgressIndex().hashCode()));
       }
     }
 
