@@ -305,6 +305,17 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                           : context.getDatabaseName().get()),
               tsFiles);
         } else {
+          for (File tsFile : tsFiles) {
+            try (final TsFileSequenceReader reader =
+                new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+              if (reader.getTableSchemaMap() != null) {
+                throw new LoadAnalyzeException(
+                    String.format(
+                        "tsFile %s is a table model file, please specify the database for table data.",
+                        tsFile.getAbsolutePath()));
+              }
+            }
+          }
           loadTsFilesAsyncToTargetDir(new File(targetFilePath), tsFiles);
         }
       } catch (Exception e) {
