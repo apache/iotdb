@@ -996,6 +996,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             : new HashMap<>();
 
     withAttributes.forEach(LoadTsFileConfigurator::validateParameters);
+    LoadTsFileConfigurator.validateSynonymParameters(withAttributes);
     return new LoadTsFile(
         getLocation(ctx), ((StringLiteral) visit(ctx.fileName)).getValue(), withAttributes);
   }
@@ -2387,8 +2388,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       joinType = Join.Type.INNER;
     }
 
-    if (criteria instanceof AsofJoinOn && joinType != Join.Type.INNER && timeDuration != null) {
-      throw new SemanticException("Tolerance in ASOF JOIN is only support INNER type now");
+    if (criteria instanceof AsofJoinOn) {
+      if (joinType == Join.Type.RIGHT || joinType == Join.Type.FULL) {
+        throw new SemanticException(
+            String.format("ASOF JOIN does not support %s type now", joinType));
+      }
+
+      if (joinType != Join.Type.INNER && timeDuration != null) {
+        throw new SemanticException("Tolerance in ASOF JOIN only supports INNER type now");
+      }
     }
 
     return new Join(getLocation(ctx), joinType, left, right, criteria);
