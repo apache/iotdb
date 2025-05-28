@@ -1,0 +1,230 @@
+package org.apache.iotdb.db.queryengine.plan.relational.planner;
+
+import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import org.junit.Test;
+
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.window;
+
+public class WindowFunctionTest {
+  @Test
+  public void testSimpleWindowFunction() {
+    PlanTester planTester = new PlanTester();
+
+    String sql = "SELECT sum(s1) OVER(PARTITION BY tag1) FROM table1";
+
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    PlanMatchPattern tableScan =
+        tableScan("testdb.table1", ImmutableList.of("tag1", "s1"), ImmutableSet.of("tag1", "s1"));
+
+    // Verify full LogicalPlan
+    /*
+     *   └──OutputNode
+     *           └──ProjectNode
+     *             └──WindowNode
+     *               └──SortNode
+     *                 └──TableScanNode
+     */
+    assertPlan(logicalQueryPlan, output(project(window(sort(tableScan)))));
+
+    /*  ProjectNode
+     *     └──WindowNode
+     *         └──MergeSort
+     *               ├──ExchangeNode
+     *               │    └──TableScan
+     *               ├──ExchangeNode
+     *               │    └──TableScan
+     *               └──ExchangeNode
+     *                    └──TableScan
+     */
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(project(window(mergeSort(exchange(), exchange(), exchange())))));
+    assertPlan(planTester.getFragmentPlan(1), tableScan);
+    assertPlan(planTester.getFragmentPlan(2), tableScan);
+    assertPlan(planTester.getFragmentPlan(3), tableScan);
+  }
+
+  @Test
+  public void testWindowFunctionWithOrderBy() {
+    PlanTester planTester = new PlanTester();
+
+    String sql = "SELECT sum(s1) OVER(PARTITION BY tag1 ORDER BY s1) FROM table1";
+
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    PlanMatchPattern tableScan =
+        tableScan("testdb.table1", ImmutableList.of("tag1", "s1"), ImmutableSet.of("tag1", "s1"));
+
+    // Verify full LogicalPlan
+    /*
+     *   └──OutputNode
+     *           └──ProjectNode
+     *             └──WindowNode
+     *               └──SortNode
+     *                 └──TableScanNode
+     */
+    assertPlan(logicalQueryPlan, output(project(window(sort(tableScan)))));
+
+    /*  ProjectNode
+     *     └──WindowNode
+     *         └──MergeSort
+     *               ├──ExchangeNode
+     *               │    └──SortNode
+     *               │      └──TableScan
+     *               ├──ExchangeNode
+     *               │    └──SortNode
+     *               │       └──TableScan
+     *               └──ExchangeNode
+     *                    └──SortNode
+     *                       └──TableScan
+     */
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(project(window(mergeSort(exchange(), exchange(), exchange())))));
+    assertPlan(planTester.getFragmentPlan(1), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan));
+  }
+
+  @Test
+  public void testWindowFunctionOrderByPartitionByDup() {
+    PlanTester planTester = new PlanTester();
+
+    String sql = "SELECT sum(s1) OVER(PARTITION BY tag1 ORDER BY tag1) FROM table1";
+
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    PlanMatchPattern tableScan =
+        tableScan("testdb.table1", ImmutableList.of("tag1", "s1"), ImmutableSet.of("tag1", "s1"));
+
+    // Verify full LogicalPlan
+    /*
+     *   └──OutputNode
+     *           └──ProjectNode
+     *             └──WindowNode
+     *               └──SortNode
+     *                 └──TableScanNode
+     */
+    assertPlan(logicalQueryPlan, output(project(window(sort(tableScan)))));
+
+    /*  ProjectNode
+     *     └──WindowNode
+     *         └──MergeSort
+     *               ├──ExchangeNode
+     *               │    └──TableScan
+     *               ├──ExchangeNode
+     *               │    └──TableScan
+     *               └──ExchangeNode
+     *                    └──TableScan
+     */
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(project(window(mergeSort(exchange(), exchange(), exchange())))));
+    assertPlan(planTester.getFragmentPlan(1), tableScan);
+    assertPlan(planTester.getFragmentPlan(2), tableScan);
+    assertPlan(planTester.getFragmentPlan(3), tableScan);
+  }
+
+  @Test
+  public void testWindowFunctionWithFrame() {
+    PlanTester planTester = new PlanTester();
+
+    String sql =
+        "SELECT sum(s1) OVER(PARTITION BY tag1 ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM table1";
+
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    PlanMatchPattern tableScan =
+        tableScan("testdb.table1", ImmutableList.of("tag1", "s1"), ImmutableSet.of("tag1", "s1"));
+
+    // Verify full LogicalPlan
+    /*
+     *   └──OutputNode
+     *           └──ProjectNode
+     *             └──WindowNode
+     *               └──SortNode
+     *                 └──ProjectNode
+     *                   └──TableScanNode
+     */
+    assertPlan(logicalQueryPlan, output(project(window(sort(project(tableScan))))));
+
+    /*  ProjectNode
+     *     └──WindowNode
+     *         └──MergeSort
+     *               ├──ExchangeNode
+     *               │    └──ProjectNode
+     *               │        └──TableScan
+     *               ├──ExchangeNode
+     *               │    └──ProjectNode
+     *               │        └──TableScan
+     *               └──ExchangeNode
+     *                    └──ProjectNode
+     *                        └──TableScan
+     */
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(project(window(mergeSort(exchange(), exchange(), exchange())))));
+    assertPlan(planTester.getFragmentPlan(1), project(tableScan));
+    assertPlan(planTester.getFragmentPlan(2), project(tableScan));
+    assertPlan(planTester.getFragmentPlan(3), project(tableScan));
+  }
+
+  //  @Test
+  //  public void testWindowFunctionWithPushDown() {
+  //    PlanTester planTester = new PlanTester();
+  //
+  //    String sql =
+  //        "SELECT sum(s1) OVER(PARTITION BY (tag1,tag2,tag3)) FROM table1";
+  //
+  //    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+  //
+  //    PlanMatchPattern tableScan =
+  //        tableScan(
+  //            "testdb.table1",
+  //            ImmutableList.of("tag1", "tag2", "tag3", "s1"),
+  //            ImmutableSet.of("tag1", "tag2", "tag3", "s1"));
+  //
+  //    // Verify full LogicalPlan
+  //    /*
+  //     *   └──OutputNode
+  //     *           └──ProjectNode
+  //     *             └──WindowNode
+  //     *               └──SortNode
+  //     *                 └──ProjectNode
+  //     *                   └──TableScanNode
+  //     */
+  //    assertPlan(logicalQueryPlan, output(project(window(group(tableScan)))));
+  //
+  //    /*  └──ProjectNode
+  //     *        └──WindowNode
+  //     *           └──MergeSort
+  //     *               ├──ExchangeNode
+  //     *               │    └──ProjectNode
+  //     *               │        └──TableScan
+  //     *               ├──ExchangeNode
+  //     *               │    └──ProjectNode
+  //     *               │        └──TableScan
+  //     *               └──ExchangeNode
+  //     *                    └──ProjectNode
+  //     *                        └──TableScan
+  //     */
+  //    assertPlan(
+  //        planTester.getFragmentPlan(0),
+  //        output(project(window(mergeSort(exchange(), exchange(), exchange())))));
+  //    assertPlan(planTester.getFragmentPlan(1), project(tableScan));
+  //    assertPlan(planTester.getFragmentPlan(2), project(tableScan));
+  //    assertPlan(planTester.getFragmentPlan(3), project(tableScan));
+  //  }
+}
