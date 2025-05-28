@@ -45,6 +45,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
       LoggerFactory.getLogger(SubscriptionPipeTsFileEventBatch.class);
 
   private final PipeTabletEventTsFileBatch batch;
+  private final List<EnrichedEvent> enrichedEvents;
 
   public SubscriptionPipeTsFileEventBatch(
       final int regionId,
@@ -53,11 +54,13 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
       final long maxBatchSizeInBytes) {
     super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
     this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, maxBatchSizeInBytes);
+    this.enrichedEvents = new ArrayList<>();
   }
 
   @Override
   public synchronized void ack() {
     batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
+    enrichedEvents.forEach(event -> event.decreaseReferenceCount(this.getClass().getName(), true));
   }
 
   @Override
@@ -103,7 +106,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     } finally {
       try {
         event.close();
-        ((PipeTsFileInsertionEvent) event).decreaseReferenceCount(this.getClass().getName(), false);
+        enrichedEvents.add((PipeTsFileInsertionEvent) event);
       } catch (final Exception ignored) {
         // no exceptions will be thrown
       }
