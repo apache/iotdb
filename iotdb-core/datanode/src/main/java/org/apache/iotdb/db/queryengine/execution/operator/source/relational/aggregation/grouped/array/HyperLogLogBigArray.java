@@ -14,7 +14,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array;
 
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.HyperLogLog;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.HyperLogLog;
 
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOf;
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance;

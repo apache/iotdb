@@ -14,9 +14,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.HyperLogLog;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.HyperLogLogStateFactory;
-
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -27,7 +24,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.HyperLogLog.DEFAULT_STANDARD_ERROR;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.HyperLogLog.DEFAULT_STANDARD_ERROR;
 
 public class ApproxCountDistinctAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =

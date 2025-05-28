@@ -270,18 +270,3 @@ The following files include code modified from Apache Kafka project.
 
 Project page: https://github.com/apache/kafka
 License: https://github.com/apache/kafka/blob/trunk/LICENSE
-
---------------------------------------------------------------------------------
-
-The following files include code modified from Stream-Lib project.
-
-./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/operator/source/relational/aggregation/approximate/Counter.java
-./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/operator/source/relational/aggregation/approximate/DoublyLinkedList.java
-./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/operator/source/relational/aggregation/approximate/ExternalizableUtil.java
-./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/operator/source/relational/aggregation/approximate/ITopK.java
-./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/operator/source/relational/aggregation/approximate/ListNode2.java
-./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/operator/source/relational/aggregation/approximate/Pair.java
-./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/operator/source/relational/aggregation/approximate/StreamSummary.java
-
-Project page: https://github.com/addthis/stream-lib
-License: https://github.com/addthis/stream-lib/blob/master/LICENSE.txt
