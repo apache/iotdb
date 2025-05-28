@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.exception;
+package org.apache.iotdb.commons.exception.pipe;
 
-public class PipeConsensusRetryWithIncreasingIntervalException extends PipeException {
+public class PipeConsensusRetryWithIncreasingIntervalException
+    extends PipeRuntimeConnectorRetryTimesConfigurableException {
 
-  public PipeConsensusRetryWithIncreasingIntervalException(String message) {
-    super(message);
+  public PipeConsensusRetryWithIncreasingIntervalException(String message, int retryTimes) {
+    super(message, retryTimes);
   }
 }

@@ -106,6 +106,7 @@ public enum ThreadName {
   ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL("AsyncDataNodePipeConsensusServiceClientPool"),
   PIPE_CONSENSUS_DELETION_SERIALIZE("DAL-Serialize"),
   PIPE_CONSENSUS_TSFILE_WRITER_CHECKER("PipeConsensus-TsFileWriter-Checker"),
+  PIPE_CONSENSUS_BACKGROUND_TASK_EXECUTOR("PipeConsensusBackgroundTaskExecutor"),
 
   // -------------------------- IoTConsensus --------------------------
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
