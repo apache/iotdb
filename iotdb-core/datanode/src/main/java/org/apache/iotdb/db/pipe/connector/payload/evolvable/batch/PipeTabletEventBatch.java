@@ -21,6 +21,10 @@ package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeDynamicMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockType;
+import org.apache.iotdb.db.pipe.resource.memory.PipeModelFixedMemoryBlock;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -36,6 +40,11 @@ import java.util.Objects;
 public abstract class PipeTabletEventBatch implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventBatch.class);
+  private static final PipeModelFixedMemoryBlock PIPE_MODEL_FIXED_MEMORY_BLOCK =
+      PipeDataNodeResourceManager.memory()
+          .forceAllocateForModelFixedMemoryBlock(
+              PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfBatch(),
+              PipeMemoryBlockType.BATCH);
 
   protected final List<EnrichedEvent> events = new ArrayList<>();
 
@@ -43,11 +52,25 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   private long firstEventProcessingTime = Long.MIN_VALUE;
 
   protected long totalBufferSize = 0;
+  private final PipeDynamicMemoryBlock allocatedMemoryBlock;
 
   protected volatile boolean isClosed = false;
 
-  protected PipeTabletEventBatch(final int maxDelayInMs) {
+  protected PipeTabletEventBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
     this.maxDelayInMs = maxDelayInMs;
+
+    // limit in buffer size
+    this.allocatedMemoryBlock =
+        PIPE_MODEL_FIXED_MEMORY_BLOCK.registerPipeBatchMemoryBlock(requestMaxBatchSizeInBytes);
+    allocatedMemoryBlock.setExpandable(false);
+
+    if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
+      LOGGER.info(
+          "PipeTabletEventBatch: the max batch size is adjusted from {} to {} due to the "
+              + "memory restriction",
+          requestMaxBatchSizeInBytes,
+          getMaxBatchSizeInBytes());
+    }
   }
 
   /**
@@ -104,11 +127,17 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       throws WALPipeException, IOException;
 
   public boolean shouldEmit() {
-    return totalBufferSize >= getMaxBatchSizeInBytes()
-        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
+    final long diff = System.currentTimeMillis() - firstEventProcessingTime;
+    if (totalBufferSize >= getMaxBatchSizeInBytes() || diff >= maxDelayInMs) {
+      allocatedMemoryBlock.updateCurrentMemoryEfficiencyAdjustMem((double) diff / maxDelayInMs);
+      return true;
+    }
+    return false;
   }
 
-  protected abstract long getMaxBatchSizeInBytes();
+  private long getMaxBatchSizeInBytes() {
+    return allocatedMemoryBlock.getMemoryUsageInBytes();
+  }
 
   public synchronized void onSuccess() {
     events.clear();
@@ -124,6 +153,10 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
     clearEventsReferenceCount(PipeTabletEventBatch.class.getName());
     events.clear();
+
+    if (allocatedMemoryBlock != null) {
+      allocatedMemoryBlock.close();
+    }
   }
 
   /**

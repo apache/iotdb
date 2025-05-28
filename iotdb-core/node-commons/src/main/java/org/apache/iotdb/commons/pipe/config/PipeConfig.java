@@ -79,6 +79,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
   }
 
+  public double getPipeDataStructureWalMemoryProportion() {
+    return COMMON_CONFIG.getPipeDataStructureWalMemoryProportion();
+  }
+
+  public double getPipeDataStructureBatchMemoryProportion() {
+    return COMMON_CONFIG.getPipeDataStructureBatchMemoryProportion();
+  }
+
   public double getPipeTotalFloatingMemoryProportion() {
     return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
   }
@@ -221,6 +229,26 @@ public class PipeConfig {
 
   public double getPipeTsFileScanParsingThreshold() {
     return COMMON_CONFIG.getPipeTsFileScanParsingThreshold();
+  }
+
+  public double getPipeDynamicMemoryHistoryWeight() {
+    return COMMON_CONFIG.getPipeDynamicMemoryHistoryWeight();
+  }
+
+  public double getPipeDynamicMemoryAdjustmentThreshold() {
+    return COMMON_CONFIG.getPipeDynamicMemoryAdjustmentThreshold();
+  }
+
+  public double getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio() {
+    return COMMON_CONFIG.getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio();
+  }
+
+  public double getPipeThresholdAllocationStrategyLowUsageThreshold() {
+    return COMMON_CONFIG.getPipeThresholdAllocationStrategyLowUsageThreshold();
+  }
+
+  public double getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold() {
+    return COMMON_CONFIG.getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold();
   }
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
@@ -486,6 +514,19 @@ public class PipeConfig {
     LOGGER.info(
         "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
     LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
+
+    LOGGER.info("PipeDynamicMemoryHistoryWeight: {}", getPipeDynamicMemoryHistoryWeight());
+    LOGGER.info(
+        "PipeDynamicMemoryAdjustmentThreshold: {}", getPipeDynamicMemoryAdjustmentThreshold());
+    LOGGER.info(
+        "PipeThresholdAllocationStrategyMaximumMemoryIncrementRatio: {}",
+        getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio());
+    LOGGER.info(
+        "PipeThresholdAllocationStrategyLowUsageThreshold: {}",
+        getPipeThresholdAllocationStrategyLowUsageThreshold());
+    LOGGER.info(
+        "PipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold: {}",
+        getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold());
 
     LOGGER.info(
         "PipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold: {}",
