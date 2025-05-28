@@ -57,6 +57,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -640,6 +641,21 @@ public class IrExpressionInterpreter {
             toExpression(left, type(leftExpression)),
             toExpression(right, type(rightExpression)));
       } else {
+        if (!(left instanceof Number) || !(right instanceof Number)) {
+          throw new IllegalArgumentException("Both object must be type of number");
+        }
+        BigDecimal leftNum = new BigDecimal(left.toString());
+        BigDecimal rightNum = new BigDecimal(right.toString());
+
+        int compareResult = leftNum.compareTo(rightNum);
+        if (operator == ComparisonExpression.Operator.LESS_THAN) {
+          return compareResult < 0;
+        } else if (operator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
+          return compareResult < 0 || compareResult == 0;
+        } else if (operator == ComparisonExpression.Operator.EQUAL) {
+          return compareResult == 0;
+        }
+
         return new ComparisonExpression(
             operator,
             toExpression(left, type(leftExpression)),

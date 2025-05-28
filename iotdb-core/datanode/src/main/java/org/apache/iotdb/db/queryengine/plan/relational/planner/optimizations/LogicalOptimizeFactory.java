@@ -282,6 +282,9 @@ public class LogicalOptimizeFactory {
             plannerContext, ruleStats, ImmutableSet.of(new PruneDistinctAggregation())),
         simplifyOptimizer,
         new PushPredicateIntoTableScan(plannerContext, typeAnalyzer),
+        // Currently, we inline symbols but do not simplify them in predicate push down.
+        // So we have to add extra simplifyOptimizer here
+        simplifyOptimizer,
         // Currently, Distinct is not supported, so we cant use this rule for now.
         //        new IterativeOptimizer(
         //            plannerContext,
