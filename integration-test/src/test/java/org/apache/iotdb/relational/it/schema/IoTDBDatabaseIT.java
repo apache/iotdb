@@ -662,6 +662,7 @@ public class IoTDBDatabaseIT {
                   "_timerxl,",
                   "_STLForecaster,",
                   "_NaiveForecaster,",
+                  "_HoltWinters,",
                   "_ARIMA,",
                   "_ExponentialSmoothing,")));
 
