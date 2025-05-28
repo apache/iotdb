@@ -254,16 +254,14 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   }
 
   private void preScheduleLowPriorityTask(int maxRetries) {
-    while (highPriorityLockTaskCount.get() != 0L && maxRetries > 0) {
-      maxRetries--;
-      if (maxRetries == 0) {
-        try {
-          Thread.sleep(10);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          LOGGER.warn("Interrupted while waiting for the high priority lock task.", e);
-          break;
-        }
+    while (highPriorityLockTaskCount.get() != 0L && maxRetries-- > 0) {
+      try {
+        // Introduce a short delay to avoid CPU spinning
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("Interrupted while waiting for the high priority lock task.", e);
+        break;
       }
     }
   }
