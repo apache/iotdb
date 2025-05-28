@@ -178,7 +178,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     DataNodeHolder.INSTANCE = this;
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     registerManager = new RegisterManager();
     DataNodeSystemPropertiesHandler.getInstance()
@@ -791,12 +790,17 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // Start client RPCService to indicate that the current DataNode provide external services
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
+        .setRpcImplClassName(getClientRPCServiceImplClassName());
     if (config.isEnableRpcService()) {
       registerManager.register(ExternalRPCService.getInstance());
     }
     // init service protocols
     initProtocols();
+  }
+
+  // make it easier for users to extend ClientRPCServiceImpl to export more rpc services
+  protected String getClientRPCServiceImplClassName() {
+    return ClientRPCServiceImpl.class.getName();
   }
 
   private void setUpMetricService() throws StartupException {
