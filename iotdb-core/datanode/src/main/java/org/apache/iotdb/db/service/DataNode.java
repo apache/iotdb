@@ -780,8 +780,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   /** Set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
-    // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
-    registerManager.register(DataNodeInternalRPCService.getInstance());
+
+    registerInternalRPCService();
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because
@@ -796,6 +796,11 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
     // init service protocols
     initProtocols();
+  }
+
+  protected void registerInternalRPCService() throws StartupException {
+    // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
+    registerManager.register(DataNodeInternalRPCService.getInstance());
   }
 
   // make it easier for users to extend ClientRPCServiceImpl to export more rpc services
