@@ -74,6 +74,32 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-cpp-files</id>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/build/main/generated-sources-cpp</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/src/main</directory>
+                                    <includes>
+                                        <include>**/*.h</include>
+                                        <include>**/*.cpp</include>
+                                        <include>**/*.cc</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
                     <execution>
@@ -154,14 +180,6 @@
                                 <fileSet>
                                     <sourceFile>${project.basedir}/src/main/CMakeLists.txt</sourceFile>
                                     <destinationFile>${project.build.directory}/build/main/CMakeLists.txt</destinationFile>
-                                </fileSet>
-                                <fileSet>
-                                    <sourceFile>${project.basedir}/src/main/Session.h</sourceFile>
-                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/Session.h</destinationFile>
-                                </fileSet>
-                                <fileSet>
-                                    <sourceFile>${project.basedir}/src/main/Session.cpp</sourceFile>
-                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/Session.cpp</destinationFile>
                                 </fileSet>
                             </fileSets>
                         </configuration>
