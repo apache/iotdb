@@ -33,6 +33,7 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
@@ -265,6 +266,11 @@ public class IoTDBWindowFunctionIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT *, lead(value) OVER (PARTITION BY device ORDER BY time ROWS 1 PRECEDING) AS ld FROM demo",
+        "Cannot specify window frame for lead function",
+        DATABASE_NAME);
   }
 
   @Test
@@ -283,6 +289,11 @@ public class IoTDBWindowFunctionIT {
         "SELECT *, lag(value) OVER (PARTITION BY device ORDER BY time) AS lg FROM demo ORDER BY device",
         expectedHeader,
         retArray,
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT *, lag(value) OVER (PARTITION BY device ORDER BY time ROWS 1 PRECEDING) AS lg FROM demo",
+        "Cannot specify window frame for lag function",
         DATABASE_NAME);
   }
 
