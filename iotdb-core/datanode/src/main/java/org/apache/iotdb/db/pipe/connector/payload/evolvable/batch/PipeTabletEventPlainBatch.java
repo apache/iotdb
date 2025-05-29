@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -52,36 +50,11 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   private final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
   private final List<ByteBuffer> tabletBuffers = new ArrayList<>();
 
-  // limit in buffer size
-  private final PipeMemoryBlock allocatedMemoryBlock;
-
   // Used to rate limit when transferring data
   private final Map<Pair<String, Long>, Long> pipe2BytesAccumulated = new HashMap<>();
 
   PipeTabletEventPlainBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
-    super(maxDelayInMs);
-    this.allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory()
-            .tryAllocate(requestMaxBatchSizeInBytes)
-            .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 0))
-            .setShrinkCallback(
-                (oldMemory, newMemory) ->
-                    LOGGER.info(
-                        "The batch size limit has shrunk from {} to {}.", oldMemory, newMemory))
-            .setExpandMethod(
-                oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, requestMaxBatchSizeInBytes))
-            .setExpandCallback(
-                (oldMemory, newMemory) ->
-                    LOGGER.info(
-                        "The batch size limit has expanded from {} to {}.", oldMemory, newMemory));
-
-    if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
-      LOGGER.info(
-          "PipeTabletEventBatch: the max batch size is adjusted from {} to {} due to the "
-              + "memory restriction",
-          requestMaxBatchSizeInBytes,
-          getMaxBatchSizeInBytes());
-    }
+    super(maxDelayInMs, requestMaxBatchSizeInBytes);
   }
 
   @Override
@@ -111,11 +84,6 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   public PipeTransferTabletBatchReq toTPipeTransferReq() throws IOException {
     return PipeTransferTabletBatchReq.toTPipeTransferReq(
         binaryBuffers, insertNodeBuffers, tabletBuffers);
-  }
-
-  @Override
-  protected long getMaxBatchSizeInBytes() {
-    return allocatedMemoryBlock.getMemoryUsageInBytes();
   }
 
   public Map<Pair<String, Long>, Long> deepCopyPipeName2BytesAccumulated() {
@@ -155,12 +123,5 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
       tabletBuffers.add(buffer);
     }
     return buffer.limit();
-  }
-
-  @Override
-  public synchronized void close() {
-    super.close();
-
-    allocatedMemoryBlock.close();
   }
 }

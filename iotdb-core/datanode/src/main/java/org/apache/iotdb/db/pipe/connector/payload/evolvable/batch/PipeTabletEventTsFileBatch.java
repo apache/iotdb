@@ -86,8 +86,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private static final String TS_FILE_PREFIX = "tb"; // tb means tablet batch
   private final AtomicLong tsFileIdGenerator = new AtomicLong(0);
 
-  private final long maxSizeInBytes;
-
   private final Map<Pair<String, Long>, Double> pipeName2WeightMap = new HashMap<>();
 
   private final List<Tablet> tabletList = new ArrayList<>();
@@ -97,9 +95,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private volatile TsFileWriter fileWriter;
 
   public PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
-    super(maxDelayInMs);
+    super(maxDelayInMs, requestMaxBatchSizeInBytes);
 
-    this.maxSizeInBytes = requestMaxBatchSizeInBytes;
     try {
       this.batchFileBaseDir = getNextBaseDir();
     } catch (final Exception e) {
@@ -453,11 +450,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         }
       }
     }
-  }
-
-  @Override
-  protected long getMaxBatchSizeInBytes() {
-    return maxSizeInBytes;
   }
 
   @Override
