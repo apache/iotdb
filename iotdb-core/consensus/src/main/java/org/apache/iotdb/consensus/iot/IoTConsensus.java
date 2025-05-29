@@ -237,7 +237,7 @@ public class IoTConsensus implements IConsensus {
     } else if (!impl.isActive()) {
       String message =
           String.format(
-              "Peer is inactive and not ready to write request, %s, DatsaNode Id: %s",
+              "Peer is inactive and not ready to write request, %s, DataNode Id: %s",
               groupId.toString(), impl.getThisNode().getNodeId());
       return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, message);
     } else {

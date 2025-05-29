@@ -42,6 +42,7 @@ import org.apache.tsfile.write.v4.TsFileWriterBuilder;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -107,7 +108,7 @@ public class IoTDBLoadLastCacheIT {
         .getConfig()
         .getDataNodeConfig()
         .setLoadLastCacheStrategy(lastCacheLoadStrategy.name())
-        .setCacheLastValuesForLoad(true);
+        .setCacheLastValuesForLoad(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -492,9 +493,9 @@ public class IoTDBLoadLastCacheIT {
         int deviceNum = random.nextInt(deviceCnt);
         int measurementNum = random.nextInt(measurementCnt);
         rateLimiter.acquire();
-        long start = System.currentTimeMillis();
+        long start = System.nanoTime();
         long result = queryLastOnce(deviceNum, measurementNum, schemas, statement);
-        long timeConsumption = System.currentTimeMillis() - start;
+        long timeConsumption = System.nanoTime() - start;
         if (result == -1) {
           try {
             Thread.sleep(1000);
@@ -515,10 +516,10 @@ public class IoTDBLoadLastCacheIT {
     System.out.printf(
         "Synchronization ends after %dms, query latency avg %fms %n",
         System.currentTimeMillis() - totalStart,
-        timeConsumptions.stream().mapToLong(i -> i).average().orElse(0.0));
+        timeConsumptions.stream().mapToLong(i -> i).average().orElse(0.0) / 1000000);
   }
 
-  // @Ignore("Performance")
+  //@Ignore("Performance")
   @Test
   public void testTableLoadPerformance() throws Exception {
     int deviceCnt = 100;
@@ -526,7 +527,7 @@ public class IoTDBLoadLastCacheIT {
     int blobMeasurementCnt = 10;
     int pointCnt = 100;
     int fileCnt = 1000;
-    int queryPerSec = 1000;
+    int queryPerSec = 100;
     int queryThreadsNum = 10;
 
     PerformanceSchemas schemas =

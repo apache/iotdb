@@ -3012,7 +3012,7 @@ public class DataRegion implements IDataRegionForQuery {
     LastCacheLoadStrategy lastCacheLoadStrategy = config.getLastCacheLoadStrategy();
     if ((lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
             || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
-        && !config.isCacheLastValuesForLoad()) {
+        && newTsFileResource.getLastValues() == null) {
       try {
         // init reader outside of lock to boost performance
         lastReader =
@@ -3106,7 +3106,6 @@ public class DataRegion implements IDataRegionForQuery {
           logger.warn("Cannot close last reader after loading TsFile {}", newTsFileResource, e);
         }
       }
-      // TODO: do more precise control
     }
   }
 
