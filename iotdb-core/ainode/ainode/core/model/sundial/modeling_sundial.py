@@ -17,27 +17,32 @@
 #
 
 import os
-from typing import Optional, Tuple, List, Union
+from typing import List, Optional, Tuple, Union
+
 import torch
-from torch import nn
 import torch.nn.functional as F
-from transformers import PreTrainedModel, Cache, DynamicCache
+from huggingface_hub import hf_hub_download
+from safetensors.torch import load_file as load_safetensors
+from torch import nn
+from transformers import Cache, DynamicCache, PreTrainedModel
 from transformers.activations import ACT2FN
 from transformers.modeling_attn_mask_utils import _prepare_4d_causal_attention_mask
-from transformers.modeling_outputs import MoeModelOutputWithPast, MoeCausalLMOutputWithPast
-from ainode.core.model.sundial.configuration_sundial import SundialConfig
-from ainode.core.model.sundial.ts_generation_mixin import TSGenerationMixin
-from ainode.core.model.sundial.flow_loss import FlowLoss
-
-from safetensors.torch import load_file as load_safetensors
-from huggingface_hub import hf_hub_download
+from transformers.modeling_outputs import (
+    MoeCausalLMOutputWithPast,
+    MoeModelOutputWithPast,
+)
 
 from ainode.core.log import Logger
+from ainode.core.model.sundial.configuration_sundial import SundialConfig
+from ainode.core.model.sundial.flow_loss import FlowLoss
+from ainode.core.model.sundial.ts_generation_mixin import TSGenerationMixin
+
 logger = Logger()
+
 
 def rotate_half(x):
     x1 = x[..., : x.shape[-1] // 2]
-    x2 = x[..., x.shape[-1] // 2:]
+    x2 = x[..., x.shape[-1] // 2 :]
     return torch.cat((-x2, x1), dim=-1)
 
 
@@ -54,25 +59,25 @@ class SundialPatchEmbedding(nn.Module):
         super().__init__()
         self.dropout = nn.Dropout(config.dropout_rate)
         self.hidden_layer = nn.Linear(
-            config.input_token_len * 2, config.intermediate_size)
+            config.input_token_len * 2, config.intermediate_size
+        )
         self.act = ACT2FN[config.hidden_act]
-        self.output_layer = nn.Linear(
-            config.intermediate_size, config.hidden_size)
-        self.residual_layer = nn.Linear(
-            config.input_token_len * 2, config.hidden_size)
+        self.output_layer = nn.Linear(config.intermediate_size, config.hidden_size)
+        self.residual_layer = nn.Linear(config.input_token_len * 2, config.hidden_size)
         self.input_token_len = config.input_token_len
 
     def forward(self, x):
         mask = torch.ones_like(x, dtype=torch.float32)
         input_length = x.shape[-1]
-        padding_length = (self.input_token_len - (input_length %
-                          self.input_token_len)) % self.input_token_len
+        padding_length = (
+            self.input_token_len - (input_length % self.input_token_len)
+        ) % self.input_token_len
         x = F.pad(x, (padding_length, 0))
         mask = F.pad(mask, (padding_length, 0))
-        x = x.unfold(dimension=-1, size=self.input_token_len,
-                     step=self.input_token_len)
+        x = x.unfold(dimension=-1, size=self.input_token_len, step=self.input_token_len)
         mask = mask.unfold(
-            dimension=-1, size=self.input_token_len, step=self.input_token_len)
+            dimension=-1, size=self.input_token_len, step=self.input_token_len
+        )
 
         x = torch.cat([x, mask], dim=-1)
         hid = self.act(self.hidden_layer(x))
@@ -88,33 +93,38 @@ class SundialRotaryEmbedding(torch.nn.Module):
         self.dim = dim
         self.max_position_embeddings = max_position_embeddings
         self.base = base
-        inv_freq = 1.0 / (self.base ** (torch.arange(0, self.dim,
-                          2, dtype=torch.int64).float().to(device) / self.dim))
+        inv_freq = 1.0 / (
+            self.base
+            ** (
+                torch.arange(0, self.dim, 2, dtype=torch.int64).float().to(device)
+                / self.dim
+            )
+        )
         self.register_buffer("inv_freq", inv_freq, persistent=False)
 
         # Build here to make `torch.jit.trace` work.
         self._set_cos_sin_cache(
-            seq_len=max_position_embeddings, device=self.inv_freq.device, dtype=torch.get_default_dtype()
+            seq_len=max_position_embeddings,
+            device=self.inv_freq.device,
+            dtype=torch.get_default_dtype(),
         )
 
     def _set_cos_sin_cache(self, seq_len, device, dtype):
         self.max_seq_len_cached = seq_len
-        t = torch.arange(self.max_seq_len_cached, device=device,
-                         dtype=torch.int64).type_as(self.inv_freq)
+        t = torch.arange(
+            self.max_seq_len_cached, device=device, dtype=torch.int64
+        ).type_as(self.inv_freq)
 
         freqs = torch.outer(t, self.inv_freq)
         # Different from paper, but it uses a different permutation in order to obtain the same calculation
         emb = torch.cat((freqs, freqs), dim=-1)
-        self.register_buffer(
-            "cos_cached", emb.cos().to(dtype), persistent=False)
-        self.register_buffer(
-            "sin_cached", emb.sin().to(dtype), persistent=False)
+        self.register_buffer("cos_cached", emb.cos().to(dtype), persistent=False)
+        self.register_buffer("sin_cached", emb.sin().to(dtype), persistent=False)
 
     def forward(self, x, seq_len=None):
         # x: [bs, num_attention_heads, seq_len, head_size]
         if seq_len > self.max_seq_len_cached:
-            self._set_cos_sin_cache(
-                seq_len=seq_len, device=x.device, dtype=x.dtype)
+            self._set_cos_sin_cache(seq_len=seq_len, device=x.device, dtype=x.dtype)
 
         return (
             self.cos_cached[:seq_len].to(dtype=x.dtype),
@@ -135,16 +145,17 @@ class SundialAttention(nn.Module):
         self.v_proj = nn.Linear(self.hidden_size, self.hidden_size, bias=True)
         self.o_proj = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
         self.rotary_emb = SundialRotaryEmbedding(
-            self.head_dim, max_position_embeddings=config.max_position_embeddings)
+            self.head_dim, max_position_embeddings=config.max_position_embeddings
+        )
 
     def forward(
-            self,
-            hidden_states: torch.Tensor,
-            attention_mask: Optional[torch.Tensor] = None,
-            position_ids: Optional[torch.LongTensor] = None,
-            past_key_value: Optional[Cache] = None,
-            output_attentions: bool = False,
-            **kwargs,
+        self,
+        hidden_states: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_value: Optional[Cache] = None,
+        output_attentions: bool = False,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         bsz, q_len, _ = hidden_states.size()
 
@@ -153,26 +164,35 @@ class SundialAttention(nn.Module):
         value_states = self.v_proj(hidden_states)
 
         query_states = query_states.view(
-            bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
+            bsz, q_len, self.num_heads, self.head_dim
+        ).transpose(1, 2)
         key_states = key_states.view(
-            bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
+            bsz, q_len, self.num_heads, self.head_dim
+        ).transpose(1, 2)
         value_states = value_states.view(
-            bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
+            bsz, q_len, self.num_heads, self.head_dim
+        ).transpose(1, 2)
 
         kv_seq_len = key_states.shape[-2]
         if past_key_value is not None:
-            kv_seq_len += past_key_value.get_usable_length(
-                kv_seq_len, self.layer_idx)
+            kv_seq_len += past_key_value.get_usable_length(kv_seq_len, self.layer_idx)
         cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
         query_states, key_states = apply_rotary_pos_emb(
-            query_states, key_states, cos, sin, position_ids)
+            query_states, key_states, cos, sin, position_ids
+        )
 
         if past_key_value is not None:
             key_states, value_states = past_key_value.update(
-                key_states, value_states, self.layer_idx)
+                key_states, value_states, self.layer_idx
+            )
 
         attn_output = F.scaled_dot_product_attention(
-            query_states, key_states, value_states, attention_mask, dropout_p=(self.attention_dropout if self.training else 0.0))
+            query_states,
+            key_states,
+            value_states,
+            attention_mask,
+            dropout_p=(self.attention_dropout if self.training else 0.0),
+        )
 
         attn_output = attn_output.transpose(1, 2).contiguous()
         attn_output = attn_output.reshape(bsz, q_len, self.hidden_size)
@@ -189,16 +209,15 @@ class SundialMLP(nn.Module):
         super().__init__()
         self.hidden_size = hidden_size
         self.intermediate_size = intermediate_size
-        self.gate_proj = nn.Linear(
-            self.hidden_size, self.intermediate_size, bias=False)
-        self.up_proj = nn.Linear(
-            self.hidden_size, self.intermediate_size, bias=False)
-        self.down_proj = nn.Linear(
-            self.intermediate_size, self.hidden_size, bias=False)
+        self.gate_proj = nn.Linear(self.hidden_size, self.intermediate_size, bias=False)
+        self.up_proj = nn.Linear(self.hidden_size, self.intermediate_size, bias=False)
+        self.down_proj = nn.Linear(self.intermediate_size, self.hidden_size, bias=False)
         self.act_fn = ACT2FN[hidden_act]
 
     def forward(self, hidden_state):
-        return self.down_proj(self.act_fn(self.gate_proj(hidden_state)) * self.up_proj(hidden_state))
+        return self.down_proj(
+            self.act_fn(self.gate_proj(hidden_state)) * self.up_proj(hidden_state)
+        )
 
 
 class SundialDecoderLayer(nn.Module):
@@ -215,15 +234,20 @@ class SundialDecoderLayer(nn.Module):
         self.norm2 = torch.nn.LayerNorm(config.hidden_size)
 
     def forward(
-            self,
-            hidden_states: torch.Tensor,
-            attention_mask: Optional[torch.Tensor] = None,
-            position_ids: Optional[torch.LongTensor] = None,
-            past_key_value: Optional[Tuple[torch.Tensor]] = None,
-            output_attentions: Optional[bool] = False,
-            use_cache: Optional[bool] = False,
-            **kwargs,
-    ) -> Tuple[torch.FloatTensor, torch.FloatTensor, Optional[torch.FloatTensor], Optional[torch.FloatTensor]]:
+        self,
+        hidden_states: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_value: Optional[Tuple[torch.Tensor]] = None,
+        output_attentions: Optional[bool] = False,
+        use_cache: Optional[bool] = False,
+        **kwargs,
+    ) -> Tuple[
+        torch.FloatTensor,
+        torch.FloatTensor,
+        Optional[torch.FloatTensor],
+        Optional[torch.FloatTensor],
+    ]:
         residual = hidden_states
 
         hidden_states = self.norm1(hidden_states)
@@ -280,44 +304,56 @@ class SundialModel(SundialPreTrainedModel):
         super().__init__(config)
         self.embed_layer = SundialPatchEmbedding(config)
         self.layers = nn.ModuleList(
-            [SundialDecoderLayer(config, layer_idx)
-             for layer_idx in range(config.num_hidden_layers)]
+            [
+                SundialDecoderLayer(config, layer_idx)
+                for layer_idx in range(config.num_hidden_layers)
+            ]
         )
         self.norm = torch.nn.LayerNorm(config.hidden_size)
         self.gradient_checkpointing = False
 
     def forward(
-            self,
-            input_ids: torch.FloatTensor = None,
-            attention_mask: Optional[torch.Tensor] = None,
-            position_ids: Optional[torch.LongTensor] = None,
-            past_key_values: Optional[List[torch.FloatTensor]] = None,
-            inputs_embeds: Optional[torch.FloatTensor] = None,
-            use_cache: Optional[bool] = None,
-            output_attentions: Optional[bool] = None,
-            output_hidden_states: Optional[bool] = None,
-            return_dict: Optional[bool] = None,
+        self,
+        input_ids: torch.FloatTensor = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
     ) -> Union[Tuple, MoeModelOutputWithPast]:
         # input_ids is the input of time series, its shape is [batch_size, seq_len]
-        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_attentions = (
+            output_attentions
+            if output_attentions is not None
+            else self.config.output_attentions
+        )
         output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
         )
         use_cache = use_cache if use_cache is not None else self.config.use_cache
 
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         # retrieve input_ids and inputs_embeds
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError(
-                "You cannot specify both decoder_input_ids and decoder_inputs_embeds at the same time")
+                "You cannot specify both decoder_input_ids and decoder_inputs_embeds at the same time"
+            )
         elif input_ids is not None:
             batch_size, seq_length = input_ids.shape
         elif inputs_embeds is not None:
             batch_size, seq_length, _ = inputs_embeds.shape
         else:
             raise ValueError(
-                "You have to specify either decoder_input_ids or decoder_inputs_embeds")
+                "You have to specify either decoder_input_ids or decoder_inputs_embeds"
+            )
 
         if inputs_embeds is None:
             inputs_embeds = self.embed_layer(input_ids)
@@ -332,15 +368,16 @@ class SundialModel(SundialPreTrainedModel):
         if use_cache:
             use_legacy_cache = not isinstance(past_key_values, Cache)
             if use_legacy_cache:
-                past_key_values = DynamicCache.from_legacy_cache(
-                    past_key_values)
-            past_key_values_length = past_key_values.get_usable_length(
-                seq_length)
+                past_key_values = DynamicCache.from_legacy_cache(past_key_values)
+            past_key_values_length = past_key_values.get_usable_length(seq_length)
 
         if position_ids is None:
             device = input_ids.device if input_ids is not None else inputs_embeds.device
             position_ids = torch.arange(
-                past_key_values_length, seq_length + past_key_values_length, dtype=torch.long, device=device
+                past_key_values_length,
+                seq_length + past_key_values_length,
+                dtype=torch.long,
+                device=device,
             )
             # position_ids = position_ids.unsqueeze(0).view(-1, seq_length)
             position_ids = position_ids.view(-1, seq_length)
@@ -402,8 +439,11 @@ class SundialModel(SundialPreTrainedModel):
 
         next_cache = None
         if use_cache:
-            next_cache = next_decoder_cache.to_legacy_cache(
-            ) if use_legacy_cache else next_decoder_cache
+            next_cache = (
+                next_decoder_cache.to_legacy_cache()
+                if use_legacy_cache
+                else next_decoder_cache
+            )
 
         if not return_dict:
             return tuple(
@@ -424,17 +464,28 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
         super().__init__(config)
         self.config = config
         self.model = SundialModel(self.config)
-        self.flow_loss = FlowLoss(self.config.output_token_lens[-1], self.config.hidden_size,
-                                  self.config.flow_loss_depth, self.config.hidden_size, self.config.num_sampling_steps)
+        self.flow_loss = FlowLoss(
+            self.config.output_token_lens[-1],
+            self.config.hidden_size,
+            self.config.flow_loss_depth,
+            self.config.hidden_size,
+            self.config.num_sampling_steps,
+        )
         # TODO: Unify data loader
         if not os.path.exists(config.ckpt_path):
             os.mkdir(config.ckpt_path)
         weights_path = os.path.join(config.ckpt_path, "model.safetensors")
         if not os.path.exists(weights_path):
-            logger.info(f"Weight not found at {weights_path}, downloading from HuggingFace...")
+            logger.info(
+                f"Weight not found at {weights_path}, downloading from HuggingFace..."
+            )
             repo_id = "thuml/sundial-base-128m"
             try:
-                hf_hub_download(repo_id=repo_id, filename="model.safetensors", local_dir=config.ckpt_path)
+                hf_hub_download(
+                    repo_id=repo_id,
+                    filename="model.safetensors",
+                    local_dir=config.ckpt_path,
+                )
                 logger.info(f"Got weight to {weights_path}")
             except Exception as e:
                 logger.error(f"Failed to download weight to {weights_path} due to {e}")
@@ -449,34 +500,44 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
         return self.model
 
     def forward(
-            self,
-            input_ids: torch.FloatTensor = None,
-            attention_mask: Optional[torch.Tensor] = None,
-            position_ids: Optional[torch.LongTensor] = None,
-            past_key_values: Optional[List[torch.FloatTensor]] = None,
-            inputs_embeds: Optional[torch.FloatTensor] = None,
-            labels: Optional[torch.FloatTensor] = None,
-            loss_masks: Optional[torch.FloatTensor] = None,
-            mask_y: Optional[torch.FloatTensor] = None,
-            use_cache: Optional[bool] = None,
-            output_attentions: Optional[bool] = None,
-            output_hidden_states: Optional[bool] = None,
-            return_dict: Optional[bool] = None,
-            max_output_length: Optional[int] = None,
-            revin: Optional[bool] = False,
-            num_samples: Optional[int] = 1,
+        self,
+        input_ids: torch.FloatTensor = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        labels: Optional[torch.FloatTensor] = None,
+        loss_masks: Optional[torch.FloatTensor] = None,
+        mask_y: Optional[torch.FloatTensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+        max_output_length: Optional[int] = None,
+        revin: Optional[bool] = False,
+        num_samples: Optional[int] = 1,
     ) -> Union[Tuple, MoeCausalLMOutputWithPast]:
 
-        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
-        output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+        output_attentions = (
+            output_attentions
+            if output_attentions is not None
+            else self.config.output_attentions
         )
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        output_hidden_states = (
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
+        )
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         if revin:
             means = input_ids.mean(1, keepdim=True).detach()
             stdev = input_ids.std(dim=1, keepdim=True, unbiased=False).detach()
-            stdev = torch.where(stdev > 1e-2, stdev, torch.tensor(1.0, device=input_ids.device))
+            stdev = torch.where(
+                stdev > 1e-2, stdev, torch.tensor(1.0, device=input_ids.device)
+            )
             input_ids = (input_ids - means) / stdev
         outputs = self.model(
             input_ids=input_ids,
@@ -499,18 +560,23 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
                 labels = (labels - means) / stdev
             output_token_len = self.config.output_token_lens[-1]
             seq_len = hidden_states.shape[1] * self.config.input_token_len
-            labels = labels[:, :seq_len -
-                            self.config.input_token_len + output_token_len]
+            labels = labels[
+                :, : seq_len - self.config.input_token_len + output_token_len
+            ]
             shift_labels = labels.unfold(
-                dimension=-1, size=output_token_len, step=self.config.input_token_len)
+                dimension=-1, size=output_token_len, step=self.config.input_token_len
+            )
 
             bsz, L, _ = shift_labels.shape
-            shift_labels = shift_labels.reshape(
-                bsz * L, -1).repeat(self.config.diffusion_batch_mul, 1)
-            hidden_states = hidden_states.reshape(
-                bsz * L, -1).repeat(self.config.diffusion_batch_mul, 1)
-            loss_masks = loss_masks.reshape(
-                bsz * L).repeat(self.config.diffusion_batch_mul)
+            shift_labels = shift_labels.reshape(bsz * L, -1).repeat(
+                self.config.diffusion_batch_mul, 1
+            )
+            hidden_states = hidden_states.reshape(bsz * L, -1).repeat(
+                self.config.diffusion_batch_mul, 1
+            )
+            loss_masks = loss_masks.reshape(bsz * L).repeat(
+                self.config.diffusion_batch_mul
+            )
             mask_y = mask_y.repeat(L * self.config.diffusion_batch_mul, 1)
 
             loss = self.flow_loss(shift_labels, hidden_states, loss_masks, mask_y)
@@ -546,7 +612,14 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
         )
 
     def prepare_inputs_for_generation(
-            self, input_ids, past_key_values=None, attention_mask=None, inputs_embeds=None, revin=False, num_samples=1, **kwargs
+        self,
+        input_ids,
+        past_key_values=None,
+        attention_mask=None,
+        inputs_embeds=None,
+        revin=False,
+        num_samples=1,
+        **kwargs,
     ):
         # Omit tokens covered by past_key_values
         if past_key_values is not None:
@@ -566,21 +639,26 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
             # 1 - If the length of the attention_mask exceeds the length of input_ids, then we are in a setting where
             # some of the inputs are exclusively passed as part of the cache (e.g. when passing input_embeds as
             # input)
-            if attention_mask is not None and attention_mask.shape[1] > (input_ids.shape[1] // self.config.input_token_len):
-                input_ids = input_ids[:, -
-                                      (attention_mask.shape[1] - past_length) * self.config.input_token_len:]
+            if attention_mask is not None and attention_mask.shape[1] > (
+                input_ids.shape[1] // self.config.input_token_len
+            ):
+                input_ids = input_ids[
+                    :,
+                    -(attention_mask.shape[1] - past_length)
+                    * self.config.input_token_len :,
+                ]
             # 2 - If the past_length is smaller than input_ids', then input_ids holds all input tokens. We can discard
             # input_ids based on the past_length.
             elif past_length < (input_ids.shape[1] // self.config.input_token_len):
-                input_ids = input_ids[:, past_length *
-                                      self.config.input_token_len:]
+                input_ids = input_ids[:, past_length * self.config.input_token_len :]
             # 3 - Otherwise (past_length >= (input_ids.shape[1] // self.config.input_token_len)), let's assume input_ids only has unprocessed tokens.
 
             # If we are about to go beyond the maximum cache length, we need to crop the input attention mask.
             if (
-                    max_cache_length is not None
-                    and attention_mask is not None
-                    and cache_length + (input_ids.shape[1] // self.config.input_token_len) > max_cache_length
+                max_cache_length is not None
+                and attention_mask is not None
+                and cache_length + (input_ids.shape[1] // self.config.input_token_len)
+                > max_cache_length
             ):
                 attention_mask = attention_mask[:, -max_cache_length:]
 
@@ -590,8 +668,9 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
             position_ids = attention_mask.long().cumsum(-1) - 1
             position_ids.masked_fill_(attention_mask == 0, 1)
             if past_key_values:
-                position_ids = position_ids[:, -
-                                            (input_ids.shape[1] // self.config.input_token_len):]
+                position_ids = position_ids[
+                    :, -(input_ids.shape[1] // self.config.input_token_len) :
+                ]
 
         # if `inputs_embeds` are passed, we only want to use them in the 1st generation step
         if inputs_embeds is not None and past_key_values is None:

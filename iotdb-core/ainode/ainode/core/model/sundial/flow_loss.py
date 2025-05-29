@@ -16,9 +16,10 @@
 # under the License.
 #
 
+import math
+
 import torch
 import torch.nn as nn
-import math
 
 
 class FlowLoss(nn.Module):
@@ -32,7 +33,7 @@ class FlowLoss(nn.Module):
             model_channels=width,
             out_channels=target_channels,
             z_channels=z_channels,
-            num_res_blocks=depth
+            num_res_blocks=depth,
         )
         self.num_sampling_steps = num_sampling_steps
 
@@ -44,8 +45,9 @@ class FlowLoss(nn.Module):
 
         predict_v = self.net(noised_target, t * 1000, z)
 
-        weights = 1.0 / \
-            torch.arange(1, self.in_channels + 1, dtype=torch.float32, device=target.device)
+        weights = 1.0 / torch.arange(
+            1, self.in_channels + 1, dtype=torch.float32, device=target.device
+        )
         if mask_y is not None:
             loss = (mask_y * weights * (predict_v - target) ** 2).sum(dim=-1)
         else:
@@ -61,8 +63,7 @@ class FlowLoss(nn.Module):
         x = noise
         dt = 1.0 / self.num_sampling_steps
         for i in range(self.num_sampling_steps):
-            t = (torch.ones((x.shape[0])) * i /
-                 self.num_sampling_steps).to(x.device)
+            t = (torch.ones((x.shape[0])) * i / self.num_sampling_steps).to(x.device)
             pred = self.net(x, t * 1000, z)
             x = x + (pred - noise) * dt
         x = x.reshape(num_samples, -1, self.in_channels).transpose(0, 1)
@@ -100,14 +101,16 @@ class TimestepEmbedder(nn.Module):
         # https://github.com/openai/glide-text2im/blob/main/glide_text2im/nn.py
         half = dim // 2
         freqs = torch.exp(
-            -math.log(max_period) * torch.arange(start=0,
-                                                 end=half, dtype=torch.float32) / half
+            -math.log(max_period)
+            * torch.arange(start=0, end=half, dtype=torch.float32)
+            / half
         ).to(device=t.device)
         args = t[:, None].float() * freqs[None]
         embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
         if dim % 2:
             embedding = torch.cat(
-                [embedding, torch.zeros_like(embedding[:, :1])], dim=-1)
+                [embedding, torch.zeros_like(embedding[:, :1])], dim=-1
+            )
         return embedding
 
     def forward(self, t):
@@ -122,10 +125,7 @@ class ResBlock(nn.Module):
     :param channels: the number of input channels.
     """
 
-    def __init__(
-        self,
-        channels
-    ):
+    def __init__(self, channels):
         super().__init__()
         self.channels = channels
 
@@ -137,13 +137,11 @@ class ResBlock(nn.Module):
         )
 
         self.adaLN_modulation = nn.Sequential(
-            nn.SiLU(),
-            nn.Linear(channels, 3 * channels, bias=True)
+            nn.SiLU(), nn.Linear(channels, 3 * channels, bias=True)
         )
 
     def forward(self, x, y):
-        shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(
-            y).chunk(3, dim=-1)
+        shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(y).chunk(3, dim=-1)
         h = modulate(self.in_ln(x), shift_mlp, scale_mlp)
         h = self.mlp(h)
         return x + gate_mlp * h
@@ -157,11 +155,11 @@ class FinalLayer(nn.Module):
     def __init__(self, model_channels, out_channels):
         super().__init__()
         self.norm_final = nn.LayerNorm(
-            model_channels, elementwise_affine=False, eps=1e-6)
+            model_channels, elementwise_affine=False, eps=1e-6
+        )
         self.linear = nn.Linear(model_channels, out_channels, bias=True)
         self.adaLN_modulation = nn.Sequential(
-            nn.SiLU(),
-            nn.Linear(model_channels, 2 * model_channels, bias=True)
+            nn.SiLU(), nn.Linear(model_channels, 2 * model_channels, bias=True)
         )
 
     def forward(self, x, c):
@@ -203,9 +201,11 @@ class SimpleMLPAdaLN(nn.Module):
 
         res_blocks = []
         for i in range(num_res_blocks):
-            res_blocks.append(ResBlock(
-                model_channels,
-            ))
+            res_blocks.append(
+                ResBlock(
+                    model_channels,
+                )
+            )
 
         self.res_blocks = nn.ModuleList(res_blocks)
         self.final_layer = FinalLayer(model_channels, out_channels)
@@ -218,6 +218,7 @@ class SimpleMLPAdaLN(nn.Module):
                 torch.nn.init.xavier_uniform_(module.weight)
                 if module.bias is not None:
                     nn.init.constant_(module.bias, 0)
+
         self.apply(_basic_init)
 
         # Initialize timestep embedding MLP

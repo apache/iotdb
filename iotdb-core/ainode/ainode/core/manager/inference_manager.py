@@ -15,19 +15,28 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 
 import pandas as pd
 import torch
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 
 from ainode.core.constant import TSStatusCode
-from ainode.core.exception import InvalidWindowArgumentError, InferenceModelInternalError, runtime_error_extractor
+from ainode.core.exception import (
+    InferenceModelInternalError,
+    InvalidWindowArgumentError,
+    runtime_error_extractor,
+)
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
 from ainode.core.util.serde import convert_to_binary
 from ainode.core.util.status import get_status
-from ainode.thrift.ainode.ttypes import TInferenceReq, TInferenceResp, TForecastReq, TForecastResp
+from ainode.thrift.ainode.ttypes import (
+    TForecastReq,
+    TForecastResp,
+    TInferenceReq,
+    TInferenceResp,
+)
 
 logger = Logger()
 
@@ -46,20 +55,23 @@ class InferenceStrategy(ABC):
 class TimerXLStrategy(InferenceStrategy):
     def infer(self, full_data, predict_length=96, **_):
         data = full_data[1][0]
-        if data.dtype.byteorder not in ('=', '|'):
+        if data.dtype.byteorder not in ("=", "|"):
             data = data.byteswap().newbyteorder()
         output = self.model.inference(data, int(predict_length))
         df = pd.DataFrame(output[0])
         return convert_to_binary(df)
 
+
 class SundialStrategy(InferenceStrategy):
     def infer(self, full_data, predict_length=96, **_):
         data = full_data[1][0]
-        if data.dtype.byteorder not in ('=', '|'):
+        if data.dtype.byteorder not in ("=", "|"):
             data = data.byteswap().newbyteorder()
         seqs = torch.tensor(data).unsqueeze(0).float()
         # TODO: unify model inference input
-        output = self.model.generate(seqs, max_new_tokens=predict_length, num_samples=10, revin=True)
+        output = self.model.generate(
+            seqs, max_new_tokens=predict_length, num_samples=10, revin=True
+        )
         df = pd.DataFrame(output[0].mean(dim=0))
         return convert_to_binary(df)
 
@@ -77,7 +89,7 @@ class RegisteredStrategy(InferenceStrategy):
         _, dataset, _, length = full_data
         if window_interval is None or window_step is None:
             window_interval = length
-            window_step = float('inf')
+            window_step = float("inf")
 
         if window_interval <= 0 or window_step <= 0 or window_interval > length:
             raise InvalidWindowArgumentError(window_interval, window_step, length)
@@ -88,7 +100,7 @@ class RegisteredStrategy(InferenceStrategy):
         results = []
         try:
             for i in range(times):
-                start = 0 if window_step == float('inf') else i * window_step
+                start = 0 if window_step == float("inf") else i * window_step
                 end = start + window_interval
                 window = data[:, start:end, :]
                 out = self.model(window)
@@ -103,11 +115,11 @@ class RegisteredStrategy(InferenceStrategy):
 
 
 def _get_strategy(model_id, model):
-    if model_id == '_timerxl':
+    if model_id == "_timerxl":
         return TimerXLStrategy(model)
-    if model_id == '_sundial':
+    if model_id == "_sundial":
         return SundialStrategy(model)
-    if model_id.startswith('_'):
+    if model_id.startswith("_"):
         return BuiltInStrategy(model)
     return RegisteredStrategy(model)
 
@@ -117,7 +129,15 @@ class InferenceManager:
     def __init__(self, model_manager: ModelManager):
         self.model_manager = model_manager
 
-    def _run(self, req, data_getter, deserializer, extract_attrs, resp_cls, single_output: bool):
+    def _run(
+        self,
+        req,
+        data_getter,
+        deserializer,
+        extract_attrs,
+        resp_cls,
+        single_output: bool,
+    ):
         model_id = req.modelId
         logger.info(f"Start processing for {model_id}")
         try:
@@ -126,10 +146,10 @@ class InferenceManager:
             attrs = extract_attrs(req)
 
             # load model
-            if model_id.startswith('_'):
+            if model_id.startswith("_"):
                 model = self.model_manager.load_built_in_model(model_id, attrs)
             else:
-                accel = str(attrs.get('acceleration', '')).lower() == 'true'
+                accel = str(attrs.get("acceleration", "")).lower() == "true"
                 model = self.model_manager.load_model(model_id, accel)
 
             # inference by strategy
@@ -146,7 +166,7 @@ class InferenceManager:
         except Exception as e:
             logger.error(e)
             status = get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
-            empty = b'' if single_output else []
+            empty = b"" if single_output else []
             return resp_cls(status, empty)
 
     def forecast(self, req: TForecastReq):
@@ -154,9 +174,12 @@ class InferenceManager:
             req,
             data_getter=lambda r: r.inputData,
             deserializer=deserialize,
-            extract_attrs=lambda r: {'predict_length': r.outputLength, **(r.options or {})},
+            extract_attrs=lambda r: {
+                "predict_length": r.outputLength,
+                **(r.options or {}),
+            },
             resp_cls=TForecastResp,
-            single_output=True
+            single_output=True,
         )
 
     def inference(self, req: TInferenceReq):
@@ -165,10 +188,10 @@ class InferenceManager:
             data_getter=lambda r: r.dataset,
             deserializer=deserialize,
             extract_attrs=lambda r: {
-                'window_interval': getattr(r.windowParams, 'windowInterval', None),
-                'window_step': getattr(r.windowParams, 'windowStep', None),
-                **(r.inferenceAttributes or {})
+                "window_interval": getattr(r.windowParams, "windowInterval", None),
+                "window_step": getattr(r.windowParams, "windowStep", None),
+                **(r.inferenceAttributes or {}),
             },
             resp_cls=TInferenceResp,
-            single_output=False
+            single_output=False,
         )

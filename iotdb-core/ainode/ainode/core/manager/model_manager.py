@@ -19,13 +19,21 @@ from typing import Callable
 
 from yaml import YAMLError
 
-from ainode.core.constant import TSStatusCode, BuiltInModelType
-from ainode.core.exception import InvalidUriError, BadConfigValueError, BuiltInModelNotSupportError
+from ainode.core.constant import BuiltInModelType, TSStatusCode
+from ainode.core.exception import (
+    BadConfigValueError,
+    BuiltInModelNotSupportError,
+    InvalidUriError,
+)
 from ainode.core.log import Logger
 from ainode.core.model.built_in_model_factory import fetch_built_in_model
 from ainode.core.model.model_storage import ModelStorage
 from ainode.core.util.status import get_status
-from ainode.thrift.ainode.ttypes import TRegisterModelReq, TRegisterModelResp, TDeleteModelReq
+from ainode.thrift.ainode.ttypes import (
+    TDeleteModelReq,
+    TRegisterModelReq,
+    TRegisterModelResp,
+)
 from ainode.thrift.common.ttypes import TSStatus
 
 logger = Logger()
@@ -38,26 +46,42 @@ class ModelManager:
     def register_model(self, req: TRegisterModelReq) -> TRegisterModelResp:
         logger.info(f"register model {req.modelId} from {req.uri}")
         try:
-            configs, attributes = self.model_storage.register_model(req.modelId, req.uri)
-            return TRegisterModelResp(get_status(TSStatusCode.SUCCESS_STATUS), configs, attributes)
+            configs, attributes = self.model_storage.register_model(
+                req.modelId, req.uri
+            )
+            return TRegisterModelResp(
+                get_status(TSStatusCode.SUCCESS_STATUS), configs, attributes
+            )
         except InvalidUriError as e:
             logger.warning(e)
             self.model_storage.delete_model(req.modelId)
-            return TRegisterModelResp(get_status(TSStatusCode.INVALID_URI_ERROR, e.message))
+            return TRegisterModelResp(
+                get_status(TSStatusCode.INVALID_URI_ERROR, e.message)
+            )
         except BadConfigValueError as e:
             logger.warning(e)
             self.model_storage.delete_model(req.modelId)
-            return TRegisterModelResp(get_status(TSStatusCode.INVALID_INFERENCE_CONFIG, e.message))
+            return TRegisterModelResp(
+                get_status(TSStatusCode.INVALID_INFERENCE_CONFIG, e.message)
+            )
         except YAMLError as e:
             logger.warning(e)
             self.model_storage.delete_model(req.modelId)
-            if hasattr(e, 'problem_mark'):
+            if hasattr(e, "problem_mark"):
                 mark = e.problem_mark
-                return TRegisterModelResp(get_status(TSStatusCode.INVALID_INFERENCE_CONFIG,
-                                                     f"An error occurred while parsing the yaml file, "
-                                                     f"at line {mark.line + 1} column {mark.column + 1}."))
+                return TRegisterModelResp(
+                    get_status(
+                        TSStatusCode.INVALID_INFERENCE_CONFIG,
+                        f"An error occurred while parsing the yaml file, "
+                        f"at line {mark.line + 1} column {mark.column + 1}.",
+                    )
+                )
             return TRegisterModelResp(
-                get_status(TSStatusCode.INVALID_INFERENCE_CONFIG, f"An error occurred while parsing the yaml file"))
+                get_status(
+                    TSStatusCode.INVALID_INFERENCE_CONFIG,
+                    f"An error occurred while parsing the yaml file",
+                )
+            )
         except Exception as e:
             logger.warning(e)
             self.model_storage.delete_model(req.modelId)
