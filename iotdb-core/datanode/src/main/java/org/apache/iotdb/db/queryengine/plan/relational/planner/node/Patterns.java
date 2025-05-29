@@ -422,12 +422,10 @@ public final class Patterns {
           return property("distinct", ExceptNode::isDistinct);
       }
   }
-
-  public static final class PatternRecognition
-  {
-      public static Property<PatternRecognitionNode, Lookup, RowsPerMatch> rowsPerMatch()
-      {
-          return property("rowsPerMatch", PatternRecognitionNode::getRowsPerMatch);
-      }
-  }*/
+  */
+  public static final class PatternRecognition {
+    public static Property<PatternRecognitionNode, Lookup, RowsPerMatch> rowsPerMatch() {
+      return property("rowsPerMatch", PatternRecognitionNode::getRowsPerMatch);
+    }
+  }
 }

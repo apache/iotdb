@@ -81,7 +81,7 @@ public class SimplifyExpressions extends ExpressionRewriteRuleSet {
         // TODO add it back after we support ValuesNode
         //        valuesExpressionRewrite(),
         patternRecognitionExpressionRewrite()); // ApplyNode and AggregationNode are not supported,
-                                                // because ExpressionInterpreter doesn't
+    // because ExpressionInterpreter doesn't
     // support them
   }
 
