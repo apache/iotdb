@@ -480,7 +480,7 @@ public class AnalyzeUtils {
       throw new SemanticException("Left hand expression is not an identifier: " + leftHandExp);
     }
     String columnName = ((Identifier) leftHandExp).getValue();
-    int idColumnOrdinal = table.getIdColumnOrdinal(columnName);
+    int idColumnOrdinal = table.getTagColumnOrdinal(columnName);
     if (idColumnOrdinal == -1) {
       throw new SemanticException(
           "The column '" + columnName + "' does not exist or is not a tag column");
@@ -551,7 +551,7 @@ public class AnalyzeUtils {
     }
     // id predicate
     String columnName = identifier.getValue();
-    int idColumnOrdinal = table.getIdColumnOrdinal(columnName);
+    int idColumnOrdinal = table.getTagColumnOrdinal(columnName);
     if (idColumnOrdinal == -1) {
       throw new SemanticException(
           "The column '" + columnName + "' does not exist or is not a tag column");

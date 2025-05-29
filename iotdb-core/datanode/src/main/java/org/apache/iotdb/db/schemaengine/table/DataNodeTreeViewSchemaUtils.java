@@ -38,12 +38,13 @@ import static org.apache.iotdb.commons.schema.table.TreeViewSchema.getPrefixPatt
 
 public class DataNodeTreeViewSchemaUtils {
 
-  public static void checkTableInWrite(final TsTable table) {
+  public static void checkTableInWrite(final String database, final TsTable table) {
     if (isTreeViewTable(table)) {
       throw new SemanticException(
           new IoTDBException(
               String.format(
-                  "The table %s is a view from tree, cannot be written", table.getTableName()),
+                  "The table %s.%s is a view from tree, cannot be written",
+                  database, table.getTableName()),
               TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
     }
   }
