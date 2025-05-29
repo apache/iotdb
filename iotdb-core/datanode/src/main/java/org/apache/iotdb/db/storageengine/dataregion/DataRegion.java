@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -38,6 +40,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -51,7 +54,7 @@ import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
-import org.apache.iotdb.db.exception.runtime.RegisterTableSchemaFailureException;
+import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
 import org.apache.iotdb.db.exception.runtime.TableNotExistsRuntimeException;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
@@ -74,8 +77,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -152,6 +153,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.thrift.TException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -1409,37 +1411,29 @@ public class DataRegion implements IDataRegionForQuery {
               if (node.isGeneratedByRemoteConsensusLeader()) {
                 // If current node is follower, after request config node and get the answer that
                 // table is exist or not, then tell leader node when table is not exist.
-                boolean isTableExist = false;
                 try {
-                  TIsTableExistResp resp =
+                  TDescTableResp resp =
                       ConfigNodeClientManager.getInstance()
                           .borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)
-                          .isTableExist(getDatabaseName(), tableName);
-                  isTableExist = (resp != null) && resp.isExist;
-                } catch (Exception e) {
-                  // As the last plan instead of request config node for get schema.
+                          .describeTable(getDatabaseName(), tableName, false);
+                  tsTable =
+                      (resp != null) && (resp.tableInfo != null)
+                          ? TsTableInternalRPCUtil.deserializeSingleTsTable(resp.getTableInfo())
+                          : null;
+                } catch (TException | ClientManagerException e) {
                   logger.error(
-                      String.format(
-                          "Remote request config node  failed that judgment if table is exist, occur exception. %s",
-                          e.getMessage()));
-                  TableMetadataImpl metadata = new TableMetadataImpl();
-                  QualifiedObjectName qualifiedObjectName =
-                      new QualifiedObjectName(getDatabaseName(), tableName);
-                  isTableExist = metadata.tableExists(qualifiedObjectName);
+                      "Remote request config node failed that judgment if table is exist, occur exception. {}",
+                      e.getMessage());
                 }
-                if (!isTableExist) {
+                if (tsTable == null) {
                   throw new TableNotExistsRuntimeException(getDatabaseName(), tableName);
-                } else {
-                  logger.error(
-                      "Due tsTable is null, table schema can't be got, it's no way to register it.");
-                  throw new RegisterTableSchemaFailureException(getDatabaseName(), tableName);
                 }
               } else {
-                // here may be invoked by leader node, the table is very unexpected not exist in the
+                // Here may be invoked by leader node, the table is very unexpected not exist in the
                 // DataNodeTableCache
                 logger.error(
                     "Due tsTable is null, table schema can't be got, leader node occur special situation need to resolve.");
-                throw new TableNotExistsRuntimeException(getDatabaseName(), tableName);
+                throw new TableLostRuntimeException(getDatabaseName(), tableName);
               }
             }
             return TableSchema.of(tsTable).toTsFileTableSchemaNoAttribute();

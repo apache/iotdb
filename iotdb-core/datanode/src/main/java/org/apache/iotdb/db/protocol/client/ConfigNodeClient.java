@@ -1390,14 +1390,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TIsTableExistResp isTableExist(final String database, final String tableName)
-      throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.isTableExist(database, tableName),
-        resp -> !updateConfigNodeLeader(resp.status));
-  }
-
-  @Override
   public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.deleteDevice(req), resp -> !updateConfigNodeLeader(resp.status));
