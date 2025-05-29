@@ -42,7 +42,6 @@ import org.apache.tsfile.write.v4.TsFileWriterBuilder;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -108,7 +107,7 @@ public class IoTDBLoadLastCacheIT {
         .getConfig()
         .getDataNodeConfig()
         .setLoadLastCacheStrategy(lastCacheLoadStrategy.name())
-        .setCacheLastValuesForLoad(false);
+        .setCacheLastValuesForLoad(true);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -519,14 +518,14 @@ public class IoTDBLoadLastCacheIT {
         timeConsumptions.stream().mapToLong(i -> i).average().orElse(0.0) / 1000000);
   }
 
-  //@Ignore("Performance")
+  // @Ignore("Performance")
   @Test
   public void testTableLoadPerformance() throws Exception {
     int deviceCnt = 100;
     int measurementCnt = 100;
     int blobMeasurementCnt = 10;
     int pointCnt = 100;
-    int fileCnt = 1000;
+    int fileCnt = 100000;
     int queryPerSec = 100;
     int queryThreadsNum = 10;
 
