@@ -214,7 +214,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           while (resultSet.next()) {
             assertEquals(standard.get(i++), resultSet.getString(1));
           }
-          assertEquals(0, standard.size());
+          assertEquals(i, standard.size());
         } catch (final SQLException e) {
           e.printStackTrace();
           fail(e.getMessage());
