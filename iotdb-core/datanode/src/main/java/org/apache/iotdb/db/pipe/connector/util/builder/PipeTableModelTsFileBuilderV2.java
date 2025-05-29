@@ -44,6 +44,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -163,10 +164,12 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
       List<IMeasurementSchema> aggregatedSchemas =
           tablets.stream()
               .flatMap(tablet -> tablet.getSchemas().stream())
+              .filter(Objects::nonNull)
               .collect(Collectors.toList());
       List<ColumnCategory> aggregatedColumnCategories =
           tablets.stream()
               .flatMap(tablet -> tablet.getColumnTypes().stream())
+              .filter(Objects::nonNull)
               .collect(Collectors.toList());
 
       final Set<IMeasurementSchema> seen = new HashSet<>();
@@ -193,10 +196,9 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
     for (int i = 0, size = tabletList.size(); i < size; ++i) {
       final Tablet tablet = tabletList.get(i);
 
-      // convert date value to int
-      // refer to
+      // convert date value to int refer to
       // org.apache.iotdb.db.storageengine.dataregion.memtable.WritableMemChunk.writeNonAlignedTablet
-      final Object[] values = tablet.getValues();
+      final Object[] values = Arrays.copyOf(tablet.getValues(), tablet.getValues().length);
       for (int j = 0; j < tablet.getSchemas().size(); ++j) {
         final IMeasurementSchema schema = tablet.getSchemas().get(j);
         if (Objects.nonNull(schema)
@@ -220,6 +222,7 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
               // the data of the table model is aligned
               true,
               tablet.getSchemas().stream()
+                  .filter(Objects::nonNull)
                   .map(IMeasurementSchema::getMeasurementName)
                   .toArray(String[]::new),
               tablet.getSchemas().stream()
@@ -227,6 +230,7 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
                   .toArray(TSDataType[]::new),
               // TODO: cast
               tablet.getSchemas().stream()
+                  .filter(Objects::nonNull)
                   .map(schema -> (MeasurementSchema) schema)
                   .toArray(MeasurementSchema[]::new),
               tablet.getTimestamps(),
@@ -234,6 +238,7 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
               tablet.getValues(),
               tablet.getRowSize(),
               tablet.getColumnTypes().stream()
+                  .filter(Objects::nonNull)
                   .map(TsTableColumnCategory::fromTsFileColumnCategory)
                   .toArray(TsTableColumnCategory[]::new));
 

@@ -41,6 +41,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
@@ -138,10 +139,9 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
     for (int i = 0, size = tabletList.size(); i < size; ++i) {
       final Tablet tablet = tabletList.get(i);
 
-      // convert date value to int
-      // refer to
+      // convert date value to int refer to
       // org.apache.iotdb.db.storageengine.dataregion.memtable.WritableMemChunk.writeNonAlignedTablet
-      final Object[] values = tablet.getValues();
+      final Object[] values = Arrays.copyOf(tablet.getValues(), tablet.getValues().length);
       for (int j = 0; j < tablet.getSchemas().size(); ++j) {
         final IMeasurementSchema schema = tablet.getSchemas().get(j);
         if (Objects.nonNull(schema)
@@ -162,18 +162,21 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
               new PartialPath(tablet.getDeviceId()),
               isTabletAlignedList.get(i),
               tablet.getSchemas().stream()
+                  .filter(Objects::nonNull)
                   .map(IMeasurementSchema::getMeasurementName)
                   .toArray(String[]::new),
               tablet.getSchemas().stream()
+                  .filter(Objects::nonNull)
                   .map(IMeasurementSchema::getType)
                   .toArray(TSDataType[]::new),
               // TODO: cast
               tablet.getSchemas().stream()
+                  .filter(Objects::nonNull)
                   .map(schema -> (MeasurementSchema) schema)
                   .toArray(MeasurementSchema[]::new),
               tablet.getTimestamps(),
               tablet.getBitMaps(),
-              tablet.getValues(),
+              values,
               tablet.getRowSize());
 
       final int start = 0;
