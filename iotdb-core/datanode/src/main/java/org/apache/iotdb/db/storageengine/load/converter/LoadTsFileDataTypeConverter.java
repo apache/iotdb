@@ -92,6 +92,7 @@ public class LoadTsFileDataTypeConverter {
     session.setUsername(AuthorityChecker.SUPER_USER);
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneId.systemDefault());
+    session.setSqlDialect(IClientSession.SqlDialect.TABLE);
     return Coordinator.getInstance()
         .executeForTableModel(
             isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
