@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.utils.PublicBAOS;
@@ -67,7 +68,8 @@ public class PipeTaskMeta {
 
   private final AtomicLong updateCount = new AtomicLong(0);
   private final AtomicLong lastPersistCount = new AtomicLong(0);
-  private final long checkPointGap = 20L;
+  private final long checkPointGap =
+      PipeConfig.getInstance().getPipeProgressIndexPersistCheckPoint();
   private final int taskIndex;
   private final File progressIndexPersistFile;
   private final AtomicBoolean isRegisterPersistTask = new AtomicBoolean(false);
@@ -98,7 +100,13 @@ public class PipeTaskMeta {
     this.needPersistProgressIndex = needPersistProgressIndex;
     this.progressIndexPersistFile =
         new File(
-            CommonDescriptor.getInstance().getConfig().getPipeHardlinkTsFileDirName(),
+            IoTDBConstant.DN_DEFAULT_DATA_DIR
+                + File.separator
+                + IoTDBConstant.SYSTEM_FOLDER_NAME
+                + File.separator
+                + PipeConfig.getInstance().getPipeHardlinkBaseDirName()
+                + File.separator
+                + PipeConfig.getInstance().getPipeProgressIndexPersistDirName(),
             PREFIX + taskIndex);
   }
 

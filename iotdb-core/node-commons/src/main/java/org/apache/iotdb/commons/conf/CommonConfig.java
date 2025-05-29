@@ -199,6 +199,8 @@ public class CommonConfig {
 
   private String pipeHardlinkTsFileDirName = "tsfile";
 
+  private String pipeProgressIndexPersistDirName = "progress";
+
   private String pipeHardlinkWALDirName = "wal";
 
   private boolean pipeHardLinkWALEnabled = false;
@@ -260,6 +262,7 @@ public class CommonConfig {
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
   private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 1;
   private boolean pipeAutoRestartEnabled = true;
+  private long pipeProgressIndexPersistCheckPoint = 20;
 
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
@@ -753,6 +756,18 @@ public class CommonConfig {
     logger.info("pipeHardlinkTsFileDirName is set to {}.", pipeTsFileDirName);
   }
 
+  public String getPipeProgressIndexPersistDirName() {
+    return pipeProgressIndexPersistDirName;
+  }
+
+  public void setPipeProgressIndexPersistDirName(String pipeProgressIndexPersistDirName) {
+    if (Objects.equals(this.pipeProgressIndexPersistDirName, pipeProgressIndexPersistDirName)) {
+      return;
+    }
+    this.pipeProgressIndexPersistDirName = pipeProgressIndexPersistDirName;
+    logger.info("pipeProgressIndexPersistDir is set to {}.", pipeProgressIndexPersistDirName);
+  }
+
   public String getPipeHardlinkWALDirName() {
     return pipeHardlinkWALDirName;
   }
@@ -1195,6 +1210,19 @@ public class CommonConfig {
     }
     this.pipeAutoRestartEnabled = pipeAutoRestartEnabled;
     logger.info("pipeAutoRestartEnabled is set to {}.", pipeAutoRestartEnabled);
+  }
+
+  public long getPipeProgressIndexPersistCheckPoint() {
+    return pipeProgressIndexPersistCheckPoint;
+  }
+
+  public void setPipeProgressIndexPersistCheckPoint(long pipeProgressIndexPersistCheckPoint) {
+    if (this.pipeProgressIndexPersistCheckPoint == pipeProgressIndexPersistCheckPoint) {
+      return;
+    }
+    this.pipeProgressIndexPersistCheckPoint = pipeProgressIndexPersistCheckPoint;
+    logger.info(
+        "pipeProgressIndexPersistCheckPoint is set to {}.", pipeProgressIndexPersistCheckPoint);
   }
 
   public long getPipeConnectorRetryIntervalMs() {
