@@ -74,7 +74,6 @@ public class ModelInfo implements SnapshotProcessor {
 
   private static final Set<String> builtInAnomalyDetectionModel = new HashSet<>();
 
-
   private static final int SUNDIAL_INPUT_LENGTH = 2880;
   private static final int timerXLInputLength = 2880;
 
