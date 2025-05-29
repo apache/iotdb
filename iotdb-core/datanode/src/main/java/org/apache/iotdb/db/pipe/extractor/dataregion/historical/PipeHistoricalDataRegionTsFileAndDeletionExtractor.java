@@ -447,8 +447,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     // 1. origin is RecoverProgressIndex
     if (origin instanceof RecoverProgressIndex) {
       RecoverProgressIndex toBeTransformed = (RecoverProgressIndex) origin;
-      ProgressIndex transformed = extractRecoverProgressIndex(toBeTransformed);
-      return transformed == null ? origin : transformed;
+      return extractRecoverProgressIndex(toBeTransformed);
     }
     // 2. origin is HybridProgressIndex
     else if (origin instanceof HybridProgressIndex) {
@@ -463,9 +462,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                 toBeTransformed
                     .getType2Index()
                     .get(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType());
-
-        ProgressIndex transformed = extractRecoverProgressIndex(specificToBeTransformed);
-        return transformed == null ? origin : transformed;
+        return extractRecoverProgressIndex(specificToBeTransformed);
       }
       // if hybridProgressIndex doesn't contain recoverProgressIndex, which is not what we expected,
       // fallback.
@@ -483,14 +480,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   }
 
   private ProgressIndex extractRecoverProgressIndex(RecoverProgressIndex toBeTransformed) {
-    if (!toBeTransformed
-        .getDataNodeId2LocalIndex()
-        .containsKey(IoTDBDescriptor.getInstance().getConfig().getDataNodeId())) {
-      // if recoverProgressIndex doesn't contain local DataNodeId, return null directly to indicate
-      // there is no need to extract dedicated progressIndex.
-      return null;
-    }
-
     return new RecoverProgressIndex(
         toBeTransformed.getDataNodeId2LocalIndex().entrySet().stream()
             .filter(
