@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneMarkDistinctColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOffsetColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOutputSourceColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PrunePatternRecognitionSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneProjectColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneSortColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableFunctionProcessorColumns;
@@ -128,7 +129,8 @@ public class LogicalOptimizeFactory {
             new PruneTableScanColumns(plannerContext.getMetadata()),
             new PruneTopKColumns(),
             new PruneJoinColumns(),
-            new PruneJoinChildrenColumns());
+            new PruneJoinChildrenColumns(),
+            new PrunePatternRecognitionSourceColumns());
     IterativeOptimizer columnPruningOptimizer =
         new IterativeOptimizer(plannerContext, ruleStats, columnPruningRules);
 

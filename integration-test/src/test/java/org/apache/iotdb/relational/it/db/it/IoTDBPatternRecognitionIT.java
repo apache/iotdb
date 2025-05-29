@@ -101,9 +101,6 @@ public class IoTDBPatternRecognitionIT {
         // TABLE: t5
         "CREATE TABLE t5(part STRING TAG, num INT32 FIELD, totalprice DOUBLE FIELD)",
         "INSERT INTO t5 VALUES (2025-01-01T00:01:00, 'p1', 1, 10.0)",
-
-        // TABLE: t6
-
       };
 
   private static void insertData() {
@@ -710,6 +707,135 @@ public class IoTDBPatternRecognitionIT {
             + ") AS m";
 
     tableResultSetEqualTest(sql, expectedHeader, retArray1, DATABASE_NAME);
+  }
+
+  @Test
+  public void testRowPattern() {
+    String[] expectedHeader = new String[] {"time", "match", "price", "label"};
+    String[] retArray1 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,1,90.0,A,",
+        };
+    String[] retArray2 =
+        new String[] {
+          "2025-01-01T00:04:00.000Z,1,70.0,A,",
+        };
+    String[] retArray3 =
+        new String[] {
+          "2025-01-01T00:02:00.000Z,1,80.0,A,",
+          "2025-01-01T00:03:00.000Z,1,70.0,B,",
+          "2025-01-01T00:04:00.000Z,1,70.0,C,",
+        };
+    String[] retArray4 =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,1,90.0,A,",
+          "2025-01-01T00:02:00.000Z,2,80.0,B,",
+          "2025-01-01T00:03:00.000Z,3,70.0,B,",
+          "2025-01-01T00:04:00.000Z,4,70.0,C,",
+        };
+    String[] retArray5 =
+        new String[] {
+          "2025-01-01T00:02:00.000Z,1,80.0,B,", "2025-01-01T00:03:00.000Z,1,70.0,C,",
+        };
+
+    String sql =
+        "SELECT m.time, m.match, m.price, m.label "
+            + "FROM t1 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        RUNNING RPR_LAST(totalprice) AS price,  "
+            + "        CLASSIFIER() AS label "
+            + "    ALL ROWS PER MATCH "
+            + "    AFTER MATCH SKIP PAST LAST ROW "
+            + "    %s " // PATTERN and DEFINE
+            + ") AS m";
+
+    // anchor pattern: partition start
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (^A) " + "DEFINE A AS true "),
+        expectedHeader,
+        retArray1,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (A^) " + "DEFINE A AS true "),
+        expectedHeader,
+        new String[] {},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (^A^) " + "DEFINE A AS true "),
+        expectedHeader,
+        new String[] {},
+        DATABASE_NAME);
+
+    // anchor pattern: partition end
+    tableResultSetEqualTest(
+        format(sql, "PATTERN (A$) " + "DEFINE A AS true "),
+        expectedHeader,
+        retArray2,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN ($A) " + "DEFINE A AS true "),
+        expectedHeader,
+        new String[] {},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql, "PATTERN ($A$) " + "DEFINE A AS true "),
+        expectedHeader,
+        new String[] {},
+        DATABASE_NAME);
+
+    // pattern concatenation
+    tableResultSetEqualTest(
+        format(
+            sql,
+            "PATTERN (A B C) "
+                + "DEFINE "
+                + "    B AS B.totalprice < PREV (B.totalprice), "
+                + "    C AS C.totalprice = PREV (C.totalprice)"),
+        expectedHeader,
+        retArray3,
+        DATABASE_NAME);
+
+    // pattern alternation
+    tableResultSetEqualTest(
+        format(
+            sql,
+            "PATTERN (B | C | A) "
+                + "DEFINE "
+                + "    B AS B.totalprice < PREV (B.totalprice), "
+                + "    C AS C.totalprice <= PREV (C.totalprice)"),
+        expectedHeader,
+        retArray4,
+        DATABASE_NAME);
+
+    // pattern permutation
+    tableResultSetEqualTest(
+        format(
+            sql,
+            "PATTERN (PERMUTE(B, C)) "
+                + "DEFINE "
+                + "    B AS B.totalprice < PREV (B.totalprice), "
+                + "    C AS C.totalprice < PREV (C.totalprice)"),
+        expectedHeader,
+        retArray5,
+        DATABASE_NAME);
+
+    // grouped pattern
+    tableResultSetEqualTest(
+        format(
+            sql,
+            "PATTERN (((A) (B (C)))) "
+                + "DEFINE "
+                + "    B AS B.totalprice < PREV (B.totalprice), "
+                + "    C AS C.totalprice = PREV (C.totalprice)"),
+        expectedHeader,
+        retArray3,
+        DATABASE_NAME);
   }
 
   @Test
