@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
-import org.apache.tsfile.utils.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,11 +94,11 @@ public class ActiveLoadFailedMessageHandler {
 
   @FunctionalInterface
   private interface ExceptionMessageHandler {
-    void handle(final Pair<String, Boolean> filePair);
+    void handle(final Triple<String, Boolean, Boolean> filePair);
   }
 
   public static boolean isExceptionMessageShouldRetry(
-      final Pair<String, Boolean> filePair, final String message) {
+      final Triple<String, Boolean, Boolean> filePair, final String message) {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       EXCEPTION_MESSAGE_HANDLER_MAP.get("read only").handle(filePair);
       return true;

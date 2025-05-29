@@ -43,7 +43,7 @@ import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetr
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.tsfile.utils.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,12 +84,13 @@ public class ActiveLoadTsFileLoader {
     return MAX_PENDING_SIZE - pendingQueue.size();
   }
 
-  public void tryTriggerTsFileLoad(String absolutePath, boolean isGeneratedByPipe) {
+  public void tryTriggerTsFileLoad(
+      String absolutePath, boolean isTabletMode, boolean isGeneratedByPipe) {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       return;
     }
 
-    if (pendingQueue.enqueue(absolutePath, isGeneratedByPipe)) {
+    if (pendingQueue.enqueue(absolutePath, isTabletMode, isGeneratedByPipe)) {
       initFailDirIfNecessary();
       adjustExecutorIfNecessary();
     }
@@ -165,7 +166,7 @@ public class ActiveLoadTsFileLoader {
 
     try {
       while (true) {
-        final Optional<Pair<String, Boolean>> filePair = tryGetNextPendingFile();
+        final Optional<Triple<String, Boolean, Boolean>> filePair = tryGetNextPendingFile();
         if (!filePair.isPresent()) {
           return;
         }
@@ -194,13 +195,13 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
-  private Optional<Pair<String, Boolean>> tryGetNextPendingFile() {
+  private Optional<Triple<String, Boolean, Boolean>> tryGetNextPendingFile() {
     final long maxRetryTimes =
         Math.max(1, IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds() << 1);
     long currentRetryTimes = 0;
 
     while (true) {
-      final Pair<String, Boolean> filePair = pendingQueue.dequeueFromPending();
+      final Triple<String, Boolean, Boolean> filePair = pendingQueue.dequeueFromPending();
       if (Objects.nonNull(filePair)) {
         return Optional.of(filePair);
       }
@@ -213,7 +214,8 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
-  private TSStatus loadTsFile(final Pair<String, Boolean> filePair, final IClientSession session)
+  private TSStatus loadTsFile(
+      final Triple<String, Boolean, Boolean> filePair, final IClientSession session)
       throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
     final List<File> files = statement.getTsFiles();
@@ -223,7 +225,9 @@ public class ActiveLoadTsFileLoader {
     // exception will be thrown.
     final File parentFile;
     statement.setDatabase(
-        files.isEmpty() || (parentFile = files.get(0).getParentFile()) == null
+        files.isEmpty()
+                || !filePair.getMiddle()
+                || (parentFile = files.get(0).getParentFile()) == null
             ? null
             : parentFile.getName());
     statement.setDeleteAfterLoad(true);
@@ -254,7 +258,8 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
-  private void handleLoadFailure(final Pair<String, Boolean> filePair, final TSStatus status) {
+  private void handleLoadFailure(
+      final Triple<String, Boolean, Boolean> filePair, final TSStatus status) {
     if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(
         filePair, status.getMessage())) {
       LOGGER.warn(
@@ -266,7 +271,7 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
-  private void handleFileNotFoundException(final Pair<String, Boolean> filePair) {
+  private void handleFileNotFoundException(final Triple<String, Boolean, Boolean> filePair) {
     LOGGER.warn(
         "Failed to auto load tsfile {} (isGeneratedByPipe = {}) due to file not found, will skip this file.",
         filePair.getLeft(),
@@ -274,7 +279,8 @@ public class ActiveLoadTsFileLoader {
     removeFileAndResourceAndModsToFailDir(filePair.getLeft());
   }
 
-  private void handleOtherException(final Pair<String, Boolean> filePair, final Exception e) {
+  private void handleOtherException(
+      final Triple<String, Boolean, Boolean> filePair, final Exception e) {
     if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(filePair, e.getMessage())) {
       LOGGER.warn(
           "Failed to auto load tsfile {} (isGeneratedByPipe = {}) because of an unexpected exception. File will be moved to fail directory.",

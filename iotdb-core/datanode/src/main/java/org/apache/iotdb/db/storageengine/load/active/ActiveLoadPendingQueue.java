@@ -21,7 +21,8 @@ package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 
-import org.apache.tsfile.utils.Pair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.HashSet;
 import java.util.Queue;
@@ -31,13 +32,15 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class ActiveLoadPendingQueue {
 
   private final Set<String> pendingFileSet = new HashSet<>();
-  private final Queue<Pair<String, Boolean>> pendingFileQueue = new ConcurrentLinkedQueue<>();
+  private final Queue<Triple<String, Boolean, Boolean>> pendingFileQueue =
+      new ConcurrentLinkedQueue<>();
 
   private final Set<String> loadingFileSet = new HashSet<>();
 
-  public synchronized boolean enqueue(final String file, final boolean isGeneratedByPipe) {
+  public synchronized boolean enqueue(
+      final String file, final boolean isTableModel, final boolean isGeneratedByPipe) {
     if (!loadingFileSet.contains(file) && pendingFileSet.add(file)) {
-      pendingFileQueue.offer(new Pair<>(file, isGeneratedByPipe));
+      pendingFileQueue.offer(new ImmutableTriple<>(file, isGeneratedByPipe, isTableModel));
 
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(1);
       return true;
@@ -45,11 +48,11 @@ public class ActiveLoadPendingQueue {
     return false;
   }
 
-  public synchronized Pair<String, Boolean> dequeueFromPending() {
-    final Pair<String, Boolean> pair = pendingFileQueue.poll();
+  public synchronized Triple<String, Boolean, Boolean> dequeueFromPending() {
+    final Triple<String, Boolean, Boolean> pair = pendingFileQueue.poll();
     if (pair != null) {
-      pendingFileSet.remove(pair.left);
-      loadingFileSet.add(pair.left);
+      pendingFileSet.remove(pair.getLeft());
+      loadingFileSet.add(pair.getLeft());
 
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseLoadingFileCounter(1);
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(-1);
