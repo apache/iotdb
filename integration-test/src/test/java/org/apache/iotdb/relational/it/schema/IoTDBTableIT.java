@@ -309,8 +309,8 @@ public class IoTDBTableIT {
       // Test create table with only time column
       statement.execute("create table table3()");
 
-      tableNames = new String[] {"table3", "table2"};
-      ttls = new String[] {"3000000", "6600000"};
+      tableNames = new String[] {"table2", "table3"};
+      ttls = new String[] {"6600000", "3000000"};
 
       // show tables from current database
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
@@ -336,7 +336,7 @@ public class IoTDBTableIT {
       statement.execute("alter table table3 set properties ttl=1000000");
       statement.execute("alter table table3 set properties ttl=DEFAULT");
 
-      ttls = new String[] {"INF", "6600000"};
+      ttls = new String[] {"6600000", "INF"};
       // The table3's ttl shall be "INF"
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
         int cnt = 0;
@@ -662,10 +662,9 @@ public class IoTDBTableIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         Assert.assertTrue(resultSet.next());
-        if (resultSet.getString(1).equals("information_schema")) {
-          assertTrue(resultSet.next());
-        }
         assertEquals("db", resultSet.getString(1));
+        Assert.assertTrue(resultSet.next());
+        assertEquals("information_schema", resultSet.getString(1));
         Assert.assertFalse(resultSet.next());
       }
 

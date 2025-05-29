@@ -41,7 +41,6 @@ import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
@@ -59,13 +58,7 @@ public class InformationSchemaUtils {
   }
 
   public static void buildDatabaseTsBlock(
-      final Predicate<String> canSeenDB,
-      final TsBlockBuilder builder,
-      final boolean details,
-      final boolean withTime) {
-    if (!canSeenDB.test(INFORMATION_DATABASE)) {
-      return;
-    }
+      final TsBlockBuilder builder, final boolean details, final boolean withTime) {
     if (withTime) {
       builder.getTimeColumnBuilder().writeLong(0L);
     }
@@ -116,7 +109,8 @@ public class InformationSchemaUtils {
             .stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (final String schemaTable : getSchemaTables().keySet()) {
+    for (final String schemaTable :
+        getSchemaTables().keySet().stream().sorted().collect(Collectors.toList())) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(schemaTable, TSFileConfig.STRING_CHARSET));
       builder.getColumnBuilder(1).writeBinary(new Binary("INF", TSFileConfig.STRING_CHARSET));

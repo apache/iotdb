@@ -246,7 +246,7 @@ public class InformationSchemaContentSupplierFactory {
     @Override
     protected void constructLine() {
       if (!hasShownInformationSchema) {
-        InformationSchemaUtils.buildDatabaseTsBlock(s -> true, resultBuilder, true, false);
+        InformationSchemaUtils.buildDatabaseTsBlock(resultBuilder, true, false);
         hasShownInformationSchema = true;
         return;
       }
