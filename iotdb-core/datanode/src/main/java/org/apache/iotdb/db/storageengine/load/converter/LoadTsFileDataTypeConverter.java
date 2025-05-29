@@ -83,11 +83,20 @@ public class LoadTsFileDataTypeConverter {
   }
 
   private TSStatus executeForTableModel(final Statement statement, final String databaseName) {
+    final IClientSession session =
+        new InternalClientSession(
+            String.format(
+                "%s_%s",
+                LoadTsFileDataTypeConverter.class.getSimpleName(),
+                Thread.currentThread().getName()));
+    session.setUsername(AuthorityChecker.SUPER_USER);
+    session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+    session.setZoneId(ZoneId.systemDefault());
     return Coordinator.getInstance()
         .executeForTableModel(
             isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
             relationalSqlParser,
-            SESSION_MANAGER.getCurrSession(),
+            session,
             SESSION_MANAGER.requestQueryId(),
             SESSION_MANAGER.getSessionInfoOfPipeReceiver(
                 SESSION_MANAGER.getCurrSession(), databaseName),

@@ -114,11 +114,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
 
     final LoadTsFileMemoryBlock block =
         LoadTsFileMemoryManager.getInstance()
-            .allocateMemoryBlock(
-                TABLET_BATCH_MEMORY_SIZE_IN_BYTES
-                    * IoTDBDescriptor.getInstance()
-                        .getConfig()
-                        .getLoadTsFileTabletConversionThreadCount());
+            .allocateMemoryBlock(TABLET_BATCH_MEMORY_SIZE_IN_BYTES);
     final List<PipeTransferTabletRawReq> tabletRawReqs = new ArrayList<>();
     final List<Long> tabletRawReqSizes = new ArrayList<>();
 
@@ -133,15 +129,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
                 PipeTransferTabletRawReq.toTPipeTransferRawReq(
                     tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight());
             final long curMemory = calculateTabletSizeInBytes(tabletWithIsAligned.getLeft()) + 1;
-            if (block.hasEnoughMemory(
-                curMemory
-                    + TABLET_BATCH_MEMORY_SIZE_IN_BYTES
-                        * Math.max(
-                            0,
-                            (IoTDBDescriptor.getInstance()
-                                    .getConfig()
-                                    .getLoadTsFileTabletConversionThreadCount()
-                                - 1)))) {
+            if (block.hasEnoughMemory(curMemory)) {
               tabletRawReqs.add(tabletRawReq);
               tabletRawReqSizes.add(curMemory);
               block.addMemoryUsage(curMemory);
