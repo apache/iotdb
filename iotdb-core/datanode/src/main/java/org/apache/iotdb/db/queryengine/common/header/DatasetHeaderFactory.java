@@ -59,7 +59,7 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showDevicesWithSgColumnHeaders, true);
   }
 
-  public static DatasetHeader getShowStorageGroupHeader(final boolean isDetailed) {
+  public static DatasetHeader getShowDatabaseHeader(final boolean isDetailed) {
     return isDetailed
         ? new DatasetHeader(ColumnHeaderConstant.showDatabasesDetailColumnHeaders, true)
         : new DatasetHeader(ColumnHeaderConstant.showDatabasesColumnHeaders, true);

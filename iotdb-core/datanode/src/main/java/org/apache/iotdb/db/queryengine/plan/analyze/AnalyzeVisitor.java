@@ -3136,7 +3136,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setRealStatement(showDatabaseStatement);
     analysis.setRespDatasetHeader(
-        DatasetHeaderFactory.getShowStorageGroupHeader(showDatabaseStatement.isDetailed()));
+        DatasetHeaderFactory.getShowDatabaseHeader(showDatabaseStatement.isDetailed()));
     return analysis;
   }
 

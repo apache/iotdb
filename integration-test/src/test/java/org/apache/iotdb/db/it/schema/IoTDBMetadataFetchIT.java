@@ -38,6 +38,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -185,37 +186,36 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void showStorageGroupTest() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      String[] sqls =
+  public void showDatabasesTest() throws SQLException {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      final String[] sqls =
           new String[] {
             "show databases",
             "show databases root.ln.wf01.**",
             "show databases root.ln.wf01.wt01.status"
           };
-      Set<String>[] standards =
-          new Set[] {
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01",
-                    "root.ln.wf01.wt02",
-                    "root.ln1.wf01.wt01",
-                    "root.ln2.wf01.wt01")),
-            new HashSet<>(Arrays.asList("root.ln.wf01.wt01", "root.ln.wf01.wt02")),
-            new HashSet<>()
+      final List<String>[] standards =
+          new List[] {
+            Arrays.asList(
+                "root.ln.wf01.wt01",
+                "root.ln.wf01.wt02",
+                "root.ln1.wf01.wt01",
+                "root.ln2.wf01.wt01"),
+            Arrays.asList("root.ln.wf01.wt01", "root.ln.wf01.wt02"),
+            Collections.emptyList()
           };
 
       for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        Set<String> standard = standards[n];
-        try (ResultSet resultSet = statement.executeQuery(sql)) {
+        final String sql = sqls[n];
+        final List<String> standard = standards[n];
+        int i = 0;
+        try (final ResultSet resultSet = statement.executeQuery(sql)) {
           while (resultSet.next()) {
-            Assert.assertTrue(standard.contains(resultSet.getString(1)));
-            standard.remove(resultSet.getString(1));
+            assertEquals(standard.get(i++), resultSet.getString(1));
           }
           assertEquals(0, standard.size());
-        } catch (SQLException e) {
+        } catch (final SQLException e) {
           e.printStackTrace();
           fail(e.getMessage());
         }
