@@ -234,6 +234,10 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
     highPriorityLockTaskCount.incrementAndGet();
     try {
+      synchronized (highPriorityLockTaskCount) {
+        highPriorityLockTaskCount.notify();
+      }
+
       // synchronized to use the lastEvent & lastExceptionEvent
       synchronized (this) {
         // Here we discard the last event, and re-submit the pipe task to avoid that the pipe task

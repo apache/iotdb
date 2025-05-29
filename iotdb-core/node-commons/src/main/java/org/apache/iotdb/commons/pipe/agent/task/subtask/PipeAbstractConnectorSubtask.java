@@ -175,7 +175,14 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
             MAX_RETRY_TIMES,
             e);
         try {
-          Thread.sleep(retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
+          synchronized (highPriorityLockTaskCount) {
+            // The wait operation will release the highPriorityLockTaskCount lock, so there will be
+            // no deadlock.
+            if (highPriorityLockTaskCount.get() == 0) {
+              highPriorityLockTaskCount.wait(
+                  retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
+            }
+          }
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
               "Interrupted while sleeping, will retry to handshake with the target system.",
