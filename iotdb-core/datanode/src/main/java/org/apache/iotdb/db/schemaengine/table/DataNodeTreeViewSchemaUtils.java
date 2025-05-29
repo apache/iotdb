@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -33,6 +38,29 @@ import java.util.stream.Stream;
 import static org.apache.iotdb.commons.schema.table.TreeViewSchema.getPrefixPattern;
 
 public class DataNodeTreeViewSchemaUtils {
+
+  public static void checkTableInWrite(final QualifiedObjectName tableName) {
+    if (TreeViewSchema.isTreeViewTable(
+        DataNodeTableCache.getInstance()
+            .getTable(tableName.getDatabaseName(), tableName.getObjectName()))) {
+      throw new SemanticException(
+          new IoTDBException(
+              String.format("The table %s is a tree view table, cannot be written", tableName),
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+    }
+  }
+
+  public static void checkTableInInsertPrivilege(final String database, final String tableName) {
+    if (TreeViewSchema.isTreeViewTable(
+        DataNodeTableCache.getInstance().getTable(database, tableName))) {
+      throw new SemanticException(
+          new IoTDBException(
+              String.format(
+                  "The table %s is a tree view table, cannot be granted or revoked insert permission",
+                  tableName),
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+    }
+  }
 
   public static String[] getPatternNodes(final TsTable table) {
     final PartialPath path = getPrefixPattern(table);
