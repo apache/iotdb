@@ -54,7 +54,7 @@ public class PipeTableRespTest {
     connectorAttributes.put("host", "127.0.0.1");
     connectorAttributes.put("port", "6667");
 
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1, 1);
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1, 1, false);
     ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
@@ -74,7 +74,7 @@ public class PipeTableRespTest {
     connectorAttributes1.put("host", "127.0.0.1");
     connectorAttributes1.put("port", "6667");
 
-    PipeTaskMeta pipeTaskMeta1 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1, 1);
+    PipeTaskMeta pipeTaskMeta1 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1, 1, false);
     ConcurrentMap<Integer, PipeTaskMeta> pipeTasks1 = new ConcurrentHashMap<>();
     pipeTasks1.put(1, pipeTaskMeta1);
     PipeStaticMeta pipeStaticMeta1 =
@@ -94,7 +94,7 @@ public class PipeTableRespTest {
     connectorAttributes2.put("host", "172.30.30.30");
     connectorAttributes2.put("port", "6667");
 
-    PipeTaskMeta pipeTaskMeta2 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1, 1);
+    PipeTaskMeta pipeTaskMeta2 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1, 1, false);
     ConcurrentMap<Integer, PipeTaskMeta> pipeTasks2 = new ConcurrentHashMap<>();
     pipeTasks2.put(1, pipeTaskMeta2);
     PipeStaticMeta pipeStaticMeta2 =

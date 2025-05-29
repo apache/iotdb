@@ -168,7 +168,10 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             updatedConsensusGroupIdToTaskMetaMap.put(
                 taskId,
                 new PipeTaskMeta(
-                    pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderNodeId(), taskId));
+                    pipeTaskMeta.getProgressIndex(),
+                    pipeTaskMeta.getLeaderNodeId(),
+                    taskId,
+                    false));
           });
     } else {
       // data regions & schema regions
@@ -192,7 +195,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                       new PipeTaskMeta(
                           currentPipeTaskMeta.getProgressIndex(),
                           regionLeaderNodeId,
-                          regionGroupId.getId()));
+                          regionGroupId.getId(),
+                          false));
                 }
               });
 
@@ -209,7 +213,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                 configRegionTaskMeta.getProgressIndex(),
                 // The leader of the config region is the config node itself
                 ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-                configRegionTaskMeta.getProgressIndex().hashCode()));
+                configRegionTaskMeta.getProgressIndex().hashCode(),
+                false));
       }
     }
 

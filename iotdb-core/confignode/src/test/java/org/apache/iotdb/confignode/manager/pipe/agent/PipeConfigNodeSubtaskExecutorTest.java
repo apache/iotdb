@@ -63,7 +63,7 @@ public class PipeConfigNodeSubtaskExecutorTest {
                   }
                 },
                 new PipeTaskMeta(
-                    MinimumProgressIndex.INSTANCE, Integer.MIN_VALUE, Integer.MIN_VALUE)));
+                    MinimumProgressIndex.INSTANCE, Integer.MIN_VALUE, Integer.MIN_VALUE, false)));
   }
 
   @After

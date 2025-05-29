@@ -67,10 +67,11 @@ public class PipeTaskMeta {
 
   private final AtomicLong updateCount = new AtomicLong(0);
   private final AtomicLong lastPersistCount = new AtomicLong(0);
-  private final long checkpointGap = 20L;
+  private final long checkPointGap = 20L;
   private final int taskIndex;
   private final File progressIndexPersistFile;
   private final AtomicBoolean isRegisterPersistTask = new AtomicBoolean(false);
+  private final boolean needPersistProgressIndex;
   private Future<?> persistProgressIndexFuture;
 
   /**
@@ -88,10 +89,13 @@ public class PipeTaskMeta {
   public PipeTaskMeta(
       /* @NotNull */ final ProgressIndex progressIndex,
       final int leaderNodeId,
-      final int taskIndex) {
+      final int taskIndex,
+      final boolean needPersistProgressIndex) {
     this.progressIndex.set(progressIndex);
     this.leaderNodeId.set(leaderNodeId);
     this.taskIndex = taskIndex;
+    // PipeTaskMeta created in configNode doesn't need to persist progress index.
+    this.needPersistProgressIndex = needPersistProgressIndex;
     this.progressIndexPersistFile =
         new File(
             CommonDescriptor.getInstance().getConfig().getPipeHardlinkTsFileDirName(),
@@ -105,7 +109,9 @@ public class PipeTaskMeta {
   public ProgressIndex updateProgressIndex(final ProgressIndex updateIndex) {
     // only pipeTaskMeta that need to updateProgressIndex will persist progress index
     // isRegisterPersistTask is used to avoid multiple threads registering persist task concurrently
-    if (!isRegisterPersistTask.getAndSet(true) && this.persistProgressIndexFuture == null) {
+    if (needPersistProgressIndex
+        && !isRegisterPersistTask.getAndSet(true)
+        && this.persistProgressIndexFuture == null) {
       this.persistProgressIndexFuture =
           PipePeriodicalJobExecutor.submitBackgroundJob(
               this::persistProgressIndex, 0, TimeUnit.SECONDS.toMillis(20));
@@ -113,7 +119,8 @@ public class PipeTaskMeta {
 
     progressIndex.updateAndGet(
         index -> index.updateToMinimumEqualOrIsAfterProgressIndex(updateIndex));
-    if (updateCount.incrementAndGet() - lastPersistCount.get() > checkpointGap) {
+    if (needPersistProgressIndex
+        && updateCount.incrementAndGet() - lastPersistCount.get() > checkPointGap) {
       persistProgressIndex();
     }
     return progressIndex.get();
@@ -166,7 +173,9 @@ public class PipeTaskMeta {
   }
 
   public void cancelPersistProgressIndexFuture() {
-    if (isRegisterPersistTask.getAndSet(false) && persistProgressIndexFuture != null) {
+    if (needPersistProgressIndex
+        && isRegisterPersistTask.getAndSet(false)
+        && persistProgressIndexFuture != null) {
       persistProgressIndexFuture.cancel(false);
       persistProgressIndexFuture = null;
     }
@@ -228,7 +237,10 @@ public class PipeTaskMeta {
     final int leaderNodeId = ReadWriteIOUtils.readInt(byteBuffer);
     final int taskIndex = ReadWriteIOUtils.readInt(byteBuffer);
 
-    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(progressIndex, leaderNodeId, taskIndex);
+    // PipeTaskMeta created from deserialization is used in DataNode, thus need persist
+    // progressIndex
+    final PipeTaskMeta pipeTaskMeta =
+        new PipeTaskMeta(progressIndex, leaderNodeId, taskIndex, true);
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
@@ -245,7 +257,10 @@ public class PipeTaskMeta {
     final int leaderNodeId = ReadWriteIOUtils.readInt(inputStream);
     final int taskIndex = ReadWriteIOUtils.readInt(inputStream);
 
-    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(progressIndex, leaderNodeId, taskIndex);
+    // PipeTaskMeta created from deserialization is used in DataNode, thus need persist
+    // progressIndex
+    final PipeTaskMeta pipeTaskMeta =
+        new PipeTaskMeta(progressIndex, leaderNodeId, taskIndex, true);
     final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =

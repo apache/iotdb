@@ -630,7 +630,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
                                   new PipeTaskMeta(
                                       MinimumProgressIndex.INSTANCE,
                                       newLeader,
-                                      consensusGroupId.getId()));
+                                      consensusGroupId.getId(),
+                                      false));
                             }
                             // else:
                             // "The pipe task meta does not contain the data region group {} or

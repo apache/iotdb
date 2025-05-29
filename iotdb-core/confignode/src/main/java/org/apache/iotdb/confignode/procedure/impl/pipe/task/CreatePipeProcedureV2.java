@@ -273,7 +273,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           new PipeTaskMeta(
               new RecoverProgressIndex(senderDataNodeId, new SimpleProgressIndex(0, 0)),
               senderDataNodeId,
-              groupId.getId()));
+              groupId.getId(),
+              false));
     } else if (pipeStaticMeta.isSourceExternal()) {
       // external source
       final PipeExternalSourceLoadBalancer loadBalancer =
@@ -298,7 +299,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               (taskIndex, leaderNodeId) -> {
                 consensusGroupIdToTaskMetaMap.put(
                     taskIndex,
-                    new PipeTaskMeta(MinimumProgressIndex.INSTANCE, leaderNodeId, taskIndex));
+                    new PipeTaskMeta(
+                        MinimumProgressIndex.INSTANCE, leaderNodeId, taskIndex, false));
               });
     } else {
       // data regions & schema regions
@@ -318,7 +320,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                       new PipeTaskMeta(
                           MinimumProgressIndex.INSTANCE,
                           regionLeaderNodeId,
-                          regionGroupId.getId()));
+                          regionGroupId.getId(),
+                          false));
                 }
               });
 
@@ -331,7 +334,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               MinimumProgressIndex.INSTANCE,
               // The leader of the config region is the config node itself
               ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-              Integer.MIN_VALUE));
+              Integer.MIN_VALUE,
+              false));
     }
 
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
