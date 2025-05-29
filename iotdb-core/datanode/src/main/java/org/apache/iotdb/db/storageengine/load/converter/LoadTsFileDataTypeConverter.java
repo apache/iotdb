@@ -99,7 +99,7 @@ public class LoadTsFileDataTypeConverter {
             session,
             SESSION_MANAGER.requestQueryId(),
             SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                SESSION_MANAGER.getCurrSession(), databaseName),
+                session, databaseName),
             "",
             LocalExecutionPlanner.getInstance().metadata,
             IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
