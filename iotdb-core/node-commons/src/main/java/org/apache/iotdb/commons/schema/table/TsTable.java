@@ -273,6 +273,10 @@ public class TsTable {
     }
   }
 
+  public boolean containsPropWithoutLock(final String propKey) {
+    return props != null && props.containsKey(propKey);
+  }
+
   public Optional<String> getPropValue(final String propKey) {
     readWriteLock.readLock().lock();
     try {
