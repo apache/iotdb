@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.model.ModelType;
@@ -38,11 +41,15 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo4InformationSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo4InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -98,6 +105,9 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NODE_TYPE_AI_NODE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NODE_TYPE_CONFIG_NODE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NODE_TYPE_DATA_NODE;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.canShowDB;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.canShowTable;
@@ -147,6 +157,12 @@ public class InformationSchemaContentSupplierFactory {
         return new ConfigurationsSupplier(dataTypes, userName);
       case InformationSchema.KEYWORDS:
         return new KeywordsSupplier(dataTypes);
+      case InformationSchema.NODES:
+        return new NodesSupplier(dataTypes, userName);
+      case InformationSchema.CONFIG_NODES:
+        return new ConfigNodesSupplier(dataTypes, userName);
+      case InformationSchema.DATA_NODES:
+        return new DataNodesSupplier(dataTypes, userName);
       default:
         throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -979,6 +995,172 @@ public class InformationSchemaContentSupplierFactory {
     @Override
     public boolean hasNext() {
       return keywordIterator.hasNext();
+    }
+  }
+
+  private static class NodesSupplier extends TsBlockSupplier {
+    private TShowClusterResp showClusterResp;
+    private Iterator<TConfigNodeLocation> configNodeIterator;
+    private Iterator<TDataNodeLocation> dataNodeIterator;
+    private Iterator<TAINodeLocation> aiNodeIterator;
+
+    private NodesSupplier(final List<TSDataType> dataTypes, final String userName) {
+      super(dataTypes);
+      accessControl.checkUserIsAdmin(userName);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        showClusterResp = client.showCluster();
+        configNodeIterator = showClusterResp.getConfigNodeListIterator();
+        dataNodeIterator = showClusterResp.getDataNodeListIterator();
+        aiNodeIterator = showClusterResp.getAiNodeListIterator();
+      } catch (final Exception e) {
+        lastException = e;
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      if (configNodeIterator.hasNext()) {
+        final TConfigNodeLocation location = configNodeIterator.next();
+        buildNodeTsBlock(
+            location.getConfigNodeId(),
+            NODE_TYPE_CONFIG_NODE,
+            showClusterResp.getNodeStatus().get(location.getConfigNodeId()),
+            location.getInternalEndPoint().getIp(),
+            location.getInternalEndPoint().getPort(),
+            showClusterResp.getNodeVersionInfo().get(location.getConfigNodeId()));
+        return;
+      }
+      if (dataNodeIterator.hasNext()) {
+        final TDataNodeLocation location = dataNodeIterator.next();
+        buildNodeTsBlock(
+            location.getDataNodeId(),
+            NODE_TYPE_DATA_NODE,
+            showClusterResp.getNodeStatus().get(location.getDataNodeId()),
+            location.getInternalEndPoint().getIp(),
+            location.getInternalEndPoint().getPort(),
+            showClusterResp.getNodeVersionInfo().get(location.getDataNodeId()));
+        return;
+      }
+      if (aiNodeIterator.hasNext()) {
+        final TAINodeLocation location = aiNodeIterator.next();
+        buildNodeTsBlock(
+            location.getAiNodeId(),
+            NODE_TYPE_AI_NODE,
+            showClusterResp.getNodeStatus().get(location.getAiNodeId()),
+            location.getInternalEndPoint().getIp(),
+            location.getInternalEndPoint().getPort(),
+            showClusterResp.getNodeVersionInfo().get(location.getAiNodeId()));
+      }
+    }
+
+    private void buildNodeTsBlock(
+        int nodeId,
+        String nodeType,
+        String nodeStatus,
+        String internalAddress,
+        int internalPort,
+        TNodeVersionInfo versionInfo) {
+      columnBuilders[0].writeInt(nodeId);
+      columnBuilders[1].writeBinary(new Binary(nodeType, TSFileConfig.STRING_CHARSET));
+      if (nodeStatus == null) {
+        columnBuilders[2].appendNull();
+      } else {
+        columnBuilders[2].writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
+      }
+
+      if (internalAddress == null) {
+        columnBuilders[3].appendNull();
+      } else {
+        columnBuilders[3].writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
+      }
+      columnBuilders[4].writeInt(internalPort);
+      if (versionInfo == null || versionInfo.getVersion() == null) {
+        columnBuilders[5].appendNull();
+      } else {
+        columnBuilders[5].writeBinary(
+            new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
+      }
+      if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+        columnBuilders[6].appendNull();
+      } else {
+        columnBuilders[6].writeBinary(
+            new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
+      }
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return configNodeIterator.hasNext() || dataNodeIterator.hasNext() || aiNodeIterator.hasNext();
+    }
+  }
+
+  private static class ConfigNodesSupplier extends TsBlockSupplier {
+    private Iterator<TConfigNodeInfo4InformationSchema> configNodeIterator;
+
+    private ConfigNodesSupplier(final List<TSDataType> dataTypes, final String userName) {
+      super(dataTypes);
+      accessControl.checkUserIsAdmin(userName);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        configNodeIterator =
+            client.showConfigNodes4InformationSchema().getConfigNodesInfoListIterator();
+      } catch (final Exception e) {
+        lastException = e;
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      final TConfigNodeInfo4InformationSchema configNodeInfo4InformationSchema =
+          configNodeIterator.next();
+      columnBuilders[0].writeInt(configNodeInfo4InformationSchema.getConfigNodeId());
+      columnBuilders[1].writeInt(configNodeInfo4InformationSchema.getConsensusPort());
+      columnBuilders[2].writeBinary(
+          new Binary(configNodeInfo4InformationSchema.getRoleType(), TSFileConfig.STRING_CHARSET));
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return configNodeIterator.hasNext();
+    }
+  }
+
+  private static class DataNodesSupplier extends TsBlockSupplier {
+    private Iterator<TDataNodeInfo4InformationSchema> dataNodeIterator;
+
+    private DataNodesSupplier(final List<TSDataType> dataTypes, final String userName) {
+      super(dataTypes);
+      accessControl.checkUserIsAdmin(userName);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        dataNodeIterator = client.showDataNodes4InformationSchema().getDataNodesInfoListIterator();
+      } catch (final Exception e) {
+        lastException = e;
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      final TDataNodeInfo4InformationSchema dataNodeInfo4InformationSchema =
+          dataNodeIterator.next();
+      columnBuilders[0].writeInt(dataNodeInfo4InformationSchema.getDataNodeId());
+      columnBuilders[1].writeInt(dataNodeInfo4InformationSchema.getDataRegionNum());
+      columnBuilders[2].writeInt(dataNodeInfo4InformationSchema.getSchemaRegionNum());
+      columnBuilders[3].writeBinary(
+          new Binary(dataNodeInfo4InformationSchema.getRpcAddress(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[4].writeInt(dataNodeInfo4InformationSchema.getRpcPort());
+      columnBuilders[5].writeInt(dataNodeInfo4InformationSchema.getMppPort());
+      columnBuilders[6].writeInt(dataNodeInfo4InformationSchema.getDataConsensusPort());
+      columnBuilders[7].writeInt(dataNodeInfo4InformationSchema.getSchemaConsensusPort());
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return dataNodeIterator.hasNext();
     }
   }
 
