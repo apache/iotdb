@@ -156,18 +156,18 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * @param storageGroupName database name
+   * @param databaseName database name
    * @return ALL SUCCESS OR NOT
    * @throws IOException IOE
    * @throws TException Thrift IOE
    */
-  public boolean invalidateCache(final String storageGroupName) throws IOException, TException {
-    List<TDataNodeConfiguration> allDataNodes = getNodeManager().getRegisteredDataNodes();
-    TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
+  public boolean invalidateCache(final String databaseName) throws IOException, TException {
+    final List<TDataNodeConfiguration> allDataNodes = getNodeManager().getRegisteredDataNodes();
+    final TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
-    invalidateCacheReq.setFullPath(storageGroupName);
-    for (TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
-      int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
+    invalidateCacheReq.setFullPath(databaseName);
+    for (final TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
+      final int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
 
       // If the node is not alive, retry for up to 10 times
       NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
@@ -176,7 +176,7 @@ public class ConfigNodeProcedureEnv {
         for (int i = 0; i < retryNum && nodeStatus == NodeStatus.Unknown; i++) {
           try {
             TimeUnit.MILLISECONDS.sleep(500);
-          } catch (InterruptedException e) {
+          } catch (final InterruptedException e) {
             LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
             Thread.currentThread().interrupt();
             break;
