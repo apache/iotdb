@@ -302,7 +302,7 @@ public class CommonConfig {
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
   private long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
   private PipeRateAverage pipeRemainingTimeCommitRateAverageTime = PipeRateAverage.MEAN;
-  private PipeRateAverage pipeRemainingInsertEventCountAverage = PipeRateAverage.ONE_MINUTE;
+  private PipeRateAverage pipeRemainingInsertNodeCountAverage = PipeRateAverage.ONE_MINUTE;
   private double pipeTsFileScanParsingThreshold = 0.05;
   private double pipeDynamicMemoryHistoryWeight = 0.5;
   private double pipeDynamicMemoryAdjustmentThreshold = 0.05;
@@ -1847,19 +1847,19 @@ public class CommonConfig {
         pipeRemainingTimeCommitRateAverageTime);
   }
 
-  public PipeRateAverage getPipeRemainingInsertEventCountAverage() {
-    return pipeRemainingInsertEventCountAverage;
+  public PipeRateAverage getPipeRemainingInsertNodeCountAverage() {
+    return pipeRemainingInsertNodeCountAverage;
   }
 
-  public void setPipeRemainingInsertEventCountAverage(
-      PipeRateAverage pipeRemainingInsertEventCountAverage) {
+  public void setPipeRemainingInsertNodeCountAverage(
+      PipeRateAverage pipeRemainingInsertNodeCountAverage) {
     if (Objects.equals(
-        this.pipeRemainingInsertEventCountAverage, pipeRemainingInsertEventCountAverage)) {
+        this.pipeRemainingInsertNodeCountAverage, pipeRemainingInsertNodeCountAverage)) {
       return;
     }
-    this.pipeRemainingInsertEventCountAverage = pipeRemainingInsertEventCountAverage;
+    this.pipeRemainingInsertNodeCountAverage = pipeRemainingInsertNodeCountAverage;
     logger.info(
-        "pipeRemainingInsertEventCountAverage is set to {}", pipeRemainingInsertEventCountAverage);
+        "pipeRemainingInsertEventCountAverage is set to {}", pipeRemainingInsertNodeCountAverage);
   }
 
   public double getPipeTsFileScanParsingThreshold() {

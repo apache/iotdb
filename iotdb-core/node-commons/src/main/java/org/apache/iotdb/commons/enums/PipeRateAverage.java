@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.enums;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
-
 import com.codahale.metrics.Meter;
 
 public enum PipeRateAverage {
@@ -41,9 +39,7 @@ public enum PipeRateAverage {
         return meter.getMeanRate();
       default:
         throw new UnsupportedOperationException(
-            String.format(
-                "The type %s is not supported in average time of pipe remaining time.",
-                PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime()));
+            String.format("The type %s is not supported in pipe rate average.", this));
     }
   }
 }

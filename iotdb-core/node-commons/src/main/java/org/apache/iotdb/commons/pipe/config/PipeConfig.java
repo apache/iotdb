@@ -227,8 +227,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRemainingTimeCommitRateAverageTime();
   }
 
-  public PipeRateAverage getPipeRemainingInsertEventCountAverage() {
-    return COMMON_CONFIG.getPipeRemainingInsertEventCountAverage();
+  public PipeRateAverage getPipeRemainingInsertNodeCountAverage() {
+    return COMMON_CONFIG.getPipeRemainingInsertNodeCountAverage();
   }
 
   public double getPipeTsFileScanParsingThreshold() {
@@ -518,7 +518,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
     LOGGER.info(
-        "PipePipeRemainingInsertEventCountAverage: {}", getPipeRemainingInsertEventCountAverage());
+        "PipePipeRemainingInsertEventCountAverage: {}", getPipeRemainingInsertNodeCountAverage());
     LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
 
     LOGGER.info("PipeDynamicMemoryHistoryWeight: {}", getPipeDynamicMemoryHistoryWeight());

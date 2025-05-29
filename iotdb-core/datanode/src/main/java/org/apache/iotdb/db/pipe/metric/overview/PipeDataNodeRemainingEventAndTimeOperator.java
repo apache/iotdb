@@ -106,7 +106,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       lastInsertNodeEventCountSmoothingTime = System.currentTimeMillis();
     }
     return PipeConfig.getInstance()
-        .getPipeRemainingInsertEventCountAverage()
+        .getPipeRemainingInsertNodeCountAverage()
         .getMeterRate(insertNodeEventCountMeter);
   }
 
