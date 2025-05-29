@@ -200,7 +200,7 @@ public class ForecastTableFunction implements TableFunction {
   public static final long DEFAULT_OUTPUT_INTERVAL = 0L;
   public static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
   private static final String DEFAULT_TIME_COL = "time";
-  private static final String KEEP_INPUT_PARAMETER_NAME = "KEEP_INPUT";
+  private static final String KEEP_INPUT_PARAMETER_NAME = "PRESERVE_INPUT";
   private static final Boolean DEFAULT_KEEP_INPUT = Boolean.FALSE;
   private static final String IS_INPUT_COLUMN_NAME = "is_input";
   private static final String OPTIONS_PARAMETER_NAME = "MODEL_OPTIONS";
