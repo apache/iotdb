@@ -160,6 +160,26 @@ public class FunctionCall extends Expression {
   }
 
   @Override
+  public void serialize(ByteBuffer buffer) {
+    this.name.serialize(buffer);
+
+    ReadWriteIOUtils.write(this.distinct, buffer);
+
+    ReadWriteIOUtils.write(arguments.size(), buffer);
+    for (Expression argument : arguments) {
+      Expression.serialize(argument, buffer);
+    }
+
+    if (processingMode.isPresent()) {
+      ReadWriteIOUtils.write(true, buffer);
+      ProcessingMode mode = processingMode.get();
+      ReadWriteIOUtils.write(mode.getMode().name(), buffer);
+    } else {
+      ReadWriteIOUtils.write(false, buffer);
+    }
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     this.name.serialize(stream);
     ReadWriteIOUtils.write(this.distinct, stream);

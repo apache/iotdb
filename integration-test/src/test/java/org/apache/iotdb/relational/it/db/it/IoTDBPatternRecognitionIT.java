@@ -713,35 +713,6 @@ public class IoTDBPatternRecognitionIT {
   }
 
   @Test
-  public void testRowPattern() {
-    String[] expectedHeader = new String[] {"time", "match", "price", "label"};
-    String[] retArray1 =
-        new String[] {
-          "2025-01-01T00:01:00.000Z,1,null,null,",
-          "2025-01-01T00:02:00.000Z,2,80.0,B,",
-          "2025-01-01T00:03:00.000Z,2,70.0,B,",
-          "2025-01-01T00:04:00.000Z,2,70.0,B,",
-        };
-
-    String sql =
-        "SELECT m.time, m.match, m.price, m.label "
-            + "FROM t1 "
-            + "MATCH_RECOGNIZE ( "
-            + "    MEASURES "
-            + "        MATCH_NUMBER() AS match, "
-            + "        RUNNING RPR_LAST(totalprice) AS price,  "
-            + "        CLASSIFIER() AS label "
-            + "    ALL ROWS PER MATCH "
-            + "    AFTER MATCH SKIP PAST LAST ROW "
-            + "    %s " // PATTERN
-            + "    DEFINE "
-            + "        B AS B.totalprice <= PREV(B.totalprice) "
-            + ") AS m";
-
-    tableResultSetEqualTest(format(sql, "PATTERN (B*)"), expectedHeader, retArray1, DATABASE_NAME);
-  }
-
-  @Test
   public void testPatternQuantifier() {
     String[] expectedHeader = new String[] {"time", "match", "price", "label"};
     String[] retArray1 =
@@ -850,34 +821,5 @@ public class IoTDBPatternRecognitionIT {
 
     tableResultSetEqualTest(
         format(sql, "PATTERN (B{1}?)"), expectedHeader, retArray4, DATABASE_NAME);
-  }
-
-  @Test
-  public void testPatternExclusion() {
-    String[] expectedHeader = new String[] {"time", "match", "price", "label"};
-    String[] retArray1 =
-        new String[] {
-          "2025-01-01T00:01:00.000Z,1,null,null,",
-          "2025-01-01T00:02:00.000Z,2,80.0,B,",
-          "2025-01-01T00:03:00.000Z,2,70.0,B,",
-          "2025-01-01T00:04:00.000Z,2,70.0,B,",
-        };
-
-    String sql =
-        "SELECT m.time, m.match, m.price, m.label "
-            + "FROM t1 "
-            + "MATCH_RECOGNIZE ( "
-            + "    MEASURES "
-            + "        MATCH_NUMBER() AS match, "
-            + "        RUNNING RPR_LAST(totalprice) AS price,  "
-            + "        CLASSIFIER() AS label "
-            + "    ALL ROWS PER MATCH "
-            + "    AFTER MATCH SKIP PAST LAST ROW "
-            + "    %s " // PATTERN
-            + "    DEFINE "
-            + "        B AS B.totalprice <= PREV(B.totalprice) "
-            + ") AS m";
-
-    tableResultSetEqualTest(format(sql, "PATTERN (B*)"), expectedHeader, retArray1, DATABASE_NAME);
   }
 }

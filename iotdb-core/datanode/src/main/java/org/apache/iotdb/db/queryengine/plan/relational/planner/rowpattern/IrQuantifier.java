@@ -36,11 +36,11 @@ public class IrQuantifier {
   private final boolean greedy;
 
   public static IrQuantifier zeroOrMore(boolean greedy) {
-    return new IrQuantifier(0, java.util.Optional.empty(), greedy);
+    return new IrQuantifier(0, Optional.empty(), greedy);
   }
 
   public static IrQuantifier oneOrMore(boolean greedy) {
-    return new IrQuantifier(1, java.util.Optional.empty(), greedy);
+    return new IrQuantifier(1, Optional.empty(), greedy);
   }
 
   public static IrQuantifier zeroOrOne(boolean greedy) {

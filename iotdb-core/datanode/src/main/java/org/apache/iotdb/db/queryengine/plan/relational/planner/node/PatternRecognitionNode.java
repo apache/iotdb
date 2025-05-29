@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrLabe
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrRowPattern;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -288,6 +289,77 @@ public class PatternRecognitionNode extends SingleChildProcessNode {
         && skipToPosition == that.skipToPosition
         && Objects.equals(pattern, that.pattern)
         && Objects.equals(variableDefinitions, that.variableDefinitions);
+  }
+
+  public static PatternRecognitionNode deserialize(ByteBuffer byteBuffer) {
+
+    int partitionSize = ReadWriteIOUtils.readInt(byteBuffer);
+    ImmutableList.Builder<Symbol> partitionByBuilder = ImmutableList.builder();
+    for (int i = 0; i < partitionSize; i++) {
+      partitionByBuilder.add(Symbol.deserialize(byteBuffer));
+    }
+    List<Symbol> partitionBy = partitionByBuilder.build();
+
+    Optional<OrderingScheme> orderingScheme;
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      orderingScheme = Optional.of(OrderingScheme.deserialize(byteBuffer));
+    } else {
+      orderingScheme = Optional.empty();
+    }
+
+    Optional<Symbol> hashSymbol;
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      hashSymbol = Optional.of(Symbol.deserialize(byteBuffer));
+    } else {
+      hashSymbol = Optional.empty();
+    }
+
+    int measureSize = ReadWriteIOUtils.readInt(byteBuffer);
+    ImmutableMap.Builder<Symbol, Measure> measuresBuilder = ImmutableMap.builder();
+    for (int i = 0; i < measureSize; i++) {
+      Symbol key = Symbol.deserialize(byteBuffer);
+      Measure value = Measure.deserialize(byteBuffer);
+      measuresBuilder.put(key, value);
+    }
+    Map<Symbol, Measure> measures = measuresBuilder.build();
+
+    RowsPerMatch rowsPerMatch = RowsPerMatch.deserialize(byteBuffer);
+
+    int skipToLabelSize = ReadWriteIOUtils.readInt(byteBuffer);
+    ImmutableSet.Builder<IrLabel> skipToLabelBuilder = ImmutableSet.builder();
+    for (int i = 0; i < skipToLabelSize; i++) {
+      skipToLabelBuilder.add(IrLabel.deserialize(byteBuffer));
+    }
+    Set<IrLabel> skipToLabels = skipToLabelBuilder.build();
+
+    SkipToPosition skipToPosition = SkipToPosition.deserialize(byteBuffer);
+
+    IrRowPattern pattern = IrRowPattern.deserialize(byteBuffer);
+
+    int varDefSize = ReadWriteIOUtils.readInt(byteBuffer);
+    ImmutableMap.Builder<IrLabel, ExpressionAndValuePointers> varDefBuilder =
+        ImmutableMap.builder();
+    for (int i = 0; i < varDefSize; i++) {
+      IrLabel label = IrLabel.deserialize(byteBuffer);
+      ExpressionAndValuePointers expr = ExpressionAndValuePointers.deserialize(byteBuffer);
+      varDefBuilder.put(label, expr);
+    }
+    Map<IrLabel, ExpressionAndValuePointers> variableDefinitions = varDefBuilder.build();
+
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+
+    return new PatternRecognitionNode(
+        planNodeId,
+        null,
+        partitionBy,
+        orderingScheme,
+        hashSymbol,
+        measures,
+        rowsPerMatch,
+        skipToLabels,
+        skipToPosition,
+        pattern,
+        variableDefinitions);
   }
 
   @Override
