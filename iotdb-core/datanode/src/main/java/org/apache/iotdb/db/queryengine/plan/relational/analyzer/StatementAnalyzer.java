@@ -183,6 +183,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFException;
@@ -484,6 +485,7 @@ public class StatementAnalyzer {
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
+      DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
       if (!node.parseRawExpression(
           null,
           table,
@@ -545,6 +547,7 @@ public class StatementAnalyzer {
       if (Objects.isNull(table)) {
         TableMetadataImpl.throwTableNotExistsException(node.getDatabase(), node.getTableName());
       }
+      DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
       node.parseModEntries(table);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
       node.parseRawExpression(

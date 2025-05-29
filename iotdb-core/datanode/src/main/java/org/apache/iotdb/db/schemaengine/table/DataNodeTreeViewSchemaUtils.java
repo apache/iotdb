@@ -43,7 +43,7 @@ public class DataNodeTreeViewSchemaUtils {
       throw new SemanticException(
           new IoTDBException(
               String.format(
-                  "The table %s.%s is a view from tree, cannot be written",
+                  "The table %s.%s is a view from tree, cannot be written or deleted from",
                   database, table.getTableName()),
               TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
     }
