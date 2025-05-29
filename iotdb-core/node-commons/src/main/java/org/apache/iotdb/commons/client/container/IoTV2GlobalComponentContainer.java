@@ -26,24 +26,34 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.client.property.PipeConsensusClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncPipeConsensusServiceClient;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 /**
- * This class is used to hold the syncClientManager and asyncClientManager used by pipeConsensus.
- * The purpose of designing this class is that both the consensus layer and the datanode layer of
- * pipeConsensus use clientManager.
+ * This class is used to hold the global component such as syncClientManager and asyncClientManager
+ * used by pipeConsensus. The purpose of designing this class is that both the consensus layer and
+ * the datanode layer of pipeConsensus use clientManager.
  *
  * <p>Note: we hope to create the corresponding clientManager only when the consensus is
  * pipeConsensus to avoid unnecessary overhead.
  */
-public class PipeConsensusClientMgrContainer {
+public class IoTV2GlobalComponentContainer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTV2GlobalComponentContainer.class);
   private static final CommonConfig CONF = CommonDescriptor.getInstance().getConfig();
   private final PipeConsensusClientProperty config;
   private final IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> asyncClientManager;
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager;
+  private final ScheduledExecutorService backgroundTaskService;
 
-  private PipeConsensusClientMgrContainer() {
+  private IoTV2GlobalComponentContainer() {
     // load rpc client config
     this.config =
         PipeConsensusClientProperty.newBuilder()
@@ -57,6 +67,9 @@ public class PipeConsensusClientMgrContainer {
     this.syncClientManager =
         new IClientManager.Factory<TEndPoint, SyncPipeConsensusServiceClient>()
             .createClientManager(new SyncPipeConsensusServiceClientPoolFactory(config));
+    this.backgroundTaskService =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.PIPE_CONSENSUS_BACKGROUND_TASK_EXECUTOR.getName());
   }
 
   public IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> getGlobalAsyncClientManager() {
@@ -67,19 +80,35 @@ public class PipeConsensusClientMgrContainer {
     return this.syncClientManager;
   }
 
+  public ScheduledExecutorService getBackgroundTaskService() {
+    return this.backgroundTaskService;
+  }
+
+  public void stopBackgroundTaskService() {
+    backgroundTaskService.shutdownNow();
+    try {
+      if (!backgroundTaskService.awaitTermination(30, TimeUnit.SECONDS)) {
+        LOGGER.warn("IoTV2 background service did not terminate within {}s", 30);
+      }
+    } catch (InterruptedException e) {
+      LOGGER.warn("IoTV2 background Thread still doesn't exit after 30s");
+      Thread.currentThread().interrupt();
+    }
+  }
+
   private static class PipeConsensusClientMgrContainerHolder {
-    private static PipeConsensusClientMgrContainer INSTANCE;
+    private static IoTV2GlobalComponentContainer INSTANCE;
 
     private PipeConsensusClientMgrContainerHolder() {}
 
     public static void build() {
       if (INSTANCE == null) {
-        INSTANCE = new PipeConsensusClientMgrContainer();
+        INSTANCE = new IoTV2GlobalComponentContainer();
       }
     }
   }
 
-  public static PipeConsensusClientMgrContainer getInstance() {
+  public static IoTV2GlobalComponentContainer getInstance() {
     return PipeConsensusClientMgrContainerHolder.INSTANCE;
   }
 

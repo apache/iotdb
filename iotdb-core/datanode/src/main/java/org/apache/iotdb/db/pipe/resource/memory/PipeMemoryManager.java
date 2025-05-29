@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.resource.memory.strategy.ThresholdAllocationStrategy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,6 +99,18 @@ public class PipeMemoryManager {
     return (PIPE_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()
             + PIPE_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() / 2)
         * getTotalNonFloatingMemorySizeInBytes();
+  }
+
+  public long getAllocatedMemorySizeInBytesOfWAL() {
+    return (long)
+        (PIPE_CONFIG.getPipeDataStructureWalMemoryProportion()
+            * getTotalNonFloatingMemorySizeInBytes());
+  }
+
+  public long getAllocatedMemorySizeInBytesOfBatch() {
+    return (long)
+        (PIPE_CONFIG.getPipeDataStructureBatchMemoryProportion()
+            * getTotalNonFloatingMemorySizeInBytes());
   }
 
   public boolean isEnough4TabletParsing() {
@@ -225,6 +238,39 @@ public class PipeMemoryManager {
     }
   }
 
+  public PipeModelFixedMemoryBlock forceAllocateForModelFixedMemoryBlock(
+      long fixedSizeInBytes, PipeMemoryBlockType type)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      return new PipeModelFixedMemoryBlock(Long.MAX_VALUE, new ThresholdAllocationStrategy());
+    }
+
+    if (fixedSizeInBytes == 0) {
+      return (PipeModelFixedMemoryBlock) registerMemoryBlock(0, type);
+    }
+
+    for (int i = 1, size = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries(); i <= size; i++) {
+      if (getFreeMemorySizeInBytes() >= fixedSizeInBytes) {
+        break;
+      }
+
+      try {
+        Thread.sleep(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
+      } catch (InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
+      }
+    }
+
+    if (getFreeMemorySizeInBytes() < fixedSizeInBytes) {
+      return (PipeModelFixedMemoryBlock) forceAllocateWithRetry(getFreeMemorySizeInBytes(), type);
+    }
+
+    synchronized (this) {
+      return (PipeModelFixedMemoryBlock) forceAllocateWithRetry(fixedSizeInBytes, type);
+    }
+  }
+
   private PipeMemoryBlock forceAllocateWithRetry(long sizeInBytes, PipeMemoryBlockType type)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
@@ -233,6 +279,9 @@ public class PipeMemoryManager {
           return new PipeTabletMemoryBlock(sizeInBytes);
         case TS_FILE:
           return new PipeTsFileMemoryBlock(sizeInBytes);
+        case BATCH:
+        case WAL:
+          return new PipeModelFixedMemoryBlock(sizeInBytes, new ThresholdAllocationStrategy());
         default:
           return new PipeMemoryBlock(sizeInBytes);
       }
@@ -465,6 +514,11 @@ public class PipeMemoryManager {
         break;
       case TS_FILE:
         returnedMemoryBlock = new PipeTsFileMemoryBlock(sizeInBytes);
+        break;
+      case BATCH:
+      case WAL:
+        returnedMemoryBlock =
+            new PipeModelFixedMemoryBlock(sizeInBytes, new ThresholdAllocationStrategy());
         break;
       default:
         returnedMemoryBlock = new PipeMemoryBlock(sizeInBytes);

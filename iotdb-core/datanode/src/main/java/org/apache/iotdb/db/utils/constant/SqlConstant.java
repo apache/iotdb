@@ -79,6 +79,7 @@ public class SqlConstant {
   public static final String COUNT_TIME_HEADER = "count_time(*)";
 
   public static final String APPROX_COUNT_DISTINCT = "approx_count_distinct";
+  public static final String APPROX_MOST_FREQUENT = "approx_most_frequent";
 
   // names of scalar functions
   public static final String DIFF = "diff";

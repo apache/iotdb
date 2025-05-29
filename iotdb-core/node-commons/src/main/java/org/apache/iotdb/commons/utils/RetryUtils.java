@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import java.net.ConnectException;
 
 public class RetryUtils {
 
@@ -31,6 +34,15 @@ public class RetryUtils {
     return statusCode == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
         || statusCode == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
         || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
+  }
+
+  public static boolean needRetryWithIncreasingInterval(Exception e) {
+    return e instanceof ConnectException
+        || e instanceof PipeConsensusRetryWithIncreasingIntervalException;
+  }
+
+  public static boolean notNeedRetryForConsensus(int statusCode) {
+    return statusCode == TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST.getStatusCode();
   }
 
   public static final int MAX_RETRIES = 3;

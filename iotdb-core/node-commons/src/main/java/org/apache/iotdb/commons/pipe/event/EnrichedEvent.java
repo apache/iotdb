@@ -64,6 +64,8 @@ public abstract class EnrichedEvent implements Event {
   // Used in IoTConsensusV2
   protected long replicateIndexForIoTV2 = NO_COMMIT_ID;
   protected int rebootTimes = 0;
+  public static final long INITIAL_RETRY_INTERVAL_FOR_IOTV2 = 500L;
+  protected long retryInterval = INITIAL_RETRY_INTERVAL_FOR_IOTV2;
 
   protected final TreePattern treePattern;
   protected final TablePattern tablePattern;
@@ -427,6 +429,14 @@ public abstract class EnrichedEvent implements Event {
 
   public int getRebootTimes() {
     return rebootTimes;
+  }
+
+  public long getRetryInterval() {
+    return this.retryInterval;
+  }
+
+  public long setRetryInterval(final long retryInterval) {
+    return retryInterval;
   }
 
   public CommitterKey getCommitterKey() {

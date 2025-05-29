@@ -602,6 +602,18 @@ struct TShowVariablesResp {
   2: optional TClusterParameters clusterParameters
 }
 
+// Show confignodes
+struct TDataNodeInfo4InformationSchema {
+  1: required i32 dataNodeId
+  2: required i32 dataRegionNum
+  3: required i32 schemaRegionNum
+  4: required string rpcAddress
+  5: required i32 rpcPort
+  6: required i32 mppPort
+  7: required i32 dataConsensusPort
+  8: required i32 schemaConsensusPort
+}
+
 // Show datanodes
 struct TDataNodeInfo {
   1: required i32 dataNodeId
@@ -613,11 +625,16 @@ struct TDataNodeInfo {
   7: optional i32 cpuCoreNum
 }
 
-struct TAINodeInfo{
+struct TAINodeInfo {
   1: required i32 aiNodeId
   2: required string status
   3: required string internalAddress
   4: required i32 internalPort
+}
+
+struct TShowDataNodes4InformationSchemaResp {
+  1: required common.TSStatus status
+  2: optional list<TDataNodeInfo4InformationSchema> dataNodesInfoList
 }
 
 struct TShowDataNodesResp {
@@ -642,6 +659,18 @@ struct TConfigNodeInfo {
 struct TShowConfigNodesResp {
   1: required common.TSStatus status
   2: optional list<TConfigNodeInfo> configNodesInfoList
+}
+
+// Show confignodes for information schema
+struct TConfigNodeInfo4InformationSchema {
+  1: required i32 configNodeId
+  2: required i32 consensusPort
+  5: required string roleType
+}
+
+struct TShowConfigNodes4InformationSchemaResp {
+  1: required common.TSStatus status
+  2: optional list<TConfigNodeInfo4InformationSchema> configNodesInfoList
 }
 
 // Show Database
@@ -1715,8 +1744,14 @@ service IConfigNodeRPCService {
   /** Show cluster DataNodes' information */
   TShowDataNodesResp showDataNodes()
 
+  /** Show cluster DataNodes' information for information schema */
+  TShowDataNodes4InformationSchemaResp showDataNodes4InformationSchema()
+
   /** Show cluster ConfigNodes' information */
   TShowConfigNodesResp showConfigNodes()
+
+  /** Show cluster ConfigNodes' information for information schema */
+  TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema()
 
   /** Show cluster Databases' information */
   TShowDatabaseResp showDatabase(TGetDatabaseReq req)

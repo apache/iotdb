@@ -228,6 +228,16 @@ public class PipeDescriptor {
                 "pipe_data_structure_ts_file_memory_block_allocation_reject_threshold",
                 String.valueOf(
                     config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()))));
+    config.setPipeDataStructureWalMemoryProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_data_structure_wal_memory_proportion",
+                String.valueOf(config.getPipeDataStructureWalMemoryProportion()))));
+    config.setPipeDataStructureBatchMemoryProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_data_structure_batch_memory_proportion",
+                String.valueOf(config.getPipeDataStructureBatchMemoryProportion()))));
     config.setPipeTotalFloatingMemoryProportion(
         Double.parseDouble(
             properties.getProperty(
@@ -520,6 +530,38 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_tsfile_scan_parsing_threshold",
                 String.valueOf(config.getPipeTsFileScanParsingThreshold()))));
+
+    config.setPipeDynamicMemoryHistoryWeight(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_dynamic_memory_history_weight",
+                String.valueOf(config.getPipeDynamicMemoryHistoryWeight()))));
+
+    config.setPipeDynamicMemoryAdjustmentThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_dynamic_memory_adjustment_threshold",
+                String.valueOf(config.getPipeDynamicMemoryAdjustmentThreshold()))));
+
+    config.setPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_threshold_allocation_strategy_maximum_memory_increment_ratio",
+                String.valueOf(
+                    config.getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio()))));
+
+    config.setPipeThresholdAllocationStrategyLowUsageThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_threshold_allocation_strategy_low_usage_threshold",
+                String.valueOf(config.getPipeThresholdAllocationStrategyLowUsageThreshold()))));
+
+    config.setPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_threshold_allocation_strategy_high_usage_threshold",
+                String.valueOf(
+                    config.getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold()))));
   }
 
   public static void loadPipeExternalConfig(

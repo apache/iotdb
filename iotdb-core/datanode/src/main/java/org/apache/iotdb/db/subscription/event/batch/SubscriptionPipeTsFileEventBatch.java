@@ -58,12 +58,22 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   @Override
   public synchronized void ack() {
     batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
+    enrichedEvents.stream()
+        // only decrease reference count for tsfile event, since we already decrease reference count
+        // for tablet event in batch
+        .filter(event -> event instanceof PipeTsFileInsertionEvent)
+        .forEach(event -> event.decreaseReferenceCount(this.getClass().getName(), true));
   }
 
   @Override
   public synchronized void cleanUp(final boolean force) {
     // close batch, it includes clearing the reference count of events
     batch.close();
+
+    // clear the reference count of events
+    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+      enrichedEvent.clearReferenceCount(this.getClass().getName());
+    }
     enrichedEvents.clear();
   }
 
@@ -103,7 +113,6 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     } finally {
       try {
         event.close();
-        ((PipeTsFileInsertionEvent) event).decreaseReferenceCount(this.getClass().getName(), false);
       } catch (final Exception ignored) {
         // no exceptions will be thrown
       }

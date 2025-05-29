@@ -27,7 +27,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.overview.PipeWALInsertNodeCacheMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeDynamicMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockType;
+import org.apache.iotdb.db.pipe.resource.memory.PipeModelFixedMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -64,7 +66,14 @@ public class WALInsertNodeCache {
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
-  private final PipeMemoryBlock allocatedMemoryBlock;
+  private static final PipeModelFixedMemoryBlock WAL_MODEL_FIXED_MEMORY =
+      PipeDataNodeResourceManager.memory()
+          .forceAllocateForModelFixedMemoryBlock(
+              PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfWAL(),
+              PipeMemoryBlockType.WAL);
+
+  private final PipeDynamicMemoryBlock memoryBlock;
+
   // Used to adjust the memory usage of the cache
   private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
   private final AtomicBoolean isBatchLoadEnabled = new AtomicBoolean(true);
@@ -87,28 +96,12 @@ public class WALInsertNodeCache {
                 0.5
                     * MEMORY_CONFIG.getPipeMemoryManager().getTotalMemorySizeInBytes()
                     / CONFIG.getDataRegionNum());
-    allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory()
-            .tryAllocate(requestedAllocateSize)
-            .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
-            .setExpandMethod(
-                oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, requestedAllocateSize))
-            .setExpandCallback(
-                (oldMemory, newMemory) -> {
-                  memoryUsageCheatFactor.updateAndGet(
-                      factor -> factor / ((double) newMemory / oldMemory));
-                  isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
-                  LOGGER.info(
-                      "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has expanded from {} to {}.",
-                      dataRegionId,
-                      oldMemory,
-                      newMemory);
-                });
+    memoryBlock = WAL_MODEL_FIXED_MEMORY.registerPipeBatchMemoryBlock(requestedAllocateSize);
     isBatchLoadEnabled.set(
-        allocatedMemoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte());
+        memoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte());
     lruCache =
         Caffeine.newBuilder()
-            .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
+            .maximumWeight(requestedAllocateSize)
             .weigher(
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
                     (position, pair) -> {
@@ -129,28 +122,49 @@ public class WALInsertNodeCache {
                     })
             .recordStats()
             .build(new WALInsertNodeCacheLoader());
-    allocatedMemoryBlock.setShrinkCallback(
-        (oldMemory, newMemory) -> {
-          memoryUsageCheatFactor.updateAndGet(factor -> factor * ((double) oldMemory / newMemory));
-          isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
-          LOGGER.info(
-              "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has shrunk from {} to {}.",
-              dataRegionId,
-              oldMemory,
-              newMemory);
-          if (CONFIG.getWALCacheShrinkClearEnabled()) {
-            try {
-              lruCache.cleanUp();
-            } catch (Exception e) {
-              LOGGER.warn(
-                  "Failed to clear WALInsertNodeCache for dataRegion ID: {}.", dataRegionId, e);
-              return;
-            }
-            LOGGER.info(
-                "Successfully cleared WALInsertNodeCache for dataRegion ID: {}.", dataRegionId);
+
+    memoryBlock.setExpandable(true);
+    memoryBlock.setExpand(
+        memoryBlock -> {
+          final long oldMemory = memoryBlock.getMemoryUsageInBytes();
+          memoryBlock.updateCurrentMemoryEfficiencyAdjustMem(lruCache.stats().hitRate());
+          final long newMemory = memoryBlock.getMemoryUsageInBytes();
+          if (newMemory > oldMemory) {
+            setExpandCallback(oldMemory, newMemory, dataRegionId);
+          } else if (newMemory < oldMemory) {
+            shrinkCallback(oldMemory, newMemory, dataRegionId);
           }
         });
     PipeWALInsertNodeCacheMetrics.getInstance().register(this, dataRegionId);
+  }
+
+  private void setExpandCallback(long oldMemory, long newMemory, Integer dataRegionId) {
+    memoryUsageCheatFactor.updateAndGet(factor -> factor / ((double) newMemory / oldMemory));
+    isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
+    LOGGER.info(
+        "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has expanded from {} to {}.",
+        dataRegionId,
+        oldMemory,
+        newMemory);
+  }
+
+  private void shrinkCallback(long oldMemory, long newMemory, Integer dataRegionId) {
+    memoryUsageCheatFactor.updateAndGet(factor -> factor * ((double) oldMemory / newMemory));
+    isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
+    LOGGER.info(
+        "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has shrunk from {} to {}.",
+        dataRegionId,
+        oldMemory,
+        newMemory);
+    if (CONFIG.getWALCacheShrinkClearEnabled()) {
+      try {
+        lruCache.cleanUp();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to clear WALInsertNodeCache for dataRegion ID: {}.", dataRegionId, e);
+        return;
+      }
+      LOGGER.info("Successfully cleared WALInsertNodeCache for dataRegion ID: {}.", dataRegionId);
+    }
   }
 
   /////////////////////////// Getter & Setter ///////////////////////////
@@ -378,7 +392,7 @@ public class WALInsertNodeCache {
   @TestOnly
   public void clear() {
     lruCache.invalidateAll();
-    allocatedMemoryBlock.close();
+    memoryBlock.close();
     memTablesNeedSearch.clear();
   }
 }

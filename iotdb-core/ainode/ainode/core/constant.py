@@ -139,6 +139,7 @@ class ModelInputName(Enum):
 class BuiltInModelType(Enum):
     # forecast models
     ARIMA = "_arima"
+    HOLTWINTERS = "_holtwinters"
     EXPONENTIAL_SMOOTHING = "_exponentialsmoothing"
     NAIVE_FORECASTER = "_naiveforecaster"
     STL_FORECASTER = "_stlforecaster"
@@ -150,6 +151,9 @@ class BuiltInModelType(Enum):
     
     # timerxl
     TIMER_XL = "_timerxl"
+
+    # sundial
+    SUNDIAL = "_sundial"
 
     @classmethod
     def values(cls) -> List[str]:
@@ -258,7 +262,13 @@ class AttributeName(Enum):
     ATTENTION_DROPOUT = "attention_dropout"
     INITIALIZER_RANGE = "initializer_range"
     MAX_POSITION_EMBEDDINGS = "max_position_embeddings"
-    TIMERXL_CKPT_PATH = "ckpt_path"
+    CKPT_PATH = "ckpt_path"
+
+    # sundial
+    DROPOUT_RATE = "dropout_rate"
+    FLOW_LOSS_DEPTH = "flow_loss_depth"
+    NUM_SAMPLING_STEPS = "num_sampling_steps"
+    DIFFUSION_BATCH_MUL = "diffusion_batch_mul"
 
     def name(self) -> str:
         return self.value
