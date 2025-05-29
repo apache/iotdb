@@ -1158,6 +1158,8 @@ public class IoTDBConfig {
    */
   private boolean cacheLastValuesForLoad = true;
 
+  private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -4095,5 +4097,13 @@ public class IoTDBConfig {
 
   public void setCacheLastValuesForLoad(boolean cacheLastValuesForLoad) {
     this.cacheLastValuesForLoad = cacheLastValuesForLoad;
+  }
+
+  public long getCacheLastValuesMemoryBudgetInByte() {
+    return cacheLastValuesMemoryBudgetInByte;
+  }
+
+  public void setCacheLastValuesMemoryBudgetInByte(long cacheLastValuesMemoryBudgetInByte) {
+    this.cacheLastValuesMemoryBudgetInByte = cacheLastValuesMemoryBudgetInByte;
   }
 }

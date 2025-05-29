@@ -60,6 +60,7 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
@@ -78,6 +79,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -543,33 +545,60 @@ public class LoadTsFileManager {
       if (IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad()) {
         deviceLastValues = new HashMap<>();
       }
+      AtomicLong lastValuesMemCost = new AtomicLong(0);
+
       for (final ChunkGroupMetadata chunkGroupMetadata : writer.getChunkGroupMetadataList()) {
         final IDeviceID device = chunkGroupMetadata.getDevice();
         for (final ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
           tsFileResource.updateStartTime(device, chunkMetadata.getStartTime());
           tsFileResource.updateEndTime(device, chunkMetadata.getEndTime());
           if (deviceLastValues != null) {
-            deviceLastValues
-                .computeIfAbsent(device, d -> new HashMap<>())
-                .compute(
-                    chunkMetadata.getMeasurementUid(),
-                    (m, oldPair) -> {
-                      if (oldPair != null && oldPair.getTimestamp() > chunkMetadata.getEndTime()) {
-                        return oldPair;
-                      }
-                      TsPrimitiveType lastValue =
-                          chunkMetadata.getStatistics() != null
-                                  && chunkMetadata.getDataType() != TSDataType.BLOB
-                              ? TsPrimitiveType.getByType(
-                                  chunkMetadata.getDataType() == TSDataType.VECTOR
-                                      ? TSDataType.INT64
-                                      : chunkMetadata.getDataType(),
-                                  chunkMetadata.getStatistics().getLastValue())
-                              : null;
-                      return lastValue != null
+            Map<String, TimeValuePair> deviceMap =
+                deviceLastValues.computeIfAbsent(
+                    device,
+                    d -> {
+                      Map<String, TimeValuePair> map = new HashMap<>();
+                      lastValuesMemCost.addAndGet(RamUsageEstimator.shallowSizeOf(map));
+                      lastValuesMemCost.addAndGet(device.ramBytesUsed());
+                      return map;
+                    });
+            int prevSize = deviceMap.size();
+            deviceMap.compute(
+                chunkMetadata.getMeasurementUid(),
+                (m, oldPair) -> {
+                  if (oldPair != null && oldPair.getTimestamp() > chunkMetadata.getEndTime()) {
+                    return oldPair;
+                  }
+                  TsPrimitiveType lastValue =
+                      chunkMetadata.getStatistics() != null
+                              && chunkMetadata.getDataType() != TSDataType.BLOB
+                          ? TsPrimitiveType.getByType(
+                              chunkMetadata.getDataType() == TSDataType.VECTOR
+                                  ? TSDataType.INT64
+                                  : chunkMetadata.getDataType(),
+                              chunkMetadata.getStatistics().getLastValue())
+                          : null;
+                  TimeValuePair timeValuePair =
+                      lastValue != null
                           ? new TimeValuePair(chunkMetadata.getEndTime(), lastValue)
                           : null;
-                    });
+                  if (oldPair != null) {
+                    lastValuesMemCost.addAndGet(-oldPair.getSize());
+                  }
+                  if (timeValuePair != null) {
+                    lastValuesMemCost.addAndGet(timeValuePair.getSize());
+                  }
+                  return timeValuePair;
+                });
+            int afterSize = deviceMap.size();
+            lastValuesMemCost.addAndGet(
+                (afterSize - prevSize) * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
+            if (lastValuesMemCost.get()
+                > IoTDBDescriptor.getInstance()
+                    .getConfig()
+                    .getCacheLastValuesMemoryBudgetInByte()) {
+              deviceLastValues = null;
+            }
           }
         }
       }

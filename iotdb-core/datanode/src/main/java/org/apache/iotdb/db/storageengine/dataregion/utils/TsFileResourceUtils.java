@@ -49,6 +49,7 @@ import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
 import org.apache.tsfile.read.reader.page.ValuePageReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
@@ -430,12 +431,13 @@ public class TsFileResourceUtils {
             : tsFileResource.getTimeIndex();
     Map<IDeviceID, List<Pair<String, TimeValuePair>>> deviceLastValues =
         tsFileResource.getLastValues();
+    long lastValueMemCost = 0;
     if (cacheLastValue && deviceLastValues == null) {
       deviceLastValues = new HashMap<>(device2Metadata.size());
     }
     for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
       List<Pair<String, TimeValuePair>> seriesLastValues = null;
-      if (cacheLastValue) {
+      if (deviceLastValues != null) {
         seriesLastValues = new ArrayList<>(entry.getValue().size());
       }
 
@@ -443,7 +445,7 @@ public class TsFileResourceUtils {
         newTimeIndex.updateStartTime(
             entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
         newTimeIndex.updateEndTime(entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
-        if (cacheLastValue) {
+        if (deviceLastValues != null) {
           if (timeseriesMetaData.getTsDataType() != TSDataType.BLOB) {
             TsPrimitiveType value;
             value =
@@ -461,10 +463,33 @@ public class TsFileResourceUtils {
           }
         }
       }
-      if (cacheLastValue) {
-        deviceLastValues
-            .computeIfAbsent(entry.getKey(), deviceID -> new ArrayList<>())
-            .addAll(seriesLastValues);
+      if (deviceLastValues != null) {
+        lastValueMemCost += entry.getKey().ramBytesUsed();
+        for (Pair<String, TimeValuePair> lastValue : seriesLastValues) {
+          if (lastValue == null) {
+            continue;
+          }
+          // pair
+          lastValueMemCost += RamUsageEstimator.shallowSizeOf(lastValue);
+          // measurement name
+          lastValueMemCost += RamUsageEstimator.sizeOf(lastValue.left);
+          TimeValuePair right = lastValue.getRight();
+          lastValueMemCost +=
+              right != null ? right.getSize() : RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+        }
+        // ArrayList
+        lastValueMemCost +=
+            (long) seriesLastValues.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF
+                + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+                + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+        lastValueMemCost += RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
+        if (lastValueMemCost <= config.getCacheLastValuesMemoryBudgetInByte()) {
+          deviceLastValues
+              .computeIfAbsent(entry.getKey(), deviceID -> new ArrayList<>())
+              .addAll(seriesLastValues);
+        } else {
+          deviceLastValues = null;
+        }
       }
     }
     tsFileResource.setTimeIndex(newTimeIndex);

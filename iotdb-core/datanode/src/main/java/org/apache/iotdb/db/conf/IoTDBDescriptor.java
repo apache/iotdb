@@ -2272,6 +2272,12 @@ public class IoTDBDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "cache_last_values_for_load", String.valueOf(conf.isCacheLastValuesForLoad()))));
+
+    conf.setCacheLastValuesMemoryBudgetInByte(
+        Long.parseLong(
+            properties.getProperty(
+                "cache_last_values_memory_budget_in_byte",
+                String.valueOf(conf.getCacheLastValuesMemoryBudgetInByte()))));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {
