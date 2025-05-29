@@ -463,7 +463,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
         }
 
         // check datatype
-        if (tsFileSchema.getType().equals(iotdbSchema.getType())) {
+        if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
           throw new LoadAnalyzeTypeMismatchException(
               String.format(
                   "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",
