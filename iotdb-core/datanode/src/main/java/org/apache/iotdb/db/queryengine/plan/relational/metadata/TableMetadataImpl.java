@@ -661,7 +661,14 @@ public class TableMetadataImpl implements Metadata {
                   "Second argument of Aggregate functions [%s] should be numberic type and do not use expression",
                   functionName));
         }
-
+        break;
+      case SqlConstant.APPROX_MOST_FREQUENT:
+        if (argumentTypes.size() != 3) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should only have three arguments", functionName));
+        }
+        break;
       case SqlConstant.COUNT:
         break;
       default:
@@ -695,6 +702,8 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
         return DOUBLE;
+      case SqlConstant.APPROX_MOST_FREQUENT:
+        return STRING;
       default:
         // ignore
     }

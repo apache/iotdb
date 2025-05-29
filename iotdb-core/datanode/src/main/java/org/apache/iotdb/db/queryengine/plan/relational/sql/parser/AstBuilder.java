@@ -273,6 +273,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSe
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName.mapIdentifier;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
@@ -996,6 +997,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             : new HashMap<>();
 
     withAttributes.forEach(LoadTsFileConfigurator::validateParameters);
+    LoadTsFileConfigurator.validateSynonymParameters(withAttributes);
     return new LoadTsFile(
         getLocation(ctx), ((StringLiteral) visit(ctx.fileName)).getValue(), withAttributes);
   }
@@ -1556,8 +1558,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       String key = property.getName().getValue();
       Expression propertyValue = property.getNonDefaultValue();
       if (!propertyValue.getExpressionType().equals(TableExpressionType.STRING_LITERAL)) {
-        throw new IllegalArgumentException(
-            propertyValue.getExpressionType() + " is not supported for 'set configuration'");
+        throw new SemanticException(
+            propertyValue.getExpressionType()
+                + " is not supported for property value of 'set configuration'. "
+                + "Note that the syntax for 'set configuration' in the tree model is not exactly the same as that in the table model.");
       }
       String value = ((StringLiteral) propertyValue).getValue();
       configItems.put(key.trim(), value.trim());
@@ -2385,8 +2389,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       joinType = Join.Type.INNER;
     }
 
-    if (criteria instanceof AsofJoinOn && joinType != Join.Type.INNER && timeDuration != null) {
-      throw new SemanticException("Tolerance in ASOF JOIN is only support INNER type now");
+    if (criteria instanceof AsofJoinOn) {
+      if (joinType == Join.Type.RIGHT || joinType == Join.Type.FULL) {
+        throw new SemanticException(
+            String.format("ASOF JOIN does not support %s type now", joinType));
+      }
+
+      if (joinType != Join.Type.INNER && timeDuration != null) {
+        throw new SemanticException("Tolerance in ASOF JOIN only supports INNER type now");
+      }
     }
 
     return new Join(getLocation(ctx), joinType, left, right, criteria);
@@ -2976,9 +2987,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         throw new SemanticException(
             "The second argument of 'approx_count_distinct' function must be a literal");
       }
+    } else if (name.toString().equalsIgnoreCase(APPROX_MOST_FREQUENT)) {
+      if (!isNumericLiteral(arguments.get(1)) || !isNumericLiteral(arguments.get(2))) {
+        throw new SemanticException(
+            "The second and third argument of 'approx_most_frequent' function must be numeric literal");
+      }
     }
 
     return new FunctionCall(getLocation(ctx), name, distinct, arguments);
+  }
+
+  public boolean isNumericLiteral(Expression expression) {
+    return expression instanceof LongLiteral || expression instanceof DoubleLiteral;
   }
 
   @Override

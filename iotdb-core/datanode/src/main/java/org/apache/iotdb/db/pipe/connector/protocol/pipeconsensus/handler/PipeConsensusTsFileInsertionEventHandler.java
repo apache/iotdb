@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response.PipeConsensusTransferFilePieceResp;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
@@ -291,6 +292,15 @@ public class PipeConsensusTsFileInsertionEventHandler
         event.getCommitterKey(),
         event.getReplicateIndexForIoTV2(),
         exception);
+
+    if (RetryUtils.needRetryWithIncreasingInterval(exception)) {
+      // just in case for overflow
+      if (event.getRetryInterval() << 2 <= 0) {
+        event.setRetryInterval(1000L * 20);
+      } else {
+        event.setRetryInterval(Math.min(1000L * 20, event.getRetryInterval() << 2));
+      }
+    }
 
     try {
       if (reader != null) {

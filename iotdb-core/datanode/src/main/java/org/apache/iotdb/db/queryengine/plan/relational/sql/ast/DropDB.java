@@ -32,12 +32,6 @@ public class DropDB extends Statement {
   private final Identifier dbName;
   private final boolean exists;
 
-  public DropDB(Identifier catalogName, boolean exists) {
-    super(null);
-    this.dbName = requireNonNull(catalogName, "catalogName is null");
-    this.exists = exists;
-  }
-
   public DropDB(NodeLocation location, Identifier catalogName, boolean exists) {
     super(requireNonNull(location, "location is null"));
     this.dbName = requireNonNull(catalogName, "catalogName is null");

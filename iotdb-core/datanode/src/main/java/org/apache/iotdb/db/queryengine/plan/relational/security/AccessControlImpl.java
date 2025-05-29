@@ -98,8 +98,6 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkCanSelectFromTable(String userName, QualifiedObjectName tableName) {
     if (tableName.getDatabaseName().equals(InformationSchema.INFORMATION_DATABASE)) {
-      // Currently only root user can select from information schema
-      checkUserIsAdmin(userName);
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.SELECT);

@@ -970,7 +970,9 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
       statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
       statement.execute(convert2TableSQL(SchemaConfig.TABLE_0, schemaList1, columnCategories));
-      statement.execute(String.format("load '%s'", file.getAbsolutePath()));
+      statement.execute(
+          String.format(
+              "load '%s' with ('database'='%s')", file.getAbsolutePath(), SchemaConfig.DATABASE_0));
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {

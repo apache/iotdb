@@ -822,6 +822,10 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       this.timeColumnName = timeColumnName;
     }
 
+    public OperatorContext getOperatorContext() {
+      return context;
+    }
+
     public List<TableAggregator> getTableAggregators() {
       return tableAggregators;
     }

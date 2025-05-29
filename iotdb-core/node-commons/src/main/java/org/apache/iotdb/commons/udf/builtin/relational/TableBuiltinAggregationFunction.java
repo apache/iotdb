@@ -58,7 +58,7 @@ public enum TableBuiltinAggregationFunction {
   VAR_POP("var_pop"),
   VAR_SAMP("var_samp"),
   APPROX_COUNT_DISTINCT("approx_count_distinct"),
-  ;
+  APPROX_MOST_FREQUENT("approx_most_frequent");
 
   private final String functionName;
 

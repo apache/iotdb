@@ -107,7 +107,7 @@ public class AINodeBasicIT {
   @Test
   public void aiNodeConnectionTest() {
     String sql = "SHOW AINODES";
-    String title = "NodeID,Status,RpcAddress,RpcPort";
+    String title = "NodeID,Status,InternalAddress,InternalPort";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -170,6 +170,26 @@ public class AINodeBasicIT {
           count++;
         }
         assertEquals(0, count);
+      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void callInferenceTest2() {
+    String sql =
+        "CALL INFERENCE(_holtwinters, \"select s0 from root.AI.data\", predict_length=6, generateTime=true)";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, "Time,output0");
+        int count = 0;
+        while (resultSet.next()) {
+          count++;
+        }
+        assertEquals(6, count);
       }
     } catch (SQLException e) {
       fail(e.getMessage());

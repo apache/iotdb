@@ -547,13 +547,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             boolean canPushDownLimitToAllSeriesScanOptions =
                 canPushDownLimit && pushDownConjunctsForEachMeasurement.isEmpty();
             // the left child of LeftOuterTimeJoinOperator is SeriesScanOperator
-            boolean pushDownLimitToLeftChildSeriesScanOperator =
+            boolean pushDownOffsetAndLimitToLeftChildSeriesScanOperator =
                 canPushDownLimit && pushDownConjunctsForEachMeasurement.size() == 1;
             // the left child of LeftOuterTimeJoinOperator is InnerTimeJoinOperator
             boolean pushDownOffsetAndLimitAfterInnerJoinOperator =
                 canPushDownLimit && pushDownConjunctsForEachMeasurement.size() > 1;
             removeUpperOffsetAndLimitOperator =
-                pushDownLimitToLeftChildSeriesScanOperator
+                pushDownOffsetAndLimitToLeftChildSeriesScanOperator
                     || pushDownOffsetAndLimitAfterInnerJoinOperator
                     || isSingleColumn;
             for (int i = 0; i < measurementSchemas.size(); i++) {
@@ -580,16 +580,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                         commonParameter.timeColumnName));
               }
               if (isSingleColumn
-                  || (pushDownLimitToLeftChildSeriesScanOperator
+                  || (pushDownOffsetAndLimitToLeftChildSeriesScanOperator
                       && pushDownPredicateForCurrentMeasurement != null)) {
                 builder.withPushDownLimit(node.getPushDownLimit());
                 builder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
               }
-              if (canPushDownLimitToAllSeriesScanOptions) {
+
+              // In the case of single column, both offset and limit are pushed down to the
+              // SeriesScanOperator
+              if (!isSingleColumn && canPushDownLimitToAllSeriesScanOptions) {
                 builder.withPushDownLimit(node.getPushDownLimit() + node.getPushDownOffset());
               }
               if (isSingleColumn
-                  || (pushDownLimitToLeftChildSeriesScanOperator
+                  || (pushDownOffsetAndLimitToLeftChildSeriesScanOperator
                       && pushDownPredicateForCurrentMeasurement != null)) {
                 builder.withPushDownOffset(
                     node.isPushLimitToEachDevice() ? 0 : node.getPushDownOffset());
@@ -823,7 +826,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<ColumnSchema> columnSchemas;
     int[] columnsIndexArray;
     Map<Symbol, ColumnSchema> columnSchemaMap;
-    Map<Symbol, Integer> idAndAttributeColumnsIndexMap;
+    Map<Symbol, Integer> tagAndAttributeColumnsIndexMap;
     List<String> measurementColumnNames;
     Map<String, Integer> measurementColumnsIndexMap;
     String timeColumnName;
@@ -841,7 +844,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       columnSchemas = new ArrayList<>(outputColumnCount);
       columnsIndexArray = new int[outputColumnCount];
       columnSchemaMap = node.getAssignments();
-      idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
+      tagAndAttributeColumnsIndexMap = node.getTagAndAttributeIndexMap();
       measurementColumnNames = new ArrayList<>();
       measurementColumnsIndexMap = new HashMap<>();
       measurementSchemas = new ArrayList<>();
@@ -858,7 +861,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           case ATTRIBUTE:
             columnsIndexArray[idx++] =
                 requireNonNull(
-                    idAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
+                    tagAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
             columnSchemas.add(schema);
             break;
           case FIELD:
@@ -1140,8 +1143,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitInformationSchemaTableScan(
-      InformationSchemaTableScanNode node, LocalExecutionPlanContext context) {
-    OperatorContext operatorContext =
+      final InformationSchemaTableScanNode node, final LocalExecutionPlanContext context) {
+    final OperatorContext operatorContext =
         context
             .getDriverContext()
             .addOperatorContext(
@@ -1149,7 +1152,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getPlanNodeId(),
                 InformationSchemaTableScanOperator.class.getSimpleName());
 
-    List<TSDataType> dataTypes =
+    final List<TSDataType> dataTypes =
         node.getOutputSymbols().stream()
             .map(symbol -> getTSDataType(context.getTypeProvider().getTableModelType(symbol)))
             .collect(Collectors.toList());
@@ -1157,7 +1160,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new InformationSchemaTableScanOperator(
         operatorContext,
         node.getPlanNodeId(),
-        getSupplier(node.getQualifiedObjectName().getObjectName(), dataTypes));
+        getSupplier(
+            node.getQualifiedObjectName().getObjectName(),
+            dataTypes,
+            context
+                .getDriverContext()
+                .getFragmentInstanceContext()
+                .getSessionInfo()
+                .getUserName()));
   }
 
   @Override
@@ -2697,7 +2707,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             case TAG:
             case ATTRIBUTE:
               aggColumnsIndexArray[channel] =
-                  requireNonNull(node.getIdAndAttributeIndexMap().get(symbol), symbol + " is null");
+                  requireNonNull(
+                      node.getTagAndAttributeIndexMap().get(symbol), symbol + " is null");
               break;
             case FIELD:
               aggColumnsIndexArray[channel] = measurementColumnCount;
@@ -2768,9 +2779,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       for (int i = 0; i < node.getGroupingKeys().size(); i++) {
         Symbol groupingKey = node.getGroupingKeys().get(i);
 
-        if (node.getIdAndAttributeIndexMap().containsKey(groupingKey)) {
+        if (node.getTagAndAttributeIndexMap().containsKey(groupingKey)) {
           groupingKeySchemas.add(node.getAssignments().get(groupingKey));
-          groupingKeyIndex[i] = node.getIdAndAttributeIndexMap().get(groupingKey);
+          groupingKeyIndex[i] = node.getTagAndAttributeIndexMap().get(groupingKey);
         } else {
           if (node.getProjection() != null
               && !node.getProjection().getMap().isEmpty()
@@ -2972,6 +2983,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             hitCachedResults);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
+    parameter
+        .getOperatorContext()
+        .setOperatorType(LastQueryAggTableScanOperator.class.getSimpleName());
     return lastQueryOperator;
   }
 

@@ -394,7 +394,10 @@ public class IoTDBDatabaseIT {
                   "models,INF,",
                   "functions,INF,",
                   "configurations,INF,",
-                  "keywords,INF,")));
+                  "keywords,INF,",
+                  "nodes,INF,",
+                  "config_nodes,INF,",
+                  "data_nodes,INF,")));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc databases"),
@@ -513,13 +516,89 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("desc keywords"),
           "ColumnName,DataType,Category,",
           new HashSet<>(Arrays.asList("word,STRING,TAG,", "reserved,INT32,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc nodes"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "node_id,INT32,TAG,",
+                  "node_type,STRING,ATTRIBUTE,",
+                  "status,STRING,ATTRIBUTE,",
+                  "internal_address,STRING,ATTRIBUTE,",
+                  "internal_port,INT32,ATTRIBUTE,",
+                  "version,STRING,ATTRIBUTE,",
+                  "build_info,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc config_nodes"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "node_id,INT32,TAG,",
+                  "config_consensus_port,INT32,ATTRIBUTE,",
+                  "role,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc data_nodes"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "node_id,INT32,TAG,",
+                  "data_region_num,INT32,ATTRIBUTE,",
+                  "schema_region_num,INT32,ATTRIBUTE,",
+                  "rpc_address,STRING,ATTRIBUTE,",
+                  "rpc_port,INT32,ATTRIBUTE,",
+                  "mpp_port,INT32,ATTRIBUTE,",
+                  "data_consensus_port,INT32,ATTRIBUTE,",
+                  "schema_consensus_port,INT32,ATTRIBUTE,")));
 
-      // Currently only root can query information_schema
+      // Only root user is allowed
+      Assert.assertThrows(SQLException.class, () -> statement.execute("select * from regions"));
+      Assert.assertThrows(SQLException.class, () -> statement.execute("select * from pipes"));
+      Assert.assertThrows(SQLException.class, () -> statement.execute("select * from topics"));
       Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            statement.execute("select * from databases");
-          });
+          SQLException.class, () -> statement.execute("select * from subscriptions"));
+      Assert.assertThrows(
+          SQLException.class, () -> statement.execute("select * from configurations"));
+      Assert.assertThrows(SQLException.class, () -> statement.execute("select * from nodes"));
+      Assert.assertThrows(
+          SQLException.class, () -> statement.execute("select * from config_nodes"));
+      Assert.assertThrows(SQLException.class, () -> statement.execute("select * from data_nodes"));
+
+      // No auth needed
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
+          "plugin_name,plugin_type,class_name,plugin_jar,",
+          Collections.singleton(
+              "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector,null,"));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select model_id from information_schema.models where model_type = 'BUILT_IN_FORECAST'"),
+          "model_id,",
+          new HashSet<>(
+              Arrays.asList(
+                  "_STLForecaster,",
+                  "_NaiveForecaster,",
+                  "_HoltWinters,",
+                  "_TimerXL,",
+                  "_ExponentialSmoothing,",
+                  "_ARIMA,")));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select distinct(function_type) from information_schema.functions"),
+          "function_type,",
+          new HashSet<>(
+              Arrays.asList(
+                  "built-in scalar function,",
+                  "built-in aggregate function,",
+                  "built-in table function,")));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select * from information_schema.keywords where reserved > 0 limit 1"),
+          "word,reserved,",
+          Collections.singleton("AINODES,1,"));
     }
 
     try (final Connection connection =
@@ -560,12 +639,15 @@ public class IoTDBDatabaseIT {
                   "information_schema,functions,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,configurations,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,keywords,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,nodes,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,config_nodes,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,data_nodes,INF,USING,null,SYSTEM VIEW,",
                   "test,test,INF,USING,test,BASE TABLE,",
                   "test,view_table,100,USING,null,VIEW FROM TREE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton("16,"));
+          Collections.singleton("19,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),
@@ -620,9 +702,10 @@ public class IoTDBDatabaseIT {
           "model_id,",
           new HashSet<>(
               Arrays.asList(
-                  "_timerxl,",
+                  "_TimerXL,",
                   "_STLForecaster,",
                   "_NaiveForecaster,",
+                  "_HoltWinters,",
                   "_ARIMA,",
                   "_ExponentialSmoothing,")));
 
@@ -647,6 +730,21 @@ public class IoTDBDatabaseIT {
               "select * from information_schema.keywords where reserved > 0 limit 1"),
           "word,reserved,",
           Collections.singleton("AINODES,1,"));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select distinct(status) from information_schema.nodes"),
+          "status,",
+          Collections.singleton("Running,"));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select count(*) from information_schema.config_nodes"),
+          "_col0,",
+          Collections.singleton(EnvFactory.getEnv().getConfigNodeWrapperList().size() + ","));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select data_region_num from information_schema.data_nodes"),
+          "data_region_num,",
+          Collections.singleton("0,"));
     }
   }
 
@@ -715,6 +813,8 @@ public class IoTDBDatabaseIT {
         final Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("create user test 'password'");
       adminStmt.execute("create database db");
+      adminStmt.execute(
+          "create pipe a2b with source('double-living'='true') with sink ('sink'='write-back-sink')");
     }
 
     try (final Connection userCon =
@@ -724,6 +824,10 @@ public class IoTDBDatabaseIT {
           userStmt.executeQuery("show databases"),
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.singleton("information_schema,INF,null,null,null,"));
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("select * from information_schema.databases"),
+          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,data_region_group_num,",
+          Collections.singleton("information_schema,INF,null,null,null,null,null,"));
     }
 
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);

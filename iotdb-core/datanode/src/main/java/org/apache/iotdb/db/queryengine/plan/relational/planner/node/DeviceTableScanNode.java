@@ -50,9 +50,9 @@ public class DeviceTableScanNode extends TableScanNode {
 
   // Indicates the respective index order of ID and Attribute columns in DeviceEntry.
   // For example, for DeviceEntry `table1.tag1.tag2.attribute1.attribute2.s1.s2`, the content of
-  // `idAndAttributeIndexMap` will
+  // `tagAndAttributeIndexMap` will
   // be `tag1: 0, tag2: 1, attribute1: 0, attribute2: 1`.
-  protected Map<Symbol, Integer> idAndAttributeIndexMap;
+  protected Map<Symbol, Integer> tagAndAttributeIndexMap;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -84,9 +84,9 @@ public class DeviceTableScanNode extends TableScanNode {
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
-      Map<Symbol, Integer> idAndAttributeIndexMap) {
+      Map<Symbol, Integer> tagAndAttributeIndexMap) {
     super(id, qualifiedObjectName, outputSymbols, assignments);
-    this.idAndAttributeIndexMap = idAndAttributeIndexMap;
+    this.tagAndAttributeIndexMap = tagAndAttributeIndexMap;
   }
 
   public DeviceTableScanNode(
@@ -95,7 +95,7 @@ public class DeviceTableScanNode extends TableScanNode {
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
       List<DeviceEntry> deviceEntries,
-      Map<Symbol, Integer> idAndAttributeIndexMap,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
       Expression pushDownPredicate,
@@ -112,7 +112,7 @@ public class DeviceTableScanNode extends TableScanNode {
         pushDownLimit,
         pushDownOffset);
     this.deviceEntries = deviceEntries;
-    this.idAndAttributeIndexMap = idAndAttributeIndexMap;
+    this.tagAndAttributeIndexMap = tagAndAttributeIndexMap;
     this.scanOrder = scanOrder;
     this.timePredicate = timePredicate;
     this.pushDownPredicate = pushDownPredicate;
@@ -133,7 +133,7 @@ public class DeviceTableScanNode extends TableScanNode {
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,
@@ -152,8 +152,8 @@ public class DeviceTableScanNode extends TableScanNode {
       entry.serialize(byteBuffer);
     }
 
-    ReadWriteIOUtils.write(node.idAndAttributeIndexMap.size(), byteBuffer);
-    for (Map.Entry<Symbol, Integer> entry : node.idAndAttributeIndexMap.entrySet()) {
+    ReadWriteIOUtils.write(node.tagAndAttributeIndexMap.size(), byteBuffer);
+    for (Map.Entry<Symbol, Integer> entry : node.tagAndAttributeIndexMap.entrySet()) {
       Symbol.serialize(entry.getKey(), byteBuffer);
       ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
     }
@@ -180,8 +180,8 @@ public class DeviceTableScanNode extends TableScanNode {
       entry.serialize(stream);
     }
 
-    ReadWriteIOUtils.write(node.idAndAttributeIndexMap.size(), stream);
-    for (Map.Entry<Symbol, Integer> entry : node.idAndAttributeIndexMap.entrySet()) {
+    ReadWriteIOUtils.write(node.tagAndAttributeIndexMap.size(), stream);
+    for (Map.Entry<Symbol, Integer> entry : node.tagAndAttributeIndexMap.entrySet()) {
       Symbol.serialize(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
@@ -210,12 +210,12 @@ public class DeviceTableScanNode extends TableScanNode {
     node.deviceEntries = deviceEntries;
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>(size);
+    Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>(size);
     while (size-- > 0) {
-      idAndAttributeIndexMap.put(
+      tagAndAttributeIndexMap.put(
           Symbol.deserialize(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
     }
-    node.idAndAttributeIndexMap = idAndAttributeIndexMap;
+    node.tagAndAttributeIndexMap = tagAndAttributeIndexMap;
 
     node.scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
 
@@ -253,8 +253,8 @@ public class DeviceTableScanNode extends TableScanNode {
     this.deviceEntries = deviceEntries;
   }
 
-  public Map<Symbol, Integer> getIdAndAttributeIndexMap() {
-    return this.idAndAttributeIndexMap;
+  public Map<Symbol, Integer> getTagAndAttributeIndexMap() {
+    return this.tagAndAttributeIndexMap;
   }
 
   public void setScanOrder(Ordering scanOrder) {

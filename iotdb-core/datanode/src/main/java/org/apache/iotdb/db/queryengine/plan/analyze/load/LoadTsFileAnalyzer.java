@@ -294,8 +294,16 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
 
       try {
-        if (Objects.nonNull(databaseForTableData)) {
-          loadTsFilesAsyncToTargetDir(new File(targetFilePath, databaseForTableData), tsFiles);
+        if (Objects.nonNull(databaseForTableData)
+            || (Objects.nonNull(context) && context.getDatabaseName().isPresent())) {
+          loadTsFilesAsyncToTargetDir(
+              new File(
+                  targetFilePath,
+                  databaseForTableData =
+                      Objects.nonNull(databaseForTableData)
+                          ? databaseForTableData
+                          : context.getDatabaseName().get()),
+              tsFiles);
         } else {
           loadTsFilesAsyncToTargetDir(new File(targetFilePath), tsFiles);
         }

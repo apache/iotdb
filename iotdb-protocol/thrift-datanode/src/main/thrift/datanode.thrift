@@ -396,7 +396,7 @@ struct TLoadCommandReq {
     1: required i32 commandType
     2: required string uuid
     3: optional bool isGeneratedByPipe
-    4: optional binary progressIndex
+    4: optional map<common.TTimePartitionSlot, binary> timePartition2ProgressIndex
 }
 
 struct TAttributeUpdateReq {
