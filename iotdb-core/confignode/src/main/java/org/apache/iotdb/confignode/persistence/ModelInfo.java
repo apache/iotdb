@@ -74,7 +74,6 @@ public class ModelInfo implements SnapshotProcessor {
 
   private static final Set<String> builtInAnomalyDetectionModel = new HashSet<>();
 
-  private static final int SUNDIAL_INPUT_LENGTH = 2880;
   private static final int timerXLInputLength = 2880;
 
   static {
@@ -274,9 +273,6 @@ public class ModelInfo implements SnapshotProcessor {
       // check if it's a built-in model
       if ((modelType = checkModelType(modelName)) != ModelType.USER_DEFINED) {
         modelInformation = new ModelInformation(modelType, modelName);
-        if (modelName.equalsIgnoreCase("_sundial")) {
-          modelInformation.setInputLength(SUNDIAL_INPUT_LENGTH);
-        }
         if (modelName.equalsIgnoreCase("_timerxl")) {
           modelInformation.setInputLength(timerXLInputLength);
         }
