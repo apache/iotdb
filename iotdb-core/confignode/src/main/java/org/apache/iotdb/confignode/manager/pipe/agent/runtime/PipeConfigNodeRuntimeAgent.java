@@ -164,10 +164,6 @@ public class PipeConfigNodeRuntimeAgent implements IService {
 
   /////////////////////////// Periodical Job Executor ///////////////////////////
 
-  public PipePeriodicalJobExecutor getPipePeriodicalJobExecutor() {
-    return pipePeriodicalJobExecutor;
-  }
-
   public void registerPeriodicalJob(String id, Runnable periodicalJob, long intervalInSeconds) {
     pipePeriodicalJobExecutor.register(id, periodicalJob, intervalInSeconds);
   }
