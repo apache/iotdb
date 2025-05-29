@@ -1151,6 +1151,11 @@ public class IoTDBConfig {
 
   private LastCacheLoadStrategy lastCacheLoadStrategy = LastCacheLoadStrategy.UPDATE;
 
+  /**
+   * Whether to cache last values when constructing TsFileResource during LOAD. When set to true,
+   * blob series will be forcibly ignored even if lastCacheLoadStrategy =
+   * LastCacheLoadStrategy.UPDATE.
+   */
   private boolean cacheLastValuesForLoad = true;
 
   IoTDBConfig() {}

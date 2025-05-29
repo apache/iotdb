@@ -70,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -3007,6 +3008,18 @@ public class DataRegion implements IDataRegionForQuery {
           "tsfile validate failed, " + newTsFileResource.getTsFile().getName());
     }
 
+    TsFileLastReader lastReader = null;
+    if ((config.getLastCacheLoadStrategy() == LastCacheLoadStrategy.UPDATE
+            || config.getLastCacheLoadStrategy() == LastCacheLoadStrategy.UPDATE_NO_BLOB)
+        && !config.isCacheLastValuesForLoad()) {
+      try {
+        // init reader outside of lock to boost performance
+        lastReader = new TsFileLastReader(newTsFileResource.getTsFilePath());
+      } catch (IOException e) {
+        throw new LoadFileException(e);
+      }
+    }
+
     writeLock("loadNewTsFile");
     try {
       if (deleted) {
@@ -3069,7 +3082,7 @@ public class DataRegion implements IDataRegionForQuery {
                 false);
       }
 
-      onTsFileLoaded(newTsFileResource, isFromConsensus);
+      onTsFileLoaded(newTsFileResource, isFromConsensus, lastReader);
       logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
     } catch (final DiskSpaceInsufficientException e) {
       logger.error(
@@ -3081,19 +3094,26 @@ public class DataRegion implements IDataRegionForQuery {
       throw new LoadFileException(e);
     } finally {
       writeUnlock();
+      if (lastReader != null) {
+        try {
+          lastReader.close();
+        } catch (Exception e) {
+          logger.warn("Cannot close last reader after loading TsFile {}", newTsFileResource, e);
+        }
+      }
       // TODO: do more precise control
     }
   }
 
-  private void onTsFileLoaded(TsFileResource newTsFileResource, boolean isFromConsensus)
-      throws Exception {
+  private void onTsFileLoaded(
+      TsFileResource newTsFileResource, boolean isFromConsensus, TsFileLastReader lastReader) {
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable() && !isFromConsensus) {
-      switch (IoTDBDescriptor.getInstance().getConfig().getLastCacheLoadStrategy()) {
+      switch (config.getLastCacheLoadStrategy()) {
         case UPDATE_NO_BLOB:
-          updateLastCache(newTsFileResource, true);
+          updateLastCache(newTsFileResource, true, lastReader);
           break;
         case UPDATE:
-          updateLastCache(newTsFileResource, false);
+          updateLastCache(newTsFileResource, false, lastReader);
           break;
         case CLEAN_ALL:
           // The inner cache is shared by TreeDeviceSchemaCacheManager and
@@ -3127,8 +3147,8 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   @SuppressWarnings("java:S112")
-  private void updateLastCache(TsFileResource newTsFileResource, boolean ignoreBlob)
-      throws Exception {
+  private void updateLastCache(
+      TsFileResource newTsFileResource, boolean ignoreBlob, TsFileLastReader lastReader) {
     boolean isTableModel = isTableModelDatabase(databaseName);
 
     Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues =
@@ -3153,8 +3173,7 @@ public class DataRegion implements IDataRegionForQuery {
       return;
     }
 
-    try (TsFileLastReader lastReader =
-        new TsFileLastReader(newTsFileResource.getTsFilePath(), true, ignoreBlob)) {
+    if (lastReader != null) {
       while (lastReader.hasNext()) {
         Pair<IDeviceID, List<Pair<String, TimeValuePair>>> nextDevice = lastReader.next();
         IDeviceID deviceID = nextDevice.left;
@@ -3171,6 +3190,8 @@ public class DataRegion implements IDataRegionForQuery {
                   databaseName, deviceID, measurements, timeValuePairs, false, null);
         }
       }
+    } else {
+      TreeDeviceSchemaCacheManager.getInstance().cleanUp();
     }
   }
 

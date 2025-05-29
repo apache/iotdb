@@ -43,4 +43,6 @@ public interface DataNodeConfig {
   DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
 
   DataNodeConfig setLoadLastCacheStrategy(String strategyName);
+
+  DataNodeConfig setCacheLastValuesForLoad(boolean cacheLastValuesForLoad);
 }

@@ -566,7 +566,9 @@ public class LoadTsFileManager {
                                       : chunkMetadata.getDataType(),
                                   chunkMetadata.getStatistics().getLastValue())
                               : null;
-                      return new TimeValuePair(chunkMetadata.getEndTime(), lastValue);
+                      return lastValue != null
+                          ? new TimeValuePair(chunkMetadata.getEndTime(), lastValue)
+                          : null;
                     });
           }
         }

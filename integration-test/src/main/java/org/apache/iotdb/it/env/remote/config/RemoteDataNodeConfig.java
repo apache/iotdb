@@ -73,4 +73,9 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setLoadLastCacheStrategy(String strategyName) {
     return this;
   }
+
+  @Override
+  public DataNodeConfig setCacheLastValuesForLoad(boolean cacheLastValuesForLoad) {
+    return this;
+  }
 }

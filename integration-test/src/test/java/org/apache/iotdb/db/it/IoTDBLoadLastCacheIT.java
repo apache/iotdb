@@ -106,7 +106,8 @@ public class IoTDBLoadLastCacheIT {
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
-        .setLoadLastCacheStrategy(lastCacheLoadStrategy.name());
+        .setLoadLastCacheStrategy(lastCacheLoadStrategy.name())
+        .setCacheLastValuesForLoad(true);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -360,11 +361,12 @@ public class IoTDBLoadLastCacheIT {
     private final List<String> columnNames;
     private final List<TSDataType> dataTypes;
 
-    public PerformanceSchemas(String database, String tableName, int measurementNum) {
+    public PerformanceSchemas(
+        String database, String tableName, int measurementNum, int blobMeasurementNum) {
       this.database = database;
-      List<ColumnSchema> columnSchemas = new ArrayList<>(measurementNum);
-      columnNames = new ArrayList<>(measurementNum);
-      dataTypes = new ArrayList<>(measurementNum);
+      List<ColumnSchema> columnSchemas = new ArrayList<>(measurementNum + blobMeasurementNum);
+      columnNames = new ArrayList<>(measurementNum + blobMeasurementNum);
+      dataTypes = new ArrayList<>(measurementNum + blobMeasurementNum);
 
       columnSchemas.add(new ColumnSchema("device_id", TSDataType.STRING, ColumnCategory.TAG));
       columnNames.add("device_id");
@@ -374,6 +376,12 @@ public class IoTDBLoadLastCacheIT {
         columnNames.add("s" + i);
         dataTypes.add(TSDataType.INT64);
       }
+      for (int i = 0; i < blobMeasurementNum; i++) {
+        columnSchemas.add(
+            new ColumnSchema("s" + (measurementNum + i), TSDataType.BLOB, ColumnCategory.FIELD));
+        columnNames.add("s" + (measurementNum + i));
+        dataTypes.add(TSDataType.BLOB);
+      }
       tableSchema = new TableSchema(tableName, columnSchemas);
     }
   }
@@ -381,10 +389,12 @@ public class IoTDBLoadLastCacheIT {
   private void generateAndLoadOne(
       int deviceCnt,
       int measurementCnt,
+      int blobMeasurementCnt,
       int pointCnt,
       int offset,
       PerformanceSchemas schemas,
-      int fileNum)
+      int fileNum,
+      Statement statement)
       throws Exception {
     File file = new File("target" + File.separator + fileNum + ".tsfile");
     try (ITsFileWriter tsFileWriter =
@@ -398,50 +408,64 @@ public class IoTDBLoadLastCacheIT {
           for (int k = 0; k < measurementCnt; k++) {
             tablet.addValue(rowIndex, k + 1, (long) j + offset);
           }
+          for (int k = 0; k < blobMeasurementCnt; k++) {
+            tablet.addValue(rowIndex, k + 1 + measurementCnt, String.valueOf(j + offset));
+          }
           rowIndex++;
         }
       }
       tsFileWriter.write(tablet);
     }
 
-    try (final Connection connection = EnvFactory.getEnv().getTableConnection();
-        final Statement statement = connection.createStatement()) {
-      statement.execute("USE " + schemas.database);
-      statement.execute(
-          String.format(
-              "load '%s' with ('database-name'='%s')", file.getAbsolutePath(), schemas.database));
-    }
+    statement.execute(
+        String.format(
+            "load '%s' with ('database-name'='%s')", file.getAbsolutePath(), schemas.database));
+
     file.delete();
   }
 
   private void generateAndLoadAll(
-      int deviceCnt, int measurementCnt, int pointCnt, PerformanceSchemas schemas, int fileNum)
+      int deviceCnt,
+      int measurementCnt,
+      int blobMeasurementCnt,
+      int pointCnt,
+      PerformanceSchemas schemas,
+      int fileNum)
       throws Exception {
-    for (int i = 0; i < fileNum; i++) {
-      generateAndLoadOne(deviceCnt, measurementCnt, pointCnt, pointCnt * i, schemas, fileNum);
-    }
-  }
-
-  private long queryLastOnce(int deviceNum, int measurementNum, PerformanceSchemas schemas)
-      throws SQLException {
     try (final Connection connection = EnvFactory.getEnv().getTableConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute("USE " + schemas.database);
 
-      try (final ResultSet resultSet =
-          statement.executeQuery(
-              String.format(
-                  "select last(%s) from %s where device_id='%s'",
-                  "s" + measurementNum, schemas.tableSchema.getTableName(), "d" + deviceNum))) {
-        if (resultSet.next()) {
-          return resultSet.getLong("_col0");
-        } else {
-          return -1;
-        }
-      } catch (SQLException e) {
-        if (!e.getMessage().contains("does not exist")) {
-          throw e;
-        }
+      for (int i = 0; i < fileNum; i++) {
+        generateAndLoadOne(
+            deviceCnt,
+            measurementCnt,
+            blobMeasurementCnt,
+            pointCnt,
+            pointCnt * i,
+            schemas,
+            fileNum,
+            statement);
+      }
+    }
+  }
+
+  private long queryLastOnce(
+      int deviceNum, int measurementNum, PerformanceSchemas schemas, Statement statement)
+      throws SQLException {
+    try (final ResultSet resultSet =
+        statement.executeQuery(
+            String.format(
+                "select last(time),last_by(%s, time) from %s where device_id='%s'",
+                "s" + measurementNum, schemas.tableSchema.getTableName(), "d" + deviceNum))) {
+      if (resultSet.next()) {
+        return resultSet.getLong("_col0");
+      } else {
+        return -1;
+      }
+    } catch (SQLException e) {
+      if (!e.getMessage().contains("does not exist")) {
+        throw e;
       }
     }
     return -1;
@@ -460,29 +484,36 @@ public class IoTDBLoadLastCacheIT {
     long totalStart = System.currentTimeMillis();
     List<Long> timeConsumptions = new ArrayList<>();
 
-    while (true) {
-      int deviceNum = random.nextInt(deviceCnt);
-      int measurementNum = random.nextInt(measurementCnt);
-      rateLimiter.acquire();
-      long start = System.currentTimeMillis();
-      long result = queryLastOnce(deviceNum, measurementNum, schemas);
-      long timeConsumption = System.currentTimeMillis() - start;
-      if (result == -1) {
-        try {
-          Thread.sleep(1000);
-          continue;
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
+    try (final Connection connection = EnvFactory.getEnv().getTableConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("USE " + schemas.database);
+
+      while (true) {
+        int deviceNum = random.nextInt(deviceCnt);
+        int measurementNum = random.nextInt(measurementCnt);
+        rateLimiter.acquire();
+        long start = System.currentTimeMillis();
+        long result = queryLastOnce(deviceNum, measurementNum, schemas, statement);
+        long timeConsumption = System.currentTimeMillis() - start;
+        if (result == -1) {
+          try {
+            Thread.sleep(1000);
+            continue;
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+        }
+        System.out.printf(
+            "%s: d%d.s%d %s %s%n", new Date(), deviceNum, measurementNum, result, timeConsumption);
+        timeConsumptions.add(timeConsumption);
+        if (result == (long) pointCnt * fileCnt - 1) {
+          break;
         }
       }
-      System.out.printf("%s: %s %s%n", new Date(), result, timeConsumption);
-      timeConsumptions.add(timeConsumption);
-      if (result == (long) pointCnt * fileCnt - 1) {
-        break;
-      }
     }
+
     System.out.printf(
-        "Synchronization ends after %dms%n, query latency avg %f",
+        "Synchronization ends after %dms, query latency avg %fms %n",
         System.currentTimeMillis() - totalStart,
         timeConsumptions.stream().mapToLong(i -> i).average().orElse(0.0));
   }
@@ -490,13 +521,16 @@ public class IoTDBLoadLastCacheIT {
   // @Ignore("Performance")
   @Test
   public void testTableLoadPerformance() throws Exception {
-    int deviceCnt = 1000;
+    int deviceCnt = 100;
     int measurementCnt = 100;
+    int blobMeasurementCnt = 10;
     int pointCnt = 100;
-    int fileCnt = 100;
-    int queryPerSec = 10;
+    int fileCnt = 1000;
+    int queryPerSec = 1000;
+    int queryThreadsNum = 10;
 
-    PerformanceSchemas schemas = new PerformanceSchemas("test", "test_table", measurementCnt);
+    PerformanceSchemas schemas =
+        new PerformanceSchemas("test", "test_table", measurementCnt, blobMeasurementCnt);
 
     try (final Connection connection = EnvFactory.getEnv().getTableConnection();
         final Statement statement = connection.createStatement()) {
@@ -507,28 +541,41 @@ public class IoTDBLoadLastCacheIT {
         new Thread(
             () -> {
               try {
-                generateAndLoadAll(deviceCnt, measurementCnt, pointCnt, schemas, fileCnt);
-              } catch (Exception e) {
+                generateAndLoadAll(
+                    deviceCnt, measurementCnt, blobMeasurementCnt, pointCnt, schemas, fileCnt);
+              } catch (Throwable e) {
                 e.printStackTrace();
               }
             });
 
     RateLimiter rateLimiter = RateLimiter.create(queryPerSec);
-    Thread queryThread =
-        new Thread(
-            () -> {
-              try {
-                queryAll(deviceCnt, measurementCnt, pointCnt, fileCnt, schemas, rateLimiter);
-              } catch (SQLException e) {
-                e.printStackTrace();
-              }
-            });
+    List<Thread> queryThreads = new ArrayList<>(queryThreadsNum);
+    for (int i = 0; i < queryThreadsNum; i++) {
+      Thread queryThread =
+          new Thread(
+              () -> {
+                try {
+                  queryAll(
+                      deviceCnt,
+                      measurementCnt + blobMeasurementCnt,
+                      pointCnt,
+                      fileCnt,
+                      schemas,
+                      rateLimiter);
+                } catch (Throwable e) {
+                  e.printStackTrace();
+                }
+              });
+      queryThreads.add(queryThread);
+    }
 
     loadThread.start();
-    queryThread.start();
+    queryThreads.forEach(Thread::start);
 
     loadThread.join();
-    queryThread.join();
+    for (Thread queryThread : queryThreads) {
+      queryThread.join();
+    }
   }
 
   private static class SchemaConfig {
