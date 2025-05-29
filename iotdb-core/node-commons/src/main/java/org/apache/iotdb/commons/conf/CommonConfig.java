@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
-import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
+import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -280,7 +280,7 @@ public class CommonConfig {
   private long pipeStorageEngineFlushTimeIntervalMs = Long.MAX_VALUE;
   private int pipeMaxAllowedRemainingInsertEventCountPerPipe = 10000;
   private int pipeMaxAllowedTotalRemainingInsertEventCount = 50000;
-  private int pipeRemainingEventCountSmoothingIntervalSeconds = 15;
+  private int pipeRemainingEventCountSmoothingIntervalSeconds = 10;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
   private int pipeMetaReportMaxLogIntervalRounds = 36;
@@ -301,8 +301,8 @@ public class CommonConfig {
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
   private long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
-  private PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
-      PipeRemainingTimeRateAverageTime.MEAN;
+  private PipeRateAverage pipeRemainingTimeCommitRateAverageTime = PipeRateAverage.MEAN;
+  private PipeRateAverage pipeRemainingInsertEventCountAverage = PipeRateAverage.ONE_MINUTE;
   private double pipeTsFileScanParsingThreshold = 0.05;
   private double pipeDynamicMemoryHistoryWeight = 0.5;
   private double pipeDynamicMemoryAdjustmentThreshold = 0.05;
@@ -1831,12 +1831,12 @@ public class CommonConfig {
         pipeRemainingTimeCommitRateAutoSwitchSeconds);
   }
 
-  public PipeRemainingTimeRateAverageTime getPipeRemainingTimeCommitRateAverageTime() {
+  public PipeRateAverage getPipeRemainingTimeCommitRateAverageTime() {
     return pipeRemainingTimeCommitRateAverageTime;
   }
 
   public void setPipeRemainingTimeCommitRateAverageTime(
-      PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime) {
+      PipeRateAverage pipeRemainingTimeCommitRateAverageTime) {
     if (Objects.equals(
         this.pipeRemainingTimeCommitRateAverageTime, pipeRemainingTimeCommitRateAverageTime)) {
       return;
@@ -1845,6 +1845,21 @@ public class CommonConfig {
     logger.info(
         "pipeRemainingTimeCommitRateAverageTime is set to {}",
         pipeRemainingTimeCommitRateAverageTime);
+  }
+
+  public PipeRateAverage getPipeRemainingInsertEventCountAverage() {
+    return pipeRemainingInsertEventCountAverage;
+  }
+
+  public void setPipeRemainingInsertEventCountAverage(
+      PipeRateAverage pipeRemainingInsertEventCountAverage) {
+    if (Objects.equals(
+        this.pipeRemainingInsertEventCountAverage, pipeRemainingInsertEventCountAverage)) {
+      return;
+    }
+    this.pipeRemainingInsertEventCountAverage = pipeRemainingInsertEventCountAverage;
+    logger.info(
+        "pipeRemainingInsertEventCountAverage is set to {}", pipeRemainingInsertEventCountAverage);
   }
 
   public double getPipeTsFileScanParsingThreshold() {

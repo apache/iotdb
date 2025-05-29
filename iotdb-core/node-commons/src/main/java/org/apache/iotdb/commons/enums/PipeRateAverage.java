@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import com.codahale.metrics.Meter;
 
-public enum PipeRemainingTimeRateAverageTime {
+public enum PipeRateAverage {
   ONE_MINUTE,
   FIVE_MINUTES,
   FIFTEEN_MINUTES,
