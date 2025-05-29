@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -135,6 +136,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final PlanFragmentId fragmentId;
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
+  private final Map<TTimePartitionSlot, ProgressIndex> timePartitionSlotToProgressIndex;
   private final LoadTsFileDataCacheMemoryBlock block;
 
   public LoadTsFileScheduler(
@@ -153,6 +155,7 @@ public class LoadTsFileScheduler implements IScheduler {
     this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
     this.allReplicaSets = new HashSet<>();
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.timePartitionSlotToProgressIndex = new HashMap<>();
     this.block = LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock();
 
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
@@ -397,7 +400,26 @@ public class LoadTsFileScheduler implements IScheduler {
 
     try {
       loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
-      loadCommandReq.setProgressIndex(assignProgressIndex(tsFileResource));
+      loadCommandReq.setTimePartition2ProgressIndex(
+          timePartitionSlotToProgressIndex.entrySet().stream()
+              .collect(
+                  Collectors.toMap(
+                      Map.Entry::getKey,
+                      entry -> {
+                        try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+                            final DataOutputStream dataOutputStream =
+                                new DataOutputStream(byteArrayOutputStream)) {
+                          entry.getValue().serialize(dataOutputStream);
+                          return ByteBuffer.wrap(
+                              byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+                        } catch (final IOException e) {
+                          throw new RuntimeException(
+                              String.format(
+                                  "Serialize Progress Index error, isFirstPhaseSuccess: %s, uuid: %s, tsFile: %s",
+                                  isFirstPhaseSuccess, uuid, tsFile.getAbsolutePath()),
+                              e);
+                        }
+                      })));
       Future<FragInstanceDispatchResult> dispatchResultFuture =
           dispatcher.dispatchCommand(loadCommandReq, allReplicaSets);
 
@@ -420,14 +442,6 @@ public class LoadTsFileScheduler implements IScheduler {
         stateMachine.transitionToFailed(status);
         return false;
       }
-    } catch (IOException e) {
-      LOGGER.warn(
-          "Serialize Progress Index error, isFirstPhaseSuccess: {}, uuid: {}, tsFile: {}",
-          isFirstPhaseSuccess,
-          uuid,
-          tsFile.getAbsolutePath());
-      stateMachine.transitionToFailed(e);
-      return false;
     } catch (InterruptedException | ExecutionException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -601,6 +615,12 @@ public class LoadTsFileScheduler implements IScheduler {
     return null;
   }
 
+  private void computeTimePartitionSlotToProgressIndexIfAbsent(
+      final TTimePartitionSlot timePartitionSlot) {
+    timePartitionSlotToProgressIndex.putIfAbsent(
+        timePartitionSlot, PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad());
+  }
+
   public enum LoadCommand {
     EXECUTE,
     ROLLBACK
@@ -642,6 +662,7 @@ public class LoadTsFileScheduler implements IScheduler {
       nonDirectionalChunkData.add(chunkData);
       dataSize += chunkData.getDataSize();
       block.addMemoryUsage(chunkData.getDataSize());
+      scheduler.computeTimePartitionSlotToProgressIndexIfAbsent(chunkData.getTimePartitionSlot());
 
       if (!isMemoryEnough()) {
         routeChunkData();
