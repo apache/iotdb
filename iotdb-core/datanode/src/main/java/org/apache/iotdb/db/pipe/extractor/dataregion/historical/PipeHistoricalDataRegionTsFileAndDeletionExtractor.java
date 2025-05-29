@@ -447,14 +447,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     // 1. origin is RecoverProgressIndex
     if (origin instanceof RecoverProgressIndex) {
       RecoverProgressIndex toBeTransformed = (RecoverProgressIndex) origin;
-      return new RecoverProgressIndex(
-          toBeTransformed.getDataNodeId2LocalIndex().entrySet().stream()
-              .filter(
-                  entry ->
-                      entry
-                          .getKey()
-                          .equals(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()))
-              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+      ProgressIndex transformed = extractRecoverProgressIndex(toBeTransformed);
+      return transformed == null ? origin : transformed;
     }
     // 2. origin is HybridProgressIndex
     else if (origin instanceof HybridProgressIndex) {
@@ -469,22 +463,42 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                 toBeTransformed
                     .getType2Index()
                     .get(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType());
-        return new RecoverProgressIndex(
-            specificToBeTransformed.getDataNodeId2LocalIndex().entrySet().stream()
-                .filter(
-                    entry ->
-                        entry
-                            .getKey()
-                            .equals(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+
+        ProgressIndex transformed = extractRecoverProgressIndex(specificToBeTransformed);
+        return transformed == null ? origin : transformed;
       }
       // if hybridProgressIndex doesn't contain recoverProgressIndex, which is not what we expected,
       // fallback.
       return origin;
     } else {
       // fallback
+      LOGGER.warn(
+          "Pipe {}@{}: unexpected ProgressIndex type {}, fallback to origin {}.",
+          pipeName,
+          dataRegionId,
+          origin.getType(),
+          origin);
       return origin;
     }
+  }
+
+  private ProgressIndex extractRecoverProgressIndex(RecoverProgressIndex toBeTransformed) {
+    if (!toBeTransformed
+        .getDataNodeId2LocalIndex()
+        .containsKey(IoTDBDescriptor.getInstance().getConfig().getDataNodeId())) {
+      // if recoverProgressIndex doesn't contain local DataNodeId, return null directly to indicate
+      // there is no need to extract dedicated progressIndex.
+      return null;
+    }
+
+    return new RecoverProgressIndex(
+        toBeTransformed.getDataNodeId2LocalIndex().entrySet().stream()
+            .filter(
+                entry ->
+                    entry
+                        .getKey()
+                        .equals(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
   }
 
   @Override
