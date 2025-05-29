@@ -235,7 +235,7 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
                   .toArray(MeasurementSchema[]::new),
               tablet.getTimestamps(),
               tablet.getBitMaps(),
-              tablet.getValues(),
+              values,
               tablet.getRowSize(),
               tablet.getColumnTypes().stream()
                   .filter(Objects::nonNull)
