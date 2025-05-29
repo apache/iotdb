@@ -130,6 +130,7 @@ public class PipeMetaDeSerTest {
     Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
 
     pipeRuntimeMeta.getStatus().set(PipeStatus.DROPPED);
+    pipeRuntimeMeta.onSetPipeDroppedOrStopped();
     pipeRuntimeMeta.setIsStoppedByRuntimeException(true);
     pipeRuntimeMeta.setExceptionsClearTime(0);
     pipeRuntimeMeta

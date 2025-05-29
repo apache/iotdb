@@ -22,7 +22,6 @@ package org.apache.iotdb.commons.pipe.config;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
-import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +29,6 @@ import org.slf4j.LoggerFactory;
 public class PipeConfig {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  private PipePeriodicalJobExecutor pipePeriodicalJobExecutor;
 
   /////////////////////////////// Data Synchronization ///////////////////////////////
 
@@ -58,16 +56,6 @@ public class PipeConfig {
 
   public boolean getPipeFileReceiverFsyncEnabled() {
     return COMMON_CONFIG.getPipeFileReceiverFsyncEnabled();
-  }
-
-  public PipePeriodicalJobExecutor getPipePeriodicalJobExecutor() {
-    return pipePeriodicalJobExecutor;
-  }
-
-  public void setPipePeriodicalJobExecutor(PipePeriodicalJobExecutor pipePeriodicalJobExecutor) {
-    if (this.pipePeriodicalJobExecutor == null) {
-      this.pipePeriodicalJobExecutor = pipePeriodicalJobExecutor;
-    }
   }
 
   /////////////////////////////// Tablet ///////////////////////////////

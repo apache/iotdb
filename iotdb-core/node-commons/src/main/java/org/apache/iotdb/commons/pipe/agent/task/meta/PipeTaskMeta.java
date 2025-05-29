@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.utils.PublicBAOS;
@@ -50,6 +50,7 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,8 +60,6 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeTaskMeta {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskMeta.class);
-  private static final String PROGRESS_INDEX_PERSIST_SERVICE =
-      "progress_index_persist_background_service";
   private static final String PREFIX = "__progressIndex_";
 
   private final AtomicReference<ProgressIndex> progressIndex = new AtomicReference<>();
@@ -72,6 +71,7 @@ public class PipeTaskMeta {
   private final int taskIndex;
   private final File progressIndexPersistFile;
   private final AtomicBoolean isRegisterPersistTask = new AtomicBoolean(false);
+  private Future<?> persistProgressIndexFuture;
 
   /**
    * Stores the exceptions encountered during run time of each pipe task.
@@ -104,14 +104,11 @@ public class PipeTaskMeta {
 
   public ProgressIndex updateProgressIndex(final ProgressIndex updateIndex) {
     // only pipeTaskMeta that need to updateProgressIndex will persist progress index
-    if (!isRegisterPersistTask.getAndSet(true)) {
-      // TODO: how to deregister? what if this object is GCed when pipe task is dropped.
-      PipeConfig.getInstance()
-          .getPipePeriodicalJobExecutor()
-          .register(
-              PROGRESS_INDEX_PERSIST_SERVICE + leaderNodeId + taskIndex,
-              this::persistProgressIndex,
-              TimeUnit.SECONDS.toMillis(20));
+    // isRegisterPersistTask is used to avoid multiple threads registering persist task concurrently
+    if (!isRegisterPersistTask.getAndSet(true) && this.persistProgressIndexFuture == null) {
+      this.persistProgressIndexFuture =
+          PipePeriodicalJobExecutor.submitBackgroundJob(
+              this::persistProgressIndex, 0, TimeUnit.SECONDS.toMillis(20));
     }
 
     progressIndex.updateAndGet(
@@ -166,6 +163,13 @@ public class PipeTaskMeta {
           e);
     }
     return MinimumProgressIndex.INSTANCE;
+  }
+
+  public void cancelPersistProgressIndexFuture() {
+    if (isRegisterPersistTask.getAndSet(false) && persistProgressIndexFuture != null) {
+      persistProgressIndexFuture.cancel(false);
+      persistProgressIndexFuture = null;
+    }
   }
 
   public int getLeaderNodeId() {
