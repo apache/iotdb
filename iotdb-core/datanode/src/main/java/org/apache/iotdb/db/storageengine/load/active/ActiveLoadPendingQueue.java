@@ -21,9 +21,6 @@ package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 
-import org.apache.commons.lang3.tuple.ImmutableTriple;
-import org.apache.commons.lang3.tuple.Triple;
-
 import java.util.HashSet;
 import java.util.Queue;
 import java.util.Set;
@@ -32,15 +29,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class ActiveLoadPendingQueue {
 
   private final Set<String> pendingFileSet = new HashSet<>();
-  private final Queue<Triple<String, Boolean, Boolean>> pendingFileQueue =
-      new ConcurrentLinkedQueue<>();
+  private final Queue<ActiveLoadEntry> pendingFileQueue = new ConcurrentLinkedQueue<>();
 
   private final Set<String> loadingFileSet = new HashSet<>();
 
   public synchronized boolean enqueue(
-      final String file, final boolean isTableModel, final boolean isGeneratedByPipe) {
+      final String file, final boolean isGeneratedByPipe, final boolean isTableModel) {
     if (!loadingFileSet.contains(file) && pendingFileSet.add(file)) {
-      pendingFileQueue.offer(new ImmutableTriple<>(file, isGeneratedByPipe, isTableModel));
+      pendingFileQueue.offer(new ActiveLoadEntry(file, isGeneratedByPipe, isTableModel));
 
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(1);
       return true;
@@ -48,16 +44,16 @@ public class ActiveLoadPendingQueue {
     return false;
   }
 
-  public synchronized Triple<String, Boolean, Boolean> dequeueFromPending() {
-    final Triple<String, Boolean, Boolean> pair = pendingFileQueue.poll();
-    if (pair != null) {
-      pendingFileSet.remove(pair.getLeft());
-      loadingFileSet.add(pair.getLeft());
+  public synchronized ActiveLoadEntry dequeueFromPending() {
+    final ActiveLoadEntry entry = pendingFileQueue.poll();
+    if (entry != null) {
+      pendingFileSet.remove(entry.getFile());
+      loadingFileSet.add(entry.getFile());
 
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseLoadingFileCounter(1);
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(-1);
     }
-    return pair;
+    return entry;
   }
 
   public synchronized void removeFromLoading(final String file) {
@@ -76,5 +72,29 @@ public class ActiveLoadPendingQueue {
 
   public boolean isEmpty() {
     return pendingFileQueue.isEmpty() && loadingFileSet.isEmpty();
+  }
+
+  public static class ActiveLoadEntry {
+    private final String file;
+    private final boolean isGeneratedByPipe;
+    private final boolean isTableModel;
+
+    public ActiveLoadEntry(String file, boolean isGeneratedByPipe, boolean isTableModel) {
+      this.file = file;
+      this.isGeneratedByPipe = isGeneratedByPipe;
+      this.isTableModel = isTableModel;
+    }
+
+    public String getFile() {
+      return file;
+    }
+
+    public boolean isGeneratedByPipe() {
+      return isGeneratedByPipe;
+    }
+
+    public boolean isTableModel() {
+      return isTableModel;
+    }
   }
 }
