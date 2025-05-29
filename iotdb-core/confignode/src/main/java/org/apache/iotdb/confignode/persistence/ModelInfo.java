@@ -74,13 +74,16 @@ public class ModelInfo implements SnapshotProcessor {
 
   private static final Set<String> builtInAnomalyDetectionModel = new HashSet<>();
 
+
   private static final int SUNDIAL_INPUT_LENGTH = 2880;
+  private static final int timerXLInputLength = 2880;
 
   static {
-    builtInForecastModel.add("_timerxl");
+    builtInForecastModel.add("_TimerXL");
     builtInForecastModel.add("_ARIMA");
     builtInForecastModel.add("_NaiveForecaster");
     builtInForecastModel.add("_STLForecaster");
+    builtInForecastModel.add("_HoltWinters");
     builtInForecastModel.add("_ExponentialSmoothing");
     builtInForecastModel.add("_sundial");
     builtInAnomalyDetectionModel.add("_GaussianHMM");
@@ -274,6 +277,9 @@ public class ModelInfo implements SnapshotProcessor {
         modelInformation = new ModelInformation(modelType, modelName);
         if (modelName.equalsIgnoreCase("_sundial")) {
           modelInformation.setInputLength(SUNDIAL_INPUT_LENGTH);
+        }
+        if (modelName.equalsIgnoreCase("_timerxl")) {
+          modelInformation.setInputLength(timerXLInputLength);
         }
       } else {
         modelInformation = modelTable.getModelInformationById(modelName);

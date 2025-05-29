@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -273,7 +274,10 @@ public class LoadTsFileManager {
     return FOLDER_MANAGER.get().getNextFolder();
   }
 
-  public boolean loadAll(String uuid, boolean isGeneratedByPipe, ProgressIndex progressIndex)
+  public boolean loadAll(
+      String uuid,
+      boolean isGeneratedByPipe,
+      Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
       throws IOException, LoadFileException {
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
@@ -282,7 +286,7 @@ public class LoadTsFileManager {
     final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
     try {
-      uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, progressIndex);
+      uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, timePartitionProgressIndexMap);
     } finally {
       cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
     }
@@ -497,7 +501,9 @@ public class LoadTsFileManager {
       }
     }
 
-    private void loadAll(boolean isGeneratedByPipe, ProgressIndex progressIndex)
+    private void loadAll(
+        boolean isGeneratedByPipe,
+        Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
         throws IOException, LoadFileException {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
@@ -516,7 +522,11 @@ public class LoadTsFileManager {
 
         final DataRegion dataRegion = entry.getKey().getDataRegion();
         final TsFileResource tsFileResource = dataPartition2Resource.get(entry.getKey());
-        endTsFileResource(writer, tsFileResource, progressIndex);
+        endTsFileResource(
+            writer,
+            tsFileResource,
+            timePartitionProgressIndexMap.getOrDefault(
+                entry.getKey().getTimePartitionSlot(), MinimumProgressIndex.INSTANCE));
         dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe);
 
         // Metrics
@@ -679,6 +689,10 @@ public class LoadTsFileManager {
 
     public DataRegion getDataRegion() {
       return dataRegion;
+    }
+
+    public TTimePartitionSlot getTimePartitionSlot() {
+      return timePartitionSlot;
     }
 
     @Override

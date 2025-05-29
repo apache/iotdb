@@ -47,7 +47,7 @@ def get_model_attributes(model_id: str):
         attribute_map = arima_attribute_map
     elif model_id == BuiltInModelType.NAIVE_FORECASTER.value:
         attribute_map = naive_forecaster_attribute_map
-    elif model_id == BuiltInModelType.EXPONENTIAL_SMOOTHING.value:
+    elif model_id == BuiltInModelType.EXPONENTIAL_SMOOTHING.value or model_id == BuiltInModelType.HOLTWINTERS.value:
         attribute_map = exponential_smoothing_attribute_map
     elif model_id == BuiltInModelType.STL_FORECASTER.value:
         attribute_map = stl_forecaster_attribute_map
@@ -89,7 +89,7 @@ def fetch_built_in_model(model_id, inference_attributes):
     # build the built-in model
     if model_id == BuiltInModelType.ARIMA.value:
         model = ArimaModel(attributes)
-    elif model_id == BuiltInModelType.EXPONENTIAL_SMOOTHING.value:
+    elif model_id == BuiltInModelType.EXPONENTIAL_SMOOTHING.value or model_id == BuiltInModelType.HOLTWINTERS.value:
         model = ExponentialSmoothingModel(attributes)
     elif model_id == BuiltInModelType.NAIVE_FORECASTER.value:
         model = NaiveForecasterModel(attributes)

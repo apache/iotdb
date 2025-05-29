@@ -308,8 +308,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       throw new SubscriptionException(exceptionMessage);
     }
 
+    // fetch topics should be unsubscribed
+    final List<String> topicNamesToUnsubscribe =
+        SubscriptionAgent.broker().fetchTopicNamesToUnsubscribe(consumerConfig, topics.keySet());
+
     return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(
-        RpcUtils.SUCCESS_STATUS, topics, endPoints);
+        RpcUtils.SUCCESS_STATUS, topics, endPoints, topicNamesToUnsubscribe);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeSubscribe(final PipeSubscribeSubscribeReq req) {
