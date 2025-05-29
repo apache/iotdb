@@ -771,6 +771,10 @@ public class IoTDBDatabaseIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      // Avoid clearing table cache
+      statement.execute("select * from table1");
+
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
         assertTrue(resultSet.next());
         if (resultSet.getString(1).equals("information_schema")) {
@@ -781,7 +785,6 @@ public class IoTDBDatabaseIT {
       }
 
       // Test adjustMaxRegionGroupNum
-      statement.execute("use test");
       statement.execute(
           "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD)");
       statement.execute(
