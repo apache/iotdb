@@ -582,8 +582,8 @@ public class IoTDBDatabaseIT {
                   "_sundial,",
                   "_HoltWinters,",
                   "_TimerXL,",
-                  "_ARIMA,",
-                  "_ExponentialSmoothing,")));
+                  "_ExponentialSmoothing,",
+                  "_ARIMA,")));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
