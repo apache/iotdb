@@ -304,7 +304,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
-    startIndex = environment.getPipeTaskMeta().getProgressIndex();
+    // progressIndex is immutable in `updateToMinimumEqualOrIsAfterProgressIndex`, so data
+    // consistency in `environment.getPipeTaskMeta().getProgressIndex()` is ensured.
+    startIndex =
+        environment
+            .getPipeTaskMeta()
+            .getProgressIndex()
+            .updateToMinimumEqualOrIsAfterProgressIndex(
+                environment.getPipeTaskMeta().restoreProgressIndex());
 
     dataRegionId = environment.getRegionId();
     synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {

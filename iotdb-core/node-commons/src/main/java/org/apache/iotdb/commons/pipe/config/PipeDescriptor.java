@@ -46,6 +46,9 @@ public class PipeDescriptor {
     config.setPipeHardlinkTsFileDirName(
         properties.getProperty(
             "pipe_hardlink_tsfile_dir_name", config.getPipeHardlinkTsFileDirName()));
+    config.setPipeProgressIndexPersistDirName(
+        properties.getProperty(
+            "pipe_progress_index_persist_dir_name", config.getPipeProgressIndexPersistDirName()));
     config.setPipeHardlinkWALDirName(
         properties.getProperty("pipe_hardlink_wal_dir_name", config.getPipeHardlinkWALDirName()));
     config.setPipeHardLinkWALEnabled(
@@ -97,6 +100,11 @@ public class PipeDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
+    config.setPipeProgressIndexPersistCheckPoint(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_progress_index_persist_check_point",
+                String.valueOf(config.getPipeProgressIndexPersistCheckPoint()))));
 
     config.setPipeAirGapReceiverEnabled(
         Boolean.parseBoolean(

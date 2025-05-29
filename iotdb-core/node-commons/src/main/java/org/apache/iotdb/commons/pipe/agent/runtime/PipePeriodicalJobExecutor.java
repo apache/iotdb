@@ -21,7 +21,15 @@ package org.apache.iotdb.commons.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The shortest scheduling cycle for these jobs is {@link
@@ -29,6 +37,30 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
  * NOT time-critical.
  */
 public class PipePeriodicalJobExecutor extends AbstractPipePeriodicalJobExecutor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipePeriodicalJobExecutor.class);
+  // This background service is used to execute jobs that need to be cancelled and released.
+  private static final ScheduledExecutorService backgroundService =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.PIPE_PROGRESS_INDEX_BACKGROUND_SERVICE.getName());
+
+  public static Future<?> submitBackgroundJob(
+      Runnable job, long initialDelayInMs, long periodInMs) {
+    return ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        backgroundService, job, initialDelayInMs, periodInMs, TimeUnit.MILLISECONDS);
+  }
+
+  public static void shutdownBackgroundService() {
+    backgroundService.shutdownNow();
+    try {
+      if (!backgroundService.awaitTermination(30, TimeUnit.SECONDS)) {
+        LOGGER.warn("Pipe progressIndex background service did not terminate within {}s", 30);
+      }
+    } catch (InterruptedException e) {
+      LOGGER.warn("Pipe progressIndex background service still doesn't exit after 30s");
+      Thread.currentThread().interrupt();
+    }
+  }
 
   public PipePeriodicalJobExecutor() {
     super(

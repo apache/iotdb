@@ -97,20 +97,22 @@ public class PipeMetaDeSerTest {
         new PipeRuntimeMeta(
             new ConcurrentHashMap<Integer, PipeTaskMeta>() {
               {
-                put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987));
-                put(234, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789));
-                put(345, new PipeTaskMeta(new SimpleProgressIndex(3, 4), 789));
-                put(456, new PipeTaskMeta(finalHybridProgressIndex, 789));
+                put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987, 1, false));
+                put(234, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789, 1, false));
+                put(345, new PipeTaskMeta(new SimpleProgressIndex(3, 4), 789, 1, false));
+                put(456, new PipeTaskMeta(finalHybridProgressIndex, 789, 1, false));
                 put(
                     567,
                     new PipeTaskMeta(
-                        new RecoverProgressIndex(1, new SimpleProgressIndex(1, 9)), 123));
+                        new RecoverProgressIndex(1, new SimpleProgressIndex(1, 9)), 123, 1, false));
                 put(
                     678,
                     new PipeTaskMeta(
                         new TimeWindowStateProgressIndex(timeSeries2TimestampWindowBufferPairMap),
-                        789));
-                put(Integer.MIN_VALUE, new PipeTaskMeta(new MetaProgressIndex(987), 0));
+                        789,
+                        1,
+                        false));
+                put(Integer.MIN_VALUE, new PipeTaskMeta(new MetaProgressIndex(987), 0, 1, false));
               }
             });
     ByteBuffer runtimeByteBuffer = pipeRuntimeMeta.serialize();
@@ -129,6 +131,7 @@ public class PipeMetaDeSerTest {
     Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
 
     pipeRuntimeMeta.getStatus().set(PipeStatus.DROPPED);
+    pipeRuntimeMeta.onSetPipeDroppedOrStopped();
     pipeRuntimeMeta.setIsStoppedByRuntimeException(true);
     pipeRuntimeMeta.setExceptionsClearTime(0);
     pipeRuntimeMeta

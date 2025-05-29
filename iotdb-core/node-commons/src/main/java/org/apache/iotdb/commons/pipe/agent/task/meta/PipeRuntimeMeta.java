@@ -110,6 +110,10 @@ public class PipeRuntimeMeta {
     return status;
   }
 
+  public void onSetPipeDroppedOrStopped() {
+    consensusGroupId2TaskMetaMap.values().forEach(PipeTaskMeta::cancelPersistProgressIndexFuture);
+  }
+
   public ConcurrentMap<Integer, PipeTaskMeta> getConsensusGroupId2TaskMetaMap() {
     return consensusGroupId2TaskMetaMap;
   }

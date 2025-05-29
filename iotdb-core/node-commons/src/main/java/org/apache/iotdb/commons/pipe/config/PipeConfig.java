@@ -46,6 +46,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeHardlinkTsFileDirName();
   }
 
+  public String getPipeProgressIndexPersistDirName() {
+    return COMMON_CONFIG.getPipeProgressIndexPersistDirName();
+  }
+
+  public long getPipeProgressIndexPersistCheckPoint() {
+    return COMMON_CONFIG.getPipeProgressIndexPersistCheckPoint();
+  }
+
   public String getPipeHardlinkWALDirName() {
     return COMMON_CONFIG.getPipeHardlinkWALDirName();
   }
