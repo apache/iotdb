@@ -321,7 +321,6 @@ public class AccessControlImpl implements AccessControl {
           throw new SemanticException(
               "Cannot grant or revoke any privileges to information_schema");
         }
-
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
