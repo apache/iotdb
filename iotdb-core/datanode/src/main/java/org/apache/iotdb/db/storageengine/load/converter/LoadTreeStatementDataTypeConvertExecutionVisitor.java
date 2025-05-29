@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
@@ -46,6 +49,14 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil.calculateTabletSizeInBytes;
@@ -60,11 +71,29 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           .getConfig()
           .getLoadTsFileTabletConversionBatchMemorySizeInBytes();
 
+  private static final AtomicReference<WrappedThreadPoolExecutor> executorPool =
+      new AtomicReference<>();
+
   private final StatementExecutor statementExecutor;
 
   @FunctionalInterface
   public interface StatementExecutor {
     TSStatus execute(final Statement statement);
+  }
+
+  public static class CallerBlocksPolicy implements RejectedExecutionHandler {
+    public CallerBlocksPolicy() {}
+
+    public void rejectedExecution(Runnable r, ThreadPoolExecutor e) {
+      if (!e.isShutdown()) {
+        try {
+          e.getQueue().put(r);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw new RejectedExecutionException("task " + r + " rejected from " + e, ie);
+        }
+      }
+    }
   }
 
   public LoadTreeStatementDataTypeConvertExecutionVisitor(
@@ -85,11 +114,16 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
 
     final LoadTsFileMemoryBlock block =
         LoadTsFileMemoryManager.getInstance()
-            .allocateMemoryBlock(TABLET_BATCH_MEMORY_SIZE_IN_BYTES);
+            .allocateMemoryBlock(
+                TABLET_BATCH_MEMORY_SIZE_IN_BYTES
+                    * IoTDBDescriptor.getInstance()
+                        .getConfig()
+                        .getLoadTsFileTabletConversionThreadCount());
     final List<PipeTransferTabletRawReq> tabletRawReqs = new ArrayList<>();
     final List<Long> tabletRawReqSizes = new ArrayList<>();
 
     try {
+      final List<Future<TSStatus>> executionFutures = new ArrayList<>();
       for (final File file : loadTsFileStatement.getTsFiles()) {
         try (final TsFileInsertionEventScanParser parser =
             new TsFileInsertionEventScanParser(
@@ -99,26 +133,37 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
                 PipeTransferTabletRawReq.toTPipeTransferRawReq(
                     tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight());
             final long curMemory = calculateTabletSizeInBytes(tabletWithIsAligned.getLeft()) + 1;
-            if (block.hasEnoughMemory(curMemory)) {
+            if (block.hasEnoughMemory(
+                curMemory
+                    + TABLET_BATCH_MEMORY_SIZE_IN_BYTES
+                        * Math.max(
+                            0,
+                            (IoTDBDescriptor.getInstance()
+                                    .getConfig()
+                                    .getLoadTsFileTabletConversionThreadCount()
+                                - 1)))) {
               tabletRawReqs.add(tabletRawReq);
               tabletRawReqSizes.add(curMemory);
               block.addMemoryUsage(curMemory);
               continue;
             }
 
-            final TSStatus result =
-                executeInsertMultiTabletsWithRetry(
-                    tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
+            final InsertMultiTabletsStatement batchStatement = new InsertMultiTabletsStatement();
+            batchStatement.setInsertTabletStatementList(
+                tabletRawReqs.stream()
+                    .map(
+                        req ->
+                            new LoadConvertedInsertTabletStatement(
+                                req.constructStatement(),
+                                loadTsFileStatement.isConvertOnTypeMismatch()))
+                    .collect(Collectors.toList()));
+            executionFutures.add(executeInsertMultiTabletsWithRetry(batchStatement));
 
             for (final long memoryCost : tabletRawReqSizes) {
               block.reduceMemoryUsage(memoryCost);
             }
             tabletRawReqs.clear();
             tabletRawReqSizes.clear();
-
-            if (!handleTSStatus(result, loadTsFileStatement)) {
-              return Optional.empty();
-            }
 
             tabletRawReqs.add(tabletRawReq);
             tabletRawReqSizes.add(curMemory);
@@ -133,22 +178,36 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
 
       if (!tabletRawReqs.isEmpty()) {
         try {
-          final TSStatus result =
-              executeInsertMultiTabletsWithRetry(
-                  tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
+          final InsertMultiTabletsStatement batchStatement = new InsertMultiTabletsStatement();
+          batchStatement.setInsertTabletStatementList(
+              tabletRawReqs.stream()
+                  .map(
+                      req ->
+                          new LoadConvertedInsertTabletStatement(
+                              req.constructStatement(),
+                              loadTsFileStatement.isConvertOnTypeMismatch()))
+                  .collect(Collectors.toList()));
+          executionFutures.add(executeInsertMultiTabletsWithRetry(batchStatement));
 
           for (final long memoryCost : tabletRawReqSizes) {
             block.reduceMemoryUsage(memoryCost);
           }
           tabletRawReqs.clear();
           tabletRawReqSizes.clear();
-
-          if (!handleTSStatus(result, loadTsFileStatement)) {
-            return Optional.empty();
-          }
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
+          return Optional.empty();
+        }
+      }
+
+      for (final Future<TSStatus> future : executionFutures) {
+        try {
+          if (!handleTSStatus(future.get(), loadTsFileStatement)) {
+            return Optional.empty();
+          }
+        } catch (ExecutionException | InterruptedException e) {
+          LOGGER.warn("Exception occurs when executing insertion during tablet conversion: ", e);
           return Optional.empty();
         }
       }
@@ -180,43 +239,67 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
-  private TSStatus executeInsertMultiTabletsWithRetry(
-      final List<PipeTransferTabletRawReq> tabletRawReqs, boolean isConvertOnTypeMismatch) {
-    final InsertMultiTabletsStatement batchStatement = new InsertMultiTabletsStatement();
-    batchStatement.setInsertTabletStatementList(
-        tabletRawReqs.stream()
-            .map(
-                req ->
-                    new LoadConvertedInsertTabletStatement(
-                        req.constructStatement(), isConvertOnTypeMismatch))
-            .collect(Collectors.toList()));
+  private Future<TSStatus> executeInsertMultiTabletsWithRetry(
+      final InsertMultiTabletsStatement batchStatement) {
+    return getExecutorPool()
+        .submit(
+            () -> {
+              TSStatus result;
+              try {
+                result =
+                    batchStatement.accept(
+                        LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
+                        statementExecutor.execute(batchStatement));
 
-    TSStatus result;
-    try {
-      result =
-          batchStatement.accept(
-              LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
-              statementExecutor.execute(batchStatement));
+                // Retry max 5 times if the write process is rejected
+                for (int i = 0;
+                    i < 5
+                        && result.getCode()
+                            == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode();
+                    i++) {
+                  Thread.sleep(100L * (i + 1));
+                  result =
+                      batchStatement.accept(
+                          LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
+                          statementExecutor.execute(batchStatement));
+                }
+              } catch (final Exception e) {
+                if (e instanceof InterruptedException) {
+                  Thread.currentThread().interrupt();
+                }
+                result =
+                    batchStatement.accept(
+                        LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e);
+              }
+              return result;
+            });
+  }
 
-      // Retry max 5 times if the write process is rejected
-      for (int i = 0;
-          i < 5
-              && result.getCode()
-                  == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode();
-          i++) {
-        Thread.sleep(100L * (i + 1));
-        result =
-            batchStatement.accept(
-                LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
-                statementExecutor.execute(batchStatement));
+  public static WrappedThreadPoolExecutor getExecutorPool() {
+    if (executorPool.get() == null) {
+      synchronized (executorPool) {
+        if (executorPool.get() == null) {
+          executorPool.set(
+              new WrappedThreadPoolExecutor(
+                  IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .getLoadTsFileTabletConversionThreadCount(),
+                  IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .getLoadTsFileTabletConversionThreadCount(),
+                  0L,
+                  TimeUnit.SECONDS,
+                  new ArrayBlockingQueue<>(
+                      IoTDBDescriptor.getInstance()
+                          .getConfig()
+                          .getLoadTsFileTabletConversionThreadCount()),
+                  new IoTThreadFactory(ThreadName.LOAD_DATATYPE_CONVERT_POOL.getName()),
+                  ThreadName.LOAD_DATATYPE_CONVERT_POOL.getName(),
+                  new CallerBlocksPolicy()));
+        }
       }
-    } catch (final Exception e) {
-      if (e instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      }
-      result = batchStatement.accept(LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e);
     }
-    return result;
+    return executorPool.get();
   }
 
   private static boolean handleTSStatus(
