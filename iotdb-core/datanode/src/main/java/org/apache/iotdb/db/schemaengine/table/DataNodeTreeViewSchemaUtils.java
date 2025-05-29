@@ -50,17 +50,6 @@ public class DataNodeTreeViewSchemaUtils {
     }
   }
 
-  public static void checkTableInInsertPrivilege(final String database, final String tableName) {
-    if (isTreeViewTable(DataNodeTableCache.getInstance().getTable(database, tableName))) {
-      throw new SemanticException(
-          new IoTDBException(
-              String.format(
-                  "The table %s is a tree view table, cannot be granted or revoked insert permission",
-                  tableName),
-              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
-    }
-  }
-
   // For better performance
   public static boolean isTreeViewTable(final TsTable table) {
     return table.containsPropWithoutLock(TREE_PATH_PATTERN);

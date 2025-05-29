@@ -875,6 +875,18 @@ public class IoTDBTableIT {
 
       statement.execute(
           "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.a.**");
+
+      // Cannot be written
+      try {
+        statement.execute(
+            "insert into tree_table(time, tag1, tag2, S1, s3) values (1, 1, 1, 1, 1)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The table tree_view_db.tree_table is a tree view table, cannot be written",
+            e.getMessage());
+      }
+
       statement.execute("alter view tree_table rename to view_table");
       statement.execute("alter view view_table rename column s1 to s11");
       statement.execute("alter view view_table set properties ttl=100");

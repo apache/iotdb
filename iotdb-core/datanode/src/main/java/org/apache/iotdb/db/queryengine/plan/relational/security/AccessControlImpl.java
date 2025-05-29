@@ -323,8 +323,6 @@ public class AccessControlImpl implements AccessControl {
           throw new SemanticException(
               "Cannot grant or revoke any privileges to information_schema");
         }
-        DataNodeTreeViewSchemaUtils.checkTableInInsertPrivilege(
-            statement.getDatabase(), statement.getTableName());
 
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
