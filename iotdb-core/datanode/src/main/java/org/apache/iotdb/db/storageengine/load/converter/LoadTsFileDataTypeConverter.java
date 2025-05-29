@@ -93,17 +93,23 @@ public class LoadTsFileDataTypeConverter {
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneId.systemDefault());
     session.setSqlDialect(IClientSession.SqlDialect.TABLE);
-    return Coordinator.getInstance()
-        .executeForTableModel(
-            isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
-            relationalSqlParser,
-            session,
-            SESSION_MANAGER.requestQueryId(),
-            SESSION_MANAGER.getSessionInfoOfPipeReceiver(session, databaseName),
-            "",
-            LocalExecutionPlanner.getInstance().metadata,
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
-        .status;
+
+    SESSION_MANAGER.registerSession(session);
+    try {
+      return Coordinator.getInstance()
+          .executeForTableModel(
+              isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
+              relationalSqlParser,
+              session,
+              SESSION_MANAGER.requestQueryId(),
+              SESSION_MANAGER.getSessionInfoOfPipeReceiver(session, databaseName),
+              "",
+              LocalExecutionPlanner.getInstance().metadata,
+              IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
+          .status;
+    } finally {
+      SESSION_MANAGER.removeCurrSession();
+    }
   }
 
   public Optional<TSStatus> convertForTreeModel(final LoadTsFileStatement loadTsFileTreeStatement) {
@@ -127,17 +133,23 @@ public class LoadTsFileDataTypeConverter {
     session.setUsername(AuthorityChecker.SUPER_USER);
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneId.systemDefault());
-    return Coordinator.getInstance()
-        .executeForTreeModel(
-            isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
-            SESSION_MANAGER.requestQueryId(),
-            SESSION_MANAGER.getSessionInfo(session),
-            "",
-            ClusterPartitionFetcher.getInstance(),
-            ClusterSchemaFetcher.getInstance(),
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-            false)
-        .status;
+
+    SESSION_MANAGER.registerSession(session);
+    try {
+      return Coordinator.getInstance()
+          .executeForTreeModel(
+              isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
+              SESSION_MANAGER.requestQueryId(),
+              SESSION_MANAGER.getSessionInfo(session),
+              "",
+              ClusterPartitionFetcher.getInstance(),
+              ClusterSchemaFetcher.getInstance(),
+              IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+              false)
+          .status;
+    } finally {
+      SESSION_MANAGER.removeCurrSession();
+    }
   }
 
   public boolean isSuccessful(final TSStatus status) {
