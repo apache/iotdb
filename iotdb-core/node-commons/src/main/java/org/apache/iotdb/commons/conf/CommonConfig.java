@@ -301,7 +301,7 @@ public class CommonConfig {
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
   private long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
-  private PipeRateAverage pipeRemainingTimeCommitRateAverageTime = PipeRateAverage.MEAN;
+  private PipeRateAverage pipeRemainingTimeCommitRateAverageTime = PipeRateAverage.FIVE_MINUTES;
   private PipeRateAverage pipeRemainingInsertNodeCountAverage = PipeRateAverage.ONE_MINUTE;
   private double pipeTsFileScanParsingThreshold = 0.05;
   private double pipeDynamicMemoryHistoryWeight = 0.5;
