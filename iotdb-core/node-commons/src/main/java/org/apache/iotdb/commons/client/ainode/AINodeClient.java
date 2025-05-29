@@ -219,7 +219,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   @Override
   public void close() throws Exception {
-    Optional.ofNullable(transport).ifPresent(TTransport::close);
+    clientManager.returnClient(endPoint, this);
   }
 
   @Override
@@ -248,7 +248,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     @Override
     public void destroyObject(TEndPoint tEndPoint, PooledObject<AINodeClient> pooledObject)
         throws Exception {
-      pooledObject.getObject().close();
+      pooledObject.getObject().invalidate();
     }
 
     @Override

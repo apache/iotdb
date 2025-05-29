@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils.sort;
 
+import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
+
 public class SortBufferManager {
 
   private final int maxTsBlockSizeInBytes;
@@ -44,7 +46,7 @@ public class SortBufferManager {
   public void allocateOneSortBranch() {
     boolean success = allocate(bufferSizeForOneBranch);
     if (!success) {
-      throw new IllegalArgumentException("Not enough memory for sorting");
+      throw new MemoryNotEnoughException("Not enough memory for sorting");
     }
     branchNum++;
   }

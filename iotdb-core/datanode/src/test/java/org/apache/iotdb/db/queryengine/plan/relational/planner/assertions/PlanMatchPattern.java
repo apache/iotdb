@@ -516,6 +516,10 @@ public final class PlanMatchPattern {
       return builder.build();
   }*/
 
+  public static PlanMatchPattern join(PlanMatchPattern left, PlanMatchPattern right) {
+    return node(JoinNode.class, left, right);
+  }
+
   public static PlanMatchPattern join(
       JoinNode.JoinType type, Consumer<JoinMatcher.Builder> handler) {
     JoinMatcher.Builder builder = new JoinMatcher.Builder(type);

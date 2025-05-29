@@ -77,6 +77,10 @@ public class FragmentInstanceInfo implements DataSet {
     return message;
   }
 
+  public void setMessage(String message) {
+    this.message = message;
+  }
+
   public Optional<TSStatus> getErrorCode() {
     return Optional.ofNullable(errorCode);
   }

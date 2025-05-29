@@ -17,14 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.exception;
+package org.apache.iotdb.db.pipe.resource.memory.strategy;
 
-public class ProcedureAbortedException extends ProcedureException {
-  public ProcedureAbortedException() {
-    super();
-  }
+import org.apache.iotdb.db.pipe.resource.memory.PipeDynamicMemoryBlock;
 
-  public ProcedureAbortedException(String msg) {
-    super(msg);
-  }
+// Now let's define the operation memory behavior: Producers produce memory, consumers consume
+// memory, and in order to ensure that consumers do not encounter back pressure, the memory that
+// consumers need to use is allocated in advance. Consumer instances obtain their expected memory
+// through allocation strategies, and the total memory of all consumer instances must not be greater
+// than the pre-allocated memory. The memory allocation algorithm is to adjust the memory of
+// consumers so that the consumption rate can reach the optimal
+public interface DynamicMemoryAllocationStrategy {
+
+  void dynamicallyAdjustMemory(PipeDynamicMemoryBlock dynamicMemoryBlock);
 }

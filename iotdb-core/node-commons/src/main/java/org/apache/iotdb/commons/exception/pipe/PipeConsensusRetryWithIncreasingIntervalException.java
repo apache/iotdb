@@ -17,23 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.exception;
+package org.apache.iotdb.commons.exception.pipe;
 
-public class ProcedureSuspendedException extends ProcedureException {
+public class PipeConsensusRetryWithIncreasingIntervalException
+    extends PipeRuntimeConnectorRetryTimesConfigurableException {
 
-  private static final long serialVersionUID = -8328419627678496269L;
-
-  /** default constructor */
-  public ProcedureSuspendedException() {
-    super();
-  }
-
-  /**
-   * Constructor
-   *
-   * @param s message
-   */
-  public ProcedureSuspendedException(String s) {
-    super(s);
+  public PipeConsensusRetryWithIncreasingIntervalException(String message, int retryTimes) {
+    super(message, retryTimes);
   }
 }
