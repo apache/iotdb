@@ -68,7 +68,6 @@ public class Measure {
     return Objects.hash(expressionAndValuePointers, type);
   }
 
-  // TODO: need to be modified
   @Override
   public String toString() {
     return toStringHelper(this)

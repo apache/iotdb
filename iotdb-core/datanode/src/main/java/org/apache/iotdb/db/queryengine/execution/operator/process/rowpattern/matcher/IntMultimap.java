@@ -99,8 +99,14 @@ class IntMultimap {
   }
 
   public long getSizeInBytes() {
-    // TODO:
-    // return INSTANCE_SIZE + RamUsageEstimator.sizeOf(values) + valuesSize;
-    return 0;
+    long totalSize = INSTANCE_SIZE + RamUsageEstimator.shallowSizeOf(values) + valuesSize;
+    if (values != null) {
+      for (IntList list : values) {
+        if (list != null) {
+          totalSize += list.getSizeInBytes();
+        }
+      }
+    }
+    return totalSize + valuesSize;
   }
 }

@@ -301,7 +301,6 @@ public class ExpressionAnalyzer {
   private Type analyze(Expression expression, Scope scope, Set<String> labels) {
     Visitor visitor = new Visitor(scope, warningCollector);
 
-    // TODO
     patternRecognitionInputs.put(NodeRef.of(expression), visitor.getPatternRecognitionInputs());
 
     return visitor.process(

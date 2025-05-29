@@ -219,28 +219,6 @@ public class Matcher {
    */
   private void advanceAndSchedule(
       IntList next, int threadId, int pointer, int inputIndex, Runtime runtime) {
-    // TODO
-    // avoid empty loop and try avoid exponential processing
-    //    ArrayView threadsAtInstruction = runtime.threadsAtInstructions.getArrayView(pointer);
-    //    for (int i = 0; i < threadsAtInstruction.length(); i++) {
-    //      int thread = threadsAtInstruction.get(i);
-    //      if (threadEquivalence.equivalent(
-    //          thread,
-    //          runtime.patternCaptures.getLabels(thread),
-    //          runtime.aggregations.get(thread),
-    //          threadId,
-    //          runtime.patternCaptures.getLabels(threadId),
-    //          runtime.aggregations.get(threadId),
-    //          pointer)) {
-    //        // in case of equivalent threads, kill the one that comes later, because it is on a
-    // less
-    //        // preferred path
-    //        runtime.scheduleKill(threadId);
-    //        return;
-    //      }
-    //    }
-    //    runtime.threadsAtInstructions.add(pointer, threadId);
-
     Instruction instruction = program.at(pointer);
     switch (instruction.type()) {
       case MATCH_START:
