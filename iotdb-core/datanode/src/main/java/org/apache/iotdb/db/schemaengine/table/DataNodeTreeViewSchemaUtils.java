@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -39,13 +38,12 @@ import static org.apache.iotdb.commons.schema.table.TreeViewSchema.getPrefixPatt
 
 public class DataNodeTreeViewSchemaUtils {
 
-  public static void checkTableInWrite(final QualifiedObjectName tableName) {
-    if (isTreeViewTable(
-        DataNodeTableCache.getInstance()
-            .getTable(tableName.getDatabaseName(), tableName.getObjectName()))) {
+  public static void checkTableInWrite(final TsTable table) {
+    if (isTreeViewTable(table)) {
       throw new SemanticException(
           new IoTDBException(
-              String.format("The table %s is a view from tree, cannot be written", tableName),
+              String.format(
+                  "The table %s is a view from tree, cannot be written", table.getTableName()),
               TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
     }
   }

@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -130,6 +131,7 @@ public class TableHeaderSchemaValidator {
         TableMetadataImpl.throwTableNotExistsException(database, tableSchema.getTableName());
       }
     } else {
+      DataNodeTreeViewSchemaUtils.checkTableInWrite(table);
       // If table with this name already exists and isStrictIdColumn is true, make sure the existing
       // id columns are the prefix of the incoming id columns, or vice versa
       if (isStrictIdColumn) {

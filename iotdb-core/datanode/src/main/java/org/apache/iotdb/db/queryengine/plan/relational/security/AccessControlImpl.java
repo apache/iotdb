@@ -29,7 +29,6 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -93,7 +92,6 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkCanInsertIntoTable(String userName, QualifiedObjectName tableName) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
-    DataNodeTreeViewSchemaUtils.checkTableInWrite(tableName);
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.INSERT);
   }
 
