@@ -529,7 +529,7 @@ public class LoadTsFileManager {
         writer.endFile();
 
         final DataRegion dataRegion = entry.getKey().getDataRegion();
-        final TsFileResource tsFileResource = dataPartition2Resource.get(entry.getKey())
+        final TsFileResource tsFileResource = dataPartition2Resource.get(entry.getKey());
         endTsFileResource(
             writer,
             tsFileResource,
