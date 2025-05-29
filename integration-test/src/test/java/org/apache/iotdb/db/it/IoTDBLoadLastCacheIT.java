@@ -42,6 +42,7 @@ import org.apache.tsfile.write.v4.TsFileWriterBuilder;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -518,7 +519,7 @@ public class IoTDBLoadLastCacheIT {
         timeConsumptions.stream().mapToLong(i -> i).average().orElse(0.0) / 1000000);
   }
 
-  // @Ignore("Performance")
+  @Ignore("Performance")
   @Test
   public void testTableLoadPerformance() throws Exception {
     int deviceCnt = 100;
