@@ -54,8 +54,6 @@ public class ExtendedPartialPath extends PartialPath {
         + getFullPath()
         + ", matchFunctions="
         + matchFunctions
-        + ", isRestrict="
-        + isRestrict
         + '}';
   }
 }
