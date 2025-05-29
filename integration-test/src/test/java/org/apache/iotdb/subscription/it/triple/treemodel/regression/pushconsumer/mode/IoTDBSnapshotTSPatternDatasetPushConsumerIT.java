@@ -28,6 +28,7 @@ import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
@@ -98,6 +99,16 @@ public class IoTDBSnapshotTSPatternDatasetPushConsumerIT
     schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
     subs.getTopics().forEach((System.out::println));
     assertTrue(subs.getTopic(topicName).isPresent(), "Create show topics");
+  }
+
+  // TODO: remove it later
+  @Override
+  protected void setUpConfig() {
+    super.setUpConfig();
+
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(sender);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver1);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver2);
   }
 
   @Override
@@ -188,7 +199,8 @@ public class IoTDBSnapshotTSPatternDatasetPushConsumerIT
 
     // Consumption data: Progress is not retained when re-subscribing after cancellation. Full
     // synchronization.
-    AWAIT.untilAsserted(
+    IoTDBSubscriptionITConstant.AWAIT_WITH_FLUSH(
+        session_src,
         () -> {
           check_count(12, "select count(s_0) from " + device, "consume data again:s_0 " + device);
           check_count(0, "select count(s_1) from " + device, "Consumption data: s_1 " + device);
