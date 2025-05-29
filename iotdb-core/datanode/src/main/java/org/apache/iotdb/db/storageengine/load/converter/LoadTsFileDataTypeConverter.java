@@ -98,8 +98,7 @@ public class LoadTsFileDataTypeConverter {
             relationalSqlParser,
             session,
             SESSION_MANAGER.requestQueryId(),
-            SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                session, databaseName),
+            SESSION_MANAGER.getSessionInfoOfPipeReceiver(session, databaseName),
             "",
             LocalExecutionPlanner.getInstance().metadata,
             IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
