@@ -3009,12 +3009,17 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     TsFileLastReader lastReader = null;
-    if ((config.getLastCacheLoadStrategy() == LastCacheLoadStrategy.UPDATE
-            || config.getLastCacheLoadStrategy() == LastCacheLoadStrategy.UPDATE_NO_BLOB)
+    LastCacheLoadStrategy lastCacheLoadStrategy = config.getLastCacheLoadStrategy();
+    if ((lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
+            || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
         && !config.isCacheLastValuesForLoad()) {
       try {
         // init reader outside of lock to boost performance
-        lastReader = new TsFileLastReader(newTsFileResource.getTsFilePath());
+        lastReader =
+            new TsFileLastReader(
+                newTsFileResource.getTsFilePath(),
+                true,
+                lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB);
       } catch (IOException e) {
         throw new LoadFileException(e);
       }
@@ -3109,11 +3114,9 @@ public class DataRegion implements IDataRegionForQuery {
       TsFileResource newTsFileResource, boolean isFromConsensus, TsFileLastReader lastReader) {
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable() && !isFromConsensus) {
       switch (config.getLastCacheLoadStrategy()) {
-        case UPDATE_NO_BLOB:
-          updateLastCache(newTsFileResource, true, lastReader);
-          break;
         case UPDATE:
-          updateLastCache(newTsFileResource, false, lastReader);
+        case UPDATE_NO_BLOB:
+          updateLastCache(newTsFileResource, lastReader);
           break;
         case CLEAN_ALL:
           // The inner cache is shared by TreeDeviceSchemaCacheManager and
@@ -3147,8 +3150,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   @SuppressWarnings("java:S112")
-  private void updateLastCache(
-      TsFileResource newTsFileResource, boolean ignoreBlob, TsFileLastReader lastReader) {
+  private void updateLastCache(TsFileResource newTsFileResource, TsFileLastReader lastReader) {
     boolean isTableModel = isTableModelDatabase(databaseName);
 
     Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues =
