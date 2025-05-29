@@ -28,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.GroupingSetAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.FieldId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation;
@@ -564,20 +563,10 @@ public class QueryPlanner {
       Optional<Expression> frameOffset,
       Analysis.ResolvedWindow window,
       Map<Type, Symbol> sortKeyCoercions) {
-    Optional<ResolvedFunction> frameBoundCalculationFunction =
-        frameOffset.map(analysis::getFrameBoundCalculation);
-
-    // Empty frameBoundCalculationFunction indicates that frame bound type is CURRENT ROW or
-    // UNBOUNDED.
-    // Handling it doesn't require any additional symbols.
-    if (!frameBoundCalculationFunction.isPresent()) {
+    // We don't need frameBoundCalculationFunction
+    if (!frameOffset.isPresent()) {
       return new FrameBoundPlanAndSymbols(subPlan, Optional.empty(), Optional.empty());
     }
-
-    // Present frameBoundCalculationFunction indicates that frame bound type is <expression>
-    // PRECEDING or <expression> FOLLOWING.
-    // It requires adding certain projections to the plan so that the operator can determine frame
-    // bounds.
 
     // First, append filter to validate offset values. They mustn't be negative or null.
     Symbol offsetSymbol = coercions.get(frameOffset.get());
@@ -627,27 +616,6 @@ public class QueryPlanner {
       }
     }
 
-    // Next, pre-project the function which combines sortKey with the offset.
-    // Note: if frameOffset needs a coercion, it was added before by a call to coerce() method.
-    ResolvedFunction function = frameBoundCalculationFunction.get();
-    Expression functionCall =
-        new FunctionCall(
-            function.toQualifiedName(),
-            ImmutableList.of(
-                sortKeyCoercedForFrameBoundCalculation.toSymbolReference(),
-                offsetSymbol.toSymbolReference()));
-    Symbol frameBoundSymbol =
-        symbolAllocator.newSymbol(functionCall, function.getSignature().getReturnType());
-    subPlan =
-        subPlan.withNewRoot(
-            new ProjectNode(
-                queryIdAllocator.genPlanNodeId(),
-                subPlan.getRoot(),
-                Assignments.builder()
-                    .putIdentities(subPlan.getRoot().getOutputSymbols())
-                    .put(frameBoundSymbol, functionCall)
-                    .build()));
-
     // Finally, coerce the sortKey to the type of frameBound so that the operator can perform
     // comparisons on them
     Optional<Symbol> sortKeyCoercedForFrameBoundComparison = Optional.of(coercions.get(sortKey));
@@ -679,6 +647,7 @@ public class QueryPlanner {
       }
     }
 
+    Symbol frameBoundSymbol = coercions.get(frameOffset.get());
     return new FrameBoundPlanAndSymbols(
         subPlan, Optional.of(frameBoundSymbol), sortKeyCoercedForFrameBoundComparison);
   }
