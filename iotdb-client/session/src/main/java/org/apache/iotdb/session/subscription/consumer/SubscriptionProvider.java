@@ -218,7 +218,7 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   /////////////////////////////// subscription APIs ///////////////////////////////
 
-  Map<String, TopicConfig> heartbeat() throws SubscriptionException {
+  PipeSubscribeHeartbeatResp heartbeat() throws SubscriptionException {
     final TPipeSubscribeResp resp;
     try {
       resp = getSessionConnection().pipeSubscribe(PipeSubscribeHeartbeatReq.toTPipeSubscribeReq());
@@ -232,9 +232,7 @@ final class SubscriptionProvider extends SubscriptionSession {
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
-    final PipeSubscribeHeartbeatResp heartbeatResp =
-        PipeSubscribeHeartbeatResp.fromTPipeSubscribeResp(resp);
-    return heartbeatResp.getTopics();
+    return PipeSubscribeHeartbeatResp.fromTPipeSubscribeResp(resp);
   }
 
   Map<String, TopicConfig> subscribe(final Set<String> topicNames) throws SubscriptionException {
