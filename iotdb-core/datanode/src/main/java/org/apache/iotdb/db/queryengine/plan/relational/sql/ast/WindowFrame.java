@@ -107,6 +107,17 @@ public class WindowFrame extends Node {
     return type == otherNode.type;
   }
 
+  public void serialize(ByteBuffer buffer) throws IOException {
+    ReadWriteIOUtils.write((byte) type.ordinal(), buffer);
+    start.serialize(buffer);
+    if (end.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, buffer);
+      end.get().serialize(buffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, buffer);
+    }
+  }
+
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write((byte) type.ordinal(), stream);
     start.serialize(stream);

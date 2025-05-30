@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
@@ -36,10 +37,14 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.errorprone.annotations.Immutable;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -94,6 +99,21 @@ public class WindowNode extends SingleChildProcessNode {
     this.preSortedOrderPrefix = preSortedOrderPrefix;
   }
 
+  public WindowNode(
+      PlanNodeId id,
+      DataOrganizationSpecification specification,
+      Map<Symbol, Function> windowFunctions,
+      Optional<Symbol> hashSymbol,
+      Set<Symbol> prePartitionedInputs,
+      int preSortedOrderPrefix) {
+    super(id);
+    this.prePartitionedInputs = ImmutableSet.copyOf(prePartitionedInputs);
+    this.specification = specification;
+    this.windowFunctions = ImmutableMap.copyOf(windowFunctions);
+    this.hashSymbol = hashSymbol;
+    this.preSortedOrderPrefix = preSortedOrderPrefix;
+  }
+
   @Override
   public PlanNode clone() {
     return new WindowNode(
@@ -134,10 +154,81 @@ public class WindowNode extends SingleChildProcessNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_WINDOW_FUNCTION.serialize(byteBuffer);
+    ReadWriteIOUtils.write(prePartitionedInputs.size(), byteBuffer);
+    prePartitionedInputs.forEach(symbol -> Symbol.serialize(symbol, byteBuffer));
+    specification.serialize(byteBuffer);
+    ReadWriteIOUtils.write(preSortedOrderPrefix, byteBuffer);
+    ReadWriteIOUtils.write(windowFunctions.size(), byteBuffer);
+    windowFunctions.forEach(
+        (symbol, function) -> {
+          Symbol.serialize(symbol, byteBuffer);
+          function.serialize(byteBuffer);
+        });
+    if (hashSymbol.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      Symbol.serialize(hashSymbol.get(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    }
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_WINDOW_FUNCTION.serialize(stream);
+    ReadWriteIOUtils.write(prePartitionedInputs.size(), stream);
+    for (Symbol symbol : prePartitionedInputs) {
+      Symbol.serialize(symbol, stream);
+    }
+    specification.serialize(stream);
+    ReadWriteIOUtils.write(preSortedOrderPrefix, stream);
+    ReadWriteIOUtils.write(windowFunctions.size(), stream);
+    for (Map.Entry<Symbol, Function> entry : windowFunctions.entrySet()) {
+      Symbol symbol = entry.getKey();
+      Function function = entry.getValue();
+      Symbol.serialize(symbol, stream);
+      function.serialize(stream);
+    }
+    if (hashSymbol.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      Symbol.serialize(hashSymbol.get(), stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+  }
+
+  public static WindowNode deserialize(ByteBuffer buffer) {
+    int size = ReadWriteIOUtils.readInt(buffer);
+    Set<Symbol> prePartitionedInputs = new HashSet<>(size);
+    for (int i = 0; i < size; i++) {
+      prePartitionedInputs.add(Symbol.deserialize(buffer));
+    }
+    DataOrganizationSpecification specification = DataOrganizationSpecification.deserialize(buffer);
+    int preSortedOrderPrefix = ReadWriteIOUtils.readInt(buffer);
+    size = ReadWriteIOUtils.readInt(buffer);
+    Map<Symbol, Function> windowFunctions = new HashMap<>(size);
+    for (int i = 0; i < size; i++) {
+      Symbol symbol = Symbol.deserialize(buffer);
+      Function function = new Function(buffer);
+      windowFunctions.put(symbol, function);
+    }
+    Optional<Symbol> hashSymbol;
+    if (ReadWriteIOUtils.readByte(buffer) == 1) {
+      hashSymbol = Optional.of(Symbol.deserialize(buffer));
+    } else {
+      hashSymbol = Optional.empty();
+    }
+
+    PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
+    return new WindowNode(
+        planNodeId,
+        specification,
+        windowFunctions,
+        hashSymbol,
+        prePartitionedInputs,
+        preSortedOrderPrefix);
+  }
 
   public Set<Symbol> getPrePartitionedInputs() {
     return prePartitionedInputs;
@@ -300,6 +391,129 @@ public class WindowNode extends SingleChildProcessNode {
           endValue,
           sortKeyCoercedForFrameEndComparison);
     }
+
+    public void serialize(ByteBuffer buffer) {
+      ReadWriteIOUtils.write((byte) type.ordinal(), buffer);
+      ReadWriteIOUtils.write((byte) startType.ordinal(), buffer);
+      if (startValue.isPresent()) {
+        ReadWriteIOUtils.write((byte) 1, buffer);
+        Symbol.serialize(startValue.get(), buffer);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, buffer);
+      }
+      if (sortKeyCoercedForFrameStartComparison.isPresent()) {
+        ReadWriteIOUtils.write((byte) 1, buffer);
+        Symbol.serialize(sortKeyCoercedForFrameStartComparison.get(), buffer);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, buffer);
+      }
+      ReadWriteIOUtils.write((byte) endType.ordinal(), buffer);
+      if (endValue.isPresent()) {
+        ReadWriteIOUtils.write((byte) 1, buffer);
+        Symbol.serialize(endValue.get(), buffer);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, buffer);
+      }
+      if (sortKeyCoercedForFrameEndComparison.isPresent()) {
+        ReadWriteIOUtils.write((byte) 1, buffer);
+        Symbol.serialize(sortKeyCoercedForFrameEndComparison.get(), buffer);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, buffer);
+      }
+
+      if (originalStartValue.isPresent()) {
+        ReadWriteIOUtils.write((byte) 1, buffer);
+        Expression.serialize(originalStartValue.get(), buffer);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, buffer);
+      }
+      if (originalEndValue.isPresent()) {
+        ReadWriteIOUtils.write((byte) 1, buffer);
+        Expression.serialize(originalEndValue.get(), buffer);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, buffer);
+      }
+    }
+
+    public void serialize(DataOutputStream stream) throws IOException {
+      ReadWriteIOUtils.write((byte) type.ordinal(), stream);
+      ReadWriteIOUtils.write((byte) startType.ordinal(), stream);
+      if (startValue.isPresent()) {
+        ReadWriteIOUtils.write((byte) 1, stream);
+        Symbol.serialize(startValue.get(), stream);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, stream);
+      }
+      if (sortKeyCoercedForFrameStartComparison.isPresent()) {
+        ReadWriteIOUtils.write((byte) 1, stream);
+        Symbol.serialize(sortKeyCoercedForFrameStartComparison.get(), stream);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, stream);
+      }
+      ReadWriteIOUtils.write((byte) endType.ordinal(), stream);
+      if (endValue.isPresent()) {
+        ReadWriteIOUtils.write((byte) 1, stream);
+        Symbol.serialize(endValue.get(), stream);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, stream);
+      }
+      if (sortKeyCoercedForFrameEndComparison.isPresent()) {
+        ReadWriteIOUtils.write((byte) 1, stream);
+        Symbol.serialize(sortKeyCoercedForFrameEndComparison.get(), stream);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, stream);
+      }
+
+      if (originalStartValue.isPresent()) {
+        ReadWriteIOUtils.write((byte) 1, stream);
+        Expression.serialize(originalStartValue.get(), stream);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, stream);
+      }
+      if (originalEndValue.isPresent()) {
+        ReadWriteIOUtils.write((byte) 1, stream);
+        Expression.serialize(originalEndValue.get(), stream);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, stream);
+      }
+    }
+
+    public Frame(ByteBuffer byteBuffer) {
+      type = WindowFrame.Type.values()[ReadWriteIOUtils.readByte(byteBuffer)];
+      startType = FrameBound.Type.values()[ReadWriteIOUtils.readByte(byteBuffer)];
+      if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+        startValue = Optional.of(Symbol.deserialize(byteBuffer));
+      } else {
+        startValue = Optional.empty();
+      }
+      if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+        sortKeyCoercedForFrameStartComparison = Optional.of(Symbol.deserialize(byteBuffer));
+      } else {
+        sortKeyCoercedForFrameStartComparison = Optional.empty();
+      }
+      endType = FrameBound.Type.values()[ReadWriteIOUtils.readByte(byteBuffer)];
+      if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+        endValue = Optional.of(Symbol.deserialize(byteBuffer));
+      } else {
+        endValue = Optional.empty();
+      }
+      if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+        sortKeyCoercedForFrameEndComparison = Optional.of(Symbol.deserialize(byteBuffer));
+      } else {
+        sortKeyCoercedForFrameEndComparison = Optional.empty();
+      }
+
+      if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+        originalStartValue = Optional.of(Expression.deserialize(byteBuffer));
+      } else {
+        originalStartValue = Optional.empty();
+      }
+      if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+        originalEndValue = Optional.of(Expression.deserialize(byteBuffer));
+      } else {
+        originalEndValue = Optional.empty();
+      }
+    }
   }
 
   @Immutable
@@ -354,6 +568,35 @@ public class WindowNode extends SingleChildProcessNode {
 
     public boolean isIgnoreNulls() {
       return ignoreNulls;
+    }
+
+    public void serialize(ByteBuffer byteBuffer) {
+      resolvedFunction.serialize(byteBuffer);
+      ReadWriteIOUtils.write(arguments.size(), byteBuffer);
+      arguments.forEach(argument -> Expression.serialize(argument, byteBuffer));
+      frame.serialize(byteBuffer);
+      ReadWriteIOUtils.write(ignoreNulls, byteBuffer);
+    }
+
+    public void serialize(DataOutputStream stream) throws IOException {
+      resolvedFunction.serialize(stream);
+      ReadWriteIOUtils.write(arguments.size(), stream);
+      for (Expression argument : arguments) {
+        Expression.serialize(argument, stream);
+      }
+      frame.serialize(stream);
+      ReadWriteIOUtils.write(ignoreNulls, stream);
+    }
+
+    public Function(ByteBuffer buffer) {
+      resolvedFunction = ResolvedFunction.deserialize(buffer);
+      int size = ReadWriteIOUtils.readInt(buffer);
+      arguments = new ArrayList<>(size);
+      for (int i = 0; i < size; i++) {
+        arguments.add(Expression.deserialize(buffer));
+      }
+      frame = new Frame(buffer);
+      ignoreNulls = ReadWriteIOUtils.readBool(buffer);
     }
   }
 }
