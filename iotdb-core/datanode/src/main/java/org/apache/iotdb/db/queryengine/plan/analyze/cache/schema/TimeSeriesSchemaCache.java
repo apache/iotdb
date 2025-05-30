@@ -309,7 +309,7 @@ public class TimeSeriesSchemaCache {
       if (entry == null) {
         synchronized (dualKeyCache) {
           entry = dualKeyCache.get(devicePath, measurements[index]);
-          if (null == entry) {
+          if (null == entry && measurementSchemas != null) {
             entry = new SchemaCacheEntry(database, measurementSchemas[index], null, isAligned);
             dualKeyCache.put(devicePath, measurements[index], entry);
           }
