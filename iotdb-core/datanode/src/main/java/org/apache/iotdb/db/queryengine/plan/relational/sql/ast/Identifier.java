@@ -166,12 +166,6 @@ public class Identifier extends Expression {
     ReadWriteIOUtils.write(this.delimited, stream);
   }
 
-  @Override
-  public void serialize(ByteBuffer buffer) {
-    ReadWriteIOUtils.write(this.value, buffer);
-    ReadWriteIOUtils.write(this.delimited, buffer);
-  }
-
   public Identifier(ByteBuffer byteBuffer) {
     super(null);
     this.value = ReadWriteIOUtils.readString(byteBuffer);

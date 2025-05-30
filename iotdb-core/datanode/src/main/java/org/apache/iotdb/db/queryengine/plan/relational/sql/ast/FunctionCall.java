@@ -64,6 +64,8 @@ public class FunctionCall extends Expression {
       QualifiedName name, Optional<ProcessingMode> processingMode, List<Expression> arguments) {
     super(null);
     this.name = requireNonNull(name, "name is null");
+    this.window = Optional.empty();
+    this.nullTreatment = Optional.empty();
     this.distinct = false;
     this.processingMode = requireNonNull(processingMode, "processingMode is null");
     this.arguments = requireNonNull(arguments, "arguments is null");
@@ -76,6 +78,8 @@ public class FunctionCall extends Expression {
       List<Expression> arguments) {
     super(null);
     this.name = requireNonNull(name, "name is null");
+    this.window = Optional.empty();
+    this.nullTreatment = Optional.empty();
     this.distinct = distinct;
     this.processingMode = requireNonNull(processingMode, "processingMode is null");
     this.arguments = requireNonNull(arguments, "arguments is null");
@@ -113,6 +117,25 @@ public class FunctionCall extends Expression {
     this.window = window;
     this.nullTreatment = nullTreatment;
     this.distinct = distinct;
+    this.processingMode = Optional.empty();
+    this.arguments = arguments;
+  }
+
+  public FunctionCall(
+      NodeLocation location,
+      QualifiedName name,
+      Optional<Window> window,
+      Optional<NullTreatment> nullTreatment,
+      boolean distinct,
+      Optional<ProcessingMode> processingMode,
+      List<Expression> arguments) {
+    super(requireNonNull(location, "location is null"));
+
+    this.name = name;
+    this.window = window;
+    this.nullTreatment = nullTreatment;
+    this.distinct = distinct;
+    this.processingMode = requireNonNull(processingMode, "processingMode is null");
     this.arguments = arguments;
   }
 

@@ -90,7 +90,6 @@ public class RowComparator {
         break;
       case STRING:
       case TEXT:
-      case STRING:
       case BLOB:
         Binary bin1 = column.getBinary(offset1);
         Binary bin2 = column.getBinary(offset2);

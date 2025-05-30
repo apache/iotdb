@@ -2240,7 +2240,8 @@ public class ExpressionAnalyzer {
         analyzer.getSubqueries(),
         analyzer.getExistsSubqueries(),
         analyzer.getColumnReferences(),
-        analyzer.getQuantifiedComparisons());
+        analyzer.getQuantifiedComparisons(),
+        analyzer.getWindowFunctions());
   }
 
   public static ExpressionAnalysis analyzeExpressions(
