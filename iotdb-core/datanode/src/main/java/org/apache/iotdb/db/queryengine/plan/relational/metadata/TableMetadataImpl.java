@@ -793,11 +793,11 @@ public class TableMetadataImpl implements Metadata {
       TableSchema tableSchema,
       MPPQueryContext context,
       boolean allowCreateTable,
-      boolean isStrictIdColumn)
+      boolean isStrictTagColumn)
       throws LoadAnalyzeTableColumnDisorderException {
     return TableHeaderSchemaValidator.getInstance()
         .validateTableHeaderSchema(
-            database, tableSchema, context, allowCreateTable, isStrictIdColumn);
+            database, tableSchema, context, allowCreateTable, isStrictTagColumn);
   }
 
   @Override

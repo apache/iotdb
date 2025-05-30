@@ -28,18 +28,21 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
 public class FunctionCall extends Expression {
   private final QualifiedName name;
   private final boolean distinct;
+  private final Optional<ProcessingMode> processingMode;
   private final List<Expression> arguments;
 
   public FunctionCall(QualifiedName name, List<Expression> arguments) {
     super(null);
     this.name = requireNonNull(name, "name is null");
     this.distinct = false;
+    this.processingMode = Optional.empty();
     this.arguments = requireNonNull(arguments, "arguments is null");
   }
 
@@ -47,18 +50,45 @@ public class FunctionCall extends Expression {
     super(null);
     this.name = requireNonNull(name, "name is null");
     this.distinct = distinct;
+    this.processingMode = Optional.empty();
+    this.arguments = requireNonNull(arguments, "arguments is null");
+  }
+
+  public FunctionCall(
+      QualifiedName name, Optional<ProcessingMode> processingMode, List<Expression> arguments) {
+    super(null);
+    this.name = requireNonNull(name, "name is null");
+    this.distinct = false;
+    this.processingMode = requireNonNull(processingMode, "processingMode is null");
+    this.arguments = requireNonNull(arguments, "arguments is null");
+  }
+
+  public FunctionCall(
+      QualifiedName name,
+      boolean distinct,
+      Optional<ProcessingMode> processingMode,
+      List<Expression> arguments) {
+    super(null);
+    this.name = requireNonNull(name, "name is null");
+    this.distinct = distinct;
+    this.processingMode = requireNonNull(processingMode, "processingMode is null");
     this.arguments = requireNonNull(arguments, "arguments is null");
   }
 
   public FunctionCall(NodeLocation location, QualifiedName name, List<Expression> arguments) {
-    this(location, name, false, arguments);
+    this(location, name, false, Optional.empty(), arguments);
   }
 
   public FunctionCall(
-      NodeLocation location, QualifiedName name, boolean distinct, List<Expression> arguments) {
+      NodeLocation location,
+      QualifiedName name,
+      boolean distinct,
+      Optional<ProcessingMode> processingMode,
+      List<Expression> arguments) {
     super(requireNonNull(location, "location is null"));
     this.name = requireNonNull(name, "name is null");
     this.distinct = distinct;
+    this.processingMode = requireNonNull(processingMode, "processingMode is null");
     this.arguments = requireNonNull(arguments, "arguments is null");
   }
 
@@ -68,6 +98,10 @@ public class FunctionCall extends Expression {
 
   public boolean isDistinct() {
     return distinct;
+  }
+
+  public Optional<ProcessingMode> getProcessingMode() {
+    return processingMode;
   }
 
   public List<Expression> getArguments() {
@@ -97,12 +131,13 @@ public class FunctionCall extends Expression {
     FunctionCall o = (FunctionCall) obj;
     return Objects.equals(name, o.name)
         && Objects.equals(distinct, o.distinct)
+        && Objects.equals(processingMode, o.processingMode)
         && Objects.equals(arguments, o.arguments);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, distinct, arguments);
+    return Objects.hash(name, distinct, processingMode, arguments);
   }
 
   @Override
@@ -113,7 +148,9 @@ public class FunctionCall extends Expression {
 
     FunctionCall otherFunction = (FunctionCall) other;
 
-    return name.equals(otherFunction.name) && distinct == otherFunction.distinct;
+    return name.equals(otherFunction.name)
+        && distinct == otherFunction.distinct
+        && processingMode.equals(otherFunction.processingMode);
   }
 
   // =============== serialize =================
@@ -123,12 +160,40 @@ public class FunctionCall extends Expression {
   }
 
   @Override
+  public void serialize(ByteBuffer buffer) {
+    this.name.serialize(buffer);
+
+    ReadWriteIOUtils.write(this.distinct, buffer);
+
+    ReadWriteIOUtils.write(arguments.size(), buffer);
+    for (Expression argument : arguments) {
+      Expression.serialize(argument, buffer);
+    }
+
+    if (processingMode.isPresent()) {
+      ReadWriteIOUtils.write(true, buffer);
+      ProcessingMode mode = processingMode.get();
+      ReadWriteIOUtils.write(mode.getMode().name(), buffer);
+    } else {
+      ReadWriteIOUtils.write(false, buffer);
+    }
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     this.name.serialize(stream);
     ReadWriteIOUtils.write(this.distinct, stream);
     ReadWriteIOUtils.write(arguments.size(), stream);
     for (Expression argument : arguments) {
       Expression.serialize(argument, stream);
+    }
+
+    if (processingMode.isPresent()) {
+      ReadWriteIOUtils.write(true, stream);
+      ProcessingMode mode = processingMode.get();
+      ReadWriteIOUtils.write(mode.getMode().name(), stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
     }
   }
 
@@ -140,6 +205,15 @@ public class FunctionCall extends Expression {
     this.arguments = new ArrayList<>(size);
     while (size-- > 0) {
       arguments.add(Expression.deserialize(byteBuffer));
+    }
+
+    boolean hasProcessingMode = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasProcessingMode) {
+      String modeName = ReadWriteIOUtils.readString(byteBuffer);
+      ProcessingMode.Mode mode = ProcessingMode.Mode.valueOf(modeName);
+      this.processingMode = Optional.of(new ProcessingMode(null, mode));
+    } else {
+      this.processingMode = Optional.empty();
     }
   }
 }

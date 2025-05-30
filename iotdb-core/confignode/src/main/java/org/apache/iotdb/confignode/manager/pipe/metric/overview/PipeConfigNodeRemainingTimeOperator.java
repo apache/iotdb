@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.metric.overview;
 
-import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
+import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtask;
@@ -56,7 +56,7 @@ class PipeConfigNodeRemainingTimeOperator extends PipeRemainingOperator {
    * @return The estimated remaining time
    */
   double getRemainingTime() {
-    final PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
+    final PipeRateAverage pipeRemainingTimeCommitRateAverageTime =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
     // Do not calculate heartbeat event

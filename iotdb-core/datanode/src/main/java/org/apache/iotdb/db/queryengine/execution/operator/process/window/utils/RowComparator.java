@@ -86,6 +86,7 @@ public class RowComparator {
           return false;
         }
         break;
+      case STRING:
       case TEXT:
         Binary bin1 = column.getBinary(offset1);
         Binary bin2 = column.getBinary(offset2);
@@ -210,6 +211,7 @@ public class RowComparator {
           }
           break;
         case TEXT:
+        case STRING:
           Binary bin1 = column1.getBinary(offset1);
           Binary bin2 = column2.getBinary(offset2);
           if (!bin1.equals(bin2)) {

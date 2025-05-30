@@ -183,13 +183,11 @@ public class PipeConsensusReceiver {
           break;
         case TRANSFER_TS_FILE_SEAL:
         case TRANSFER_TS_FILE_SEAL_WITH_MOD:
-          // TODO: check memory when logging WAL(in further version)
           resp = requestExecutor.onRequest(req, false, true);
           break;
         case TRANSFER_DELETION:
         case TRANSFER_TABLET_BINARY:
         case TRANSFER_TABLET_INSERT_NODE:
-          // TODO: support batch transfer(in further version)
         case TRANSFER_TABLET_BATCH:
         default:
           resp = requestExecutor.onRequest(req, false, false);
@@ -424,7 +422,6 @@ public class PipeConsensusReceiver {
   }
 
   private TPipeConsensusTransferResp handleTransferFileSeal(final PipeConsensusTsFileSealReq req) {
-    // TODO: turn it to debug after GA
     LOGGER.info("PipeConsensus-PipeName-{}: starting to receive tsFile seal", consensusPipeName);
     long startBorrowTsFileWriterNanos = System.nanoTime();
     PipeConsensusTsFileWriter tsFileWriter =
@@ -543,7 +540,6 @@ public class PipeConsensusReceiver {
 
   private TPipeConsensusTransferResp handleTransferFileSealWithMods(
       final PipeConsensusTsFileSealWithModReq req) {
-    // TODO: turn it to debug after GA
     LOGGER.info(
         "PipeConsensus-PipeName-{}: starting to receive tsFile seal with mods", consensusPipeName);
     long startBorrowTsFileWriterNanos = System.nanoTime();
@@ -1284,7 +1280,6 @@ public class PipeConsensusReceiver {
 
     public void setWritingFile(File writingFile) {
       this.writingFile = writingFile;
-      // TODO: remove it into debug after GA
       if (writingFile == null) {
         LOGGER.info(
             "PipeConsensus-{}: TsFileWriter-{} set null writing file",
@@ -1299,7 +1294,6 @@ public class PipeConsensusReceiver {
 
     public void setWritingFileWriter(RandomAccessFile writingFileWriter) {
       this.writingFileWriter = writingFileWriter;
-      // TODO: remove it into debug after GA
       if (writingFileWriter == null) {
         LOGGER.info(
             "PipeConsensus-{}: TsFileWriter-{} set null writing file writer",
@@ -1544,7 +1538,6 @@ public class PipeConsensusReceiver {
 
           if (reqExecutionOrderBuffer.size() >= IOTDB_CONFIG.getIotConsensusV2PipelineSize()
               && reqExecutionOrderBuffer.first().equals(requestMeta)) {
-            // TODO: Turn it to debug after GA
             LOGGER.info(
                 "PipeConsensus-PipeName-{}: no.{} event get executed because receiver buffer's len >= pipeline, current receiver syncIndex {}, current buffer len {}",
                 consensusPipeName,
@@ -1591,7 +1584,6 @@ public class PipeConsensusReceiver {
               if (timeout && reqExecutionOrderBuffer.first() != null) {
                 // if current event is the first event in reqBuffer, we can process it.
                 if (reqExecutionOrderBuffer.first().equals(requestMeta)) {
-                  // TODO: Turn it to debug after GA
                   LOGGER.info(
                       "PipeConsensus-PipeName-{}: no.{} event get executed after awaiting timeout, current receiver syncIndex: {}",
                       consensusPipeName,

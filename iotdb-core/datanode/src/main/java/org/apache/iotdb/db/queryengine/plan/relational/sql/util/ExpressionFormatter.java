@@ -291,6 +291,10 @@ public final class ExpressionFormatter {
 
       StringBuilder builder = new StringBuilder();
 
+      if (node.getProcessingMode().isPresent()) {
+        builder.append(node.getProcessingMode().get().getMode()).append(" ");
+      }
+
       String arguments = joinExpressions(node.getArguments());
       if (node.getArguments().isEmpty() && "count".equalsIgnoreCase(node.getName().getSuffix())) {
         arguments = "*";
