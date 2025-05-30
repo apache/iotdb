@@ -24,6 +24,13 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.Range;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ClassifierDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.MatchNumberDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.Navigation;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.NavigationMode;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.PatternFunctionAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ScalarInputDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
@@ -70,14 +77,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ProcessingMode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StackableAstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
@@ -95,6 +106,7 @@ import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -106,13 +118,17 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.collect.Iterators.getOnlyElement;
 import static java.lang.String.format;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
+import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isNumericType;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
@@ -152,6 +168,21 @@ public class ExpressionAnalyzer {
 
   // Track referenced fields from source relation node
   private final Multimap<NodeRef<Node>, Field> referencedFields = HashMultimap.create();
+
+  // Record fields prefixed with labels in row pattern recognition context
+  private final Map<NodeRef<Expression>, Optional<String>> labels = new HashMap<>();
+  // Record functions specific to row pattern recognition context
+  private final Map<NodeRef<RangeQuantifier>, Range> ranges = new LinkedHashMap<>();
+  private final Map<NodeRef<RowPattern>, Set<String>> undefinedLabels = new LinkedHashMap<>();
+  private final Map<NodeRef<Identifier>, String> resolvedLabels = new LinkedHashMap<>();
+  private final Map<NodeRef<SubsetDefinition>, Set<String>> subsets = new LinkedHashMap<>();
+
+  // Pattern function analysis (classifier, match_number, aggregations and prev/next/first/last) in
+  // the context of the given node
+  private final Map<NodeRef<Expression>, List<PatternFunctionAnalysis>> patternRecognitionInputs =
+      new LinkedHashMap<>();
+
+  private final Set<NodeRef<FunctionCall>> patternNavigationFunctions = new LinkedHashSet<>();
 
   private final MPPQueryContext context;
   private final SessionInfo session;
@@ -270,6 +301,9 @@ public class ExpressionAnalyzer {
 
   private Type analyze(Expression expression, Scope scope, Set<String> labels) {
     Visitor visitor = new Visitor(scope, warningCollector);
+
+    patternRecognitionInputs.put(NodeRef.of(expression), visitor.getPatternRecognitionInputs());
+
     return visitor.process(
         expression,
         new StackableAstVisitor.StackableAstVisitorContext<>(
@@ -302,14 +336,48 @@ public class ExpressionAnalyzer {
     return sourceFields;
   }
 
+  public Map<NodeRef<Expression>, Optional<String>> getLabels() {
+    return labels;
+  }
+
+  public Map<NodeRef<RangeQuantifier>, Range> getRanges() {
+    return ranges;
+  }
+
+  public Map<NodeRef<RowPattern>, Set<String>> getUndefinedLabels() {
+    return undefinedLabels;
+  }
+
+  public Map<NodeRef<Identifier>, String> getResolvedLabels() {
+    return resolvedLabels;
+  }
+
+  public Map<NodeRef<SubsetDefinition>, Set<String>> getSubsetLabels() {
+    return subsets;
+  }
+
+  public Map<NodeRef<Expression>, List<PatternFunctionAnalysis>> getPatternRecognitionInputs() {
+    return patternRecognitionInputs;
+  }
+
+  public Set<NodeRef<FunctionCall>> getPatternNavigationFunctions() {
+    return patternNavigationFunctions;
+  }
+
   private class Visitor extends StackableAstVisitor<Type, Context> {
     // Used to resolve FieldReferences (e.g. during local execution planning)
     private final Scope baseScope;
     private final WarningCollector warningCollector;
 
+    private final List<PatternFunctionAnalysis> patternRecognitionInputs = new ArrayList<>();
+
     public Visitor(Scope baseScope, WarningCollector warningCollector) {
       this.baseScope = requireNonNull(baseScope, "baseScope is null");
       this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+    }
+
+    public List<PatternFunctionAnalysis> getPatternRecognitionInputs() {
+      return patternRecognitionInputs;
     }
 
     @Override
@@ -362,6 +430,21 @@ public class ExpressionAnalyzer {
     protected Type visitIdentifier(Identifier node, StackableAstVisitorContext<Context> context) {
       ResolvedField resolvedField =
           context.getContext().getScope().resolveField(node, QualifiedName.of(node.getValue()));
+
+      // Handle cases where column names do not exist in navigation functions, such as
+      // RPR_LAST(val).
+      // Additionally, if column names are present in navigation functions, such as RPR_LAST(B.val),
+      // process them in visitDereferenceExpression.
+      if (context.getContext().isPatternRecognition()) {
+        labels.put(NodeRef.of(node), Optional.empty());
+        patternRecognitionInputs.add(
+            new PatternFunctionAnalysis(
+                node,
+                new ScalarInputDescriptor(
+                    Optional.empty(),
+                    context.getContext().getPatternRecognitionContext().getNavigation())));
+      }
+
       return handleResolvedField(node, resolvedField, context);
     }
 
@@ -415,6 +498,54 @@ public class ExpressionAnalyzer {
 
       // If this Dereference looks like column reference, try match it to column first.
       if (qualifiedName != null) {
+        // In the context of row pattern matching, fields are optionally prefixed with labels.
+        // Labels are irrelevant during type analysis.
+        if (context.getContext().isPatternRecognition()) {
+          String label = label(qualifiedName.getOriginalParts().get(0));
+          if (context.getContext().getPatternRecognitionContext().getLabels().contains(label)) {
+            // In the context of row pattern matching, the name of row pattern input table cannot be
+            // used to qualify column names.
+            // (it can only be accessed in PARTITION BY and ORDER BY clauses of MATCH_RECOGNIZE).
+            // Consequentially, if a dereference
+            // expression starts with a label, the next part must be a column.
+            // Only strict column references can be prefixed by label. Labeled references to row
+            // fields are not supported.
+            QualifiedName unlabeledName =
+                QualifiedName.of(
+                    qualifiedName
+                        .getOriginalParts()
+                        .subList(1, qualifiedName.getOriginalParts().size()));
+            if (qualifiedName.getOriginalParts().size() > 2) {
+              throw new SemanticException(
+                  String.format(
+                      "Column %s prefixed with label %s cannot be resolved", unlabeledName, label));
+            }
+            Optional<ResolvedField> resolvedField =
+                context.getContext().getScope().tryResolveField(node, unlabeledName);
+            if (!resolvedField.isPresent()) {
+              throw new SemanticException(
+                  String.format(
+                      "Column %s prefixed with label %s cannot be resolved", unlabeledName, label));
+            }
+            // Correlation is not allowed in pattern recognition context. Visitor's context for
+            // pattern recognition has CorrelationSupport.DISALLOWED,
+            // and so the following call should fail if the field is from outer scope.
+
+            labels.put(NodeRef.of(node), Optional.of(label));
+            patternRecognitionInputs.add(
+                new PatternFunctionAnalysis(
+                    node,
+                    new ScalarInputDescriptor(
+                        Optional.of(label),
+                        context.getContext().getPatternRecognitionContext().getNavigation())));
+
+            return handleResolvedField(node, resolvedField.get(), context);
+          }
+          // In the context of row pattern matching, qualified column references are not allowed.
+          throw new SemanticException(
+              String.format("Column '%s' cannot be resolved", qualifiedName));
+        }
+
         Scope scope = context.getContext().getScope();
         Optional<ResolvedField> resolvedField = scope.tryResolveField(node, qualifiedName);
         if (resolvedField.isPresent()) {
@@ -778,6 +909,50 @@ public class ExpressionAnalyzer {
                 }
               });
 
+      if (context.getContext().isPatternRecognition()) {
+        if (isPatternRecognitionFunction(node)) {
+          validatePatternRecognitionFunction(node);
+
+          String name = node.getName().getSuffix().toUpperCase(ENGLISH);
+          switch (name) {
+            case "MATCH_NUMBER":
+              return setExpressionType(node, analyzeMatchNumber(node, context));
+            case "CLASSIFIER":
+              return setExpressionType(node, analyzeClassifier(node, context));
+            case "RPR_FIRST":
+            case "RPR_LAST":
+              return setExpressionType(node, analyzeLogicalNavigation(node, context, name));
+            case "PREV":
+            case "NEXT":
+              return setExpressionType(node, analyzePhysicalNavigation(node, context, name));
+            default:
+              throw new IllegalStateException("unexpected pattern recognition function " + name);
+          }
+
+        } else if (isAggregation) {
+          if (node.isDistinct()) {
+            throw new SemanticException(
+                "Cannot use DISTINCT with aggregate function in pattern recognition context");
+          }
+        }
+      }
+
+      if (node.getProcessingMode().isPresent()) {
+        ProcessingMode processingMode = node.getProcessingMode().get();
+        if (!context.getContext().isPatternRecognition()) {
+          throw new SemanticException(
+              String.format(
+                  "%s semantics is not supported out of pattern recognition context",
+                  processingMode.getMode()));
+        }
+        if (!isAggregation) {
+          throw new SemanticException(
+              String.format(
+                  "%s semantics is supported only for FIRST(), LAST() and aggregation functions. Actual: %s",
+                  processingMode.getMode(), node.getName()));
+        }
+      }
+
       if (node.isDistinct() && !isAggregation) {
         throw new SemanticException("DISTINCT is not supported for non-aggregation functions");
       }
@@ -821,7 +996,7 @@ public class ExpressionAnalyzer {
           // process the argument but do not include it in the list
           DereferenceExpression allRowsDereference = (DereferenceExpression) argument;
           String label = label((Identifier) allRowsDereference.getBase());
-          if (!context.getContext().getLabels().contains(label)) {
+          if (!context.getContext().getPatternRecognitionContext().getLabels().contains(label)) {
             throw new SemanticException(
                 String.format("%s is not a primary pattern variable or subset name", label));
           }
@@ -834,8 +1009,293 @@ public class ExpressionAnalyzer {
       return argumentTypesBuilder.build();
     }
 
+    private Type analyzeMatchNumber(
+        FunctionCall node, StackableAstVisitorContext<Context> context) {
+      if (!node.getArguments().isEmpty()) {
+        throw new SemanticException("MATCH_NUMBER pattern recognition function takes no arguments");
+      }
+
+      patternRecognitionInputs.add(new PatternFunctionAnalysis(node, new MatchNumberDescriptor()));
+
+      return INT64;
+    }
+
+    private Type analyzeClassifier(FunctionCall node, StackableAstVisitorContext<Context> context) {
+      if (node.getArguments().size() > 1) {
+        throw new SemanticException(
+            "CLASSIFIER pattern recognition function takes no arguments or 1 argument");
+      }
+
+      Optional<String> label = Optional.empty();
+      if (node.getArguments().size() == 1) {
+        Node argument = node.getArguments().get(0);
+        if (!(argument instanceof Identifier)) {
+          throw new SemanticException(
+              String.format(
+                  "CLASSIFIER function argument should be primary pattern variable or subset name. Actual: %s",
+                  argument.getClass().getSimpleName()));
+        }
+
+        Identifier identifier = (Identifier) argument;
+        label = Optional.of(label(identifier));
+        if (!context
+            .getContext()
+            .getPatternRecognitionContext()
+            .getLabels()
+            .contains(label.get())) {
+          throw new SemanticException(
+              String.format(
+                  "%s is not a primary pattern variable or subset name", identifier.getValue()));
+        }
+      }
+
+      patternRecognitionInputs.add(
+          new PatternRecognitionAnalysis.PatternFunctionAnalysis(
+              node,
+              new ClassifierDescriptor(
+                  label, context.getContext().getPatternRecognitionContext().getNavigation())));
+
+      return STRING;
+    }
+
+    private Type analyzePhysicalNavigation(
+        FunctionCall node, StackableAstVisitorContext<Context> context, String name) {
+      validateNavigationFunctionArguments(node);
+
+      checkNoNestedAggregations(node);
+      validateNavigationNesting(node);
+
+      int offset = getNavigationOffset(node, 1);
+      if (name.equals("PREV")) {
+        offset = -offset;
+      }
+
+      Navigation navigation = context.getContext().getPatternRecognitionContext().getNavigation();
+      Type type =
+          process(
+              node.getArguments().get(0),
+              new StackableAstVisitorContext<>(
+                  context
+                      .getContext()
+                      .withNavigation(
+                          new Navigation(
+                              navigation.getAnchor(),
+                              navigation.getMode(),
+                              navigation.getLogicalOffset(),
+                              offset))));
+
+      patternNavigationFunctions.add(NodeRef.of(node));
+
+      return type;
+    }
+
+    private Type analyzeLogicalNavigation(
+        FunctionCall node, StackableAstVisitorContext<Context> context, String name) {
+      validateNavigationFunctionArguments(node);
+
+      checkNoNestedAggregations(node);
+      validateNavigationNesting(node);
+
+      PatternRecognitionAnalysis.NavigationAnchor anchor;
+      switch (name) {
+        case "RPR_FIRST":
+          anchor = PatternRecognitionAnalysis.NavigationAnchor.FIRST;
+          break;
+        case "RPR_LAST":
+          anchor = PatternRecognitionAnalysis.NavigationAnchor.LAST;
+          break;
+        default:
+          throw new IllegalStateException("Unexpected navigation anchor: " + name);
+      }
+
+      Type type =
+          process(
+              node.getArguments().get(0),
+              new StackableAstVisitorContext<>(
+                  context
+                      .getContext()
+                      .withNavigation(
+                          new Navigation(
+                              anchor,
+                              mapProcessingMode(node.getProcessingMode()),
+                              getNavigationOffset(node, 0),
+                              context
+                                  .getContext()
+                                  .getPatternRecognitionContext()
+                                  .getNavigation()
+                                  .getPhysicalOffset()))));
+
+      patternNavigationFunctions.add(NodeRef.of(node));
+
+      return type;
+    }
+
+    private NavigationMode mapProcessingMode(Optional<ProcessingMode> processingMode) {
+      if (processingMode.isPresent()) {
+        ProcessingMode mode = processingMode.get();
+        switch (mode.getMode()) {
+          case FINAL:
+            return NavigationMode.FINAL;
+          case RUNNING:
+            return NavigationMode.RUNNING;
+          default:
+            throw new IllegalArgumentException("Unexpected mode: " + mode.getMode());
+        }
+      } else {
+        return NavigationMode.RUNNING;
+      }
+    }
+
+    private int getNavigationOffset(FunctionCall node, int defaultOffset) {
+      int offset = defaultOffset;
+      if (node.getArguments().size() == 2) {
+        offset = (int) ((LongLiteral) node.getArguments().get(1)).getParsedValue();
+      }
+      return offset;
+    }
+
+    private void validatePatternRecognitionFunction(FunctionCall node) {
+      if (node.isDistinct()) {
+        throw new SemanticException(
+            String.format(
+                "Cannot use DISTINCT with %s pattern recognition function", node.getName()));
+      }
+      String name = node.getName().getSuffix();
+      if (node.getProcessingMode().isPresent()) {
+        ProcessingMode processingMode = node.getProcessingMode().get();
+        if (!name.equalsIgnoreCase("RPR_FIRST") && !name.equalsIgnoreCase("RPR_LAST")) {
+          throw new SemanticException(
+              String.format(
+                  "%s semantics is not supported with %s pattern recognition function",
+                  processingMode.getMode(), node.getName()));
+        }
+      }
+    }
+
+    private void validateNavigationFunctionArguments(FunctionCall node) {
+      if (node.getArguments().size() != 1 && node.getArguments().size() != 2) {
+        throw new SemanticException(
+            String.format(
+                "%s pattern recognition function requires 1 or 2 arguments", node.getName()));
+      }
+      if (node.getArguments().size() == 2) {
+        if (!(node.getArguments().get(1) instanceof LongLiteral)) {
+          throw new SemanticException(
+              String.format(
+                  "%s pattern recognition navigation function requires a number as the second argument",
+                  node.getName()));
+        }
+        long offset = ((LongLiteral) node.getArguments().get(1)).getParsedValue();
+        if (offset < 0) {
+          throw new SemanticException(
+              String.format(
+                  "%s pattern recognition navigation function requires a non-negative number as the second argument (actual: %s)",
+                  node.getName(), offset));
+        }
+        if (offset > Integer.MAX_VALUE) {
+          throw new SemanticException(
+              String.format(
+                  "The second argument of %s pattern recognition navigation function must not exceed %s (actual: %s)",
+                  node.getName(), Integer.MAX_VALUE, offset));
+        }
+      }
+    }
+
+    private void validateNavigationNesting(FunctionCall node) {
+      checkArgument(isPatternNavigationFunction(node));
+      String name = node.getName().getSuffix();
+
+      // It is allowed to nest FIRST and LAST functions within PREV and NEXT functions. Only
+      // immediate nesting is supported
+      List<FunctionCall> nestedNavigationFunctions =
+          extractExpressions(ImmutableList.of(node.getArguments().get(0)), FunctionCall.class)
+              .stream()
+              .filter(this::isPatternNavigationFunction)
+              .collect(toImmutableList());
+      if (!nestedNavigationFunctions.isEmpty()) {
+        if (name.equalsIgnoreCase("RPR_FIRST") || name.equalsIgnoreCase("RPR_LAST")) {
+          throw new SemanticException(
+              String.format(
+                  "Cannot nest %s pattern navigation function inside %s pattern navigation function",
+                  nestedNavigationFunctions.get(0).getName(), name));
+        }
+        if (nestedNavigationFunctions.size() > 1) {
+          throw new SemanticException(
+              String.format(
+                  "Cannot nest multiple pattern navigation functions inside %s pattern navigation function",
+                  name));
+        }
+        FunctionCall nested = getOnlyElement(nestedNavigationFunctions);
+        String nestedName = nested.getName().getSuffix();
+        if (nestedName.equalsIgnoreCase("PREV") || nestedName.equalsIgnoreCase("NEXT")) {
+          throw new SemanticException(
+              String.format(
+                  "Cannot nest %s pattern navigation function inside %s pattern navigation function",
+                  nestedName, name));
+        }
+        if (nested != node.getArguments().get(0)) {
+          throw new SemanticException(
+              "Immediate nesting is required for pattern navigation functions");
+        }
+      }
+    }
+
+    private boolean isPatternNavigationFunction(FunctionCall node) {
+      if (!isPatternRecognitionFunction(node)) {
+        return false;
+      }
+      String name = node.getName().getSuffix().toUpperCase(ENGLISH);
+      return name.equals("RPR_FIRST")
+          || name.equals("RPR_LAST")
+          || name.equals("PREV")
+          || name.equals("NEXT");
+    }
+
+    private boolean isClassifierFunction(FunctionCall node) {
+      if (!isPatternRecognitionFunction(node)) {
+        return false;
+      }
+      return node.getName().getSuffix().toUpperCase(ENGLISH).equals("CLASSIFIER");
+    }
+
+    private boolean isMatchNumberFunction(FunctionCall node) {
+      if (!isPatternRecognitionFunction(node)) {
+        return false;
+      }
+      return node.getName().getSuffix().toUpperCase(ENGLISH).equals("MATCH_NUMBER");
+    }
+
     private String label(Identifier identifier) {
       return identifier.getCanonicalValue();
+    }
+
+    private void checkNoNestedAggregations(FunctionCall node) {
+      extractExpressions(node.getArguments(), FunctionCall.class).stream()
+          .filter(
+              function ->
+                  metadata.isAggregationFunction(
+                      session, function.getName().getSuffix(), accessControl))
+          .findFirst()
+          .ifPresent(
+              aggregation -> {
+                throw new SemanticException(
+                    String.format(
+                        "Cannot nest %s aggregate function inside %s function",
+                        aggregation.getName(), node.getName()));
+              });
+    }
+
+    private void checkNoNestedNavigations(FunctionCall node) {
+      extractExpressions(node.getArguments(), FunctionCall.class).stream()
+          .filter(this::isPatternNavigationFunction)
+          .findFirst()
+          .ifPresent(
+              navigation -> {
+                throw new SemanticException(
+                    String.format(
+                        "Cannot nest %s pattern navigation function inside %s function",
+                        navigation.getName().getSuffix(), node.getName()));
+              });
     }
 
     @Override
@@ -1310,55 +1770,64 @@ public class ExpressionAnalyzer {
     // arguments.
     //    private final Map<FieldId, LambdaArgumentDeclaration> fieldToLambdaArgumentDeclaration;
 
-    // Primary row pattern variables and named unions (subsets) of variables
-    // necessary for the analysis of expressions in the context of row pattern recognition
-    private final Set<String> labels;
+    private final Optional<PatternRecognitionContext> patternRecognitionContext;
 
     private final CorrelationSupport correlationSupport;
 
     private Context(
         Scope scope,
         List<Type> functionInputTypes,
-        Set<String> labels,
+        Optional<PatternRecognitionContext> patternRecognitionContext,
         CorrelationSupport correlationSupport) {
       this.scope = requireNonNull(scope, "scope is null");
       this.functionInputTypes = functionInputTypes;
       //      this.fieldToLambdaArgumentDeclaration = fieldToLambdaArgumentDeclaration;
-      this.labels = labels;
+      this.patternRecognitionContext =
+          requireNonNull(patternRecognitionContext, "patternRecognitionContext is null");
       this.correlationSupport = requireNonNull(correlationSupport, "correlationSupport is null");
     }
 
     public static Context notInLambda(Scope scope, CorrelationSupport correlationSupport) {
-      return new Context(scope, null, null, correlationSupport);
+      return new Context(scope, null, Optional.empty(), correlationSupport);
     }
 
     public Context expectingLambda(List<Type> functionInputTypes) {
       return new Context(
           scope,
           requireNonNull(functionInputTypes, "functionInputTypes is null"),
-          labels,
+          Optional.empty(),
           correlationSupport);
     }
 
     public Context notExpectingLambda() {
-      return new Context(scope, null, labels, correlationSupport);
+      return new Context(scope, null, Optional.empty(), correlationSupport);
     }
 
     public static Context patternRecognition(Scope scope, Set<String> labels) {
       return new Context(
-          scope, null, requireNonNull(labels, "labels is null"), CorrelationSupport.DISALLOWED);
+          scope,
+          null,
+          Optional.of(new PatternRecognitionContext(labels, Navigation.DEFAULT)),
+          CorrelationSupport.DISALLOWED);
+    }
+
+    public Context withNavigation(Navigation navigation) {
+      PatternRecognitionContext patternRecognitionContext =
+          new PatternRecognitionContext(this.patternRecognitionContext.get().labels, navigation);
+      return new Context(
+          scope, functionInputTypes, Optional.of(patternRecognitionContext), correlationSupport);
     }
 
     public Context patternRecognition(Set<String> labels) {
       return new Context(
           scope,
           functionInputTypes,
-          requireNonNull(labels, "labels is null"),
+          Optional.of(new PatternRecognitionContext(labels, Navigation.DEFAULT)),
           CorrelationSupport.DISALLOWED);
     }
 
     public Context notExpectingLabels() {
-      return new Context(scope, functionInputTypes, null, correlationSupport);
+      return new Context(scope, functionInputTypes, Optional.empty(), correlationSupport);
     }
 
     Scope getScope() {
@@ -1373,18 +1842,121 @@ public class ExpressionAnalyzer {
       return functionInputTypes != null;
     }
 
+    public boolean isPatternRecognition() {
+      return patternRecognitionContext.isPresent();
+    }
+
     public List<Type> getFunctionInputTypes() {
       checkState(isExpectingLambda());
       return functionInputTypes;
     }
 
-    public Set<String> getLabels() {
-      return labels;
+    public PatternRecognitionContext getPatternRecognitionContext() {
+      return patternRecognitionContext.get();
     }
 
     public CorrelationSupport getCorrelationSupport() {
       return correlationSupport;
     }
+
+    public static class PatternRecognitionContext {
+      private final Set<String> labels;
+      private final Navigation navigation;
+
+      public PatternRecognitionContext(Set<String> labels, Navigation navigation) {
+        this.labels = labels;
+        this.navigation = navigation;
+      }
+
+      public Set<String> getLabels() {
+        return labels;
+      }
+
+      public Navigation getNavigation() {
+        return navigation;
+      }
+
+      @Override
+      public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        PatternRecognitionContext that = (PatternRecognitionContext) o;
+
+        if (!labels.equals(that.labels)) return false;
+        return navigation.equals(that.navigation);
+      }
+
+      @Override
+      public int hashCode() {
+        int result = labels.hashCode();
+        result = 31 * result + navigation.hashCode();
+        return result;
+      }
+
+      @Override
+      public String toString() {
+        return "PatternRecognitionContext{"
+            + "labels="
+            + labels
+            + ", navigation="
+            + navigation
+            + '}';
+      }
+    }
+  }
+
+  public static boolean isPatternRecognitionFunction(FunctionCall node) {
+    QualifiedName qualifiedName = node.getName();
+    if (qualifiedName.getParts().size() > 1) {
+      return false;
+    }
+    Identifier identifier = qualifiedName.getOriginalParts().get(0);
+    if (identifier.isDelimited()) {
+      return false;
+    }
+    String name = identifier.getValue().toUpperCase(ENGLISH);
+    return name.equals("RPR_FIRST")
+        || name.equals("RPR_LAST")
+        || name.equals("PREV")
+        || name.equals("NEXT")
+        || name.equals("CLASSIFIER")
+        || name.equals("MATCH_NUMBER");
+  }
+
+  public static ExpressionAnalysis analyzePatternRecognitionExpression(
+      Metadata metadata,
+      MPPQueryContext context,
+      SessionInfo session,
+      StatementAnalyzerFactory statementAnalyzerFactory,
+      AccessControl accessControl,
+      Scope scope,
+      Analysis analysis,
+      Expression expression,
+      WarningCollector warningCollector,
+      // labels are all the pattern variables defined in the context of RPR
+      Set<String> labels) {
+    ExpressionAnalyzer analyzer =
+        new ExpressionAnalyzer(
+            metadata,
+            context,
+            accessControl,
+            statementAnalyzerFactory,
+            analysis,
+            session,
+            TypeProvider.empty(),
+            warningCollector);
+    analyzer.analyze(expression, scope, labels);
+
+    updateAnalysis(analysis, analyzer, session, accessControl);
+
+    return new ExpressionAnalysis(
+        analyzer.getExpressionTypes(),
+        analyzer.getSubqueryInPredicates(),
+        analyzer.getSubqueries(),
+        analyzer.getExistsSubqueries(),
+        analyzer.getColumnReferences(),
+        analyzer.getQuantifiedComparisons());
   }
 
   public static ExpressionAnalysis analyzeExpressions(
@@ -1504,6 +2076,13 @@ public class ExpressionAnalyzer {
     analysis.addTableColumnReferences(
         accessControl, session.getIdentity(), analyzer.getTableColumnReferences());
     analysis.addPredicateCoercions(analyzer.getPredicateCoercions());
+    analysis.addLabels(analyzer.getLabels());
+    analysis.setRanges(analyzer.getRanges());
+    analysis.setUndefinedLabels(analyzer.getUndefinedLabels());
+    analysis.addResolvedLabels(analyzer.getResolvedLabels());
+    analysis.addSubsetLabels(analyzer.getSubsetLabels());
+    analysis.addPatternRecognitionInputs(analyzer.getPatternRecognitionInputs());
+    analysis.addPatternNavigationFunctions(analyzer.getPatternNavigationFunctions());
   }
 
   public static ExpressionAnalyzer createConstantAnalyzer(

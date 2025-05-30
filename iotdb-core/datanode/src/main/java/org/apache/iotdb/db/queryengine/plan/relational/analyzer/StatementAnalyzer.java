@@ -123,12 +123,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MeasureDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
@@ -156,12 +158,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgument;
@@ -174,6 +178,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.VariableDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
@@ -261,6 +266,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.INNER;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.LEFT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
@@ -2828,6 +2834,217 @@ public class StatementAnalyzer {
     //              filter -> analyzeRowFilter(session.getIdentity().getUser(), table, name,
     // accessControlScope, filter));
     //    }
+
+    protected Scope visitPatternRecognitionRelation(
+        PatternRecognitionRelation relation, Optional<Scope> scope) {
+      Scope inputScope = process(relation.getInput(), scope);
+
+      // check that input table column names are not ambiguous
+      // Note: This check is not compliant with SQL identifier semantics. Quoted identifiers should
+      // have different comparison rules than unquoted identifiers.
+      // However, field names do not contain the information about quotation, and so every
+      // comparison is case-insensitive. For example, if there are fields named
+      // 'a' and 'A' (quoted), they should be considered non-ambiguous. However, their names will be
+      // compared case-insensitive and will cause failure as ambiguous.
+      Set<String> inputNames = new HashSet<>();
+      for (Field field : inputScope.getRelationType().getAllFields()) {
+        field
+            .getName()
+            .ifPresent(
+                name -> {
+                  if (!inputNames.add(name.toUpperCase(ENGLISH))) {
+                    throw new SemanticException(
+                        String.format("ambiguous column: %s in row pattern input relation", name));
+                  }
+                });
+      }
+
+      // analyze PARTITION BY
+      for (Expression expression : relation.getPartitionBy()) {
+        // The PARTITION BY clause is a list of columns of the row pattern input table.
+        validateAndGetInputField(expression, inputScope);
+        Type type = analyzeExpression(expression, inputScope).getType(expression);
+        if (!type.isComparable()) {
+          throw new SemanticException(
+              String.format(
+                  "%s is not comparable, and therefore cannot be used in PARTITION BY", type));
+        }
+      }
+
+      // analyze ORDER BY
+      for (SortItem sortItem : getSortItemsFromOrderBy(relation.getOrderBy())) {
+        // The ORDER BY clause is a list of columns of the row pattern input table.
+        Expression expression = sortItem.getSortKey();
+        validateAndGetInputField(expression, inputScope);
+        Type type = analyzeExpression(expression, inputScope).getType(sortItem.getSortKey());
+        if (!type.isOrderable()) {
+          throw new SemanticException(
+              String.format("%s is not orderable, and therefore cannot be used in ORDER BY", type));
+        }
+      }
+
+      // analyze pattern recognition clauses
+      PatternRecognitionAnalysis patternRecognitionAnalysis =
+          PatternRecognitionAnalyzer.analyze(
+              relation.getSubsets(),
+              relation.getVariableDefinitions(),
+              relation.getMeasures(),
+              relation.getPattern(),
+              relation.getAfterMatchSkipTo());
+
+      relation
+          .getAfterMatchSkipTo()
+          .flatMap(SkipTo::getIdentifier)
+          .ifPresent(label -> analysis.addResolvedLabel(label, label.getCanonicalValue()));
+
+      for (SubsetDefinition subset : relation.getSubsets()) {
+        analysis.addResolvedLabel(subset.getName(), subset.getName().getCanonicalValue());
+        analysis.addSubsetLabels(
+            subset,
+            subset.getIdentifiers().stream()
+                .map(Identifier::getCanonicalValue)
+                .collect(Collectors.toSet()));
+      }
+
+      analysis.setUndefinedLabels(
+          relation.getPattern(), patternRecognitionAnalysis.getUndefinedLabels());
+      analysis.setRanges(patternRecognitionAnalysis.getRanges());
+
+      PatternRecognitionAnalyzer.validatePatternExclusions(
+          relation.getRowsPerMatch(), relation.getPattern());
+
+      // Notes on potential name ambiguity between pattern labels and other identifiers:
+      // Labels are allowed in expressions of MEASURES and DEFINE clauses. In those expressions,
+      // qualifying column names with table name is not allowed.
+      // Theoretically, user might define pattern label "T" where input table name was "T". Then a
+      // dereference "T.column" would refer to:
+      // - input table's column, if it was in PARTITION BY or ORDER BY clause,
+      // - subset of rows matched with label "T", if it was in MEASURES or DEFINE clause.
+      // There could be a check to catch such non-intuitive situation and produce a warning.
+      // Similarly, it is possible to define pattern label with the same name as some input column.
+      // However, this causes no ambiguity, as labels can only
+      // appear as column name's prefix, and column names in pattern recognition context cannot be
+      // dereferenced.
+
+      // analyze expressions in MEASURES and DEFINE (with set of all labels passed as context)
+      for (VariableDefinition variableDefinition : relation.getVariableDefinitions()) {
+        Expression expression = variableDefinition.getExpression();
+        ExpressionAnalysis expressionAnalysis =
+            analyzePatternRecognitionExpression(
+                expression, inputScope, patternRecognitionAnalysis.getAllLabels());
+        analysis.recordSubqueries(relation, expressionAnalysis);
+        analysis.addResolvedLabel(
+            variableDefinition.getName(), variableDefinition.getName().getCanonicalValue());
+        Type type = expressionAnalysis.getType(expression);
+        if (!type.equals(BOOLEAN)) {
+          throw new SemanticException(
+              String.format("Expression defining a label must be boolean (actual type: %s)", type));
+        }
+      }
+      ImmutableMap.Builder<NodeRef<Node>, Type> measureTypesBuilder = ImmutableMap.builder();
+      for (MeasureDefinition measureDefinition : relation.getMeasures()) {
+        Expression expression = measureDefinition.getExpression();
+        ExpressionAnalysis expressionAnalysis =
+            analyzePatternRecognitionExpression(
+                expression, inputScope, patternRecognitionAnalysis.getAllLabels());
+        analysis.recordSubqueries(relation, expressionAnalysis);
+        analysis.addResolvedLabel(
+            measureDefinition.getName(), measureDefinition.getName().getCanonicalValue());
+        measureTypesBuilder.put(NodeRef.of(expression), expressionAnalysis.getType(expression));
+      }
+      Map<NodeRef<Node>, Type> measureTypes = measureTypesBuilder.buildOrThrow();
+
+      // create output scope
+      // ONE ROW PER MATCH: PARTITION BY columns, then MEASURES columns in order of declaration
+      // ALL ROWS PER MATCH: PARTITION BY columns, ORDER BY columns, MEASURES columns, then any
+      // remaining input table columns in order of declaration
+      // Note: row pattern input table name should not be exposed on output
+      PatternRecognitionRelation.RowsPerMatch rowsPerMatch = relation.getRowsPerMatch().orElse(ONE);
+      boolean oneRowPerMatch = rowsPerMatch == ONE;
+
+      ImmutableSet.Builder<Field> inputFieldsOnOutputBuilder = ImmutableSet.builder();
+      ImmutableList.Builder<Field> outputFieldsBuilder = ImmutableList.builder();
+
+      for (Expression expression : relation.getPartitionBy()) {
+        Field inputField = validateAndGetInputField(expression, inputScope);
+        outputFieldsBuilder.add(unqualifiedVisible(inputField));
+        inputFieldsOnOutputBuilder.add(inputField);
+      }
+
+      if (!oneRowPerMatch) {
+        for (SortItem sortItem : getSortItemsFromOrderBy(relation.getOrderBy())) {
+          Field inputField = validateAndGetInputField(sortItem.getSortKey(), inputScope);
+          outputFieldsBuilder.add(unqualifiedVisible(inputField));
+          inputFieldsOnOutputBuilder.add(
+              inputField); // might have duplicates (ORDER BY a ASC, a DESC)
+        }
+      }
+
+      for (MeasureDefinition measureDefinition : relation.getMeasures()) {
+        outputFieldsBuilder.add(
+            Field.newUnqualified(
+                measureDefinition.getName().getValue(),
+                measureTypes.get(NodeRef.of(measureDefinition.getExpression())),
+                TsTableColumnCategory.FIELD));
+      }
+
+      if (!oneRowPerMatch) {
+        Set<Field> inputFieldsOnOutput = inputFieldsOnOutputBuilder.build();
+        for (Field inputField : inputScope.getRelationType().getAllFields()) {
+          if (!inputFieldsOnOutput.contains(inputField)) {
+            outputFieldsBuilder.add(unqualified(inputField));
+          }
+        }
+      }
+
+      // pattern recognition output must have at least 1 column
+      List<Field> outputFields = outputFieldsBuilder.build();
+      if (outputFields.isEmpty()) {
+        throw new SemanticException("pattern recognition output table has no columns");
+      }
+
+      return createAndAssignScope(relation, scope, outputFields);
+    }
+
+    private Field unqualifiedVisible(Field field) {
+      return new Field(
+          Optional.empty(),
+          field.getName(),
+          field.getType(),
+          field.getColumnCategory(),
+          false,
+          field.getOriginTable(),
+          field.getOriginColumnName(),
+          field.isAliased());
+    }
+
+    private Field unqualified(Field field) {
+      return new Field(
+          Optional.empty(),
+          field.getName(),
+          field.getType(),
+          field.getColumnCategory(),
+          field.isHidden(),
+          field.getOriginTable(),
+          field.getOriginColumnName(),
+          field.isAliased());
+    }
+
+    private ExpressionAnalysis analyzePatternRecognitionExpression(
+        Expression expression, Scope scope, Set<String> labels) {
+
+      return ExpressionAnalyzer.analyzePatternRecognitionExpression(
+          metadata,
+          queryContext,
+          sessionContext,
+          statementAnalyzerFactory,
+          accessControl,
+          scope,
+          analysis,
+          expression,
+          warningCollector,
+          labels);
+    }
 
     @Override
     protected Scope visitValues(Values node, Optional<Scope> scope) {
