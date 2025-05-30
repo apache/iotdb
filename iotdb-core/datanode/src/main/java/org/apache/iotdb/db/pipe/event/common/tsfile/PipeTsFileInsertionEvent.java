@@ -117,9 +117,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     this.resource = resource;
     tsFile = resource.getTsFile();
 
-    final ModificationFile modFile = resource.getModFile();
-    this.isWithMod = isWithMod && modFile.exists();
-    this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
+    final ModificationFile resourceModFile = resource.getModFile();
+    final File modFile = new File(resourceModFile.getFilePath());
+    this.isWithMod =
+        isWithMod
+            && (resourceModFile.exists()
+                || isGeneratedByHistoricalExtractor && isHardLinkFileExists(modFile));
+    this.modFile = this.isWithMod ? modFile : null;
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = resource.isGeneratedByPipe();
@@ -163,6 +167,17 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     isClosed.set(resource.isClosed());
 
     this.dataContainer = new AtomicReference<>(null);
+  }
+
+  private static boolean isHardLinkFileExists(final File modFile) {
+    try {
+      return PipeDataNodeResourceManager.tsfile()
+              .getFileReferenceCountWithoutLock(
+                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(modFile))
+          > 0;
+    } catch (final Exception e) {
+      return false;
+    }
   }
 
   /**
