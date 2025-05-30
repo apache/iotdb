@@ -41,7 +41,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinN
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.ONLY_SUPPORT_EQUI_JOIN;
 import static org.junit.Assert.fail;
 
 /** In this IT, table has more than one TAGs and Attributes. */
@@ -2751,7 +2750,8 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
 
   @Test
   public void exceptionTest() {
-    String errMsg = TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + ONLY_SUPPORT_EQUI_JOIN;
+    String errMsg =
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + "Unsupported Join creteria";
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.num>t1.num", errMsg, DATABASE_NAME);
 
@@ -2772,6 +2772,15 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device OR t0.time=t1.time",
         errMsg,
         DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 t0 full join table1 t1 on t0.time=4000", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 t0 left join table1 t1 on t0.time=4000", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 t0 right join table1 t1 on t0.time=4000", errMsg, DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 asof (tolerance 1s) left join table1 on table0.time<=table1.time",
