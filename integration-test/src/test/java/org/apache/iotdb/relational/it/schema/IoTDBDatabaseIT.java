@@ -298,10 +298,9 @@ public class IoTDBDatabaseIT {
 
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         assertTrue(resultSet.next());
-        if (resultSet.getString(1).equals("information_schema")) {
-          assertTrue(resultSet.next());
-        }
         assertEquals("````x", resultSet.getString(1));
+        assertTrue(resultSet.next());
+        assertEquals("information_schema", resultSet.getString(1));
         assertFalse(resultSet.next());
       }
 
@@ -379,25 +378,24 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables"),
           "TableName,TTL(ms),",
-          new HashSet<>(
-              Arrays.asList(
-                  "databases,INF,",
-                  "tables,INF,",
-                  "columns,INF,",
-                  "queries,INF,",
-                  "regions,INF,",
-                  "topics,INF,",
-                  "pipe_plugins,INF,",
-                  "pipes,INF,",
-                  "subscriptions,INF,",
-                  "views,INF,",
-                  "models,INF,",
-                  "functions,INF,",
-                  "configurations,INF,",
-                  "keywords,INF,",
-                  "nodes,INF,",
-                  "config_nodes,INF,",
-                  "data_nodes,INF,")));
+          Arrays.asList(
+              "columns,INF,",
+              "config_nodes,INF,",
+              "configurations,INF,",
+              "data_nodes,INF,",
+              "databases,INF,",
+              "functions,INF,",
+              "keywords,INF,",
+              "models,INF,",
+              "nodes,INF,",
+              "pipe_plugins,INF,",
+              "pipes,INF,",
+              "queries,INF,",
+              "regions,INF,",
+              "subscriptions,INF,",
+              "tables,INF,",
+              "topics,INF,",
+              "views,INF,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc databases"),
@@ -579,8 +577,8 @@ public class IoTDBDatabaseIT {
               Arrays.asList(
                   "_STLForecaster,",
                   "_NaiveForecaster,",
+                  "_sundial,",
                   "_HoltWinters,",
-                  "_TimerXL,",
                   "_ExponentialSmoothing,",
                   "_ARIMA,")));
 
@@ -702,7 +700,7 @@ public class IoTDBDatabaseIT {
           "model_id,",
           new HashSet<>(
               Arrays.asList(
-                  "_TimerXL,",
+                  "_sundial,",
                   "_STLForecaster,",
                   "_NaiveForecaster,",
                   "_HoltWinters,",
@@ -771,17 +769,19 @@ public class IoTDBDatabaseIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      // Avoid clearing table cache
+      statement.execute("select * from table1");
+
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
         assertTrue(resultSet.next());
-        if (resultSet.getString(1).equals("information_schema")) {
-          assertTrue(resultSet.next());
-        }
+        assertEquals("information_schema", resultSet.getString(1));
+        assertTrue(resultSet.next());
         assertEquals("test", resultSet.getString(1));
         assertFalse(resultSet.next());
       }
 
       // Test adjustMaxRegionGroupNum
-      statement.execute("use test");
       statement.execute(
           "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD)");
       statement.execute(
@@ -858,10 +858,9 @@ public class IoTDBDatabaseIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         Assert.assertTrue(resultSet.next());
-        if (resultSet.getString(1).equals("information_schema")) {
-          assertTrue(resultSet.next());
-        }
         assertEquals("db", resultSet.getString(1));
+        Assert.assertTrue(resultSet.next());
+        assertEquals("information_schema", resultSet.getString(1));
         Assert.assertFalse(resultSet.next());
       }
 

@@ -17,7 +17,7 @@
 #
 import psutil
 
-from ainode.thrift.ainode.ttypes import TAIHeartbeatResp, TAIHeartbeatReq
+from ainode.thrift.ainode.ttypes import TAIHeartbeatReq, TAIHeartbeatResp
 from ainode.thrift.common.ttypes import TLoadSample
 
 
@@ -27,15 +27,20 @@ class ClusterManager:
         if req.needSamplingLoad:
             cpu_percent = psutil.cpu_percent(interval=1)
             memory_percent = psutil.virtual_memory().percent
-            disk_usage = psutil.disk_usage('/')
+            disk_usage = psutil.disk_usage("/")
             disk_free = disk_usage.free
-            load_sample = TLoadSample(cpuUsageRate=cpu_percent,
-                                      memoryUsageRate=memory_percent,
-                                      diskUsageRate=disk_usage.percent,
-                                      freeDiskSpace=disk_free / 1024 / 1024 / 1024)
-            return TAIHeartbeatResp(heartbeatTimestamp=req.heartbeatTimestamp,
-                                    status="Running",
-                                    loadSample=load_sample)
+            load_sample = TLoadSample(
+                cpuUsageRate=cpu_percent,
+                memoryUsageRate=memory_percent,
+                diskUsageRate=disk_usage.percent,
+                freeDiskSpace=disk_free / 1024 / 1024 / 1024,
+            )
+            return TAIHeartbeatResp(
+                heartbeatTimestamp=req.heartbeatTimestamp,
+                status="Running",
+                loadSample=load_sample,
+            )
         else:
-            return TAIHeartbeatResp(heartbeatTimestamp=req.heartbeatTimestamp,
-                                    status="Running")
+            return TAIHeartbeatResp(
+                heartbeatTimestamp=req.heartbeatTimestamp, status="Running"
+            )

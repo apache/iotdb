@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.metric.overview;
 
-import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
+import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
@@ -106,7 +106,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       lastInsertNodeEventCountSmoothingTime = System.currentTimeMillis();
     }
     return PipeConfig.getInstance()
-        .getPipeRemainingTimeCommitRateAverageTime()
+        .getPipeRemainingInsertNodeCountAverage()
         .getMeterRate(insertNodeEventCountMeter);
   }
 
@@ -135,7 +135,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
    * @return The estimated remaining time
    */
   double getRemainingTime() {
-    final PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
+    final PipeRateAverage pipeRemainingTimeCommitRateAverageTime =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
     final double invocationValue = collectInvocationHistogram.getMean();

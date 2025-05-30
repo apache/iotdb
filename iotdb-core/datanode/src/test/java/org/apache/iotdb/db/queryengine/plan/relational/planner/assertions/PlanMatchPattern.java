@@ -507,14 +507,14 @@ public final class PlanMatchPattern {
       TopNRankingMatcher.Builder builder = new TopNRankingMatcher.Builder(source);
       handler.accept(builder);
       return builder.build();
-  }
-
-  public static PlanMatchPattern patternRecognition(Consumer<PatternRecognitionMatcher.Builder> handler, PlanMatchPattern source)
-  {
-      PatternRecognitionMatcher.Builder builder = new PatternRecognitionMatcher.Builder(source);
-      handler.accept(builder);
-      return builder.build();
   }*/
+
+  //  public static PlanMatchPattern patternRecognition(
+  //      Consumer<PatternRecognitionMatcher.Builder> handler, PlanMatchPattern source) {
+  //    PatternRecognitionMatcher.Builder builder = new PatternRecognitionMatcher.Builder(source);
+  //    handler.accept(builder);
+  //    return builder.build();
+  //  }
 
   public static PlanMatchPattern join(PlanMatchPattern left, PlanMatchPattern right) {
     return node(JoinNode.class, left, right);
