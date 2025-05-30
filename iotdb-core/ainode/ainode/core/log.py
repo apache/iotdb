@@ -23,7 +23,11 @@ import random
 import sys
 import threading
 
-from ainode.core.constant import STD_LEVEL, AINODE_LOG_FILE_NAMES, AINODE_LOG_FILE_LEVELS
+from ainode.core.constant import (
+    AINODE_LOG_FILE_LEVELS,
+    AINODE_LOG_FILE_NAMES,
+    STD_LEVEL,
+)
 from ainode.core.util.decorator import singleton
 
 
@@ -46,7 +50,9 @@ class LoggerFilter(logging.Filter):
         # if file_name is not in current working directory, find the first "iotdb" in the path
         for l in range(len(file_name)):
             i = len(file_name) - l - 1
-            if file_name[i:].startswith("iotdb/") or file_name[i:].startswith("iotdb\\"):
+            if file_name[i:].startswith("iotdb/") or file_name[i:].startswith(
+                "iotdb\\"
+            ):
                 file_name = file_name[i:]
                 break
 
@@ -57,7 +63,7 @@ class LoggerFilter(logging.Filter):
 
 @singleton
 class Logger:
-    """ Logger is a singleton, it will be initialized when AINodeDescriptor is inited for the first time.
+    """Logger is a singleton, it will be initialized when AINodeDescriptor is inited for the first time.
         You can just use Logger() to get it anywhere.
 
     Args:
@@ -72,9 +78,9 @@ class Logger:
 
     def __init__(self, log_dir=None):
 
-        self.logger_format = logging.Formatter(fmt='%(asctime)s %(levelname)s %('
-                                                   'message)s',
-                                               datefmt='%Y-%m-%d %H:%M:%S')
+        self.logger_format = logging.Formatter(
+            fmt="%(asctime)s %(levelname)s %(" "message)s", datefmt="%Y-%m-%d %H:%M:%S"
+        )
 
         self.logger = logging.getLogger(str(random.random()))
         self.logger.handlers.clear()
@@ -94,12 +100,14 @@ class Logger:
             for file_name in file_names:
                 log_path = log_dir + "/" + file_name
                 if not os.path.exists(log_path):
-                    f = open(log_path, mode='w', encoding='utf-8')
+                    f = open(log_path, mode="w", encoding="utf-8")
                     f.close()
                     os.chmod(log_path, 0o777)
             self.file_handlers = []
             for l in range(len(file_names)):
-                self.file_handlers.append(logging.FileHandler(log_dir + "/" + file_names[l], mode='a'))
+                self.file_handlers.append(
+                    logging.FileHandler(log_dir + "/" + file_names[l], mode="a")
+                )
                 self.file_handlers[l].setLevel(file_levels[l])
                 self.file_handlers[l].setFormatter(self.logger_format)
 
@@ -114,20 +122,20 @@ class Logger:
 
     def debug(self, *args) -> None:
         self._lock.acquire()
-        self.logger.debug(' '.join(map(str, args)))
+        self.logger.debug(" ".join(map(str, args)))
         self._lock.release()
 
     def info(self, *args) -> None:
         self._lock.acquire()
-        self.logger.info(' '.join(map(str, args)))
+        self.logger.info(" ".join(map(str, args)))
         self._lock.release()
 
     def warning(self, *args) -> None:
         self._lock.acquire()
-        self.logger.warning(' '.join(map(str, args)))
+        self.logger.warning(" ".join(map(str, args)))
         self._lock.release()
 
     def error(self, *args) -> None:
         self._lock.acquire()
-        self.logger.error(' '.join(map(str, args)))
+        self.logger.error(" ".join(map(str, args)))
         self._lock.release()

@@ -577,8 +577,8 @@ public class IoTDBDatabaseIT {
               Arrays.asList(
                   "_STLForecaster,",
                   "_NaiveForecaster,",
+                  "_sundial,",
                   "_HoltWinters,",
-                  "_TimerXL,",
                   "_ExponentialSmoothing,",
                   "_ARIMA,")));
 
@@ -700,7 +700,7 @@ public class IoTDBDatabaseIT {
           "model_id,",
           new HashSet<>(
               Arrays.asList(
-                  "_TimerXL,",
+                  "_sundial,",
                   "_STLForecaster,",
                   "_NaiveForecaster,",
                   "_HoltWinters,",
@@ -769,6 +769,10 @@ public class IoTDBDatabaseIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      // Avoid clearing table cache
+      statement.execute("select * from table1");
+
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
         assertTrue(resultSet.next());
         assertEquals("information_schema", resultSet.getString(1));
@@ -778,7 +782,6 @@ public class IoTDBDatabaseIT {
       }
 
       // Test adjustMaxRegionGroupNum
-      statement.execute("use test");
       statement.execute(
           "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD)");
       statement.execute(

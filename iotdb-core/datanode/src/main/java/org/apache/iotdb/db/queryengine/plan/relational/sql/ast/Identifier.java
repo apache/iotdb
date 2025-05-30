@@ -155,6 +155,12 @@ public class Identifier extends Expression {
   }
 
   @Override
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(this.value, buffer);
+    ReadWriteIOUtils.write(this.delimited, buffer);
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(this.value, stream);
     ReadWriteIOUtils.write(this.delimited, stream);

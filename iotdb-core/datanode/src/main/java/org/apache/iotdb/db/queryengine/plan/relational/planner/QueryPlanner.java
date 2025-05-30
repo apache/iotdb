@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MeasureDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
@@ -54,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QueryBody;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.VariableDefinition;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -608,6 +610,17 @@ public class QueryPlanner {
     }
 
     return allSets;
+  }
+
+  public static List<Expression> extractPatternRecognitionExpressions(
+      List<VariableDefinition> variableDefinitions, List<MeasureDefinition> measureDefinitions) {
+    ImmutableList.Builder<Expression> expressions = ImmutableList.builder();
+
+    variableDefinitions.stream().map(VariableDefinition::getExpression).forEach(expressions::add);
+
+    measureDefinitions.stream().map(MeasureDefinition::getExpression).forEach(expressions::add);
+
+    return expressions.build();
   }
 
   public static Expression coerceIfNecessary(

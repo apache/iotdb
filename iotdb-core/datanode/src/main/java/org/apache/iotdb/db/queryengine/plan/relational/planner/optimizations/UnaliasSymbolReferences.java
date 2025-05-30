@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
@@ -935,6 +936,19 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.isRequireRecordSnapshot());
 
       return new PlanAndMappings(rewrittenTableFunctionProcessor, mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitPatternRecognition(
+        PatternRecognitionNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      PatternRecognitionNode rewrittenPatternRecognition =
+          mapper.map(node, rewrittenSource.getRoot());
+
+      return new PlanAndMappings(rewrittenPatternRecognition, mapping);
     }
   }
 
