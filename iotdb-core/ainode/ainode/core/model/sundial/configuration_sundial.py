@@ -17,6 +17,7 @@
 #
 
 from typing import List
+
 from transformers import PretrainedConfig
 
 
@@ -41,7 +42,7 @@ class SundialConfig(PretrainedConfig):
         flow_loss_depth: int = 3,
         num_sampling_steps: int = 50,
         diffusion_batch_mul: int = 4,
-        ckpt_path: str = None,              # weight path
+        ckpt_path: str = None,  # weight path
         **kwargs,
     ):
         self.input_token_len = input_token_len

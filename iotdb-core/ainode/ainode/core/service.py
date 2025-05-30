@@ -17,7 +17,7 @@
 #
 import threading
 
-from thrift.protocol import TCompactProtocol, TBinaryProtocol
+from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.server import TServer
 from thrift.transport import TSocket, TTransport
 
@@ -34,15 +34,19 @@ class RPCService(threading.Thread):
         self.exit_code = 0
         super().__init__()
         processor = IAINodeRPCService.Processor(handler=AINodeRPCServiceHandler())
-        transport = TSocket.TServerSocket(host=AINodeDescriptor().get_config().get_ain_inference_rpc_address(),
-                                          port=AINodeDescriptor().get_config().get_ain_inference_rpc_port())
+        transport = TSocket.TServerSocket(
+            host=AINodeDescriptor().get_config().get_ain_inference_rpc_address(),
+            port=AINodeDescriptor().get_config().get_ain_inference_rpc_port(),
+        )
         transport_factory = TTransport.TFramedTransportFactory()
         if AINodeDescriptor().get_config().get_ain_thrift_compression_enabled():
             protocol_factory = TCompactProtocol.TCompactProtocolFactory()
         else:
             protocol_factory = TBinaryProtocol.TBinaryProtocolFactory()
 
-        self.__pool_server = TServer.TThreadPoolServer(processor, transport, transport_factory, protocol_factory)
+        self.__pool_server = TServer.TThreadPoolServer(
+            processor, transport, transport_factory, protocol_factory
+        )
 
     def run(self) -> None:
         logger.info("The RPC service thread begin to run...")

@@ -17,24 +17,25 @@
 #
 from typing import List
 
+
 class TimerxlConfig:
     model_type = "timerxl"
 
     def __init__(
         self,
-        input_token_len: int = 96,          # how many points as a token, don't change
-        hidden_size: int = 1024,            # model hidden size
-        intermediate_size: int = 2048,      # ffn middle size
-        output_token_lens: List[int] = [96],# how many points as a token, don't change
+        input_token_len: int = 96,  # how many points as a token, don't change
+        hidden_size: int = 1024,  # model hidden size
+        intermediate_size: int = 2048,  # ffn middle size
+        output_token_lens: List[int] = [96],  # how many points as a token, don't change
         num_hidden_layers: int = 8,
         num_attention_heads: int = 8,
-        hidden_act: str = "silu",           # activation function
-        use_cache: bool = True,             # kv cache
-        rope_theta: int = 10000,            # ROBE parameter
-        attention_dropout: float = 0.0,     
-        initializer_range: float = 0.02,    # be of no use, because we already have weights
+        hidden_act: str = "silu",  # activation function
+        use_cache: bool = True,  # kv cache
+        rope_theta: int = 10000,  # ROBE parameter
+        attention_dropout: float = 0.0,
+        initializer_range: float = 0.02,  # be of no use, because we already have weights
         max_position_embeddings: int = 10000,
-        ckpt_path: str = None,              # weight path
+        ckpt_path: str = None,  # weight path
         **kwargs,
     ):
         self.input_token_len = input_token_len
@@ -54,7 +55,7 @@ class TimerxlConfig:
         super().__init__(
             **kwargs,
         )
-        
+
     @classmethod
     def from_dict(cls, config_dict: dict) -> "TimerxlConfig":
         return cls(**config_dict)

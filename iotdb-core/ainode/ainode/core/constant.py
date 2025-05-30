@@ -38,18 +38,18 @@ AINODE_THRIFT_COMPRESSION_ENABLED = False
 AINODE_CLUSTER_NAME = "defaultCluster"
 AINODE_VERSION_INFO = "UNKNOWN"
 AINODE_BUILD_INFO = "UNKNOWN"
-AINODE_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))))
+AINODE_ROOT_DIR = os.path.dirname(
+    os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+)
 
 # AINode log
-AINODE_LOG_FILE_NAMES = ['log_ainode_all.log',
-                         'log_ainode_info.log',
-                         'log_ainode_warning.log',
-                         'log_ainode_error.log']
-AINODE_LOG_FILE_LEVELS = [
-    logging.DEBUG,
-    logging.INFO,
-    logging.WARNING,
-    logging.ERROR]
+AINODE_LOG_FILE_NAMES = [
+    "log_ainode_all.log",
+    "log_ainode_info.log",
+    "log_ainode_warning.log",
+    "log_ainode_error.log",
+]
+AINODE_LOG_FILE_LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR]
 
 TRIAL_ID_PREFIX = "__trial_"
 DEFAULT_TRIAL_ID = TRIAL_ID_PREFIX + "0"
@@ -148,7 +148,7 @@ class BuiltInModelType(Enum):
     GAUSSIAN_HMM = "_gaussianhmm"
     GMM_HMM = "_gmmhmm"
     STRAY = "_stray"
-    
+
     # timerxl
     TIMER_XL = "_timerxl"
 
@@ -168,25 +168,25 @@ class AttributeName(Enum):
     PREDICT_LENGTH = "predict_length"
 
     # NaiveForecaster
-    STRATEGY = 'strategy'
-    SP = 'sp'
+    STRATEGY = "strategy"
+    SP = "sp"
 
     # STLForecaster
     # SP = 'sp'
-    SEASONAL = 'seasonal'
-    SEASONAL_DEG = 'seasonal_deg'
-    TREND_DEG = 'trend_deg'
-    LOW_PASS_DEG = 'low_pass_deg'
-    SEASONAL_JUMP = 'seasonal_jump'
-    TREND_JUMP = 'trend_jump'
-    LOSS_PASS_JUMP = 'low_pass_jump'
+    SEASONAL = "seasonal"
+    SEASONAL_DEG = "seasonal_deg"
+    TREND_DEG = "trend_deg"
+    LOW_PASS_DEG = "low_pass_deg"
+    SEASONAL_JUMP = "seasonal_jump"
+    TREND_JUMP = "trend_jump"
+    LOSS_PASS_JUMP = "low_pass_jump"
 
     # ExponentialSmoothing
-    DAMPED_TREND = 'damped_trend'
-    INITIALIZATION_METHOD = 'initialization_method'
-    OPTIMIZED = 'optimized'
-    REMOVE_BIAS = 'remove_bias'
-    USE_BRUTE = 'use_brute'
+    DAMPED_TREND = "damped_trend"
+    INITIALIZATION_METHOD = "initialization_method"
+    OPTIMIZED = "optimized"
+    REMOVE_BIAS = "remove_bias"
+    USE_BRUTE = "use_brute"
 
     # Arima
     ORDER = "order"
@@ -248,7 +248,7 @@ class AttributeName(Enum):
     P = "p"
     SIZE_THRESHOLD = "size_threshold"
     OUTLIER_TAIL = "outlier_tail"
-    
+
     # timerxl
     INPUT_TOKEN_LEN = "input_token_len"
     HIDDEN_SIZE = "hidden_size"

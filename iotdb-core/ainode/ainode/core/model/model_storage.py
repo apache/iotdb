@@ -25,18 +25,20 @@ import torch._dynamo
 from pylru import lrucache
 
 from ainode.core.config import AINodeDescriptor
-from ainode.core.constant import (DEFAULT_MODEL_FILE_NAME,
-                                  DEFAULT_CONFIG_FILE_NAME)
+from ainode.core.constant import DEFAULT_CONFIG_FILE_NAME, DEFAULT_MODEL_FILE_NAME
 from ainode.core.exception import ModelNotExistError
 from ainode.core.log import Logger
 from ainode.core.model.model_factory import fetch_model_by_uri
 from ainode.core.util.lock import ModelLockPool
+
 logger = Logger()
 
 
 class ModelStorage(object):
     def __init__(self):
-        self._model_dir = os.path.join(os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir())
+        self._model_dir = os.path.join(
+            os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir()
+        )
         if not os.path.exists(self._model_dir):
             try:
                 os.makedirs(self._model_dir)
@@ -44,7 +46,9 @@ class ModelStorage(object):
                 logger.error(e)
                 raise e
         self._lock_pool = ModelLockPool()
-        self._model_cache = lrucache(AINodeDescriptor().get_config().get_ain_model_storage_cache_size())
+        self._model_cache = lrucache(
+            AINodeDescriptor().get_config().get_ain_model_storage_cache_size()
+        )
 
     def register_model(self, model_id: str, uri: str):
         """
@@ -56,7 +60,7 @@ class ModelStorage(object):
             configs: TConfigs
             attributes: str
         """
-        storage_path = os.path.join(self._model_dir, f'{model_id}')
+        storage_path = os.path.join(self._model_dir, f"{model_id}")
         # create storage dir if not exist
         if not os.path.exists(storage_path):
             os.makedirs(storage_path)
@@ -69,12 +73,15 @@ class ModelStorage(object):
         Returns:
             model: a ScriptModule contains model architecture and parameters, which can be deployed cross-platform
         """
-        ain_models_dir = os.path.join(self._model_dir, f'{model_id}')
+        ain_models_dir = os.path.join(self._model_dir, f"{model_id}")
         model_path = os.path.join(ain_models_dir, DEFAULT_MODEL_FILE_NAME)
         with self._lock_pool.get_lock(model_id).read_lock():
             if model_path in self._model_cache:
                 model = self._model_cache[model_path]
-                if isinstance(model, torch._dynamo.eval_frame.OptimizedModule) or not acceleration:
+                if (
+                    isinstance(model, torch._dynamo.eval_frame.OptimizedModule)
+                    or not acceleration
+                ):
                     return model
                 else:
                     model = torch.compile(model)
@@ -89,7 +96,9 @@ class ModelStorage(object):
                         try:
                             model = torch.compile(model)
                         except Exception as e:
-                            logger.warning(f"acceleration failed, fallback to normal mode: {str(e)}")
+                            logger.warning(
+                                f"acceleration failed, fallback to normal mode: {str(e)}"
+                            )
                     self._model_cache[model_path] = model
                     return model
 
@@ -100,7 +109,7 @@ class ModelStorage(object):
         Returns:
             None
         """
-        storage_path = os.path.join(self._model_dir, f'{model_id}')
+        storage_path = os.path.join(self._model_dir, f"{model_id}")
         with self._lock_pool.get_lock(model_id).write_lock():
             if os.path.exists(storage_path):
                 for file_name in os.listdir(storage_path):
