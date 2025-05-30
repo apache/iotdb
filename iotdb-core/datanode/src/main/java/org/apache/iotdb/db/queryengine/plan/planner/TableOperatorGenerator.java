@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.EnforceSingleR
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.PatternRecognitionOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
@@ -87,6 +88,15 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.functio
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.WindowAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.LogicalIndexNavigation;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternVariableRecognizer;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValueAccessor;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.Computation;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.PatternExpressionComputation;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.IrRowPatternToProgramRewriter;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Matcher;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Program;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
@@ -99,6 +109,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOpera
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortInnerJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortLeftJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DeviceIteratorScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
@@ -173,9 +184,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Measure;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
@@ -191,6 +204,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.LogicalIndexPointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.MatchNumberValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ScalarValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -257,16 +277,20 @@ import java.util.OptionalLong;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer.CLASSIFIER;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer.MATCH_NUMBER;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaContentSupplierFactory.getSupplier;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
@@ -285,6 +309,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_FIRST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowsPerMatch.ONE;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.SkipToPosition.LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
@@ -297,6 +323,8 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION
 import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.MIN;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.SUM;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
@@ -559,13 +587,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             boolean canPushDownLimitToAllSeriesScanOptions =
                 canPushDownLimit && pushDownConjunctsForEachMeasurement.isEmpty();
             // the left child of LeftOuterTimeJoinOperator is SeriesScanOperator
-            boolean pushDownLimitToLeftChildSeriesScanOperator =
+            boolean pushDownOffsetAndLimitToLeftChildSeriesScanOperator =
                 canPushDownLimit && pushDownConjunctsForEachMeasurement.size() == 1;
             // the left child of LeftOuterTimeJoinOperator is InnerTimeJoinOperator
             boolean pushDownOffsetAndLimitAfterInnerJoinOperator =
                 canPushDownLimit && pushDownConjunctsForEachMeasurement.size() > 1;
             removeUpperOffsetAndLimitOperator =
-                pushDownLimitToLeftChildSeriesScanOperator
+                pushDownOffsetAndLimitToLeftChildSeriesScanOperator
                     || pushDownOffsetAndLimitAfterInnerJoinOperator
                     || isSingleColumn;
             for (int i = 0; i < measurementSchemas.size(); i++) {
@@ -592,16 +620,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                         commonParameter.timeColumnName));
               }
               if (isSingleColumn
-                  || (pushDownLimitToLeftChildSeriesScanOperator
+                  || (pushDownOffsetAndLimitToLeftChildSeriesScanOperator
                       && pushDownPredicateForCurrentMeasurement != null)) {
                 builder.withPushDownLimit(node.getPushDownLimit());
                 builder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
               }
-              if (canPushDownLimitToAllSeriesScanOptions) {
+
+              // In the case of single column, both offset and limit are pushed down to the
+              // SeriesScanOperator
+              if (!isSingleColumn && canPushDownLimitToAllSeriesScanOptions) {
                 builder.withPushDownLimit(node.getPushDownLimit() + node.getPushDownOffset());
               }
               if (isSingleColumn
-                  || (pushDownLimitToLeftChildSeriesScanOperator
+                  || (pushDownOffsetAndLimitToLeftChildSeriesScanOperator
                       && pushDownPredicateForCurrentMeasurement != null)) {
                 builder.withPushDownOffset(
                     node.isPushLimitToEachDevice() ? 0 : node.getPushDownOffset());
@@ -835,7 +866,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<ColumnSchema> columnSchemas;
     int[] columnsIndexArray;
     Map<Symbol, ColumnSchema> columnSchemaMap;
-    Map<Symbol, Integer> idAndAttributeColumnsIndexMap;
+    Map<Symbol, Integer> tagAndAttributeColumnsIndexMap;
     List<String> measurementColumnNames;
     Map<String, Integer> measurementColumnsIndexMap;
     String timeColumnName;
@@ -853,7 +884,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       columnSchemas = new ArrayList<>(outputColumnCount);
       columnsIndexArray = new int[outputColumnCount];
       columnSchemaMap = node.getAssignments();
-      idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
+      tagAndAttributeColumnsIndexMap = node.getTagAndAttributeIndexMap();
       measurementColumnNames = new ArrayList<>();
       measurementColumnsIndexMap = new HashMap<>();
       measurementSchemas = new ArrayList<>();
@@ -870,7 +901,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           case ATTRIBUTE:
             columnsIndexArray[idx++] =
                 requireNonNull(
-                    idAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
+                    tagAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
             columnSchemas.add(schema);
             break;
           case FIELD:
@@ -1152,8 +1183,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitInformationSchemaTableScan(
-      InformationSchemaTableScanNode node, LocalExecutionPlanContext context) {
-    OperatorContext operatorContext =
+      final InformationSchemaTableScanNode node, final LocalExecutionPlanContext context) {
+    final OperatorContext operatorContext =
         context
             .getDriverContext()
             .addOperatorContext(
@@ -1161,7 +1192,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getPlanNodeId(),
                 InformationSchemaTableScanOperator.class.getSimpleName());
 
-    List<TSDataType> dataTypes =
+    final List<TSDataType> dataTypes =
         node.getOutputSymbols().stream()
             .map(symbol -> getTSDataType(context.getTypeProvider().getTableModelType(symbol)))
             .collect(Collectors.toList());
@@ -1169,7 +1200,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new InformationSchemaTableScanOperator(
         operatorContext,
         node.getPlanNodeId(),
-        getSupplier(node.getQualifiedObjectName().getObjectName(), dataTypes));
+        getSupplier(
+            node.getQualifiedObjectName().getObjectName(),
+            dataTypes,
+            context
+                .getDriverContext()
+                .getFragmentInstanceContext()
+                .getSessionInfo()
+                .getUserName()));
   }
 
   @Override
@@ -2021,6 +2059,28 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                     || asofOperator == ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL,
                 !asofJoinClause.isOperatorContainsGreater()),
             dataTypes);
+      } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.LEFT) {
+        OperatorContext operatorContext =
+            context
+                .getDriverContext()
+                .addOperatorContext(
+                    context.getNextOperatorId(),
+                    node.getPlanNodeId(),
+                    AsofMergeSortLeftJoinOperator.class.getSimpleName());
+        return new AsofMergeSortLeftJoinOperator(
+            operatorContext,
+            leftChild,
+            leftJoinKeyPositions,
+            leftOutputSymbolIdx,
+            rightChild,
+            rightJoinKeyPositions,
+            rightOutputSymbolIdx,
+            JoinKeyComparatorFactory.getAsofComparators(
+                joinKeyTypes,
+                asofOperator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL
+                    || asofOperator == ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL,
+                !asofJoinClause.isOperatorContainsGreater()),
+            dataTypes);
       } else {
         throw new IllegalStateException("Unsupported ASOF join type: " + node.getJoinType());
       }
@@ -2687,7 +2747,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             case TAG:
             case ATTRIBUTE:
               aggColumnsIndexArray[channel] =
-                  requireNonNull(node.getIdAndAttributeIndexMap().get(symbol), symbol + " is null");
+                  requireNonNull(
+                      node.getTagAndAttributeIndexMap().get(symbol), symbol + " is null");
               break;
             case FIELD:
               aggColumnsIndexArray[channel] = measurementColumnCount;
@@ -2758,9 +2819,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       for (int i = 0; i < node.getGroupingKeys().size(); i++) {
         Symbol groupingKey = node.getGroupingKeys().get(i);
 
-        if (node.getIdAndAttributeIndexMap().containsKey(groupingKey)) {
+        if (node.getTagAndAttributeIndexMap().containsKey(groupingKey)) {
           groupingKeySchemas.add(node.getAssignments().get(groupingKey));
-          groupingKeyIndex[i] = node.getIdAndAttributeIndexMap().get(groupingKey);
+          groupingKeyIndex[i] = node.getTagAndAttributeIndexMap().get(groupingKey);
         } else {
           if (node.getProjection() != null
               && !node.getProjection().getMap().isEmpty()
@@ -2962,6 +3023,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             hitCachedResults);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
+    parameter
+        .getOperatorContext()
+        .setOperatorType(LastQueryAggTableScanOperator.class.getSimpleName());
     return lastQueryOperator;
   }
 
@@ -3089,6 +3153,215 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           partitionChannels,
           node.isRequireRecordSnapshot());
     }
+  }
+
+  @Override
+  public Operator visitPatternRecognition(
+      PatternRecognitionNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                PatternRecognitionOperator.class.getSimpleName());
+
+    Operator child = node.getChild().accept(this, context);
+
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+
+    List<Symbol> partitionBySymbols = node.getPartitionBy();
+    List<Integer> partitionChannels =
+        ImmutableList.copyOf(getChannelsForSymbols(partitionBySymbols, childLayout));
+
+    List<Integer> sortChannels = ImmutableList.of();
+    List<SortOrder> sortOrder = ImmutableList.of();
+
+    if (node.getOrderingScheme().isPresent()) {
+      OrderingScheme orderingScheme = node.getOrderingScheme().get();
+      sortChannels = getChannelsForSymbols(orderingScheme.getOrderBy(), childLayout);
+      sortOrder = orderingScheme.getOrderingList();
+    }
+
+    // The output order for pattern recognition operation is defined as follows:
+    // - for ONE ROW PER MATCH: partition by symbols, then measures,
+    // - for ALL ROWS PER MATCH: partition by symbols, order by symbols, measures, remaining input
+    // symbols.
+
+    // all output column types of the input table
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+
+    // input channels to be passed directly to output, excluding MEASURES columns
+    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
+    // output dataTypes, used to construct the output TsBlock, including MEASURES columns
+    ImmutableList.Builder<TSDataType> outputDataTypes = ImmutableList.builder();
+
+    if (node.getRowsPerMatch() == ONE) {
+      // ONE ROW PER MATCH: partition columns, MEASURES
+
+      // add all partition columns
+      outputChannels.addAll(partitionChannels);
+      for (int i = 0; i < partitionBySymbols.size(); i++) {
+        Symbol symbol = partitionBySymbols.get(i);
+        // obtain the absolute index of the symbol in the base table through `childLayout`
+        outputDataTypes.add(inputDataTypes.get(childLayout.get(symbol)));
+      }
+    } else {
+      // ALL ROWS PER MATCH: all input columns, MEASURES
+
+      outputChannels.addAll(
+          IntStream.range(0, inputDataTypes.size()).boxed().collect(toImmutableList()));
+      outputDataTypes.addAll(inputDataTypes);
+    }
+
+    // add MEASURES columns
+    for (Map.Entry<Symbol, Measure> measure : node.getMeasures().entrySet()) {
+      outputDataTypes.add(getTSDataType(measure.getValue().getType()));
+    }
+
+    // prepare structures specific to PatternRecognitionNode
+    // 1. establish a two-way mapping of IrLabels to `int`
+    List<IrLabel> primaryLabels = ImmutableList.copyOf(node.getVariableDefinitions().keySet());
+    ImmutableList.Builder<String> labelNamesBuilder = ImmutableList.builder();
+    ImmutableMap.Builder<IrLabel, Integer> mappingBuilder = ImmutableMap.builder();
+    for (int i = 0; i < primaryLabels.size(); i++) {
+      IrLabel label = primaryLabels.get(i);
+      labelNamesBuilder.add(label.getName());
+      mappingBuilder.put(label, i);
+    }
+    Map<IrLabel, Integer> mapping = mappingBuilder.buildOrThrow();
+    List<String> labelNames = labelNamesBuilder.build();
+
+    // 2. rewrite pattern to program
+    Program program = IrRowPatternToProgramRewriter.rewrite(node.getPattern(), mapping);
+
+    // 3. DEFINE: prepare patternVariableComputation (PatternVariableRecognizer is to be
+    // instantiated once per partition)
+    ImmutableList.Builder<PatternVariableRecognizer.PatternVariableComputation> evaluationsBuilder =
+        ImmutableList.builder();
+
+    for (Map.Entry<IrLabel, ExpressionAndValuePointers> entry :
+        node.getVariableDefinitions().entrySet()) {
+      String variableName = entry.getKey().getName();
+      ExpressionAndValuePointers expressionAndValuePointers = entry.getValue();
+
+      // convert the `ValuePointer` in the `Assignment` to `PhysicalValueAccessor`
+      List<PhysicalValueAccessor> valueAccessors = new ArrayList<>();
+      for (ExpressionAndValuePointers.Assignment assignment :
+          expressionAndValuePointers.getAssignments()) {
+        ValuePointer pointer = assignment.getValuePointer();
+        if (pointer instanceof MatchNumberValuePointer) {
+          valueAccessors.add(
+              new PhysicalValuePointer(MATCH_NUMBER, INT64, LogicalIndexNavigation.NO_OP));
+        } else if (pointer instanceof ClassifierValuePointer) {
+          ClassifierValuePointer classifierPointer = (ClassifierValuePointer) pointer;
+          valueAccessors.add(
+              new PhysicalValuePointer(
+                  CLASSIFIER,
+                  STRING,
+                  classifierPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+        } else if (pointer instanceof ScalarValuePointer) {
+          ScalarValuePointer scalarPointer = (ScalarValuePointer) pointer;
+          valueAccessors.add(
+              new PhysicalValuePointer(
+                  getOnlyElement(
+                      getChannelsForSymbols(
+                          ImmutableList.of(scalarPointer.getInputSymbol()), childLayout)),
+                  context.getTypeProvider().getTableModelType(scalarPointer.getInputSymbol()),
+                  scalarPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+        }
+      }
+
+      // transform the symbolic expression tree in the logical planning stage into a parametric
+      // expression tree
+      Computation computation =
+          Computation.ComputationParser.parse(expressionAndValuePointers.getExpression());
+
+      // construct a `PatternVariableComputation` object, where valueAccessors is a parameter list
+      // and computation is a parametric expression tree, encapsulating the computation logic
+      PatternVariableRecognizer.PatternVariableComputation patternVariableComputation =
+          new PatternVariableRecognizer.PatternVariableComputation(
+              valueAccessors, computation, labelNames);
+
+      evaluationsBuilder.add(patternVariableComputation);
+    }
+
+    // 4. MEASURES: prepare measures computations
+    ImmutableList.Builder<PatternExpressionComputation> measureComputationsBuilder =
+        ImmutableList.builder();
+
+    for (Measure measure : node.getMeasures().values()) {
+      ExpressionAndValuePointers expressionAndValuePointers =
+          measure.getExpressionAndValuePointers();
+
+      // convert the `ValuePointer` in the `Assignment` to `PhysicalValueAccessor`
+      List<PhysicalValueAccessor> valueAccessors = new ArrayList<>();
+      for (ExpressionAndValuePointers.Assignment assignment :
+          expressionAndValuePointers.getAssignments()) {
+        ValuePointer pointer = assignment.getValuePointer();
+        if (pointer instanceof MatchNumberValuePointer) {
+          valueAccessors.add(
+              new PhysicalValuePointer(MATCH_NUMBER, INT64, LogicalIndexNavigation.NO_OP));
+        } else if (pointer instanceof ClassifierValuePointer) {
+          ClassifierValuePointer classifierPointer = (ClassifierValuePointer) pointer;
+          valueAccessors.add(
+              new PhysicalValuePointer(
+                  CLASSIFIER,
+                  STRING,
+                  classifierPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+        } else if (pointer instanceof ScalarValuePointer) {
+          ScalarValuePointer scalarPointer = (ScalarValuePointer) pointer;
+          valueAccessors.add(
+              new PhysicalValuePointer(
+                  getOnlyElement(
+                      getChannelsForSymbols(
+                          ImmutableList.of(scalarPointer.getInputSymbol()), childLayout)),
+                  context.getTypeProvider().getTableModelType(scalarPointer.getInputSymbol()),
+                  scalarPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+        }
+      }
+
+      // transform the symbolic expression tree in the logical planning stage into a parametric
+      // expression tree
+      Computation computation =
+          Computation.ComputationParser.parse(expressionAndValuePointers.getExpression());
+
+      // construct a `PatternExpressionComputation` object, where valueAccessors is a parameter
+      // list
+      // and computation is a parametric expression tree, encapsulating the computation logic
+      PatternExpressionComputation measureComputation =
+          new PatternExpressionComputation(valueAccessors, computation);
+
+      measureComputationsBuilder.add(measureComputation);
+    }
+
+    // 5. prepare SKIP TO navigation
+    Optional<LogicalIndexNavigation> skipToNavigation = Optional.empty();
+    if (!node.getSkipToLabels().isEmpty()) {
+      boolean last = node.getSkipToPosition().equals(LAST);
+      skipToNavigation =
+          Optional.of(
+              new LogicalIndexPointer(node.getSkipToLabels(), last, false, 0, 0)
+                  .toLogicalIndexNavigation(mapping));
+    }
+
+    return new PatternRecognitionOperator(
+        operatorContext,
+        child,
+        inputDataTypes,
+        outputDataTypes.build(),
+        outputChannels.build(),
+        partitionChannels,
+        sortChannels,
+        node.getRowsPerMatch(),
+        node.getSkipToPosition(),
+        skipToNavigation,
+        new Matcher(program),
+        evaluationsBuilder.build(),
+        measureComputationsBuilder.build(),
+        labelNames);
   }
 
   private boolean[] checkStatisticAndScanOrder(

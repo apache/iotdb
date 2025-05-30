@@ -17,15 +17,20 @@
 #
 import os
 import shutil
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urljoin, urlparse
 
 import yaml
 from requests import Session
 from requests.adapters import HTTPAdapter
 
-from ainode.core.constant import DEFAULT_RECONNECT_TIMES, DEFAULT_RECONNECT_TIMEOUT, DEFAULT_CHUNK_SIZE, \
-    DEFAULT_CONFIG_FILE_NAME, DEFAULT_MODEL_FILE_NAME
-from ainode.core.exception import InvalidUriError, BadConfigValueError
+from ainode.core.constant import (
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_CONFIG_FILE_NAME,
+    DEFAULT_MODEL_FILE_NAME,
+    DEFAULT_RECONNECT_TIMEOUT,
+    DEFAULT_RECONNECT_TIMES,
+)
+from ainode.core.exception import BadConfigValueError, InvalidUriError
 from ainode.core.log import Logger
 from ainode.core.util.serde import get_data_type_byte_from_str
 from ainode.thrift.ainode.ttypes import TConfigs
@@ -46,12 +51,12 @@ def _parse_uri(uri):
     """
 
     parse_result = urlparse(uri)
-    is_network_path = parse_result.scheme in ('http', 'https')
+    is_network_path = parse_result.scheme in ("http", "https")
     if is_network_path:
         return True, uri
 
     # handle file:// in uri
-    if parse_result.scheme == 'file':
+    if parse_result.scheme == "file":
         uri = uri[7:]
 
     # handle ~ in uri
@@ -77,7 +82,7 @@ def _download_file(url: str, storage_path: str) -> None:
     response = session.get(url, timeout=DEFAULT_RECONNECT_TIMEOUT, stream=True)
     response.raise_for_status()
 
-    with open(storage_path, 'wb') as file:
+    with open(storage_path, "wb") as file:
         for chunk in response.iter_content(chunk_size=DEFAULT_CHUNK_SIZE):
             if chunk:
                 file.write(chunk)
@@ -85,8 +90,9 @@ def _download_file(url: str, storage_path: str) -> None:
     logger.debug(f"download file from {url} to {storage_path} success")
 
 
-def _register_model_from_network(uri: str, model_storage_path: str,
-                                 config_storage_path: str) -> [TConfigs, str]:
+def _register_model_from_network(
+    uri: str, model_storage_path: str, config_storage_path: str
+) -> [TConfigs, str]:
     """
     Args:
         uri: network dir path of model to register, where model.pt and config.yaml are required,
@@ -106,7 +112,7 @@ def _register_model_from_network(uri: str, model_storage_path: str,
     _download_file(target_config_path, config_storage_path)
 
     # read and parse config dict from config.yaml
-    with open(config_storage_path, 'r', encoding='utf-8') as file:
+    with open(config_storage_path, "r", encoding="utf-8") as file:
         config_dict = yaml.safe_load(file)
     configs, attributes = _parse_inference_config(config_dict)
 
@@ -115,8 +121,9 @@ def _register_model_from_network(uri: str, model_storage_path: str,
     return configs, attributes
 
 
-def _register_model_from_local(uri: str, model_storage_path: str,
-                               config_storage_path: str) -> [TConfigs, str]:
+def _register_model_from_local(
+    uri: str, model_storage_path: str, config_storage_path: str
+) -> [TConfigs, str]:
     """
     Args:
         uri: local dir path of model to register, where model.pt and config.yaml are required,
@@ -141,17 +148,21 @@ def _register_model_from_local(uri: str, model_storage_path: str,
         # copy config.yaml
         logger.debug(f"copy file from {target_config_path} to {config_storage_path}")
         shutil.copy(target_config_path, config_storage_path)
-        logger.debug(f"copy file from {target_config_path} to {config_storage_path} success")
+        logger.debug(
+            f"copy file from {target_config_path} to {config_storage_path} success"
+        )
 
         # read and parse config dict from config.yaml
-        with open(config_storage_path, 'r', encoding='utf-8') as file:
+        with open(config_storage_path, "r", encoding="utf-8") as file:
             config_dict = yaml.safe_load(file)
         configs, attributes = _parse_inference_config(config_dict)
 
         # if config.yaml is correct, copy model file
         logger.debug(f"copy file from {target_model_path} to {model_storage_path}")
         shutil.copy(target_model_path, model_storage_path)
-        logger.debug(f"copy file from {target_model_path} to {model_storage_path} success")
+        logger.debug(
+            f"copy file from {target_model_path} to {model_storage_path} success"
+        )
 
     elif not exist_model_file or not exist_config_file:
         raise InvalidUriError(uri)
@@ -173,63 +184,108 @@ def _parse_inference_config(config_dict):
         configs: TConfigs
         attributes: str
     """
-    configs = config_dict['configs']
+    configs = config_dict["configs"]
 
     # check if input_shape and output_shape are two-dimensional array
-    if not (isinstance(configs['input_shape'], list) and len(configs['input_shape']) == 2):
-        raise BadConfigValueError('input_shape', configs['input_shape'],
-                                  'input_shape should be a two-dimensional array.')
-    if not (isinstance(configs['output_shape'], list) and len(configs['output_shape']) == 2):
-        raise BadConfigValueError('output_shape', configs['output_shape'],
-                                  'output_shape should be a two-dimensional array.')
+    if not (
+        isinstance(configs["input_shape"], list) and len(configs["input_shape"]) == 2
+    ):
+        raise BadConfigValueError(
+            "input_shape",
+            configs["input_shape"],
+            "input_shape should be a two-dimensional array.",
+        )
+    if not (
+        isinstance(configs["output_shape"], list) and len(configs["output_shape"]) == 2
+    ):
+        raise BadConfigValueError(
+            "output_shape",
+            configs["output_shape"],
+            "output_shape should be a two-dimensional array.",
+        )
 
     # check if input_shape and output_shape are positive integer
-    input_shape_is_positive_number = isinstance(configs['input_shape'][0], int) and isinstance(
-        configs['input_shape'][1], int) and configs['input_shape'][0] > 0 and configs['input_shape'][1] > 0
+    input_shape_is_positive_number = (
+        isinstance(configs["input_shape"][0], int)
+        and isinstance(configs["input_shape"][1], int)
+        and configs["input_shape"][0] > 0
+        and configs["input_shape"][1] > 0
+    )
     if not input_shape_is_positive_number:
-        raise BadConfigValueError('input_shape', configs['input_shape'],
-                                  'element in input_shape should be positive integer.')
+        raise BadConfigValueError(
+            "input_shape",
+            configs["input_shape"],
+            "element in input_shape should be positive integer.",
+        )
 
-    output_shape_is_positive_number = isinstance(configs['output_shape'][0], int) and isinstance(
-        configs['output_shape'][1], int) and configs['output_shape'][0] > 0 and configs['output_shape'][1] > 0
+    output_shape_is_positive_number = (
+        isinstance(configs["output_shape"][0], int)
+        and isinstance(configs["output_shape"][1], int)
+        and configs["output_shape"][0] > 0
+        and configs["output_shape"][1] > 0
+    )
     if not output_shape_is_positive_number:
-        raise BadConfigValueError('output_shape', configs['output_shape'],
-                                  'element in output_shape should be positive integer.')
+        raise BadConfigValueError(
+            "output_shape",
+            configs["output_shape"],
+            "element in output_shape should be positive integer.",
+        )
 
     # check if input_type and output_type are one-dimensional array with right length
-    if 'input_type' in configs and not (
-            isinstance(configs['input_type'], list) and len(configs['input_type']) == configs['input_shape'][1]):
-        raise BadConfigValueError('input_type', configs['input_type'],
-                                  'input_type should be a one-dimensional array and length of it should be equal to input_shape[1].')
+    if "input_type" in configs and not (
+        isinstance(configs["input_type"], list)
+        and len(configs["input_type"]) == configs["input_shape"][1]
+    ):
+        raise BadConfigValueError(
+            "input_type",
+            configs["input_type"],
+            "input_type should be a one-dimensional array and length of it should be equal to input_shape[1].",
+        )
 
-    if 'output_type' in configs and not (
-            isinstance(configs['output_type'], list) and len(configs['output_type']) == configs['output_shape'][1]):
-        raise BadConfigValueError('output_type', configs['output_type'],
-                                  'output_type should be a one-dimensional array and length of it should be equal to output_shape[1].')
+    if "output_type" in configs and not (
+        isinstance(configs["output_type"], list)
+        and len(configs["output_type"]) == configs["output_shape"][1]
+    ):
+        raise BadConfigValueError(
+            "output_type",
+            configs["output_type"],
+            "output_type should be a one-dimensional array and length of it should be equal to output_shape[1].",
+        )
 
     # parse input_type and output_type to byte
-    if 'input_type' in configs:
-        input_type = [get_data_type_byte_from_str(x) for x in configs['input_type']]
+    if "input_type" in configs:
+        input_type = [get_data_type_byte_from_str(x) for x in configs["input_type"]]
     else:
-        input_type = [get_data_type_byte_from_str('float32')] * configs['input_shape'][1]
+        input_type = [get_data_type_byte_from_str("float32")] * configs["input_shape"][
+            1
+        ]
 
-    if 'output_type' in configs:
-        output_type = [get_data_type_byte_from_str(x) for x in configs['output_type']]
+    if "output_type" in configs:
+        output_type = [get_data_type_byte_from_str(x) for x in configs["output_type"]]
     else:
-        output_type = [get_data_type_byte_from_str('float32')] * configs['output_shape'][1]
+        output_type = [get_data_type_byte_from_str("float32")] * configs[
+            "output_shape"
+        ][1]
 
     # parse attributes
     attributes = ""
-    if 'attributes' in config_dict:
-        attributes = str(config_dict['attributes'])
+    if "attributes" in config_dict:
+        attributes = str(config_dict["attributes"])
 
-    return TConfigs(configs['input_shape'], configs['output_shape'], input_type, output_type), attributes
+    return (
+        TConfigs(
+            configs["input_shape"], configs["output_shape"], input_type, output_type
+        ),
+        attributes,
+    )
 
 
 def fetch_model_by_uri(uri: str, model_storage_path: str, config_storage_path: str):
     is_network_path, uri = _parse_uri(uri)
 
     if is_network_path:
-        return _register_model_from_network(uri, model_storage_path, config_storage_path)
+        return _register_model_from_network(
+            uri, model_storage_path, config_storage_path
+        )
     else:
         return _register_model_from_local(uri, model_storage_path, config_storage_path)

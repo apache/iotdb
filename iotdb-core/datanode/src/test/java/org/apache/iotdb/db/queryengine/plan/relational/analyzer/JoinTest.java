@@ -71,8 +71,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationTableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.join;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
@@ -596,6 +598,22 @@ public class JoinTest {
                     builder.left(sort(tableScan1)).right(sort(tableScan2)).ignoreEquiCriteria())));
   }
 
+  @Test
+  public void aggregationTableScanWithJoinTest() {
+    PlanTester planTester = new PlanTester();
+    sql =
+        "select * from ("
+            + "select date_bin(1ms,time) as date,count(*)from table1 where tag1='Beijing' and tag2='A1' group by date_bin(1ms,time)) t0 "
+            + "join ("
+            + "select date_bin(1ms,time) as date,count(*)from table1 where tag1='Beijing' and tag2='A1' group by date_bin(1ms,time)) t1 "
+            + "on t0.date = t1.date";
+    logicalQueryPlan = planTester.createPlan(sql);
+    // the sort node has been eliminated
+    assertPlan(planTester.getFragmentPlan(1), aggregationTableScan());
+    // the sort node has been eliminated
+    assertPlan(planTester.getFragmentPlan(2), aggregationTableScan());
+  }
+
   @Ignore
   @Test
   public void otherInnerJoinTests() {
@@ -618,5 +636,127 @@ public class JoinTest {
             + "FROM (SELECT * FROM table1 t1 WHERE tag1='beijing' AND tag2='A1' AND s1>1 LIMIT 111) t1 JOIN (SELECT * FROM table1 WHERE tag1='shenzhen' AND s2>1 LIMIT 222) t2 "
             + "ON t1.time = t2.time ORDER BY t1.tag1 OFFSET 3 LIMIT 6",
         false);
+  }
+
+  @Test
+  public void testJoinSortProperties() {
+    // FULL JOIN
+    PlanTester planTester = new PlanTester();
+    sql =
+        "select * from table1 t1 "
+            + "full join table1 t2 using (time, s1)"
+            + "full join table1 t3 using (time, s1)";
+    logicalQueryPlan = planTester.createPlan(sql);
+    assertPlan(
+        logicalQueryPlan.getRootNode(),
+        output(
+            project(
+                join(
+                    sort(
+                        project(
+                            join(
+                                sort(tableScan("testdb.table1")),
+                                sort(tableScan("testdb.table1"))))),
+                    sort(tableScan("testdb.table1"))))));
+
+    assertPlan(planTester.getFragmentPlan(0), output(project(join(exchange(), exchange()))));
+
+    // the sort node above JoinNode has been eliminated
+    assertPlan(planTester.getFragmentPlan(1), project(join(exchange(), exchange())));
+
+    assertPlan(planTester.getFragmentPlan(2), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(4), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(5), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(6), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(7), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(8), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(9), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(10), mergeSort(exchange(), exchange(), exchange()));
+
+    // LEFT
+    sql =
+        "select * from table1 t1 "
+            + "left join table1 t2 using (time, s1)"
+            + "left join table1 t3 using (time, s1)";
+    assertLeftOrInner(planTester);
+
+    // INNER JOIN
+    sql =
+        "select * from table1 t1 "
+            + "inner join table1 t2 using (time, s1)"
+            + "inner join table1 t3 using (time, s1)";
+    assertLeftOrInner(planTester);
+
+    // RIGHT JOIN
+    sql =
+        "select * from table1 t1 "
+            + "right join table1 t2 using (time, s1)"
+            + "right join table1 t3 using (time, s1)";
+    logicalQueryPlan = planTester.createPlan(sql);
+    assertPlan(
+        logicalQueryPlan.getRootNode(),
+        output(
+            join(
+                sort(tableScan("testdb.table1")),
+                sort(join(sort(tableScan("testdb.table1")), sort(tableScan("testdb.table1")))))));
+
+    assertPlan(planTester.getFragmentPlan(0), output(join(exchange(), exchange())));
+
+    assertPlan(planTester.getFragmentPlan(1), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(4), sort(tableScan("testdb.table1")));
+
+    // the sort node above JoinNode has been eliminated
+    assertPlan(planTester.getFragmentPlan(5), join(exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(6), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(10), mergeSort(exchange(), exchange(), exchange()));
+  }
+
+  private void assertLeftOrInner(PlanTester planTester) {
+    logicalQueryPlan = planTester.createPlan(sql);
+    assertPlan(
+        logicalQueryPlan.getRootNode(),
+        output(
+            join(
+                sort(join(sort(tableScan("testdb.table1")), sort(tableScan("testdb.table1")))),
+                sort(tableScan("testdb.table1")))));
+
+    assertPlan(planTester.getFragmentPlan(0), output(join(exchange(), exchange())));
+
+    // the sort node above JoinNode has been eliminated
+    assertPlan(planTester.getFragmentPlan(1), join(exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(2), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(4), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(5), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(6), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(7), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(8), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(9), sort(tableScan("testdb.table1")));
+
+    assertPlan(planTester.getFragmentPlan(10), mergeSort(exchange(), exchange(), exchange()));
   }
 }

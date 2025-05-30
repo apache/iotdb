@@ -105,6 +105,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTa
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StartPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StopPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropSubscriptionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
@@ -125,9 +126,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
@@ -137,6 +138,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -354,7 +356,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.WRITE);
     accessControl.checkCanDropDatabase(
         context.getSession().getUserName(), node.getDbName().getValue());
-    return new DropDBTask(node);
+    return new DropDBTask(node, clientSession);
   }
 
   @Override
@@ -362,15 +364,17 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.READ);
     return new ShowDBTask(
         node,
-        databaseName -> {
-          try {
-            accessControl.checkCanShowOrUseDatabase(
-                context.getSession().getUserName(), databaseName);
-            return true;
-          } catch (final AccessDeniedException e) {
-            return false;
-          }
-        });
+        databaseName -> canShowDB(accessControl, context.getSession().getUserName(), databaseName));
+  }
+
+  public static boolean canShowDB(
+      final AccessControl accessControl, final String userName, final String databaseName) {
+    try {
+      accessControl.checkCanShowOrUseDatabase(userName, databaseName);
+      return true;
+    } catch (final AccessDeniedException e) {
+      return false;
+    }
   }
 
   @Override
@@ -466,8 +470,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCreateTableView(
-      final CreateTableView node, final MPPQueryContext context) {
+  protected IConfigTask visitCreateView(final CreateView node, final MPPQueryContext context) {
     final Pair<String, TsTable> databaseTablePair = parseTable4CreateTableOrView(node, context);
     final TsTable table = databaseTablePair.getRight();
     accessControl.checkCanCreateViewFromTreePath(
@@ -834,19 +837,26 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
     String finalDatabase = database;
     final Predicate<String> checkCanShowTable =
-        tableName -> {
-          try {
-            accessControl.checkCanShowOrDescTable(
-                context.getSession().getUserName(),
-                new QualifiedObjectName(finalDatabase, tableName));
-            return true;
-          } catch (final AccessDeniedException e) {
-            return false;
-          }
-        };
+        tableName ->
+            canShowTable(
+                accessControl, context.getSession().getUserName(), finalDatabase, tableName);
     return node.isDetails()
         ? new ShowTablesDetailsTask(database, checkCanShowTable)
         : new ShowTablesTask(database, checkCanShowTable);
+  }
+
+  public static boolean canShowTable(
+      final AccessControl accessControl,
+      final String userName,
+      final String databaseName,
+      final String tableName) {
+    try {
+      accessControl.checkCanShowOrDescTable(
+          userName, new QualifiedObjectName(databaseName, tableName));
+      return true;
+    } catch (final AccessDeniedException e) {
+      return false;
+    }
   }
 
   @Override
@@ -1169,7 +1179,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitShowPipePlugins(ShowPipePlugins node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ShowPipePluginsTask(node);
   }
 
@@ -1204,6 +1213,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.READ);
     accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ShowSubscriptionsTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitDropSubscription(DropSubscription node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    return new DropSubscriptionTask(node);
   }
 
   @Override

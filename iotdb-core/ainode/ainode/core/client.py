@@ -17,8 +17,8 @@
 #
 import time
 
+from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.Thrift import TException
-from thrift.protocol import TCompactProtocol, TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 
 from ainode.core.config import AINodeDescriptor
@@ -26,11 +26,20 @@ from ainode.core.constant import TSStatusCode
 from ainode.core.log import Logger
 from ainode.core.util.decorator import singleton
 from ainode.core.util.status import verify_success
-from ainode.thrift.common.ttypes import TEndPoint, TSStatus, TAINodeLocation, TAINodeConfiguration
+from ainode.thrift.common.ttypes import (
+    TAINodeConfiguration,
+    TAINodeLocation,
+    TEndPoint,
+    TSStatus,
+)
 from ainode.thrift.confignode import IConfigNodeRPCService
-from ainode.thrift.confignode.ttypes import (TAINodeRemoveReq, TNodeVersionInfo,
-                                             TAINodeRegisterReq, TAINodeRestartReq)
-from ainode.thrift.confignode.ttypes import TUpdateModelInfoReq
+from ainode.thrift.confignode.ttypes import (
+    TAINodeRegisterReq,
+    TAINodeRemoveReq,
+    TAINodeRestartReq,
+    TNodeVersionInfo,
+    TUpdateModelInfoReq,
+)
 
 logger = Logger()
 
@@ -38,7 +47,9 @@ logger = Logger()
 @singleton
 class ClientManager(object):
     def __init__(self):
-        self._config_node_endpoint = AINodeDescriptor().get_config().get_ain_target_config_node_list()
+        self._config_node_endpoint = (
+            AINodeDescriptor().get_config().get_ain_target_config_node_list()
+        )
 
     def borrow_config_node_client(self):
         return ConfigNodeClient(config_leader=self._config_node_endpoint)
@@ -52,7 +63,9 @@ class ConfigNodeClient(object):
         self._transport = None
         self._client = None
 
-        self._MSG_RECONNECTION_FAIL = "Fail to connect to any config node. Please check status of ConfigNodes"
+        self._MSG_RECONNECTION_FAIL = (
+            "Fail to connect to any config node. Please check status of ConfigNodes"
+        )
         self._RETRY_NUM = 5
         self._RETRY_INTERVAL_MS = 1
 
@@ -64,7 +77,10 @@ class ConfigNodeClient(object):
                 self._connect(self._config_leader)
                 return
             except TException:
-                logger.warning("The current node {} may have been down, try next node", self._config_leader)
+                logger.warning(
+                    "The current node {} may have been down, try next node",
+                    self._config_leader,
+                )
                 self._config_leader = None
 
         if self._transport is not None:
@@ -79,7 +95,10 @@ class ConfigNodeClient(object):
                 self._connect(try_endpoint)
                 return
             except TException:
-                logger.warning("The current node {} may have been down, try next node", try_endpoint)
+                logger.warning(
+                    "The current node {} may have been down, try next node",
+                    try_endpoint,
+                )
 
             try_host_num = try_host_num + 1
 
@@ -126,65 +145,83 @@ class ConfigNodeClient(object):
             return True
         return False
 
-    def node_register(self, cluster_name: str, configuration: TAINodeConfiguration,
-                      version_info: TNodeVersionInfo) -> int:
+    def node_register(
+        self,
+        cluster_name: str,
+        configuration: TAINodeConfiguration,
+        version_info: TNodeVersionInfo,
+    ) -> int:
         req = TAINodeRegisterReq(
             clusterName=cluster_name,
             aiNodeConfiguration=configuration,
-            versionInfo=version_info
+            versionInfo=version_info,
         )
 
         for _ in range(0, self._RETRY_NUM):
             try:
                 resp = self._client.registerAINode(req)
                 if not self._update_config_node_leader(resp.status):
-                    verify_success(resp.status, "An error occurs when calling node_register()")
+                    verify_success(
+                        resp.status, "An error occurs when calling node_register()"
+                    )
                     self._config_nodes = resp.configNodeList
                     return resp.aiNodeId
             except TTransport.TException:
-                logger.warning("Failed to connect to ConfigNode {} from AINode when executing node_register()",
-                               self._config_leader)
+                logger.warning(
+                    "Failed to connect to ConfigNode {} from AINode when executing node_register()",
+                    self._config_leader,
+                )
                 self._config_leader = None
             self._wait_and_reconnect()
 
         raise TException(self._MSG_RECONNECTION_FAIL)
 
-    def node_restart(self, cluster_name: str, configuration: TAINodeConfiguration,
-                     version_info: TNodeVersionInfo) -> None:
+    def node_restart(
+        self,
+        cluster_name: str,
+        configuration: TAINodeConfiguration,
+        version_info: TNodeVersionInfo,
+    ) -> None:
         req = TAINodeRestartReq(
             clusterName=cluster_name,
             aiNodeConfiguration=configuration,
-            versionInfo=version_info
+            versionInfo=version_info,
         )
 
         for _ in range(0, self._RETRY_NUM):
             try:
                 resp = self._client.restartAINode(req)
                 if not self._update_config_node_leader(resp.status):
-                    verify_success(resp.status, "An error occurs when calling node_restart()")
+                    verify_success(
+                        resp.status, "An error occurs when calling node_restart()"
+                    )
                     self._config_nodes = resp.configNodeList
                     return resp.status
             except TTransport.TException:
-                logger.warning("Failed to connect to ConfigNode {} from AINode when executing node_restart()",
-                               self._config_leader)
+                logger.warning(
+                    "Failed to connect to ConfigNode {} from AINode when executing node_restart()",
+                    self._config_leader,
+                )
                 self._config_leader = None
             self._wait_and_reconnect()
 
         raise TException(self._MSG_RECONNECTION_FAIL)
 
     def node_remove(self, location: TAINodeLocation):
-        req = TAINodeRemoveReq(
-            aiNodeLocation=location
-        )
+        req = TAINodeRemoveReq(aiNodeLocation=location)
         for _ in range(0, self._RETRY_NUM):
             try:
                 status = self._client.removeAINode(req)
                 if not self._update_config_node_leader(status):
-                    verify_success(status, "An error occurs when calling node_restart()")
+                    verify_success(
+                        status, "An error occurs when calling node_restart()"
+                    )
                     return status
             except TTransport.TException:
-                logger.warning("Failed to connect to ConfigNode {} from AINode when executing node_remove()",
-                               self._config_leader)
+                logger.warning(
+                    "Failed to connect to ConfigNode {} from AINode when executing node_remove()",
+                    self._config_leader,
+                )
                 self._config_leader = None
             self._wait_and_reconnect()
         raise TException(self._MSG_RECONNECTION_FAIL)
@@ -194,35 +231,50 @@ class ConfigNodeClient(object):
             try:
                 resp = self._client.getAINodeConfiguration(node_id)
                 if not self._update_config_node_leader(resp.status):
-                    verify_success(resp.status, "An error occurs when calling get_ainode_configuration()")
+                    verify_success(
+                        resp.status,
+                        "An error occurs when calling get_ainode_configuration()",
+                    )
                     return resp.aiNodeConfigurationMap
             except TTransport.TException:
-                logger.warning("Failed to connect to ConfigNode {} from AINode when executing "
-                               "get_ainode_configuration()",
-                               self._config_leader)
+                logger.warning(
+                    "Failed to connect to ConfigNode {} from AINode when executing "
+                    "get_ainode_configuration()",
+                    self._config_leader,
+                )
                 self._config_leader = None
             self._wait_and_reconnect()
         raise TException(self._MSG_RECONNECTION_FAIL)
 
-    def update_model_info(self, model_id:str, model_status:int, attribute:str = "", ainode_id=None, input_length=0, output_length=0) -> None:
+    def update_model_info(
+        self,
+        model_id: str,
+        model_status: int,
+        attribute: str = "",
+        ainode_id=None,
+        input_length=0,
+        output_length=0,
+    ) -> None:
         if ainode_id is None:
             ainode_id = []
         for _ in range(0, self._RETRY_NUM):
             try:
-                req = TUpdateModelInfoReq(
-                    model_id, model_status, attribute
-                )
+                req = TUpdateModelInfoReq(model_id, model_status, attribute)
                 if ainode_id is not None:
                     req.aiNodeIds = ainode_id
                 req.inputLength = input_length
                 req.outputLength = output_length
                 status = self._client.updateModelInfo(req)
                 if not self._update_config_node_leader(status):
-                    verify_success(status, "An error occurs when calling update model info")
+                    verify_success(
+                        status, "An error occurs when calling update model info"
+                    )
                     return status
             except TTransport.TException:
-                logger.warning("Failed to connect to ConfigNode {} from AINode when executing update model info",
-                               self._config_leader)
+                logger.warning(
+                    "Failed to connect to ConfigNode {} from AINode when executing update model info",
+                    self._config_leader,
+                )
                 self._config_leader = None
             self._wait_and_reconnect()
         raise TException(self._MSG_RECONNECTION_FAIL)

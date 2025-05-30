@@ -148,7 +148,7 @@ public class SubscriptionTableTsFile extends AbstractSubscriptionTsFile {
             @Override
             public void run() {
               final String consumerGroupId = consumer.getConsumerGroupId();
-              while (!consumer.allSnapshotTopicMessagesHaveBeenConsumed()) {
+              while (!consumer.allTopicMessagesHaveBeenConsumed()) {
                 try {
                   for (final SubscriptionMessage message :
                       consumer.poll(Constants.POLL_MESSAGE_TIMEOUT)) {

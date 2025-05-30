@@ -20,20 +20,20 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.view;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
 import java.util.List;
 
 public class CreateTableViewStatement extends Statement {
-  private final CreateTableView createTableView;
+  private final CreateView createView;
 
-  public CreateTableViewStatement(final CreateTableView createTableView) {
-    this.createTableView = createTableView;
+  public CreateTableViewStatement(final CreateView createView) {
+    this.createView = createView;
   }
 
-  public CreateTableView getCreateTableView() {
-    return createTableView;
+  public CreateView getCreateTableView() {
+    return createView;
   }
 
   @Override

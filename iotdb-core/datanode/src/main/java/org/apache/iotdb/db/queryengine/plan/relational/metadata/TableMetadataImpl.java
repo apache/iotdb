@@ -34,7 +34,9 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.ModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
@@ -75,6 +77,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
@@ -93,6 +96,8 @@ public class TableMetadataImpl implements Metadata {
   private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
 
   private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
+
+  private final IModelFetcher modelFetcher = ModelFetcher.getInstance();
 
   @Override
   public boolean tableExists(final QualifiedObjectName name) {
@@ -554,6 +559,8 @@ public class TableMetadataImpl implements Metadata {
                 + " must have at least two arguments, and first argument pattern must be TEXT or STRING type.");
       }
       return STRING;
+    } else if (FAIL_FUNCTION_NAME.equalsIgnoreCase(functionName)) {
+      return UNKNOWN;
     } else if (TableBuiltinScalarFunction.GREATEST.getFunctionName().equalsIgnoreCase(functionName)
         || TableBuiltinScalarFunction.LEAST.getFunctionName().equalsIgnoreCase(functionName)) {
       if (argumentTypes.size() < 2 || !areAllTypesSameAndComparable(argumentTypes)) {
@@ -654,7 +661,14 @@ public class TableMetadataImpl implements Metadata {
                   "Second argument of Aggregate functions [%s] should be numberic type and do not use expression",
                   functionName));
         }
-
+        break;
+      case SqlConstant.APPROX_MOST_FREQUENT:
+        if (argumentTypes.size() != 3) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should only have three arguments", functionName));
+        }
+        break;
       case SqlConstant.COUNT:
         break;
       default:
@@ -688,6 +702,8 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
         return DOUBLE;
+      case SqlConstant.APPROX_MOST_FREQUENT:
+        return STRING;
       default:
         // ignore
     }
@@ -835,11 +851,11 @@ public class TableMetadataImpl implements Metadata {
       TableSchema tableSchema,
       MPPQueryContext context,
       boolean allowCreateTable,
-      boolean isStrictIdColumn)
+      boolean isStrictTagColumn)
       throws LoadAnalyzeTableColumnDisorderException {
     return TableHeaderSchemaValidator.getInstance()
         .validateTableHeaderSchema(
-            database, tableSchema, context, allowCreateTable, isStrictIdColumn);
+            database, tableSchema, context, allowCreateTable, isStrictTagColumn);
   }
 
   @Override
@@ -894,6 +910,11 @@ public class TableMetadataImpl implements Metadata {
     } else {
       throw new SemanticException("Unknown function: " + functionName);
     }
+  }
+
+  @Override
+  public IModelFetcher getModelFetcher() {
+    return modelFetcher;
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

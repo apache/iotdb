@@ -2569,7 +2569,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
       columnNameIndex.put(fields[i].getName(), i);
     }
     while (rs.next()) {
-      String database = rs.getString("database");
+      String database = rs.getString(0);
       List<Object> valueInRow = new ArrayList<>();
       valueInRow.add(database);
       valueInRow.add("");

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileBatchEvents;
@@ -56,12 +58,22 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   @Override
   public synchronized void ack() {
     batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
+    enrichedEvents.stream()
+        // only decrease reference count for tsfile event, since we already decrease reference count
+        // for tablet event in batch
+        .filter(event -> event instanceof PipeTsFileInsertionEvent)
+        .forEach(event -> event.decreaseReferenceCount(this.getClass().getName(), true));
   }
 
   @Override
   public synchronized void cleanUp(final boolean force) {
     // close batch, it includes clearing the reference count of events
     batch.close();
+
+    // clear the reference count of events
+    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+      enrichedEvent.clearReferenceCount(this.getClass().getName());
+    }
     enrichedEvents.clear();
   }
 
@@ -82,10 +94,29 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   protected void onTsFileInsertionEvent(final TsFileInsertionEvent event) {
-    LOGGER.warn(
-        "SubscriptionPipeTsFileEventBatch {} ignore TsFileInsertionEvent {} when batching.",
-        this,
-        event);
+    // TODO: parse tsfile event on the fly like SubscriptionPipeTabletEventBatch
+    try {
+      for (final TabletInsertionEvent parsedEvent : event.toTabletInsertionEvents()) {
+        if (!((PipeRawTabletInsertionEvent) parsedEvent)
+            .increaseReferenceCount(this.getClass().getName())) {
+          LOGGER.warn(
+              "SubscriptionPipeTsFileEventBatch: Failed to increase the reference count of event {}, skipping it.",
+              ((PipeRawTabletInsertionEvent) parsedEvent).coreReportMessage());
+        } else {
+          try {
+            batch.onEvent(parsedEvent);
+          } catch (final Exception ignored) {
+            // no exceptions will be thrown
+          }
+        }
+      }
+    } finally {
+      try {
+        event.close();
+      } catch (final Exception ignored) {
+        // no exceptions will be thrown
+      }
+    }
   }
 
   @Override

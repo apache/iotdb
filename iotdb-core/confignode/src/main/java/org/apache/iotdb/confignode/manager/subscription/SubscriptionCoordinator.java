@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
@@ -42,10 +43,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionCoordinator {
@@ -241,6 +244,30 @@ public class SubscriptionCoordinator {
           status);
     }
     return status;
+  }
+
+  public TSStatus dropSubscription(TDropSubscriptionReq req) {
+    final String subscriptionId = req.getSubsciptionId();
+    final boolean isSetIfExistsCondition =
+        req.isSetIfExistsCondition() && req.isIfExistsCondition();
+    final Optional<Pair<String, String>> topicNameWithConsumerGroupName =
+        subscriptionInfo.parseSubscriptionId(subscriptionId, req.isTableModel);
+    if (!topicNameWithConsumerGroupName.isPresent()) {
+      return isSetIfExistsCondition
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+          : RpcUtils.getStatus(
+              TSStatusCode.TOPIC_NOT_EXIST_ERROR,
+              String.format(
+                  "Failed to drop subscription %s. Failures: %s does not exist.",
+                  subscriptionId, subscriptionId));
+    }
+    return configManager
+        .getProcedureManager()
+        .dropSubscription(
+            new TUnsubscribeReq()
+                .setConsumerId(null)
+                .setConsumerGroupId(topicNameWithConsumerGroupName.get().right)
+                .setTopicNames(Collections.singleton(topicNameWithConsumerGroupName.get().left)));
   }
 
   public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) {

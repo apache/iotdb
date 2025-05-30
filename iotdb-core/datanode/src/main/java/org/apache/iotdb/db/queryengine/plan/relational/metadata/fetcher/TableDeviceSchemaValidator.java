@@ -46,7 +46,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertIdValuesToDeviceID;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertTagValuesToDeviceID;
 
 public class TableDeviceSchemaValidator {
   private final SqlParser relationSqlParser = new SqlParser();
@@ -127,7 +127,7 @@ public class TableDeviceSchemaValidator {
           TableDeviceSchemaCache.getInstance()
               .getDeviceAttribute(
                   schemaValidation.getDatabase(),
-                  convertIdValuesToDeviceID(
+                  convertTagValuesToDeviceID(
                       schemaValidation.getTableName(), (String[]) deviceIdList.get(i)));
       if (attributeMap == null) {
         result.missingDeviceIndexList.add(i);
@@ -165,7 +165,7 @@ public class TableDeviceSchemaValidator {
     for (final int index : previousValidateResult.missingDeviceIndexList) {
       final Map<String, Binary> attributeMap =
           fetchedDeviceSchema.get(
-              convertIdValuesToDeviceID(
+              convertTagValuesToDeviceID(
                   schemaValidation.getTableName(), (String[]) deviceIdList.get(index)));
       if (attributeMap == null) {
         result.missingDeviceIndexList.add(index);

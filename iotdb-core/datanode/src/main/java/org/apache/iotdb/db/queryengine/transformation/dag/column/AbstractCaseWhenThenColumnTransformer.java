@@ -213,12 +213,14 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
     }
 
     initializeColumnCache(builder.build());
+    // Because of short-circuit evaluation, CaseWhen does not calculate all Then phrases, so its
+    // calculation results cannot be reused.
     for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
         whenThenTransformers) {
       whenThenColumnTransformer.left.clearCache();
       whenThenColumnTransformer.right.clearCache();
-      elseTransformer.clearCache();
     }
+    elseTransformer.clearCache();
   }
 
   protected abstract void writeToColumnBuilder(

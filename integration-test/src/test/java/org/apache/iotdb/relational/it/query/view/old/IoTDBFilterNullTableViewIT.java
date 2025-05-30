@@ -64,7 +64,7 @@ public class IoTDBFilterNullTableViewIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE VIEW testNullFilter(device STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD, s3 DOUBLE FIELD) as root.testNullFilter.**",
+        "CREATE VIEW testNullFilter(device STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD, s3 DOUBLE FIELD) as root.testNullFilter.**",
       };
 
   @BeforeClass

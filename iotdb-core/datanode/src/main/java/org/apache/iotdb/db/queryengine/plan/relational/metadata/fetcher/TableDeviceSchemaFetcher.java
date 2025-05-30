@@ -218,7 +218,7 @@ public class TableDeviceSchemaFetcher {
   }
 
   // Used by show/count device and update device.
-  // Update device will not access cache
+  // Update / Delete device will not access cache
   public boolean parseFilter4TraverseDevice(
       final TsTable tableInstance,
       final List<Expression> expressionList,
@@ -376,9 +376,9 @@ public class TableDeviceSchemaFetcher {
       final List<String> attributeColumns,
       final List<IDeviceID> fetchPaths,
       final boolean isDirectDeviceQuery,
-      final String[] idValues,
+      final String[] tagValues,
       final MPPQueryContext queryContext) {
-    final IDeviceID deviceID = convertIdValuesToDeviceID(tableInstance.getTableName(), idValues);
+    final IDeviceID deviceID = convertTagValuesToDeviceID(tableInstance.getTableName(), tagValues);
     final Map<String, Binary> attributeMap = cache.getDeviceAttribute(database, deviceID);
 
     // 1. AttributeMap == null means cache miss
@@ -414,9 +414,9 @@ public class TableDeviceSchemaFetcher {
       final TsTable tableInstance,
       final Predicate<AlignedDeviceEntry> check,
       final List<IDeviceID> fetchPaths,
-      final String[] idValues) {
+      final String[] tagValues) {
     final IDeviceID deviceID =
-        DataNodeTreeViewSchemaUtils.convertToIDeviceID(tableInstance, idValues);
+        DataNodeTreeViewSchemaUtils.convertToIDeviceID(tableInstance, tagValues);
     final IDeviceSchema schema = TableDeviceSchemaCache.getInstance().getDeviceSchema(deviceID);
     final String database;
     if (!(schema instanceof TreeDeviceNormalSchema) || Objects.isNull(check)) {
@@ -435,7 +435,7 @@ public class TableDeviceSchemaFetcher {
     return true;
   }
 
-  public static IDeviceID convertIdValuesToDeviceID(
+  public static IDeviceID convertTagValuesToDeviceID(
       final String tableName, final String[] idValues) {
     // Convert to IDeviceID
     final String[] deviceIdNodes = new String[idValues.length + 1];

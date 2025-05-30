@@ -1271,7 +1271,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                             .ifPresent(info::setComment);
                         info.setType(
                             TreeViewSchema.isTreeViewTable(pair.getLeft())
-                                ? TableType.TREE_TO_TABLE_VIEW.ordinal()
+                                ? TableType.VIEW_FROM_TREE.ordinal()
                                 : TableType.BASE_TABLE.ordinal());
                         return info;
                       })
@@ -1319,7 +1319,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                                         .ifPresent(info::setComment);
                                     info.setType(
                                         TreeViewSchema.isTreeViewTable(pair.getLeft())
-                                            ? TableType.TREE_TO_TABLE_VIEW.ordinal()
+                                            ? TableType.VIEW_FROM_TREE.ordinal()
                                             : TableType.BASE_TABLE.ordinal());
                                     return info;
                                   })

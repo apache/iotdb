@@ -128,12 +128,12 @@ public class IoTDBNestedQueryTableViewIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "create table view vehicle1(device_id STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 TEXT FIELD, s4 STRING FIELD, s5 DATE FIELD, s6 TIMESTAMP FIELD) as root.vehicle.**");
+          "create view vehicle1(device_id STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 TEXT FIELD, s4 STRING FIELD, s5 DATE FIELD, s6 TIMESTAMP FIELD) as root.vehicle.**");
 
       statement.execute(
-          "create table view vehicle2(device_id STRING TAG, s1 FLOAT FIELD, s2 DOUBLE FIELD, empty DOUBLE FIELD) as root.vehicle2.**");
+          "create view vehicle2(device_id STRING TAG, s1 FLOAT FIELD, s2 DOUBLE FIELD, empty DOUBLE FIELD) as root.vehicle2.**");
       statement.execute(
-          "create table view likeTest(device_id STRING TAG, s1 TEXT FIELD, s2 STRING FIELD) as root.likeTest.**");
+          "create view likeTest(device_id STRING TAG, s1 TEXT FIELD, s2 STRING FIELD) as root.likeTest.**");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

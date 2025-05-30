@@ -88,6 +88,7 @@ public class RowComparator {
           return false;
         }
         break;
+      case STRING:
       case TEXT:
       case STRING:
       case BLOB:

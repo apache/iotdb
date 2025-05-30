@@ -87,7 +87,7 @@ public class IoTDBOrderByTableViewIT {
   private static final String[] createTableViewSql = {
     "CREATE DATABASE db",
     "USE db",
-    "CREATE TABLE VIEW table0 (device string tag, num int32 field, bignum int64 field, "
+    "CREATE VIEW table0 (device string tag, num int32 field, bignum int64 field, "
         + "floatnum double field, str TEXT field, bool BOOLEAN field) as root.sg.**",
   };
 

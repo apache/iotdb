@@ -73,7 +73,7 @@ public class IoTDBAlignedOffsetLimitPushDownTableViewIT {
       statement.execute("CREATE DATABASE IF NOT EXISTS db");
       statement.execute(USE_DB);
       statement.execute(
-          "CREATE TABLE VIEW table0 (device string tag, s1 double field, s2 double field) as root.db.**");
+          "CREATE VIEW table0 (device string tag, s1 double field, s2 double field) as root.db.**");
 
     } catch (Exception e) {
       e.printStackTrace();

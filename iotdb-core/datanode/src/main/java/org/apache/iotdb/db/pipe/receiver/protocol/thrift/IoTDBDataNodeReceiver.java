@@ -798,11 +798,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       final String message =
           String.format(
-              "Temporarily out of memory when executing statement %s, Requested memory: %s, used memory: %s, total memory: %s",
+              "Temporarily out of memory when executing statement %s, Requested memory: %s, "
+                  + "used memory: %s, free memory: %s, total non-floating memory: %s",
               statement,
               estimatedMemory * pipeReceiverActualToEstimatedMemoryRatio,
               PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
-              PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes());
+              PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes(),
+              PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes());
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("Receiver id = {}: {}", receiverId.get(), message, e);
       }

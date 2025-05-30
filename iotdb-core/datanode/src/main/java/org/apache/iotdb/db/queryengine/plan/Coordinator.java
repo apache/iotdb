@@ -185,9 +185,7 @@ public class Coordinator {
     this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
     this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
-    this.statementRewrite =
-        new StatementRewriteFactory(LocalExecutionPlanner.getInstance().metadata, accessControl)
-            .getStatementRewrite();
+    this.statementRewrite = new StatementRewriteFactory().getStatementRewrite();
     this.logicalPlanOptimizers =
         new LogicalOptimizeFactory(
                 new PlannerContext(

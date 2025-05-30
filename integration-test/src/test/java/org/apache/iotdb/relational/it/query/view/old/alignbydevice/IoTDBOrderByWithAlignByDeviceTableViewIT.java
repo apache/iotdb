@@ -187,10 +187,10 @@ public class IoTDBOrderByWithAlignByDeviceTableViewIT {
       statement.execute("use " + DATABASE_NAME);
 
       statement.execute(
-          "create table view weather(city STRING TAG, precipitation INT64 FIELD, temperature DOUBLE FIELD) as root.weather.**");
+          "create view weather(city STRING TAG, precipitation INT64 FIELD, temperature DOUBLE FIELD) as root.weather.**");
 
       statement.execute(
-          "create table view optimize(plant_id STRING TAG, device_id STRING TAG, temperature DOUBLE FIELD, status BOOLEAN FIELD, hardware STRING FIELD) as root.ln.**");
+          "create view optimize(plant_id STRING TAG, device_id STRING TAG, temperature DOUBLE FIELD, status BOOLEAN FIELD, hardware STRING FIELD) as root.ln.**");
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -223,7 +223,7 @@ public class IoTDBOrderByWithAlignByDeviceTableViewIT {
         Statement statement = iotDBConnection.createStatement()) {
       statement.execute("use " + DATABASE_NAME);
       statement.execute(
-          "create table view overflow(device_id STRING TAG, value INT32 FIELD) as root.overflow.**");
+          "create view overflow(device_id STRING TAG, value INT32 FIELD) as root.overflow.**");
 
     } catch (Exception e) {
       e.printStackTrace();

@@ -104,8 +104,8 @@ public class IoTDBPaginationTableViewIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE VIEW vehicle(device STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD) as root.vehicle.**",
-        "CREATE TABLE VIEW db(device STRING TAG, s1 INT32 FIELD) as root.db.**",
+        "CREATE VIEW vehicle(device STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD) as root.vehicle.**",
+        "CREATE VIEW db(device STRING TAG, s1 INT32 FIELD) as root.db.**",
       };
 
   @BeforeClass
@@ -211,6 +211,21 @@ public class IoTDBPaginationTableViewIT {
         };
     tableResultSetEqualTest(
         "select s1 from db where time > 1 offset 10 limit 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1,",
+        };
+    tableResultSetEqualTest(
+        "select s1 from db order by time limit 1 offset 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select s1 from db order by device limit 1 offset 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);

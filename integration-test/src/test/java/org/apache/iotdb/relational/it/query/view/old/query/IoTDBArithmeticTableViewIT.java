@@ -92,8 +92,8 @@ public class IoTDBArithmeticTableViewIT {
   private static final String[] CREATE_TABLE_VIEW_SQLS = {
     "CREATE DATABASE " + DATABASE_NAME,
     "USE " + DATABASE_NAME,
-    "CREATE TABLE VIEW table1 (device STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 DATE FIELD, s6 TIMESTAMP FIELD, s7 BOOLEAN FIELD, s8 TEXT FIELD) as root.sg.**",
-    "CREATE TABLE VIEW table2 (device STRING TAG, date DATE FIELD) as root.sg2.**",
+    "CREATE VIEW table1 (device STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 DATE FIELD, s6 TIMESTAMP FIELD, s7 BOOLEAN FIELD, s8 TEXT FIELD) as root.sg.**",
+    "CREATE VIEW table2 (device STRING TAG, date DATE FIELD) as root.sg2.**",
   };
 
   @BeforeClass

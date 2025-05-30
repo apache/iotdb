@@ -69,8 +69,8 @@ public class IoTDBComplexQueryTableViewIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "create table view employees(department_id STRING TAG,name TEXT FIELD,Gender TEXT FIELD,Status BOOLEAN FIELD,employee_id INT32 FIELD,salary DOUBLE FIELD,date_of_birth DATE FIELD,Contac_info string FIELD) as root.test.employees.**",
-        "create table view departments(department_id STRING TAG,dep_name TEXT FIELD,dep_phone TEXT FIELD,dep_status BOOLEAN FIELD,dep_member INT32 FIELD,employee_id INT32 FIELD) as root.test.departments.**",
+        "create view employees(department_id STRING TAG,name TEXT FIELD,Gender TEXT FIELD,Status BOOLEAN FIELD,employee_id INT32 FIELD,salary DOUBLE FIELD,date_of_birth DATE FIELD,Contac_info string FIELD) as root.test.employees.**",
+        "create view departments(department_id STRING TAG,dep_name TEXT FIELD,dep_phone TEXT FIELD,dep_status BOOLEAN FIELD,dep_member INT32 FIELD,employee_id INT32 FIELD) as root.test.departments.**",
       };
 
   @BeforeClass

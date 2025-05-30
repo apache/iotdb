@@ -558,7 +558,6 @@ public class ConfigMTree {
           protected boolean shouldVisitSubtreeOfFullMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return node.getSchemaTemplateId() == NON_TEMPLATE
-                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
 
@@ -566,7 +565,6 @@ public class ConfigMTree {
           protected boolean shouldVisitSubtreeOfInternalMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return node.getSchemaTemplateId() == NON_TEMPLATE
-                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfInternalMatchedNode(node);
           }
         }) {
@@ -575,7 +573,10 @@ public class ConfigMTree {
     return resSet;
   }
 
-  /** This method returns the templateId set on paths covered by input path pattern. */
+  /**
+   * This method returns the templateId set on paths if the path set matches or is a prefix of input
+   * path pattern.
+   */
   public Map<Integer, Set<PartialPath>> getTemplateSetInfo(final PartialPath pathPattern)
       throws MetadataException {
     final Map<Integer, Set<PartialPath>> result = new HashMap<>();
@@ -606,7 +607,6 @@ public class ConfigMTree {
           protected boolean shouldVisitSubtreeOfFullMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return node.getSchemaTemplateId() == NON_TEMPLATE
-                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
 
@@ -614,7 +614,6 @@ public class ConfigMTree {
           protected boolean shouldVisitSubtreeOfInternalMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return node.getSchemaTemplateId() == NON_TEMPLATE
-                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfInternalMatchedNode(node);
           }
         }) {

@@ -72,7 +72,7 @@ def convert_to_binary(data_frame: pd.DataFrame):
     binary += position_count.to_bytes(4, byteorder="big")
 
     # column encoding
-    binary += b'\x02'
+    binary += b"\x02"
     for data_type in data_frame.dtypes:
         binary += _get_encoder(data_type)
 
@@ -90,7 +90,7 @@ def convert_to_binary(data_frame: pd.DataFrame):
         col = data_frame[keys[i]]
         for j in range(position_count):
             value = col[j]
-            if value.dtype.byteorder != '>':
+            if value.dtype.byteorder != ">":
                 value = value.byteswap()
             binary += value.tobytes()
 
@@ -99,44 +99,50 @@ def convert_to_binary(data_frame: pd.DataFrame):
 
 def _get_encoder(data_type: pd.Series):
     if data_type == "bool":
-        return b'\x00'
+        return b"\x00"
     elif data_type == "int32" or data_type == "float32":
-        return b'\x01'
+        return b"\x01"
     elif data_type == "int64" or data_type == "float64":
-        return b'\x02'
+        return b"\x02"
     elif data_type == "texr":
-        return b'\x03'
+        return b"\x03"
 
 
 def _get_type_in_byte(data_type: pd.Series):
-    if data_type == 'bool':
-        return b'\x00'
-    elif data_type == 'int32':
-        return b'\x01'
-    elif data_type == 'int64':
-        return b'\x02'
-    elif data_type == 'float32':
-        return b'\x03'
-    elif data_type == 'float64':
-        return b'\x04'
-    elif data_type == 'text':
-        return b'\x05'
+    if data_type == "bool":
+        return b"\x00"
+    elif data_type == "int32":
+        return b"\x01"
+    elif data_type == "int64":
+        return b"\x02"
+    elif data_type == "float32":
+        return b"\x03"
+    elif data_type == "float64":
+        return b"\x04"
+    elif data_type == "text":
+        return b"\x05"
     else:
-        raise BadConfigValueError('data_type', data_type,
-                                  "data_type should be in ['bool', 'int32', 'int64', 'float32', 'float64', 'text']")
+        raise BadConfigValueError(
+            "data_type",
+            data_type,
+            "data_type should be in ['bool', 'int32', 'int64', 'float32', 'float64', 'text']",
+        )
 
 
 # General Methods
 def get_data_type_byte_from_str(value):
-    '''
+    """
     Args:
         value (str): data type in ['bool', 'int32', 'int64', 'float32', 'float64', 'text']
     Returns:
         byte: corresponding data type in [b'\x00', b'\x01', b'\x02', b'\x03', b'\x04', b'\x05']
-    '''
-    if value not in ['bool', 'int32', 'int64', 'float32', 'float64', 'text']:
-        raise BadConfigValueError('data_type', value,
-                                  "data_type should be in ['bool', 'int32', 'int64', 'float32', 'float64', 'text']")
+    """
+    if value not in ["bool", "int32", "int64", "float32", "float64", "text"]:
+        raise BadConfigValueError(
+            "data_type",
+            value,
+            "data_type should be in ['bool', 'int32', 'int64', 'float32', 'float64', 'text']",
+        )
     if value == "bool":
         return TSDataType.BOOLEAN.value
     elif value == "int32":

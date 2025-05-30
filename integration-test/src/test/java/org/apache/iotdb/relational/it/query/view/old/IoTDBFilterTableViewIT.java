@@ -131,13 +131,13 @@ public class IoTDBFilterTableViewIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE VIEW testNaN(device STRING TAG, n1 DOUBLE FIELD, n2 DOUBLE FIELD) as root.vehicle.testNaN.**");
+          "CREATE VIEW testNaN(device STRING TAG, n1 DOUBLE FIELD, n2 DOUBLE FIELD) as root.vehicle.testNaN.**");
       statement.execute(
-          "CREATE TABLE VIEW testTimeSeries(device STRING TAG, s1 BOOLEAN FIELD, s2 BOOLEAN FIELD) as root.vehicle.testTimeSeries.**");
+          "CREATE VIEW testTimeSeries(device STRING TAG, s1 BOOLEAN FIELD, s2 BOOLEAN FIELD) as root.vehicle.testTimeSeries.**");
       statement.execute(
-          "CREATE TABLE VIEW testUDTF(device STRING TAG, s1 TEXT FIELD, s2 DOUBLE FIELD) as root.vehicle.testUDTF.**");
+          "CREATE VIEW testUDTF(device STRING TAG, s1 TEXT FIELD, s2 DOUBLE FIELD) as root.vehicle.testUDTF.**");
       statement.execute(
-          "CREATE TABLE VIEW sg1(device STRING TAG, s1 DOUBLE FIELD, s2 TEXT FIELD) as root.sg1.**");
+          "CREATE VIEW sg1(device STRING TAG, s1 DOUBLE FIELD, s2 TEXT FIELD) as root.sg1.**");
 
     } catch (SQLException throwable) {
       fail(throwable.getMessage());

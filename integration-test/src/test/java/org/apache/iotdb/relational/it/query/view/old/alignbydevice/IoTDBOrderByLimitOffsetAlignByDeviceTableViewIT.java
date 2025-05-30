@@ -143,10 +143,10 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceTableViewIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "create table view table1(device_id STRING TAG, s1 INT32 FIELD) as root.db.**",
+        "create view table1(device_id STRING TAG, s1 INT32 FIELD) as root.db.**",
         "CREATE DATABASE " + DATABASE_FILL_NAME,
         "USE " + DATABASE_FILL_NAME,
-        "create table view table1(device_id STRING TAG, s1 INT32 FIELD, s2 FLOAT FIELD) as root.fill1.**",
+        "create view table1(device_id STRING TAG, s1 INT32 FIELD, s2 FLOAT FIELD) as root.fill1.**",
       };
 
   protected static void insertData3() {

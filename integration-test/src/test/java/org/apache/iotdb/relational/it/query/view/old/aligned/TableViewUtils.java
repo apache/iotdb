@@ -141,7 +141,7 @@ public class TableViewUtils {
   private static final String[] createTableViewSqls = {
     "CREATE DATABASE db",
     "USE db",
-    "CREATE TABLE VIEW table0 (device string tag, s1 FLOAT field, s2 INT32 field, s3 INT64 field, s4 BOOLEAN field, s5 TEXT field) as root.sg1.**",
+    "CREATE VIEW table0 (device string tag, s1 FLOAT field, s2 INT32 field, s3 INT64 field, s4 BOOLEAN field, s5 TEXT field) as root.sg1.**",
   };
 
   public static void insertData() {
