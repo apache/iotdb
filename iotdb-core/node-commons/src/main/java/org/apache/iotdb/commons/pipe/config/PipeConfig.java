@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.config;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
+import org.apache.iotdb.commons.enums.PipeRateAverage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -223,8 +223,12 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRemainingTimeCommitRateAutoSwitchSeconds();
   }
 
-  public PipeRemainingTimeRateAverageTime getPipeRemainingTimeCommitRateAverageTime() {
+  public PipeRateAverage getPipeRemainingTimeCommitRateAverageTime() {
     return COMMON_CONFIG.getPipeRemainingTimeCommitRateAverageTime();
+  }
+
+  public PipeRateAverage getPipeRemainingInsertNodeCountAverage() {
+    return COMMON_CONFIG.getPipeRemainingInsertNodeCountAverage();
   }
 
   public double getPipeTsFileScanParsingThreshold() {
@@ -513,6 +517,8 @@ public class PipeConfig {
         getPipeRemainingTimeCommitAutoSwitchSeconds());
     LOGGER.info(
         "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
+    LOGGER.info(
+        "PipePipeRemainingInsertEventCountAverage: {}", getPipeRemainingInsertNodeCountAverage());
     LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
 
     LOGGER.info("PipeDynamicMemoryHistoryWeight: {}", getPipeDynamicMemoryHistoryWeight());
