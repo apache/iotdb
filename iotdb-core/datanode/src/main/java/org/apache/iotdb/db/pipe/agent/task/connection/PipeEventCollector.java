@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task.connection;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
@@ -41,6 +42,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeEventCollector implements EventCollector {
@@ -142,8 +144,31 @@ public class PipeEventCollector implements EventCollector {
     }
 
     try {
-      for (final TabletInsertionEvent parsedEvent : sourceEvent.toTabletInsertionEvents()) {
-        collectParsedRawTableEvent((PipeRawTabletInsertionEvent) parsedEvent);
+      final Iterable<TabletInsertionEvent> iterable = sourceEvent.toTabletInsertionEvents();
+      final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
+      while (iterator.hasNext()) {
+        final TabletInsertionEvent parsedEvent = iterator.next();
+        int retryCount = 0;
+        while (true) {
+          try {
+            collectParsedRawTableEvent((PipeRawTabletInsertionEvent) parsedEvent);
+            break;
+          } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+            if (retryCount++ % 100 == 0) {
+              LOGGER.warn(
+                  "parseAndCollectEvent: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
+                  sourceEvent.getTsFile(),
+                  retryCount,
+                  e);
+            } else if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug(
+                  "parseAndCollectEvent: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
+                  sourceEvent.getTsFile(),
+                  retryCount,
+                  e);
+            }
+          }
+        }
       }
     } finally {
       sourceEvent.close();
