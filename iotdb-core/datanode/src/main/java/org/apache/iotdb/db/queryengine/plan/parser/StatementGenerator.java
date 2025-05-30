@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandlerMetrics;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
@@ -91,6 +92,8 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.rpccompress.RpcUncompressor;
+import org.apache.iotdb.session.rpccompress.decoder.RpcDecoder;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -332,22 +335,62 @@ public class StatementGenerator {
     insertStatement.setDevicePath(
         DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
-    long[] timestamps =
-        QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size);
-    if (timestamps.length != 0) {
-      TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
+    long[] timestamps;
+
+    long startTimeForDeCompressedTimes = 0L;
+    long endTimeForDeCompressedTimes = 0L;
+    long startTimeForDeCompressedValues = 0L;
+    try {
+      // decode timestamps
+      if (insertTabletReq.isIsCompressed()) {
+        startTimeForDeCompressedTimes = System.nanoTime();
+        RpcDecoder rpcDecoder = new RpcDecoder();
+        RpcUncompressor rpcUncompressor =
+            new RpcUncompressor(
+                CompressionType.deserialize((byte) insertTabletReq.getCompressType()));
+        timestamps =
+            rpcDecoder.readTimesFromBuffer(
+                rpcUncompressor.uncompress(insertTabletReq.timestamps), insertTabletReq.size);
+        endTimeForDeCompressedTimes = System.nanoTime();
+      } else {
+        timestamps =
+            QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size);
+      }
+
+      if (timestamps.length != 0) {
+        TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
+      }
+      insertStatement.setTimes(timestamps);
+      // decode values
+      if (insertTabletReq.isIsCompressed()) {
+        startTimeForDeCompressedValues = System.nanoTime();
+        RpcDecoder rpcDecoder = new RpcDecoder();
+        RpcUncompressor rpcUncompressor =
+            new RpcUncompressor(
+                CompressionType.deserialize((byte) insertTabletReq.getCompressType()));
+        insertStatement.setColumns(
+            rpcDecoder.decodeValues(
+                rpcUncompressor.uncompress(insertTabletReq.values), insertTabletReq.size));
+      } else {
+        insertStatement.setColumns(
+            QueryDataSetUtils.readTabletValuesFromBuffer(
+                insertTabletReq.values,
+                insertTabletReq.types,
+                insertTabletReq.types.size(),
+                insertTabletReq.size));
+        insertStatement.setBitMaps(
+            QueryDataSetUtils.readBitMapsFromBuffer(
+                    insertTabletReq.values, insertTabletReq.types.size(), insertTabletReq.size)
+                .orElse(null));
+      }
+    } finally {
+      RPCServiceThriftHandlerMetrics.getInstance()
+          .recordDecompressLatencyTimer(
+              System.nanoTime()
+                  - startTimeForDeCompressedValues
+                  + endTimeForDeCompressedTimes
+                  - startTimeForDeCompressedTimes);
     }
-    insertStatement.setTimes(timestamps);
-    insertStatement.setColumns(
-        QueryDataSetUtils.readTabletValuesFromBuffer(
-            insertTabletReq.values,
-            insertTabletReq.types,
-            insertTabletReq.types.size(),
-            insertTabletReq.size));
-    insertStatement.setBitMaps(
-        QueryDataSetUtils.readBitMapsFromBuffer(
-                insertTabletReq.values, insertTabletReq.types.size(), insertTabletReq.size)
-            .orElse(null));
     insertStatement.setRowCount(insertTabletReq.size);
     TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];
     for (int i = 0; i < insertTabletReq.types.size(); i++) {
