@@ -119,6 +119,35 @@ public class WindowSpecification extends Node implements Window {
   }
 
   @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    if (existingWindowName.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      existingWindowName.get().serialize(byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    }
+
+    ReadWriteIOUtils.write(partitionBy.size(), byteBuffer);
+    for (Expression expression : partitionBy) {
+      Expression.serialize(expression, byteBuffer);
+    }
+
+    if (orderBy.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      orderBy.get().serialize(byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    }
+
+    if (frame.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      frame.get().serialize(byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    }
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     if (existingWindowName.isPresent()) {
       ReadWriteIOUtils.write((byte) 1, stream);

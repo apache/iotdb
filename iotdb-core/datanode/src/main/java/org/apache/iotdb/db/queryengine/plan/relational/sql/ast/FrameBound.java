@@ -106,7 +106,7 @@ public class FrameBound extends Node {
     return type == otherNode.type;
   }
 
-  public void serialize(ByteBuffer buffer) throws IOException {
+  public void serialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write((byte) type.ordinal(), buffer);
     if (value.isPresent()) {
       ReadWriteIOUtils.write((byte) 1, buffer);

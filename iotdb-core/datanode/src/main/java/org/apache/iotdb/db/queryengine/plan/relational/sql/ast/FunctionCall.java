@@ -222,12 +222,30 @@ public class FunctionCall extends Expression {
   @Override
   public void serialize(ByteBuffer buffer) {
     this.name.serialize(buffer);
-
     ReadWriteIOUtils.write(this.distinct, buffer);
-
     ReadWriteIOUtils.write(arguments.size(), buffer);
     for (Expression argument : arguments) {
       Expression.serialize(argument, buffer);
+    }
+
+    if (nullTreatment.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, buffer);
+      ReadWriteIOUtils.write((byte) nullTreatment.get().ordinal(), buffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, buffer);
+    }
+
+    if (window.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, buffer);
+      // Window type
+      if (window.get() instanceof WindowReference) {
+        ReadWriteIOUtils.write((byte) 0, buffer);
+      } else {
+        ReadWriteIOUtils.write((byte) 1, buffer);
+      }
+      window.get().serialize(buffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, buffer);
     }
 
     if (processingMode.isPresent()) {

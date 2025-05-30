@@ -80,6 +80,11 @@ public class WindowReference extends Node implements Window {
   }
 
   @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    name.serialize(byteBuffer);
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     name.serialize(stream);
   }

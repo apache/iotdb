@@ -21,7 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public interface Window {
+  void serialize(ByteBuffer byteBuffer);
+
   void serialize(DataOutputStream stream) throws IOException;
 }

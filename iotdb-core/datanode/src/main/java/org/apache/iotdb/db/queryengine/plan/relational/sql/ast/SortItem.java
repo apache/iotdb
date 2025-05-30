@@ -124,6 +124,12 @@ public class SortItem extends Node {
     return ordering == otherItem.ordering && nullOrdering == otherItem.nullOrdering;
   }
 
+  void serialize(ByteBuffer buffer) {
+    Expression.serialize(sortKey, buffer);
+    ReadWriteIOUtils.write((byte) ordering.ordinal(), buffer);
+    ReadWriteIOUtils.write((byte) nullOrdering.ordinal(), buffer);
+  }
+
   void serialize(DataOutputStream stream) throws IOException {
     Expression.serialize(sortKey, stream);
     ReadWriteIOUtils.write((byte) ordering.ordinal(), stream);

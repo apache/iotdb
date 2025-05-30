@@ -92,6 +92,13 @@ public class OrderBy extends Node {
     return sameClass(this, other);
   }
 
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(sortItems.size(), buffer);
+    for (SortItem sortItem : sortItems) {
+      sortItem.serialize(buffer);
+    }
+  }
+
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(sortItems.size(), stream);
     for (SortItem sortItem : sortItems) {
