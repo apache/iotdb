@@ -70,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -112,6 +113,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
@@ -150,7 +152,9 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.TsFileLastReader;
 import org.apache.tsfile.utils.FSUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -191,6 +195,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.commons.utils.PathUtils.isTableModelDatabase;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.SEQUENCE_TSFILE;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.UNSEQUENCE_TSFILE;
 import static org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource.BROKEN_SUFFIX;
@@ -2992,7 +2997,8 @@ public class DataRegion implements IDataRegionForQuery {
   public void loadNewTsFile(
       final TsFileResource newTsFileResource,
       final boolean deleteOriginFile,
-      final boolean isGeneratedByPipe)
+      final boolean isGeneratedByPipe,
+      final boolean isFromConsensus)
       throws LoadFileException {
     final File tsfileToBeInserted = newTsFileResource.getTsFile();
     final long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
@@ -3000,6 +3006,23 @@ public class DataRegion implements IDataRegionForQuery {
     if (!TsFileValidator.getInstance().validateTsFile(newTsFileResource)) {
       throw new LoadFileException(
           "tsfile validate failed, " + newTsFileResource.getTsFile().getName());
+    }
+
+    TsFileLastReader lastReader = null;
+    LastCacheLoadStrategy lastCacheLoadStrategy = config.getLastCacheLoadStrategy();
+    if ((lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
+            || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
+        && newTsFileResource.getLastValues() == null) {
+      try {
+        // init reader outside of lock to boost performance
+        lastReader =
+            new TsFileLastReader(
+                newTsFileResource.getTsFilePath(),
+                true,
+                lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB);
+      } catch (IOException e) {
+        throw new LoadFileException(e);
+      }
     }
 
     writeLock("loadNewTsFile");
@@ -3064,6 +3087,7 @@ public class DataRegion implements IDataRegionForQuery {
                 false);
       }
 
+      onTsFileLoaded(newTsFileResource, isFromConsensus, lastReader);
       logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
     } catch (final DiskSpaceInsufficientException e) {
       logger.error(
@@ -3071,12 +3095,104 @@ public class DataRegion implements IDataRegionForQuery {
           tsfileToBeInserted.getAbsolutePath(),
           tsfileToBeInserted.getParentFile().getName());
       throw new LoadFileException(e);
+    } catch (Exception e) {
+      throw new LoadFileException(e);
     } finally {
       writeUnlock();
-      // TODO: do more precise control
-      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        TreeDeviceSchemaCacheManager.getInstance().cleanUp();
+      if (lastReader != null) {
+        try {
+          lastReader.close();
+        } catch (Exception e) {
+          logger.warn("Cannot close last reader after loading TsFile {}", newTsFileResource, e);
+        }
       }
+    }
+  }
+
+  private void onTsFileLoaded(
+      TsFileResource newTsFileResource, boolean isFromConsensus, TsFileLastReader lastReader) {
+    if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable() && !isFromConsensus) {
+      switch (config.getLastCacheLoadStrategy()) {
+        case UPDATE:
+        case UPDATE_NO_BLOB:
+          updateLastCache(newTsFileResource, lastReader);
+          break;
+        case CLEAN_ALL:
+          // The inner cache is shared by TreeDeviceSchemaCacheManager and
+          // TableDeviceSchemaCacheManager,
+          // so cleaning either of them is enough
+          TreeDeviceSchemaCacheManager.getInstance().cleanUp();
+          break;
+        case CLEAN_DEVICE:
+          boolean isTableModel = isTableModelDatabase(databaseName);
+          ITimeIndex timeIndex = newTsFileResource.getTimeIndex();
+          if (timeIndex instanceof ArrayDeviceTimeIndex) {
+            ArrayDeviceTimeIndex deviceTimeIndex = (ArrayDeviceTimeIndex) timeIndex;
+            deviceTimeIndex
+                .getDevices()
+                .forEach(
+                    deviceID ->
+                        TableDeviceSchemaCache.getInstance()
+                            .invalidateLastCache(isTableModel ? databaseName : null, deviceID));
+          } else {
+            TreeDeviceSchemaCacheManager.getInstance().invalidateDatabaseLastCache(databaseName);
+          }
+          break;
+        default:
+          logger.warn(
+              "Unrecognized LastCacheLoadStrategy: {}, fall back to CLEAN_ALL",
+              IoTDBDescriptor.getInstance().getConfig().getLastCacheLoadStrategy());
+          TreeDeviceSchemaCacheManager.getInstance().cleanUp();
+          break;
+      }
+    }
+  }
+
+  @SuppressWarnings("java:S112")
+  private void updateLastCache(TsFileResource newTsFileResource, TsFileLastReader lastReader) {
+    boolean isTableModel = isTableModelDatabase(databaseName);
+
+    Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues =
+        newTsFileResource.getLastValues();
+    if (lastValues != null) {
+      for (Entry<IDeviceID, List<Pair<String, TimeValuePair>>> entry : lastValues.entrySet()) {
+        IDeviceID deviceID = entry.getKey();
+        String[] measurements = entry.getValue().stream().map(Pair::getLeft).toArray(String[]::new);
+        TimeValuePair[] timeValuePairs =
+            entry.getValue().stream().map(Pair::getRight).toArray(TimeValuePair[]::new);
+        if (isTableModel) {
+          TableDeviceSchemaCache.getInstance()
+              .updateLastCacheIfExists(databaseName, deviceID, measurements, timeValuePairs);
+        } else {
+          // we do not update schema here, so aligned is not relevant
+          TreeDeviceSchemaCacheManager.getInstance()
+              .updateLastCacheIfExists(
+                  databaseName, deviceID, measurements, timeValuePairs, false, null);
+        }
+      }
+      newTsFileResource.setLastValues(null);
+      return;
+    }
+
+    if (lastReader != null) {
+      while (lastReader.hasNext()) {
+        Pair<IDeviceID, List<Pair<String, TimeValuePair>>> nextDevice = lastReader.next();
+        IDeviceID deviceID = nextDevice.left;
+        String[] measurements = nextDevice.right.stream().map(Pair::getLeft).toArray(String[]::new);
+        TimeValuePair[] timeValuePairs =
+            nextDevice.right.stream().map(Pair::getRight).toArray(TimeValuePair[]::new);
+        if (isTableModel) {
+          TableDeviceSchemaCache.getInstance()
+              .updateLastCacheIfExists(databaseName, deviceID, measurements, timeValuePairs);
+        } else {
+          // we do not update schema here, so aligned is not relevant
+          TreeDeviceSchemaCacheManager.getInstance()
+              .updateLastCacheIfExists(
+                  databaseName, deviceID, measurements, timeValuePairs, false, null);
+        }
+      }
+    } else {
+      TreeDeviceSchemaCacheManager.getInstance().cleanUp();
     }
   }
 

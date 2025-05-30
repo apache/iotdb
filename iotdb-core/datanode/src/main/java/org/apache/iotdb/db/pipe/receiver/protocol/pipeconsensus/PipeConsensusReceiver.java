@@ -714,8 +714,12 @@ public class PipeConsensusReceiver {
     DataRegion region =
         StorageEngine.getInstance().getDataRegion(((DataRegionId) consensusGroupId));
     if (region != null) {
-      TsFileResource resource = generateTsFileResource(filePath, progressIndex);
-      region.loadNewTsFile(resource, true, false);
+      TsFileResource resource =
+          generateTsFileResource(
+              filePath,
+              progressIndex,
+              IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad());
+      region.loadNewTsFile(resource, true, false, true);
     } else {
       // Data region is null indicates that dr has been removed or migrated. In those cases, there
       // is no need to replicate data. we just return success to avoid leader keeping retry
@@ -769,13 +773,13 @@ public class PipeConsensusReceiver {
                                 dataRegion, databaseName, writePointCount, true)));
   }
 
-  private TsFileResource generateTsFileResource(String filePath, ProgressIndex progressIndex)
-      throws IOException {
+  private TsFileResource generateTsFileResource(
+      String filePath, ProgressIndex progressIndex, boolean cacheLastValues) throws IOException {
     final File tsFile = new File(filePath);
 
     final TsFileResource tsFileResource = new TsFileResource(tsFile);
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      TsFileResourceUtils.updateTsFileResource(reader, tsFileResource);
+      TsFileResourceUtils.updateTsFileResource(reader, tsFileResource, cacheLastValues);
     }
 
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
