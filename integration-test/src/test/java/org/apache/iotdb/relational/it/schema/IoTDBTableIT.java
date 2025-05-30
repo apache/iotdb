@@ -883,7 +883,7 @@ public class IoTDBTableIT {
         fail();
       } catch (final SQLException e) {
         assertEquals(
-            "701: The table tree_view_db.tree_table is a view from tree, cannot be written",
+            "701: The table tree_view_db.tree_table is a view from tree, cannot be written or deleted from",
             e.getMessage());
       }
 
