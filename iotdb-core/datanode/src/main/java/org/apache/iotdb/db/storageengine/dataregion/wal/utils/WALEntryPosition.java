@@ -25,6 +25,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALInputStream;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,6 +40,9 @@ import java.util.Objects;
  * and give some methods to read the content from the disk.
  */
 public class WALEntryPosition {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(WALEntryPosition.class);
+
   private volatile String identifier = "";
   private volatile long walFileVersionId = -1;
   private volatile long position;
@@ -107,6 +112,14 @@ public class WALEntryPosition {
       ByteBuffer buffer = ByteBuffer.allocate(size);
       is.read(buffer);
       return buffer;
+    } catch (Exception e) {
+      LOGGER.error(
+          "Unexpected error when reading a wal entry from {}@{} with size {}",
+          walFile,
+          position,
+          size,
+          e);
+      throw new IOException(e);
     }
   }
 
