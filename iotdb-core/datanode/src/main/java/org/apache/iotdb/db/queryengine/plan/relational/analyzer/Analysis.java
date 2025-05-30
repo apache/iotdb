@@ -1302,7 +1302,6 @@ public class Analysis implements IAnalysis {
     }
   }
 
-<<<<<<< HEAD
   public void addWindowDefinition(
       QuerySpecification query, CanonicalizationAware<Identifier> name, ResolvedWindow window) {
     windowDefinitions

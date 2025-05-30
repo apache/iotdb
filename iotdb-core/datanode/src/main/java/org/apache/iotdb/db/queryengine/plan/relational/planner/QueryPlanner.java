@@ -61,8 +61,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QueryBody;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.VariableDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

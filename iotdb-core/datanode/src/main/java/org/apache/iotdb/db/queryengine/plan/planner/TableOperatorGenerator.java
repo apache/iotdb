@@ -82,12 +82,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.Des
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunctionFactory;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.WindowAggregator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.LogicalIndexNavigation;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternVariableRecognizer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValueAccessor;
@@ -97,6 +91,12 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.exp
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.IrRowPatternToProgramRewriter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Matcher;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Program;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunctionFactory;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.WindowAggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
