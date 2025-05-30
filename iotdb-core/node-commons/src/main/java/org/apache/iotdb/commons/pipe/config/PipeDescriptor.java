@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.pipe.config;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.TrimProperties;
-import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
+import org.apache.iotdb.commons.enums.PipeRateAverage;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -184,11 +184,18 @@ public class PipeDescriptor {
                 "pipe_snapshot_execution_max_batch_size",
                 String.valueOf(config.getPipeSnapshotExecutionMaxBatchSize()))));
     config.setPipeRemainingTimeCommitRateAverageTime(
-        PipeRemainingTimeRateAverageTime.valueOf(
+        PipeRateAverage.valueOf(
             properties
                 .getProperty(
                     "pipe_remaining_time_commit_rate_average_time",
                     String.valueOf(config.getPipeRemainingTimeCommitRateAverageTime()))
+                .trim()));
+    config.setPipeRemainingInsertNodeCountAverage(
+        PipeRateAverage.valueOf(
+            properties
+                .getProperty(
+                    "pipe_remaining_insert_node_count_average",
+                    String.valueOf(config.getPipeRemainingInsertNodeCountAverage()))
                 .trim()));
   }
 
