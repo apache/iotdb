@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
@@ -77,7 +78,7 @@ public class FileLoaderUtils {
   public static TimeseriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
       PartialPath seriesPath,
-      QueryContext context,
+      FragmentInstanceContext context,
       Filter globalTimeFilter,
       Set<String> allSensors,
       boolean isSeq)
@@ -100,7 +101,8 @@ public class FileLoaderUtils {
                         new PlainDeviceID(seriesPath.getDevice()),
                         seriesPath.getMeasurement()),
                     allSensors,
-                    resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
+                    context.ignoreNotExistsDevice()
+                        || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                     context.isDebug(),
                     context);
         if (timeSeriesMetadata != null) {
@@ -175,7 +177,7 @@ public class FileLoaderUtils {
   public static AlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadata(
       TsFileResource resource,
       AlignedPath alignedPath,
-      QueryContext context,
+      FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean isSeq)
       throws IOException {
@@ -248,7 +250,7 @@ public class FileLoaderUtils {
   private static AlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadataFromDisk(
       TsFileResource resource,
       AlignedPath alignedPath,
-      QueryContext context,
+      FragmentInstanceContext context,
       Filter globalTimeFilter)
       throws IOException {
     AlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
@@ -270,7 +272,8 @@ public class FileLoaderUtils {
             filePath,
             new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, ""),
             allSensors,
-            resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
+            context.ignoreNotExistsDevice()
+                || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
             isDebug,
             context);
     if (timeColumn != null) {
@@ -293,7 +296,8 @@ public class FileLoaderUtils {
                   new TimeSeriesMetadataCacheKey(
                       resource.getTsFileID(), deviceId, valueMeasurement),
                   allSensors,
-                  resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
+                  context.ignoreNotExistsDevice()
+                      || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                   isDebug,
                   context);
           exist = (exist || (valueColumn != null));
