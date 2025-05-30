@@ -93,6 +93,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
@@ -219,6 +220,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.VariableDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Window;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowSpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ZeroOrMoreQuantifier;
@@ -2035,6 +2041,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               query.getGroupBy(),
               query.getHaving(),
               fill,
+              query.getWindows(),
               orderBy,
               offset,
               limit),
@@ -2161,6 +2168,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         visitIfPresent(ctx.groupBy(), GroupBy.class),
         visitIfPresent(ctx.having, Expression.class),
         Optional.empty(),
+        visit(ctx.windowDefinition(), WindowDefinition.class),
         Optional.empty(),
         Optional.empty(),
         Optional.empty());
@@ -2886,6 +2894,96 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   // ********************* primary expressions **********************
   @Override
+  public Node visitOver(RelationalSqlParser.OverContext ctx) {
+    if (ctx.windowName != null) {
+      return new WindowReference(getLocation(ctx), (Identifier) visit(ctx.windowName));
+    }
+
+    return visit(ctx.windowSpecification());
+  }
+
+  @Override
+  public Node visitWindowDefinition(RelationalSqlParser.WindowDefinitionContext ctx) {
+    return new WindowDefinition(
+        getLocation(ctx),
+        (Identifier) visit(ctx.name),
+        (WindowSpecification) visit(ctx.windowSpecification()));
+  }
+
+  @Override
+  public Node visitWindowSpecification(RelationalSqlParser.WindowSpecificationContext ctx) {
+    Optional<Identifier> existingWindowName = getIdentifierIfPresent(ctx.existingWindowName);
+
+    List<Expression> partitionBy = visit(ctx.partition, Expression.class);
+
+    Optional<OrderBy> orderBy = Optional.empty();
+    if (ctx.ORDER() != null) {
+      orderBy =
+          Optional.of(new OrderBy(getLocation(ctx.ORDER()), visit(ctx.sortItem(), SortItem.class)));
+    }
+
+    Optional<WindowFrame> frame = Optional.empty();
+    if (ctx.windowFrame() != null) {
+      frame = Optional.of((WindowFrame) visitFrameExtent(ctx.windowFrame().frameExtent()));
+    }
+
+    return new WindowSpecification(
+        getLocation(ctx), existingWindowName, partitionBy, orderBy, frame);
+  }
+
+  @Override
+  public Node visitFrameExtent(RelationalSqlParser.FrameExtentContext ctx) {
+    WindowFrame.Type frameType = toWindowFrameType(ctx.frameType);
+    FrameBound start = (FrameBound) visit(ctx.start);
+    Optional<FrameBound> end = visitIfPresent(ctx.end, FrameBound.class);
+    return new WindowFrame(getLocation(ctx), frameType, start, end);
+  }
+
+  private static WindowFrame.Type toWindowFrameType(Token token) {
+    switch (token.getType()) {
+      case RelationalSqlLexer.ROWS:
+        return WindowFrame.Type.ROWS;
+      case RelationalSqlLexer.RANGE:
+        return WindowFrame.Type.RANGE;
+      case RelationalSqlLexer.GROUPS:
+        return WindowFrame.Type.GROUPS;
+      default:
+        throw new IllegalArgumentException("Unsupported window frame type: " + token.getText());
+    }
+  }
+
+  @Override
+  public Node visitUnboundedFrame(RelationalSqlParser.UnboundedFrameContext ctx) {
+    switch (ctx.boundType.getType()) {
+      case RelationalSqlLexer.PRECEDING:
+        return new FrameBound(getLocation(ctx), FrameBound.Type.UNBOUNDED_PRECEDING);
+      case RelationalSqlLexer.FOLLOWING:
+        return new FrameBound(getLocation(ctx), FrameBound.Type.UNBOUNDED_FOLLOWING);
+      default:
+        throw new IllegalArgumentException(
+            "Unsupported unbounded type: " + ctx.boundType.getText());
+    }
+  }
+
+  @Override
+  public Node visitCurrentRowBound(RelationalSqlParser.CurrentRowBoundContext ctx) {
+    return new FrameBound(getLocation(ctx), FrameBound.Type.CURRENT_ROW);
+  }
+
+  @Override
+  public Node visitBoundedFrame(RelationalSqlParser.BoundedFrameContext ctx) {
+    Expression value = (Expression) visit(ctx.expression());
+    switch (ctx.boundType.getType()) {
+      case RelationalSqlLexer.PRECEDING:
+        return new FrameBound(getLocation(ctx), FrameBound.Type.PRECEDING, value);
+      case RelationalSqlLexer.FOLLOWING:
+        return new FrameBound(getLocation(ctx), FrameBound.Type.FOLLOWING, value);
+      default:
+        throw new IllegalArgumentException("Unsupported bounded type: " + ctx.boundType.getText());
+    }
+  }
+
+  @Override
   public Node visitParenthesizedExpression(RelationalSqlParser.ParenthesizedExpressionContext ctx) {
     return visit(ctx.expression());
   }
@@ -3040,12 +3138,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitFunctionCall(RelationalSqlParser.FunctionCallContext ctx) {
+    Optional<Window> window = visitIfPresent(ctx.over(), Window.class);
 
     QualifiedName name = getQualifiedName(ctx.qualifiedName());
 
     boolean distinct = isDistinct(ctx.setQuantifier());
 
     RelationalSqlParser.ProcessingModeContext processingMode = ctx.processingMode();
+    RelationalSqlParser.NullTreatmentContext nullTreatment = ctx.nullTreatment();
 
     if (name.toString().equalsIgnoreCase("if")) {
       check(
@@ -3054,6 +3154,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           ctx);
       check(!distinct, "DISTINCT not valid for 'if' function", ctx);
       check(processingMode == null, "Running or final semantics not valid for 'if' function", ctx);
+      check(nullTreatment == null, "Null treatment clause not valid for 'if' function", ctx);
 
       Expression elseExpression = null;
       if (ctx.expression().size() == 3) {
@@ -3074,6 +3175,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           processingMode == null,
           "Running or final semantics not valid for 'nullif' function",
           ctx);
+      check(nullTreatment == null, "Null treatment clause not valid for 'nullif' function", ctx);
 
       return new NullIfExpression(
           getLocation(ctx),
@@ -3091,6 +3193,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           processingMode == null,
           "Running or final semantics not valid for 'coalesce' function",
           ctx);
+      check(nullTreatment == null, "Null treatment clause not valid for 'coalesce' function", ctx);
 
       return new CoalesceExpression(getLocation(ctx), visit(ctx.expression(), Expression.class));
     }
@@ -3101,6 +3204,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         mode = Optional.of(new ProcessingMode(getLocation(processingMode), RUNNING));
       } else if (processingMode.FINAL() != null) {
         mode = Optional.of(new ProcessingMode(getLocation(processingMode), FINAL));
+      }
+    }
+
+    Optional<FunctionCall.NullTreatment> nulls = Optional.empty();
+    if (nullTreatment != null) {
+      if (nullTreatment.IGNORE() != null) {
+        nulls = Optional.of(FunctionCall.NullTreatment.IGNORE);
+      } else if (nullTreatment.RESPECT() != null) {
+        nulls = Optional.of(FunctionCall.NullTreatment.RESPECT);
       }
     }
 
@@ -3158,7 +3270,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
     }
 
-    return new FunctionCall(getLocation(ctx), name, distinct, mode, arguments);
+    return new FunctionCall(getLocation(ctx), name, window, nulls, distinct, mode, arguments);
   }
 
   public boolean isNumericLiteral(Expression expression) {

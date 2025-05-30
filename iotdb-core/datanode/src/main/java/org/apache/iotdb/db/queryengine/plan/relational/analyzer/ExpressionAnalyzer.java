@@ -1,7 +1,7 @@
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
+ * distributed with this work for additional inString.formation
  * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -61,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
@@ -76,6 +77,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ProcessingMode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
@@ -85,6 +87,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StackableAstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
@@ -92,15 +95,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.read.common.type.UnknownType;
 
 import javax.annotation.Nullable;
 
@@ -123,7 +127,6 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.collect.Iterators.getOnlyElement;
-import static java.lang.String.format;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Locale.ENGLISH;
@@ -133,7 +136,16 @@ import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMeta
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isNumericType;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.CURRENT_ROW;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.FOLLOWING;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.PRECEDING;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_FOLLOWING;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_PRECEDING;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.GROUPS;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.RANGE;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.ROWS;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -164,6 +176,7 @@ public class ExpressionAnalyzer {
   private final Set<NodeRef<QuantifiedComparisonExpression>> quantifiedComparisons =
       new LinkedHashSet<>();
 
+  private final Set<NodeRef<FunctionCall>> windowFunctions = new LinkedHashSet<>();
   private final Multimap<QualifiedObjectName, String> tableColumnReferences = HashMultimap.create();
 
   // Track referenced fields from source relation node
@@ -198,6 +211,8 @@ public class ExpressionAnalyzer {
   private final Map<NodeRef<DereferenceExpression>, LabelPrefixedReference> labelDereferences =
       new LinkedHashMap<>();
 
+  private final Function<Node, Analysis.ResolvedWindow> getResolvedWindow;
+
   private static final String SUBQUERY_COLUMN_NUM_CHECK =
       "Subquery must return only one column for now. Row Type is not supported for now.";
 
@@ -221,7 +236,8 @@ public class ExpressionAnalyzer {
         types,
         analysis.getParameters(),
         warningCollector,
-        analysis::getType);
+        analysis::getType,
+        analysis::getWindow);
   }
 
   ExpressionAnalyzer(
@@ -233,7 +249,8 @@ public class ExpressionAnalyzer {
       TypeProvider symbolTypes,
       Map<NodeRef<Parameter>, Expression> parameters,
       WarningCollector warningCollector,
-      Function<Expression, Type> getPreanalyzedType) {
+      Function<Expression, Type> getPreanalyzedType,
+      Function<Node, Analysis.ResolvedWindow> getResolvedWindow) {
     this.metadata = requireNonNull(metadata, "metadata is null");
     this.context = requireNonNull(context, "context is null");
     this.accessControl = requireNonNull(accessControl, "accessControl is null");
@@ -243,7 +260,57 @@ public class ExpressionAnalyzer {
     this.symbolTypes = requireNonNull(symbolTypes, "symbolTypes is null");
     this.parameters = requireNonNull(parameters, "parameters is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+    this.getResolvedWindow = requireNonNull(getResolvedWindow, "getResolvedWindow is null");
     this.getPreanalyzedType = requireNonNull(getPreanalyzedType, "getPreanalyzedType is null");
+  }
+
+  public static ExpressionAnalysis analyzeWindow(
+      Metadata metadata,
+      SessionInfo session,
+      MPPQueryContext queryContext,
+      StatementAnalyzerFactory statementAnalyzerFactory,
+      AccessControl accessControl,
+      Scope scope,
+      Analysis analysis,
+      WarningCollector noop,
+      CorrelationSupport correlationSupport,
+      Analysis.ResolvedWindow window,
+      Node originalNode) {
+    ExpressionAnalyzer analyzer =
+        new ExpressionAnalyzer(
+            metadata,
+            queryContext,
+            accessControl,
+            statementAnalyzerFactory,
+            analysis,
+            session,
+            TypeProvider.empty(),
+            noop);
+    analyzer.analyzeWindow(window, scope, originalNode, correlationSupport);
+
+    updateAnalysis(analysis, analyzer, session, accessControl);
+
+    return new ExpressionAnalysis(
+        analyzer.getExpressionTypes(),
+        analyzer.getSubqueryInPredicates(),
+        analyzer.getSubqueries(),
+        analyzer.getExistsSubqueries(),
+        analyzer.getColumnReferences(),
+        analyzer.getQuantifiedComparisons(),
+        analyzer.getWindowFunctions());
+  }
+
+  private void analyzeWindow(
+      Analysis.ResolvedWindow window,
+      Scope scope,
+      Node originalNode,
+      CorrelationSupport correlationSupport) {
+    Visitor visitor = new Visitor(scope, warningCollector);
+    visitor.analyzeWindow(
+        window,
+        new StackableAstVisitor.StackableAstVisitorContext<>(
+            Context.notInLambda(scope, correlationSupport)),
+        originalNode);
   }
 
   public Map<NodeRef<Node>, ResolvedFunction> getResolvedFunctions() {
@@ -261,6 +328,10 @@ public class ExpressionAnalyzer {
     expressionTypes.put(NodeRef.of(expression), type);
 
     return type;
+  }
+
+  public Set<NodeRef<FunctionCall>> getWindowFunctions() {
+    return unmodifiableSet(windowFunctions);
   }
 
   private Type getExpressionType(Expression expression) {
@@ -909,6 +980,18 @@ public class ExpressionAnalyzer {
                 }
               });
 
+      if (node.getWindow().isPresent()) {
+        Analysis.ResolvedWindow window = getResolvedWindow.apply(node);
+        checkState(window != null, "no resolved window for: " + node);
+
+        analyzeWindow(window, context, (Node) node.getWindow().get());
+        windowFunctions.add(NodeRef.of(node));
+      } else {
+        if (node.isDistinct() && !isAggregation) {
+          throw new SemanticException("DISTINCT is not supported for non-aggregation functions");
+        }
+      }
+
       if (context.getContext().isPatternRecognition()) {
         if (isPatternRecognitionFunction(node)) {
           validatePatternRecognitionFunction(node);
@@ -973,16 +1056,39 @@ public class ExpressionAnalyzer {
       }
 
       Type type = metadata.getFunctionReturnType(functionName, argumentTypes);
+      FunctionKind functionKind = FunctionKind.SCALAR;
+      if (isAggregation) {
+        functionKind = FunctionKind.AGGREGATE;
+      } else {
+        boolean isWindow = metadata.isWindowFunction(session, functionName, accessControl);
+        if (isWindow) {
+          functionKind = FunctionKind.WINDOW;
+        }
+      }
+      FunctionNullability functionNullability = null;
+      switch (functionKind) {
+        case AGGREGATE:
+          functionNullability =
+              FunctionNullability.getAggregationFunctionNullability(argumentTypes.size());
+          break;
+        case SCALAR:
+          functionNullability =
+              FunctionNullability.getScalarFunctionNullability(argumentTypes.size());
+          break;
+        case WINDOW:
+          functionNullability =
+              FunctionNullability.getWindowFunctionNullability(argumentTypes.size());
+          break;
+      }
+
       // now we only support scalar or agg functions
       ResolvedFunction resolvedFunction =
           new ResolvedFunction(
               new BoundSignature(functionName.toLowerCase(Locale.ENGLISH), type, argumentTypes),
               FunctionId.NOOP_FUNCTION_ID,
-              isAggregation ? FunctionKind.AGGREGATE : FunctionKind.SCALAR,
+              functionKind,
               true,
-              isAggregation
-                  ? FunctionNullability.getAggregationFunctionNullability(argumentTypes.size())
-                  : FunctionNullability.getScalarFunctionNullability(argumentTypes.size()));
+              functionNullability);
       resolvedFunctions.put(NodeRef.of(node), resolvedFunction);
       return setExpressionType(node, type);
     }
@@ -1376,14 +1482,12 @@ public class ExpressionAnalyzer {
         throw new SemanticException(String.format("Unknown type: %s", node.getType()));
       }
 
-      if (type.equals(UnknownType.UNKNOWN)) {
+      if (type.equals(UNKNOWN)) {
         throw new SemanticException("UNKNOWN is not a valid type");
       }
 
       Type value = process(node.getExpression(), context);
-      if (!value.equals(UnknownType.UNKNOWN)
-          && !node.isTypeOnly()
-          && (!metadata.canCoerce(value, type))) {
+      if (!value.equals(UNKNOWN) && !node.isTypeOnly() && (!metadata.canCoerce(value, type))) {
         throw new SemanticException(String.format("Cannot cast %s to %s", value, type));
       }
 
@@ -1523,6 +1627,186 @@ public class ExpressionAnalyzer {
       return getOnlyElement(fields.build().stream().iterator()).getType();
     }
 
+    private void analyzeWindow(
+        Analysis.ResolvedWindow window,
+        StackableAstVisitorContext<Context> context,
+        Node originalNode) {
+      // check no nested window functions
+      ImmutableList.Builder<Node> childNodes = ImmutableList.builder();
+      if (!window.isPartitionByInherited()) {
+        childNodes.addAll(window.getPartitionBy());
+      }
+      if (!window.isOrderByInherited()) {
+        window.getOrderBy().ifPresent(orderBy -> childNodes.addAll(orderBy.getSortItems()));
+      }
+      if (!window.isFrameInherited()) {
+        window.getFrame().ifPresent(childNodes::add);
+      }
+
+      if (!window.isPartitionByInherited()) {
+        for (Expression expression : window.getPartitionBy()) {
+          process(expression, context);
+          Type type = getExpressionType(expression);
+          if (!type.isComparable()) {
+            throw new SemanticException(
+                String.format(
+                    "%s is not comparable, and therefore cannot be used in window function PARTITION BY",
+                    type));
+          }
+        }
+      }
+
+      if (!window.isOrderByInherited()) {
+        for (SortItem sortItem : getSortItemsFromOrderBy(window.getOrderBy())) {
+          process(sortItem.getSortKey(), context);
+          Type type = getExpressionType(sortItem.getSortKey());
+          if (!type.isOrderable()) {
+            throw new SemanticException(
+                String.format(
+                    "%s is not orderable, and therefore cannot be used in window function ORDER BY",
+                    type));
+          }
+        }
+      }
+
+      if (window.getFrame().isPresent() && !window.isFrameInherited()) {
+        WindowFrame frame = window.getFrame().get();
+
+        // validate frame start and end types
+        FrameBound.Type startType = frame.getStart().getType();
+        FrameBound.Type endType =
+            frame.getEnd().orElse(new FrameBound(null, CURRENT_ROW)).getType();
+        if (startType == UNBOUNDED_FOLLOWING) {
+          throw new SemanticException("Window frame start cannot be UNBOUNDED FOLLOWING");
+        }
+        if (endType == UNBOUNDED_PRECEDING) {
+          throw new SemanticException("Window frame end cannot be UNBOUNDED PRECEDING");
+        }
+        if ((startType == CURRENT_ROW) && (endType == PRECEDING)) {
+          throw new SemanticException(
+              "Window frame starting from CURRENT ROW cannot end with PRECEDING");
+        }
+        if ((startType == FOLLOWING) && (endType == PRECEDING)) {
+          throw new SemanticException(
+              "Window frame starting from FOLLOWING cannot end with PRECEDING");
+        }
+        if ((startType == FOLLOWING) && (endType == CURRENT_ROW)) {
+          throw new SemanticException(
+              "Window frame starting from FOLLOWING cannot end with CURRENT ROW");
+        }
+
+        // analyze frame offset values
+        if (frame.getType() == ROWS) {
+          if (frame.getStart().getValue().isPresent()) {
+            Expression startValue = frame.getStart().getValue().get();
+            Type type = process(startValue, context);
+            if (!isExactNumericWithScaleZero(type)) {
+              throw new SemanticException(
+                  String.format(
+                      "Window frame ROWS start value type must be exact numeric type with scale 0 (actual %s)",
+                      type));
+            }
+          }
+          if (frame.getEnd().isPresent() && frame.getEnd().get().getValue().isPresent()) {
+            Expression endValue = frame.getEnd().get().getValue().get();
+            Type type = process(endValue, context);
+            if (!isExactNumericWithScaleZero(type)) {
+              throw new SemanticException(
+                  String.format(
+                      "Window frame ROWS end value type must be exact numeric type with scale 0 (actual %s)",
+                      type));
+            }
+          }
+        } else if (frame.getType() == RANGE) {
+          if (frame.getStart().getValue().isPresent()) {
+            Expression startValue = frame.getStart().getValue().get();
+            analyzeFrameRangeOffset(
+                startValue, frame.getStart().getType(), context, window, originalNode);
+          }
+          if (frame.getEnd().isPresent() && frame.getEnd().get().getValue().isPresent()) {
+            Expression endValue = frame.getEnd().get().getValue().get();
+            analyzeFrameRangeOffset(
+                endValue, frame.getEnd().get().getType(), context, window, originalNode);
+          }
+        } else if (frame.getType() == GROUPS) {
+          if (frame.getStart().getValue().isPresent()) {
+            if (!window.getOrderBy().isPresent()) {
+              throw new SemanticException(
+                  "Window frame of type GROUPS PRECEDING or FOLLOWING requires ORDER BY");
+            }
+            Expression startValue = frame.getStart().getValue().get();
+            Type type = process(startValue, context);
+            if (!isExactNumericWithScaleZero(type)) {
+              throw new SemanticException(
+                  String.format(
+                      "Window frame GROUPS start value type must be exact numeric type with scale 0 (actual %s)",
+                      type));
+            }
+          }
+          if (frame.getEnd().isPresent() && frame.getEnd().get().getValue().isPresent()) {
+            if (!window.getOrderBy().isPresent()) {
+              throw new SemanticException(
+                  "Window frame of type GROUPS PRECEDING or FOLLOWING requires ORDER BY");
+            }
+            Expression endValue = frame.getEnd().get().getValue().get();
+            Type type = process(endValue, context);
+            if (!isExactNumericWithScaleZero(type)) {
+              throw new SemanticException(
+                  String.format(
+                      "Window frame ROWS end value type must be exact numeric type with scale 0 (actual %s)",
+                      type));
+            }
+          }
+        } else {
+          throw new SemanticException("Unsupported frame type: " + frame.getType());
+        }
+      }
+    }
+
+    private void analyzeFrameRangeOffset(
+        Expression offsetValue,
+        FrameBound.Type boundType,
+        StackableAstVisitorContext<Context> context,
+        Analysis.ResolvedWindow window,
+        Node originalNode) {
+      OrderBy orderBy =
+          window
+              .getOrderBy()
+              .orElseThrow(
+                  () ->
+                      new SemanticException(
+                          "Window frame of type RANGE PRECEDING or FOLLOWING requires ORDER BY"));
+      if (orderBy.getSortItems().size() != 1) {
+        throw new SemanticException(
+            "Window frame of type RANGE PRECEDING or FOLLOWING requires single sort item in ORDER BY (actual: %s)",
+            orderBy.getSortItems().size());
+      }
+      Expression sortKey = Iterables.getOnlyElement(orderBy.getSortItems()).getSortKey();
+      Type sortKeyType;
+      if (window.isOrderByInherited()) {
+        sortKeyType = getPreanalyzedType.apply(sortKey);
+      } else {
+        sortKeyType = getExpressionType(sortKey);
+      }
+      if (!isNumericType(sortKeyType)) {
+        throw new SemanticException(
+            String.format(
+                "Window frame of type RANGE PRECEDING or FOLLOWING requires that sort item type be numeric, datetime or interval (actual: %s)",
+                sortKeyType));
+      }
+
+      Type offsetValueType = process(offsetValue, context);
+
+      if (isNumericType(sortKeyType)) {
+        if (!isNumericType(offsetValueType)) {
+          throw new SemanticException(
+              String.format(
+                  "Window frame RANGE value type (%s) not compatible with sort item type (%s)",
+                  offsetValueType, sortKeyType));
+        }
+      }
+    }
+
     @Override
     protected Type visitExists(ExistsPredicate node, StackableAstVisitorContext<Context> context) {
       StatementAnalyzer analyzer =
@@ -1586,7 +1870,7 @@ public class ExpressionAnalyzer {
           break;
         default:
           throw new IllegalStateException(
-              format("Unexpected comparison type: %s", node.getOperator()));
+              String.format("Unexpected comparison type: %s", node.getOperator()));
       }
 
       return setExpressionType(node, BOOLEAN);
@@ -1956,7 +2240,8 @@ public class ExpressionAnalyzer {
         analyzer.getSubqueries(),
         analyzer.getExistsSubqueries(),
         analyzer.getColumnReferences(),
-        analyzer.getQuantifiedComparisons());
+        analyzer.getQuantifiedComparisons(),
+        analyzer.getWindowFunctions());
   }
 
   public static ExpressionAnalysis analyzeExpressions(
@@ -1993,7 +2278,8 @@ public class ExpressionAnalyzer {
         analyzer.getSubqueries(),
         analyzer.getExistsSubqueries(),
         analyzer.getColumnReferences(),
-        analyzer.getQuantifiedComparisons());
+        analyzer.getQuantifiedComparisons(),
+        analyzer.getWindowFunctions());
   }
 
   public static ExpressionAnalysis analyzeExpression(
@@ -2028,7 +2314,8 @@ public class ExpressionAnalyzer {
         analyzer.getSubqueries(),
         analyzer.getExistsSubqueries(),
         analyzer.getColumnReferences(),
-        analyzer.getQuantifiedComparisons());
+        analyzer.getQuantifiedComparisons(),
+        analyzer.getWindowFunctions());
   }
 
   public static void analyzeExpressionWithoutSubqueries(
@@ -2054,7 +2341,8 @@ public class ExpressionAnalyzer {
             TypeProvider.empty(),
             analysis.getParameters(),
             warningCollector,
-            analysis::getType);
+            analysis::getType,
+            analysis::getWindow);
     analyzer.analyze(expression, scope, correlationSupport);
 
     updateAnalysis(analysis, analyzer, session, accessControl);
@@ -2143,6 +2431,9 @@ public class ExpressionAnalyzer {
         warningCollector,
         expression -> {
           throw new IllegalStateException("Cannot access preanalyzed types");
+        },
+        functionCall -> {
+          throw new IllegalStateException("Cannot access resolved windows");
         });
   }
 
