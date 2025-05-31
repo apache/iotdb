@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -106,6 +107,10 @@ public class FragmentInstanceContext extends QueryContext {
   // null for all time partitions
   // empty for zero time partitions
   private List<Long> timePartitions;
+
+  // An optimization during restart changes the time index from FILE TIME INDEX
+  // to DEVICE TIME INDEX, which may cause a related validation false positive.
+  private boolean ignoreNotExistsDevice = false;
 
   private QueryDataSourceType queryDataSourceType = QueryDataSourceType.SERIES_SCAN;
 
@@ -294,6 +299,7 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void start() {
     long now = System.currentTimeMillis();
+    ignoreNotExistsDevice = !StorageEngine.getInstance().isReadyForNonReadWriteFunctions();
     executionStartTime.compareAndSet(null, now);
     startNanos.compareAndSet(0, System.nanoTime());
 
@@ -938,5 +944,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   public long getUnclosedSeqFileNum() {
     return unclosedSeqFileNum;
+  }
+
+  public boolean ignoreNotExistsDevice() {
+    return ignoreNotExistsDevice;
   }
 }
