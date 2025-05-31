@@ -164,19 +164,22 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
       List<IMeasurementSchema> aggregatedSchemas =
           tablets.stream()
               .flatMap(tablet -> tablet.getSchemas().stream())
-              .filter(Objects::nonNull)
               .collect(Collectors.toList());
       List<ColumnCategory> aggregatedColumnCategories =
           tablets.stream()
               .flatMap(tablet -> tablet.getColumnTypes().stream())
-              .filter(Objects::nonNull)
               .collect(Collectors.toList());
 
       final Set<IMeasurementSchema> seen = new HashSet<>();
       final List<Integer> distinctIndices =
           IntStream.range(0, aggregatedSchemas.size())
               .filter(
-                  i -> seen.add(aggregatedSchemas.get(i))) // Only keep the first occurrence index
+                  i -> {
+                    if (Objects.nonNull(aggregatedSchemas.get(i))) {
+                      return seen.add(aggregatedSchemas.get(i));
+                    }
+                    return false;
+                  }) // Only keep the first occurrence index
               .boxed()
               .collect(Collectors.toList());
 
@@ -222,15 +225,13 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
               // the data of the table model is aligned
               true,
               tablet.getSchemas().stream()
-                  .filter(Objects::nonNull)
-                  .map(IMeasurementSchema::getMeasurementName)
+                  .map(m -> Objects.nonNull(m) ? m.getMeasurementName() : null)
                   .toArray(String[]::new),
               tablet.getSchemas().stream()
-                  .map(IMeasurementSchema::getType)
+                  .map(m -> Objects.nonNull(m) ? m.getType() : null)
                   .toArray(TSDataType[]::new),
               // TODO: cast
               tablet.getSchemas().stream()
-                  .filter(Objects::nonNull)
                   .map(schema -> (MeasurementSchema) schema)
                   .toArray(MeasurementSchema[]::new),
               tablet.getTimestamps(),
@@ -238,8 +239,11 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
               values,
               tablet.getRowSize(),
               tablet.getColumnTypes().stream()
-                  .filter(Objects::nonNull)
-                  .map(TsTableColumnCategory::fromTsFileColumnCategory)
+                  .map(
+                      c ->
+                          Objects.nonNull(c)
+                              ? TsTableColumnCategory.fromTsFileColumnCategory(c)
+                              : null)
                   .toArray(TsTableColumnCategory[]::new));
 
       final int start = 0;

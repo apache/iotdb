@@ -162,16 +162,13 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
               new PartialPath(tablet.getDeviceId()),
               isTabletAlignedList.get(i),
               tablet.getSchemas().stream()
-                  .filter(Objects::nonNull)
-                  .map(IMeasurementSchema::getMeasurementName)
+                  .map(m -> Objects.nonNull(m) ? m.getMeasurementName() : null)
                   .toArray(String[]::new),
               tablet.getSchemas().stream()
-                  .filter(Objects::nonNull)
-                  .map(IMeasurementSchema::getType)
+                  .map(m -> Objects.nonNull(m) ? m.getType() : null)
                   .toArray(TSDataType[]::new),
               // TODO: cast
               tablet.getSchemas().stream()
-                  .filter(Objects::nonNull)
                   .map(schema -> (MeasurementSchema) schema)
                   .toArray(MeasurementSchema[]::new),
               tablet.getTimestamps(),
