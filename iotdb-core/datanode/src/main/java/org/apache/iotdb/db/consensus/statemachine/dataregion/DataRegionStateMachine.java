@@ -230,6 +230,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
           Thread.currentThread().interrupt();
         }
       } else {
+        if (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == result.getCode()
+            || TSStatusCode.TABLE_IS_LOST.getStatusCode() == result.getCode()) {
+          logger.info("table is not exists or lost, result code is {}", result.getCode());
+        }
         break;
       }
     }
