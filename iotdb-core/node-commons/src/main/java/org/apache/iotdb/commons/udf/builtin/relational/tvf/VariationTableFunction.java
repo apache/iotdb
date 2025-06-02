@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
 import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.exception.UDFTypeMismatchException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
@@ -82,13 +83,21 @@ public class VariationTableFunction implements TableFunction {
     String expectedFieldName =
         (String) ((ScalarArgument) arguments.get(COL_PARAMETER_NAME)).getValue();
     double delta = (double) ((ScalarArgument) arguments.get(DELTA_PARAMETER_NAME)).getValue();
-    int requiredIndex =
-        findColumnIndex(
-            tableArgument,
-            expectedFieldName,
-            delta == 0
-                ? ImmutableSet.copyOf(Type.allTypes())
-                : ImmutableSet.copyOf(Type.numericTypes()));
+    int requiredIndex;
+    try {
+      requiredIndex =
+          findColumnIndex(
+              tableArgument,
+              expectedFieldName,
+              delta == 0
+                  ? ImmutableSet.copyOf(Type.allTypes())
+                  : ImmutableSet.copyOf(Type.numericTypes()));
+    } catch (UDFTypeMismatchException e) {
+      // print more information for the exception
+      throw new UDFTypeMismatchException(
+          e.getMessage() + " The column type must be numeric if DELTA is not 0.", e);
+    }
+
     DescribedSchema properColumnSchema =
         new DescribedSchema.Builder().addField("window_index", Type.INT64).build();
     // outputColumnSchema
