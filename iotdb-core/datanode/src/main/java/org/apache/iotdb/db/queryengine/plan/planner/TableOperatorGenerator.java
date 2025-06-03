@@ -190,6 +190,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctio
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
@@ -597,7 +598,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                   node.getTimePredicate()
                       .map(expression -> getSeriesScanOptionsBuilder(context, expression))
                       .orElseGet(SeriesScanOptions.Builder::new);
-              builder.withAllSensors(new HashSet<>(measurementColumnNames));
+              builder
+                  .withIsTableViewForTreeModel(true)
+                  .withAllSensors(new HashSet<>(measurementColumnNames));
               if (pushDownPredicateForCurrentMeasurement != null) {
                 builder.withPushDownFilter(
                     convertPredicateToFilter(
@@ -1062,6 +1065,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.isPushLimitToEachDevice(),
             node.getPushDownPredicate());
     seriesScanOptions.setTTLForTableView(viewTTL);
+    seriesScanOptions.setIsTableViewForTreeModel(node instanceof TreeDeviceViewScanNode);
 
     OperatorContext operatorContext =
         context
@@ -2859,6 +2863,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.isPushLimitToEachDevice(),
             node.getPushDownPredicate());
     seriesScanOptions.setTTLForTableView(tableViewTTL);
+    seriesScanOptions.setIsTableViewForTreeModel(node instanceof AggregationTreeDeviceViewScanNode);
 
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
     allSensors.add(""); // for time column

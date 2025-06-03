@@ -183,7 +183,7 @@ public class SeriesScanUtil implements Accountable {
     // Only the data in the table model needs to retain rows where all value
     // columns are null values, so we can use isIgnoreAllNullRows to
     // differentiate the data of tree model and table model.
-    if (context.isIgnoreAllNullRows()) {
+    if (context.isIgnoreAllNullRows() || scanOptions.isTableViewForTreeModel()) {
       ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
       scanOptions.setTTL(ttl);
     } else {
