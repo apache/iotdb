@@ -27,7 +27,6 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
 
 import org.apache.tsfile.read.common.RowRecord;
 import org.junit.After;
@@ -73,19 +72,6 @@ public class IoTDBTableViewWithTreeTTLQueryIT {
     "USE " + DATABASE_NAME,
     "CREATE VIEW view1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD) as root.db.battery.**",
   };
-
-  public static void main(String[] args) {
-    try (Session session = new Session.Builder().build()) {
-      session.open();
-      for (String createTreeDataSql : createTreeDataSqls) {
-        session.executeNonQueryStatement(createTreeDataSql);
-      }
-    } catch (IoTDBConnectionException e) {
-      throw new RuntimeException(e);
-    } catch (StatementExecutionException e) {
-      throw new RuntimeException(e);
-    }
-  }
 
   @Before
   public void setUp() throws Exception {
