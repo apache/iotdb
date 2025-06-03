@@ -93,9 +93,4 @@ public class ZigzagColumnDecoder implements ColumnDecoder {
     throw new TsFileDecodingException(
         String.format("Zigzag doesn't support data type: " + dataType));
   }
-
-  @Override
-  public Decoder getDecoder(TSDataType type, TSEncoding encodingType) {
-    return Decoder.getDecoderByType(encodingType, type);
-  }
 }

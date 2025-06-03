@@ -20,7 +20,7 @@ package org.apache.iotdb.session.rpccompress.decoder;
 
 import org.apache.iotdb.session.rpccompress.ColumnEntry;
 
-import org.apache.tsfile.encoding.decoder.*;
+import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -100,10 +100,5 @@ public class RlbeColumnDecoder implements ColumnDecoder {
   @Override
   public Binary[] decodeBinaryColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
     throw new TsFileDecodingException(String.format("RLBE doesn't support data type: " + dataType));
-  }
-
-  @Override
-  public Decoder getDecoder(TSDataType type, TSEncoding encodingType) {
-    return Decoder.getDecoderByType(encodingType, type);
   }
 }

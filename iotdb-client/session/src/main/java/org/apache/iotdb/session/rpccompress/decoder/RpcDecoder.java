@@ -21,7 +21,6 @@ package org.apache.iotdb.session.rpccompress.decoder;
 import org.apache.iotdb.session.rpccompress.ColumnEntry;
 import org.apache.iotdb.session.rpccompress.EncodingTypeNotSupportedException;
 import org.apache.iotdb.session.rpccompress.MetaHead;
-import org.apache.iotdb.session.rpccompress.encoder.*;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;

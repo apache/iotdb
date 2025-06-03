@@ -55,7 +55,7 @@ public class PlainColumnEncoder implements ColumnEncoder {
   @Override
   public void encode(boolean[] values, ByteArrayOutputStream out) {
     // 1. Calculate the uncompressed size in bytes for the column of data.
-    int unCompressedSize = getUncompressedDataSize(values.length);
+    int unCompressedSize = getUncompressedDataSize(values.length, null, dataType);
     PublicBAOS outputStream = new PublicBAOS(unCompressedSize);
     try {
       // 2. Encodes the input array using the corresponding encoder from TsFile.
@@ -76,32 +76,9 @@ public class PlainColumnEncoder implements ColumnEncoder {
   }
 
   @Override
-  public void encode(short[] values, ByteArrayOutputStream out) {
-    // 1. Calculate the uncompressed size in bytes for the column of data.
-    int unCompressedSize = getUncompressedDataSize(values.length);
-    PublicBAOS outputStream = new PublicBAOS(unCompressedSize);
-    try {
-      // 2. Encodes the input array using the corresponding encoder from TsFile.
-      for (short value : values) {
-        encoder.encode(value, outputStream);
-      }
-      // 3.Flushes any buffered encoding data into the outputStream.
-      encoder.flush(outputStream);
-      byte[] encodedData = outputStream.toByteArray();
-      // 4. Set column entry metadata
-      setColumnEntry(encodedData.length, unCompressedSize);
-      if (out != null) {
-        out.write(encodedData);
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  @Override
   public void encode(int[] values, ByteArrayOutputStream out) {
     // 1. Calculate the uncompressed size in bytes for the column of data.
-    int unCompressedSize = getUncompressedDataSize(values.length);
+    int unCompressedSize = getUncompressedDataSize(values.length, null, dataType);
     PublicBAOS outputStream = new PublicBAOS(unCompressedSize);
     try {
       // 2. Encodes the input array using the corresponding encoder from TsFile.
@@ -124,7 +101,7 @@ public class PlainColumnEncoder implements ColumnEncoder {
   @Override
   public void encode(long[] values, ByteArrayOutputStream out) {
     // 1. Calculate the uncompressed size in bytes for the column of data.
-    int unCompressedSize = getUncompressedDataSize(values.length);
+    int unCompressedSize = getUncompressedDataSize(values.length, null, dataType);
     PublicBAOS outputStream = new PublicBAOS(unCompressedSize);
     try {
       // 2. Encodes the input array using the corresponding encoder from TsFile.
@@ -147,7 +124,7 @@ public class PlainColumnEncoder implements ColumnEncoder {
   @Override
   public void encode(float[] values, ByteArrayOutputStream out) {
     // 1. Calculate the uncompressed size in bytes for the column of data.
-    int unCompressedSize = getUncompressedDataSize(values.length);
+    int unCompressedSize = getUncompressedDataSize(values.length, null, dataType);
     PublicBAOS outputStream = new PublicBAOS(unCompressedSize);
     try {
       // 2. Encodes the input array using the corresponding encoder from TsFile.
@@ -170,7 +147,7 @@ public class PlainColumnEncoder implements ColumnEncoder {
   @Override
   public void encode(double[] values, ByteArrayOutputStream out) {
     // 1. Calculate the uncompressed size in bytes for the column of data.
-    int unCompressedSize = getUncompressedDataSize(values.length);
+    int unCompressedSize = getUncompressedDataSize(values.length, null, dataType);
     PublicBAOS outputStream = new PublicBAOS(unCompressedSize);
     try {
       // 2. Encodes the input array using the corresponding encoder from TsFile.
@@ -193,7 +170,7 @@ public class PlainColumnEncoder implements ColumnEncoder {
   @Override
   public void encode(Binary[] values, ByteArrayOutputStream out) {
     // 1. Calculate the uncompressed size in bytes for the column of data.
-    int unCompressedSize = getUncompressedDataSize(values.length, values);
+    int unCompressedSize = getUncompressedDataSize(values.length, values, dataType);
     PublicBAOS outputStream = new PublicBAOS(unCompressedSize);
     try {
       // 2. Encodes the input array using the corresponding encoder from TsFile.
@@ -211,50 +188,6 @@ public class PlainColumnEncoder implements ColumnEncoder {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  private int getUncompressedDataSize(int len) {
-    return getUncompressedDataSize(len, null);
-  }
-
-  /**
-   * Calculates the uncompressed size in bytes for a column of data, based on the data type and
-   * number of entries.
-   *
-   * @param len the length of arrayList
-   * @return
-   */
-  private int getUncompressedDataSize(int len, Binary[] values) {
-    int unCompressedSize = 0;
-    switch (dataType) {
-      case BOOLEAN:
-        unCompressedSize = 1 * len;
-        break;
-      case INT32:
-      case DATE:
-        unCompressedSize = 4 * len;
-        break;
-      case INT64:
-      case TIMESTAMP:
-        unCompressedSize = 8 * len;
-        break;
-      case FLOAT:
-        unCompressedSize = 4 * len;
-        break;
-      case DOUBLE:
-        unCompressedSize = 8 * len;
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-        for (Binary binary : values) {
-          unCompressedSize += binary.getLength();
-        }
-        break;
-      default:
-        throw new UnsupportedOperationException("Doesn't support data type: " + dataType);
-    }
-    return unCompressedSize;
   }
 
   /**
@@ -275,11 +208,6 @@ public class PlainColumnEncoder implements ColumnEncoder {
   @Override
   public TSEncoding getEncodingType() {
     return TSEncoding.PLAIN;
-  }
-
-  @Override
-  public Encoder getEncoder(TSDataType type, TSEncoding encodingType) {
-    return new PlainEncoder(type, DEFAULT_MAX_STRING_LENGTH);
   }
 
   @Override

@@ -337,21 +337,33 @@ public class StatementGenerator {
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
     long[] timestamps;
 
-    long startTimeForDeCompressedTimes = 0L;
-    long endTimeForDeCompressedTimes = 0L;
-    long startTimeForDeCompressedValues = 0L;
+    long startDeCompressedTimes = 0L;
+    long endDeCompressedTimes = 0L;
+    long startDecodeTime = 0L;
+    long endDecodeTime = 0L;
+
+    long startDeCompressedValue = 0L;
+    long endDeCompressedValue = 0L;
+    long startDecodeValue = 0L;
+    long endDecodeValue = 0L;
+
+    int uncompressedTimestampsSize = 0;
+    int uncompressedValuesSize = 0;
+
     try {
-      // decode timestamps
       if (insertTabletReq.isIsCompressed()) {
-        startTimeForDeCompressedTimes = System.nanoTime();
+        startDeCompressedTimes = System.nanoTime();
         RpcDecoder rpcDecoder = new RpcDecoder();
         RpcUncompressor rpcUncompressor =
             new RpcUncompressor(
                 CompressionType.deserialize((byte) insertTabletReq.getCompressType()));
-        timestamps =
-            rpcDecoder.readTimesFromBuffer(
-                rpcUncompressor.uncompress(insertTabletReq.timestamps), insertTabletReq.size);
-        endTimeForDeCompressedTimes = System.nanoTime();
+        ByteBuffer uncompressedTimestamps = rpcUncompressor.uncompress(insertTabletReq.timestamps);
+        uncompressedTimestampsSize = uncompressedTimestamps.remaining();
+        endDeCompressedTimes = System.nanoTime();
+
+        startDecodeTime = System.nanoTime();
+        timestamps = rpcDecoder.readTimesFromBuffer(uncompressedTimestamps, insertTabletReq.size);
+        endDecodeTime = System.nanoTime();
       } else {
         timestamps =
             QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size);
@@ -363,14 +375,19 @@ public class StatementGenerator {
       insertStatement.setTimes(timestamps);
       // decode values
       if (insertTabletReq.isIsCompressed()) {
-        startTimeForDeCompressedValues = System.nanoTime();
+        startDeCompressedValue = System.nanoTime();
         RpcDecoder rpcDecoder = new RpcDecoder();
         RpcUncompressor rpcUncompressor =
             new RpcUncompressor(
                 CompressionType.deserialize((byte) insertTabletReq.getCompressType()));
+        ByteBuffer uncompressedValues = rpcUncompressor.uncompress(insertTabletReq.values);
+        uncompressedValuesSize = uncompressedValues.remaining();
+        endDeCompressedValue = System.nanoTime();
+
+        startDecodeValue = System.nanoTime();
         insertStatement.setColumns(
-            rpcDecoder.decodeValues(
-                rpcUncompressor.uncompress(insertTabletReq.values), insertTabletReq.size));
+            rpcDecoder.decodeValues(uncompressedValues, insertTabletReq.size));
+        endDecodeValue = System.nanoTime();
       } else {
         insertStatement.setColumns(
             QueryDataSetUtils.readTabletValuesFromBuffer(
@@ -386,10 +403,20 @@ public class StatementGenerator {
     } finally {
       RPCServiceThriftHandlerMetrics.getInstance()
           .recordDecompressLatencyTimer(
-              System.nanoTime()
-                  - startTimeForDeCompressedValues
-                  + endTimeForDeCompressedTimes
-                  - startTimeForDeCompressedTimes);
+              endDeCompressedValue
+                  - startDeCompressedValue
+                  + endDeCompressedTimes
+                  - startDeCompressedTimes);
+      RPCServiceThriftHandlerMetrics.getInstance()
+          .recordDecodeLatencyTimer(
+              endDecodeValue - startDecodeValue + endDecodeTime - startDecodeTime);
+      if (insertTabletReq.isIsCompressed()) {
+        RPCServiceThriftHandlerMetrics.getInstance()
+            .recordCompressionRatioTimer(
+                (uncompressedTimestampsSize + uncompressedValuesSize)
+                    / (insertTabletReq.timestamps.remaining()
+                        + insertTabletReq.values.remaining()));
+      }
     }
     insertStatement.setRowCount(insertTabletReq.size);
     TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];

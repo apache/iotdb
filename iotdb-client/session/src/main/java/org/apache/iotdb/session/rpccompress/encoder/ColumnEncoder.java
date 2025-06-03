@@ -21,6 +21,7 @@ package org.apache.iotdb.session.rpccompress.encoder;
 import org.apache.iotdb.session.rpccompress.ColumnEntry;
 
 import org.apache.tsfile.encoding.encoder.Encoder;
+import org.apache.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
@@ -31,8 +32,6 @@ import java.io.ByteArrayOutputStream;
 public interface ColumnEncoder {
 
   void encode(boolean[] values, ByteArrayOutputStream out);
-
-  void encode(short[] values, ByteArrayOutputStream out);
 
   void encode(int[] values, ByteArrayOutputStream out);
 
@@ -48,7 +47,49 @@ public interface ColumnEncoder {
 
   TSEncoding getEncodingType();
 
-  Encoder getEncoder(TSDataType type, TSEncoding encodingType);
-
   ColumnEntry getColumnEntry();
+
+  /**
+   * Calculates the uncompressed size in bytes for a column of data, based on the data type and
+   * number of entries.
+   *
+   * @param len the length of arrayList
+   * @return
+   */
+  default int getUncompressedDataSize(int len, Binary[] values, TSDataType dataType) {
+    int unCompressedSize = 0;
+    switch (dataType) {
+      case BOOLEAN:
+        unCompressedSize = 1 * len;
+        break;
+      case INT32:
+      case DATE:
+        unCompressedSize = 4 * len;
+        break;
+      case INT64:
+      case TIMESTAMP:
+        unCompressedSize = 8 * len;
+        break;
+      case FLOAT:
+        unCompressedSize = 4 * len;
+        break;
+      case DOUBLE:
+        unCompressedSize = 8 * len;
+        break;
+      case TEXT:
+      case STRING:
+      case BLOB:
+        for (Binary binary : values) {
+          unCompressedSize += binary.getLength();
+        }
+        break;
+      default:
+        throw new UnsupportedOperationException("Doesn't support data type: " + dataType);
+    }
+    return unCompressedSize;
+  }
+
+  default Encoder getEncoder(TSDataType type, TSEncoding encodingType) {
+    return TSEncodingBuilder.getEncodingBuilder(encodingType).getEncoder(type);
+  }
 }

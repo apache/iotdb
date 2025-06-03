@@ -75,9 +75,4 @@ public class DictionaryColumnDecoder implements ColumnDecoder {
     }
     return result;
   }
-
-  @Override
-  public Decoder getDecoder(TSDataType type, TSEncoding encodingType) {
-    return Decoder.getDecoderByType(encodingType, type);
-  }
 }

@@ -95,9 +95,4 @@ public class Ts2DiffColumnDecoder implements ColumnDecoder {
   public Binary[] decodeBinaryColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
     throw new UnSupportedDataTypeException("TS_2DIFF doesn't support data type: " + dataType);
   }
-
-  @Override
-  public Decoder getDecoder(TSDataType type, TSEncoding encodingType) {
-    return Decoder.getDecoderByType(encodingType, type);
-  }
 }

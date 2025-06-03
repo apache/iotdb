@@ -43,5 +43,7 @@ public interface ColumnDecoder {
 
   Binary[] decodeBinaryColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount);
 
-  Decoder getDecoder(TSDataType type, TSEncoding encodingType);
+  default Decoder getDecoder(TSDataType type, TSEncoding encodingType) {
+    return Decoder.getDecoderByType(encodingType, type);
+  }
 }

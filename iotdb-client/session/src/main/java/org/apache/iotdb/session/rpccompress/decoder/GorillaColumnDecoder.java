@@ -20,7 +20,7 @@ package org.apache.iotdb.session.rpccompress.decoder;
 
 import org.apache.iotdb.session.rpccompress.ColumnEntry;
 
-import org.apache.tsfile.encoding.decoder.*;
+import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
@@ -99,10 +99,5 @@ public class GorillaColumnDecoder implements ColumnDecoder {
   @Override
   public Binary[] decodeBinaryColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
     throw new UnsupportedOperationException("Gorilla doesn't support data type: " + dataType);
-  }
-
-  @Override
-  public Decoder getDecoder(TSDataType type, TSEncoding encodingType) {
-    return Decoder.getDecoderByType(encodingType, type);
   }
 }

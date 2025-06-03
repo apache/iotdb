@@ -100,9 +100,4 @@ public class ChimpColumnDecoder implements ColumnDecoder {
   public Binary[] decodeBinaryColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
     throw new UnSupportedDataTypeException("CHIMP doesn't support data type: " + dataType);
   }
-
-  @Override
-  public Decoder getDecoder(TSDataType type, TSEncoding encodingType) {
-    return Decoder.getDecoderByType(encodingType, type);
-  }
 }

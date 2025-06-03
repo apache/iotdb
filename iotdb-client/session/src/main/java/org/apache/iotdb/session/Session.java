@@ -2820,7 +2820,6 @@ public class Session implements ISession {
     SessionConnection connection = entry.getKey();
     Tablet tablet = entry.getValue();
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
-    request.setCompressType(this.compressionType.ordinal());
     request.setWriteToTable(true);
     request.setColumnCategories(
         tablet.getColumnTypes().stream().map(t -> (byte) t.ordinal()).collect(Collectors.toList()));
@@ -2999,10 +2998,10 @@ public class Session implements ISession {
       try {
         RpcEncoder rpcEncoder = new RpcEncoder(this.columnEncodersMap);
         RpcCompressor rpcCompressor = new RpcCompressor(this.compressionType);
+        request.setCompressType(this.compressionType.serialize());
         request.setTimestamps(rpcCompressor.compress(rpcEncoder.encodeTimestamps(tablet)));
         request.setValues(rpcCompressor.compress(rpcEncoder.encodeValues(tablet)));
       } finally {
-        System.out.println(System.nanoTime() - startTime);
       }
     } else {
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
