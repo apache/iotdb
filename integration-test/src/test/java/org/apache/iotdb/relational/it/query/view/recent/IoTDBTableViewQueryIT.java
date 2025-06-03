@@ -339,6 +339,18 @@ public class IoTDBTableViewQueryIT {
       // empty result
       compareQueryResults(
           session, "select * from view3 limit 1", "select * from table1 limit 0", true);
+
+      // not exists
+      compareQueryResults(
+          session,
+          "select count(*) from view1 where battery = 'b'",
+          "select count(*) from table1 where battery = 'b'",
+          false);
+      compareQueryResults(
+          session,
+          "select * from (select time, battery as device1 from view1 where battery = 'b1') as t1 full outer join (select time, battery as device2 from view2 where battery = 'b') as t2 using(time)",
+          "select * from (select time, battery as device1 from table1 where battery = 'b1') as t1 full outer join (select time, battery as device2 from table1 where battery = 'b') as t2 using(time)",
+          true);
     }
   }
 
