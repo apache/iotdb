@@ -54,8 +54,7 @@ public class ZigzagColumnDecoder implements ColumnDecoder {
 
   @Override
   public boolean[] decodeBooleanColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
-    throw new TsFileDecodingException(
-        String.format("Zigzag doesn't support data type: " + dataType));
+    throw new TsFileDecodingException("Zigzag doesn't support data type: " + dataType);
   }
 
   @Override

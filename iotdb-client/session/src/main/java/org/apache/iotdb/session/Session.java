@@ -1774,12 +1774,7 @@ public class Session implements ISession {
     return false;
   }
 
-  /**
-   * Filter the null object of list。
-   *
-   * @param prefixPaths devices path。
-   * @return true:all values of valuesList are null;false:Not all values of valuesList are null.
-   */
+  /** Filter the null object of list。 */
   private void filterNullValueAndMeasurementWithStringType(
       List<String> prefixPaths,
       List<Long> times,

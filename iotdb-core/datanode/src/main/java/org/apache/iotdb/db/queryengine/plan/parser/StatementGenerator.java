@@ -549,7 +549,7 @@ public class StatementGenerator {
     insertStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPath));
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     // req.timestamps sorted on session side
-    if (req.timestamps.size() != 0) {
+    if (!req.timestamps.isEmpty()) {
       TimestampPrecisionUtils.checkTimestampPrecision(
           req.timestamps.get(req.timestamps.size() - 1));
     }

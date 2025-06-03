@@ -41,21 +41,20 @@ public class RleColumnDecoder implements ColumnDecoder {
   public Object decode(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
     switch (dataType) {
       case BOOLEAN:
-        return decoder.readBoolean(buffer);
+        return decodeBooleanColumn(buffer, columnEntry, rowCount);
       case INT32:
       case DATE:
-        return decoder.readInt(buffer);
+        return decodeIntColumn(buffer, columnEntry, rowCount);
       case INT64:
       case TIMESTAMP:
-        return decoder.readLong(buffer);
+        return decodeLongColumn(buffer, columnEntry, rowCount);
       case FLOAT:
-        return decoder.readFloat(buffer);
+        return decodeFloatColumn(buffer, columnEntry, rowCount);
       case DOUBLE:
-        return decoder.readDouble(buffer);
+        return decodeDoubleColumn(buffer, columnEntry, rowCount);
       case TEXT:
       case STRING:
       case BLOB:
-        return decoder.readBinary(buffer);
       default:
         throw new UnsupportedOperationException("PLAIN doesn't support data type: " + dataType);
     }

@@ -49,8 +49,8 @@ public class PlainColumnEncoder implements ColumnEncoder {
   /**
    * Encodes a column of data using the PLAIN encoding algorithm.
    *
-   * @param values
-   * @param out
+   * @param values values the input boolean array to be encoded
+   * @param out out the output stream to write the encoded binary data
    */
   @Override
   public void encode(boolean[] values, ByteArrayOutputStream out) {
@@ -193,8 +193,8 @@ public class PlainColumnEncoder implements ColumnEncoder {
   /**
    * Set column entry metadata
    *
-   * @param compressedSize
-   * @param unCompressedSize
+   * @param compressedSize the size of the encoded data in bytes after compression
+   * @param unCompressedSize the original size of the data in bytes before compression
    */
   private void setColumnEntry(Integer compressedSize, Integer unCompressedSize) {
     columnEntry = new ColumnEntry(compressedSize, unCompressedSize, dataType, TSEncoding.PLAIN);

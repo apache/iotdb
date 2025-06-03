@@ -54,7 +54,6 @@ public interface ColumnEncoder {
    * number of entries.
    *
    * @param len the length of arrayList
-   * @return
    */
   default int getUncompressedDataSize(int len, Binary[] values, TSDataType dataType) {
     int unCompressedSize = 0;

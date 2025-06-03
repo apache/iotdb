@@ -37,14 +37,11 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
 
   // region begin
   private Timer compressionRatioTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer timeConsumedOfRPCTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer encodeLatencyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer decodeLatencyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer compressLatencyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer decompressLatencyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   // end
-
+  // 内存占用
   public RPCServiceThriftHandlerMetrics(AtomicLong thriftConnectionNumber) {
     this.thriftConnectionNumber = thriftConnectionNumber;
   }
@@ -53,20 +50,8 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
     compressionRatioTimer.update(costTimeInNanos, TimeUnit.NANOSECONDS);
   }
 
-  public void recordTimeConsumedOfRPC(final long costTimeInNanos) {
-    timeConsumedOfRPCTimer.update(costTimeInNanos, TimeUnit.NANOSECONDS);
-  }
-
-  public void recordEncodeLatencyTimer(final long costTimeInNanos) {
-    encodeLatencyTimer.update(costTimeInNanos, TimeUnit.NANOSECONDS);
-  }
-
   public void recordDecodeLatencyTimer(final long costTimeInNanos) {
     decodeLatencyTimer.update(costTimeInNanos, TimeUnit.NANOSECONDS);
-  }
-
-  public void recordCompressLatencyTimer(final long costTimeInNanos) {
-    compressLatencyTimer.update(costTimeInNanos, TimeUnit.NANOSECONDS);
   }
 
   public void recordDecompressLatencyTimer(final long costTimeInNanos) {
@@ -94,33 +79,12 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
             Tag.NAME.toString(),
             "compressionRatio");
 
-    timeConsumedOfRPCTimer =
-        metricService.getOrCreateTimer(
-            Metric.THRIFT_RPC_COMPRESS.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            "timeConsumedOfRPC");
-
-    encodeLatencyTimer =
-        metricService.getOrCreateTimer(
-            Metric.THRIFT_RPC_COMPRESS.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            "encodeLatency");
-
     decodeLatencyTimer =
         metricService.getOrCreateTimer(
             Metric.THRIFT_RPC_COMPRESS.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "decodeLatency");
-
-    compressLatencyTimer =
-        metricService.getOrCreateTimer(
-            Metric.THRIFT_RPC_COMPRESS.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            "compressLatency");
 
     decompressLatencyTimer =
         metricService.getOrCreateTimer(
@@ -139,10 +103,7 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
         "ClientRPC");
 
     compressionRatioTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    timeConsumedOfRPCTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    encodeLatencyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     decodeLatencyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    compressLatencyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     decompressLatencyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
     metricService.remove(
