@@ -915,6 +915,7 @@ querySpecification
       (WHERE where=booleanExpression)?
       (GROUP BY groupBy)?
       (HAVING having=booleanExpression)?
+      (WINDOW windowDefinition (',' windowDefinition)*)?
     ;
 
 groupBy
@@ -1117,8 +1118,9 @@ primaryExpression
     | '(' expression (',' expression)+ ')'                                                #rowConstructor
     | ROW '(' expression (',' expression)* ')'                                            #rowConstructor
     | COLUMNS '(' (ASTERISK | pattern=string) ')'                                         #columns
-    | qualifiedName '(' (label=identifier '.')? ASTERISK ')'                              #functionCall
-    | processingMode? qualifiedName '(' (setQuantifier? expression (',' expression)*)?')' #functionCall
+    | qualifiedName '(' (label=identifier '.')? ASTERISK ')' over?                        #functionCall
+    | processingMode? qualifiedName '(' (setQuantifier? expression (',' expression)*)?')'
+      (nullTreatment? over)?                                                              #functionCall
     | '(' query ')'                                                                       #subqueryExpression
     // This is an extension to ANSI SQL, which considers EXISTS to be a <boolean expression>
     | EXISTS '(' query ')'                                                                #exists
@@ -1140,6 +1142,41 @@ primaryExpression
     | '(' expression ')'                                                                  #parenthesizedExpression
     ;
 
+over
+    : OVER (windowName=identifier | '(' windowSpecification ')')
+    ;
+
+windowDefinition
+    : name=identifier AS '(' windowSpecification ')'
+    ;
+
+windowSpecification
+    : (existingWindowName=identifier)?
+      (PARTITION BY partition+=expression (',' partition+=expression)*)?
+      (ORDER BY sortItem (',' sortItem)*)?
+      windowFrame?
+    ;
+
+windowFrame
+    : frameExtent
+    ;
+
+frameExtent
+    : frameType=RANGE start=frameBound
+    | frameType=ROWS start=frameBound
+    | frameType=GROUPS start=frameBound
+    | frameType=RANGE BETWEEN start=frameBound AND end=frameBound
+    | frameType=ROWS BETWEEN start=frameBound AND end=frameBound
+    | frameType=GROUPS BETWEEN start=frameBound AND end=frameBound
+    ;
+
+frameBound
+    : UNBOUNDED boundType=PRECEDING                 #unboundedFrame
+    | UNBOUNDED boundType=FOLLOWING                 #unboundedFrame
+    | CURRENT ROW                                   #currentRowBound
+    | expression boundType=(PRECEDING | FOLLOWING)  #boundedFrame
+    ;
+
 literalExpression
     : NULL                                                                                #nullLiteral
     | number                                                                              #numericLiteral
@@ -1159,6 +1196,11 @@ trimsSpecification
     : LEADING
     | TRAILING
     | BOTH
+    ;
+
+nullTreatment
+    : IGNORE NULLS
+    | RESPECT NULLS
     ;
 
 string

@@ -34,13 +34,17 @@ import static java.util.Objects.requireNonNull;
 
 public class FunctionCall extends Expression {
   private final QualifiedName name;
+  private final Optional<Window> window;
   private final boolean distinct;
   private final Optional<ProcessingMode> processingMode;
   private final List<Expression> arguments;
+  private final Optional<NullTreatment> nullTreatment;
 
   public FunctionCall(QualifiedName name, List<Expression> arguments) {
     super(null);
     this.name = requireNonNull(name, "name is null");
+    this.window = Optional.empty();
+    this.nullTreatment = Optional.empty();
     this.distinct = false;
     this.processingMode = Optional.empty();
     this.arguments = requireNonNull(arguments, "arguments is null");
@@ -49,6 +53,8 @@ public class FunctionCall extends Expression {
   public FunctionCall(QualifiedName name, boolean distinct, List<Expression> arguments) {
     super(null);
     this.name = requireNonNull(name, "name is null");
+    this.window = Optional.empty();
+    this.nullTreatment = Optional.empty();
     this.distinct = distinct;
     this.processingMode = Optional.empty();
     this.arguments = requireNonNull(arguments, "arguments is null");
@@ -58,6 +64,8 @@ public class FunctionCall extends Expression {
       QualifiedName name, Optional<ProcessingMode> processingMode, List<Expression> arguments) {
     super(null);
     this.name = requireNonNull(name, "name is null");
+    this.window = Optional.empty();
+    this.nullTreatment = Optional.empty();
     this.distinct = false;
     this.processingMode = requireNonNull(processingMode, "processingMode is null");
     this.arguments = requireNonNull(arguments, "arguments is null");
@@ -70,6 +78,8 @@ public class FunctionCall extends Expression {
       List<Expression> arguments) {
     super(null);
     this.name = requireNonNull(name, "name is null");
+    this.window = Optional.empty();
+    this.nullTreatment = Optional.empty();
     this.distinct = distinct;
     this.processingMode = requireNonNull(processingMode, "processingMode is null");
     this.arguments = requireNonNull(arguments, "arguments is null");
@@ -87,9 +97,46 @@ public class FunctionCall extends Expression {
       List<Expression> arguments) {
     super(requireNonNull(location, "location is null"));
     this.name = requireNonNull(name, "name is null");
+    this.window = Optional.empty();
+    this.nullTreatment = Optional.empty();
     this.distinct = distinct;
     this.processingMode = requireNonNull(processingMode, "processingMode is null");
     this.arguments = requireNonNull(arguments, "arguments is null");
+  }
+
+  public FunctionCall(
+      NodeLocation location,
+      QualifiedName name,
+      Optional<Window> window,
+      Optional<NullTreatment> nullTreatment,
+      boolean distinct,
+      List<Expression> arguments) {
+    super(requireNonNull(location, "location is null"));
+
+    this.name = name;
+    this.window = window;
+    this.nullTreatment = nullTreatment;
+    this.distinct = distinct;
+    this.processingMode = Optional.empty();
+    this.arguments = arguments;
+  }
+
+  public FunctionCall(
+      NodeLocation location,
+      QualifiedName name,
+      Optional<Window> window,
+      Optional<NullTreatment> nullTreatment,
+      boolean distinct,
+      Optional<ProcessingMode> processingMode,
+      List<Expression> arguments) {
+    super(requireNonNull(location, "location is null"));
+
+    this.name = name;
+    this.window = window;
+    this.nullTreatment = nullTreatment;
+    this.distinct = distinct;
+    this.processingMode = requireNonNull(processingMode, "processingMode is null");
+    this.arguments = arguments;
   }
 
   public QualifiedName getName() {
@@ -106,6 +153,14 @@ public class FunctionCall extends Expression {
 
   public List<Expression> getArguments() {
     return arguments;
+  }
+
+  public Optional<Window> getWindow() {
+    return window;
+  }
+
+  public Optional<NullTreatment> getNullTreatment() {
+    return nullTreatment;
   }
 
   @Override
@@ -140,6 +195,11 @@ public class FunctionCall extends Expression {
     return Objects.hash(name, distinct, processingMode, arguments);
   }
 
+  public enum NullTreatment {
+    IGNORE,
+    RESPECT
+  }
+
   @Override
   public boolean shallowEquals(Node other) {
     if (!sameClass(this, other)) {
@@ -162,12 +222,30 @@ public class FunctionCall extends Expression {
   @Override
   public void serialize(ByteBuffer buffer) {
     this.name.serialize(buffer);
-
     ReadWriteIOUtils.write(this.distinct, buffer);
-
     ReadWriteIOUtils.write(arguments.size(), buffer);
     for (Expression argument : arguments) {
       Expression.serialize(argument, buffer);
+    }
+
+    if (nullTreatment.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, buffer);
+      ReadWriteIOUtils.write((byte) nullTreatment.get().ordinal(), buffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, buffer);
+    }
+
+    if (window.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, buffer);
+      // Window type
+      if (window.get() instanceof WindowReference) {
+        ReadWriteIOUtils.write((byte) 0, buffer);
+      } else {
+        ReadWriteIOUtils.write((byte) 1, buffer);
+      }
+      window.get().serialize(buffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, buffer);
     }
 
     if (processingMode.isPresent()) {
@@ -188,6 +266,26 @@ public class FunctionCall extends Expression {
       Expression.serialize(argument, stream);
     }
 
+    if (nullTreatment.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write((byte) nullTreatment.get().ordinal(), stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+
+    if (window.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      // Window type
+      if (window.get() instanceof WindowReference) {
+        ReadWriteIOUtils.write((byte) 0, stream);
+      } else {
+        ReadWriteIOUtils.write((byte) 1, stream);
+      }
+      window.get().serialize(stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+
     if (processingMode.isPresent()) {
       ReadWriteIOUtils.write(true, stream);
       ProcessingMode mode = processingMode.get();
@@ -205,6 +303,24 @@ public class FunctionCall extends Expression {
     this.arguments = new ArrayList<>(size);
     while (size-- > 0) {
       arguments.add(Expression.deserialize(byteBuffer));
+    }
+
+    if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+      this.nullTreatment =
+          Optional.of(NullTreatment.values()[ReadWriteIOUtils.readByte(byteBuffer)]);
+    } else {
+      this.nullTreatment = Optional.empty();
+    }
+
+    if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+      // Window type
+      if (ReadWriteIOUtils.readByte(byteBuffer) == 0) {
+        this.window = Optional.of(new WindowReference(byteBuffer));
+      } else {
+        this.window = Optional.of(new WindowSpecification(byteBuffer));
+      }
+    } else {
+      this.window = Optional.empty();
     }
 
     boolean hasProcessingMode = ReadWriteIOUtils.readBool(byteBuffer);

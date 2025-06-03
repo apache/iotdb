@@ -62,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableFunctionProcessorSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableScanColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTopKColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneWindowColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughOffset;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughProject;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveDuplicateConditions;
@@ -128,6 +129,7 @@ public class LogicalOptimizeFactory {
             new PruneTableFunctionProcessorSourceColumns(),
             new PruneTableScanColumns(plannerContext.getMetadata()),
             new PruneTopKColumns(),
+            new PruneWindowColumns(),
             new PruneJoinColumns(),
             new PruneJoinChildrenColumns(),
             new PrunePatternRecognitionSourceColumns());
@@ -293,6 +295,9 @@ public class LogicalOptimizeFactory {
             plannerContext, ruleStats, ImmutableSet.of(new PruneDistinctAggregation())),
         simplifyOptimizer,
         new PushPredicateIntoTableScan(plannerContext, typeAnalyzer),
+        // Currently, we inline symbols but do not simplify them in predicate push down.
+        // So we have to add extra simplifyOptimizer here
+        simplifyOptimizer,
         // Currently, Distinct is not supported, so we cant use this rule for now.
         //        new IterativeOptimizer(
         //            plannerContext,

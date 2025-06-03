@@ -68,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpressio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -176,6 +177,12 @@ public class Analysis implements IAnalysis {
 
   private final Map<NodeRef<Expression>, Type> coercions = new LinkedHashMap<>();
   private final Set<NodeRef<Expression>> typeOnlyCoercions = new LinkedHashSet<>();
+  private final Map<NodeRef<Expression>, Type> sortKeyCoercionsForFrameBoundCalculation =
+      new LinkedHashMap<>();
+  private final Map<NodeRef<Expression>, Type> sortKeyCoercionsForFrameBoundComparison =
+      new LinkedHashMap<>();
+  private final Map<NodeRef<Expression>, ResolvedFunction> frameBoundCalculations =
+      new LinkedHashMap<>();
 
   private final Map<NodeRef<Relation>, List<Type>> relationCoercions = new LinkedHashMap<>();
   private final Map<NodeRef<Node>, RoutineEntry> resolvedFunctions = new LinkedHashMap<>();
@@ -211,6 +218,15 @@ public class Analysis implements IAnalysis {
 
   private final Map<QualifiedObjectName, Map<Symbol, ColumnSchema>> tableColumnSchemas =
       new HashMap<>();
+
+  private final Map<
+          NodeRef<QuerySpecification>, Map<CanonicalizationAware<Identifier>, ResolvedWindow>>
+      windowDefinitions = new LinkedHashMap<>();
+  private final Map<NodeRef<Node>, ResolvedWindow> windows = new LinkedHashMap<>();
+  private final Map<NodeRef<QuerySpecification>, List<FunctionCall>> windowFunctions =
+      new LinkedHashMap<>();
+  private final Map<NodeRef<OrderBy>, List<FunctionCall>> orderByWindowFunctions =
+      new LinkedHashMap<>();
 
   private DataPartition dataPartition;
 
@@ -421,9 +437,31 @@ public class Analysis implements IAnalysis {
   }
 
   public void addCoercions(
-      Map<NodeRef<Expression>, Type> coercions, Set<NodeRef<Expression>> typeOnlyCoercions) {
+      Map<NodeRef<Expression>, Type> coercions,
+      Set<NodeRef<Expression>> typeOnlyCoercions,
+      Map<NodeRef<Expression>, Type> sortKeyCoercionsForFrameBoundCalculation,
+      Map<NodeRef<Expression>, Type> sortKeyCoercionsForFrameBoundComparison) {
     this.coercions.putAll(coercions);
     this.typeOnlyCoercions.addAll(typeOnlyCoercions);
+    this.sortKeyCoercionsForFrameBoundCalculation.putAll(sortKeyCoercionsForFrameBoundCalculation);
+    this.sortKeyCoercionsForFrameBoundComparison.putAll(sortKeyCoercionsForFrameBoundComparison);
+  }
+
+  public Type getSortKeyCoercionForFrameBoundCalculation(Expression frameOffset) {
+    return sortKeyCoercionsForFrameBoundCalculation.get(NodeRef.of(frameOffset));
+  }
+
+  public Type getSortKeyCoercionForFrameBoundComparison(Expression frameOffset) {
+    return sortKeyCoercionsForFrameBoundComparison.get(NodeRef.of(frameOffset));
+  }
+
+  public void addFrameBoundCalculations(
+      Map<NodeRef<Expression>, ResolvedFunction> frameBoundCalculations) {
+    this.frameBoundCalculations.putAll(frameBoundCalculations);
+  }
+
+  public ResolvedFunction getFrameBoundCalculation(Expression frameOffset) {
+    return frameBoundCalculations.get(NodeRef.of(frameOffset));
   }
 
   public Set<NodeRef<Expression>> getTypeOnlyCoercions() {
@@ -1261,6 +1299,119 @@ public class Analysis implements IAnalysis {
 
     public Optional<Type> getSubqueryCoercion() {
       return subqueryCoercion;
+    }
+  }
+
+  public void addWindowDefinition(
+      QuerySpecification query, CanonicalizationAware<Identifier> name, ResolvedWindow window) {
+    windowDefinitions
+        .computeIfAbsent(NodeRef.of(query), key -> new LinkedHashMap<>())
+        .put(name, window);
+  }
+
+  public ResolvedWindow getWindowDefinition(
+      QuerySpecification query, CanonicalizationAware<Identifier> name) {
+    Map<CanonicalizationAware<Identifier>, ResolvedWindow> windows =
+        windowDefinitions.get(NodeRef.of(query));
+    if (windows != null) {
+      return windows.get(name);
+    }
+
+    return null;
+  }
+
+  public void setWindow(Node node, ResolvedWindow window) {
+    windows.put(NodeRef.of(node), window);
+  }
+
+  public ResolvedWindow getWindow(Node node) {
+    return windows.get(NodeRef.of(node));
+  }
+
+  public void setWindowFunctions(QuerySpecification node, List<FunctionCall> functions) {
+    windowFunctions.put(NodeRef.of(node), ImmutableList.copyOf(functions));
+  }
+
+  public List<FunctionCall> getWindowFunctions(QuerySpecification query) {
+    return windowFunctions.get(NodeRef.of(query));
+  }
+
+  public void setOrderByWindowFunctions(OrderBy node, List<FunctionCall> functions) {
+    orderByWindowFunctions.put(NodeRef.of(node), ImmutableList.copyOf(functions));
+  }
+
+  public List<FunctionCall> getOrderByWindowFunctions(OrderBy query) {
+    return orderByWindowFunctions.get(NodeRef.of(query));
+  }
+
+  public static class ResolvedWindow {
+    private final List<Expression> partitionBy;
+    private final Optional<OrderBy> orderBy;
+    private final Optional<WindowFrame> frame;
+    private final boolean partitionByInherited;
+    private final boolean orderByInherited;
+    private final boolean frameInherited;
+
+    public ResolvedWindow(
+        List<Expression> partitionBy,
+        Optional<OrderBy> orderBy,
+        Optional<WindowFrame> frame,
+        boolean partitionByInherited,
+        boolean orderByInherited,
+        boolean frameInherited) {
+      this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
+      this.orderBy = requireNonNull(orderBy, "orderBy is null");
+      this.frame = requireNonNull(frame, "frame is null");
+      this.partitionByInherited = partitionByInherited;
+      this.orderByInherited = orderByInherited;
+      this.frameInherited = frameInherited;
+    }
+
+    public List<Expression> getPartitionBy() {
+      return partitionBy;
+    }
+
+    public Optional<OrderBy> getOrderBy() {
+      return orderBy;
+    }
+
+    public Optional<WindowFrame> getFrame() {
+      return frame;
+    }
+
+    public boolean isPartitionByInherited() {
+      return partitionByInherited;
+    }
+
+    public boolean isOrderByInherited() {
+      return orderByInherited;
+    }
+
+    public boolean isFrameInherited() {
+      return frameInherited;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      ResolvedWindow that = (ResolvedWindow) o;
+      return partitionByInherited == that.partitionByInherited
+          && orderByInherited == that.orderByInherited
+          && frameInherited == that.frameInherited
+          && partitionBy.equals(that.partitionBy)
+          && orderBy.equals(that.orderBy)
+          && frame.equals(that.frame);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(
+          partitionBy, orderBy, frame, partitionByInherited, orderByInherited, frameInherited);
     }
   }
 

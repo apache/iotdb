@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -425,6 +426,10 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern aggregationTableScan() {
     return node(AggregationTableScanNode.class);
+  }
+
+  public static PlanMatchPattern window(PlanMatchPattern source) {
+    return node(WindowNode.class, source);
   }
 
   public static PlanMatchPattern markDistinct(
