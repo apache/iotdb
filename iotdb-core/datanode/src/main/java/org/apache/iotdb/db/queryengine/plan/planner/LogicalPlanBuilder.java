@@ -234,7 +234,6 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLast(Analysis analysis, Ordering timeseriesOrdering) {
-    Set<IDeviceID> deviceAlignedSet = new HashSet<>();
     Set<IDeviceID> deviceExistViewSet = new HashSet<>();
     // <Device, <Measurement, Expression>>
     Map<IDeviceID, Map<String, Expression>> outputPathToSourceExpressionMap = new LinkedHashMap<>();
@@ -254,9 +253,6 @@ public class LogicalPlanBuilder {
                       ? new TreeMap<>(timeseriesOrdering.getStringComparator())
                       : new LinkedHashMap<>())
           .put(outputPath.getMeasurement(), sourceExpression);
-      if (outputPath.isUnderAlignedEntity()) {
-        deviceAlignedSet.add(outputDevice);
-      }
       if (sourceExpression.isViewExpression()) {
         deviceExistViewSet.add(outputDevice);
       }
@@ -293,15 +289,16 @@ public class LogicalPlanBuilder {
           }
         }
       } else {
-        if (deviceAlignedSet.contains(outputDevice)) {
+        MeasurementPath first =
+            (MeasurementPath)
+                ((TimeSeriesOperand) measurementToExpressionsOfDevice.values().iterator().next())
+                    .getPath();
+        boolean isAligned = first.isUnderAlignedEntity();
+        if (isAligned) {
           // aligned series
-          List<MeasurementPath> measurementPaths =
-              measurementToExpressionsOfDevice.values().stream()
-                  .map(expression -> (MeasurementPath) ((TimeSeriesOperand) expression).getPath())
-                  .collect(Collectors.toList());
-          AlignedPath alignedPath = new AlignedPath(measurementPaths.get(0).getDevicePath());
-          for (MeasurementPath measurementPath : measurementPaths) {
-            alignedPath.addMeasurement(measurementPath);
+          AlignedPath alignedPath = new AlignedPath(first.getDevicePath());
+          for (Expression value : measurementToExpressionsOfDevice.values()) {
+            alignedPath.addMeasurement((MeasurementPath) ((TimeSeriesOperand) value).getPath());
           }
           sourceNodeList.add(
               reserveMemoryForSeriesSourceNode(
