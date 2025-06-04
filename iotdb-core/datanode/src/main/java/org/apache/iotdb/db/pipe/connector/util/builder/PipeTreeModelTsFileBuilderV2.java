@@ -144,7 +144,7 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
               .map(schema -> (MeasurementSchema) schema)
               .toArray(MeasurementSchema[]::new);
       Object[] values = Arrays.copyOf(tablet.getValues(), tablet.getValues().length);
-      BitMap[] bitMaps = tablet.getBitMaps();
+      BitMap[] bitMaps = Arrays.copyOf(tablet.getBitMaps(), tablet.getBitMaps().length);
 
       // convert date value to int refer to
       // org.apache.iotdb.db.storageengine.dataregion.memtable.WritableMemChunk.writeNonAlignedTablet

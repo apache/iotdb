@@ -237,7 +237,6 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
           && Arrays.equals(tablet.getTimestamps(), aggregationTimestamps)
           && tablet.getRowSize() == aggregationRow
           && tablet.getMaxRowNumber() == aggregationMaxRow) {
-
         // Aggregate the current tablet's data
         aggregatedSchemas.addAll(tablet.getSchemas());
         aggregatedColumnCategories.addAll(tablet.getColumnTypes());
