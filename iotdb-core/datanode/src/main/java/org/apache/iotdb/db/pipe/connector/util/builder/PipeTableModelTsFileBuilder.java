@@ -237,6 +237,7 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
           && Arrays.equals(tablet.getTimestamps(), aggregationTimestamps)
           && tablet.getRowSize() == aggregationRow
           && tablet.getMaxRowNumber() == aggregationMaxRow) {
+
         // Aggregate the current tablet's data
         aggregatedSchemas.addAll(tablet.getSchemas());
         aggregatedColumnCategories.addAll(tablet.getColumnTypes());
@@ -256,6 +257,7 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
     final Set<IMeasurementSchema> seen = new HashSet<>();
     final List<Integer> distinctIndices =
         IntStream.range(0, aggregatedSchemas.size())
+            .filter(i -> Objects.nonNull(aggregatedSchemas.get(i)))
             .filter(i -> seen.add(aggregatedSchemas.get(i))) // Only keep the first occurrence index
             .boxed()
             .collect(Collectors.toList());
