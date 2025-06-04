@@ -142,7 +142,7 @@ public class WALInsertNodeCache {
     memoryUsageCheatFactor.updateAndGet(
         factor ->
             factor == 0L || newMemory == 0L || oldMemory == 0
-                ? 0
+                ? 0.0
                 : factor / ((double) newMemory / oldMemory));
     isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
     LOGGER.info(
@@ -156,7 +156,7 @@ public class WALInsertNodeCache {
     memoryUsageCheatFactor.updateAndGet(
         factor ->
             factor == 0L || newMemory == 0L || oldMemory == 0
-                ? 0
+                ? 0.0
                 : factor * ((double) oldMemory / newMemory));
     isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
     LOGGER.info(
@@ -191,7 +191,7 @@ public class WALInsertNodeCache {
       LOGGER.error("Failed to initialize WAL model fixed memory block", e);
       WAL_MODEL_FIXED_MEMORY =
           PipeDataNodeResourceManager.memory()
-              .forceAllocateForModelFixedMemoryBlock(1, PipeMemoryBlockType.WAL);
+              .forceAllocateForModelFixedMemoryBlock(0, PipeMemoryBlockType.WAL);
     }
   }
 

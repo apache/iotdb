@@ -208,7 +208,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       // If the allocation fails, we still need to create a default memory block to avoid NPE.
       pipeModelFixedMemoryBlock =
           PipeDataNodeResourceManager.memory()
-              .forceAllocateForModelFixedMemoryBlock(1, PipeMemoryBlockType.BATCH);
+              .forceAllocateForModelFixedMemoryBlock(0, PipeMemoryBlockType.BATCH);
     }
   }
 }
