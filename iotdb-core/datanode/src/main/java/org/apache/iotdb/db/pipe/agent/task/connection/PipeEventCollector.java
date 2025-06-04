@@ -146,8 +146,10 @@ public class PipeEventCollector implements EventCollector {
     try {
       final Iterable<TabletInsertionEvent> iterable = sourceEvent.toTabletInsertionEvents();
       final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
+      int tabletEventCount = 0;
       while (iterator.hasNext()) {
         final TabletInsertionEvent parsedEvent = iterator.next();
+        tabletEventCount++;
         int retryCount = 0;
         while (true) {
           // If failed due do insufficient memory, retry until success to avoid race among multiple
@@ -158,14 +160,16 @@ public class PipeEventCollector implements EventCollector {
           } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
             if (retryCount++ % 100 == 0) {
               LOGGER.warn(
-                  "parseAndCollectEvent: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
+                  "parseAndCollectEvent: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count is {}, will keep retrying.",
                   sourceEvent.getTsFile(),
+                  tabletEventCount,
                   retryCount,
                   e);
             } else if (LOGGER.isDebugEnabled()) {
               LOGGER.debug(
-                  "parseAndCollectEvent: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
+                  "parseAndCollectEvent: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count is {}, will keep retrying.",
                   sourceEvent.getTsFile(),
+                  tabletEventCount,
                   retryCount,
                   e);
             }
