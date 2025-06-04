@@ -101,7 +101,7 @@ public class PipeConsensusReceiver {
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long PIPE_CONSENSUS_RECEIVER_MAX_WAITING_TIME_IN_MS =
       (long) IOTDB_CONFIG.getConnectionTimeoutInMS()
-          / 6
+          / 3
           * IOTDB_CONFIG.getIotConsensusV2PipelineSize();
   private static final long CLOSE_TSFILE_WRITER_MAX_WAIT_TIME_IN_MS = 5000;
   private static final long RETRY_WAIT_TIME = 500;
@@ -183,13 +183,11 @@ public class PipeConsensusReceiver {
           break;
         case TRANSFER_TS_FILE_SEAL:
         case TRANSFER_TS_FILE_SEAL_WITH_MOD:
-          // TODO: check memory when logging WAL(in further version)
           resp = requestExecutor.onRequest(req, false, true);
           break;
         case TRANSFER_DELETION:
         case TRANSFER_TABLET_BINARY:
         case TRANSFER_TABLET_INSERT_NODE:
-          // TODO: support batch transfer(in further version)
         case TRANSFER_TABLET_BATCH:
         default:
           resp = requestExecutor.onRequest(req, false, false);
@@ -424,7 +422,6 @@ public class PipeConsensusReceiver {
   }
 
   private TPipeConsensusTransferResp handleTransferFileSeal(final PipeConsensusTsFileSealReq req) {
-    // TODO: turn it to debug after GA
     LOGGER.info("PipeConsensus-PipeName-{}: starting to receive tsFile seal", consensusPipeName);
     long startBorrowTsFileWriterNanos = System.nanoTime();
     PipeConsensusTsFileWriter tsFileWriter =
@@ -543,7 +540,6 @@ public class PipeConsensusReceiver {
 
   private TPipeConsensusTransferResp handleTransferFileSealWithMods(
       final PipeConsensusTsFileSealWithModReq req) {
-    // TODO: turn it to debug after GA
     LOGGER.info(
         "PipeConsensus-PipeName-{}: starting to receive tsFile seal with mods", consensusPipeName);
     long startBorrowTsFileWriterNanos = System.nanoTime();
@@ -718,8 +714,12 @@ public class PipeConsensusReceiver {
     DataRegion region =
         StorageEngine.getInstance().getDataRegion(((DataRegionId) consensusGroupId));
     if (region != null) {
-      TsFileResource resource = generateTsFileResource(filePath, progressIndex);
-      region.loadNewTsFile(resource, true, false);
+      TsFileResource resource =
+          generateTsFileResource(
+              filePath,
+              progressIndex,
+              IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad());
+      region.loadNewTsFile(resource, true, false, true);
     } else {
       // Data region is null indicates that dr has been removed or migrated. In those cases, there
       // is no need to replicate data. we just return success to avoid leader keeping retry
@@ -773,13 +773,13 @@ public class PipeConsensusReceiver {
                                 dataRegion, databaseName, writePointCount, true)));
   }
 
-  private TsFileResource generateTsFileResource(String filePath, ProgressIndex progressIndex)
-      throws IOException {
+  private TsFileResource generateTsFileResource(
+      String filePath, ProgressIndex progressIndex, boolean cacheLastValues) throws IOException {
     final File tsFile = new File(filePath);
 
     final TsFileResource tsFileResource = new TsFileResource(tsFile);
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      TsFileResourceUtils.updateTsFileResource(reader, tsFileResource);
+      TsFileResourceUtils.updateTsFileResource(reader, tsFileResource, cacheLastValues);
     }
 
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
@@ -1068,9 +1068,23 @@ public class PipeConsensusReceiver {
       tsFileWriterCheckerFuture.cancel(false);
       tsFileWriterCheckerFuture = null;
     }
+    // shutdown executor
+    scheduledTsFileWriterCheckerPool.shutdownNow();
+    try {
+      if (!scheduledTsFileWriterCheckerPool.awaitTermination(30, TimeUnit.SECONDS)) {
+        LOGGER.warn("TsFileChecker did not terminate within {}s", 30);
+      }
+    } catch (InterruptedException e) {
+      LOGGER.warn("TsFileChecker Thread {} still doesn't exit after 30s", consensusPipeName);
+      Thread.currentThread().interrupt();
+    }
     // Clear the tsFileWriters, receiverBuffer and receiver base dirs
     requestExecutor.clear(false, true);
     LOGGER.info("Receiver-{} exit successfully.", consensusPipeName.toString());
+  }
+
+  public void closeExecutor() {
+    requestExecutor.tryClose();
   }
 
   private class PipeConsensusTsFileWriterPool {
@@ -1139,7 +1153,7 @@ public class PipeConsensusReceiver {
         }
       }
 
-      return tsFileWriter.get();
+      return tsFileWriter.get().refreshLastUsedTs();
     }
 
     private void checkZombieTsFileWriter() {
@@ -1270,7 +1284,6 @@ public class PipeConsensusReceiver {
 
     public void setWritingFile(File writingFile) {
       this.writingFile = writingFile;
-      // TODO: remove it into debug after GA
       if (writingFile == null) {
         LOGGER.info(
             "PipeConsensus-{}: TsFileWriter-{} set null writing file",
@@ -1285,7 +1298,6 @@ public class PipeConsensusReceiver {
 
     public void setWritingFileWriter(RandomAccessFile writingFileWriter) {
       this.writingFileWriter = writingFileWriter;
-      // TODO: remove it into debug after GA
       if (writingFileWriter == null) {
         LOGGER.info(
             "PipeConsensus-{}: TsFileWriter-{} set null writing file writer",
@@ -1309,9 +1321,13 @@ public class PipeConsensusReceiver {
 
     public void setUsed(boolean used) {
       isUsed = used;
+    }
+
+    public PipeConsensusTsFileWriter refreshLastUsedTs() {
       if (isUsed) {
         lastUsedTs = System.currentTimeMillis();
       }
+      return this;
     }
 
     public void returnSelf(ConsensusPipeName consensusPipeName)
@@ -1379,8 +1395,11 @@ public class PipeConsensusReceiver {
    * although events can arrive receiver in a random sequence.
    */
   private class RequestExecutor {
-    private static final String THIS_NODE = "this node";
-    private static final String PIPE_TASK = "pipe task";
+    private static final String MSG_NODE_RESTART_INDEX_STALE =
+        "sender dn restarts before this event was sent here";
+    private static final String MSG_PIPE_RESTART_INDEX_STALE =
+        "pipe task restarts before this event was sent here";
+    private static final String MSG_STALE_REPLICATE_INDEX = "replicate index is out dated";
 
     // An ordered set that buffers transfer requests' TCommitId, whose length is not larger than
     // PIPE_CONSENSUS_PIPELINE_SIZE.
@@ -1401,11 +1420,40 @@ public class PipeConsensusReceiver {
       this.reqExecutionOrderBuffer =
           new TreeSet<>(
               Comparator.comparingInt(RequestMeta::getDataNodeRebootTimes)
+                  .thenComparingInt(RequestMeta::getPipeTaskRestartTimes)
                   .thenComparingLong(RequestMeta::getReplicateIndex));
       this.lock = new ReentrantLock();
       this.condition = lock.newCondition();
       this.metric = metric;
       this.tsFileWriterPool = tsFileWriterPool;
+    }
+
+    private TPipeConsensusTransferResp preCheck(TCommitId tCommitId) {
+      // if a req is deprecated, we will discard it
+      // This case may happen in this scenario: leader has transferred {1,2} and is intending to
+      // transfer {3, 4, 5, 6}. And in one moment, follower has received {4, 5, 6}, {3} is still
+      // transferring due to some network latency.
+      // At this time, leader restarts, and it will resend {3, 4, 5, 6} with incremental
+      // rebootTimes. If the {3} sent before the leader restart arrives after the follower
+      // receives
+      // the request with incremental rebootTimes, the {3} sent before the leader restart needs to
+      // be discarded.
+      if (tCommitId.getDataNodeRebootTimes() < connectorRebootTimes) {
+        return deprecatedResp(MSG_NODE_RESTART_INDEX_STALE, tCommitId);
+      }
+      // Similarly, check pipeTask restartTimes
+      if (tCommitId.getDataNodeRebootTimes() == connectorRebootTimes
+          && tCommitId.getPipeTaskRestartTimes() < pipeTaskRestartTimes) {
+        return deprecatedResp(MSG_PIPE_RESTART_INDEX_STALE, tCommitId);
+      }
+      // Similarly, check replicationIndex
+      if (tCommitId.getDataNodeRebootTimes() == connectorRebootTimes
+          && tCommitId.getPipeTaskRestartTimes() == pipeTaskRestartTimes
+          && tCommitId.getReplicateIndex() < onSyncedReplicateIndex + 1) {
+        return deprecatedResp(MSG_STALE_REPLICATE_INDEX, tCommitId);
+      }
+      // pass check
+      return null;
     }
 
     private TPipeConsensusTransferResp onRequest(
@@ -1424,27 +1472,15 @@ public class PipeConsensusReceiver {
 
         TCommitId tCommitId = req.getCommitId();
         RequestMeta requestMeta = new RequestMeta(tCommitId);
+        TPipeConsensusTransferResp preCheckRes = preCheck(tCommitId);
+        if (preCheckRes != null) {
+          return preCheckRes;
+        }
+
         LOGGER.info(
             "PipeConsensus-PipeName-{}: start to receive no.{} event",
             consensusPipeName,
             tCommitId);
-        // if a req is deprecated, we will discard it
-        // This case may happen in this scenario: leader has transferred {1,2} and is intending to
-        // transfer {3, 4, 5, 6}. And in one moment, follower has received {4, 5, 6}, {3} is still
-        // transferring due to some network latency.
-        // At this time, leader restarts, and it will resend {3, 4, 5, 6} with incremental
-        // rebootTimes. If the {3} sent before the leader restart arrives after the follower
-        // receives
-        // the request with incremental rebootTimes, the {3} sent before the leader restart needs to
-        // be discarded.
-        if (tCommitId.getDataNodeRebootTimes() < connectorRebootTimes) {
-          return deprecatedResp(THIS_NODE);
-        }
-        // Similarly, check pipeTask restartTimes
-        if (tCommitId.getDataNodeRebootTimes() == connectorRebootTimes
-            && tCommitId.getPipeTaskRestartTimes() < pipeTaskRestartTimes) {
-          return deprecatedResp(PIPE_TASK);
-        }
         // Judge whether connector has rebooted or not, if the rebootTimes increases compared to
         // connectorRebootTimes, need to reset receiver because connector has been restarted.
         if (tCommitId.getDataNodeRebootTimes() > connectorRebootTimes) {
@@ -1506,7 +1542,6 @@ public class PipeConsensusReceiver {
 
           if (reqExecutionOrderBuffer.size() >= IOTDB_CONFIG.getIotConsensusV2PipelineSize()
               && reqExecutionOrderBuffer.first().equals(requestMeta)) {
-            // TODO: Turn it to debug after GA
             LOGGER.info(
                 "PipeConsensus-PipeName-{}: no.{} event get executed because receiver buffer's len >= pipeline, current receiver syncIndex {}, current buffer len {}",
                 consensusPipeName,
@@ -1542,31 +1577,51 @@ public class PipeConsensusReceiver {
               // pipeTaskStartTimes or rebootTimes came in and refreshed the requestBuffer. In that
               // cases we need to discard these requests.
               if (!reqExecutionOrderBuffer.contains(requestMeta)) {
-                return deprecatedResp(String.format("%s or %s", THIS_NODE, PIPE_TASK));
+                return deprecatedResp(
+                    String.format(
+                        "%s or %s", MSG_NODE_RESTART_INDEX_STALE, MSG_PIPE_RESTART_INDEX_STALE),
+                    tCommitId);
               }
-              // If the buffer is not full after waiting timeout, we suppose that the sender will
-              // not send any more events at this time, that is, the sender has sent all events. At
-              // this point we apply the event at reqBuffer's peek
-              if (timeout
-                  && reqExecutionOrderBuffer.size() < IOTDB_CONFIG.getIotConsensusV2PipelineSize()
-                  && reqExecutionOrderBuffer.first() != null
-                  && reqExecutionOrderBuffer.first().equals(requestMeta)) {
-                // TODO: Turn it to debug after GA
-                LOGGER.info(
-                    "PipeConsensus-PipeName-{}: no.{} event get executed after awaiting timeout, current receiver syncIndex: {}",
-                    consensusPipeName,
-                    tCommitId,
-                    onSyncedReplicateIndex);
-                long startApplyNanos = System.nanoTime();
-                metric.recordDispatchWaitingTimer(startApplyNanos - startDispatchNanos);
-                requestMeta.setStartApplyNanos(startApplyNanos);
-                TPipeConsensusTransferResp resp = loadEvent(req);
+              // After waiting timeout, we suppose that the sender will not send any more events at
+              // this time, that is, the sender has sent all events. At this point we apply the
+              // event at reqBuffer's peek
+              if (timeout && reqExecutionOrderBuffer.first() != null) {
+                // if current event is the first event in reqBuffer, we can process it.
+                if (reqExecutionOrderBuffer.first().equals(requestMeta)) {
+                  LOGGER.info(
+                      "PipeConsensus-PipeName-{}: no.{} event get executed after awaiting timeout, current receiver syncIndex: {}",
+                      consensusPipeName,
+                      tCommitId,
+                      onSyncedReplicateIndex);
+                  long startApplyNanos = System.nanoTime();
+                  metric.recordDispatchWaitingTimer(startApplyNanos - startDispatchNanos);
+                  requestMeta.setStartApplyNanos(startApplyNanos);
+                  TPipeConsensusTransferResp resp = loadEvent(req);
 
-                if (resp != null
-                    && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  onSuccess(tCommitId, isTransferTsFileSeal);
+                  if (resp != null
+                      && resp.getStatus().getCode()
+                          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                    onSuccess(tCommitId, isTransferTsFileSeal);
+                  }
+                  return resp;
                 }
-                return resp;
+                // if current event is not the first event in reqBuffer, we should return an error
+                // code to let leader retry or proceed instead of getting stuck in this while loop
+                // and block sender.
+                else {
+                  final TSStatus status =
+                      new TSStatus(
+                          RpcUtils.getStatus(
+                              TSStatusCode.PIPE_CONSENSUS_WAIT_ORDER_TIMEOUT,
+                              "Waiting for the previous event times out, returns an error to let the sender retry and continue scheduling."));
+                  // TODO: Turn it to debug after GA
+                  LOGGER.info(
+                      "PipeConsensus-{}: Waiting for the previous event times out, current peek {}, current id {}",
+                      consensusPipeName,
+                      reqExecutionOrderBuffer.first().commitId,
+                      tCommitId);
+                  return new TPipeConsensusTransferResp(status);
+                }
               }
             } catch (InterruptedException e) {
               Thread.currentThread().interrupt();
@@ -1641,6 +1696,8 @@ public class PipeConsensusReceiver {
       try {
         this.reqExecutionOrderBuffer.clear();
         this.tsFileWriterPool.releaseAllWriters(consensusPipeName);
+        this.tsFileEventCount.set(0);
+        this.WALEventCount.set(0);
         if (resetSyncIndex) {
           this.onSyncedReplicateIndex = 0;
         }
@@ -1658,21 +1715,25 @@ public class PipeConsensusReceiver {
       try {
         isClosed.set(true);
       } finally {
+        // let all threads that may still await become active again to acquire lock instead of
+        // meaningless sleeping in the condition while lock is already released.
+        condition.signalAll();
         lock.unlock();
       }
     }
 
-    private TPipeConsensusTransferResp deprecatedResp(String msg) {
+    private TPipeConsensusTransferResp deprecatedResp(String msg, TCommitId tCommitId) {
       final TSStatus status =
           new TSStatus(
               RpcUtils.getStatus(
                   TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
                   String.format(
-                      "PipeConsensus receiver received a deprecated request, which may be sent before %s restarts. Consider to discard it",
+                      "PipeConsensus receiver received a deprecated request, which may because %s. Consider to discard it.",
                       msg)));
       LOGGER.info(
-          "PipeConsensus-PipeName-{}: received a deprecated request, which may be sent before {} restarts. Consider to discard it",
+          "PipeConsensus-PipeName-{}: received a deprecated request-{}, which may because {}. ",
           consensusPipeName,
+          tCommitId,
           msg);
       return new TPipeConsensusTransferResp(status);
     }
@@ -1688,6 +1749,10 @@ public class PipeConsensusReceiver {
 
     public int getDataNodeRebootTimes() {
       return commitId.getDataNodeRebootTimes();
+    }
+
+    public int getPipeTaskRestartTimes() {
+      return commitId.getPipeTaskRestartTimes();
     }
 
     public long getReplicateIndex() {

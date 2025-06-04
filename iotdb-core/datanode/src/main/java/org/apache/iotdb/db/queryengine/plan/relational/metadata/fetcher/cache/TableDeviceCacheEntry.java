@@ -143,6 +143,9 @@ public class TableDeviceCacheEntry {
       final boolean isAligned,
       final String[] measurements,
       final IMeasurementSchema[] schemas) {
+    if (schemas == null) {
+      return 0;
+    }
     // Safe here because tree schema is invalidated by the whole entry
     final int result =
         (deviceSchema.compareAndSet(null, new TreeDeviceNormalSchema(database, isAligned))
@@ -191,10 +194,16 @@ public class TableDeviceCacheEntry {
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
-  int tryUpdateLastCache(final String[] measurements, final TimeValuePair[] timeValuePairs) {
+  int tryUpdateLastCache(
+      final String[] measurements, final TimeValuePair[] timeValuePairs, boolean invalidateNull) {
     final TableDeviceLastCache cache = lastCache.get();
-    final int result = Objects.nonNull(cache) ? cache.tryUpdate(measurements, timeValuePairs) : 0;
+    final int result =
+        Objects.nonNull(cache) ? cache.tryUpdate(measurements, timeValuePairs, invalidateNull) : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
+  }
+
+  int tryUpdateLastCache(final String[] measurements, final TimeValuePair[] timeValuePairs) {
+    return tryUpdateLastCache(measurements, timeValuePairs, false);
   }
 
   int invalidateLastCache(final String measurement, final boolean isTableModel) {

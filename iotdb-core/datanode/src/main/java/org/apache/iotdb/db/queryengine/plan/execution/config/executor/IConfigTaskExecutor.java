@@ -73,6 +73,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -223,6 +224,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showSubscriptions(
       ShowSubscriptionsStatement showSubscriptionsStatement);
 
+  SettableFuture<ConfigTaskResult> dropSubscription(
+      DropSubscriptionStatement dropSubscriptionStatement);
+
   SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement);
 
   SettableFuture<ConfigTaskResult> dropTopic(DropTopicStatement dropTopicStatement);
@@ -301,7 +305,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> useDatabase(final Use useDB, final IClientSession clientSession);
 
-  SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB);
+  SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB, final IClientSession session);
 
   SettableFuture<ConfigTaskResult> createDatabase(
       final TDatabaseSchema databaseSchema, final boolean ifNotExists);
@@ -313,7 +317,10 @@ public interface IConfigTaskExecutor {
       final TsTable table, final String database, final boolean ifNotExists);
 
   SettableFuture<ConfigTaskResult> describeTable(
-      final String database, final String tableName, final boolean isDetails);
+      final String database,
+      final String tableName,
+      final boolean isDetails,
+      final Boolean isShowCreateView);
 
   SettableFuture<ConfigTaskResult> showTables(
       final String database, final Predicate<String> canSeenDB, final boolean isDetails);
@@ -325,7 +332,8 @@ public interface IConfigTaskExecutor {
       final String sourceName,
       final String targetName,
       final String queryId,
-      final boolean tableIfExists);
+      final boolean tableIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableAddColumn(
       final String database,
@@ -333,7 +341,8 @@ public interface IConfigTaskExecutor {
       final List<TsTableColumnSchema> columnSchemaList,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists);
+      final boolean columnIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableRenameColumn(
       final String database,
@@ -342,7 +351,8 @@ public interface IConfigTaskExecutor {
       final String newName,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists);
+      final boolean columnIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableDropColumn(
       final String database,
@@ -350,21 +360,24 @@ public interface IConfigTaskExecutor {
       final String columnName,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists);
+      final boolean columnIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableSetProperties(
       final String database,
       final String tableName,
       final Map<String, String> properties,
       final String queryId,
-      final boolean ifExists);
+      final boolean ifExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableCommentTable(
       final String database,
       final String tableName,
       final String queryId,
       final boolean ifExists,
-      final String comment);
+      final String comment,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableCommentColumn(
       final String database,
@@ -373,13 +386,21 @@ public interface IConfigTaskExecutor {
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists,
-      final String comment);
+      final String comment,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> dropTable(
-      final String database, final String tableName, final String queryId, final boolean ifExists);
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean ifExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> deleteDevice(
       final DeleteDevice deleteDevice, final String queryId, final SessionInfo sessionInfo);
+
+  SettableFuture<ConfigTaskResult> createTableView(
+      final TsTable table, final String database, final boolean replace);
 
   SettableFuture<ConfigTaskResult> showVersion();
 

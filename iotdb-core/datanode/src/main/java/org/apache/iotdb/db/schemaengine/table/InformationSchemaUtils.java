@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -39,7 +40,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
-import java.util.function.Predicate;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
@@ -57,13 +58,7 @@ public class InformationSchemaUtils {
   }
 
   public static void buildDatabaseTsBlock(
-      final Predicate<String> canSeenDB,
-      final TsBlockBuilder builder,
-      final boolean details,
-      final boolean withTime) {
-    if (!canSeenDB.test(INFORMATION_DATABASE)) {
-      return;
-    }
+      final TsBlockBuilder builder, final boolean details, final boolean withTime) {
     if (withTime) {
       builder.getTimeColumnBuilder().writeLong(0L);
     }
@@ -114,13 +109,18 @@ public class InformationSchemaUtils {
             .stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (final String schemaTable : getSchemaTables().keySet()) {
+    for (final String schemaTable :
+        getSchemaTables().keySet().stream().sorted().collect(Collectors.toList())) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(schemaTable, TSFileConfig.STRING_CHARSET));
       builder.getColumnBuilder(1).writeBinary(new Binary("INF", TSFileConfig.STRING_CHARSET));
       if (isDetails) {
         builder.getColumnBuilder(2).writeBinary(new Binary("USING", TSFileConfig.STRING_CHARSET));
         builder.getColumnBuilder(3).appendNull();
+        // Does not support comment
+        builder
+            .getColumnBuilder(4)
+            .writeBinary(new Binary(TableType.SYSTEM_VIEW.getName(), TSFileConfig.STRING_CHARSET));
       }
       builder.declarePosition();
     }
@@ -139,6 +139,7 @@ public class InformationSchemaUtils {
       final String database,
       final String tableName,
       final boolean isDetails,
+      final Boolean isShowOrCreateView,
       final SettableFuture<ConfigTaskResult> future) {
     if (!database.equals(INFORMATION_DATABASE)) {
       return false;
@@ -148,6 +149,9 @@ public class InformationSchemaUtils {
           new TableNotExistsException(INFORMATION_DATABASE, tableName);
       future.setException(new IoTDBException(exception.getMessage(), exception.getErrorCode()));
       return true;
+    }
+    if (Objects.nonNull(isShowOrCreateView)) {
+      throw new SemanticException("The system view does not support show create.");
     }
     final TsTable table = getSchemaTables().get(tableName);
 

@@ -98,12 +98,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptFlag(boolean encryptFlag) {
-    setProperty("encrypt_flag", String.valueOf(encryptFlag));
-    return this;
-  }
-
-  @Override
   public CommonConfig setEncryptType(String encryptType) {
     setProperty("encrypt_type", encryptType);
     return this;

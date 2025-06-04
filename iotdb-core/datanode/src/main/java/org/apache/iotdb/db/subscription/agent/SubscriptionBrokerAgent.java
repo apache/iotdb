@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -125,6 +126,16 @@ public class SubscriptionBrokerAgent {
     return broker.isCommitContextOutdated(commitContext);
   }
 
+  public List<String> fetchTopicNamesToUnsubscribe(
+      final ConsumerConfig consumerConfig, final Set<String> topicNames) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      return Collections.emptyList();
+    }
+    return broker.fetchTopicNamesToUnsubscribe(topicNames);
+  }
+
   /////////////////////////////// broker ///////////////////////////////
 
   public boolean isBrokerExist(final String consumerGroupId) {
@@ -182,6 +193,16 @@ public class SubscriptionBrokerAgent {
               return broker;
             })
         .bindPrefetchingQueue(subtask.getTopicName(), subtask.getInputPendingQueue());
+  }
+
+  public void updateCompletedTopicNames(final String consumerGroupId, final String topicName) {
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      LOGGER.warn(
+          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
+      return;
+    }
+    broker.updateCompletedTopicNames(topicName);
   }
 
   public void unbindPrefetchingQueue(final String consumerGroupId, final String topicName) {

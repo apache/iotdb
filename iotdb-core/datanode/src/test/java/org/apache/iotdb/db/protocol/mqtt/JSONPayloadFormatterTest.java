@@ -38,9 +38,10 @@ public class JSONPayloadFormatterTest {
             + " }";
 
     ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);
+    String topic = "";
 
     JSONPayloadFormatter formatter = new JSONPayloadFormatter();
-    TreeMessage message = (TreeMessage) formatter.format(buf).get(0);
+    TreeMessage message = (TreeMessage) formatter.format(topic, buf).get(0);
 
     assertEquals("root.sg.d1", message.getDevice());
     assertEquals(Long.valueOf(1586076045524L), message.getTimestamp());
@@ -59,9 +60,10 @@ public class JSONPayloadFormatterTest {
             + "  }";
 
     ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);
+    String topic = "";
 
     JSONPayloadFormatter formatter = new JSONPayloadFormatter();
-    TreeMessage message = (TreeMessage) formatter.format(buf).get(1);
+    TreeMessage message = (TreeMessage) formatter.format(topic, buf).get(1);
 
     assertEquals("root.sg.d1", message.getDevice());
     assertEquals(Long.valueOf(1586076065526L), message.getTimestamp());
@@ -88,9 +90,10 @@ public class JSONPayloadFormatterTest {
             + "]";
 
     ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);
+    String topic = "";
 
     JSONPayloadFormatter formatter = new JSONPayloadFormatter();
-    TreeMessage message = (TreeMessage) formatter.format(buf).get(1);
+    TreeMessage message = (TreeMessage) formatter.format(topic, buf).get(1);
 
     assertEquals("root.sg.d2", message.getDevice());
     assertEquals(Long.valueOf(1586076065526L), message.getTimestamp());
@@ -117,9 +120,10 @@ public class JSONPayloadFormatterTest {
             + "]";
 
     ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);
+    String topic = "";
 
     JSONPayloadFormatter formatter = new JSONPayloadFormatter();
-    TreeMessage message = (TreeMessage) formatter.format(buf).get(3);
+    TreeMessage message = (TreeMessage) formatter.format(topic, buf).get(3);
 
     assertEquals("root.sg.d2", message.getDevice());
     assertEquals(Long.valueOf(1586076065526L), message.getTimestamp());

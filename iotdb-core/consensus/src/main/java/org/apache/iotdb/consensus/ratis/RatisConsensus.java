@@ -324,6 +324,8 @@ class RatisConsensus implements IConsensus {
     }
 
     // current Peer is group leader and in ReadOnly State
+    // We only judge dataRegions here, because schema write when readOnly is handled at
+    // RegionWriteExecutor
     if (isLeader(groupId) && Utils.rejectWrite(consensusGroupType)) {
       try {
         forceStepDownLeader(raftGroup);

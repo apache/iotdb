@@ -30,8 +30,6 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateT
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
@@ -56,9 +54,9 @@ public class CreateTableProcedure
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableProcedure.class);
 
-  private String database;
+  protected String database;
 
-  private TsTable table;
+  protected TsTable table;
 
   public CreateTableProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -73,7 +71,7 @@ public class CreateTableProcedure
 
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final CreateTableState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -112,7 +110,7 @@ public class CreateTableProcedure
     }
   }
 
-  private void checkTableExistence(final ConfigNodeProcedureEnv env) {
+  protected void checkTableExistence(final ConfigNodeProcedureEnv env) {
     try {
       if (env.getConfigManager()
           .getClusterSchemaManager()
@@ -138,7 +136,7 @@ public class CreateTableProcedure
     }
   }
 
-  private void preCreateTable(final ConfigNodeProcedureEnv env) {
+  protected void preCreateTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(new PreCreateTablePlan(database, table), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -220,7 +218,7 @@ public class CreateTableProcedure
     }
   }
 
-  private void rollbackCreate(final ConfigNodeProcedureEnv env) {
+  protected void rollbackCreate(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
             new RollbackCreateTablePlan(database, table.getTableName()), env, LOGGER);
@@ -274,6 +272,10 @@ public class CreateTableProcedure
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_CREATE_TABLE_PROCEDURE.getTypeCode()
             : ProcedureType.CREATE_TABLE_PROCEDURE.getTypeCode());
+    innerSerialize(stream);
+  }
+
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(database, stream);
     table.serialize(stream);
@@ -291,15 +293,17 @@ public class CreateTableProcedure
     if (this == o) {
       return true;
     }
-    if (!(o instanceof CreateTableProcedure)) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
     final CreateTableProcedure that = (CreateTableProcedure) o;
-    return Objects.equals(database, that.database) && Objects.equals(table, that.table);
+    return Objects.equals(database, that.database)
+        && Objects.equals(table, that.table)
+        && isGeneratedByPipe == that.isGeneratedByPipe;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, table);
+    return Objects.hash(database, table, isGeneratedByPipe);
   }
 }

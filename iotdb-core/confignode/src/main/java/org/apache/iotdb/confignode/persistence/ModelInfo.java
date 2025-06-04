@@ -78,7 +78,9 @@ public class ModelInfo implements SnapshotProcessor {
     builtInForecastModel.add("_ARIMA");
     builtInForecastModel.add("_NaiveForecaster");
     builtInForecastModel.add("_STLForecaster");
+    builtInForecastModel.add("_HoltWinters");
     builtInForecastModel.add("_ExponentialSmoothing");
+    builtInForecastModel.add("_sundial");
     builtInAnomalyDetectionModel.add("_GaussianHMM");
     builtInAnomalyDetectionModel.add("_GMMHMM");
     builtInAnomalyDetectionModel.add("_Stray");

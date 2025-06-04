@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.RetryUtils;
@@ -189,11 +188,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                     dataBaseName)
                 : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
                     tsFile.getName(), tsFile.length(), dataBaseName);
-        final TPipeTransferReq req =
-            connector.isRpcCompressionEnabled()
-                ? PipeTransferCompressedReq.toTPipeTransferReq(
-                    uncompressedReq, connector.getCompressors())
-                : uncompressedReq;
+        final TPipeTransferReq req = connector.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
@@ -220,11 +215,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                 currentFile.getName(), position, payload)
             : PipeTransferTsFilePieceReq.toTPipeTransferReq(
                 currentFile.getName(), position, payload);
-    final TPipeTransferReq req =
-        connector.isRpcCompressionEnabled()
-            ? PipeTransferCompressedReq.toTPipeTransferReq(
-                uncompressedReq, connector.getCompressors())
-            : uncompressedReq;
+    final TPipeTransferReq req = connector.compressIfNeeded(uncompressedReq);
 
     pipeName2WeightMap.forEach(
         (pipePair, weight) ->

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
@@ -37,6 +38,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -70,6 +72,7 @@ public class ShowTablesDetailsTask implements IConfigTask {
 
     tableInfoList.stream()
         .filter(t -> checkCanShowTable.test(t.getTableName()))
+        .sorted(Comparator.comparing(TTableInfo::getTableName))
         .forEach(
             tableInfo -> {
               builder.getTimeColumnBuilder().writeLong(0L);
@@ -93,6 +96,14 @@ public class ShowTablesDetailsTask implements IConfigTask {
               } else {
                 builder.getColumnBuilder(3).appendNull();
               }
+              builder
+                  .getColumnBuilder(4)
+                  .writeBinary(
+                      new Binary(
+                          tableInfo.isSetType()
+                              ? TableType.values()[tableInfo.getType()].getName()
+                              : TableType.BASE_TABLE.getName(),
+                          TSFileConfig.STRING_CHARSET));
 
               builder.declarePosition();
             });

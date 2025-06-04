@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.ComparisonFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
@@ -239,7 +239,7 @@ public class ConvertSchemaPredicateToFilterVisitor
             .getColumnSchema(columnName)
             .getColumnCategory()
             .equals(TsTableColumnCategory.TAG)
-        ? new IdFilter(filter, context.idColumnIndexMap.get(columnName))
+        ? new TagFilter(filter, context.idColumnIndexMap.get(columnName))
         : new AttributeFilter(filter, columnName);
   }
 

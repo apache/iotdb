@@ -37,6 +37,7 @@ public class DropTopicStatement extends Statement implements IConfigStatement {
 
   private String topicName;
   private boolean ifExistsCondition;
+  private boolean isTableModel;
 
   public DropTopicStatement() {
     super();
@@ -51,12 +52,20 @@ public class DropTopicStatement extends Statement implements IConfigStatement {
     return ifExistsCondition;
   }
 
-  public void setTopicName(String topicName) {
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
+  public void setTopicName(final String topicName) {
     this.topicName = topicName;
   }
 
-  public void setIfExists(boolean ifExistsCondition) {
+  public void setIfExists(final boolean ifExistsCondition) {
     this.ifExistsCondition = ifExistsCondition;
+  }
+
+  public void setTableModel(final boolean tableModel) {
+    this.isTableModel = tableModel;
   }
 
   @Override
@@ -70,12 +79,12 @@ public class DropTopicStatement extends Statement implements IConfigStatement {
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitDropTopic(this, context);
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }

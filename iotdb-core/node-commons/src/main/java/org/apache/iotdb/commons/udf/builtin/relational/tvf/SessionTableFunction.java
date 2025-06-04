@@ -60,6 +60,7 @@ public class SessionTableFunction implements TableFunction {
         ScalarParameterSpecification.builder()
             .name(TIMECOL_PARAMETER_NAME)
             .type(Type.STRING)
+            .defaultValue("time")
             .build(),
         ScalarParameterSpecification.builder().name(GAP_PARAMETER_NAME).type(Type.INT64).build());
   }

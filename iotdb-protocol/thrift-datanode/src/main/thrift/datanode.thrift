@@ -396,7 +396,7 @@ struct TLoadCommandReq {
     1: required i32 commandType
     2: required string uuid
     3: optional bool isGeneratedByPipe
-    4: optional binary progressIndex
+    4: optional map<common.TTimePartitionSlot, binary> timePartition2ProgressIndex
 }
 
 struct TAttributeUpdateReq {
@@ -407,6 +407,19 @@ struct TSchemaRegionAttributeInfo {
   1: required i64 version
   2: required string database
   3: required binary body
+}
+
+struct TDeviceViewReq {
+  1: required list<common.TConsensusGroupId> regionIds
+  2: required list<string> prefixPattern
+  3: required i32 tagNumber
+  4: required bool restrict
+  5: optional set<string> requiredMeasurements
+}
+
+struct TDeviceViewResp {
+  1: required common.TSStatus status
+  2: required map<string, byte> deviewViewFieldTypeMap
 }
 
 struct TLoadResp {
@@ -1181,6 +1194,12 @@ service IDataNodeRPCService {
    * Delete table devices in black list
    */
   common.TSStatus deleteTableDeviceInBlackList(TTableDeviceDeletionWithPatternOrModReq req)
+
+  /**
+   * Get tree device view info for device view
+   */
+  TDeviceViewResp detectTreeDeviceViewFieldType(TDeviceViewReq req)
+
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 

@@ -26,10 +26,16 @@ import java.util.Map;
 import java.util.function.Function;
 
 public class ExtendedPartialPath extends PartialPath {
-  final Map<Integer, List<Function<String, Boolean>>> matchFunctions = new HashMap<>();
+  private final Map<Integer, List<Function<String, Boolean>>> matchFunctions = new HashMap<>();
+  private final boolean isRestrict;
 
-  public ExtendedPartialPath(final String[] nodes) {
+  public ExtendedPartialPath(final String[] nodes, final boolean isRestrict) {
     super(nodes);
+    this.isRestrict = isRestrict;
+  }
+
+  public boolean isRestrict() {
+    return isRestrict;
   }
 
   public boolean match(final int index, final String value) {
@@ -45,5 +51,17 @@ public class ExtendedPartialPath extends PartialPath {
 
   public boolean isNormalPath() {
     return matchFunctions.isEmpty();
+  }
+
+  @Override
+  public String toString() {
+    return "ExtendedPartialPath{"
+        + "fullPath="
+        + getFullPath()
+        + ", matchFunctions="
+        + matchFunctions
+        + ", isRestrict="
+        + isRestrict
+        + '}';
   }
 }

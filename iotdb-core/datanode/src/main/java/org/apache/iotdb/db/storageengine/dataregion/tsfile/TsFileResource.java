@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
@@ -56,6 +56,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.apache.tsfile.utils.Pair;
@@ -204,6 +205,8 @@ public class TsFileResource implements PersistentResource {
 
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
+
+  private Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues;
 
   @TestOnly
   public TsFileResource() {
@@ -1389,8 +1392,8 @@ public class TsFileResource implements PersistentResource {
             ? progressIndex
             : maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
 
-    PipeTimePartitionProgressIndexKeeper.getInstance()
-        .updateProgressIndex(getDataRegionId(), getTimePartition(), maxProgressIndex);
+    PipeTsFileEpochProgressIndexKeeper.getInstance()
+        .updateProgressIndex(getDataRegionId(), getTsFilePath(), maxProgressIndex);
   }
 
   public void setProgressIndex(ProgressIndex progressIndex) {
@@ -1400,8 +1403,8 @@ public class TsFileResource implements PersistentResource {
 
     maxProgressIndex = progressIndex;
 
-    PipeTimePartitionProgressIndexKeeper.getInstance()
-        .updateProgressIndex(getDataRegionId(), getTimePartition(), maxProgressIndex);
+    PipeTsFileEpochProgressIndexKeeper.getInstance()
+        .updateProgressIndex(getDataRegionId(), getTsFilePath(), maxProgressIndex);
   }
 
   @Override
@@ -1564,5 +1567,13 @@ public class TsFileResource implements PersistentResource {
 
   public void setCompactionModFile(ModificationFile compactionModFile) {
     this.compactionModFile = compactionModFile;
+  }
+
+  public Map<IDeviceID, List<Pair<String, TimeValuePair>>> getLastValues() {
+    return lastValues;
+  }
+
+  public void setLastValues(Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues) {
+    this.lastValues = lastValues;
   }
 }

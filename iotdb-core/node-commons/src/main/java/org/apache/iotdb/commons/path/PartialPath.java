@@ -398,8 +398,12 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * "root.sg.device.*" matches path "root.sg.device.s1" whereas it does not match "root.sg.device"
    * and "root.sg.vehicle.s1"
    *
+   * <p>Note: If the current path is a path ending with "**", and does not have any * before it,
+   * like "root.a.b.c.**", then the rPath can be a path with *, and this method returns {@code true}
+   * iff the current path covers rPath.
+   *
    * @param rPath a plain full path of a timeseries
-   * @return true if a successful match, otherwise return false
+   * @return {@code true} if a successful match, otherwise return {@code false}
    */
   public boolean matchFullPath(PartialPath rPath) {
     return matchPath(rPath.getNodes(), 0, 0, false, false);
@@ -445,7 +449,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * <p>1) Pattern "root.sg1.d1.*" does not match prefix path "root.sg2", "root.sg1.d2".
    *
    * @param prefixPath
-   * @return true if a successful match, otherwise return false
+   * @return {@code true} if a successful match, otherwise return {@code false}
    */
   public boolean matchPrefixPath(PartialPath prefixPath) {
     return matchPath(prefixPath.getNodes(), 0, 0, false, true);

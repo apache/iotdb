@@ -65,7 +65,7 @@ public class CreateMultiTimeSeriesStatement extends Statement {
     }
     List<MeasurementPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathListPermission(
+        AuthorityChecker.checkFullPathOrPatternListPermission(
             userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
         checkedPaths,
         PrivilegeType.WRITE_SCHEMA);

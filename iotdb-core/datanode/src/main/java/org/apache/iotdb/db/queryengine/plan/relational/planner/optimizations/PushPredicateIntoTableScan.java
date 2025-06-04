@@ -40,7 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.Predic
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
@@ -120,7 +120,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinN
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.ONLY_SUPPORT_EQUI_JOIN;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.UNSUPPORTED_JOIN_CRITERIA;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processInnerJoin;
@@ -566,12 +566,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         final ColumnSchema columnSchema = entry.getValue();
         if (ATTRIBUTE.equals(columnSchema.getColumnCategory())) {
           attributeColumns.add(columnSchema.getName());
-          tableScanNode.getIdAndAttributeIndexMap().put(columnSymbol, attributeIndex++);
+          tableScanNode.getTagAndAttributeIndexMap().put(columnSymbol, attributeIndex++);
         }
       }
 
       long startTime = System.nanoTime();
-      final List<DeviceEntry> deviceEntries =
+      final Map<String, List<DeviceEntry>> deviceEntriesMap =
           metadata.indexScan(
               tableScanNode.getQualifiedObjectName(),
               metadataExpressions.stream()
@@ -582,10 +582,25 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                   .collect(Collectors.toList()),
               attributeColumns,
               queryContext);
+      if (deviceEntriesMap.size() > 1) {
+        throw new UnsupportedOperationException(
+            "Tree device view with multiple databases is unsupported yet.");
+      }
+      final String deviceDatabase =
+          !deviceEntriesMap.isEmpty() ? deviceEntriesMap.keySet().iterator().next() : null;
+      final List<DeviceEntry> deviceEntries =
+          Objects.nonNull(deviceDatabase)
+              ? deviceEntriesMap.get(deviceDatabase)
+              : Collections.emptyList();
+
       tableScanNode.setDeviceEntries(deviceEntries);
       if (deviceEntries.stream()
-          .anyMatch(deviceEntry -> deviceEntry instanceof NonAlignedAlignedDeviceEntry)) {
+          .anyMatch(deviceEntry -> deviceEntry instanceof NonAlignedDeviceEntry)) {
         tableScanNode.setContainsNonAlignedDevice();
+      }
+
+      if (tableScanNode instanceof TreeDeviceViewScanNode) {
+        ((TreeDeviceViewScanNode) tableScanNode).setTreeDBName(deviceDatabase);
       }
 
       final long schemaFetchCost = System.nanoTime() - startTime;
@@ -612,7 +627,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             fetchDataPartitionByDevices(
                 // for tree view, we need to pass actual tree db name to this method
                 tableScanNode instanceof TreeDeviceViewScanNode
-                    ? ((TreeDeviceViewScanNode) tableScanNode).getTreeDBName()
+                    ? deviceDatabase
                     : tableScanNode.getQualifiedObjectName().getDatabaseName(),
                 deviceEntries,
                 timeFilter);
@@ -738,8 +753,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
           equiJoinClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
         } else {
+          if (conjunct.equals(TRUE_LITERAL) && node.getAsofCriteria().isPresent()) {
+            continue;
+          }
           if (node.getJoinType() != INNER) {
-            throw new SemanticException(ONLY_SUPPORT_EQUI_JOIN);
+            throw new SemanticException(String.format(UNSUPPORTED_JOIN_CRITERIA, conjunct));
           }
           joinFilterBuilder.add(conjunct);
         }

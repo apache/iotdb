@@ -48,13 +48,6 @@ public class PipeSubtaskExecutorManager {
     return consensusExecutor;
   }
 
-  public void shutdownAll() {
-    processorExecutor.shutdown();
-    connectorExecutor.shutdown();
-    subscriptionExecutor.shutdown();
-    consensusExecutor.shutdown();
-  }
-
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
   private PipeSubtaskExecutorManager() {

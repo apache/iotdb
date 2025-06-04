@@ -37,6 +37,7 @@ import org.apache.iotdb.common.rpc.thrift.TSettleReq;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -50,6 +51,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
@@ -58,9 +60,11 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.view.ViewType;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -68,7 +72,6 @@ import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -154,6 +157,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -214,6 +218,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
@@ -290,6 +296,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -309,6 +316,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -510,14 +518,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) {
-    final ProgressIndex progressIndex;
-    if (req.isSetProgressIndex()) {
-      progressIndex = ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex()));
+    final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap = new HashMap<>();
+    if (req.isSetTimePartition2ProgressIndex()) {
+      for (Map.Entry<TTimePartitionSlot, ByteBuffer> entry :
+          req.getTimePartition2ProgressIndex().entrySet()) {
+        timePartitionProgressIndexMap.put(
+            entry.getKey(), ProgressIndexType.deserializeFrom(entry.getValue()));
+      }
     } else {
-      // fallback to use local generated progress index for compatibility
-      progressIndex = PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad();
-      LOGGER.info(
-          "Use local generated load progress index {} for uuid {}.", progressIndex, req.uuid);
+      final TSStatus status = new TSStatus();
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setMessage("Load command requires time partition to progress index map");
+      return createTLoadResp(status);
     }
 
     return createTLoadResp(
@@ -526,7 +538,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 LoadTsFileScheduler.LoadCommand.values()[req.commandType],
                 req.uuid,
                 req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
-                progressIndex));
+                timePartitionProgressIndexMap));
   }
 
   @Override
@@ -574,10 +586,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       TreeDeviceSchemaCacheManager.getInstance().takeWriteLock();
       try {
         final String database = req.getFullPath();
-        // req.getFullPath() is a database path
-        ClusterTemplateManager.getInstance().invalid(database);
-        // clear table related cache
-        DataNodeTableCache.getInstance().invalid(database);
+        if (PathUtils.isTableModelDatabase(database)) {
+          // clear table related cache
+          DataNodeTableCache.getInstance().invalid(database);
+        } else {
+          ClusterTemplateManager.getInstance().invalid(database);
+        }
         tableDeviceSchemaCache.invalidate(database);
         LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -1706,6 +1720,62 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     new DeleteTableDevicesInBlackListNode(
                         new PlanNodeId(""), req.getTableName(), req.getPatternOrModInfo()))
                 .getStatus());
+  }
+
+  @Override
+  public TDeviceViewResp detectTreeDeviceViewFieldType(final TDeviceViewReq req) {
+    final TDeviceViewResp resp = new TDeviceViewResp();
+    resp.setDeviewViewFieldTypeMap(new ConcurrentHashMap<>());
+    final TSStatus status =
+        executeInternalSchemaTask(
+            req.getRegionIds(),
+            consensusGroupId -> {
+              final ISchemaRegion schemaRegion =
+                  schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+              // Get pattern nodes, length is (prefix - 1) + tagNumber + 1(measurement)
+              final String[] nodes = new String[req.getTagNumber() + req.getPrefixPattern().size()];
+              Arrays.fill(nodes, "*");
+              for (int i = 0; i < req.getPrefixPattern().size() - 1; ++i) {
+                nodes[i] = req.getPrefixPattern().get(i);
+              }
+              final ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
+                  SchemaSourceFactory.getTimeSeriesSchemaCountSource(
+                      new ExtendedPartialPath(nodes, req.isRestrict()),
+                      false,
+                      // Does not support logical view currently
+                      SchemaFilterFactory.createViewTypeFilter(ViewType.BASE),
+                      null,
+                      SchemaConstant.ALL_MATCH_SCOPE);
+              try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
+                  schemaSource.getSchemaReader(schemaRegion)) {
+                final Map<String, Byte> updateMap = resp.getDeviewViewFieldTypeMap();
+                while (schemaReader.hasNext()) {
+                  final IMeasurementSchema schema = schemaReader.next().getSchema();
+                  final String measurementName = schema.getMeasurementName();
+
+                  // For trimming
+                  if (req.isSetRequiredMeasurements()
+                      && !req.getRequiredMeasurements().contains(measurementName)) {
+                    continue;
+                  }
+                  if (!updateMap.containsKey(measurementName)) {
+                    updateMap.put(measurementName, schema.getTypeInByte());
+                  } else if (schema.getTypeInByte() != updateMap.get(measurementName)) {
+                    return RpcUtils.getStatus(
+                        TSStatusCode.DATA_TYPE_MISMATCH,
+                        String.format(
+                            "Multiple types encountered when auto detecting type of measurement '%s', please check",
+                            measurementName));
+                  }
+                }
+              } catch (final Exception e) {
+                LOGGER.warn(e.getMessage(), e);
+                return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+              }
+              return RpcUtils.SUCCESS_STATUS;
+            });
+
+    return resp.setStatus(status);
   }
 
   @Override

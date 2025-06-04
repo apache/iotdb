@@ -38,7 +38,7 @@ public class AlterTableCommentColumnTask extends AbstractAlterOrDropTableTask {
       final boolean tableIfExists,
       final boolean columnIfExists,
       final String comment) {
-    super(database, tableName, queryId, tableIfExists);
+    super(database, tableName, queryId, tableIfExists, false);
     this.columnName = columnName;
     this.columnIfExists = columnIfExists;
     this.comment = comment;
@@ -48,6 +48,6 @@ public class AlterTableCommentColumnTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableCommentColumn(
-        database, tableName, columnName, queryId, tableIfExists, columnIfExists, comment);
+        database, tableName, columnName, queryId, tableIfExists, columnIfExists, comment, view);
   }
 }

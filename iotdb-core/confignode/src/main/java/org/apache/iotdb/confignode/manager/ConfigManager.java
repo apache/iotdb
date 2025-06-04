@@ -157,6 +157,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -179,6 +180,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
@@ -222,7 +224,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
@@ -1886,11 +1890,38 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TShowDataNodes4InformationSchemaResp showDataNodes4InformationSchema() {
+    final TSStatus status = confirmLeader();
+    final TShowDataNodes4InformationSchemaResp resp = new TShowDataNodes4InformationSchemaResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.setDataNodesInfoList(
+              nodeManager.getRegisteredDataNodeInfoList4InformationSchema())
+          .setStatus(StatusUtils.OK);
+    } else {
+      return resp.setStatus(status);
+    }
+  }
+
+  @Override
   public TShowConfigNodesResp showConfigNodes() {
     TSStatus status = confirmLeader();
     TShowConfigNodesResp resp = new TShowConfigNodesResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return resp.setConfigNodesInfoList(nodeManager.getRegisteredConfigNodeInfoList())
+          .setStatus(StatusUtils.OK);
+    } else {
+      return resp.setStatus(status);
+    }
+  }
+
+  @Override
+  public TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema() {
+    final TSStatus status = confirmLeader();
+    final TShowConfigNodes4InformationSchemaResp resp =
+        new TShowConfigNodes4InformationSchemaResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.setConfigNodesInfoList(
+              nodeManager.getRegisteredConfigNodeInfo4InformationSchema())
           .setStatus(StatusUtils.OK);
     } else {
       return resp.setStatus(status);
@@ -1907,7 +1938,10 @@ public class ConfigManager implements IManager {
               : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
       final GetDatabasePlan getDatabasePlan =
           new GetDatabasePlan(
-              req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
+              req.getDatabasePathPattern(),
+              scope,
+              req.isSetIsTableModel() && req.isIsTableModel(),
+              true);
       return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);
@@ -2327,6 +2361,14 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus dropSubscription(TUnsubscribeReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().dropSubscription(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus dropSubscriptionById(TDropSubscriptionReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().dropSubscription(req)
@@ -2774,6 +2816,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus createTableView(final TCreateTableViewReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      final Pair<String, TsTable> pair =
+          TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
+      return procedureManager.createTableView(pair.left, pair.right, req.isReplace());
+    } else {
+      return status;
+    }
+  }
+
+  @Override
   public TSStatus alterOrDropTable(final TAlterOrDropTableReq req) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -2793,6 +2847,7 @@ public class ConfigManager implements IManager {
               req.getDatabase(),
               req.getTableName(),
               ReadWriteIOUtils.readString(req.updateInfo),
+              req.isSetIsView() && req.isIsView(),
               false);
         case COMMENT_COLUMN:
           return clusterSchemaManager.setTableColumnComment(
@@ -2801,6 +2856,8 @@ public class ConfigManager implements IManager {
               ReadWriteIOUtils.readString(req.updateInfo),
               ReadWriteIOUtils.readString(req.updateInfo),
               false);
+        case RENAME_TABLE:
+          return procedureManager.renameTable(req);
         default:
           throw new IllegalArgumentException();
       }

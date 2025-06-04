@@ -481,7 +481,11 @@ public class PartitionCache {
             throw new StatementAnalyzeException("Failed to get database Map");
           }
         }
-      } catch (final TException | MetadataException | ClientManagerException e) {
+      } catch (MetadataException e) {
+        throw new IoTDBRuntimeException(
+            "An error occurred when executing getDeviceToDatabase():" + e.getMessage(),
+            e.getErrorCode());
+      } catch (TException | ClientManagerException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getDeviceToDatabase():" + e.getMessage(), e);
       }

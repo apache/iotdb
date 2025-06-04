@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.config.constant;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 public class PipeExtractorConstant {
 
   public static final String EXTRACTOR_KEY = "extractor";
@@ -146,6 +151,51 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_SKIP_IF_KEY = "extractor.skipif";
   public static final String SOURCE_SKIP_IF_KEY = "source.skipif";
   public static final String EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES = "no-privileges";
+
+  ////////////////// external sources ////////////////
+
+  public static final String EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY = "extractor.balance-strategy";
+  public static final String EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY = "source.balance-strategy";
+  public static final String EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY = "proportion";
+  public static final Set<String> EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_SET =
+      Collections.unmodifiableSet(
+          new HashSet<>(Arrays.asList(EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY)));
+
+  public static final String EXTERNAL_EXTRACTOR_PARALLELISM_KEY = "extractor.parallelism";
+  public static final String EXTERNAL_SOURCE_PARALLELISM_KEY = "source.parallelism";
+  public static final int EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE = 1;
+
+  public static final String EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_KEY =
+      "extractor.single-mode";
+  public static final String EXTERNAL_SOURCE_SINGLE_INSTANCE_PER_NODE_KEY = "source.single-mode";
+  public static final boolean EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_DEFAULT_VALUE = true;
+
+  public static final String MQTT_BROKER_HOST_KEY = "mqtt.host";
+  public static final String MQTT_BROKER_HOST_DEFAULT_VALUE = "127.0.0.1";
+  public static final String MQTT_BROKER_PORT_KEY = "mqtt.port";
+  public static final String MQTT_BROKER_PORT_DEFAULT_VALUE = "1883";
+
+  public static final String MQTT_BROKER_INTERCEPTOR_THREAD_POOL_SIZE_KEY = "mqtt.pool-size";
+  public static final int MQTT_BROKER_INTERCEPTOR_THREAD_POOL_SIZE_DEFAULT_VALUE = 1;
+
+  public static final String MQTT_DATA_PATH_PROPERTY_NAME_KEY = "mqtt.data-path";
+  public static final String MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE = "data/";
+
+  public static final String MQTT_IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME_KEY = "mqtt.immediate-flush";
+  public static final boolean MQTT_IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME_DEFAULT_VALUE = true;
+
+  public static final String MQTT_ALLOW_ANONYMOUS_PROPERTY_NAME_KEY = "mqtt.allow-anonymous";
+  public static final boolean MQTT_ALLOW_ANONYMOUS_PROPERTY_NAME_DEFAULT_VALUE = false;
+
+  public static final String MQTT_ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME_KEY =
+      "mqtt.allow-zero-byte-client-id";
+  public static final boolean MQTT_ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME_DEFAULT_VALUE = true;
+
+  public static final String MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_KEY = "mqtt.max-message-size";
+  public static final long MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_DEFAULT_VALUE = 1048576;
+
+  public static final String MQTT_PAYLOAD_FORMATTER_KEY = "mqtt.payload-formatter";
+  public static final String MQTT_PAYLOAD_FORMATTER_DEFAULT_VALUE = "json";
 
   ///////////////////// pipe consensus /////////////////////
 

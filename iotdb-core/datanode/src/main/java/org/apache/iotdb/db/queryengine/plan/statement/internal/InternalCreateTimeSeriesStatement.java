@@ -102,7 +102,7 @@ public class InternalCreateTimeSeriesStatement extends Statement {
     }
     List<PartialPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathListPermission(
+        AuthorityChecker.checkFullPathOrPatternListPermission(
             userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
         checkedPaths,
         PrivilegeType.WRITE_SCHEMA);

@@ -4157,6 +4157,57 @@ public class IoTDBTableAggregationIT {
         new String[] {"time", "province", "_col2", "_col3"},
         retArray,
         DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select approx_count_distinct(time,0.0040625),approx_count_distinct(time,0.26) from table1",
+        new String[] {"_col0", "_col1"},
+        new String[] {"10,11,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void approxMostFrequentTest() {
+    String[] expectedHeader = buildHeaders(7);
+    String[] retArray =
+        new String[] {
+          "{\"50000\":8},{\"30.0\":8},{\"55.0\":8},{\"true\":12},{\"0xcafebabe55\":8},{\"1727158540000\":12},{\"20240924\":20},"
+        };
+    tableResultSetEqualTest(
+        "select approx_most_frequent(s2, 1, 10), approx_most_frequent(s3, 1, 10), approx_most_frequent(s4, 1, 10), approx_most_frequent(s5, 1, 10), approx_most_frequent(s8, 1, 10), approx_most_frequent(s9, 1, 10), approx_most_frequent(s10, 1, 10) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "province", "_col2"};
+    retArray =
+        new String[] {
+          "2024-09-24T06:15:30.000Z,beijing,{},",
+          "2024-09-24T06:15:31.000Z,beijing,{\"31000\":2},",
+          "2024-09-24T06:15:35.000Z,beijing,{\"35000\":2},",
+          "2024-09-24T06:15:36.000Z,beijing,{},",
+          "2024-09-24T06:15:40.000Z,beijing,{\"40000\":2},",
+          "2024-09-24T06:15:41.000Z,beijing,{},",
+          "2024-09-24T06:15:46.000Z,beijing,{\"46000\":2},",
+          "2024-09-24T06:15:50.000Z,beijing,{\"50000\":4},",
+          "2024-09-24T06:15:51.000Z,beijing,{},",
+          "2024-09-24T06:15:55.000Z,beijing,{},",
+          "2024-09-24T06:15:30.000Z,shanghai,{},",
+          "2024-09-24T06:15:31.000Z,shanghai,{\"31000\":2},",
+          "2024-09-24T06:15:35.000Z,shanghai,{\"35000\":2},",
+          "2024-09-24T06:15:36.000Z,shanghai,{},",
+          "2024-09-24T06:15:40.000Z,shanghai,{\"40000\":2},",
+          "2024-09-24T06:15:41.000Z,shanghai,{},",
+          "2024-09-24T06:15:46.000Z,shanghai,{\"46000\":2},",
+          "2024-09-24T06:15:50.000Z,shanghai,{\"50000\":4},",
+          "2024-09-24T06:15:51.000Z,shanghai,{},",
+          "2024-09-24T06:15:55.000Z,shanghai,{},",
+        };
+
+    tableResultSetEqualTest(
+        "SELECT time,province,approx_most_frequent(s2, 1, 10) from table1 group by 1,2 order by 2,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
@@ -4204,6 +4255,14 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail(
         "select approx_count_distinct(province, 'test') from table1",
         "701: Second argument of Aggregate functions [approx_count_distinct] should be numberic type and do not use expression",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_most_frequent(province, -10, 100) from table1",
+        "701: The second and third argument must be greater than 0, but got k=-10, capacity=100",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_most_frequent(province, 'test', 100) from table1",
+        "701: The second and third argument of 'approx_most_frequent' function must be numeric literal",
         DATABASE_NAME);
   }
 
@@ -5239,5 +5298,27 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail("select (s1,s2) from table1", errMsg, DATABASE_NAME);
 
     tableAssertTestFail("select * from table1 where (s1,s2) is not null", errMsg, DATABASE_NAME);
+  }
+
+  @Test
+  public void emptyBlockInStreamOperatorTest() {
+    String[] expectedHeader = new String[] {"_col0"};
+    String[] retArray = new String[] {};
+
+    // the sub-query produces empty block
+
+    // test StreamingHashAggregationOperator
+    tableResultSetEqualTest(
+        "select count(1) from (select * from table1 where s1 + 1 < 1) group by device_id,s1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test StreamingAggregationOperator
+    tableResultSetEqualTest(
+        "select count(1) from (select * from table1 where s1 + 1 < 1) group by device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 }

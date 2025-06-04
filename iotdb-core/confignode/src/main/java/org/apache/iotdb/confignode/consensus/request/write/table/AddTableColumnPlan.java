@@ -36,8 +36,8 @@ public class AddTableColumnPlan extends AbstractTablePlan {
 
   private boolean isRollback;
 
-  public AddTableColumnPlan() {
-    super(ConfigPhysicalPlanType.AddTableColumn);
+  public AddTableColumnPlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   public AddTableColumnPlan(
@@ -45,7 +45,16 @@ public class AddTableColumnPlan extends AbstractTablePlan {
       final String tableName,
       final List<TsTableColumnSchema> columnSchemaList,
       final boolean isRollback) {
-    super(ConfigPhysicalPlanType.AddTableColumn, database, tableName);
+    this(ConfigPhysicalPlanType.AddTableColumn, database, tableName, columnSchemaList, isRollback);
+  }
+
+  protected AddTableColumnPlan(
+      final ConfigPhysicalPlanType type,
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList,
+      final boolean isRollback) {
+    super(type, database, tableName);
     this.columnSchemaList = columnSchemaList;
     this.isRollback = isRollback;
   }

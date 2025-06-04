@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -140,6 +141,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final PlanFragmentId fragmentId;
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
+  private final Map<TTimePartitionSlot, ProgressIndex> timePartitionSlotToProgressIndex;
   private final LoadTsFileDataCacheMemoryBlock block;
 
   public LoadTsFileScheduler(
@@ -158,6 +160,7 @@ public class LoadTsFileScheduler implements IScheduler {
     this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
     this.allReplicaSets = new HashSet<>();
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.timePartitionSlotToProgressIndex = new HashMap<>();
     this.block = LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock();
 
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
@@ -408,7 +411,26 @@ public class LoadTsFileScheduler implements IScheduler {
 
     try {
       loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
-      loadCommandReq.setProgressIndex(assignProgressIndex(tsFileResource));
+      loadCommandReq.setTimePartition2ProgressIndex(
+          timePartitionSlotToProgressIndex.entrySet().stream()
+              .collect(
+                  Collectors.toMap(
+                      Map.Entry::getKey,
+                      entry -> {
+                        try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+                            final DataOutputStream dataOutputStream =
+                                new DataOutputStream(byteArrayOutputStream)) {
+                          entry.getValue().serialize(dataOutputStream);
+                          return ByteBuffer.wrap(
+                              byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+                        } catch (final IOException e) {
+                          throw new RuntimeException(
+                              String.format(
+                                  "Serialize Progress Index error, isFirstPhaseSuccess: %s, uuid: %s, tsFile: %s",
+                                  isFirstPhaseSuccess, uuid, tsFile.getAbsolutePath()),
+                              e);
+                        }
+                      })));
       Future<FragInstanceDispatchResult> dispatchResultFuture =
           dispatcher.dispatchCommand(loadCommandReq, allReplicaSets);
 
@@ -425,18 +447,12 @@ public class LoadTsFileScheduler implements IScheduler {
             result.getFailureStatus().getMessage());
         TSStatus status = result.getFailureStatus();
         status.setMessage(
-            String.format("Load %s error in 2nd phase. Because ", tsFile) + status.getMessage());
+            String.format(
+                "Load %s error in second phase. Because %s, first phase is %s",
+                tsFile, status.getMessage(), isFirstPhaseSuccess ? "success" : "failed"));
         stateMachine.transitionToFailed(status);
         return false;
       }
-    } catch (IOException e) {
-      LOGGER.warn(
-          "Serialize Progress Index error, isFirstPhaseSuccess: {}, uuid: {}, tsFile: {}",
-          isFirstPhaseSuccess,
-          uuid,
-          tsFile.getAbsolutePath());
-      stateMachine.transitionToFailed(e);
-      return false;
     } catch (InterruptedException | ExecutionException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -637,6 +653,12 @@ public class LoadTsFileScheduler implements IScheduler {
     return null;
   }
 
+  private void computeTimePartitionSlotToProgressIndexIfAbsent(
+      final TTimePartitionSlot timePartitionSlot) {
+    timePartitionSlotToProgressIndex.putIfAbsent(
+        timePartitionSlot, PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad());
+  }
+
   public enum LoadCommand {
     EXECUTE,
     ROLLBACK
@@ -684,6 +706,7 @@ public class LoadTsFileScheduler implements IScheduler {
       nonDirectionalChunkData.add(chunkData);
       dataSize += chunkData.getDataSize();
       block.addMemoryUsage(chunkData.getDataSize());
+      scheduler.computeTimePartitionSlotToProgressIndexIfAbsent(chunkData.getTimePartitionSlot());
 
       if (!isMemoryEnough()) {
         routeChunkData();
@@ -705,12 +728,8 @@ public class LoadTsFileScheduler implements IScheduler {
           if (pieceNode.getDataSize() == 0) { // total data size has been reduced to 0
             break;
           }
-          if (!scheduler.dispatchOnePieceNode(pieceNode, replicaSet)) {
-            return false;
-          }
+          final boolean isDispatchSuccess = scheduler.dispatchOnePieceNode(pieceNode, replicaSet);
 
-          dataSize -= pieceNode.getDataSize();
-          block.reduceMemoryUsage(pieceNode.getDataSize());
           regionId2ReplicaSetAndNode.replace(
               sortedRegionId,
               new Pair<>(
@@ -720,6 +739,14 @@ public class LoadTsFileScheduler implements IScheduler {
                       singleTsFileNode
                           .getTsFileResource()
                           .getTsFile()))); // can not just remove, because of deletion
+          dataSize -= pieceNode.getDataSize();
+          block.reduceMemoryUsage(pieceNode.getDataSize());
+
+          if (!isDispatchSuccess) {
+            // Currently there is no retry, so return directly
+            return false;
+          }
+
           if (isMemoryEnough()) {
             break;
           }
@@ -780,19 +807,21 @@ public class LoadTsFileScheduler implements IScheduler {
     private boolean sendAllTsFileData() throws LoadFileException {
       routeChunkData();
 
+      boolean isAllSuccess = true;
       for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, LoadTsFilePieceNode>> entry :
           regionId2ReplicaSetAndNode.entrySet()) {
         block.reduceMemoryUsage(entry.getValue().getRight().getDataSize());
-        if (!scheduler.dispatchOnePieceNode(
-            entry.getValue().getRight(), entry.getValue().getLeft())) {
+        if (isAllSuccess
+            && !scheduler.dispatchOnePieceNode(
+                entry.getValue().getRight(), entry.getValue().getLeft())) {
           LOGGER.warn(
               "Dispatch piece node {} of TsFile {} error.",
               entry.getValue(),
               singleTsFileNode.getTsFileResource().getTsFile());
-          return false;
+          isAllSuccess = false;
         }
       }
-      return true;
+      return isAllSuccess;
     }
 
     private void clear() {

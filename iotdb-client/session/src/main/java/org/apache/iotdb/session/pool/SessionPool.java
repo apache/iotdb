@@ -672,11 +672,10 @@ public class SessionPool implements ISessionPool {
           long timeOut = Math.min(waitToGetSessionTimeoutInMs, 60_000);
           if (System.currentTimeMillis() - start > timeOut) {
             LOGGER.warn(
-                "the SessionPool has wait for {} seconds to get a new connection: {} with {}, {}",
+                "the SessionPool has wait for {} seconds to get a new connection: {} with {}",
                 (System.currentTimeMillis() - start) / 1000,
                 formattedNodeUrls,
-                user,
-                password);
+                user);
             LOGGER.warn(
                 "current occupied size {}, queue size {}, considered size {} ",
                 occupied.size(),

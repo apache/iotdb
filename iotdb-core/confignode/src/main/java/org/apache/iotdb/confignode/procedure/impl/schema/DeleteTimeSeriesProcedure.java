@@ -33,8 +33,6 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDele
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteTimeSeriesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -97,7 +95,7 @@ public class DeleteTimeSeriesProcedure
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final DeleteTimeSeriesState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
