@@ -17,25 +17,32 @@
 #
 import os
 from abc import abstractmethod
-from typing import List, Dict
+from typing import Dict, List
 
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
-from sktime.annotation.hmm_learn import GaussianHMM, GMMHMM
+from sktime.annotation.hmm_learn import GMMHMM, GaussianHMM
 from sktime.annotation.stray import STRAY
 from sktime.forecasting.arima import ARIMA
 from sktime.forecasting.exp_smoothing import ExponentialSmoothing
 from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.trend import STLForecaster
 
-from ainode.TimerXL.models import timer_xl
-from ainode.TimerXL.models.configuration_timer import TimerxlConfig
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import AttributeName, BuiltInModelType
-from ainode.core.exception import InferenceModelInternalError
-from ainode.core.exception import WrongAttributeTypeError, NumericalRangeException, StringRangeException, \
-    ListRangeException, BuiltInModelNotSupportError
+from ainode.core.exception import (
+    BuiltInModelNotSupportError,
+    InferenceModelInternalError,
+    ListRangeException,
+    NumericalRangeException,
+    StringRangeException,
+    WrongAttributeTypeError,
+)
 from ainode.core.log import Logger
+from ainode.core.model.sundial import modeling_sundial
+from ainode.core.model.sundial.configuration_sundial import SundialConfig
+from ainode.TimerXL.models import timer_xl
+from ainode.TimerXL.models.configuration_timer import TimerxlConfig
 
 logger = Logger()
 
@@ -45,7 +52,10 @@ def get_model_attributes(model_id: str):
         attribute_map = arima_attribute_map
     elif model_id == BuiltInModelType.NAIVE_FORECASTER.value:
         attribute_map = naive_forecaster_attribute_map
-    elif model_id == BuiltInModelType.EXPONENTIAL_SMOOTHING.value:
+    elif (
+        model_id == BuiltInModelType.EXPONENTIAL_SMOOTHING.value
+        or model_id == BuiltInModelType.HOLTWINTERS.value
+    ):
         attribute_map = exponential_smoothing_attribute_map
     elif model_id == BuiltInModelType.STL_FORECASTER.value:
         attribute_map = stl_forecaster_attribute_map
@@ -57,6 +67,8 @@ def get_model_attributes(model_id: str):
         attribute_map = stray_attribute_map
     elif model_id == BuiltInModelType.TIMER_XL.value:
         attribute_map = timerxl_attribute_map
+    elif model_id == BuiltInModelType.SUNDIAL.value:
+        attribute_map = sundial_attribute_map
     else:
         raise BuiltInModelNotSupportError(model_id)
     return attribute_map
@@ -85,7 +97,10 @@ def fetch_built_in_model(model_id, inference_attributes):
     # build the built-in model
     if model_id == BuiltInModelType.ARIMA.value:
         model = ArimaModel(attributes)
-    elif model_id == BuiltInModelType.EXPONENTIAL_SMOOTHING.value:
+    elif (
+        model_id == BuiltInModelType.EXPONENTIAL_SMOOTHING.value
+        or model_id == BuiltInModelType.HOLTWINTERS.value
+    ):
         model = ExponentialSmoothingModel(attributes)
     elif model_id == BuiltInModelType.NAIVE_FORECASTER.value:
         model = NaiveForecasterModel(attributes)
@@ -99,6 +114,10 @@ def fetch_built_in_model(model_id, inference_attributes):
         model = STRAYModel(attributes)
     elif model_id == BuiltInModelType.TIMER_XL.value:
         model = timer_xl.Model(TimerxlConfig.from_dict(attributes))
+    elif model_id == BuiltInModelType.SUNDIAL.value:
+        model = modeling_sundial.SundialForPrediction(
+            SundialConfig.from_dict(attributes)
+        )
     else:
         raise BuiltInModelNotSupportError(model_id)
 
@@ -127,11 +146,13 @@ class Attribute(object):
 
 
 class IntAttribute(Attribute):
-    def __init__(self, name: str,
-                 default_value: int,
-                 default_low: int,
-                 default_high: int,
-                 ):
+    def __init__(
+        self,
+        name: str,
+        default_value: int,
+        default_low: int,
+        default_high: int,
+    ):
         super(IntAttribute, self).__init__(name)
         self.__default_value = default_value
         self.__default_low = default_low
@@ -143,7 +164,9 @@ class IntAttribute(Attribute):
     def validate_value(self, value):
         if self.__default_low <= value <= self.__default_high:
             return True
-        raise NumericalRangeException(self._name, value, self.__default_low, self.__default_high)
+        raise NumericalRangeException(
+            self._name, value, self.__default_low, self.__default_high
+        )
 
     def parse(self, string_value: str):
         try:
@@ -154,11 +177,13 @@ class IntAttribute(Attribute):
 
 
 class FloatAttribute(Attribute):
-    def __init__(self, name: str,
-                 default_value: float,
-                 default_low: float,
-                 default_high: float,
-                 ):
+    def __init__(
+        self,
+        name: str,
+        default_value: float,
+        default_low: float,
+        default_high: float,
+    ):
         super(FloatAttribute, self).__init__(name)
         self.__default_value = default_value
         self.__default_low = default_low
@@ -170,7 +195,9 @@ class FloatAttribute(Attribute):
     def validate_value(self, value):
         if self.__default_low <= value <= self.__default_high:
             return True
-        raise NumericalRangeException(self._name, value, self.__default_low, self.__default_high)
+        raise NumericalRangeException(
+            self._name, value, self.__default_low, self.__default_high
+        )
 
     def parse(self, string_value: str):
         try:
@@ -252,7 +279,9 @@ class ListAttribute(Attribute):
             try:
                 list_value[i] = self.__value_type(list_value[i])
             except:
-                raise ListRangeException(self._name, list_value, self.__type_to_str[self.__value_type])
+                raise ListRangeException(
+                    self._name, list_value, self.__type_to_str[self.__value_type]
+                )
         return list_value
 
 
@@ -289,12 +318,16 @@ class TupleAttribute(Attribute):
             try:
                 list_value[i] = self.__value_type(list_value[i])
             except:
-                raise ListRangeException(self._name, list_value, self.__type_to_str[self.__value_type])
+                raise ListRangeException(
+                    self._name, list_value, self.__type_to_str[self.__value_type]
+                )
         tuple_value = tuple(list_value)
         return tuple_value
 
 
-def parse_attribute(input_attributes: Dict[str, str], attribute_map: Dict[str, Attribute]):
+def parse_attribute(
+    input_attributes: Dict[str, str], attribute_map: Dict[str, Attribute]
+):
     """
     Args:
         input_attributes: a dict of attributes, where the key is the attribute name, the value is the string value of
@@ -315,48 +348,48 @@ def parse_attribute(input_attributes: Dict[str, str], attribute_map: Dict[str, A
         # user did not specify the attribute, use the default value
         else:
             try:
-                attributes[attribute_name] = attribute_map[attribute_name].get_default_value()
+                attributes[attribute_name] = attribute_map[
+                    attribute_name
+                ].get_default_value()
             except NotImplementedError as e:
                 logger.error(f"attribute {attribute_name} is not implemented.")
                 raise e
     return attributes
 
 
-timerxl_attribute_map = {
+sundial_attribute_map = {
     AttributeName.INPUT_TOKEN_LEN.value: IntAttribute(
         name=AttributeName.INPUT_TOKEN_LEN.value,
-        default_value=96,
+        default_value=16,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.HIDDEN_SIZE.value: IntAttribute(
         name=AttributeName.HIDDEN_SIZE.value,
-        default_value=1024,
+        default_value=768,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.INTERMEDIATE_SIZE.value: IntAttribute(
         name=AttributeName.INTERMEDIATE_SIZE.value,
-        default_value=2048,
+        default_value=3072,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.OUTPUT_TOKEN_LENS.value: ListAttribute(
-        name=AttributeName.OUTPUT_TOKEN_LENS.value,
-        default_value=[96],
-        value_type=int
+        name=AttributeName.OUTPUT_TOKEN_LENS.value, default_value=[720], value_type=int
     ),
     AttributeName.NUM_HIDDEN_LAYERS.value: IntAttribute(
         name=AttributeName.NUM_HIDDEN_LAYERS.value,
-        default_value=8,
+        default_value=12,
         default_low=1,
-        default_high=16
+        default_high=16,
     ),
     AttributeName.NUM_ATTENTION_HEADS.value: IntAttribute(
         name=AttributeName.NUM_ATTENTION_HEADS.value,
-        default_value=8,
+        default_value=12,
         default_low=1,
-        default_high=192
+        default_high=192,
     ),
     AttributeName.HIDDEN_ACT.value: StringAttribute(
         name=AttributeName.HIDDEN_ACT.value,
@@ -371,32 +404,134 @@ timerxl_attribute_map = {
         name=AttributeName.ROPE_THETA.value,
         default_value=10000,
         default_low=1000,
-        default_high=50000
+        default_high=50000,
     ),
-    AttributeName.ATTENTION_DROPOUT.value: FloatAttribute(
-        name=AttributeName.ATTENTION_DROPOUT.value,
-        default_value=0.0,
+    AttributeName.DROPOUT_RATE.value: FloatAttribute(
+        name=AttributeName.DROPOUT_RATE.value,
+        default_value=0.1,
         default_low=0.0,
-        default_high=1.0
+        default_high=1.0,
     ),
     AttributeName.INITIALIZER_RANGE.value: FloatAttribute(
         name=AttributeName.INITIALIZER_RANGE.value,
         default_value=0.02,
         default_low=0.0,
-        default_high=1.0
+        default_high=1.0,
     ),
     AttributeName.MAX_POSITION_EMBEDDINGS.value: IntAttribute(
         name=AttributeName.MAX_POSITION_EMBEDDINGS.value,
         default_value=10000,
         default_low=1,
-        default_high=50000
+        default_high=50000,
     ),
-    AttributeName.TIMERXL_CKPT_PATH.value: StringAttribute(
-        name=AttributeName.TIMERXL_CKPT_PATH.value,
-        default_value=os.path.join(os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir(), 'weights',
-                                   'timerxl', 'model.safetensors'),
-        value_choices=['']
-    )
+    AttributeName.FLOW_LOSS_DEPTH.value: IntAttribute(
+        name=AttributeName.FLOW_LOSS_DEPTH.value,
+        default_value=3,
+        default_low=1,
+        default_high=50,
+    ),
+    AttributeName.NUM_SAMPLING_STEPS.value: IntAttribute(
+        name=AttributeName.NUM_SAMPLING_STEPS.value,
+        default_value=50,
+        default_low=1,
+        default_high=5000,
+    ),
+    AttributeName.DIFFUSION_BATCH_MUL.value: IntAttribute(
+        name=AttributeName.DIFFUSION_BATCH_MUL.value,
+        default_value=4,
+        default_low=1,
+        default_high=5000,
+    ),
+    AttributeName.CKPT_PATH.value: StringAttribute(
+        name=AttributeName.CKPT_PATH.value,
+        default_value=os.path.join(
+            os.getcwd(),
+            AINodeDescriptor().get_config().get_ain_models_dir(),
+            "weights",
+            "sundial",
+        ),
+        value_choices=[""],
+    ),
+}
+
+timerxl_attribute_map = {
+    AttributeName.INPUT_TOKEN_LEN.value: IntAttribute(
+        name=AttributeName.INPUT_TOKEN_LEN.value,
+        default_value=96,
+        default_low=1,
+        default_high=5000,
+    ),
+    AttributeName.HIDDEN_SIZE.value: IntAttribute(
+        name=AttributeName.HIDDEN_SIZE.value,
+        default_value=1024,
+        default_low=1,
+        default_high=5000,
+    ),
+    AttributeName.INTERMEDIATE_SIZE.value: IntAttribute(
+        name=AttributeName.INTERMEDIATE_SIZE.value,
+        default_value=2048,
+        default_low=1,
+        default_high=5000,
+    ),
+    AttributeName.OUTPUT_TOKEN_LENS.value: ListAttribute(
+        name=AttributeName.OUTPUT_TOKEN_LENS.value, default_value=[96], value_type=int
+    ),
+    AttributeName.NUM_HIDDEN_LAYERS.value: IntAttribute(
+        name=AttributeName.NUM_HIDDEN_LAYERS.value,
+        default_value=8,
+        default_low=1,
+        default_high=16,
+    ),
+    AttributeName.NUM_ATTENTION_HEADS.value: IntAttribute(
+        name=AttributeName.NUM_ATTENTION_HEADS.value,
+        default_value=8,
+        default_low=1,
+        default_high=192,
+    ),
+    AttributeName.HIDDEN_ACT.value: StringAttribute(
+        name=AttributeName.HIDDEN_ACT.value,
+        default_value="silu",
+        value_choices=["relu", "gelu", "silu", "tanh"],
+    ),
+    AttributeName.USE_CACHE.value: BooleanAttribute(
+        name=AttributeName.USE_CACHE.value,
+        default_value=True,
+    ),
+    AttributeName.ROPE_THETA.value: IntAttribute(
+        name=AttributeName.ROPE_THETA.value,
+        default_value=10000,
+        default_low=1000,
+        default_high=50000,
+    ),
+    AttributeName.ATTENTION_DROPOUT.value: FloatAttribute(
+        name=AttributeName.ATTENTION_DROPOUT.value,
+        default_value=0.0,
+        default_low=0.0,
+        default_high=1.0,
+    ),
+    AttributeName.INITIALIZER_RANGE.value: FloatAttribute(
+        name=AttributeName.INITIALIZER_RANGE.value,
+        default_value=0.02,
+        default_low=0.0,
+        default_high=1.0,
+    ),
+    AttributeName.MAX_POSITION_EMBEDDINGS.value: IntAttribute(
+        name=AttributeName.MAX_POSITION_EMBEDDINGS.value,
+        default_value=10000,
+        default_low=1,
+        default_high=50000,
+    ),
+    AttributeName.CKPT_PATH.value: StringAttribute(
+        name=AttributeName.CKPT_PATH.value,
+        default_value=os.path.join(
+            os.getcwd(),
+            AINodeDescriptor().get_config().get_ain_models_dir(),
+            "weights",
+            "timerxl",
+            "model.safetensors",
+        ),
+        value_choices=[""],
+    ),
 }
 
 # built-in sktime model attributes
@@ -406,7 +541,7 @@ naive_forecaster_attribute_map = {
         name=AttributeName.PREDICT_LENGTH.value,
         default_value=1,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.STRATEGY.value: StringAttribute(
         name=AttributeName.STRATEGY.value,
@@ -414,10 +549,7 @@ naive_forecaster_attribute_map = {
         value_choices=["last", "mean"],
     ),
     AttributeName.SP.value: IntAttribute(
-        name=AttributeName.SP.value,
-        default_value=1,
-        default_low=1,
-        default_high=5000
+        name=AttributeName.SP.value, default_value=1, default_low=1, default_high=5000
     ),
 }
 # ExponentialSmoothing
@@ -426,7 +558,7 @@ exponential_smoothing_attribute_map = {
         name=AttributeName.PREDICT_LENGTH.value,
         default_value=1,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.DAMPED_TREND.value: BooleanAttribute(
         name=AttributeName.DAMPED_TREND.value,
@@ -448,7 +580,7 @@ exponential_smoothing_attribute_map = {
     AttributeName.USE_BRUTE.value: BooleanAttribute(
         name=AttributeName.USE_BRUTE.value,
         default_value=False,
-    )
+    ),
 }
 # Arima
 arima_attribute_map = {
@@ -456,17 +588,15 @@ arima_attribute_map = {
         name=AttributeName.PREDICT_LENGTH.value,
         default_value=1,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.ORDER.value: TupleAttribute(
-        name=AttributeName.ORDER.value,
-        default_value=(1, 0, 0),
-        value_type=int
+        name=AttributeName.ORDER.value, default_value=(1, 0, 0), value_type=int
     ),
     AttributeName.SEASONAL_ORDER.value: TupleAttribute(
         name=AttributeName.SEASONAL_ORDER.value,
         default_value=(0, 0, 0, 0),
-        value_type=int
+        value_type=int,
     ),
     AttributeName.METHOD.value: StringAttribute(
         name=AttributeName.METHOD.value,
@@ -477,7 +607,7 @@ arima_attribute_map = {
         name=AttributeName.MAXITER.value,
         default_value=1,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.SUPPRESS_WARNINGS.value: BooleanAttribute(
         name=AttributeName.SUPPRESS_WARNINGS.value,
@@ -487,7 +617,7 @@ arima_attribute_map = {
         name=AttributeName.OUT_OF_SAMPLE_SIZE.value,
         default_value=0,
         default_low=0,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.SCORING.value: StringAttribute(
         name=AttributeName.SCORING.value,
@@ -529,7 +659,7 @@ arima_attribute_map = {
     AttributeName.CONCENTRATE_SCALE.value: BooleanAttribute(
         name=AttributeName.CONCENTRATE_SCALE.value,
         default_value=False,
-    )
+    ),
 }
 # STLForecaster
 stl_forecaster_attribute_map = {
@@ -537,55 +667,52 @@ stl_forecaster_attribute_map = {
         name=AttributeName.PREDICT_LENGTH.value,
         default_value=1,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.SP.value: IntAttribute(
-        name=AttributeName.SP.value,
-        default_value=2,
-        default_low=1,
-        default_high=5000
+        name=AttributeName.SP.value, default_value=2, default_low=1, default_high=5000
     ),
     AttributeName.SEASONAL.value: IntAttribute(
         name=AttributeName.SEASONAL.value,
         default_value=7,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.SEASONAL_DEG.value: IntAttribute(
         name=AttributeName.SEASONAL_DEG.value,
         default_value=1,
         default_low=0,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.TREND_DEG.value: IntAttribute(
         name=AttributeName.TREND_DEG.value,
         default_value=1,
         default_low=0,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.LOW_PASS_DEG.value: IntAttribute(
         name=AttributeName.LOW_PASS_DEG.value,
         default_value=1,
         default_low=0,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.SEASONAL_JUMP.value: IntAttribute(
         name=AttributeName.SEASONAL_JUMP.value,
         default_value=1,
         default_low=0,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.TREND_JUMP.value: IntAttribute(
         name=AttributeName.TREND_JUMP.value,
         default_value=1,
         default_low=0,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.LOSS_PASS_JUMP.value: IntAttribute(
         name=AttributeName.LOSS_PASS_JUMP.value,
         default_value=1,
         default_low=0,
-        default_high=5000
+        default_high=5000,
     ),
 }
 
@@ -595,7 +722,7 @@ gaussian_hmm_attribute_map = {
         name=AttributeName.N_COMPONENTS.value,
         default_value=1,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.COVARIANCE_TYPE.value: StringAttribute(
         name=AttributeName.COVARIANCE_TYPE.value,
@@ -653,7 +780,7 @@ gaussian_hmm_attribute_map = {
         name=AttributeName.N_ITER.value,
         default_value=10,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.TOL.value: FloatAttribute(
         name=AttributeName.TOL.value,
@@ -675,7 +802,7 @@ gaussian_hmm_attribute_map = {
         name=AttributeName.IMPLEMENTATION.value,
         default_value="log",
         value_choices=["log", "scaling"],
-    )
+    ),
 }
 
 # GMMHMM
@@ -684,13 +811,13 @@ gmmhmm_attribute_map = {
         name=AttributeName.N_COMPONENTS.value,
         default_value=1,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.N_MIX.value: IntAttribute(
         name=AttributeName.N_MIX.value,
         default_value=1,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.MIN_COVAR.value: FloatAttribute(
         name=AttributeName.MIN_COVAR.value,
@@ -742,7 +869,7 @@ gmmhmm_attribute_map = {
         name=AttributeName.N_ITER.value,
         default_value=10,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.TOL.value: FloatAttribute(
         name=AttributeName.TOL.value,
@@ -753,22 +880,82 @@ gmmhmm_attribute_map = {
     AttributeName.INIT_PARAMS.value: StringAttribute(
         name=AttributeName.INIT_PARAMS.value,
         default_value="stmcw",
-        value_choices=["s", "t", "m", "c", "w", "st", "sm", "sc", "sw", "tm", "tc", "tw", "mc", "mw", "cw", "stm",
-                       "stc", "stw", "smc", "smw", "scw", "tmc", "tmw", "tcw", "mcw", "stmc", "stmw", "stcw", "smcw",
-                       "tmcw", "stmcw"]
+        value_choices=[
+            "s",
+            "t",
+            "m",
+            "c",
+            "w",
+            "st",
+            "sm",
+            "sc",
+            "sw",
+            "tm",
+            "tc",
+            "tw",
+            "mc",
+            "mw",
+            "cw",
+            "stm",
+            "stc",
+            "stw",
+            "smc",
+            "smw",
+            "scw",
+            "tmc",
+            "tmw",
+            "tcw",
+            "mcw",
+            "stmc",
+            "stmw",
+            "stcw",
+            "smcw",
+            "tmcw",
+            "stmcw",
+        ],
     ),
     AttributeName.PARAMS.value: StringAttribute(
         name=AttributeName.PARAMS.value,
         default_value="stmcw",
-        value_choices=["s", "t", "m", "c", "w", "st", "sm", "sc", "sw", "tm", "tc", "tw", "mc", "mw", "cw", "stm",
-                       "stc", "stw", "smc", "smw", "scw", "tmc", "tmw", "tcw", "mcw", "stmc", "stmw", "stcw", "smcw",
-                       "tmcw", "stmcw"]
+        value_choices=[
+            "s",
+            "t",
+            "m",
+            "c",
+            "w",
+            "st",
+            "sm",
+            "sc",
+            "sw",
+            "tm",
+            "tc",
+            "tw",
+            "mc",
+            "mw",
+            "cw",
+            "stm",
+            "stc",
+            "stw",
+            "smc",
+            "smw",
+            "scw",
+            "tmc",
+            "tmw",
+            "tcw",
+            "mcw",
+            "stmc",
+            "stmw",
+            "stcw",
+            "smcw",
+            "tmcw",
+            "stmcw",
+        ],
     ),
     AttributeName.IMPLEMENTATION.value: StringAttribute(
         name=AttributeName.IMPLEMENTATION.value,
         default_value="log",
         value_choices=["log", "scaling"],
-    )
+    ),
 }
 
 # STRAY
@@ -780,10 +967,7 @@ stray_attribute_map = {
         default_high=1e10,
     ),
     AttributeName.K.value: IntAttribute(
-        name=AttributeName.K.value,
-        default_value=10,
-        default_low=1,
-        default_high=5000
+        name=AttributeName.K.value, default_value=10, default_low=1, default_high=5000
     ),
     AttributeName.KNN_ALGORITHM.value: StringAttribute(
         name=AttributeName.KNN_ALGORITHM.value,
@@ -800,7 +984,7 @@ stray_attribute_map = {
         name=AttributeName.SIZE_THRESHOLD.value,
         default_value=50,
         default_low=1,
-        default_high=5000
+        default_high=5000,
     ),
     AttributeName.OUTLIER_TAIL.value: StringAttribute(
         name=AttributeName.OUTLIER_TAIL.value,
@@ -824,27 +1008,27 @@ class ArimaModel(BuiltInModel):
     def __init__(self, attributes):
         super(ArimaModel, self).__init__(attributes)
         self._model = ARIMA(
-            order=attributes['order'],
-            seasonal_order=attributes['seasonal_order'],
-            method=attributes['method'],
-            suppress_warnings=attributes['suppress_warnings'],
-            maxiter=attributes['maxiter'],
-            out_of_sample_size=attributes['out_of_sample_size'],
-            scoring=attributes['scoring'],
-            with_intercept=attributes['with_intercept'],
-            time_varying_regression=attributes['time_varying_regression'],
-            enforce_stationarity=attributes['enforce_stationarity'],
-            enforce_invertibility=attributes['enforce_invertibility'],
-            simple_differencing=attributes['simple_differencing'],
-            measurement_error=attributes['measurement_error'],
-            mle_regression=attributes['mle_regression'],
-            hamilton_representation=attributes['hamilton_representation'],
-            concentrate_scale=attributes['concentrate_scale']
+            order=attributes["order"],
+            seasonal_order=attributes["seasonal_order"],
+            method=attributes["method"],
+            suppress_warnings=attributes["suppress_warnings"],
+            maxiter=attributes["maxiter"],
+            out_of_sample_size=attributes["out_of_sample_size"],
+            scoring=attributes["scoring"],
+            with_intercept=attributes["with_intercept"],
+            time_varying_regression=attributes["time_varying_regression"],
+            enforce_stationarity=attributes["enforce_stationarity"],
+            enforce_invertibility=attributes["enforce_invertibility"],
+            simple_differencing=attributes["simple_differencing"],
+            measurement_error=attributes["measurement_error"],
+            mle_regression=attributes["mle_regression"],
+            hamilton_representation=attributes["hamilton_representation"],
+            concentrate_scale=attributes["concentrate_scale"],
         )
 
     def inference(self, data):
         try:
-            predict_length = self._attributes['predict_length']
+            predict_length = self._attributes["predict_length"]
             self._model.fit(data)
             output = self._model.predict(fh=range(predict_length))
             output = np.array(output, dtype=np.float64)
@@ -857,16 +1041,16 @@ class ExponentialSmoothingModel(BuiltInModel):
     def __init__(self, attributes):
         super(ExponentialSmoothingModel, self).__init__(attributes)
         self._model = ExponentialSmoothing(
-            damped_trend=attributes['damped_trend'],
-            initialization_method=attributes['initialization_method'],
-            optimized=attributes['optimized'],
-            remove_bias=attributes['remove_bias'],
-            use_brute=attributes['use_brute']
+            damped_trend=attributes["damped_trend"],
+            initialization_method=attributes["initialization_method"],
+            optimized=attributes["optimized"],
+            remove_bias=attributes["remove_bias"],
+            use_brute=attributes["use_brute"],
         )
 
     def inference(self, data):
         try:
-            predict_length = self._attributes['predict_length']
+            predict_length = self._attributes["predict_length"]
             self._model.fit(data)
             output = self._model.predict(fh=range(predict_length))
             output = np.array(output, dtype=np.float64)
@@ -879,13 +1063,12 @@ class NaiveForecasterModel(BuiltInModel):
     def __init__(self, attributes):
         super(NaiveForecasterModel, self).__init__(attributes)
         self._model = NaiveForecaster(
-            strategy=attributes['strategy'],
-            sp=attributes['sp']
+            strategy=attributes["strategy"], sp=attributes["sp"]
         )
 
     def inference(self, data):
         try:
-            predict_length = self._attributes['predict_length']
+            predict_length = self._attributes["predict_length"]
             self._model.fit(data)
             output = self._model.predict(fh=range(predict_length))
             output = np.array(output, dtype=np.float64)
@@ -898,19 +1081,19 @@ class STLForecasterModel(BuiltInModel):
     def __init__(self, attributes):
         super(STLForecasterModel, self).__init__(attributes)
         self._model = STLForecaster(
-            sp=attributes['sp'],
-            seasonal=attributes['seasonal'],
-            seasonal_deg=attributes['seasonal_deg'],
-            trend_deg=attributes['trend_deg'],
-            low_pass_deg=attributes['low_pass_deg'],
-            seasonal_jump=attributes['seasonal_jump'],
-            trend_jump=attributes['trend_jump'],
-            low_pass_jump=attributes['low_pass_jump']
+            sp=attributes["sp"],
+            seasonal=attributes["seasonal"],
+            seasonal_deg=attributes["seasonal_deg"],
+            trend_deg=attributes["trend_deg"],
+            low_pass_deg=attributes["low_pass_deg"],
+            seasonal_jump=attributes["seasonal_jump"],
+            trend_jump=attributes["trend_jump"],
+            low_pass_jump=attributes["low_pass_jump"],
         )
 
     def inference(self, data):
         try:
-            predict_length = self._attributes['predict_length']
+            predict_length = self._attributes["predict_length"]
             self._model.fit(data)
             output = self._model.predict(fh=range(predict_length))
             output = np.array(output, dtype=np.float64)
@@ -923,21 +1106,21 @@ class GMMHMMModel(BuiltInModel):
     def __init__(self, attributes):
         super(GMMHMMModel, self).__init__(attributes)
         self._model = GMMHMM(
-            n_components=attributes['n_components'],
-            n_mix=attributes['n_mix'],
-            min_covar=attributes['min_covar'],
-            startprob_prior=attributes['startprob_prior'],
-            transmat_prior=attributes['transmat_prior'],
-            means_prior=attributes['means_prior'],
-            means_weight=attributes['means_weight'],
-            weights_prior=attributes['weights_prior'],
-            algorithm=attributes['algorithm'],
-            covariance_type=attributes['covariance_type'],
-            n_iter=attributes['n_iter'],
-            tol=attributes['tol'],
-            params=attributes['params'],
-            init_params=attributes['init_params'],
-            implementation=attributes['implementation']
+            n_components=attributes["n_components"],
+            n_mix=attributes["n_mix"],
+            min_covar=attributes["min_covar"],
+            startprob_prior=attributes["startprob_prior"],
+            transmat_prior=attributes["transmat_prior"],
+            means_prior=attributes["means_prior"],
+            means_weight=attributes["means_weight"],
+            weights_prior=attributes["weights_prior"],
+            algorithm=attributes["algorithm"],
+            covariance_type=attributes["covariance_type"],
+            n_iter=attributes["n_iter"],
+            tol=attributes["tol"],
+            params=attributes["params"],
+            init_params=attributes["init_params"],
+            implementation=attributes["implementation"],
         )
 
     def inference(self, data):
@@ -954,21 +1137,21 @@ class GaussianHmmModel(BuiltInModel):
     def __init__(self, attributes):
         super(GaussianHmmModel, self).__init__(attributes)
         self._model = GaussianHMM(
-            n_components=attributes['n_components'],
-            covariance_type=attributes['covariance_type'],
-            min_covar=attributes['min_covar'],
-            startprob_prior=attributes['startprob_prior'],
-            transmat_prior=attributes['transmat_prior'],
-            means_prior=attributes['means_prior'],
-            means_weight=attributes['means_weight'],
-            covars_prior=attributes['covars_prior'],
-            covars_weight=attributes['covars_weight'],
-            algorithm=attributes['algorithm'],
-            n_iter=attributes['n_iter'],
-            tol=attributes['tol'],
-            params=attributes['params'],
-            init_params=attributes['init_params'],
-            implementation=attributes['implementation']
+            n_components=attributes["n_components"],
+            covariance_type=attributes["covariance_type"],
+            min_covar=attributes["min_covar"],
+            startprob_prior=attributes["startprob_prior"],
+            transmat_prior=attributes["transmat_prior"],
+            means_prior=attributes["means_prior"],
+            means_weight=attributes["means_weight"],
+            covars_prior=attributes["covars_prior"],
+            covars_weight=attributes["covars_weight"],
+            algorithm=attributes["algorithm"],
+            n_iter=attributes["n_iter"],
+            tol=attributes["tol"],
+            params=attributes["params"],
+            init_params=attributes["init_params"],
+            implementation=attributes["implementation"],
         )
 
     def inference(self, data):
@@ -985,12 +1168,12 @@ class STRAYModel(BuiltInModel):
     def __init__(self, attributes):
         super(STRAYModel, self).__init__(attributes)
         self._model = STRAY(
-            alpha=attributes['alpha'],
-            k=attributes['k'],
-            knn_algorithm=attributes['knn_algorithm'],
-            p=attributes['p'],
-            size_threshold=attributes['size_threshold'],
-            outlier_tail=attributes['outlier_tail']
+            alpha=attributes["alpha"],
+            k=attributes["k"],
+            knn_algorithm=attributes["knn_algorithm"],
+            p=attributes["p"],
+            size_threshold=attributes["size_threshold"],
+            outlier_tail=attributes["outlier_tail"],
         )
 
     def inference(self, data):

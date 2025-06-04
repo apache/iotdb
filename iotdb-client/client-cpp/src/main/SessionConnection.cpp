@@ -23,6 +23,8 @@
 
 #include <utility>
 
+#include "SessionDataSet.h"
+
 using namespace apache::thrift;
 using namespace apache::thrift::protocol;
 using namespace apache::thrift::transport;
@@ -123,19 +125,19 @@ void SessionConnection::init(const TEndPoint& endpoint) {
         configuration["db"] = database;
     }
     TSOpenSessionReq openReq;
-    openReq.__set_username(session->username);
-    openReq.__set_password(session->password);
+    openReq.__set_username(session->username_);
+    openReq.__set_password(session->password_);
     openReq.__set_zoneId(zoneId);
     openReq.__set_configuration(configuration);
     try {
         TSOpenSessionResp openResp;
         client->openSession(openResp, openReq);
         RpcUtils::verifySuccess(openResp.status);
-        if (session->protocolVersion != openResp.serverProtocolVersion) {
+        if (session->protocolVersion_ != openResp.serverProtocolVersion) {
             if (openResp.serverProtocolVersion == 0) {
                 // less than 0.10
                 throw logic_error(string("Protocol not supported, Client version is ") +
-                    to_string(session->protocolVersion) +
+                    to_string(session->protocolVersion_) +
                     ", but Server version is " + to_string(openResp.serverProtocolVersion));
             }
         }
@@ -173,7 +175,7 @@ std::unique_ptr<SessionDataSet> SessionConnection::executeQueryStatement(const s
     auto result = callWithRetryAndReconnect<TSExecuteStatementResp>(
         [this, &req]() {
             TSExecuteStatementResp resp;
-            client->executeStatement(resp, req);
+            client->executeQueryStatementV2(resp, req);
             return resp;
         },
         [](const TSExecuteStatementResp& resp) {
@@ -188,10 +190,11 @@ std::unique_ptr<SessionDataSet> SessionConnection::executeQueryStatement(const s
         RpcUtils::verifySuccess(resp.status);
     }
 
-    std::shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
-    return std::unique_ptr<SessionDataSet>(new SessionDataSet(
-        sql, resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp, resp.queryId,
-        statementId, client, sessionId, queryDataSet));
+    return std::unique_ptr<SessionDataSet>(new SessionDataSet(sql, resp.columns, resp.dataTypeList,
+                                                              resp.columnNameIndexMap, resp.queryId, statementId,
+                                                              client, sessionId, resp.queryResult, resp.ignoreTimeStamp,
+                                                              connectionTimeoutInMs, resp.moreData, fetchSize, zoneId,
+                                                              timeFactor, resp.columnIndex2TsBlockColumnIndexList));
 }
 
 std::unique_ptr<SessionDataSet> SessionConnection::executeRawDataQuery(const std::vector<std::string>& paths,
@@ -206,7 +209,7 @@ std::unique_ptr<SessionDataSet> SessionConnection::executeRawDataQuery(const std
     auto result = callWithRetryAndReconnect<TSExecuteStatementResp>(
         [this, &req]() {
             TSExecuteStatementResp resp;
-            client->executeRawDataQuery(resp, req);
+            client->executeRawDataQueryV2(resp, req);
             return resp;
         },
         [](const TSExecuteStatementResp& resp) {
@@ -220,10 +223,11 @@ std::unique_ptr<SessionDataSet> SessionConnection::executeRawDataQuery(const std
     else {
         RpcUtils::verifySuccess(resp.status);
     }
-    shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
-    return unique_ptr<SessionDataSet>(
-        new SessionDataSet("", resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp,
-                           resp.queryId, statementId, client, sessionId, queryDataSet));
+    return std::unique_ptr<SessionDataSet>(new SessionDataSet("", resp.columns, resp.dataTypeList,
+                                                              resp.columnNameIndexMap, resp.queryId, statementId,
+                                                              client, sessionId, resp.queryResult, resp.ignoreTimeStamp,
+                                                              connectionTimeoutInMs, resp.moreData, fetchSize, zoneId,
+                                                              timeFactor, resp.columnIndex2TsBlockColumnIndexList));
 }
 
 std::unique_ptr<SessionDataSet> SessionConnection::executeLastDataQuery(const std::vector<std::string>& paths,
@@ -252,10 +256,11 @@ std::unique_ptr<SessionDataSet> SessionConnection::executeLastDataQuery(const st
     else {
         RpcUtils::verifySuccess(resp.status);
     }
-    shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
-    return unique_ptr<SessionDataSet>(
-        new SessionDataSet("", resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp,
-                           resp.queryId, statementId, client, sessionId, queryDataSet));
+    return std::unique_ptr<SessionDataSet>(new SessionDataSet("", resp.columns, resp.dataTypeList,
+                                                              resp.columnNameIndexMap, resp.queryId, statementId,
+                                                              client, sessionId, resp.queryResult, resp.ignoreTimeStamp,
+                                                              connectionTimeoutInMs, resp.moreData, fetchSize, zoneId,
+                                                              timeFactor, resp.columnIndex2TsBlockColumnIndexList));
 }
 
 void SessionConnection::executeNonQueryStatement(const string& sql) {
@@ -269,7 +274,7 @@ void SessionConnection::executeNonQueryStatement(const string& sql) {
         client->executeUpdateStatementV2(resp, req);
         if (resp.database != "") {
             database = resp.database;
-            session->database = database;
+            session->database_ = database;
         }
         RpcUtils::verifySuccess(resp.status);
     }
@@ -348,8 +353,8 @@ bool SessionConnection::reconnect() {
         }
         if (reconnect) {
             session->removeBrokenSessionConnection(shared_from_this());
-            session->defaultEndPoint = this->endPoint;
-            session->defaultSessionConnection = shared_from_this();
+            session->defaultEndPoint_ = this->endPoint;
+            session->defaultSessionConnection_ = shared_from_this();
             session->endPointToSessionConnection.insert(make_pair(this->endPoint, shared_from_this()));
         }
     }

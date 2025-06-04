@@ -309,8 +309,8 @@ public class IoTDBTableIT {
       // Test create table with only time column
       statement.execute("create table table3()");
 
-      tableNames = new String[] {"table3", "table2"};
-      ttls = new String[] {"3000000", "6600000"};
+      tableNames = new String[] {"table2", "table3"};
+      ttls = new String[] {"6600000", "3000000"};
 
       // show tables from current database
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
@@ -336,7 +336,7 @@ public class IoTDBTableIT {
       statement.execute("alter table table3 set properties ttl=1000000");
       statement.execute("alter table table3 set properties ttl=DEFAULT");
 
-      ttls = new String[] {"INF", "6600000"};
+      ttls = new String[] {"6600000", "INF"};
       // The table3's ttl shall be "INF"
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
         int cnt = 0;
@@ -636,11 +636,15 @@ public class IoTDBTableIT {
     try (final Connection userCon =
             EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userStmt.execute("select * from db.test");
-          });
+      Assert.assertThrows(SQLException.class, () -> userStmt.execute("select * from db.test"));
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("select * from information_schema.tables where database = 'db'"),
+          "database,table_name,ttl(ms),status,comment,table_type,",
+          Collections.emptySet());
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("select * from information_schema.columns where database = 'db'"),
+          "database,table_name,column_name,datatype,category,status,comment,",
+          Collections.emptySet());
     }
 
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -658,10 +662,9 @@ public class IoTDBTableIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         Assert.assertTrue(resultSet.next());
-        if (resultSet.getString(1).equals("information_schema")) {
-          assertTrue(resultSet.next());
-        }
         assertEquals("db", resultSet.getString(1));
+        Assert.assertTrue(resultSet.next());
+        assertEquals("information_schema", resultSet.getString(1));
         Assert.assertFalse(resultSet.next());
       }
 
@@ -872,6 +875,18 @@ public class IoTDBTableIT {
 
       statement.execute(
           "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.a.**");
+
+      // Cannot be written
+      try {
+        statement.execute(
+            "insert into tree_table(time, tag1, tag2, S1, s3) values (1, 1, 1, 1, 1)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The table tree_view_db.tree_table is a view from tree, cannot be written or deleted from",
+            e.getMessage());
+      }
+
       statement.execute("alter view tree_table rename to view_table");
       statement.execute("alter view view_table rename column s1 to s11");
       statement.execute("alter view view_table set properties ttl=100");

@@ -26,16 +26,16 @@
 
 class TableSession {
 private:
-    Session* session;
+    Session* session_;
     string getDatabase();
 public:
     TableSession(Session* session) {
-        this->session = session;
+        this->session_ = session;
     }
     ~TableSession() {
-        if (session) {
-            delete session;
-            session = nullptr;
+        if (session_) {
+            delete session_;
+            session_ = nullptr;
         }
     }
     void insert(Tablet& tablet, bool sorted = false);

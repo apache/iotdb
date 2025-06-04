@@ -148,7 +148,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
             payload);
       }
 
-      final List<Message> messages = payloadFormat.format(payload);
+      final List<Message> messages = payloadFormat.format(topic, payload);
       if (messages == null) {
         return;
       }
@@ -158,14 +158,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
           continue;
         }
         if (useTableInsert) {
-          final TableMessage tableMessage = (TableMessage) message;
-          // '/' previously defined as a database name
-          final String database =
-              !msg.getTopicName().contains("/")
-                  ? msg.getTopicName()
-                  : msg.getTopicName().substring(0, msg.getTopicName().indexOf("/"));
-          tableMessage.setDatabase(database.toLowerCase());
-          extractTable(tableMessage, session);
+          extractTable((TableMessage) message, session);
         } else {
           extractTree((TreeMessage) message, session);
         }

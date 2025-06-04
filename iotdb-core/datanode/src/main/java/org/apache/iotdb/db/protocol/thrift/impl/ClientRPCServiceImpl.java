@@ -213,6 +213,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -314,6 +315,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     StatementType statementType = null;
     Throwable t = null;
     boolean useDatabase = false;
+    final boolean isDatabaseSetBefore = Objects.nonNull(clientSession.getDatabaseName());
     boolean setSqlDialect = false;
     try {
       // create and cache dataset
@@ -407,7 +409,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         finished = true;
-        return RpcUtils.getTSExecuteStatementResp(result.status);
+        final TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        if (isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
+          // Previously unused
+          resp.setOperationType("dropDB");
+        }
+        return resp;
       }
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
@@ -430,6 +437,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           if (useDatabase) {
             resp.setDatabase(clientSession.getDatabaseName());
           }
+          if (isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
+            // Previously unused
+            resp.setOperationType("dropDB");
+          }
 
           if (setSqlDialect) {
             resp.setTableModel(
@@ -447,8 +458,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } catch (Exception e) {
       finished = true;
       t = e;
-      return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+      final TSExecuteStatementResp resp =
+          RpcUtils.getTSExecuteStatementResp(
+              onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+      if (isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
+        // Previously unused
+        resp.setOperationType("dropDB");
+      }
+      return resp;
     } catch (Error error) {
       finished = true;
       t = error;
@@ -1705,6 +1722,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
 
     boolean useDatabase = false;
+    final boolean isDatabaseSetBefore = Objects.nonNull(clientSession.getDatabaseName());
     try {
       for (int i = 0; i < req.getStatements().size(); i++) {
         String statement = req.getStatements().get(i);
@@ -1819,8 +1837,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     if (isAllSuccessful) {
       TSStatus res =
           RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully");
-      if (useDatabase) {
-        TSStatus useDB = RpcUtils.getStatus(TSStatusCode.USE_DB, clientSession.getDatabaseName());
+      if (useDatabase || isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
+        final TSStatus useDB =
+            RpcUtils.getStatus(TSStatusCode.USE_OR_DROP_DB, clientSession.getDatabaseName());
         res.setSubStatus(Collections.singletonList(useDB));
       }
       return res;

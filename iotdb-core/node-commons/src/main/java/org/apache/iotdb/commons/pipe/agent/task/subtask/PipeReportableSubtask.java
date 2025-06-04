@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.subtask;
 
+import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.pipe.api.exception.PipeConsensusRetryWithIncreasingIntervalException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +56,20 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     // is dropped or the process is running normally.
   }
 
+  private long getSleepIntervalBasedOnThrowable(final Throwable throwable) {
+    long sleepInterval = Math.min(1000L * retryCount.get(), 10000);
+    // if receiver is read-only/internal-error/write-reject, connector will retry with
+    // power-increasing interval
+    if (throwable instanceof PipeConsensusRetryWithIncreasingIntervalException) {
+      if (retryCount.get() >= 5) {
+        sleepInterval = 1000L * 20;
+      } else {
+        sleepInterval = 1000L * retryCount.get() * retryCount.get();
+      }
+    }
+    return sleepInterval;
+  }
+
   private void onEnrichedEventFailure(final Throwable throwable) {
     final int maxRetryTimes =
         throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
@@ -85,7 +99,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           throwable.getMessage(),
           throwable);
       try {
-        Thread.sleep(Math.min(1000L * retryCount.get(), 10000));
+        Thread.sleep(getSleepIntervalBasedOnThrowable(throwable));
       } catch (final InterruptedException e) {
         LOGGER.warn(
             "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
@@ -152,17 +166,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
         throwable.getMessage(),
         throwable);
     try {
-      long sleepInterval = Math.min(1000L * retryCount.get(), 10000);
-      // if receiver is read-only/internal-error/write-reject, connector will retry will
-      // power-increasing interval
-      if (throwable instanceof PipeConsensusRetryWithIncreasingIntervalException) {
-        if (retryCount.get() >= 5) {
-          sleepInterval = 1000L * 20;
-        } else {
-          sleepInterval = 1000L * retryCount.get() * retryCount.get();
-        }
-      }
-      Thread.sleep(sleepInterval);
+      Thread.sleep(getSleepIntervalBasedOnThrowable(throwable));
     } catch (final InterruptedException e) {
       LOGGER.warn(
           "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",

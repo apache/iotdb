@@ -149,7 +149,7 @@ public class TreeDeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
 
   @Override
   public void deactivateTemplate() {
-    schemaTemplateId = -1;
+    schemaTemplateId = NON_TEMPLATE;
     setUseTemplate(false);
   }
 

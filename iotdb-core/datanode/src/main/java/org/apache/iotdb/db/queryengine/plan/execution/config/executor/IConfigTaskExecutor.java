@@ -305,7 +305,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> useDatabase(final Use useDB, final IClientSession clientSession);
 
-  SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB);
+  SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB, final IClientSession session);
 
   SettableFuture<ConfigTaskResult> createDatabase(
       final TDatabaseSchema databaseSchema, final boolean ifNotExists);

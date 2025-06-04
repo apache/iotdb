@@ -16,8 +16,9 @@
 # under the License.
 #
 import abc
-import torch
 from functools import cached_property
+
+import torch
 from einops import einsum, rearrange, repeat
 from torch import nn
 
@@ -33,7 +34,9 @@ class Projection(nn.Module, abc.ABC):
 
 
 class RotaryProjection(Projection):
-    def __init__(self, *, proj_width: int, num_heads: int, max_len: int = 512, base: int = 10000):
+    def __init__(
+        self, *, proj_width: int, num_heads: int, max_len: int = 512, base: int = 10000
+    ):
         super().__init__(proj_width, num_heads)
         assert (
             self.proj_width % 2 == 0
@@ -57,8 +60,7 @@ class RotaryProjection(Projection):
             position = torch.arange(
                 max_len, device=self.theta.device, dtype=self.theta.dtype
             )
-            m_theta = einsum(position, self.theta,
-                             "length, width -> length width")
+            m_theta = einsum(position, self.theta, "length, width -> length width")
             m_theta = repeat(m_theta, "length width -> length (width 2)")
             self.register_buffer("cos", torch.cos(m_theta), persistent=False)
             self.register_buffer("sin", torch.sin(m_theta), persistent=False)
@@ -76,7 +78,9 @@ class RotaryProjection(Projection):
 
 
 class QueryKeyProjection(nn.Module):
-    def __init__(self, dim: int, num_heads: int, proj_layer, kwargs=None, partial_factor=None):
+    def __init__(
+        self, dim: int, num_heads: int, proj_layer, kwargs=None, partial_factor=None
+    ):
         super().__init__()
         if partial_factor is not None:
             assert (
