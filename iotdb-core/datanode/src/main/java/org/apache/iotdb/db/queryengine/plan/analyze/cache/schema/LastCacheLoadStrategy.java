@@ -16,27 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
-package org.apache.iotdb.itbase.env;
-
-import java.util.List;
-
-/** This interface is used to handle properties in iotdb-datanode.properties. */
-public interface DataNodeConfig {
-  DataNodeConfig setMetricReporterType(List<String> metricReporterTypes);
-
-  DataNodeConfig setMetricPrometheusReporterUsername(String username);
-
-  DataNodeConfig setMetricPrometheusReporterPassword(String password);
-
-  DataNodeConfig setEnableRestService(boolean enableRestService);
-
-  DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS);
-
-  DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
-      long loadTsFileAnalyzeSchemaMemorySizeInBytes);
-
-  DataNodeConfig setLoadLastCacheStrategy(String strategyName);
-
-  DataNodeConfig setCacheLastValuesForLoad(boolean cacheLastValuesForLoad);
+public enum LastCacheLoadStrategy {
+  // when a TsFile is loaded, read its data to update LastCache
+  UPDATE,
+  // similar to UPDATE, but will invalidate cache of Blob series instead of updating them
+  UPDATE_NO_BLOB,
+  // when a TsFile is loaded, clean its included device in LastCache
+  CLEAN_DEVICE,
+  // when a TsFile is loaded, clean all LastCache
+  CLEAN_ALL
 }

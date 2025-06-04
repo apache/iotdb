@@ -47,6 +47,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.apache.tsfile.utils.Pair;
@@ -175,6 +176,8 @@ public class TsFileResource {
 
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
+
+  private Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues;
 
   @TestOnly
   public TsFileResource() {
@@ -1250,5 +1253,13 @@ public class TsFileResource {
 
   public void setInsertionCompactionTaskCandidate(InsertionCompactionCandidateStatus status) {
     insertionCompactionCandidateStatus = status;
+  }
+
+  public Map<IDeviceID, List<Pair<String, TimeValuePair>>> getLastValues() {
+    return lastValues;
+  }
+
+  public void setLastValues(Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues) {
+    this.lastValues = lastValues;
   }
 }
