@@ -180,9 +180,10 @@ public class SeriesScanUtil implements Accountable {
 
     // updated filter concerning TTL
     long ttl;
-    // Only the data in the table model needs to retain rows where all value
-    // columns are null values, so we can use isIgnoreAllNullRows to
-    // differentiate the data of tree model and table model.
+    // IgnoreAllNullRows is false indicating that the current query is a table model query.
+    // In most cases, We can use this condition to determine from which model to obtain the ttl
+    // of the current device. However, it should be noted that for tree model data queried using
+    // table view, ttl also needs to be obtained from the tree model.
     if (context.isIgnoreAllNullRows() || scanOptions.isTableViewForTreeModel()) {
       ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
       scanOptions.setTTL(ttl);
