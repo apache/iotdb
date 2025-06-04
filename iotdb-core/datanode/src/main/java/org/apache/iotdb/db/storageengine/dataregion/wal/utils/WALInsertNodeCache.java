@@ -139,7 +139,11 @@ public class WALInsertNodeCache {
   }
 
   private void setExpandCallback(long oldMemory, long newMemory, Integer dataRegionId) {
-    memoryUsageCheatFactor.updateAndGet(factor -> factor / ((double) newMemory / oldMemory));
+    memoryUsageCheatFactor.updateAndGet(
+        factor ->
+            factor == 0L || newMemory == 0L || oldMemory == 0
+                ? 0
+                : factor / ((double) newMemory / oldMemory));
     isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
     LOGGER.info(
         "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has expanded from {} to {}.",
@@ -149,7 +153,11 @@ public class WALInsertNodeCache {
   }
 
   private void shrinkCallback(long oldMemory, long newMemory, Integer dataRegionId) {
-    memoryUsageCheatFactor.updateAndGet(factor -> factor * ((double) oldMemory / newMemory));
+    memoryUsageCheatFactor.updateAndGet(
+        factor ->
+            factor == 0L || newMemory == 0L || oldMemory == 0
+                ? 0
+                : factor * ((double) oldMemory / newMemory));
     isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
     LOGGER.info(
         "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has shrunk from {} to {}.",
