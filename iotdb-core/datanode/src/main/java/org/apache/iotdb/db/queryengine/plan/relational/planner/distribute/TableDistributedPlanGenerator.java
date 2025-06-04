@@ -778,7 +778,7 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitTreeDeviceViewScan(TreeDeviceViewScanNode node, PlanContext context) {
     DataPartition dataPartition = analysis.getDataPartitionInfo();
-    if (dataPartition == null) {
+    if (dataPartition == null || node.getTreeDBName() == null) {
       node.setRegionReplicaSet(NOT_ASSIGNED);
       return Collections.singletonList(node);
     }
@@ -1025,6 +1025,10 @@ public class TableDistributedPlanGenerator
         node instanceof AggregationTreeDeviceViewScanNode
             ? ((AggregationTreeDeviceViewScanNode) node).getTreeDBName()
             : node.getQualifiedObjectName().getDatabaseName();
+    if (dbName == null) {
+      node.setRegionReplicaSet(NOT_ASSIGNED);
+      return Collections.singletonList(node);
+    }
     DataPartition dataPartition = analysis.getDataPartitionInfo();
     boolean needSplit = false;
     List<List<TRegionReplicaSet>> regionReplicaSetsList = new ArrayList<>();
