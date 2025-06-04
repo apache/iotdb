@@ -117,6 +117,7 @@ public class VariationTableFunction implements TableFunction {
     private double baseValue = 0;
     private long curIndex = 0;
     private long windowIndex = 0;
+    private List<Double> values;
 
     public VariationDataProcessor(double delta) {
       this.gap = delta;

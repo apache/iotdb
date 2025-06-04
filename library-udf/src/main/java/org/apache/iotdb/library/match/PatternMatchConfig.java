@@ -40,7 +40,8 @@ public class PatternMatchConfig {
    * if the number of sections is N, and the number of sections with a different sign is D. The
    * algorithm consider the two subsequences as incompatible if D/N > 0.5
    */
-  public static final double QUERY_SIGN_MAXIMUM_TOLERABLE_DIFFERENT_SIGN_SECTIONS = 0.5; // 这个是兼容性匹配的阈值，超过这个阈值的说明不需要比较，肯定是不匹配的
+  public static final double QUERY_SIGN_MAXIMUM_TOLERABLE_DIFFERENT_SIGN_SECTIONS =
+      0.5; // 这个是兼容性匹配的阈值，超过这个阈值的说明不需要比较，肯定是不匹配的
 
   /**
    * keep only one (best) match if the same area is selected in different smooth iterations with not
@@ -53,13 +54,15 @@ public class PatternMatchConfig {
   public static final boolean CHECK_QUERY_COMPATIBILITY = true; // 这个是兼容性匹配检查的开关
 
   /** the first and last sections are cut to have a good fit */
-  public static final boolean START_END_CUT_IN_SUBPARTS = true; // 考虑序列段数据的首尾比较粗糙，这里设置是否进行切除，在匹配的时候能过有更好的效果。 TODO 这里需要看是否是对模板数据进行切除，看这个使用怪怪的
+  public static final boolean START_END_CUT_IN_SUBPARTS =
+      true; // 考虑序列段数据的首尾比较粗糙，这里设置是否进行切除，在匹配的时候能过有更好的效果。 TODO 这里需要看是否是对模板数据进行切除，看这个使用怪怪的
 
   /**
    * the first and last sections are cut as well in the results, or are returned highlighting the
    * whole section. false in tests
    */
-  public static final boolean START_END_CUT_IN_SUBPARTS_IN_RESULTS = true; // 这里考虑是否对已经匹配的结果的首尾进行切除。(就是切除首尾匹配成功后，是要记录原始点还是记录切除后的点)
+  public static final boolean START_END_CUT_IN_SUBPARTS_IN_RESULTS =
+      true; // 这里考虑是否对已经匹配的结果的首尾进行切除。(就是切除首尾匹配成功后，是要记录原始点还是记录切除后的点)
 
   /** true for tests */
   public static final boolean RESCALING_Y = true; // 这里是指在局部缩放的时候，是否对Y轴进行缩放，如果选择false，那么使用的是X轴的缩放比例
