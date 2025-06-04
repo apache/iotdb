@@ -48,6 +48,7 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
@@ -149,9 +150,34 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               && ((PipeTsFileInsertionEvent) event).shouldParse4Privilege()) {
             try (final PipeTsFileInsertionEvent tsFileInsertionEvent =
                 (PipeTsFileInsertionEvent) event) {
-              for (final TabletInsertionEvent tabletInsertionEvent :
-                  tsFileInsertionEvent.toTabletInsertionEvents()) {
-                pipeProcessor.process(tabletInsertionEvent, outputEventCollector);
+              final Iterable<TabletInsertionEvent> iterable =
+                  tsFileInsertionEvent.toTabletInsertionEvents();
+              final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
+              while (iterator.hasNext()) {
+                final TabletInsertionEvent parsedEvent = iterator.next();
+                int retryCount = 0;
+                while (true) {
+                  // If failed due do insufficient memory, retry until success to avoid race among
+                  // multiple processor threads
+                  try {
+                    pipeProcessor.process(parsedEvent, outputEventCollector);
+                    break;
+                  } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+                    if (retryCount++ % 100 == 0) {
+                      LOGGER.warn(
+                          "PipeProcessorSubtask: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
+                          tsFileInsertionEvent.getTsFile(),
+                          retryCount,
+                          e);
+                    } else if (LOGGER.isDebugEnabled()) {
+                      LOGGER.debug(
+                          "PipeProcessorSubtask: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
+                          tsFileInsertionEvent.getTsFile(),
+                          retryCount,
+                          e);
+                    }
+                  }
+                }
               }
             }
           } else {

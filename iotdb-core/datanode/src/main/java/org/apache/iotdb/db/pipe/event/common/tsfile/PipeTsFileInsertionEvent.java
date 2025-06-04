@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -55,6 +56,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -689,11 +691,37 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
     if (shouldParseTime()) {
       try {
-        for (final TabletInsertionEvent event : toTabletInsertionEvents()) {
-          final PipeRawTabletInsertionEvent rawEvent = ((PipeRawTabletInsertionEvent) event);
-          count += rawEvent.count();
-          if (skipReportOnCommit) {
-            rawEvent.skipReportOnCommit();
+        final Iterable<TabletInsertionEvent> iterable = toTabletInsertionEvents();
+        final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
+        while (iterator.hasNext()) {
+          final TabletInsertionEvent parsedEvent = iterator.next();
+          int retryCount = 0;
+          while (true) {
+            // If failed due do insufficient memory, retry until success to avoid race among
+            // multiple processor threads
+            try {
+              final PipeRawTabletInsertionEvent rawEvent =
+                  ((PipeRawTabletInsertionEvent) parsedEvent);
+              count += rawEvent.count();
+              if (skipReportOnCommit) {
+                rawEvent.skipReportOnCommit();
+              }
+              break;
+            } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+              if (retryCount++ % 100 == 0) {
+                LOGGER.warn(
+                    "PipeTsFileInsertionEvent::count: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
+                    getTsFile(),
+                    retryCount,
+                    e);
+              } else if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(
+                    "PipeTsFileInsertionEvent::count: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
+                    getTsFile(),
+                    retryCount,
+                    e);
+              }
+            }
           }
         }
         return count;

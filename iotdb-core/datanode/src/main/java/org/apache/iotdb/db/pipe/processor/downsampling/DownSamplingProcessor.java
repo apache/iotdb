@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.pipe.processor.downsampling;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -36,7 +38,10 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE;
@@ -45,6 +50,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY;
 
 public abstract class DownSamplingProcessor implements PipeProcessor {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DownSamplingProcessor.class);
 
   protected long memoryLimitInBytes;
 
@@ -149,9 +155,34 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
       throws Exception {
     if (shouldSplitFile) {
       try {
-        for (final TabletInsertionEvent tabletInsertionEvent :
-            tsFileInsertionEvent.toTabletInsertionEvents()) {
-          process(tabletInsertionEvent, eventCollector);
+        final Iterable<TabletInsertionEvent> iterable =
+            tsFileInsertionEvent.toTabletInsertionEvents();
+        final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
+        while (iterator.hasNext()) {
+          final TabletInsertionEvent parsedEvent = iterator.next();
+          int retryCount = 0;
+          while (true) {
+            // If failed due do insufficient memory, retry until success to avoid race among
+            // multiple processor threads
+            try {
+              process(parsedEvent, eventCollector);
+              break;
+            } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+              if (retryCount++ % 100 == 0) {
+                LOGGER.warn(
+                    "DownSamplingProcessor: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
+                    ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile(),
+                    retryCount,
+                    e);
+              } else if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(
+                    "DownSamplingProcessor: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
+                    ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile(),
+                    retryCount,
+                    e);
+              }
+            }
+          }
         }
       } finally {
         tsFileInsertionEvent.close();

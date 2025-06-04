@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -65,6 +66,8 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -75,6 +78,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -108,6 +112,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
  */
 @TreeModel
 public class AggregateProcessor implements PipeProcessor {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AggregateProcessor.class);
   private static final String WINDOWING_PROCESSOR_SUFFIX = "-windowing-processor";
 
   private String pipeName;
@@ -524,9 +529,34 @@ public class AggregateProcessor implements PipeProcessor {
       final TsFileInsertionEvent tsFileInsertionEvent, final EventCollector eventCollector)
       throws Exception {
     try {
-      for (final TabletInsertionEvent tabletInsertionEvent :
-          tsFileInsertionEvent.toTabletInsertionEvents()) {
-        process(tabletInsertionEvent, eventCollector);
+      final Iterable<TabletInsertionEvent> iterable =
+          tsFileInsertionEvent.toTabletInsertionEvents();
+      final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
+      while (iterator.hasNext()) {
+        final TabletInsertionEvent parsedEvent = iterator.next();
+        int retryCount = 0;
+        while (true) {
+          // If failed due do insufficient memory, retry until success to avoid race among multiple
+          // processor threads
+          try {
+            process(parsedEvent, eventCollector);
+            break;
+          } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+            if (retryCount++ % 100 == 0) {
+              LOGGER.warn(
+                  "AggregateProcessor: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
+                  ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile(),
+                  retryCount,
+                  e);
+            } else if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug(
+                  "AggregateProcessor: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
+                  ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile(),
+                  retryCount,
+                  e);
+            }
+          }
+        }
       }
     } finally {
       tsFileInsertionEvent.close();

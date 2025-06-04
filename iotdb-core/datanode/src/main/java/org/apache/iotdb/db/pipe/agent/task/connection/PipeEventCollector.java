@@ -150,6 +150,8 @@ public class PipeEventCollector implements EventCollector {
         final TabletInsertionEvent parsedEvent = iterator.next();
         int retryCount = 0;
         while (true) {
+          // If failed due do insufficient memory, retry until success to avoid race among multiple
+          // processor threads
           try {
             collectParsedRawTableEvent((PipeRawTabletInsertionEvent) parsedEvent);
             break;
