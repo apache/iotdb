@@ -66,11 +66,7 @@ public class WALInsertNodeCache {
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
-  private static final PipeModelFixedMemoryBlock WAL_MODEL_FIXED_MEMORY =
-      PipeDataNodeResourceManager.memory()
-          .forceAllocateForModelFixedMemoryBlock(
-              PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfWAL(),
-              PipeMemoryBlockType.WAL);
+  private static PipeModelFixedMemoryBlock WAL_MODEL_FIXED_MEMORY = null;
 
   private final PipeDynamicMemoryBlock memoryBlock;
 
@@ -86,6 +82,10 @@ public class WALInsertNodeCache {
   private volatile boolean hasPipeRunning = false;
 
   private WALInsertNodeCache(final Integer dataRegionId) {
+    if (WAL_MODEL_FIXED_MEMORY == null) {
+      init();
+    }
+
     final long requestedAllocateSize =
         (long)
             Math.min(
@@ -164,6 +164,26 @@ public class WALInsertNodeCache {
         return;
       }
       LOGGER.info("Successfully cleared WALInsertNodeCache for dataRegion ID: {}.", dataRegionId);
+    }
+  }
+
+  // please call this method at PipeLauncher
+  public static void init() {
+    if (WAL_MODEL_FIXED_MEMORY != null) {
+      return;
+    }
+    try {
+      // Allocate memory for the fixed memory block of WAL
+      WAL_MODEL_FIXED_MEMORY =
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForModelFixedMemoryBlock(
+                  PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfWAL(),
+                  PipeMemoryBlockType.WAL);
+    } catch (Exception e) {
+      LOGGER.error("Failed to initialize WAL model fixed memory block", e);
+      WAL_MODEL_FIXED_MEMORY =
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForModelFixedMemoryBlock(1, PipeMemoryBlockType.WAL);
     }
   }
 
