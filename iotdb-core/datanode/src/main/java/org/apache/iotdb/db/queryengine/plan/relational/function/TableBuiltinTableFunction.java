@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.TumbleTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.VariationTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.MySqlConnectorTableFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import java.util.Arrays;
@@ -40,7 +41,8 @@ public enum TableBuiltinTableFunction {
   SESSION("session"),
   VARIATION("variation"),
   CAPACITY("capacity"),
-  FORECAST("forecast");
+  FORECAST("forecast"),
+  MYSQL_CONNECTOR("mysql_connector");
 
   private final String functionName;
 
@@ -82,6 +84,8 @@ public enum TableBuiltinTableFunction {
         return new CapacityTableFunction();
       case "forecast":
         return new ForecastTableFunction();
+      case "mysql_connector":
+        return new MySqlConnectorTableFunction();
       default:
         throw new UnsupportedOperationException("Unsupported table function: " + functionName);
     }
