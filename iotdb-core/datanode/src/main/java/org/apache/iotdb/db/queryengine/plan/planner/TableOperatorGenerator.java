@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannel
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
+import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -1121,6 +1122,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         TableScanOperator.class.getSimpleName(),
         Collections.emptyMap(),
         Long.MAX_VALUE);
+  }
+
+  @Override
+  public Operator visitTreeDeviceViewScan(
+      TreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
+    if (node.getDeviceEntries().isEmpty() || node.getTreeDBName() == null) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  EmptyDataOperator.class.getSimpleName());
+      return new EmptyDataOperator(operatorContext);
+    }
+    throw new IllegalArgumentException("Valid TreeDeviceViewScanNode is not expected here.");
   }
 
   @Override
