@@ -66,7 +66,7 @@ public class WALInsertNodeCache {
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
-  private static PipeModelFixedMemoryBlock WAL_MODEL_FIXED_MEMORY = null;
+  private static PipeModelFixedMemoryBlock walModelFixedMemory = null;
 
   private final PipeDynamicMemoryBlock memoryBlock;
 
@@ -82,7 +82,7 @@ public class WALInsertNodeCache {
   private volatile boolean hasPipeRunning = false;
 
   private WALInsertNodeCache(final Integer dataRegionId) {
-    if (WAL_MODEL_FIXED_MEMORY == null) {
+    if (walModelFixedMemory == null) {
       init();
     }
 
@@ -96,7 +96,7 @@ public class WALInsertNodeCache {
                 0.5
                     * MEMORY_CONFIG.getPipeMemoryManager().getTotalMemorySizeInBytes()
                     / CONFIG.getDataRegionNum());
-    memoryBlock = WAL_MODEL_FIXED_MEMORY.registerPipeBatchMemoryBlock(requestedAllocateSize);
+    memoryBlock = walModelFixedMemory.registerPipeBatchMemoryBlock(requestedAllocateSize);
     isBatchLoadEnabled.set(
         memoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte());
     lruCache =
@@ -177,19 +177,19 @@ public class WALInsertNodeCache {
 
   // please call this method at PipeLauncher
   public static void init() {
-    if (WAL_MODEL_FIXED_MEMORY != null) {
+    if (walModelFixedMemory != null) {
       return;
     }
     try {
       // Allocate memory for the fixed memory block of WAL
-      WAL_MODEL_FIXED_MEMORY =
+      walModelFixedMemory =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForModelFixedMemoryBlock(
                   PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfWAL(),
                   PipeMemoryBlockType.WAL);
     } catch (Exception e) {
       LOGGER.error("Failed to initialize WAL model fixed memory block", e);
-      WAL_MODEL_FIXED_MEMORY =
+      walModelFixedMemory =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForModelFixedMemoryBlock(0, PipeMemoryBlockType.WAL);
     }
