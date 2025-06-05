@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.websocket;
 
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -39,7 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.Optional;
 
 @TreeModel
@@ -143,37 +141,14 @@ public class WebSocketConnector implements PipeConnector {
     }
 
     try {
-      final Iterable<TabletInsertionEvent> iterable =
-          tsFileInsertionEvent.toTabletInsertionEvents();
-      final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
-      while (iterator.hasNext()) {
-        final TabletInsertionEvent parsedEvent = iterator.next();
-        int retryCount = 0;
-        while (true) {
-          // If failed due do insufficient memory, retry until success to avoid race among multiple
-          // processor threads
-          try {
-            // Skip report if any tablet events is added
-            ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReportOnCommit();
-            transfer(parsedEvent);
-            break;
-          } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-            if (retryCount++ % 100 == 0) {
-              LOGGER.warn(
-                  "WebSocketConnector: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
-                  ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile(),
-                  retryCount,
-                  e);
-            } else if (LOGGER.isDebugEnabled()) {
-              LOGGER.debug(
-                  "WebSocketConnector: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
-                  ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile(),
-                  retryCount,
-                  e);
-            }
-          }
-        }
-      }
+      ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+          .consumeTabletInsertionEventsWithRetry(
+              event -> {
+                // Skip report if any tablet events is added
+                ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReportOnCommit();
+                transfer(event);
+              },
+              this.getClass().getSimpleName() + "::transfer");
     } finally {
       tsFileInsertionEvent.close();
     }

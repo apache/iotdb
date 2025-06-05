@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -78,7 +77,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -529,33 +527,25 @@ public class AggregateProcessor implements PipeProcessor {
       final TsFileInsertionEvent tsFileInsertionEvent, final EventCollector eventCollector)
       throws Exception {
     try {
-      final Iterable<TabletInsertionEvent> iterable =
-          tsFileInsertionEvent.toTabletInsertionEvents();
-      final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
-      while (iterator.hasNext()) {
-        final TabletInsertionEvent parsedEvent = iterator.next();
-        int retryCount = 0;
-        while (true) {
-          // If failed due do insufficient memory, retry until success to avoid race among multiple
-          // processor threads
-          try {
-            process(parsedEvent, eventCollector);
-            break;
-          } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-            if (retryCount++ % 100 == 0) {
-              LOGGER.warn(
-                  "AggregateProcessor: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
-                  ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile(),
-                  retryCount,
-                  e);
-            } else if (LOGGER.isDebugEnabled()) {
-              LOGGER.debug(
-                  "AggregateProcessor: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
-                  ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile(),
-                  retryCount,
-                  e);
-            }
-          }
+      if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+        final AtomicReference<Exception> ex = new AtomicReference<>();
+        ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+            .consumeTabletInsertionEventsWithRetry(
+                event -> {
+                  try {
+                    process(event, eventCollector);
+                  } catch (Exception e) {
+                    ex.set(e);
+                  }
+                },
+                this.getClass().getSimpleName() + "::process");
+        if (ex.get() != null) {
+          throw ex.get();
+        }
+      } else {
+        for (final TabletInsertionEvent tabletInsertionEvent :
+            tsFileInsertionEvent.toTabletInsertionEvents()) {
+          process(tabletInsertionEvent, eventCollector);
         }
       }
     } finally {

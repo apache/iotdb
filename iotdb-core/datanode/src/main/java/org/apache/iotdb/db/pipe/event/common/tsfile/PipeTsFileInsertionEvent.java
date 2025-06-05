@@ -62,6 +62,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
@@ -564,6 +565,49 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
 
+  @FunctionalInterface
+  public interface TabletInsertionEventConsumer {
+    void consume(final PipeRawTabletInsertionEvent event);
+  }
+
+  public void consumeTabletInsertionEventsWithRetry(
+      final TabletInsertionEventConsumer consumer, final String callerName) throws PipeException {
+    final Iterable<TabletInsertionEvent> iterable = toTabletInsertionEvents();
+    final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
+    int tabletEventCount = 0;
+    while (iterator.hasNext()) {
+      final TabletInsertionEvent parsedEvent = iterator.next();
+      tabletEventCount++;
+      int retryCount = 0;
+      while (true) {
+        // If failed due do insufficient memory, retry until success to avoid race among multiple
+        // processor threads
+        try {
+          consumer.consume((PipeRawTabletInsertionEvent) parsedEvent);
+          break;
+        } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+          if (retryCount++ % 100 == 0) {
+            LOGGER.warn(
+                "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count is {}, will keep retrying.",
+                callerName,
+                getTsFile(),
+                tabletEventCount,
+                retryCount,
+                e);
+          } else if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count is {}, will keep retrying.",
+                callerName,
+                getTsFile(),
+                tabletEventCount,
+                retryCount,
+                e);
+          }
+        }
+      }
+    }
+  }
+
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException {
     // 20 - 40 seconds for waiting
@@ -687,44 +731,19 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   public long count(final boolean skipReportOnCommit) throws IOException {
-    long count = 0;
+    AtomicLong count = new AtomicLong();
 
     if (shouldParseTime()) {
       try {
-        final Iterable<TabletInsertionEvent> iterable = toTabletInsertionEvents();
-        final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
-        while (iterator.hasNext()) {
-          final TabletInsertionEvent parsedEvent = iterator.next();
-          int retryCount = 0;
-          while (true) {
-            // If failed due do insufficient memory, retry until success to avoid race among
-            // multiple processor threads
-            try {
-              final PipeRawTabletInsertionEvent rawEvent =
-                  ((PipeRawTabletInsertionEvent) parsedEvent);
-              count += rawEvent.count();
+        consumeTabletInsertionEventsWithRetry(
+            event -> {
+              count.addAndGet(event.count());
               if (skipReportOnCommit) {
-                rawEvent.skipReportOnCommit();
+                event.skipReportOnCommit();
               }
-              break;
-            } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-              if (retryCount++ % 100 == 0) {
-                LOGGER.warn(
-                    "PipeTsFileInsertionEvent::count: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
-                    getTsFile(),
-                    retryCount,
-                    e);
-              } else if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(
-                    "PipeTsFileInsertionEvent::count: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
-                    getTsFile(),
-                    retryCount,
-                    e);
-              }
-            }
-          }
-        }
-        return count;
+            },
+            this.getClass().getSimpleName() + "::count");
+        return count.get();
       } finally {
         close();
       }

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.processor.downsampling;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -41,7 +40,6 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE;
@@ -155,33 +153,25 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
       throws Exception {
     if (shouldSplitFile) {
       try {
-        final Iterable<TabletInsertionEvent> iterable =
-            tsFileInsertionEvent.toTabletInsertionEvents();
-        final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
-        while (iterator.hasNext()) {
-          final TabletInsertionEvent parsedEvent = iterator.next();
-          int retryCount = 0;
-          while (true) {
-            // If failed due do insufficient memory, retry until success to avoid race among
-            // multiple processor threads
-            try {
-              process(parsedEvent, eventCollector);
-              break;
-            } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-              if (retryCount++ % 100 == 0) {
-                LOGGER.warn(
-                    "DownSamplingProcessor: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
-                    ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile(),
-                    retryCount,
-                    e);
-              } else if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(
-                    "DownSamplingProcessor: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
-                    ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile(),
-                    retryCount,
-                    e);
-              }
-            }
+        if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+          final AtomicReference<Exception> ex = new AtomicReference<>();
+          ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+              .consumeTabletInsertionEventsWithRetry(
+                  event -> {
+                    try {
+                      process(event, eventCollector);
+                    } catch (Exception e) {
+                      ex.set(e);
+                    }
+                  },
+                  this.getClass().getSimpleName() + "::process");
+          if (ex.get() != null) {
+            throw ex.get();
+          }
+        } else {
+          for (final TabletInsertionEvent tabletInsertionEvent :
+              tsFileInsertionEvent.toTabletInsertionEvents()) {
+            process(tabletInsertionEvent, eventCollector);
           }
         }
       } finally {

@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.subscription.event.batch;
 
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -37,7 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -98,45 +95,22 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   protected void onTsFileInsertionEvent(final TsFileInsertionEvent event) {
     // TODO: parse tsfile event on the fly like SubscriptionPipeTabletEventBatch
     try {
-      final Iterable<TabletInsertionEvent> iterable = event.toTabletInsertionEvents();
-      final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
-      while (iterator.hasNext()) {
-        final TabletInsertionEvent parsedEvent = iterator.next();
-        int retryCount = 0;
-        while (true) {
-          // If failed due do insufficient memory, retry until success to avoid race among multiple
-          // processor threads
-          try {
-            if (!((PipeRawTabletInsertionEvent) parsedEvent)
-                .increaseReferenceCount(this.getClass().getName())) {
-              LOGGER.warn(
-                  "SubscriptionPipeTsFileEventBatch: Failed to increase the reference count of event {}, skipping it.",
-                  ((PipeRawTabletInsertionEvent) parsedEvent).coreReportMessage());
-            } else {
-              try {
-                batch.onEvent(parsedEvent);
-              } catch (final Exception ignored) {
-                // no exceptions will be thrown
-              }
-            }
-            break;
-          } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-            if (retryCount++ % 100 == 0) {
-              LOGGER.warn(
-                  "SubscriptionPipeTsFileEventBatch: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
-                  ((PipeTsFileInsertionEvent) event).getTsFile(),
-                  retryCount,
-                  e);
-            } else if (LOGGER.isDebugEnabled()) {
-              LOGGER.debug(
-                  "SubscriptionPipeTsFileEventBatch: failed to allocate memory for parsing TsFile {}, retry count is {}, will keep retrying.",
-                  ((PipeTsFileInsertionEvent) event).getTsFile(),
-                  retryCount,
-                  e);
-            }
-          }
-        }
-      }
+      ((PipeTsFileInsertionEvent) event)
+          .consumeTabletInsertionEventsWithRetry(
+              event1 -> {
+                if (!event1.increaseReferenceCount(this.getClass().getName())) {
+                  LOGGER.warn(
+                      "SubscriptionPipeTsFileEventBatch: Failed to increase the reference count of event {}, skipping it.",
+                      event1.coreReportMessage());
+                } else {
+                  try {
+                    batch.onEvent(event1);
+                  } catch (final Exception ignored) {
+                    // no exceptions will be thrown
+                  }
+                }
+              },
+              this.getClass().getSimpleName() + "::onTsFileInsertionEvent");
     } finally {
       try {
         event.close();
