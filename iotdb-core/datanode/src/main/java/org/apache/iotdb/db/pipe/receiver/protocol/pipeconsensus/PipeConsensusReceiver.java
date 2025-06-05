@@ -1234,44 +1234,39 @@ public class PipeConsensusReceiver {
     }
 
     public void rollToNextWritingPath() throws IOException, DiskSpaceInsufficientException {
-      String receiverBasePath;
-      try {
-        receiverBasePath = getReceiverFileBaseDir();
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Failed to init pipeConsensus receiver file folder manager because all disks of folders are full.",
-            e);
-        throw e;
-      }
-      if (Objects.isNull(receiverBasePath)) {
-        LOGGER.warn(
-            "PipeConsensus-PipeName-{}: Failed to get pipeConsensus receiver file base directory, because folderManager is null. May because the disk is full.",
-            consensusPipeName.toString());
-        throw new DiskSpaceInsufficientException(receiveDirs);
+      for (int retryTimes = 0; retryTimes <= 1; retryTimes++) {
+        String receiverBasePath;
+        try {
+          receiverBasePath = getReceiverFileBaseDir();
+          if (Objects.isNull(receiverBasePath)) {
+            LOGGER.warn("PipeConsensus-PipeName-{}: Failed to get base directory", consensusPipeName);
+            throw new DiskSpaceInsufficientException(receiveDirs);
+          }
+        } catch (Exception e) {
+          LOGGER.warn("Failed to init pipeConsensus receiver file folder manager", e);
+          throw e;
+        }
+
+        try {
+          this.localWritingDir = new File(receiverBasePath + File.separator + index);
+          deleteFileOrDirectoryIfExists(this.localWritingDir,
+                  String.format("TsFileWriter-%s roll to new dir and delete last writing dir", index));
+
+          if (this.localWritingDir.mkdirs()) {
+            LOGGER.info("PipeConsensus-PipeName-{}: tsfileWriter-{} roll to writing path {}",
+                    consensusPipeName, index, this.localWritingDir.getPath());
+            return;
+          }
+        } catch (Exception ignored) {
+        }
+        LOGGER.warn("PipeConsensus-PipeName-{}: Failed to create receiver tsFileWriter-{} file dir {} (retryTimes={})",
+                consensusPipeName, index, this.localWritingDir.getPath(), retryTimes);
+        folderManager.updateFolderState(receiverBasePath, FolderManager.FolderState.ABNORMAL);
       }
 
-      String localWritingDirPath = receiverBasePath + File.separator + index;
-      this.localWritingDir = new File(localWritingDirPath);
-      // Remove exists dir
-      deleteFileOrDirectoryIfExists(
-          this.localWritingDir,
-          String.format("TsFileWriter-%s roll to new dir and delete last writing dir", index));
-      if (!this.localWritingDir.mkdirs()) {
-        LOGGER.warn(
-            "PipeConsensus-PipeName-{}: Failed to create receiver tsFileWriter-{} file dir {}. May because authority or dir already exists etc.",
-            consensusPipeName,
-            index,
-            this.localWritingDir.getPath());
-        throw new IOException(
-            String.format(
-                "PipeConsensus-PipeName-%s: Failed to create tsFileWriter-%d receiver file dir %s. May because authority or dir already exists etc.",
-                consensusPipeName, index, this.localWritingDir.getPath()));
-      }
-      LOGGER.info(
-          "PipeConsensus-PipeName-{}: tsfileWriter-{} roll to writing path {}",
-          consensusPipeName,
-          index,
-          localWritingDirPath);
+      throw new IOException(String.format(
+              "PipeConsensus-PipeName-%s: Failed to create tsFileWriter-%d receiver file dir %s",
+              consensusPipeName, index, this.localWritingDir.getPath()));
     }
 
     public File getLocalWritingDir() {

@@ -60,7 +60,7 @@ public class SequenceStrategy extends DirectoryStrategy {
   private int tryGetNextIndex(int start) throws DiskSpaceInsufficientException {
     int index = (start + 1) % folders.size();
     String dir = folders.get(index);
-    while (!JVMCommonUtils.hasSpace(dir)) {
+    while (isUnavailableFolder(dir) || !JVMCommonUtils.hasSpace(dir)) {
       File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
 
       Long lastPrintTime = dirLastPrintTimeMap.computeIfAbsent(index, i -> -1L);

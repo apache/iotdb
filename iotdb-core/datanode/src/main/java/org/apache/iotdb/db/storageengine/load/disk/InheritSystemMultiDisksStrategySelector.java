@@ -20,16 +20,22 @@
 package org.apache.iotdb.db.storageengine.load.disk;
 
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Collections;
 
 public class InheritSystemMultiDisksStrategySelector implements ILoadDiskSelector {
 
   protected final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private static final Logger logger = LoggerFactory.getLogger(InheritSystemMultiDisksStrategySelector.class);
 
   public InheritSystemMultiDisksStrategySelector() {
     // empty body
@@ -43,16 +49,34 @@ public class InheritSystemMultiDisksStrategySelector implements ILoadDiskSelecto
       long filePartitionId,
       String tsfileName,
       int tierLevel)
-      throws DiskSpaceInsufficientException {
+          throws DiskSpaceInsufficientException, LoadFileException {
     // inherit system multi-disks select strategy, see configuration `dn_multi_dir_strategy`
-    return fsFactory.getFile(
-        TierManager.getInstance().getNextFolderForTsFile(tierLevel, false),
-        databaseName
-            + File.separatorChar
-            + dataRegionId
-            + File.separatorChar
-            + filePartitionId
-            + File.separator
-            + tsfileName);
+    Exception lastException = null;
+    for (int retryTimes = 0; retryTimes <= 1; retryTimes++) {
+      String folder = TierManager.getInstance().getNextFolderForTsFile(tierLevel, false);
+      try {
+        return fsFactory.getFile(folder, databaseName
+                        + File.separatorChar
+                        + dataRegionId
+                        + File.separatorChar
+                        + filePartitionId
+                        + File.separator
+                        + tsfileName);
+      } catch (Exception e) {
+        TierManager.getInstance().getFolderManager(tierLevel, false).updateFolderState(
+                folder, FolderManager.FolderState.ABNORMAL);
+        lastException = e;
+        logger.error(
+                "Failed to get target file [{}] for database={}, region={}, partition={}, tier={} at retry {}: {}",
+                tsfileName, databaseName, dataRegionId, filePartitionId,
+                tierLevel, retryTimes, e.getMessage(), e
+        );
+      }
+    }
+    throw new LoadFileException(
+            String.format("Storage allocation failed for %s/%s/%s (tier %d)",
+                    databaseName, dataRegionId, filePartitionId, tierLevel),
+            lastException
+    );
   }
 }

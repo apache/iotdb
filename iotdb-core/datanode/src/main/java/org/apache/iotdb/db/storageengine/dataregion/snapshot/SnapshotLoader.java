@@ -288,28 +288,41 @@ public class SnapshotLoader {
     Map<String, String> fileTarget = new HashMap<>();
     for (File file : files) {
       String fileKey = file.getName().split("\\.")[0];
-      String dataDir;
+      String dataDir = null;
       if (fileTarget.containsKey(fileKey)) {
         dataDir = fileTarget.get(fileKey);
-      } else {
-        dataDir = folderManager.getNextFolder();
+      }
+      for (int retryTimes = 0; retryTimes <= 1; retryTimes++) {
+        if (dataDir == null) {
+          dataDir = folderManager.getNextFolder();
+        }
+        try {
+          File targetFile = new File(dataDir + File.separator + targetSuffix + File.separator + file.getName());
+          if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+            throw new IOException(
+                    String.format("Cannot create directory %s", targetFile.getParentFile().getAbsolutePath()));
+          }
+          try {
+            Files.createLink(targetFile.toPath(), file.toPath());
+            continue;
+          } catch (IOException e) {
+            LOGGER.info("Cannot create link from {} to {}, try to copy it", file, targetFile);
+          }
+          Files.copy(file.toPath(), targetFile.toPath());
+        } catch (Exception e) {
+          LOGGER.warn("Failed to process file {}: {}", file.getName(), e.getMessage(), e);
+          folderManager.updateFolderState(dataDir, FolderManager.FolderState.ABNORMAL);
+          continue;
+        }
         fileTarget.put(fileKey, dataDir);
       }
-      File targetFile =
-          new File(dataDir + File.separator + targetSuffix + File.separator + file.getName());
-      if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
-        throw new IOException(
-            String.format(
-                "Cannot create directory %s", targetFile.getParentFile().getAbsolutePath()));
-      }
-      try {
-        Files.createLink(targetFile.toPath(), file.toPath());
-        continue;
-      } catch (IOException e) {
-        LOGGER.info("Cannot create link from {} to {}, try to copy it", file, targetFile);
-      }
-
-      Files.copy(file.toPath(), targetFile.toPath());
+      throw new IOException(
+              String.format("Failed to create link or copy file after retries. Source: %s, Target dir: %s/%s/%s",
+                      file.getAbsolutePath(),
+                      dataDir,
+                      targetSuffix,
+                      file.getName())
+      );
     }
   }
 

@@ -58,15 +58,23 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
   protected IWALNode createWALNode(String identifier) {
     String folder;
     // get wal folder
-    try {
-      folder = folderManager.getNextFolder();
-    } catch (DiskSpaceInsufficientException e) {
-      logger.error("Fail to create wal node because all disks of wal folders are full.", e);
-      return WALFakeNode.getFailureInstance(e);
+    for (int retryTimes = 0; retryTimes <= 1; retryTimes++) {
+      try {
+        folder = folderManager.getNextFolder();
+      } catch (DiskSpaceInsufficientException e) {
+        logger.error("Fail to create wal node because all disks of wal folders are full.", e);
+        return WALFakeNode.getFailureInstance(e);
+      }
+      // create new wal node
+      try {
+        return new WALNode(identifier, folder + File.separator + identifier);
+      } catch (IOException e) {
+        logger.error("Meet exception when creating wal node", e);
+        folderManager.updateFolderState(folder, FolderManager.FolderState.ABNORMAL);
+      }
     }
-    folder = folder + File.separator + identifier;
-    // create new wal node
-    return createWALNode(identifier, folder);
+    return WALFakeNode.getFailureInstance(
+            new IOException("Failed to create WAL node after retries for identifier: " + identifier));
   }
 
   protected IWALNode createWALNode(String identifier, String folder) {
