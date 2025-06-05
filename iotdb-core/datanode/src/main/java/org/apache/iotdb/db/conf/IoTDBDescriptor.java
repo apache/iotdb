@@ -52,7 +52,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
@@ -2357,6 +2356,7 @@ public class IoTDBDescriptor {
       for (String proportion : proportions) {
         proportionSum += Integer.parseInt(proportion.trim());
       }
+      // TODO @spricoder: consider whether this part need change when total memory is dynamic
       float maxMemoryAvailable = conf.getUdfMemoryBudgetInMB();
       try {
         conf.setUdfReaderMemoryBudgetInMB(
@@ -2654,12 +2654,12 @@ public class IoTDBDescriptor {
     // first we need to release the memory allocated for consensus
     MemoryManager storageEngineMemoryManager = memoryConfig.getStorageEngineMemoryManager();
     MemoryManager consensusMemoryManager = memoryConfig.getConsensusMemoryManager();
+    long originSize = storageEngineMemoryManager.getInitialAllocatedMemorySizeInBytes();
     long newSize =
-        storageEngineMemoryManager.getTotalMemorySizeInBytes()
-            + consensusMemoryManager.getTotalMemorySizeInBytes();
-    consensusMemoryManager.setTotalMemorySizeInBytes(0);
-    storageEngineMemoryManager.setTotalMemorySizeInBytesWithReload(newSize);
-    SystemInfo.getInstance().loadWriteMemory();
+        storageEngineMemoryManager.getInitialAllocatedMemorySizeInBytes()
+            + consensusMemoryManager.getInitialAllocatedMemorySizeInBytes();
+    storageEngineMemoryManager.resizeByRatio((double) newSize / originSize);
+    consensusMemoryManager.resizeByRatio(0);
   }
 
   private static class IoTDBDescriptorHolder {

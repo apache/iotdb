@@ -33,7 +33,7 @@ public class IoTConsensusMemoryManager {
   private final AtomicLong queueMemorySizeInByte = new AtomicLong(0);
   private final AtomicLong syncMemorySizeInByte = new AtomicLong(0);
   private IMemoryBlock memoryBlock =
-      new AtomicLongMemoryBlock("Consensus-Default", null, Runtime.getRuntime().maxMemory() / 10);
+      new AtomicLongMemoryBlock("Consensus-Default", null, Runtime.getRuntime().totalMemory() / 10);
   private Double maxMemoryRatioForQueue = 0.6;
 
   private IoTConsensusMemoryManager() {

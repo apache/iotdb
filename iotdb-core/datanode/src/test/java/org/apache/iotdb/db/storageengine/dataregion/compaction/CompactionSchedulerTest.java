@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionPriority;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -670,6 +672,13 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test6() throws IOException, MetadataException, InterruptedException {
+    logger.error(
+        "Total:"
+            + Runtime.getRuntime().totalMemory()
+            + ", Max:"
+            + Runtime.getRuntime().maxMemory());
+    BatchCompactionPlan.setMaxCachedTimeChunksSize(1024);
+    TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(100);
     logger.warn("Running test6");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();

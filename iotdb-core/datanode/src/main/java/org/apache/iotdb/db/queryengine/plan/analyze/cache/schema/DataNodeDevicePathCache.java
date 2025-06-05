@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
+import com.google.common.util.concurrent.AtomicDouble;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +40,7 @@ public class DataNodeDevicePathCache {
   private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private final IMemoryBlock devicePathCacheMemoryBlock;
+  private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
 
   private final Cache<String, PartialPath> devicePathCache;
 
@@ -46,14 +48,26 @@ public class DataNodeDevicePathCache {
     devicePathCacheMemoryBlock =
         memoryConfig
             .getDevicePathCacheMemoryManager()
-            .exactAllocate("DevicePathCache", MemoryBlockType.STATIC);
+            .exactAllocate("DevicePathCache", MemoryBlockType.STATIC)
+            .setMemoryUpdateCallback(
+                (oldMemory, newMemory) -> {
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor / ((double) newMemory / oldMemory));
+                  LOGGER.debug(
+                      "[MemoryUsageCheatFactor]DataNodeDevicePathCache has updated from {} to {}.",
+                      oldMemory,
+                      newMemory);
+                });
+    ;
     // TODO @spricoder: later we can find a way to get the byte size of cache
     devicePathCacheMemoryBlock.allocate(devicePathCacheMemoryBlock.getTotalMemorySizeInBytes());
     devicePathCache =
         Caffeine.newBuilder()
             .maximumWeight(devicePathCacheMemoryBlock.getTotalMemorySizeInBytes())
             .weigher(
-                (Weigher<String, PartialPath>) (key, val) -> (PartialPath.estimateSize(val) + 32))
+                (Weigher<String, PartialPath>)
+                    (key, val) ->
+                        (int) ((PartialPath.estimateSize(val) + 32) * memoryUsageCheatFactor.get()))
             .build();
   }
 

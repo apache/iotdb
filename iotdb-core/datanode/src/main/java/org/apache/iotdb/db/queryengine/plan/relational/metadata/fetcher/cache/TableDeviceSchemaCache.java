@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
+import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
@@ -106,20 +107,34 @@ public class TableDeviceSchemaCache {
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
   private final IMemoryBlock memoryBlock;
+  private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
 
   private TableDeviceSchemaCache() {
     memoryBlock =
         memoryConfig
             .getSchemaCacheMemoryManager()
-            .exactAllocate("TableDeviceSchemaCache", MemoryBlockType.STATIC);
+            .exactAllocate("TableDeviceSchemaCache", MemoryBlockType.STATIC)
+            .setMemoryUpdateCallback(
+                (oldMemory, newMemory) -> {
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor / ((double) newMemory / oldMemory));
+                  logger.debug(
+                      "[MemoryUsageCheatFactor]TableDeviceSchemaCache has updated from {} to {}.",
+                      oldMemory,
+                      newMemory);
+                });
     dualKeyCache =
         new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
             .cacheEvictionPolicy(
                 DualKeyCachePolicy.valueOf(config.getDataNodeSchemaCacheEvictionPolicy()))
             .memoryCapacity(memoryBlock.getTotalMemorySizeInBytes())
-            .firstKeySizeComputer(TableId::estimateSize)
-            .secondKeySizeComputer(deviceID -> (int) deviceID.ramBytesUsed())
-            .valueSizeComputer(TableDeviceCacheEntry::estimateSize)
+            .firstKeySizeComputer(
+                tableId -> (int) (tableId.estimateSize() * memoryUsageCheatFactor.get()))
+            .secondKeySizeComputer(
+                deviceID -> (int) (deviceID.ramBytesUsed() * memoryUsageCheatFactor.get()))
+            .valueSizeComputer(
+                tableDeviceCacheEntry ->
+                    (int) (tableDeviceCacheEntry.estimateSize() * memoryUsageCheatFactor.get()))
             .build();
     memoryBlock.allocate(memoryBlock.getTotalMemorySizeInBytes());
     MetricService.getInstance().addMetricSet(new TableDeviceSchemaCacheMetrics(this));

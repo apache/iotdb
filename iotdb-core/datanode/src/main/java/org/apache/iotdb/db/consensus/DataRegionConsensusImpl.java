@@ -117,7 +117,7 @@ public class DataRegionConsensusImpl {
       IMemoryBlock memoryBlock =
           MEMORY_CONFIG
               .getConsensusMemoryManager()
-              .exactAllocate("Consensus", MemoryBlockType.DYNAMIC);
+              .exactAllocate("Consensus", MemoryBlockType.STATIC);
       return ConsensusConfig.newBuilder()
           .setThisNodeId(CONF.getDataNodeId())
           .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))

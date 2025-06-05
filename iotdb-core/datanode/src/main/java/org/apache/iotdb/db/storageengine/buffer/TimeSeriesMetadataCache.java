@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
+import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -67,7 +68,8 @@ public class TimeSeriesMetadataCache {
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
-  private static final IMemoryBlock CACHE_MEMORY_BLOCK;
+  private static final IMemoryBlock cacheMemoryBlock;
+  private static final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
   private static final boolean CACHE_ENABLE = memoryConfig.isMetaDataCacheEnable();
 
   private final Cache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
@@ -79,26 +81,37 @@ public class TimeSeriesMetadataCache {
   private static final String SEPARATOR = "$";
 
   static {
-    CACHE_MEMORY_BLOCK =
+    cacheMemoryBlock =
         memoryConfig
             .getTimeSeriesMetaDataCacheMemoryManager()
-            .exactAllocate("TimeSeriesMetadataCache", MemoryBlockType.STATIC);
+            .exactAllocate("TimeSeriesMetadataCache", MemoryBlockType.STATIC)
+            .setMemoryUpdateCallback(
+                (oldMemory, newMemory) -> {
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor / ((double) newMemory / oldMemory));
+                  logger.info(
+                      "[MemoryUsageCheatFactor]TimeSeriesMetadataCache has updated from {} to {}.",
+                      oldMemory,
+                      newMemory);
+                });
     // TODO @spricoder find a better way to get the size of cache
-    CACHE_MEMORY_BLOCK.allocate(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+    cacheMemoryBlock.allocate(cacheMemoryBlock.getTotalMemorySizeInBytes());
   }
 
   private TimeSeriesMetadataCache() {
     if (CACHE_ENABLE) {
       logger.info(
-          "TimeSeriesMetadataCache size = {}", CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+          "TimeSeriesMetadataCache size = {}", cacheMemoryBlock.getTotalMemorySizeInBytes());
     }
     lruCache =
         Caffeine.newBuilder()
-            .maximumWeight(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes())
+            .maximumWeight(cacheMemoryBlock.getTotalMemorySizeInBytes())
             .weigher(
                 (Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>)
                     (key, value) ->
-                        (int) (key.getRetainedSizeInBytes() + value.getRetainedSizeInBytes()))
+                        (int)
+                            ((key.getRetainedSizeInBytes() + value.getRetainedSizeInBytes())
+                                * memoryUsageCheatFactor.get()))
             .recordStats()
             .build();
     // add metrics
@@ -265,7 +278,7 @@ public class TimeSeriesMetadataCache {
   }
 
   public long getMaxMemory() {
-    return CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes();
+    return cacheMemoryBlock.getTotalMemorySizeInBytes();
   }
 
   public double getAverageLoadPenalty() {
