@@ -89,7 +89,7 @@ public class ActiveLoadTsFileLoader {
       return;
     }
 
-    if (pendingQueue.enqueue(absolutePath, isTabletMode, isGeneratedByPipe)) {
+    if (pendingQueue.enqueue(absolutePath, isGeneratedByPipe, isTabletMode)) {
       initFailDirIfNecessary();
       adjustExecutorIfNecessary();
     }
