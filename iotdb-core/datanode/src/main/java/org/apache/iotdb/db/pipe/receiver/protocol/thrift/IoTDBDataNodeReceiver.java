@@ -37,7 +37,6 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
-import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -693,54 +692,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
     }
 
-    // Judge which model the statement belongs to
-    final boolean isTableModelStatement;
-    final String databaseName;
-    if (statement instanceof LoadTsFileStatement
-        && ((LoadTsFileStatement) statement).getDatabase() != null) {
-      isTableModelStatement = true;
-      databaseName = ((LoadTsFileStatement) statement).getDatabase();
-    } else if (statement instanceof InsertBaseStatement
-        && ((InsertBaseStatement) statement).isWriteToTable()) {
-      isTableModelStatement = true;
-      databaseName =
-          ((InsertBaseStatement) statement).getDatabaseName().isPresent()
-              ? ((InsertBaseStatement) statement).getDatabaseName().get()
-              : null;
-    } else {
-      isTableModelStatement = false;
-      databaseName = null;
-    }
-
-    // Permission check
-    final TSStatus loginStatus = loginIfNecessary();
-    if (loginStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return loginStatus;
-    }
-
-    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-
-    // For table model, the authority check is done in inner execution. No need to check here
-    if (!isTableModelStatement) {
-      final TSStatus permissionCheckStatus =
-          AuthorityChecker.checkAuthority(statement, clientSession);
-      if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
-            receiverId.get(),
-            statement.getType().name(),
-            username,
-            permissionCheckStatus);
-        return RpcUtils.getStatus(
-            permissionCheckStatus.getCode(), permissionCheckStatus.getMessage());
-      }
-    }
-
-    // Real execution of the statement
-    final TSStatus status =
-        isTableModelStatement
-            ? executeStatementForTableModel(statement, databaseName)
-            : executeStatementForTreeModel(statement);
+    final TSStatus status = executeStatement(statement);
 
     // Try to convert data type if the statement is a tree model statement
     // and the status code is not success
@@ -751,6 +703,39 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()))
         ? statement.accept(statementDataTypeConvertExecutionVisitor, status).orElse(status)
         : status;
+  }
+
+  private TSStatus executeStatement(final Statement statement) {
+    // Permission check
+    final TSStatus loginStatus = loginIfNecessary();
+    if (loginStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return loginStatus;
+    }
+
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+
+    final TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
+          receiverId.get(),
+          statement.getType().name(),
+          username,
+          status);
+      return RpcUtils.getStatus(status.getCode(), status.getMessage());
+    }
+
+    return Coordinator.getInstance()
+        .executeForTreeModel(
+            shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
+            SessionManager.getInstance().requestQueryId(),
+            SESSION_MANAGER.getSessionInfo(clientSession),
+            "",
+            ClusterPartitionFetcher.getInstance(),
+            ClusterSchemaFetcher.getInstance(),
+            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+            false)
+        .status;
   }
 
   @Override
