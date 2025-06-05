@@ -65,8 +65,6 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -110,7 +108,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
  */
 @TreeModel
 public class AggregateProcessor implements PipeProcessor {
-  private static final Logger LOGGER = LoggerFactory.getLogger(AggregateProcessor.class);
   private static final String WINDOWING_PROCESSOR_SUFFIX = "-windowing-processor";
 
   private String pipeName;
@@ -538,7 +535,7 @@ public class AggregateProcessor implements PipeProcessor {
                     ex.set(e);
                   }
                 },
-                this.getClass().getSimpleName() + "::process");
+                "AggregateProcessor::process");
         if (ex.get() != null) {
           throw ex.get();
         }

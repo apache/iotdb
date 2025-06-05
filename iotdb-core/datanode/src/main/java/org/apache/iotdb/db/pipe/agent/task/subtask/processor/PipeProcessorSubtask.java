@@ -158,7 +158,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                       ex.set(e);
                     }
                   },
-                  this.getClass().getSimpleName() + "::executeOnce");
+                  "PipeProcessorSubtask::executeOnce");
               if (ex.get() != null) {
                 throw ex.get();
               }

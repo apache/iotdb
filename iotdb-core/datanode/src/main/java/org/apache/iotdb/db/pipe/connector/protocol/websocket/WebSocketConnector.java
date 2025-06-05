@@ -148,7 +148,7 @@ public class WebSocketConnector implements PipeConnector {
                 ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReportOnCommit();
                 transfer(event);
               },
-              this.getClass().getSimpleName() + "::transfer");
+              "WebSocketConnector::transfer");
     } finally {
       tsFileInsertionEvent.close();
     }

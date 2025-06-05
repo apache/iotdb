@@ -742,7 +742,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                 event.skipReportOnCommit();
               }
             },
-            this.getClass().getSimpleName() + "::count");
+            "PipeTsFileInsertionEvent::count");
         return count.get();
       } finally {
         close();

@@ -110,7 +110,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
                   }
                 }
               },
-              this.getClass().getSimpleName() + "::onTsFileInsertionEvent");
+              "SubscriptionPipeTsFileEventBatch::onTsFileInsertionEvent");
     } finally {
       try {
         event.close();

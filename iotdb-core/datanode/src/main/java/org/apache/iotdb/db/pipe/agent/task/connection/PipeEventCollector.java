@@ -142,8 +142,7 @@ public class PipeEventCollector implements EventCollector {
 
     try {
       sourceEvent.consumeTabletInsertionEventsWithRetry(
-          this::collectParsedRawTableEvent,
-          this.getClass().getSimpleName() + "::parseAndCollectEvent");
+          this::collectParsedRawTableEvent, "PipeEventCollector::parseAndCollectEvent");
     } finally {
       sourceEvent.close();
     }

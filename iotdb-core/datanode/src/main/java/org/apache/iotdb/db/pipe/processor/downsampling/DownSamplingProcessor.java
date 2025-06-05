@@ -37,8 +37,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -48,8 +46,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY;
 
 public abstract class DownSamplingProcessor implements PipeProcessor {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DownSamplingProcessor.class);
-
   protected long memoryLimitInBytes;
 
   protected boolean shouldSplitFile;
@@ -164,7 +160,7 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
                       ex.set(e);
                     }
                   },
-                  this.getClass().getSimpleName() + "::process");
+                  "DownSamplingProcessor::process");
           if (ex.get() != null) {
             throw ex.get();
           }
