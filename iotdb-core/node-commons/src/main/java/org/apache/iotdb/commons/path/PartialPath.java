@@ -164,6 +164,18 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     }
   }
 
+  /**
+   * only use this method in following situations: 1. you are sure you do not want to split the
+   * path. 2. you are sure path is correct.
+   *
+   * @param needSplit whether to split path to nodes, needSplit can only be false.
+   */
+  public PartialPath(String device, String measurement, boolean needSplit) {
+    Validate.isTrue(!needSplit);
+    String path = device + TsFileConstant.PATH_SEPARATOR + measurement;
+    this.nodes = new String[] {path};
+  }
+
   public boolean hasWildcard() {
     for (String node : nodes) {
       // *, ** , d*, *d*
