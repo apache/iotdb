@@ -57,7 +57,8 @@ class TimerXLStrategy(InferenceStrategy):
         data = full_data[1][0]
         if data.dtype.byteorder not in ("=", "|"):
             data = data.byteswap().newbyteorder()
-        output = self.model.inference(data, int(predict_length))
+        seqs = torch.tensor(data).unsqueeze(0).float()
+        output = self.model.generate(seqs, max_new_tokens=predict_length)
         df = pd.DataFrame(output[0])
         return convert_to_binary(df)
 
