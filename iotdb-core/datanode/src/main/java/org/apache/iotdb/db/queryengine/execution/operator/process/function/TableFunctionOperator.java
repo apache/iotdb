@@ -174,6 +174,7 @@ public class TableFunctionOperator implements ProcessOperator {
           processor.finish(properColumnBuilders, passThroughIndexBuilder);
           resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
           partitionCache.clear();
+          processor.beforeDestroy();
           processor = null;
           return resultTsBlocks.poll();
         } else {
@@ -259,6 +260,9 @@ public class TableFunctionOperator implements ProcessOperator {
   public void close() throws Exception {
     partitionCache.close();
     inputOperator.close();
+    if (processor != null) {
+      processor.beforeDestroy();
+    }
   }
 
   @Override

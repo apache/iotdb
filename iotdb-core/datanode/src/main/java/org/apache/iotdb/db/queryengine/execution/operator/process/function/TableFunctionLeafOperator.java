@@ -82,7 +82,9 @@ public class TableFunctionLeafOperator implements ProcessOperator {
   }
 
   @Override
-  public void close() throws Exception {}
+  public void close() throws Exception {
+    processor.beforeDestroy();
+  }
 
   @Override
   public boolean isFinished() throws Exception {
