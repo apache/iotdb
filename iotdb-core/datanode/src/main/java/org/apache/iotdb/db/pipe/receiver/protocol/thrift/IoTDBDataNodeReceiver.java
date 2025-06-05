@@ -37,7 +37,6 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
-import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -146,8 +145,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-
-  private long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
   private PipeMemoryBlock allocatedMemoryBlock;
 
@@ -415,29 +412,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus tryLogin() {
-    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    final long loginPeriodicVerificationIntervalMs =
-        PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
-    if (clientSession == null
-        || !clientSession.isLogin()
-        || (loginPeriodicVerificationIntervalMs >= 0
-            && lastSuccessfulLoginTime
-                < System.currentTimeMillis() - loginPeriodicVerificationIntervalMs)) {
-      final TSStatus status =
-          SESSION_MANAGER.login(
-              SESSION_MANAGER.getCurrSession(),
-              username,
-              password,
-              ZoneId.systemDefault().toString(),
-              SessionManager.CURRENT_RPC_VERSION,
-              IoTDBConstant.ClientVersion.V_1_0);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        lastSuccessfulLoginTime = System.currentTimeMillis();
-      }
-      return status;
-    }
-    return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  protected boolean shouldLogin() {
+    // The idle time is updated per request
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    return clientSession == null || !clientSession.isLogin() || super.shouldLogin();
   }
 
   @Override
@@ -715,6 +693,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     final TSStatus status = executeStatement(statement);
+
+    // Try to convert data type if the statement is a tree model statement
+    // and the status code is not success
     return shouldConvertDataTypeOnTypeMismatch
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
@@ -725,33 +706,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executeStatement(final Statement statement) {
-    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-    final long loginPeriodicVerificationIntervalMs =
-        PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
-    if (clientSession == null
-        || !clientSession.isLogin()
-        || (loginPeriodicVerificationIntervalMs >= 0
-            && lastSuccessfulLoginTime
-                < System.currentTimeMillis() - loginPeriodicVerificationIntervalMs)) {
-      final BasicOpenSessionResp openSessionResp =
-          SESSION_MANAGER.login(
-              SESSION_MANAGER.getCurrSession(),
-              username,
-              password,
-              ZoneId.systemDefault().toString(),
-              SessionManager.CURRENT_RPC_VERSION,
-              IoTDBConstant.ClientVersion.V_1_0);
-      if (openSessionResp.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Receiver id = {}: Failed to open session, username = {}, response = {}.",
-            receiverId.get(),
-            username,
-            openSessionResp);
-        return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
-      }
-      lastSuccessfulLoginTime = System.currentTimeMillis();
-      clientSession = SESSION_MANAGER.getCurrSession();
+    // Permission check
+    final TSStatus loginStatus = loginIfNecessary();
+    if (loginStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return loginStatus;
     }
+
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
 
     final TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -775,6 +736,19 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
             false)
         .status;
+  }
+
+  @Override
+  protected TSStatus login() {
+    final BasicOpenSessionResp openSessionResp =
+        SESSION_MANAGER.login(
+            SESSION_MANAGER.getCurrSession(),
+            username,
+            password,
+            ZoneId.systemDefault().toString(),
+            SessionManager.CURRENT_RPC_VERSION,
+            IoTDBConstant.ClientVersion.V_1_0);
+    return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
   }
 
   @Override
