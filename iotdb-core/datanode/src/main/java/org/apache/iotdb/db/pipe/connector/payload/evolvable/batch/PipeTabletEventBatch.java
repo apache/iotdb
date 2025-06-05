@@ -40,11 +40,7 @@ import java.util.Objects;
 public abstract class PipeTabletEventBatch implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventBatch.class);
-  private static final PipeModelFixedMemoryBlock PIPE_MODEL_FIXED_MEMORY_BLOCK =
-      PipeDataNodeResourceManager.memory()
-          .forceAllocateForModelFixedMemoryBlock(
-              PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfBatch(),
-              PipeMemoryBlockType.BATCH);
+  private static PipeModelFixedMemoryBlock pipeModelFixedMemoryBlock = null;
 
   protected final List<EnrichedEvent> events = new ArrayList<>();
 
@@ -57,11 +53,15 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   protected volatile boolean isClosed = false;
 
   protected PipeTabletEventBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
+    if (pipeModelFixedMemoryBlock == null) {
+      init();
+    }
+
     this.maxDelayInMs = maxDelayInMs;
 
     // limit in buffer size
     this.allocatedMemoryBlock =
-        PIPE_MODEL_FIXED_MEMORY_BLOCK.registerPipeBatchMemoryBlock(requestMaxBatchSizeInBytes);
+        pipeModelFixedMemoryBlock.registerPipeBatchMemoryBlock(requestMaxBatchSizeInBytes);
     allocatedMemoryBlock.setExpandable(false);
 
     if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
@@ -189,5 +189,26 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
   public boolean isEmpty() {
     return events.isEmpty();
+  }
+
+  // please at PipeLauncher call this method to init pipe model fixed memory block
+  public static void init() {
+    if (pipeModelFixedMemoryBlock != null) {
+      return;
+    }
+
+    try {
+      pipeModelFixedMemoryBlock =
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForModelFixedMemoryBlock(
+                  PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfBatch(),
+                  PipeMemoryBlockType.BATCH);
+    } catch (Exception e) {
+      LOGGER.error("init pipe model fixed memory block failed", e);
+      // If the allocation fails, we still need to create a default memory block to avoid NPE.
+      pipeModelFixedMemoryBlock =
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForModelFixedMemoryBlock(0, PipeMemoryBlockType.BATCH);
+    }
   }
 }
