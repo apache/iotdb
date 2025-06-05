@@ -38,8 +38,8 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
@@ -159,7 +159,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.error("Interrupted when dispatching read async", e);
+      LOGGER.warn("Interrupted when dispatching read async", e);
       return immediateFuture(
           new FragInstanceDispatchResult(
               RpcUtils.getStatus(
@@ -180,7 +180,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   private Future<FragInstanceDispatchResult> asyncDispatchOneInstance(
       SubPlan plan, FragmentInstance instance, LinkedBlockingQueue<Pair<SubPlan, Boolean>> queue) {
-    return FragmentInstanceManager.getInstance()
+    return Coordinator.getInstance()
         .getDispatchExecutor()
         .submit(
             () -> {
@@ -198,11 +198,15 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               } finally {
                 for (SubPlan child : plan.getChildren()) {
                   queue.add(new Pair<>(child, success));
+                  // In case of failure, only one notification needs to be sent to the outer layer.
+                  // If the failure is not notified and the child FI is not sent, the outer loop
+                  // won't be able to exit.
+                  if (!success) {
+                    break;
+                  }
                 }
                 // friendly for gc, clear the plan node tree, for some queries select all devices,
-                // it
-                // will
-                // release lots of memory
+                // it will release lots of memory
                 if (!queryContext.isExplainAnalyze()) {
                   // EXPLAIN ANALYZE will use these instances, so we can't clear them
                   instance.getFragment().clearUselessField();
@@ -215,9 +219,6 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             });
   }
 
-  // TODO: (xingtanzjr) currently we use a sequential dispatch policy for READ, which is
-  //  unsafe for current FragmentInstance scheduler framework. We need to implement the
-  //  topological dispatch according to dependency relations between FragmentInstances
   private Future<FragInstanceDispatchResult> dispatchRead(List<FragmentInstance> instances) {
     long startTime = System.nanoTime();
 

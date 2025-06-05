@@ -84,8 +84,6 @@ public class FragmentInstanceManager {
   private final ExecutorService intoOperationExecutor;
   private final ExecutorService modelInferenceExecutor;
 
-  private final ExecutorService dispatchExecutor;
-
   private final MPPDataExchangeManager exchangeManager =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
 
@@ -106,10 +104,6 @@ public class FragmentInstanceManager {
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             4, ThreadName.FRAGMENT_INSTANCE_NOTIFICATION.getName());
-    this.dispatchExecutor =
-        IoTDBThreadPoolFactory.newCachedThreadPool(
-            ThreadName.FRAGMENT_INSTANCE_DISPATCH.getName(),
-            Math.max(20, Runtime.getRuntime().availableProcessors() * 2));
 
     this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
 
@@ -430,10 +424,6 @@ public class FragmentInstanceManager {
 
   public ExecutorService getModelInferenceExecutor() {
     return modelInferenceExecutor;
-  }
-
-  public ExecutorService getDispatchExecutor() {
-    return dispatchExecutor;
   }
 
   private static class InstanceHolder {
