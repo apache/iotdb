@@ -549,10 +549,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       for (int i = 0, size = tabletList.size(); i < size; ++i) {
         final Tablet tablet = tabletList.get(i);
 
-        // convert date value to int
-        // refer to
+        // convert date value to int refer to
         // org.apache.iotdb.db.storageengine.dataregion.memtable.WritableMemChunk.writeNonAlignedTablet
-        final Object[] values = tablet.values;
+        final Object[] values = Arrays.copyOf(tablet.values, tablet.values.length);
         for (int j = 0; j < tablet.getSchemas().size(); ++j) {
           final MeasurementSchema schema = tablet.getSchemas().get(j);
           if (Objects.nonNull(schema)
@@ -573,16 +572,16 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
                 new PartialPath(tablet.deviceId),
                 isTabletAlignedList.get(i),
                 tablet.getSchemas().stream()
-                    .map(MeasurementSchema::getMeasurementId)
+                    .map(m -> Objects.nonNull(m) ? m.getMeasurementId() : null)
                     .toArray(String[]::new),
                 tablet.getSchemas().stream()
-                    .map(MeasurementSchema::getType)
+                    .map(m -> Objects.nonNull(m) ? m.getType() : null)
                     .toArray(TSDataType[]::new),
                 // TODO: cast
                 tablet.getSchemas().toArray(new MeasurementSchema[0]),
                 tablet.timestamps,
                 tablet.bitMaps,
-                tablet.values,
+                values,
                 tablet.rowSize);
 
         final int start = 0;
