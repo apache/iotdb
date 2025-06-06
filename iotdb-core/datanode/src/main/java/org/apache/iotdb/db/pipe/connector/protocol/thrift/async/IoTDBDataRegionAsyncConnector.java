@@ -754,7 +754,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     } catch (final Exception e) {
       LOGGER.warn("Failed to close client manager.", e);
     }
-    executor.shutdownNow();
+
     // clear reference count of events in retry queue after closing async client
     clearRetryEventsReferenceCount();
 
