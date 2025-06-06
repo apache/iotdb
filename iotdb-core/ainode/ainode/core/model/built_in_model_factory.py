@@ -39,10 +39,10 @@ from ainode.core.exception import (
     WrongAttributeTypeError,
 )
 from ainode.core.log import Logger
-from ainode.core.model.timerxl import modeling_timer
-from ainode.core.model.timerxl.configuration_timer import TimerConfig
 from ainode.core.model.sundial import modeling_sundial
 from ainode.core.model.sundial.configuration_sundial import SundialConfig
+from ainode.core.model.timerxl import modeling_timer
+from ainode.core.model.timerxl.configuration_timer import TimerConfig
 
 logger = Logger()
 
@@ -113,9 +113,7 @@ def fetch_built_in_model(model_id, inference_attributes):
     elif model_id == BuiltInModelType.STRAY.value:
         model = STRAYModel(attributes)
     elif model_id == BuiltInModelType.TIMER_XL.value:
-        model = modeling_timer.TimerForPrediction(
-            TimerConfig.from_dict(attributes)
-        )
+        model = modeling_timer.TimerForPrediction(TimerConfig.from_dict(attributes))
     elif model_id == BuiltInModelType.SUNDIAL.value:
         model = modeling_sundial.SundialForPrediction(
             SundialConfig.from_dict(attributes)
