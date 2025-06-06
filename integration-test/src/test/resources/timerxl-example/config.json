@@ -1,0 +1,12 @@
+{
+  "model_type": "timer",
+  "hidden_size": 512,
+  "num_hidden_layers": 4,
+  "num_attention_heads": 8,
+  "input_token_len": 96,
+  "output_token_lens": [96],
+  "attention_dropout": 0.0,
+  "rope_theta": 10000,
+  "intermediate_size": 2048,
+  "initializer_range": 0.02
+}

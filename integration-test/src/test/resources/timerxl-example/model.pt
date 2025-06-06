@@ -1,0 +1,18 @@
+# 生成测试用的模型权重文件的Python脚本
+import torch
+import torch.nn as nn
+
+# 创建一个简单的TimerXL模型用于测试
+class SimpleTimerXL(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.input_embedding = nn.Linear(1, 512)
+        self.output_head = nn.Linear(512, 96)
+        
+    def forward(self, x):
+        x = self.input_embedding(x.unsqueeze(-1))
+        return self.output_head(x[:, -1, :])
+
+# 创建并保存模型
+model = SimpleTimerXL()
+torch.save(model.state_dict(), 'model.pt')
