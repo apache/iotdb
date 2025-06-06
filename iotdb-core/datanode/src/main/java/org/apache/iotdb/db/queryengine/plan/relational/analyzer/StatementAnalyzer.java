@@ -209,6 +209,7 @@ import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecific
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -218,6 +219,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
@@ -594,10 +596,107 @@ public class StatementAnalyzer {
       throw new SemanticException("USE statement is not supported yet.");
     }
 
+    // Do not consider type coercion at the moment
+    private boolean typesMatchForInsert(List<Type> tableTypes, List<Type> queryTypes) {
+      if (tableTypes.size() != queryTypes.size()) {
+        return false;
+      }
+
+      for (int i = 0; i < tableTypes.size(); i++) {
+        if (!tableTypes.get(i).equals(queryTypes.get(i))) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
     @Override
     protected Scope visitInsert(Insert insert, Optional<Scope> scope) {
-      throw new SemanticException(
-          "This kind of insert statement is not supported yet, please check your grammar.");
+      // queryContext.setQueryType(QueryType.WRITE);
+
+      // analyze the query that creates the data
+      Scope queryScope = analyze(insert.getQuery(), Optional.empty(), false);
+
+      // verify the insert table exists
+      QualifiedObjectName targetTable =
+          createQualifiedObjectName(sessionContext, insert.getTarget());
+      if (!metadata.tableExists(targetTable)) {
+        TableMetadataImpl.throwTableNotExistsException(
+            targetTable.getDatabaseName(), targetTable.getObjectName());
+      }
+      // verify access privileges
+      accessControl.checkCanInsertIntoTable(sessionContext.getUserName(), targetTable);
+
+      // verify the insert destination columns match the query
+      Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, targetTable);
+      if (!tableSchema.isPresent()) {
+        TableMetadataImpl.throwTableNotExistsException(
+            targetTable.getDatabaseName(), targetTable.getObjectName());
+      }
+      List<ColumnSchema> columns =
+          tableSchema.get().getColumns().stream()
+              .filter(column -> !column.isHidden())
+              .collect(toImmutableList());
+      analysis.registerTable(insert.getTable(), tableSchema, targetTable);
+
+      List<String> tableColumns =
+          columns.stream().map(ColumnSchema::getName).collect(toImmutableList());
+
+      // TODO
+      // analyze target table layout, table columns should contain all tag columns
+
+      List<String> insertColumns;
+      if (insert.getColumns().isPresent()) {
+        insertColumns =
+            insert.getColumns().get().stream()
+                .map(Identifier::getValue)
+                .map(column -> column.toLowerCase(ENGLISH))
+                .collect(toImmutableList());
+        Set<String> columnNames = new HashSet<>();
+        for (String insertColumn : insertColumns) {
+          if (!tableColumns.contains(insertColumn)) {
+            throw new SemanticException(
+                String.format(
+                    "Insert column name does not exist in target table: %s", insertColumn));
+          }
+          if (!columnNames.add(insertColumn)) {
+            throw new SemanticException(
+                String.format("Insert column name is specified more than once: %s", insertColumn));
+          }
+        }
+      } else {
+        insertColumns = tableColumns;
+      }
+
+      // set Insert in analysis
+      Map<String, ColumnSchema> columnSchemaMap = tableSchema.get().getColumnSchemaMap();
+      analysis.setInsert(
+          new Analysis.Insert(
+              insert.getTable(),
+              insertColumns.stream().map(columnSchemaMap::get).collect(toImmutableList())));
+
+      List<Type> tableTypes =
+          insertColumns.stream()
+              .map(insertColumn -> tableSchema.get().getColumn(insertColumn).getType())
+              .collect(toImmutableList());
+      List<Type> queryTypes =
+          queryScope.getRelationType().getVisibleFields().stream()
+              .map(Field::getType)
+              .collect(toImmutableList());
+      if (!typesMatchForInsert(tableTypes, queryTypes)) {
+        throw new SemanticException(
+            String.format(
+                "Insert query has mismatched column types: Table: [%s], Query: [%s]",
+                Joiner.on(", ").join(tableTypes), Joiner.on(", ").join(queryTypes)));
+      }
+
+      // analysis.setQuery(false);
+      // return createAndAssignScope(insert, scope, null);
+      return createAndAssignScope(
+          insert,
+          scope,
+          Field.newUnqualified("rows", BinaryType.TEXT, TsTableColumnCategory.FIELD));
     }
 
     @Override

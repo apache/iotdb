@@ -200,6 +200,20 @@ public class TableDistributedPlanGenerator
   }
 
   @Override
+  public List<PlanNode> visitInto(
+      final org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode node,
+      final PlanContext context) {
+    final List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    final OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+    if (childOrdering != null) {
+      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+    }
+
+    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+    return Collections.singletonList(node);
+  }
+
+  @Override
   public List<PlanNode> visitFill(FillNode node, PlanContext context) {
     if (!(node instanceof ValueFillNode)) {
       context.clearExpectedOrderingScheme();

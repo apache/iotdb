@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.IntoProcessException;
@@ -272,6 +273,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
     InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
     insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
+    insertMultiTabletsStatement.setWriteToTable(true);
     return insertMultiTabletsStatement;
   }
 
@@ -283,7 +285,11 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
     writeOperationFuture =
         Futures.submit(
-            () -> client.insertTablets(insertMultiTabletsStatement), writeOperationExecutor);
+            () ->
+                insertMultiTabletsStatement.isWriteToTable()
+                    ? client.insertRelationalTablets(insertMultiTabletsStatement)
+                    : client.insertTablets(insertMultiTabletsStatement),
+            writeOperationExecutor);
   }
 
   private boolean existFullStatement(
@@ -371,8 +377,10 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
         int rowLimit) {
       this.devicePath = devicePath;
       this.isAligned = isAligned;
-      this.measurements = measurementToInputLocationMap.keySet().toArray(new String[0]);
-      this.dataTypes = measurementToDataTypeMap.values().toArray(new TSDataType[0]);
+      String[] measurements = measurementToInputLocationMap.keySet().toArray(new String[0]);
+      this.measurements = Arrays.stream(measurements).skip(1).toArray(String[]::new);
+      TSDataType[] dataTypes = measurementToDataTypeMap.values().toArray(new TSDataType[0]);
+      this.dataTypes = Arrays.stream(dataTypes).skip(1).toArray(TSDataType[]::new);
       this.inputLocations = measurementToInputLocationMap.values().toArray(new InputLocation[0]);
       this.writtenCounter = new HashMap<>();
       for (String measurement : measurements) {
@@ -428,9 +436,10 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       while (lastReadIndex < tsBlock.getPositionCount()) {
 
         times[rowCount] = tsBlock.getTimeByIndex(lastReadIndex);
+        times[rowCount] = tsBlock.getValueColumns()[0].getLong(lastReadIndex);
 
         for (int i = 0; i < measurements.length; ++i) {
-          int valueColumnIndex = inputLocations[i].getValueColumnIndex();
+          int valueColumnIndex = inputLocations[i + 1].getValueColumnIndex();
           Column valueColumn = tsBlock.getValueColumns()[valueColumnIndex];
           Type sourceTypeConvertor = sourceTypeConvertors.get(valueColumnIndex);
 
@@ -501,8 +510,12 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       insertTabletStatement.setDevicePath(devicePath);
       insertTabletStatement.setAligned(isAligned);
       insertTabletStatement.setMeasurements(measurements);
+      // insertTabletStatement.setMeasurements(Arrays.stream(measurements).skip(1).toArray(String[]::new));
       insertTabletStatement.setDataTypes(dataTypes);
+      // insertTabletStatement.setDataTypes(Arrays.stream(dataTypes).skip(1).toArray(TSDataType[]::new));
       insertTabletStatement.setRowCount(rowCount);
+      insertTabletStatement.setDatabaseName("sss");
+      insertTabletStatement.setWriteToTable(true);
 
       if (rowCount != rowLimit) {
         times = Arrays.copyOf(times, rowCount);
@@ -541,6 +554,10 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       insertTabletStatement.setTimes(times);
       insertTabletStatement.setBitMaps(bitMaps);
       insertTabletStatement.setColumns(columns);
+
+      TsTableColumnCategory[] tsTableColumnCategories =
+          new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD};
+      insertTabletStatement.setColumnCategories(tsTableColumnCategories);
 
       return insertTabletStatement;
     }

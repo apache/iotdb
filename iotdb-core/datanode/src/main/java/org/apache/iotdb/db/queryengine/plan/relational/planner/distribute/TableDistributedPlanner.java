@@ -103,6 +103,17 @@ public class TableDistributedPlanner {
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
 
+    //    TableModelStatementMemorySourceContext context = new
+    // TableModelStatementMemorySourceContext(mppQueryContext, analysis);
+    //    final List<String> lines =
+    //            outputNodeWithExchange.accept(
+    //                    new PlanGraphPrinter(),
+    //                    new PlanGraphPrinter.GraphContext(
+    //                            context.getQueryContext().getTypeProvider().getTemplatedInfo()));
+    //    for(String s: lines) {
+    //      System.out.println(s);
+    //    }
+
     if (analysis.isQuery()) {
       analysis
           .getRespDatasetHeader()

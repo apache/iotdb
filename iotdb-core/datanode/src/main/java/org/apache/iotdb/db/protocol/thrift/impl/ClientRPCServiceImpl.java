@@ -88,6 +88,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Ta
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
@@ -319,6 +320,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     boolean useDatabase = false;
     final boolean isDatabaseSetBefore = Objects.nonNull(clientSession.getDatabaseName());
     boolean setSqlDialect = false;
+    boolean insertQuery = false;
     try {
       // create and cache dataset
       ExecutionResult result;
@@ -387,6 +389,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           setSqlDialect = true;
         }
 
+        if (s instanceof Insert) {
+          insertQuery = true;
+        }
+
         if (s == null) {
           return RpcUtils.getTSExecuteStatementResp(
               RpcUtils.getStatus(
@@ -431,6 +437,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setMoreData(!finished);
           if (quota != null) {
             quota.addReadResult(resp.getQueryResult());
+          }
+          // Should return SUCCESS_MESSAGE for insert into query
+          if (insertQuery) {
+            resp.setColumns(null);
           }
         } else {
           finished = true;
