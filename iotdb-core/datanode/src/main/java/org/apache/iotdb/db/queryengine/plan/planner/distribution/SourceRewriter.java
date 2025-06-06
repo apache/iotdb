@@ -304,7 +304,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         if (childIsProject) {
           List<IDeviceID> devices = deviceViewNode.getDevices();
           for (int j = 0; j < devices.size(); j++) {
-            String device = devices.get(j).toString();
+            IDeviceID device = devices.get(j);
 
             // construct output column names for each child ProjectNode
             List<Integer> newMeasurementIdxList =
@@ -319,7 +319,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
 
                           // construct new FunctionExpression with device for ProjectNode
                           List<Expression> withDeviceExpressions =
-                              getWithDeviceExpressions(aggExpression, device);
+                              getWithDeviceExpressions(aggExpression, device.toString());
                           aggExpression =
                               new FunctionExpression(
                                   aggExpression.getFunctionName(),
