@@ -162,6 +162,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     transferQueuedEventsIfNecessary(false);
+    transferBatchedEventsIfNecessary();
 
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
