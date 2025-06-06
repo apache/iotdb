@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.IntType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.HashMap;
@@ -96,6 +98,12 @@ public class TableModelTypeProviderExtractor {
         }
         beTypeProvider.putTableModelType(symbol, feTypeProvider.getTableModelType(symbol));
       }
+    }
+
+    @Override
+    public Void visitInto(IntoNode node, Void context) {
+      beTypeProvider.putTableModelType(new Symbol("rows"), IntType.INT32);
+      return null;
     }
 
     @Override

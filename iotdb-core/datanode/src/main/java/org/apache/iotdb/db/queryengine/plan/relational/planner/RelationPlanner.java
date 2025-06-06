@@ -44,18 +44,22 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecogniti
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.MatchNumberDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.Navigation;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ScalarInputDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Measure;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
@@ -78,12 +82,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ValueP
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
@@ -96,6 +102,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MeasureDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
@@ -143,11 +150,13 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.NavigationAnchor.LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.NavigationMode.RUNNING;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerce;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.extractPatternRecognitionExpressions;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.visibleFields;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractPredicates;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.CROSS;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.FULL;
@@ -157,6 +166,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.Position.PAST_LAST;
+import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
@@ -169,6 +179,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   private final SessionInfo sessionInfo;
   private final SubqueryPlanner subqueryPlanner;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
+  private Metadata metadata;
 
   public RelationPlanner(
       final Analysis analysis,
@@ -199,6 +210,18 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             sessionInfo,
             recursiveSubqueries);
     this.recursiveSubqueries = recursiveSubqueries;
+  }
+
+  public RelationPlanner(
+      final Analysis analysis,
+      final SymbolAllocator symbolAllocator,
+      final MPPQueryContext queryContext,
+      final Optional<TranslationMap> outerContext,
+      final SessionInfo sessionInfo,
+      final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries,
+      final Metadata metadata) {
+    this(analysis, symbolAllocator, queryContext, outerContext, sessionInfo, recursiveSubqueries);
+    this.metadata = metadata;
   }
 
   @Override
@@ -1123,6 +1146,81 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             insertRowStatement.getColumnCategories());
     insertNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
     return insertNode;
+  }
+
+  @Override
+  protected RelationPlan visitInsert(final Insert node, final Void context) {
+    // query plan and visible fields
+    Query query = node.getQuery();
+    RelationPlan plan = process(query, null);
+    List<Symbol> visibleFieldMappings = visibleFields(plan);
+
+    // table columns
+    Table table = node.getTable();
+    QualifiedObjectName targetTable = createQualifiedObjectName(sessionInfo, table.getName());
+    Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionInfo, targetTable);
+    if (!tableSchema.isPresent()) {
+      TableMetadataImpl.throwTableNotExistsException(
+          targetTable.getDatabaseName(), targetTable.getObjectName());
+    }
+    Map<String, ColumnSchema> columnSchemaMap = tableSchema.get().getColumnSchemaMap();
+
+    // insert columns
+    Analysis.Insert insert = analysis.getInsert();
+    List<ColumnSchema> insertColumns = insert.getColumns();
+
+    // prepare Assignments and ColumnSchema builder
+    Assignments.Builder assignments = Assignments.builder();
+    ImmutableList.Builder<ColumnSchema> insertedColumnsBuilder = ImmutableList.builder();
+
+    // insert null if table column is not in query columns.
+    for (ColumnSchema column : tableSchema.get().getColumns()) {
+      if (column.isHidden()) {
+        continue;
+      }
+      Symbol output = symbolAllocator.newSymbol(column.getName(), column.getType());
+      Expression expression;
+      Type tableType = column.getType();
+      int index = insertColumns.indexOf(columnSchemaMap.get(column.getName()));
+      if (index < 0) {
+        expression = new Cast(new NullLiteral(), toSqlType(column.getType()));
+      } else {
+        Symbol input = visibleFieldMappings.get(index);
+        Type queryType = symbolAllocator.getTypes().getTableModelType(input);
+        if (!queryType.equals(tableType)) {
+          throw new SemanticException(
+              String.format(
+                  "Insert query has mismatched column type: Table: [%s], Query: [%s]",
+                  tableType, queryType));
+        }
+        expression = input.toSymbolReference();
+      }
+      assignments.put(output, expression);
+      insertedColumnsBuilder.add(column);
+    }
+
+    // Project Node
+    ProjectNode projectNode =
+        new ProjectNode(
+            queryContext.getQueryId().genPlanNodeId(), plan.getRoot(), assignments.build());
+    List<ColumnSchema> insertedColumns = insertedColumnsBuilder.build();
+    List<Field> fields =
+        insertedColumns.stream()
+            .map(
+                column ->
+                    Field.newUnqualified(
+                        column.getName(), column.getType(), column.getColumnCategory()))
+            .collect(toImmutableList());
+    Scope scope =
+        Scope.builder().withRelationType(RelationId.anonymous(), new RelationType(fields)).build();
+    plan = new RelationPlan(projectNode, scope, projectNode.getOutputSymbols(), Optional.empty());
+
+    // Into Node
+    IntoNode intoNode =
+        new IntoNode(
+            queryContext.getQueryId().genPlanNodeId(), plan.getRoot(), table.getName(), null, null);
+    return new RelationPlan(
+        intoNode, analysis.getRootScope(), intoNode.getOutputSymbols(), Optional.empty());
   }
 
   @Override
