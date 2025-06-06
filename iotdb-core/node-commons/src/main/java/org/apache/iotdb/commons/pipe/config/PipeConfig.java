@@ -323,6 +323,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage();
   }
 
+  public boolean isPipeStuckRestartEnabled() {
+    return COMMON_CONFIG.isPipeStuckRestartEnabled();
+  }
+
   public long getPipeStuckRestartIntervalSeconds() {
     return COMMON_CONFIG.getPipeStuckRestartIntervalSeconds();
   }
@@ -592,6 +596,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage: {}",
         getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());
+    LOGGER.info("PipeStuckRestartEnabled: {}", isPipeStuckRestartEnabled());
     LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
     LOGGER.info("PipeStuckRestartMinIntervalMs: {}", getPipeStuckRestartMinIntervalMs());
     LOGGER.info(

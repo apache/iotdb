@@ -140,8 +140,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   private void restartPipeToReloadResourceIfNeeded(final PipeMeta pipeMeta) {
-    if (System.currentTimeMillis() - pipeMeta.getStaticMeta().getCreationTime()
-        < PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs()) {
+    if (!PipeConfig.getInstance().isPipeStuckRestartEnabled()
+        || System.currentTimeMillis() - pipeMeta.getStaticMeta().getCreationTime()
+            < PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs()) {
       return;
     }
 
@@ -562,6 +563,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Restart Logic /////////////////////////
 
   public void restartAllStuckPipes() {
+    if (!PipeConfig.getInstance().isPipeStuckRestartEnabled()) {
+      return;
+    }
     final List<String> removedPipeName = removeOutdatedPipeInfoFromLastRestartTimeMap();
     if (!removedPipeName.isEmpty()) {
       final long currentTime = System.currentTimeMillis();
