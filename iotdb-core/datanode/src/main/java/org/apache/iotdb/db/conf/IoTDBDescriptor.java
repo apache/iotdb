@@ -2381,6 +2381,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_tablet_conversion_batch_memory_size_in_bytes",
                 String.valueOf(conf.getLoadTsFileTabletConversionBatchMemorySizeInBytes()))));
+    conf.setLoadTsFileTabletConversionThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_tablet_conversion_thread_count",
+                String.valueOf(conf.getLoadTsFileTabletConversionThreadCount()))));
     conf.setLoadChunkMetadataMemorySizeInBytes(
         Long.parseLong(
             Optional.ofNullable(
