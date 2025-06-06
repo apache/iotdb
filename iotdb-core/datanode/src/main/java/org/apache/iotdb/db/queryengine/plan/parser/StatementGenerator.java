@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandlerMetrics;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
@@ -91,6 +92,8 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.rpccompress.RpcUncompressor;
+import org.apache.iotdb.session.rpccompress.decoder.RpcDecoder;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -332,22 +335,89 @@ public class StatementGenerator {
     insertStatement.setDevicePath(
         DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
-    long[] timestamps =
-        QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size);
-    if (timestamps.length != 0) {
-      TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
+    long[] timestamps;
+
+    long startDeCompressedTimes = 0L;
+    long endDeCompressedTimes = 0L;
+    long startDecodeTime = 0L;
+    long endDecodeTime = 0L;
+
+    long startDeCompressedValue = 0L;
+    long endDeCompressedValue = 0L;
+    long startDecodeValue = 0L;
+    long endDecodeValue = 0L;
+
+    int uncompressedTimestampsSize = 0;
+    int uncompressedValuesSize = 0;
+
+    try {
+      if (insertTabletReq.isIsCompressed()) {
+        startDeCompressedTimes = System.nanoTime();
+        RpcDecoder rpcDecoder = new RpcDecoder();
+        RpcUncompressor rpcUncompressor =
+            new RpcUncompressor(
+                CompressionType.deserialize((byte) insertTabletReq.getCompressType()));
+        ByteBuffer uncompressedTimestamps = rpcUncompressor.uncompress(insertTabletReq.timestamps);
+        uncompressedTimestampsSize = uncompressedTimestamps.remaining();
+        endDeCompressedTimes = System.nanoTime();
+
+        startDecodeTime = System.nanoTime();
+        timestamps = rpcDecoder.readTimesFromBuffer(uncompressedTimestamps, insertTabletReq.size);
+        endDecodeTime = System.nanoTime();
+      } else {
+        timestamps =
+            QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size);
+      }
+
+      if (timestamps.length != 0) {
+        TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
+      }
+      insertStatement.setTimes(timestamps);
+      // decode values
+      if (insertTabletReq.isIsCompressed()) {
+        startDeCompressedValue = System.nanoTime();
+        RpcDecoder rpcDecoder = new RpcDecoder();
+        RpcUncompressor rpcUncompressor =
+            new RpcUncompressor(
+                CompressionType.deserialize((byte) insertTabletReq.getCompressType()));
+        ByteBuffer uncompressedValues = rpcUncompressor.uncompress(insertTabletReq.values);
+        uncompressedValuesSize = uncompressedValues.remaining();
+        endDeCompressedValue = System.nanoTime();
+
+        startDecodeValue = System.nanoTime();
+        insertStatement.setColumns(
+            rpcDecoder.decodeValues(uncompressedValues, insertTabletReq.size));
+        endDecodeValue = System.nanoTime();
+      } else {
+        insertStatement.setColumns(
+            QueryDataSetUtils.readTabletValuesFromBuffer(
+                insertTabletReq.values,
+                insertTabletReq.types,
+                insertTabletReq.types.size(),
+                insertTabletReq.size));
+        insertStatement.setBitMaps(
+            QueryDataSetUtils.readBitMapsFromBuffer(
+                    insertTabletReq.values, insertTabletReq.types.size(), insertTabletReq.size)
+                .orElse(null));
+      }
+    } finally {
+      RPCServiceThriftHandlerMetrics.getInstance()
+          .recordDecompressLatencyTimer(
+              endDeCompressedValue
+                  - startDeCompressedValue
+                  + endDeCompressedTimes
+                  - startDeCompressedTimes);
+      RPCServiceThriftHandlerMetrics.getInstance()
+          .recordDecodeLatencyTimer(
+              endDecodeValue - startDecodeValue + endDecodeTime - startDecodeTime);
+      if (insertTabletReq.isIsCompressed()) {
+        RPCServiceThriftHandlerMetrics.getInstance()
+            .recordCompressionRatioTimer(
+                (uncompressedTimestampsSize + uncompressedValuesSize)
+                    / (insertTabletReq.timestamps.remaining()
+                        + insertTabletReq.values.remaining()));
+      }
     }
-    insertStatement.setTimes(timestamps);
-    insertStatement.setColumns(
-        QueryDataSetUtils.readTabletValuesFromBuffer(
-            insertTabletReq.values,
-            insertTabletReq.types,
-            insertTabletReq.types.size(),
-            insertTabletReq.size));
-    insertStatement.setBitMaps(
-        QueryDataSetUtils.readBitMapsFromBuffer(
-                insertTabletReq.values, insertTabletReq.types.size(), insertTabletReq.size)
-            .orElse(null));
     insertStatement.setRowCount(insertTabletReq.size);
     TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];
     for (int i = 0; i < insertTabletReq.types.size(); i++) {
@@ -479,7 +549,7 @@ public class StatementGenerator {
     insertStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPath));
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     // req.timestamps sorted on session side
-    if (req.timestamps.size() != 0) {
+    if (!req.timestamps.isEmpty()) {
       TimestampPrecisionUtils.checkTimestampPrecision(
           req.timestamps.get(req.timestamps.size() - 1));
     }
