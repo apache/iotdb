@@ -86,12 +86,10 @@ public class PipeDataNodeRuntimeAgent implements IService {
     PipeConfig.getInstance().printAllConfigs();
     PipeAgentLauncher.launchPipeTaskAgent();
 
-    if (PipeConfig.getInstance().isPipeStuckRestartEnabled()) {
-      registerPeriodicalJob(
-          "PipeTaskAgent#restartAllStuckPipes",
-          PipeDataNodeAgent.task()::restartAllStuckPipes,
-          PipeConfig.getInstance().getPipeStuckRestartIntervalSeconds());
-    }
+    registerPeriodicalJob(
+        "PipeTaskAgent#restartAllStuckPipes",
+        PipeDataNodeAgent.task()::restartAllStuckPipes,
+        PipeConfig.getInstance().getPipeStuckRestartIntervalSeconds());
     registerPeriodicalJob(
         "PipeTaskAgent#flushDataRegionIfNeeded",
         PipeTerminateEvent::flushDataRegionIfNeeded,
