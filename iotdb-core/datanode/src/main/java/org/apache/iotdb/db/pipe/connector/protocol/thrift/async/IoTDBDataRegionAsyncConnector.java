@@ -162,7 +162,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     transferQueuedEventsIfNecessary(false);
-    transferBatchedEventsIfNecessary();
 
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
@@ -174,9 +173,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
 
     if (isTabletBatchModeEnabled) {
-      final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch =
-          tabletBatchBuilder.onEvent(tabletInsertionEvent);
-      transferInBatchWithoutCheck(endPointAndBatch);
+      tabletBatchBuilder.onEvent(tabletInsertionEvent);
+      transferBatchedEventsIfNecessary();
     } else {
       transferInEventWithoutCheck(tabletInsertionEvent);
     }
@@ -184,7 +182,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private void transferInBatchWithoutCheck(
       final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
-      throws IOException, WriteProcessException, InterruptedException {
+      throws IOException, WriteProcessException {
     if (Objects.isNull(endPointAndBatch)) {
       return;
     }
@@ -403,14 +401,13 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   /** Try its best to commit data in order. Flush can also be a trigger to transfer batched data. */
-  private void transferBatchedEventsIfNecessary()
-      throws IOException, WriteProcessException, InterruptedException {
+  private void transferBatchedEventsIfNecessary() throws IOException, WriteProcessException {
     if (!isTabletBatchModeEnabled || tabletBatchBuilder.isEmpty()) {
       return;
     }
 
     for (final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch :
-        tabletBatchBuilder.getAllNonEmptyBatches()) {
+        tabletBatchBuilder.getAllNonEmptyAndShouldEmitBatches()) {
       transferInBatchWithoutCheck(endPointAndBatch);
     }
   }
@@ -536,7 +533,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private void retryTransfer(final TabletInsertionEvent tabletInsertionEvent) {
     if (isTabletBatchModeEnabled) {
       try {
-        transferInBatchWithoutCheck(tabletBatchBuilder.onEvent(tabletInsertionEvent));
+        tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        transferBatchedEventsIfNecessary();
         if (tabletInsertionEvent instanceof EnrichedEvent) {
           ((EnrichedEvent) tabletInsertionEvent)
               .decreaseReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), false);
