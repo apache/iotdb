@@ -17,24 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.udf.api.relational.table.argument;
+package org.apache.iotdb.udf.api.exception;
 
-import java.util.function.Function;
+public class UDFTypeMismatchException extends UDFException {
+  public UDFTypeMismatchException(String message) {
+    super(message);
+  }
 
-public class ScalarArgumentChecker {
-  public static Function<Object, String> POSITIVE_LONG_CHECKER =
-      (value) -> {
-        if (value instanceof Long && (Long) value > 0) {
-          return null;
-        }
-        return "should be a positive value";
-      };
-
-  public static Function<Object, String> NON_NEGATIVE_DOUBLE_CHECKER =
-      (value) -> {
-        if (value instanceof Double && (Double) value >= 0) {
-          return null;
-        }
-        return "should be a non-negative value";
-      };
+  public UDFTypeMismatchException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }
