@@ -33,9 +33,8 @@ from transformers.modeling_outputs import (
 )
 
 from ainode.core.log import Logger
-
-from .configuration_timer import TimerConfig
-from .ts_generation_mixin import TSGenerationMixin
+from ainode.core.model.timerxl.configuration_timer import TimerConfig
+from ainode.core.model.timerxl.ts_generation_mixin import TSGenerationMixin
 
 logger = Logger()
 

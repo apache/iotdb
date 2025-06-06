@@ -58,6 +58,7 @@ class TimerXLStrategy(InferenceStrategy):
         if data.dtype.byteorder not in ("=", "|"):
             data = data.byteswap().newbyteorder()
         seqs = torch.tensor(data).unsqueeze(0).float()
+        # TODO: unify model inference input
         output = self.model.generate(seqs, max_new_tokens=predict_length)
         df = pd.DataFrame(output[0])
         return convert_to_binary(df)
