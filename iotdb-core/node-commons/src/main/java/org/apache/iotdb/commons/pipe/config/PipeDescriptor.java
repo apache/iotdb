@@ -438,6 +438,10 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_linked_deleted_tsfile_disk_usage_percentage",
                 String.valueOf(config.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage()))));
+    config.setPipeStuckRestartEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_stuck_restart_enabled", String.valueOf(config.isPipeStuckRestartEnabled()))));
     config.setPipeStuckRestartIntervalSeconds(
         Long.parseLong(
             properties.getProperty(

@@ -272,6 +272,7 @@ public class CommonConfig {
   private int pipeMaxAllowedPinnedMemTableCount = Integer.MAX_VALUE; // per data region
   private long pipeMaxAllowedLinkedTsFileCount = Long.MAX_VALUE; // Deprecated
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
+  private boolean isPipeStuckRestartEnabled = false;
   private long pipeStuckRestartIntervalSeconds = 120;
   private long pipeStuckRestartMinIntervalMs = 5 * 60 * 1000L; // 5 minutes
   private boolean pipeEpochKeepTsFileAfterStuckRestartEnabled = false;
@@ -1463,6 +1464,14 @@ public class CommonConfig {
     logger.info(
         "pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage is set to {}",
         pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage);
+  }
+
+  public boolean isPipeStuckRestartEnabled() {
+    return isPipeStuckRestartEnabled;
+  }
+
+  public void setPipeStuckRestartEnabled(boolean pipeStuckRestartEnabled) {
+    isPipeStuckRestartEnabled = pipeStuckRestartEnabled;
   }
 
   public long getPipeStuckRestartIntervalSeconds() {

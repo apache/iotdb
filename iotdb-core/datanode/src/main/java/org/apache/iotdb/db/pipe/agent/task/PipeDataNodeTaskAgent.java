@@ -140,8 +140,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   private void restartPipeToReloadResourceIfNeeded(final PipeMeta pipeMeta) {
-    if (System.currentTimeMillis() - pipeMeta.getStaticMeta().getCreationTime()
-        < PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs()) {
+    if (!PipeConfig.getInstance().isPipeStuckRestartEnabled()
+        || System.currentTimeMillis() - pipeMeta.getStaticMeta().getCreationTime()
+            < PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs()) {
       return;
     }
 
