@@ -122,20 +122,18 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
    * duplicated.
    *
    * @param event the given {@link Event}
-   * @return {@link Pair}<{@link TEndPoint}, {@link PipeTabletEventPlainBatch}> not null means this
-   *     {@link PipeTabletEventPlainBatch} can be transferred. the first element is the leader
-   *     endpoint to transfer to (might be null), the second element is the batch to be transferred.
    */
-  public synchronized Pair<TEndPoint, PipeTabletEventBatch> onEvent(
-      final TabletInsertionEvent event) throws IOException, WALPipeException {
+  public synchronized void onEvent(final TabletInsertionEvent event)
+      throws IOException, WALPipeException {
     if (!(event instanceof EnrichedEvent)) {
       LOGGER.warn(
           "Unsupported event {} type {} when building transfer request", event, event.getClass());
-      return null;
+      return;
     }
 
     if (!useLeaderCache) {
-      return defaultBatch.onEvent(event) ? new Pair<>(null, defaultBatch) : null;
+      defaultBatch.onEvent(event);
+      return;
     }
 
     String deviceId = null;
@@ -146,35 +144,38 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
     }
 
     if (Objects.isNull(deviceId)) {
-      return defaultBatch.onEvent(event) ? new Pair<>(null, defaultBatch) : null;
+      defaultBatch.onEvent(event);
+      return;
     }
 
     final TEndPoint endPoint =
         IoTDBDataNodeCacheLeaderClientManager.LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId);
     if (Objects.isNull(endPoint)) {
-      return defaultBatch.onEvent(event) ? new Pair<>(null, defaultBatch) : null;
+      defaultBatch.onEvent(event);
+      return;
     }
-
-    final PipeTabletEventPlainBatch batch =
-        endPointToBatch.computeIfAbsent(
+    endPointToBatch
+        .computeIfAbsent(
             endPoint,
-            k -> new PipeTabletEventPlainBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes));
-    return batch.onEvent(event) ? new Pair<>(endPoint, batch) : null;
+            k -> new PipeTabletEventPlainBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes))
+        .onEvent(event);
   }
 
   /** Get all batches that have at least 1 event. */
-  public synchronized List<Pair<TEndPoint, PipeTabletEventBatch>> getAllNonEmptyBatches() {
-    final List<Pair<TEndPoint, PipeTabletEventBatch>> nonEmptyBatches = new ArrayList<>();
-    if (!defaultBatch.isEmpty()) {
-      nonEmptyBatches.add(new Pair<>(null, defaultBatch));
+  public synchronized List<Pair<TEndPoint, PipeTabletEventBatch>>
+      getAllNonEmptyAndShouldEmitBatches() {
+    final List<Pair<TEndPoint, PipeTabletEventBatch>> nonEmptyAndShouldEmitBatches =
+        new ArrayList<>();
+    if (!defaultBatch.isEmpty() && defaultBatch.shouldEmit()) {
+      nonEmptyAndShouldEmitBatches.add(new Pair<>(null, defaultBatch));
     }
     endPointToBatch.forEach(
         (endPoint, batch) -> {
-          if (!batch.isEmpty()) {
-            nonEmptyBatches.add(new Pair<>(endPoint, batch));
+          if (!batch.isEmpty() && batch.shouldEmit()) {
+            nonEmptyAndShouldEmitBatches.add(new Pair<>(endPoint, batch));
           }
         });
-    return nonEmptyBatches;
+    return nonEmptyAndShouldEmitBatches;
   }
 
   public boolean isEmpty() {
