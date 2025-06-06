@@ -302,9 +302,9 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         transferAggregatorsRecursively(planNode, context);
 
         if (childIsProject) {
-          List<String> devices = deviceViewNode.getDevices();
+          List<IDeviceID> devices = deviceViewNode.getDevices();
           for (int j = 0; j < devices.size(); j++) {
-            String device = devices.get(j);
+            String device = devices.get(j).toString();
 
             // construct output column names for each child ProjectNode
             List<Integer> newMeasurementIdxList =
