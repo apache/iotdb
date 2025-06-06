@@ -25,12 +25,13 @@ import sys
 import threading
 
 from ainode.core.constant import (
+    AINODE_LOG_DIR,
     AINODE_LOG_FILE_LEVELS,
     AINODE_LOG_FILE_NAMES,
     STD_LEVEL,
 )
 from ainode.core.util.decorator import singleton
-from ainode.core.constant import AINODE_LOG_DIR
+
 
 class LoggerFilter(logging.Filter):
     def filter(self, record):
