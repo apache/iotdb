@@ -105,12 +105,12 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     }
 
     try {
-      if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
-          > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS) {
-        transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
-      }
-
       if (Objects.isNull(event)) {
+        if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
+            > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS) {
+          transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
+        }
+
         return false;
       }
 
