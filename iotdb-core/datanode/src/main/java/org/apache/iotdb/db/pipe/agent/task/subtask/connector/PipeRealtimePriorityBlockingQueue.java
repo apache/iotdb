@@ -91,7 +91,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
         PIPE_CONFIG.getPipeRealTimeQueueMaxWaitingTsFileSize();
 
     if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()
-        && offerTsFileCounter.get() < maxPollTsFileThreshold) {
+        && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
       event =
           pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
               ? tsfileInsertEventDeque.pollFirst()
@@ -102,7 +102,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     if (Objects.isNull(event)) {
       // Sequentially poll the first offered non-TsFileInsertionEvent
       event = super.directPoll();
-      if (Objects.isNull(event) && offerTsFileCounter.get() < maxPollTsFileThreshold) {
+      if (Objects.isNull(event) && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
         event =
             pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
                 ? tsfileInsertEventDeque.pollFirst()
@@ -132,9 +132,11 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     Event event = null;
     final int pollHistoricalTsFileThreshold =
         PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
+    final int realTimeQueueMaxWaitingTsFileSize =
+        PIPE_CONFIG.getPipeRealTimeQueueMaxWaitingTsFileSize();
 
     if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()
-        && offerTsFileCounter.get() < maxPollTsFileThreshold) {
+        && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
       event =
           pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
               ? tsfileInsertEventDeque.pollFirst()
@@ -156,7 +158,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     }
 
     // If no event is available, block until an event is available
-    if (Objects.isNull(event) && offerTsFileCounter.get() < maxPollTsFileThreshold) {
+    if (Objects.isNull(event) && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
       event = super.waitedPoll();
       if (Objects.isNull(event)) {
         event =
