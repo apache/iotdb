@@ -113,7 +113,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private IoTDBDataNodeAsyncClientManager clientManager;
   private IoTDBDataNodeAsyncClientManager transferTsFileClientManager;
 
-  public AtomicInteger transferTsFileCounter = new AtomicInteger(0);
+  public AtomicInteger transferTsFileCounter = null;
 
   private PipeTransferBatchReqBuilder tabletBatchBuilder;
 
