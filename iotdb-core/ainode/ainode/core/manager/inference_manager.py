@@ -59,7 +59,7 @@ class TimerXLStrategy(InferenceStrategy):
             data = data.byteswap().newbyteorder()
         seqs = torch.tensor(data).unsqueeze(0).float()
         # TODO: unify model inference input
-        output = self.model.generate(seqs, max_new_tokens=predict_length)
+        output = self.model.generate(seqs, max_new_tokens=predict_length, revin=True)
         df = pd.DataFrame(output[0])
         return convert_to_binary(df)
 
