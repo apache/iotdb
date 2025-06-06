@@ -30,6 +30,8 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,6 +46,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 public class TsFileNameGenerator {
 
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileNameGenerator.class);
 
   public static String generateNewTsFilePath(
       String tsFileDir,
@@ -93,7 +96,6 @@ public class TsFileNameGenerator {
       String customSuffix)
           throws DiskSpaceInsufficientException, IOException {
     TierManager tierManager = TierManager.getInstance();
-    Exception lastException = null;
     String tsFileDir = null;
     for (int retryTimes = 0; retryTimes <= 1; ++retryTimes) {
       String baseDir = tierManager.getNextFolderForTsFile(tierLevel, sequence);
@@ -111,13 +113,14 @@ public class TsFileNameGenerator {
                   + generateNewTsFileName(
                   time, version, innerSpaceCompactionCount, crossSpaceCompactionCount, customSuffix);
         }
-      } catch (Exception e) {
-        FolderManager folderManager = tierManager.getFolderManager(tierLevel, sequence);
-        folderManager.updateFolderState(baseDir, FolderManager.FolderState.ABNORMAL);
-        lastException = e;
+      } catch (Exception ignored) {
       }
+      FolderManager folderManager = tierManager.getFolderManager(tierLevel, sequence);
+      folderManager.updateFolderState(baseDir, FolderManager.FolderState.ABNORMAL);
+      LOGGER.warn("Failed to process folder [tierLevel={}, sequence={}, baseDir={}], state set to ABNORMAL",
+              tierLevel, sequence, baseDir);
     }
-    throw new IOException("Failed to create directory after retries: " + tsFileDir, lastException);
+    throw new IOException("Failed to create directory after retries: " + tsFileDir);
   }
 
   public static String generateNewTsFileName(

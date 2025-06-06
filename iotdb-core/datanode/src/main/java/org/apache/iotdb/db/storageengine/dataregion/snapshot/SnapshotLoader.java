@@ -312,6 +312,7 @@ public class SnapshotLoader {
         } catch (Exception e) {
           LOGGER.warn("Failed to process file {}: {}", file.getName(), e.getMessage(), e);
           folderManager.updateFolderState(dataDir, FolderManager.FolderState.ABNORMAL);
+          dataDir = null;
           continue;
         }
         fileTarget.put(fileKey, dataDir);
