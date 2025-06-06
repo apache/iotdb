@@ -30,7 +30,6 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
-import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionReceiverSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -100,6 +99,8 @@ public abstract class SubscriptionPrefetchingQueue {
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
   private final SubscriptionPrefetchingQueueStates states;
+
+  private long lastStateReportTimestamp = System.currentTimeMillis();
 
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
@@ -283,9 +284,12 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   private void reportStateIfNeeded() {
-    SubscriptionDataNodeResourceManager.log()
-        .schedule(SubscriptionPrefetchingQueue.class, brokerId, topicName)
-        .ifPresent(l -> l.info("Subscription: SubscriptionPrefetchingQueue state {}", this));
+    if (System.currentTimeMillis() - lastStateReportTimestamp
+        > SubscriptionConfig.getInstance().getSubscriptionLogManagerBaseIntervalMs()
+            * SubscriptionAgent.broker().getPrefetchingQueueCount()) {
+      LOGGER.info("Subscription: SubscriptionPrefetchingQueue state {}", this);
+      lastStateReportTimestamp = System.currentTimeMillis();
+    }
   }
 
   @SafeVarargs
