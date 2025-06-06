@@ -102,7 +102,7 @@ public class MySqlConnectorTableFunction implements TableFunction {
 
   private static final String SQL = "SQL";
   private static final String URL = "URL";
-  private static final String DEFAULT_URL = "jdbc:mysql://localhost:3306/test?";
+  private static final String DEFAULT_URL = "jdbc:mysql://localhost:3306";
   private static final String USERNAME = "USERNAME";
   private static final String DEFAULT_USERNAME = "root";
   private static final String PASSWORD = "PASSWORD";

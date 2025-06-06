@@ -43,6 +43,9 @@ public class JDBCConnectionPool {
       case java.sql.Types.FLOAT:
         return Type.FLOAT;
       case java.sql.Types.DOUBLE:
+      case java.sql.Types.REAL:
+      case java.sql.Types.NUMERIC:
+      case java.sql.Types.DECIMAL:
         return Type.DOUBLE;
       case java.sql.Types.CHAR:
       case java.sql.Types.VARCHAR:
@@ -79,6 +82,9 @@ public class JDBCConnectionPool {
       case java.sql.Types.FLOAT:
         return new FloatConverter();
       case java.sql.Types.DOUBLE:
+      case java.sql.Types.REAL:
+      case java.sql.Types.NUMERIC:
+      case java.sql.Types.DECIMAL:
         return new DoubleConverter();
       case java.sql.Types.CHAR:
       case java.sql.Types.VARCHAR:
