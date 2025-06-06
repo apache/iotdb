@@ -272,6 +272,9 @@ public class SubscriptionBrokerAgent {
   /**
    * A simple generic cache that computes and stores a value on demand.
    *
+   * <p>Note that since the get() and invalidate() methods are not modified with synchronized, the
+   * value obtained may not be entirely accurate.
+   *
    * @param <T> the type of the cached value
    */
   private static class Cache<T> {
@@ -290,7 +293,7 @@ public class SubscriptionBrokerAgent {
     }
 
     /** Invalidate the cache. The next call to get() will recompute the value. */
-    private synchronized void invalidate() {
+    private void invalidate() {
       valid = false;
     }
 
@@ -299,7 +302,7 @@ public class SubscriptionBrokerAgent {
      *
      * @return the current value, recomputed if necessary
      */
-    private synchronized T get() {
+    private T get() {
       if (!valid) {
         value = supplier.get();
         valid = true;
