@@ -247,7 +247,6 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       Set<Expression> deviceViewOutputExpressions = analysis.getDeviceViewOutputExpressions();
       // Used to rewrite child ProjectNode if it exists
       List<FunctionExpression> actualPartialAggregations = new ArrayList<>();
-      boolean childIsProject = node.getChildren().get(0) instanceof ProjectNode;
 
       int i = 0, newIdxSum = 0;
       for (Expression expression : deviceViewOutputExpressions) {
@@ -277,9 +276,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                 .setTreeModelType(partialFunctionExpression.getOutputSymbol(), dataType);
           }
           newPartialOutputColumns.add(partialFunctionExpression.getOutputSymbol());
-          if (childIsProject) {
-            actualPartialAggregations.add(partialFunctionExpression);
-          }
+          actualPartialAggregations.add(partialFunctionExpression);
         }
         newMeasurementIdxMap.put(
             i++,
@@ -301,9 +298,9 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         deviceViewNode.setOutputColumnNames(newPartialOutputColumns);
         transferAggregatorsRecursively(planNode, context);
 
-        if (childIsProject) {
-          List<IDeviceID> devices = deviceViewNode.getDevices();
-          for (int j = 0; j < devices.size(); j++) {
+        List<IDeviceID> devices = deviceViewNode.getDevices();
+        for (int j = 0; j < devices.size(); j++) {
+          if (deviceViewNode.getChildren().get(j) instanceof ProjectNode) {
             IDeviceID device = devices.get(j);
 
             // construct output column names for each child ProjectNode
