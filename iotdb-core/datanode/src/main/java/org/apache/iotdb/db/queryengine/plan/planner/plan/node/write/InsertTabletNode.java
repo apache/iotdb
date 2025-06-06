@@ -1300,4 +1300,21 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             isAligned,
             measurementSchemas);
   }
+
+  @Override
+  public String toString() {
+    return "InsertTabletNode{"
+        + "targetPath="
+        + targetPath
+        + ", measurements="
+        + Arrays.toString(measurements)
+        + ", rowCount="
+        + rowCount
+        + ", timeRange=[,"
+        + times[0]
+        + ", "
+        + times[times.length - 1]
+        + "]"
+        + '}';
+  }
 }
