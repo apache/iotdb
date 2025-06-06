@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPend
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -48,11 +47,10 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   private final AtomicLong pollHistoricalTsFileCounter = new AtomicLong(0);
 
-  private final AtomicInteger offerTsFileCounter =
-      IoTDBDataRegionAsyncConnector.transferTsFileCounter;
+  private AtomicInteger offerTsFileCounter = null;
 
   private static final int maxPollTsFileThreshold =
-      PIPE_CONFIG.getPipeAsyncConnectorMaxClientNumber();
+      Math.min(1, PIPE_CONFIG.getPipeAsyncConnectorMaxClientNumber() / 3);
 
   public PipeRealtimePriorityBlockingQueue() {
     super(new PipeDataRegionEventCounter());
@@ -242,5 +240,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public int getTsFileInsertionEventCount() {
     return tsfileInsertEventDeque.size();
+  }
+
+  public void setOfferTsFileCounter(AtomicInteger offerTsFileCounter) {
+    this.offerTsFileCounter = offerTsFileCounter;
   }
 }

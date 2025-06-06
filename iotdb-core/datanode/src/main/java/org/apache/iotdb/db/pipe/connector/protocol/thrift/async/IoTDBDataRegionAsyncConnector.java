@@ -100,6 +100,10 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private static final String THRIFT_ERROR_FORMATTER_WITH_ENDPOINT =
       "Exception occurred while sending to receiver %s:%s.";
 
+  private static final boolean isSplitTSFileBatchModeEnabled = true;
+  private static final ExecutorService executor =
+      Executors.newFixedThreadPool(PipeConfig.getInstance().getPipeAsyncConnectorMaxClientNumber());
+
   private final IoTDBDataRegionSyncConnector syncConnector = new IoTDBDataRegionSyncConnector();
 
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
@@ -108,9 +112,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private IoTDBDataNodeAsyncClientManager clientManager;
   private IoTDBDataNodeAsyncClientManager transferTsFileClientManager;
-  private static final boolean isSplitTSFileBatchModeEnabled = true;
-  public static final AtomicInteger transferTsFileCounter = new AtomicInteger(0);
-  private static final ExecutorService executor = Executors.newFixedThreadPool(1);
+
+  public AtomicInteger transferTsFileCounter = new AtomicInteger(0);
 
   private PipeTransferBatchReqBuilder tabletBatchBuilder;
 
@@ -799,5 +802,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   public boolean hasPendingHandlers() {
     return !pendingHandlers.isEmpty();
+  }
+
+  public void setTransferTsFileCounter(AtomicInteger transferTsFileCounter) {
+    this.transferTsFileCounter = transferTsFileCounter;
   }
 }
