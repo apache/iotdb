@@ -34,7 +34,6 @@ import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtracto
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -141,9 +140,8 @@ public class PipeEventCollector implements EventCollector {
     }
 
     try {
-      for (final TabletInsertionEvent parsedEvent : sourceEvent.toTabletInsertionEvents()) {
-        collectParsedRawTableEvent((PipeRawTabletInsertionEvent) parsedEvent);
-      }
+      sourceEvent.consumeTabletInsertionEventsWithRetry(
+          this::collectParsedRawTableEvent, "PipeEventCollector::parseAndCollectEvent");
     } finally {
       sourceEvent.close();
     }
