@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPend
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -46,6 +47,12 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   private final AtomicInteger pollTsFileCounter = new AtomicInteger(0);
 
   private final AtomicLong pollHistoricalTsFileCounter = new AtomicLong(0);
+
+  private final AtomicInteger offerTsFileCounter =
+      IoTDBDataRegionAsyncConnector.transferTsFileCounter;
+
+  private static final int maxPollTsFileThreshold =
+      PIPE_CONFIG.getPipeAsyncConnectorMaxClientNumber();
 
   public PipeRealtimePriorityBlockingQueue() {
     super(new PipeDataRegionEventCounter());
@@ -86,17 +93,19 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     final int pollHistoricalTsFileThreshold =
         PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
 
-    if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()) {
+    if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()
+        && offerTsFileCounter.get() < maxPollTsFileThreshold) {
       event =
           pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
               ? tsfileInsertEventDeque.pollFirst()
               : tsfileInsertEventDeque.pollLast();
       pollTsFileCounter.set(0);
     }
+
     if (Objects.isNull(event)) {
       // Sequentially poll the first offered non-TsFileInsertionEvent
       event = super.directPoll();
-      if (Objects.isNull(event)) {
+      if (Objects.isNull(event) && offerTsFileCounter.get() < maxPollTsFileThreshold) {
         event =
             pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
                 ? tsfileInsertEventDeque.pollFirst()
@@ -127,7 +136,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     final int pollHistoricalTsFileThreshold =
         PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
 
-    if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()) {
+    if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()
+        && offerTsFileCounter.get() < maxPollTsFileThreshold) {
       event =
           pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
               ? tsfileInsertEventDeque.pollFirst()
@@ -149,7 +159,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     }
 
     // If no event is available, block until an event is available
-    if (Objects.isNull(event)) {
+    if (Objects.isNull(event) && offerTsFileCounter.get() < maxPollTsFileThreshold) {
       event = super.waitedPoll();
       if (Objects.isNull(event)) {
         event =

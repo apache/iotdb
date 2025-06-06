@@ -526,6 +526,11 @@ public class PipeDescriptor {
                 "pipe_max_aligned_series_num_in_one_batch",
                 String.valueOf(config.getPipeMaxAlignedSeriesNumInOneBatch()))));
 
+    config.setPipeTransferTsFileSync(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_transfer_tsfile_sync", String.valueOf(config.getPipeTransferTsFileSync()))));
+
     config.setPipeRemainingTimeCommitRateAutoSwitchSeconds(
         Long.parseLong(
             properties.getProperty(

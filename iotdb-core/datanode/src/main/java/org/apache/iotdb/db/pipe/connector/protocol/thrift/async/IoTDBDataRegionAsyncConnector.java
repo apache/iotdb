@@ -74,7 +74,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -104,6 +107,10 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       new PipeDataRegionEventCounter();
 
   private IoTDBDataNodeAsyncClientManager clientManager;
+  private IoTDBDataNodeAsyncClientManager transferTsFileClientManager;
+  private static final boolean isSplitTSFileBatchModeEnabled = true;
+  public static final AtomicInteger transferTsFileCounter = new AtomicInteger(0);
+  private static final ExecutorService executor = Executors.newFixedThreadPool(1);
 
   private PipeTransferBatchReqBuilder tabletBatchBuilder;
 
@@ -147,6 +154,37 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             loadTsFileStrategy,
             loadTsFileValidation,
             shouldMarkAsPipeRequest);
+
+    if (isSplitTSFileBatchModeEnabled) {
+      transferTsFileClientManager =
+          new IoTDBDataNodeAsyncClientManager(
+              nodeUrls,
+              parameters.getBooleanOrDefault(
+                  Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
+                  CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
+              loadBalanceStrategy,
+              username,
+              password,
+              shouldReceiverConvertOnTypeMismatch,
+              loadTsFileStrategy,
+              loadTsFileValidation,
+              shouldMarkAsPipeRequest,
+              true);
+    } else {
+      transferTsFileClientManager =
+          new IoTDBDataNodeAsyncClientManager(
+              nodeUrls,
+              parameters.getBooleanOrDefault(
+                  Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
+                  CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
+              loadBalanceStrategy,
+              username,
+              password,
+              shouldReceiverConvertOnTypeMismatch,
+              loadTsFileStrategy,
+              loadTsFileValidation,
+              shouldMarkAsPipeRequest);
+    }
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
@@ -391,14 +429,37 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
-  private void transfer(final PipeTransferTsFileHandler pipeTransferTsFileHandler) {
-    AsyncPipeDataTransferServiceClient client = null;
-    try {
-      client = clientManager.borrowClient();
-      pipeTransferTsFileHandler.transfer(clientManager, client);
-    } catch (final Exception ex) {
-      logOnClientException(client, ex);
-      pipeTransferTsFileHandler.onError(ex);
+  private void transfer(final PipeTransferTsFileHandler pipeTransferTsFileHandler)
+      throws Exception {
+    transferTsFileCounter.incrementAndGet();
+    CompletableFuture<Void> completableFuture =
+        CompletableFuture.supplyAsync(
+            () -> {
+              AsyncPipeDataTransferServiceClient client = null;
+              try {
+                client = transferTsFileClientManager.borrowClient();
+                pipeTransferTsFileHandler.transfer(clientManager, client);
+              } catch (final Exception ex) {
+                logOnClientException(client, ex);
+                pipeTransferTsFileHandler.onError(ex);
+              } finally {
+                transferTsFileCounter.decrementAndGet();
+              }
+              return null;
+            },
+            executor);
+
+    if (PipeConfig.getInstance().isTransferTsFileSync()) {
+      try {
+        completableFuture.get();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.error("Transfer tsfile event asynchronously was interrupted.", e);
+        throw new PipeException("Transfer tsfile event asynchronously was interrupted.", e);
+      } catch (Exception e) {
+        LOGGER.error("Failed to transfer tsfile event asynchronously.", e);
+        throw e;
+      }
     }
   }
 
@@ -683,10 +744,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       if (clientManager != null) {
         clientManager.close();
       }
+
+      if (transferTsFileClientManager != null) {
+        transferTsFileClientManager.close();
+      }
     } catch (final Exception e) {
       LOGGER.warn("Failed to close client manager.", e);
     }
-
+    executor.shutdownNow();
     // clear reference count of events in retry queue after closing async client
     clearRetryEventsReferenceCount();
 

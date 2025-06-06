@@ -234,7 +234,7 @@ public class CommonConfig {
 
   private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
   private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
-  private int pipeConnectorReadFileBufferSize = 8388608;
+  private int pipeConnectorReadFileBufferSize = 5242880; // 5MB
   private boolean isPipeConnectorReadFileBufferMemoryControlEnabled = false;
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
@@ -309,6 +309,7 @@ public class CommonConfig {
   private double pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio = 0.1d;
   private double pipeThresholdAllocationStrategyLowUsageThreshold = 0.2d;
   private double pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold = 0.8d;
+  private boolean pipeTransferTsFileSync = false;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -1948,6 +1949,18 @@ public class CommonConfig {
     logger.info(
         "pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold is set to {}",
         pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold);
+  }
+
+  public boolean getPipeTransferTsFileSync() {
+    return pipeTransferTsFileSync;
+  }
+
+  public void setPipeTransferTsFileSync(boolean pipeTransferTsFileSync) {
+    if (this.pipeTransferTsFileSync == pipeTransferTsFileSync) {
+      return;
+    }
+    this.pipeTransferTsFileSync = pipeTransferTsFileSync;
+    logger.info("pipeTransferTsFileSync is set to {}", pipeTransferTsFileSync);
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {

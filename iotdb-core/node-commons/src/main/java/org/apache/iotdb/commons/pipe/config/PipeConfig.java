@@ -255,6 +255,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold();
   }
 
+  public boolean isTransferTsFileSync() {
+    return COMMON_CONFIG.getPipeTransferTsFileSync();
+  }
+
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
@@ -520,6 +524,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipePipeRemainingInsertEventCountAverage: {}", getPipeRemainingInsertNodeCountAverage());
     LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
+    LOGGER.info("PipeTransferTsFileSync: {}", isTransferTsFileSync());
 
     LOGGER.info("PipeDynamicMemoryHistoryWeight: {}", getPipeDynamicMemoryHistoryWeight());
     LOGGER.info(
