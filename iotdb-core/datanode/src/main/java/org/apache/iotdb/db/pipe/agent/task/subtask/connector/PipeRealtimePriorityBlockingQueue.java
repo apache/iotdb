@@ -49,9 +49,6 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   private AtomicInteger offerTsFileCounter = null;
 
-  private static final int maxPollTsFileThreshold =
-      Math.min(1, PIPE_CONFIG.getPipeAsyncConnectorMaxClientNumber() / 3);
-
   public PipeRealtimePriorityBlockingQueue() {
     super(new PipeDataRegionEventCounter());
   }
@@ -90,6 +87,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     Event event = null;
     final int pollHistoricalTsFileThreshold =
         PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
+    final int realTimeQueueMaxWaitingTsFileSize =
+        PIPE_CONFIG.getPipeRealTimeQueueMaxWaitingTsFileSize();
 
     if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()
         && offerTsFileCounter.get() < maxPollTsFileThreshold) {

@@ -264,6 +264,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_realtime_queue_poll_historical_tsfile_threshold",
                 String.valueOf(config.getPipeRealTimeQueuePollHistoricalTsFileThreshold()))));
+    config.setPipeRealTimeQueueMaxWaitingTsFileSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_realTime_queue_max_waiting_tsFile_size",
+                String.valueOf(config.getPipeRealTimeQueueMaxWaitingTsFileSize()))));
     config.setPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
         Integer.parseInt(
             properties.getProperty(

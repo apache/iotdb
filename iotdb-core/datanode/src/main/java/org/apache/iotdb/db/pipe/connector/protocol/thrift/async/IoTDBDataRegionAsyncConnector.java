@@ -156,38 +156,23 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
             loadTsFileValidation,
-            shouldMarkAsPipeRequest);
+            shouldMarkAsPipeRequest,
+            false);
 
-    if (isSplitTSFileBatchModeEnabled) {
-      transferTsFileClientManager =
-          new IoTDBDataNodeAsyncClientManager(
-              nodeUrls,
-              parameters.getBooleanOrDefault(
-                  Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
-                  CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
-              loadBalanceStrategy,
-              username,
-              password,
-              shouldReceiverConvertOnTypeMismatch,
-              loadTsFileStrategy,
-              loadTsFileValidation,
-              shouldMarkAsPipeRequest,
-              true);
-    } else {
-      transferTsFileClientManager =
-          new IoTDBDataNodeAsyncClientManager(
-              nodeUrls,
-              parameters.getBooleanOrDefault(
-                  Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
-                  CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
-              loadBalanceStrategy,
-              username,
-              password,
-              shouldReceiverConvertOnTypeMismatch,
-              loadTsFileStrategy,
-              loadTsFileValidation,
-              shouldMarkAsPipeRequest);
-    }
+    transferTsFileClientManager =
+        new IoTDBDataNodeAsyncClientManager(
+            nodeUrls,
+            parameters.getBooleanOrDefault(
+                Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
+                CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
+            loadBalanceStrategy,
+            username,
+            password,
+            shouldReceiverConvertOnTypeMismatch,
+            loadTsFileStrategy,
+            loadTsFileValidation,
+            shouldMarkAsPipeRequest,
+            isSplitTSFileBatchModeEnabled);
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);

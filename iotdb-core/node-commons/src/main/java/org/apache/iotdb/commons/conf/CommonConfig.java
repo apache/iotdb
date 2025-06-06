@@ -207,6 +207,7 @@ public class CommonConfig {
 
   private int pipeRealTimeQueuePollTsFileThreshold = 10;
   private int pipeRealTimeQueuePollHistoricalTsFileThreshold = 3;
+  private int pipeRealTimeQueueMaxWaitingTsFileSize = 1;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
@@ -1333,6 +1334,20 @@ public class CommonConfig {
     logger.info(
         "pipeRealTimeQueuePollHistoricalTsFileThreshold is set to {}",
         pipeRealTimeQueuePollHistoricalTsFileThreshold);
+  }
+
+  public int getPipeRealTimeQueueMaxWaitingTsFileSize() {
+    return pipeRealTimeQueueMaxWaitingTsFileSize;
+  }
+
+  public void setPipeRealTimeQueueMaxWaitingTsFileSize(int pipeRealTimeQueueMaxWaitingTsFileSize) {
+    if (this.pipeRealTimeQueueMaxWaitingTsFileSize == pipeRealTimeQueueMaxWaitingTsFileSize) {
+      return;
+    }
+    this.pipeRealTimeQueueMaxWaitingTsFileSize = pipeRealTimeQueueMaxWaitingTsFileSize;
+    logger.info(
+        "pipeRealTimeQueueMaxWaitingTsFileSize is set to {}.",
+        pipeRealTimeQueueMaxWaitingTsFileSize);
   }
 
   public void setPipeAirGapReceiverEnabled(boolean pipeAirGapReceiverEnabled) {

@@ -101,6 +101,10 @@ public class PipeConfig {
     return Math.max(COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold(), 1);
   }
 
+  public int getPipeRealTimeQueueMaxWaitingTsFileSize() {
+    return COMMON_CONFIG.getPipeRealTimeQueueMaxWaitingTsFileSize();
+  }
+
   /////////////////////////////// Subtask Executor ///////////////////////////////
 
   public int getPipeSubtaskExecutorMaxThreadNum() {
