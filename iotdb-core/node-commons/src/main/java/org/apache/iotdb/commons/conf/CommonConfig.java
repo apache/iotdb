@@ -226,8 +226,7 @@ public class CommonConfig {
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 1000;
 
-  // No interval by default, to ensure the low latency of the newest batch
-  private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 0;
+  private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
   private long pipeSubtaskExecutorForcedRestartIntervalMs = Long.MAX_VALUE;
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
