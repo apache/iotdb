@@ -30,4 +30,6 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeDynamicMemoryBlock;
 public interface DynamicMemoryAllocationStrategy {
 
   void dynamicallyAdjustMemory(PipeDynamicMemoryBlock dynamicMemoryBlock);
+
+  double calculateDeficitRatio(PipeDynamicMemoryBlock block);
 }

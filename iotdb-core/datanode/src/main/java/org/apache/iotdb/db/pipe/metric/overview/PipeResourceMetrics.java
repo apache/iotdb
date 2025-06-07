@@ -23,7 +23,9 @@ import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockType;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeModelFixedMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -41,10 +43,13 @@ public class PipeResourceMetrics implements IMetricSet {
 
   private static final String PIPE_TOTAL_MEMORY = "PipeTotalMemory";
 
+  private AbstractMetricService metricService;
+
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
   public void bindTo(final AbstractMetricService metricService) {
+    this.metricService = metricService;
     // pipe memory related
     metricService.createAutoGauge(
         Metric.PIPE_MEM.toString(),
@@ -121,6 +126,11 @@ public class PipeResourceMetrics implements IMetricSet {
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_SIZE.toString());
     // phantom reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString());
+  }
+
+  public PipeModelFixedMemoryBlockMetrics registerFixedMemoryBlockMetrics(
+      PipeMemoryBlockType type, PipeModelFixedMemoryBlock fixedMemoryBlock) {
+    return new PipeModelFixedMemoryBlockMetrics(type, metricService, fixedMemoryBlock);
   }
 
   //////////////////////////// singleton ////////////////////////////

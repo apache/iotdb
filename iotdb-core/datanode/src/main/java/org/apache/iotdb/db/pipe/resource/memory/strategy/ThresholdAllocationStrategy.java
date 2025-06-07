@@ -125,7 +125,8 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
     }
   }
 
-  private double calculateDeficitRatio(final PipeDynamicMemoryBlock block) {
+  @Override
+  public double calculateDeficitRatio(final PipeDynamicMemoryBlock block) {
     final Pair<Double, Double> memoryEfficiency = block.getMemoryEfficiency();
     double pipeDynamicMemoryHistoryWeight = PIPE_CONFIG.getPipeDynamicMemoryHistoryWeight();
     return (1 - pipeDynamicMemoryHistoryWeight) * memoryEfficiency.getRight()

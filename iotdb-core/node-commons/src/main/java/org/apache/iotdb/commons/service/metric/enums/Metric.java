@@ -167,6 +167,11 @@ public enum Metric {
   PIPE_WAL_INSERT_NODE_CACHE_REQUEST_COUNT("pipe_wal_insert_node_cache_request_count"),
   PIPE_EXTRACTOR_TSFILE_EPOCH_STATE("pipe_extractor_tsfile_epoch_state"),
   PIPE_MEM("pipe_mem"),
+  PIPE_FIXED_MEMORY_TOTAL_MEMORY("pipe_fixed_memory_total_memory"),
+  PIPE_FIXED_MEMORY_ALLOCATED_MEMORY("pipe_fixed_memory_allocated_memory"),
+  PIPE_MODEL_DYNAMIC_MEMORY_BLOCK_MEMORY_SIZE("pipe_model_dynamic_memory_block_memory_size"),
+  PIPE_MODEL_DYNAMIC_MEMORY_BLOCK_MEMORY_EFFICIENCY(
+      "pipe_model_dynamic_memory_block_memory_efficiency"),
   PIPE_PINNED_MEMTABLE_COUNT("pipe_pinned_memtable_count"),
   PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
   PIPE_LINKED_TSFILE_SIZE("pipe_linked_tsfile_size"),

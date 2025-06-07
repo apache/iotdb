@@ -30,6 +30,8 @@ public class PipeDynamicMemoryBlock {
 
   private final PipeModelFixedMemoryBlock fixedMemoryBlock;
 
+  private final int id;
+
   private boolean isExpandable = true;
 
   private Consumer<PipeDynamicMemoryBlock> expand = null;
@@ -43,9 +45,12 @@ public class PipeDynamicMemoryBlock {
   private volatile double currentMemoryEfficiency;
 
   PipeDynamicMemoryBlock(
-      final @NotNull PipeModelFixedMemoryBlock fixedMemoryBlock, final long memoryUsageInBytes) {
+      final @NotNull PipeModelFixedMemoryBlock fixedMemoryBlock,
+      final long memoryUsageInBytes,
+      final int id) {
     this.memoryUsageInBytes = Math.min(memoryUsageInBytes, 0);
     this.fixedMemoryBlock = fixedMemoryBlock;
+    this.id = id;
   }
 
   public long getMemoryUsageInBytes() {
@@ -102,6 +107,10 @@ public class PipeDynamicMemoryBlock {
 
   public long getFixedMemoryCapacity() {
     return fixedMemoryBlock.getMemoryUsageInBytes();
+  }
+
+  public int getId() {
+    return id;
   }
 
   public void updateMemoryEfficiency(

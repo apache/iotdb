@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.pipe.resource.memory;
 
+import org.apache.iotdb.db.pipe.metric.overview.PipeModelFixedMemoryBlockMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.resource.memory.strategy.DynamicMemoryAllocationStrategy;
 
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
@@ -35,16 +38,32 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
 
   private volatile long memoryAllocatedInBytes;
 
+  private final PipeMemoryBlockType memoryBlockType;
+
+  private final AtomicInteger memoryBlockIdAllocator = new AtomicInteger(0);
+
+  private final PipeModelFixedMemoryBlockMetrics metrics;
+
   public PipeModelFixedMemoryBlock(
-      final long memoryUsageInBytes, final DynamicMemoryAllocationStrategy allocationStrategy) {
+      final long memoryUsageInBytes,
+      final DynamicMemoryAllocationStrategy allocationStrategy,
+      final PipeMemoryBlockType memoryBlockType) {
     super(memoryUsageInBytes);
     this.memoryAllocatedInBytes = 0;
     this.allocationStrategy = allocationStrategy;
+    this.memoryBlockType = memoryBlockType;
+    this.metrics =
+        PipeResourceMetrics.getInstance().registerFixedMemoryBlockMetrics(memoryBlockType, this);
   }
 
   public synchronized PipeDynamicMemoryBlock registerPipeBatchMemoryBlock(
       final long memorySizeInBytes) {
-    final PipeDynamicMemoryBlock memoryBlock = new PipeDynamicMemoryBlock(this, 0);
+    final PipeDynamicMemoryBlock memoryBlock =
+        new PipeDynamicMemoryBlock(this, 0, memoryBlockIdAllocator.incrementAndGet());
+    if (metrics != null) {
+      metrics.registerDynamicMemoryBlockGauge(memoryBlock);
+    }
+
     memoryBlocks.add(memoryBlock);
     if (memorySizeInBytes != 0) {
       resetMemoryBlockSize(memoryBlock, memorySizeInBytes);
@@ -79,6 +98,9 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
   synchronized void releaseMemory(final PipeDynamicMemoryBlock memoryBlock) {
     resetMemoryBlockSize(memoryBlock, 0);
     memoryBlocks.remove(memoryBlock);
+    if (metrics != null) {
+      metrics.deregisterDynamicMemoryBlockGauge(memoryBlock);
+    }
   }
 
   synchronized void dynamicallyAdjustMemory(final PipeDynamicMemoryBlock block) {
@@ -121,5 +143,12 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
   public synchronized void close() {
     memoryBlocks.forEach(PipeDynamicMemoryBlock::close);
     super.close();
+    if (metrics != null) {
+      metrics.deRegister();
+    }
+  }
+
+  public double calculateDeficitRatio(PipeDynamicMemoryBlock memoryBlock) {
+    return allocationStrategy.calculateDeficitRatio(memoryBlock);
   }
 }
