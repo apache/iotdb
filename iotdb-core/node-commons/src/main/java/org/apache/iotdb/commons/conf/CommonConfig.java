@@ -263,7 +263,7 @@ public class CommonConfig {
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
   private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 1;
   private boolean pipeAutoRestartEnabled = true;
-  private long pipeProgressIndexPersistCheckPoint = 20;
+  private long pipeProgressIndexPersistCheckPointGap = 20;
 
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
@@ -1213,17 +1213,18 @@ public class CommonConfig {
     logger.info("pipeAutoRestartEnabled is set to {}.", pipeAutoRestartEnabled);
   }
 
-  public long getPipeProgressIndexPersistCheckPoint() {
-    return pipeProgressIndexPersistCheckPoint;
+  public long getPipeProgressIndexPersistCheckPointGap() {
+    return pipeProgressIndexPersistCheckPointGap;
   }
 
-  public void setPipeProgressIndexPersistCheckPoint(long pipeProgressIndexPersistCheckPoint) {
-    if (this.pipeProgressIndexPersistCheckPoint == pipeProgressIndexPersistCheckPoint) {
+  public void setPipeProgressIndexPersistCheckPointGap(long pipeProgressIndexPersistCheckPointGap) {
+    if (this.pipeProgressIndexPersistCheckPointGap == pipeProgressIndexPersistCheckPointGap) {
       return;
     }
-    this.pipeProgressIndexPersistCheckPoint = pipeProgressIndexPersistCheckPoint;
+    this.pipeProgressIndexPersistCheckPointGap = pipeProgressIndexPersistCheckPointGap;
     logger.info(
-        "pipeProgressIndexPersistCheckPoint is set to {}.", pipeProgressIndexPersistCheckPoint);
+        "pipeProgressIndexPersistCheckPointGap is set to {}.",
+        pipeProgressIndexPersistCheckPointGap);
   }
 
   public long getPipeConnectorRetryIntervalMs() {

@@ -57,7 +57,8 @@ public class PipePeriodicalJobExecutor extends AbstractPipePeriodicalJobExecutor
         LOGGER.warn("Pipe progressIndex background service did not terminate within {}s", 30);
       }
     } catch (InterruptedException e) {
-      LOGGER.warn("Pipe progressIndex background service still doesn't exit after 30s");
+      LOGGER.warn(
+          "Pipe progressIndex background service is interrupted while waiting for termination");
       Thread.currentThread().interrupt();
     }
   }

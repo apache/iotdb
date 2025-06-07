@@ -69,7 +69,7 @@ public class PipeTaskMeta {
   private final AtomicLong updateCount = new AtomicLong(0);
   private final AtomicLong lastPersistCount = new AtomicLong(0);
   private final long checkPointGap =
-      PipeConfig.getInstance().getPipeProgressIndexPersistCheckPoint();
+      PipeConfig.getInstance().getPipeProgressIndexPersistCheckPointGap();
   private final int taskIndex;
   private final File progressIndexPersistFile;
   private final AtomicBoolean isRegisterPersistTask = new AtomicBoolean(false);

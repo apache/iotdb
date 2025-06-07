@@ -100,11 +100,11 @@ public class PipeDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
-    config.setPipeProgressIndexPersistCheckPoint(
+    config.setPipeProgressIndexPersistCheckPointGap(
         Long.parseLong(
             properties.getProperty(
-                "pipe_progress_index_persist_check_point",
-                String.valueOf(config.getPipeProgressIndexPersistCheckPoint()))));
+                "pipe_progress_index_persist_check_point_gap",
+                String.valueOf(config.getPipeProgressIndexPersistCheckPointGap()))));
 
     config.setPipeAirGapReceiverEnabled(
         Boolean.parseBoolean(
