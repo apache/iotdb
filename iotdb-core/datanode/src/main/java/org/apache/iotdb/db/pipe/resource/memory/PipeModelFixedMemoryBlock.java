@@ -144,7 +144,7 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
     memoryBlocks.forEach(PipeDynamicMemoryBlock::close);
     super.close();
     if (metrics != null) {
-      metrics.deRegister();
+      metrics.deregister();
     }
   }
 
