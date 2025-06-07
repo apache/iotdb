@@ -268,7 +268,7 @@ public class PipeRuntimeMeta {
     for (int i = 0; i < size; ++i) {
       final int taskIndex = ReadWriteIOUtils.readInt(byteBuffer);
       pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
-          ReadWriteIOUtils.readInt(byteBuffer),
+          taskIndex,
           PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_1, byteBuffer, taskIndex));
     }
 
@@ -284,7 +284,7 @@ public class PipeRuntimeMeta {
     for (int i = 0; i < size; ++i) {
       final int taskIndex = ReadWriteIOUtils.readInt(byteBuffer);
       pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
-          ReadWriteIOUtils.readInt(byteBuffer),
+          taskIndex,
           PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_2, byteBuffer, taskIndex));
     }
 
