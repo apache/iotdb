@@ -113,7 +113,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private IoTDBDataNodeAsyncClientManager clientManager;
   private IoTDBDataNodeAsyncClientManager transferTsFileClientManager;
 
-  public AtomicInteger transferTsFileCounter = null;
+  // It is necessary to ensure that other classes that inherit Async Connector will not have NPE
+  public AtomicInteger transferTsFileCounter = new AtomicInteger(0);
 
   private PipeTransferBatchReqBuilder tabletBatchBuilder;
 
