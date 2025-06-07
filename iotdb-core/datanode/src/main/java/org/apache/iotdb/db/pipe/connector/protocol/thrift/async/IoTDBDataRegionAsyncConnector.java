@@ -746,7 +746,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   public int getBatchSize() {
-    return tabletBatchBuilder.size();
+    return Objects.nonNull(tabletBatchBuilder) ? tabletBatchBuilder.size() : 0;
   }
 
   public int getPendingHandlersSize() {
