@@ -22,7 +22,6 @@ package org.apache.iotdb.commons.pipe.agent.task.meta;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -162,7 +161,7 @@ public class PipeTaskMeta {
 
   public ProgressIndex restoreProgressIndex() {
     if (!progressIndexPersistFile.exists() || progressIndexPersistFile.length() == 0) {
-      return MinimumProgressIndex.INSTANCE;
+      return progressIndex.get();
     }
 
     try {
@@ -176,7 +175,6 @@ public class PipeTaskMeta {
             this,
             progressIndexPersistFile.getAbsolutePath());
         this.progressIndex.get().updateToMinimumEqualOrIsAfterProgressIndex(restoredIndex);
-        return progressIndex.get();
       }
     } catch (final IOException e) {
       LOGGER.warn(
@@ -185,7 +183,7 @@ public class PipeTaskMeta {
           progressIndexPersistFile.getAbsolutePath(),
           e);
     }
-    return MinimumProgressIndex.INSTANCE;
+    return progressIndex.get();
   }
 
   public void cancelPersistProgressIndexFuture() {
