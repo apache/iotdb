@@ -249,15 +249,16 @@ public class PipeRuntimeMeta {
     return deserialize(byteBuffer, false);
   }
 
-  public static PipeRuntimeMeta deserialize(final ByteBuffer byteBuffer, final boolean isDataNode) {
+  public static PipeRuntimeMeta deserialize(
+      final ByteBuffer byteBuffer, final boolean needPersist) {
     final byte pipeRuntimeVersionByte = ReadWriteIOUtils.readByte(byteBuffer);
     final PipeRuntimeMetaVersion pipeRuntimeMetaVersion =
         PipeRuntimeMetaVersion.deserialize(pipeRuntimeVersionByte);
     switch (pipeRuntimeMetaVersion) {
       case VERSION_1:
-        return deserializeVersion1(byteBuffer, pipeRuntimeVersionByte, isDataNode);
+        return deserializeVersion1(byteBuffer, pipeRuntimeVersionByte, needPersist);
       case VERSION_2:
-        return deserializeVersion2(byteBuffer, isDataNode);
+        return deserializeVersion2(byteBuffer, needPersist);
       default:
         throw new UnsupportedOperationException(
             "Unknown pipe runtime meta version: " + pipeRuntimeMetaVersion.getVersion());
@@ -265,7 +266,7 @@ public class PipeRuntimeMeta {
   }
 
   private static PipeRuntimeMeta deserializeVersion1(
-      ByteBuffer byteBuffer, byte pipeRuntimeVersionByte, final boolean isDataNode) {
+      ByteBuffer byteBuffer, byte pipeRuntimeVersionByte, final boolean needPersist) {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(pipeRuntimeVersionByte));
@@ -276,14 +277,14 @@ public class PipeRuntimeMeta {
       pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
           taskIndex,
           PipeTaskMeta.deserialize(
-              PipeRuntimeMetaVersion.VERSION_1, byteBuffer, taskIndex, isDataNode));
+              PipeRuntimeMetaVersion.VERSION_1, byteBuffer, taskIndex, needPersist));
     }
 
     return pipeRuntimeMeta;
   }
 
   public static PipeRuntimeMeta deserializeVersion2(
-      ByteBuffer byteBuffer, final boolean isDataNode) {
+      ByteBuffer byteBuffer, final boolean needPersist) {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(byteBuffer)));
@@ -294,7 +295,7 @@ public class PipeRuntimeMeta {
       pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
           taskIndex,
           PipeTaskMeta.deserialize(
-              PipeRuntimeMetaVersion.VERSION_2, byteBuffer, taskIndex, isDataNode));
+              PipeRuntimeMetaVersion.VERSION_2, byteBuffer, taskIndex, needPersist));
     }
 
     size = ReadWriteIOUtils.readInt(byteBuffer);

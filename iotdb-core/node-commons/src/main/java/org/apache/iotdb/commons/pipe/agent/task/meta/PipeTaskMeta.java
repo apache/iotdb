@@ -117,7 +117,8 @@ public class PipeTaskMeta {
     // isRegisterPersistTask is used to avoid multiple threads registering persist task concurrently
     if (Objects.nonNull(progressIndexPersistFile)
         && !isRegisterPersistTask.getAndSet(true)
-        && this.persistProgressIndexFuture == null) {
+        && this.persistProgressIndexFuture == null
+        && PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()) {
       this.persistProgressIndexFuture =
           PipePeriodicalJobExecutor.submitBackgroundJob(
               this::persistProgressIndex, 0, TimeUnit.SECONDS.toMillis(20));
@@ -126,7 +127,8 @@ public class PipeTaskMeta {
     progressIndex.updateAndGet(
         index -> index.updateToMinimumEqualOrIsAfterProgressIndex(updateIndex));
     if (Objects.nonNull(progressIndexPersistFile)
-        && updateCount.incrementAndGet() - lastPersistCount.get() > checkPointGap) {
+        && updateCount.incrementAndGet() - lastPersistCount.get() > checkPointGap
+        && PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()) {
       persistProgressIndex();
     }
     return progressIndex.get();
@@ -143,7 +145,10 @@ public class PipeTaskMeta {
       progressIndex.get().serialize(outputStream);
       // append is false by default.
       FileUtils.writeByteArrayToFile(
-          progressIndexPersistFile, byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+          progressIndexPersistFile,
+          byteArrayOutputStream.getBuf(),
+          0,
+          byteArrayOutputStream.size());
       lastPersistCount.set(updateCount.get());
     } catch (IOException e) {
       LOGGER.warn("Failed to persist progress index {} for {}", progressIndex.get(), this, e);
@@ -239,13 +244,13 @@ public class PipeTaskMeta {
       final PipeRuntimeMetaVersion version,
       final ByteBuffer byteBuffer,
       final int taskIndex,
-      final boolean isDataNode) {
+      final boolean needPersist) {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(byteBuffer);
 
     final int leaderNodeId = ReadWriteIOUtils.readInt(byteBuffer);
 
     final PipeTaskMeta pipeTaskMeta =
-        new PipeTaskMeta(progressIndex, leaderNodeId, taskIndex, isDataNode);
+        new PipeTaskMeta(progressIndex, leaderNodeId, taskIndex, needPersist);
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
@@ -259,14 +264,14 @@ public class PipeTaskMeta {
       final PipeRuntimeMetaVersion version,
       final InputStream inputStream,
       final int taskIndex,
-      final boolean isDataNode)
+      final boolean needPersist)
       throws IOException {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(inputStream);
 
     final int leaderNodeId = ReadWriteIOUtils.readInt(inputStream);
 
     final PipeTaskMeta pipeTaskMeta =
-        new PipeTaskMeta(progressIndex, leaderNodeId, taskIndex, isDataNode);
+        new PipeTaskMeta(progressIndex, leaderNodeId, taskIndex, needPersist);
     final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
