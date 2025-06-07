@@ -47,7 +47,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   private final AtomicLong pollHistoricalTsFileCounter = new AtomicLong(0);
 
-  private AtomicInteger offerTsFileCounter = null;
+  // Need to ensure that NPE does not occur
+  private AtomicInteger offerTsFileCounter = new AtomicInteger(0);
 
   public PipeRealtimePriorityBlockingQueue() {
     super(new PipeDataRegionEventCounter());
