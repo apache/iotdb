@@ -454,6 +454,8 @@ public class PipeConfig {
 
     LOGGER.info("PipeHardlinkBaseDirName: {}", getPipeHardlinkBaseDirName());
     LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());
+    LOGGER.info("PipeProgressIndexPersistDirName: {}", getPipeProgressIndexPersistDirName());
+    LOGGER.info("PipeProgressIndexPersistCheckPoint: {}", getPipeProgressIndexPersistCheckPoint());
     LOGGER.info("PipeHardlinkWALDirName: {}", getPipeHardlinkWALDirName());
     LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
     LOGGER.info("PipeFileReceiverFsyncEnabled: {}", getPipeFileReceiverFsyncEnabled());
