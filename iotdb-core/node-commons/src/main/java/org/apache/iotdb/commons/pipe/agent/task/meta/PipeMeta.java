@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+
 import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
@@ -81,7 +83,9 @@ public class PipeMeta {
 
   public static PipeMeta deserialize4TaskAgent(final ByteBuffer byteBuffer) {
     final PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(byteBuffer);
-    final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
+    final PipeRuntimeMeta runtimeMeta =
+        PipeRuntimeMeta.deserialize(
+            byteBuffer, PipeConfig.getInstance().isPipeProgressIndexPersistEnabled());
     return new PipeMeta(
         staticMeta,
         runtimeMeta,
