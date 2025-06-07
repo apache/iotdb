@@ -38,8 +38,6 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
 
   private volatile long memoryAllocatedInBytes;
 
-  private final PipeMemoryBlockType memoryBlockType;
-
   private final AtomicInteger memoryBlockIdAllocator = new AtomicInteger(0);
 
   private final PipeModelFixedMemoryBlockMetrics metrics;
@@ -51,7 +49,6 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
     super(memoryUsageInBytes);
     this.memoryAllocatedInBytes = 0;
     this.allocationStrategy = allocationStrategy;
-    this.memoryBlockType = memoryBlockType;
     this.metrics =
         PipeResourceMetrics.getInstance().registerFixedMemoryBlockMetrics(memoryBlockType, this);
   }
