@@ -242,7 +242,7 @@ public class PipeMemoryManager {
       long fixedSizeInBytes, PipeMemoryBlockType type)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
-      return new PipeModelFixedMemoryBlock(Long.MAX_VALUE, new ThresholdAllocationStrategy());
+      return new PipeModelFixedMemoryBlock(Long.MAX_VALUE, new ThresholdAllocationStrategy(), type);
     }
 
     if (fixedSizeInBytes == 0) {
@@ -281,7 +281,8 @@ public class PipeMemoryManager {
           return new PipeTsFileMemoryBlock(sizeInBytes);
         case BATCH:
         case WAL:
-          return new PipeModelFixedMemoryBlock(sizeInBytes, new ThresholdAllocationStrategy());
+          return new PipeModelFixedMemoryBlock(
+              sizeInBytes, new ThresholdAllocationStrategy(), type);
         default:
           return new PipeMemoryBlock(sizeInBytes);
       }
@@ -518,7 +519,7 @@ public class PipeMemoryManager {
       case BATCH:
       case WAL:
         returnedMemoryBlock =
-            new PipeModelFixedMemoryBlock(sizeInBytes, new ThresholdAllocationStrategy());
+            new PipeModelFixedMemoryBlock(sizeInBytes, new ThresholdAllocationStrategy(), type);
         break;
       default:
         returnedMemoryBlock = new PipeMemoryBlock(sizeInBytes);
