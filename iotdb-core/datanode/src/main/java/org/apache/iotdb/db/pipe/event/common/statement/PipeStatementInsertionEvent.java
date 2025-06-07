@@ -96,8 +96,7 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(
-      final String holderMessage, final boolean shouldReport) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
           .decreaseRawTabletEventCount(pipeName, creationTime);

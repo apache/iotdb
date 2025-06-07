@@ -100,8 +100,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(
-      final String holderMessage, final boolean shouldReport) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     return true;
   }
 

@@ -313,8 +313,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(
-      final String holderMessage, final boolean shouldReport) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
       if (isWithMod) {
@@ -332,8 +331,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .decreaseTsFileEventCount(
-                pipeName, creationTime, shouldReport, System.nanoTime() - extractTime);
+            .decreaseTsFileEventCount(pipeName, creationTime, System.nanoTime() - extractTime);
       }
     }
   }

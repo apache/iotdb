@@ -61,8 +61,7 @@ public class ProgressReportEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(
-      final String holderMessage, final boolean shouldReport) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     return true;
   }
 

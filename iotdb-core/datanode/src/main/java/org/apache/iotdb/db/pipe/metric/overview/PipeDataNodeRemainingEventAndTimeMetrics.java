@@ -29,7 +29,6 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -105,13 +104,19 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
 
-    final Timer timer =
+    operator.setInsertNodeTransferTimer(
         metricService.getOrCreateTimer(
             Metric.PIPE_INSERT_NODE_EVENT_TRANSFER_TIME.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            operator.getPipeName());
-    operator.setInsertNodeTransferTimer(timer);
+            operator.getPipeName()));
+
+    operator.setTsFileTransferTimer(
+        metricService.getOrCreateTimer(
+            Metric.PIPE_TSFILE_EVENT_TRANSFER_TIME.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            operator.getPipeName()));
   }
 
   public boolean mayRemainingInsertEventExceedLimit(final String pipeID) {
@@ -185,6 +190,11 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         Metric.PIPE_INSERT_NODE_EVENT_TRANSFER_TIME.toString(),
         Tag.NAME.toString(),
         operator.getPipeName());
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_TSFILE_EVENT_TRANSFER_TIME.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName());
     remainingEventAndTimeOperatorMap.remove(pipeID);
   }
 
@@ -227,19 +237,15 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
   }
 
   public void decreaseInsertNodeEventCount(
-      final String pipeName,
-      final long creationTime,
-      final boolean needUpdateTimer,
-      final long transferTime) {
+      final String pipeName, final long creationTime, final long transferTime) {
     PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
     operator.decreaseInsertNodeEventCount();
-    if (needUpdateTimer) {
-      operator.getInsertNodeTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-      PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
-    }
+
+    operator.getInsertNodeTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
+    PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
   }
 
   public void increaseRawTabletEventCount(final String pipeName, final long creationTime) {
@@ -267,20 +273,15 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
   }
 
   public void decreaseTsFileEventCount(
-      final String pipeName,
-      final long creationTime,
-      final boolean needUpdateTimer,
-      final long transferTime) {
+      final String pipeName, final long creationTime, final long transferTime) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
 
     operator.decreaseTsFileEventCount();
-    if (needUpdateTimer) {
-      operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-      PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
-    }
+    operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
+    PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
   }
 
   public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {

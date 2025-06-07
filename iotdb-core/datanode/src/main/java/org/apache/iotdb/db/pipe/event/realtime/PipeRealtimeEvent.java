@@ -157,9 +157,8 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(
-      final String holderMessage, final boolean shouldReport) {
-    return event.internallyDecreaseResourceReferenceCount(holderMessage, shouldReport);
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
+    return event.internallyDecreaseResourceReferenceCount(holderMessage);
   }
 
   @Override

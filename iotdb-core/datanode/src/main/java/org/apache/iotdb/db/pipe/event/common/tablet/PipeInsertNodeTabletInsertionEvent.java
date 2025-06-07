@@ -220,8 +220,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(
-      final String holderMessage, final boolean shouldReport) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
       // release the parsers' memory and close memory block
@@ -242,8 +241,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeAgent.task().decreaseFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .decreaseInsertNodeEventCount(
-                pipeName, creationTime, shouldReport, System.nanoTime() - extractTime);
+            .decreaseInsertNodeEventCount(pipeName, creationTime, System.nanoTime() - extractTime);
       }
     }
   }

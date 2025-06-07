@@ -60,8 +60,7 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
 
   /** This {@link PipeWritePlanEvent} does not share resources with other events. */
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(
-      final String holderMessage, final boolean shouldReport) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     return true;
   }
 
