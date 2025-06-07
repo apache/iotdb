@@ -208,9 +208,10 @@ public class PipeRuntimeMeta {
 
     final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
+      final int taskIndex = ReadWriteIOUtils.readInt(inputStream);
       pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
-          ReadWriteIOUtils.readInt(inputStream),
-          PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_1, inputStream));
+          taskIndex,
+          PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_1, inputStream, taskIndex));
     }
 
     return pipeRuntimeMeta;
@@ -223,9 +224,10 @@ public class PipeRuntimeMeta {
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
+      final int taskIndex = ReadWriteIOUtils.readInt(inputStream);
       pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
-          ReadWriteIOUtils.readInt(inputStream),
-          PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_2, inputStream));
+          taskIndex,
+          PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_2, inputStream, taskIndex));
     }
 
     size = ReadWriteIOUtils.readInt(inputStream);

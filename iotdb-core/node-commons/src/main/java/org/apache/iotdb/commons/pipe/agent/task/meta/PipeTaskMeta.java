@@ -70,7 +70,6 @@ public class PipeTaskMeta {
   private final AtomicLong lastPersistCount = new AtomicLong(0);
   private final long checkPointGap =
       PipeConfig.getInstance().getPipeProgressIndexPersistCheckPointGap();
-  private final int taskIndex;
   private File progressIndexPersistFile;
   private final AtomicBoolean isRegisterPersistTask = new AtomicBoolean(false);
   private Future<?> persistProgressIndexFuture;
@@ -94,7 +93,6 @@ public class PipeTaskMeta {
       final boolean needPersistProgressIndex) {
     this.progressIndex.set(progressIndex);
     this.leaderNodeId.set(leaderNodeId);
-    this.taskIndex = taskIndex;
     // PipeTaskMeta created in configNode doesn't need to persist progress index.
     if (needPersistProgressIndex) {
       this.progressIndexPersistFile =
@@ -230,7 +228,6 @@ public class PipeTaskMeta {
     progressIndex.get().serialize(outputStream);
 
     ReadWriteIOUtils.write(leaderNodeId.get(), outputStream);
-    ReadWriteIOUtils.write(taskIndex, outputStream);
 
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
@@ -239,11 +236,10 @@ public class PipeTaskMeta {
   }
 
   public static PipeTaskMeta deserialize(
-      final PipeRuntimeMetaVersion version, final ByteBuffer byteBuffer) {
+      final PipeRuntimeMetaVersion version, final ByteBuffer byteBuffer, final int taskIndex) {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(byteBuffer);
 
     final int leaderNodeId = ReadWriteIOUtils.readInt(byteBuffer);
-    final int taskIndex = ReadWriteIOUtils.readInt(byteBuffer);
 
     // PipeTaskMeta created from deserialization is used in DataNode, thus need persist
     // progressIndex
@@ -259,11 +255,11 @@ public class PipeTaskMeta {
   }
 
   public static PipeTaskMeta deserialize(
-      final PipeRuntimeMetaVersion version, final InputStream inputStream) throws IOException {
+      final PipeRuntimeMetaVersion version, final InputStream inputStream, final int taskIndex)
+      throws IOException {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(inputStream);
 
     final int leaderNodeId = ReadWriteIOUtils.readInt(inputStream);
-    final int taskIndex = ReadWriteIOUtils.readInt(inputStream);
 
     // PipeTaskMeta created from deserialization is used in DataNode, thus need persist
     // progressIndex
