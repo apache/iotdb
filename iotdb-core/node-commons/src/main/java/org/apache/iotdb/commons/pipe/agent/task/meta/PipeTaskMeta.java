@@ -170,11 +170,12 @@ public class PipeTaskMeta {
       try (final ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(fileData);
           final DataInputStream inputStream = new DataInputStream(byteArrayInputStream)) {
         final ProgressIndex restoredIndex = ProgressIndexType.deserializeFrom(inputStream);
+        progressIndex.get().updateToMinimumEqualOrIsAfterProgressIndex(restoredIndex);
         LOGGER.info(
-            "{} successfully restored progress index from [{}].",
+            "{} successfully restored progress index from [{}], current index: {}",
             this,
-            progressIndexPersistFile.getAbsolutePath());
-        this.progressIndex.get().updateToMinimumEqualOrIsAfterProgressIndex(restoredIndex);
+            progressIndexPersistFile.getAbsolutePath(),
+            progressIndex.get());
       }
     } catch (final IOException e) {
       LOGGER.warn(
