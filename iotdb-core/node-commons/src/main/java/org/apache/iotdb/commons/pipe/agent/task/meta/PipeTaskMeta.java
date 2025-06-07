@@ -71,9 +71,8 @@ public class PipeTaskMeta {
   private final long checkPointGap =
       PipeConfig.getInstance().getPipeProgressIndexPersistCheckPointGap();
   private final int taskIndex;
-  private final File progressIndexPersistFile;
+  private File progressIndexPersistFile;
   private final AtomicBoolean isRegisterPersistTask = new AtomicBoolean(false);
-  private final boolean needPersistProgressIndex;
   private Future<?> persistProgressIndexFuture;
 
   /**
@@ -97,17 +96,18 @@ public class PipeTaskMeta {
     this.leaderNodeId.set(leaderNodeId);
     this.taskIndex = taskIndex;
     // PipeTaskMeta created in configNode doesn't need to persist progress index.
-    this.needPersistProgressIndex = needPersistProgressIndex;
-    this.progressIndexPersistFile =
-        new File(
-            IoTDBConstant.DN_DEFAULT_DATA_DIR
-                + File.separator
-                + IoTDBConstant.SYSTEM_FOLDER_NAME
-                + File.separator
-                + PipeConfig.getInstance().getPipeHardlinkBaseDirName()
-                + File.separator
-                + PipeConfig.getInstance().getPipeProgressIndexPersistDirName(),
-            PREFIX + taskIndex);
+    if (needPersistProgressIndex) {
+      this.progressIndexPersistFile =
+          new File(
+              IoTDBConstant.DN_DEFAULT_DATA_DIR
+                  + File.separator
+                  + IoTDBConstant.SYSTEM_FOLDER_NAME
+                  + File.separator
+                  + PipeConfig.getInstance().getPipeHardlinkBaseDirName()
+                  + File.separator
+                  + PipeConfig.getInstance().getPipeProgressIndexPersistDirName(),
+              PREFIX + taskIndex);
+    }
   }
 
   public ProgressIndex getProgressIndex() {
@@ -117,7 +117,7 @@ public class PipeTaskMeta {
   public ProgressIndex updateProgressIndex(final ProgressIndex updateIndex) {
     // only pipeTaskMeta that need to updateProgressIndex will persist progress index
     // isRegisterPersistTask is used to avoid multiple threads registering persist task concurrently
-    if (needPersistProgressIndex
+    if (Objects.nonNull(progressIndexPersistFile)
         && !isRegisterPersistTask.getAndSet(true)
         && this.persistProgressIndexFuture == null) {
       this.persistProgressIndexFuture =
@@ -127,7 +127,7 @@ public class PipeTaskMeta {
 
     progressIndex.updateAndGet(
         index -> index.updateToMinimumEqualOrIsAfterProgressIndex(updateIndex));
-    if (needPersistProgressIndex
+    if (Objects.nonNull(progressIndexPersistFile)
         && updateCount.incrementAndGet() - lastPersistCount.get() > checkPointGap) {
       persistProgressIndex();
     }
@@ -181,7 +181,7 @@ public class PipeTaskMeta {
   }
 
   public void cancelPersistProgressIndexFuture() {
-    if (needPersistProgressIndex
+    if (Objects.nonNull(progressIndexPersistFile)
         && isRegisterPersistTask.getAndSet(false)
         && persistProgressIndexFuture != null) {
       persistProgressIndexFuture.cancel(false);
