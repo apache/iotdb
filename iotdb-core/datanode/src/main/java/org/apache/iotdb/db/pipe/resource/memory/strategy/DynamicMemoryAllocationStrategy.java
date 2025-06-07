@@ -31,5 +31,5 @@ public interface DynamicMemoryAllocationStrategy {
 
   void dynamicallyAdjustMemory(PipeDynamicMemoryBlock dynamicMemoryBlock);
 
-  double calculateDeficitRatio(PipeDynamicMemoryBlock block);
+  double calculateDeficitRatio(PipeDynamicMemoryBlock block, final boolean withLock);
 }

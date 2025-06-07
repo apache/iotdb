@@ -37,7 +37,7 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
 
   @Override
   public void dynamicallyAdjustMemory(final PipeDynamicMemoryBlock dynamicMemoryBlock) {
-    final double deficitRatio = calculateDeficitRatio(dynamicMemoryBlock);
+    final double deficitRatio = calculateDeficitRatio(dynamicMemoryBlock, true);
     final long oldMemoryUsageInBytes = dynamicMemoryBlock.getMemoryUsageInBytes();
     final long expectedMemory = (long) (oldMemoryUsageInBytes / deficitRatio);
     final double memoryBlockUsageRatio = dynamicMemoryBlock.getMemoryBlockUsageRatio();
@@ -92,7 +92,7 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
             .getMemoryBlocks()
             .mapToDouble(
                 block -> {
-                  double ratio = calculateDeficitRatio(block);
+                  double ratio = calculateDeficitRatio(block, true);
                   if (block.getMemoryUsageInBytes() == 0 || ratio == 0.0) {
                     isMemoryNotEnough.set(true);
                   }
@@ -126,8 +126,8 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
   }
 
   @Override
-  public double calculateDeficitRatio(final PipeDynamicMemoryBlock block) {
-    final Pair<Double, Double> memoryEfficiency = block.getMemoryEfficiency();
+  public double calculateDeficitRatio(final PipeDynamicMemoryBlock block, final boolean withLock) {
+    final Pair<Double, Double> memoryEfficiency = block.getMemoryEfficiency(withLock);
     double pipeDynamicMemoryHistoryWeight = PIPE_CONFIG.getPipeDynamicMemoryHistoryWeight();
     return (1 - pipeDynamicMemoryHistoryWeight) * memoryEfficiency.getRight()
         + pipeDynamicMemoryHistoryWeight * memoryEfficiency.getLeft();

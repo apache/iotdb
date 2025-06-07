@@ -146,6 +146,6 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
   }
 
   public double calculateDeficitRatio(PipeDynamicMemoryBlock memoryBlock) {
-    return allocationStrategy.calculateDeficitRatio(memoryBlock);
+    return allocationStrategy.calculateDeficitRatio(memoryBlock, false);
   }
 }

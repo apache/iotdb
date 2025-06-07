@@ -61,10 +61,13 @@ public class PipeDynamicMemoryBlock {
     this.memoryUsageInBytes = memoryUsageInBytes;
   }
 
-  public Pair<Double, Double> getMemoryEfficiency() {
-    synchronized (fixedMemoryBlock) {
-      return new Pair<>(historyMemoryEfficiency, currentMemoryEfficiency);
+  public Pair<Double, Double> getMemoryEfficiency(final boolean withLock) {
+    if (withLock) {
+      synchronized (fixedMemoryBlock) {
+        return new Pair<>(historyMemoryEfficiency, currentMemoryEfficiency);
+      }
     }
+    return new Pair<>(historyMemoryEfficiency, currentMemoryEfficiency);
   }
 
   public void setExpandable(boolean expandable) {
