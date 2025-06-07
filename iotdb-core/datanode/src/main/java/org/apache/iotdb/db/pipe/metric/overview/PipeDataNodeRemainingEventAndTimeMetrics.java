@@ -151,15 +151,15 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
       LOGGER.warn(
           "Failed to unbind from pipe remaining event and time metrics, RemainingEventAndTimeOperator map not empty");
     }
-    metricService.getOrCreateHistogram(
-        Metric.PIPE_RECEIVE_EVENT.toString(),
-        MetricLevel.IMPORTANT,
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
         Tag.NAME.toString(),
         "insert_node");
 
-    metricService.getOrCreateHistogram(
+    metricService.remove(
+        MetricType.HISTOGRAM,
         Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
-        MetricLevel.IMPORTANT,
         Tag.NAME.toString(),
         "tsfile");
   }
