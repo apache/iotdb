@@ -175,8 +175,8 @@ public class PipeTaskMeta {
             "{} successfully restored progress index from [{}].",
             this,
             progressIndexPersistFile.getAbsolutePath());
-        this.progressIndex.set(restoredIndex);
-        return restoredIndex;
+        this.progressIndex.get().updateToMinimumEqualOrIsAfterProgressIndex(restoredIndex);
+        return progressIndex.get();
       }
     } catch (final IOException e) {
       LOGGER.warn(

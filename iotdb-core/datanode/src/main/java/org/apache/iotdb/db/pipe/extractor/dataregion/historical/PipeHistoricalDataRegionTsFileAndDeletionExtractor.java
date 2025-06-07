@@ -311,21 +311,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
     // progressIndex is immutable in `updateToMinimumEqualOrIsAfterProgressIndex`, so data
     // consistency in `environment.getPipeTaskMeta().getProgressIndex()` is ensured.
+    startIndex = environment.getPipeTaskMeta().restoreProgressIndex();
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-      startIndex =
-          tryToExtractLocalProgressIndexForIoTV2(
-              environment
-                  .getPipeTaskMeta()
-                  .getProgressIndex()
-                  .updateToMinimumEqualOrIsAfterProgressIndex(
-                      environment.getPipeTaskMeta().restoreProgressIndex()));
-    } else {
-      startIndex =
-          environment
-              .getPipeTaskMeta()
-              .getProgressIndex()
-              .updateToMinimumEqualOrIsAfterProgressIndex(
-                  environment.getPipeTaskMeta().restoreProgressIndex());
+      startIndex = tryToExtractLocalProgressIndexForIoTV2(startIndex);
     }
 
     dataRegionId = environment.getRegionId();
