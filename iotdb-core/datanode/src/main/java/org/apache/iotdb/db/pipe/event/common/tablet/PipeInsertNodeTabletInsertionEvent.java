@@ -87,6 +87,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   private ProgressIndex progressIndex;
 
+  private long extractTime = 0;
+
   public PipeInsertNodeTabletInsertionEvent(
       final WALEntryHandler walEntryHandler,
       final PartialPath devicePath,
@@ -154,6 +156,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
+    extractTime = System.nanoTime();
     try {
       PipeDataNodeResourceManager.wal().pin(walEntryHandler);
       if (Objects.nonNull(pipeName)) {
@@ -194,7 +197,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeAgent.task().decreaseFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .decreaseInsertNodeEventCount(pipeName, creationTime);
+            .decreaseInsertNodeEventCount(pipeName, creationTime, System.nanoTime() - extractTime);
       }
     }
   }

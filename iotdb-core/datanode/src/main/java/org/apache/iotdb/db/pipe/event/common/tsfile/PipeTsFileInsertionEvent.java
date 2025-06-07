@@ -67,6 +67,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   private final TsFileResource resource;
   private File tsFile;
+  private long extractTime = 0;
 
   // This is true iff the modFile exists and should be transferred
   private boolean isWithMod;
@@ -249,6 +250,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
+    extractTime = System.nanoTime();
     try {
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
       if (isWithMod) {
@@ -289,7 +291,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .decreaseTsFileEventCount(pipeName, creationTime);
+            .decreaseTsFileEventCount(pipeName, creationTime, System.nanoTime() - extractTime);
       }
     }
   }
