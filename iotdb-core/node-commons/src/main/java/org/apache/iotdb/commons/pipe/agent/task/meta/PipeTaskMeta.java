@@ -143,7 +143,7 @@ public class PipeTaskMeta {
       progressIndex.get().serialize(outputStream);
       // append is false by default.
       FileUtils.writeByteArrayToFile(
-          progressIndexPersistFile, byteArrayOutputStream.toByteArray(), false);
+          progressIndexPersistFile, byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
       lastPersistCount.set(updateCount.get());
     } catch (IOException e) {
       LOGGER.warn("Failed to persist progress index {} for {}", progressIndex.get(), this, e);
