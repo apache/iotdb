@@ -145,8 +145,8 @@ public class PipeTaskMeta {
       return;
     }
 
-    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       progressIndex.get().serialize(outputStream);
       // append is false by default.
       FileUtils.writeByteArrayToFile(
@@ -166,11 +166,11 @@ public class PipeTaskMeta {
     }
 
     try {
-      byte[] fileData = Files.readAllBytes(progressIndexPersistFile.toPath());
+      final byte[] fileData = Files.readAllBytes(progressIndexPersistFile.toPath());
 
-      try (ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(fileData);
-          DataInputStream inputStream = new DataInputStream(byteArrayInputStream)) {
-        ProgressIndex restoredIndex = ProgressIndexType.deserializeFrom(inputStream);
+      try (final ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(fileData);
+          final DataInputStream inputStream = new DataInputStream(byteArrayInputStream)) {
+        final ProgressIndex restoredIndex = ProgressIndexType.deserializeFrom(inputStream);
         LOGGER.info(
             "{} successfully restored progress index from [{}].",
             this,
@@ -178,7 +178,7 @@ public class PipeTaskMeta {
         this.progressIndex.set(restoredIndex);
         return restoredIndex;
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn(
           "{} failed to restore progress index from [{}].",
           this,
