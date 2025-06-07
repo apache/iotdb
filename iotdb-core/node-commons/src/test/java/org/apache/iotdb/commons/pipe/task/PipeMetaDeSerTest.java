@@ -97,22 +97,27 @@ public class PipeMetaDeSerTest {
         new PipeRuntimeMeta(
             new ConcurrentHashMap<Integer, PipeTaskMeta>() {
               {
-                put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987, 1, false));
-                put(234, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789, 1, false));
-                put(345, new PipeTaskMeta(new SimpleProgressIndex(3, 4), 789, 1, false));
-                put(456, new PipeTaskMeta(finalHybridProgressIndex, 789, 1, false));
+                put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987, 123, false));
+                put(234, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789, 234, false));
+                put(345, new PipeTaskMeta(new SimpleProgressIndex(3, 4), 789, 345, false));
+                put(456, new PipeTaskMeta(finalHybridProgressIndex, 789, 456, false));
                 put(
                     567,
                     new PipeTaskMeta(
-                        new RecoverProgressIndex(1, new SimpleProgressIndex(1, 9)), 123, 1, false));
+                        new RecoverProgressIndex(1, new SimpleProgressIndex(1, 9)),
+                        123,
+                        567,
+                        false));
                 put(
                     678,
                     new PipeTaskMeta(
                         new TimeWindowStateProgressIndex(timeSeries2TimestampWindowBufferPairMap),
                         789,
-                        1,
+                        678,
                         false));
-                put(Integer.MIN_VALUE, new PipeTaskMeta(new MetaProgressIndex(987), 0, 1, false));
+                put(
+                    Integer.MIN_VALUE,
+                    new PipeTaskMeta(new MetaProgressIndex(987), 0, Integer.MIN_VALUE, false));
               }
             });
     ByteBuffer runtimeByteBuffer = pipeRuntimeMeta.serialize();
