@@ -524,9 +524,26 @@ public class AggregateProcessor implements PipeProcessor {
       final TsFileInsertionEvent tsFileInsertionEvent, final EventCollector eventCollector)
       throws Exception {
     try {
-      for (final TabletInsertionEvent tabletInsertionEvent :
-          tsFileInsertionEvent.toTabletInsertionEvents()) {
-        process(tabletInsertionEvent, eventCollector);
+      if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+        final AtomicReference<Exception> ex = new AtomicReference<>();
+        ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+            .consumeTabletInsertionEventsWithRetry(
+                event -> {
+                  try {
+                    process(event, eventCollector);
+                  } catch (Exception e) {
+                    ex.set(e);
+                  }
+                },
+                "AggregateProcessor::process");
+        if (ex.get() != null) {
+          throw ex.get();
+        }
+      } else {
+        for (final TabletInsertionEvent tabletInsertionEvent :
+            tsFileInsertionEvent.toTabletInsertionEvents()) {
+          process(tabletInsertionEvent, eventCollector);
+        }
       }
     } finally {
       tsFileInsertionEvent.close();

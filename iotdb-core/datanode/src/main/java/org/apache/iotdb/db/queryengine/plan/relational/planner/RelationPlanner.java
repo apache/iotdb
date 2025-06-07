@@ -39,6 +39,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ClassifierDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.MatchNumberDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.Navigation;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ScalarInputDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
@@ -52,10 +57,24 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Measure;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowsPerMatch;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SkipToPosition;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers.Assignment;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrRowPattern;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.LogicalIndexPointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.MatchNumberValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.RowPatternToIrRewriter;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ScalarValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -75,17 +94,24 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MeasureDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.VariableDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -101,6 +127,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -109,13 +136,18 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.gson.internal.$Gson$Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.NavigationAnchor.LAST;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.NavigationMode.RUNNING;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerce;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.extractPatternRecognitionExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractPredicates;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.CROSS;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.FULL;
@@ -123,6 +155,9 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.INNER;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.LEFT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.Position.PAST_LAST;
+import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
@@ -735,6 +770,279 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     return process(node.getQuery(), context);
   }
 
+  @Override
+  protected RelationPlan visitPatternRecognitionRelation(
+      PatternRecognitionRelation node, Void context) {
+    RelationPlan subPlan = process(node.getInput(), context);
+
+    // Pre-project inputs for PARTITION BY and ORDER BY
+    List<Expression> inputs =
+        ImmutableList.<Expression>builder()
+            .addAll(node.getPartitionBy())
+            .addAll(
+                getSortItemsFromOrderBy(node.getOrderBy()).stream()
+                    .map(SortItem::getSortKey)
+                    .collect(toImmutableList()))
+            .build();
+
+    PlanBuilder planBuilder = newPlanBuilder(subPlan, analysis);
+
+    // no handleSubqueries because subqueries are not allowed here
+    planBuilder = planBuilder.appendProjections(inputs, symbolAllocator, queryContext);
+
+    ImmutableList.Builder<Symbol> outputLayout = ImmutableList.builder();
+    RowsPerMatch rowsPerMatch = mapRowsPerMatch(node.getRowsPerMatch().orElse(ONE));
+    boolean oneRowOutput = rowsPerMatch.isOneRow();
+
+    // Rewrite PARTITION BY
+    ImmutableList.Builder<Symbol> partitionBySymbols = ImmutableList.builder();
+    for (Expression expression : node.getPartitionBy()) {
+      partitionBySymbols.add(planBuilder.translate(expression));
+    }
+    List<Symbol> partitionBy = partitionBySymbols.build();
+
+    // Rewrite ORDER BY
+    LinkedHashMap<Symbol, SortOrder> orderings = new LinkedHashMap<>();
+    for (SortItem item : getSortItemsFromOrderBy(node.getOrderBy())) {
+      Symbol symbol = planBuilder.translate(item.getSortKey());
+      // don't override existing keys, i.e. when "ORDER BY a ASC, a DESC" is specified
+      orderings.putIfAbsent(symbol, sortItemToSortOrder(item));
+    }
+
+    Optional<OrderingScheme> orderingScheme = Optional.empty();
+    if (!orderings.isEmpty()) {
+      orderingScheme =
+          Optional.of(new OrderingScheme(ImmutableList.copyOf(orderings.keySet()), orderings));
+    }
+
+    outputLayout.addAll(partitionBy);
+    if (!oneRowOutput) {
+      getSortItemsFromOrderBy(node.getOrderBy()).stream()
+          .map(SortItem::getSortKey)
+          .map(planBuilder::translate)
+          .forEach(outputLayout::add);
+    }
+
+    planBuilder =
+        subqueryPlanner.handleSubqueries(
+            planBuilder,
+            extractPatternRecognitionExpressions(node.getVariableDefinitions(), node.getMeasures()),
+            analysis.getSubqueries(node));
+
+    PatternRecognitionComponents components =
+        planPatternRecognitionComponents(
+            planBuilder.getTranslations(),
+            node.getSubsets(),
+            node.getMeasures(),
+            node.getAfterMatchSkipTo(),
+            node.getPattern(),
+            node.getVariableDefinitions());
+
+    outputLayout.addAll(components.getMeasureOutputs());
+
+    if (!oneRowOutput) {
+      Set<Symbol> inputSymbolsOnOutput = ImmutableSet.copyOf(outputLayout.build());
+      subPlan.getFieldMappings().stream()
+          .filter(symbol -> !inputSymbolsOnOutput.contains(symbol))
+          .forEach(outputLayout::add);
+    }
+
+    PatternRecognitionNode planNode =
+        new PatternRecognitionNode(
+            idAllocator.genPlanNodeId(),
+            planBuilder.getRoot(),
+            partitionBy,
+            orderingScheme,
+            Optional.empty(),
+            components.getMeasures(),
+            rowsPerMatch,
+            components.getSkipToLabels(),
+            components.getSkipToPosition(),
+            components.getPattern(),
+            components.getVariableDefinitions());
+
+    return new RelationPlan(planNode, analysis.getScope(node), outputLayout.build(), outerContext);
+  }
+
+  private RowsPerMatch mapRowsPerMatch(PatternRecognitionRelation.RowsPerMatch rowsPerMatch) {
+    switch (rowsPerMatch) {
+      case ONE:
+        return RowsPerMatch.ONE;
+      case ALL_SHOW_EMPTY:
+        return RowsPerMatch.ALL_SHOW_EMPTY;
+      case ALL_OMIT_EMPTY:
+        return RowsPerMatch.ALL_OMIT_EMPTY;
+      case ALL_WITH_UNMATCHED:
+        return RowsPerMatch.ALL_WITH_UNMATCHED;
+      default:
+        throw new IllegalArgumentException("Unexpected value: " + rowsPerMatch);
+    }
+  }
+
+  public PatternRecognitionComponents planPatternRecognitionComponents(
+      TranslationMap translations,
+      List<SubsetDefinition> subsets,
+      List<MeasureDefinition> measures,
+      Optional<SkipTo> skipTo,
+      RowPattern pattern,
+      List<VariableDefinition> variableDefinitions) {
+    // NOTE: There might be aggregate functions in measure definitions and variable definitions.
+    // They are handled different than top level aggregations in a query:
+    // 1. Their arguments are not pre-projected and replaced with single symbols. This is because
+    // the arguments might
+    //    not be eligible for pre-projection, when they contain references to CLASSIFIER() or
+    // MATCH_NUMBER() functions
+    //    which are evaluated at runtime. If some aggregation arguments can be pre-projected, it
+    // will be done in the
+    //    Optimizer.
+    // 2. Their arguments do not need to be coerced by hand. Since the pattern aggregation arguments
+    // are rewritten as
+    //    parts of enclosing expressions, and not as standalone expressions, all necessary coercions
+    // will be applied by the
+    //    TranslationMap.
+
+    // rewrite subsets
+    ImmutableMap.Builder<IrLabel, Set<IrLabel>> rewrittenSubsetsBuilder = ImmutableMap.builder();
+    for (SubsetDefinition subsetDefinition : subsets) {
+      String label = analysis.getResolvedLabel(subsetDefinition.getName());
+      Set<IrLabel> elements =
+          analysis.getSubsetLabels(subsetDefinition).stream()
+              .map(IrLabel::new)
+              .collect(toImmutableSet());
+      rewrittenSubsetsBuilder.put(new IrLabel(label), elements);
+    }
+    Map<IrLabel, Set<IrLabel>> rewrittenSubsets = rewrittenSubsetsBuilder.buildOrThrow();
+
+    // rewrite measures
+    ImmutableMap.Builder<Symbol, Measure> rewrittenMeasures = ImmutableMap.builder();
+    ImmutableList.Builder<Symbol> measureOutputs = ImmutableList.builder();
+
+    for (MeasureDefinition definition : measures) {
+      Type type = analysis.getType(definition.getExpression());
+      Symbol symbol = symbolAllocator.newSymbol(definition.getName().getValue(), type);
+      ExpressionAndValuePointers measure =
+          planPatternRecognitionExpression(
+              translations,
+              rewrittenSubsets,
+              definition.getName().getValue(),
+              definition.getExpression());
+      rewrittenMeasures.put(symbol, new Measure(measure, type));
+      measureOutputs.add(symbol);
+    }
+
+    // rewrite variable definitions
+    ImmutableMap.Builder<IrLabel, ExpressionAndValuePointers> rewrittenVariableDefinitions =
+        ImmutableMap.builder();
+    for (VariableDefinition definition : variableDefinitions) {
+      String label = analysis.getResolvedLabel(definition.getName());
+      ExpressionAndValuePointers variable =
+          planPatternRecognitionExpression(
+              translations,
+              rewrittenSubsets,
+              definition.getName().getValue(),
+              definition.getExpression());
+      rewrittenVariableDefinitions.put(new IrLabel(label), variable);
+    }
+    // add `true` definition for undefined labels
+    for (String label : analysis.getUndefinedLabels(pattern)) {
+      IrLabel irLabel = new IrLabel(label);
+      rewrittenVariableDefinitions.put(irLabel, ExpressionAndValuePointers.TRUE);
+    }
+
+    Set<IrLabel> skipToLabels =
+        skipTo
+            .flatMap(SkipTo::getIdentifier)
+            .map(Identifier::getValue)
+            .map(
+                label ->
+                    rewrittenSubsets.getOrDefault(
+                        new IrLabel(label), ImmutableSet.of(new IrLabel(label))))
+            .orElse(ImmutableSet.of());
+
+    return new PatternRecognitionComponents(
+        rewrittenMeasures.buildOrThrow(),
+        measureOutputs.build(),
+        skipToLabels,
+        mapSkipToPosition(skipTo.map(SkipTo::getPosition).orElse(PAST_LAST)),
+        RowPatternToIrRewriter.rewrite(pattern, analysis),
+        rewrittenVariableDefinitions.buildOrThrow());
+  }
+
+  private ExpressionAndValuePointers planPatternRecognitionExpression(
+      TranslationMap translations,
+      Map<IrLabel, Set<IrLabel>> subsets,
+      String name,
+      Expression expression) {
+    Map<NodeRef<Expression>, Symbol> patternVariableTranslations = new HashMap<>();
+
+    ImmutableList.Builder<Assignment> assignments = ImmutableList.builder();
+    for (PatternRecognitionAnalysis.PatternFunctionAnalysis accessor :
+        analysis.getPatternInputsAnalysis(expression)) {
+      ValuePointer pointer;
+      if (accessor.getDescriptor() instanceof MatchNumberDescriptor) {
+        pointer = new MatchNumberValuePointer();
+      } else if (accessor.getDescriptor() instanceof ClassifierDescriptor) {
+        ClassifierDescriptor descriptor = (ClassifierDescriptor) accessor.getDescriptor();
+        pointer =
+            new ClassifierValuePointer(
+                planValuePointer(descriptor.getLabel(), descriptor.getNavigation(), subsets));
+      } else if (accessor.getDescriptor() instanceof ScalarInputDescriptor) {
+        ScalarInputDescriptor descriptor = (ScalarInputDescriptor) accessor.getDescriptor();
+        pointer =
+            new ScalarValuePointer(
+                planValuePointer(descriptor.getLabel(), descriptor.getNavigation(), subsets),
+                Symbol.from(translations.rewrite(accessor.getExpression())));
+      } else {
+        throw new IllegalArgumentException(
+            "Unexpected descriptor type: " + accessor.getDescriptor().getClass().getName());
+      }
+
+      Symbol symbol = symbolAllocator.newSymbol(name, analysis.getType(accessor.getExpression()));
+      assignments.add(new Assignment(symbol, pointer));
+
+      patternVariableTranslations.put(NodeRef.of(accessor.getExpression()), symbol);
+    }
+
+    Expression rewritten =
+        translations
+            .withAdditionalIdentityMappings(patternVariableTranslations)
+            .rewrite(expression);
+
+    return new ExpressionAndValuePointers(rewritten, assignments.build());
+  }
+
+  private Set<IrLabel> planLabels(Optional<String> label, Map<IrLabel, Set<IrLabel>> subsets) {
+    return label
+        .map(IrLabel::new)
+        .map(value -> subsets.getOrDefault(value, ImmutableSet.of(value)))
+        .orElse(ImmutableSet.of());
+  }
+
+  private LogicalIndexPointer planValuePointer(
+      Optional<String> label, Navigation navigation, Map<IrLabel, Set<IrLabel>> subsets) {
+    return new LogicalIndexPointer(
+        planLabels(label, subsets),
+        navigation.getAnchor() == LAST,
+        navigation.getMode() == RUNNING,
+        navigation.getLogicalOffset(),
+        navigation.getPhysicalOffset());
+  }
+
+  private SkipToPosition mapSkipToPosition(SkipTo.Position position) {
+    switch (position) {
+      case NEXT:
+        return SkipToPosition.NEXT;
+      case PAST_LAST:
+        return SkipToPosition.PAST_LAST;
+      case FIRST:
+        return SkipToPosition.FIRST;
+      case LAST:
+        return SkipToPosition.LAST;
+      default:
+        throw new IllegalArgumentException("Unexpected value: " + position);
+    }
+  }
+
   // ================================ Implemented later =====================================
 
   @Override
@@ -1022,6 +1330,54 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         measurements[j] = null;
         measurementSchemas[j] = null;
       }
+    }
+  }
+
+  public static class PatternRecognitionComponents {
+    private final Map<Symbol, Measure> measures;
+    private final List<Symbol> measureOutputs;
+    private final Set<IrLabel> skipToLabels;
+    private final SkipToPosition skipToPosition;
+    private final IrRowPattern pattern;
+    private final Map<IrLabel, ExpressionAndValuePointers> variableDefinitions;
+
+    public PatternRecognitionComponents(
+        Map<Symbol, Measure> measures,
+        List<Symbol> measureOutputs,
+        Set<IrLabel> skipToLabels,
+        SkipToPosition skipToPosition,
+        IrRowPattern pattern,
+        Map<IrLabel, ExpressionAndValuePointers> variableDefinitions) {
+      this.measures = requireNonNull(measures, "measures is null");
+      this.measureOutputs = requireNonNull(measureOutputs, "measureOutputs is null");
+      this.skipToLabels = ImmutableSet.copyOf(skipToLabels);
+      this.skipToPosition = requireNonNull(skipToPosition, "skipToPosition is null");
+      this.pattern = requireNonNull(pattern, "pattern is null");
+      this.variableDefinitions = requireNonNull(variableDefinitions, "variableDefinitions is null");
+    }
+
+    public Map<Symbol, Measure> getMeasures() {
+      return measures;
+    }
+
+    public List<Symbol> getMeasureOutputs() {
+      return measureOutputs;
+    }
+
+    public Set<IrLabel> getSkipToLabels() {
+      return skipToLabels;
+    }
+
+    public SkipToPosition getSkipToPosition() {
+      return skipToPosition;
+    }
+
+    public IrRowPattern getPattern() {
+      return pattern;
+    }
+
+    public Map<IrLabel, ExpressionAndValuePointers> getVariableDefinitions() {
+      return variableDefinitions;
     }
   }
 }

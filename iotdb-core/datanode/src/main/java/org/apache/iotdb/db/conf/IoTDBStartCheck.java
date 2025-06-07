@@ -115,7 +115,6 @@ public class IoTDBStartCheck {
     return IoTDBConfigCheckHolder.INSTANCE;
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     IoTDBConfigCheckHolder.INSTANCE = new IoTDBStartCheck();
   }
@@ -164,7 +163,6 @@ public class IoTDBStartCheck {
    * accessing same director.
    */
   public void checkDirectory() throws ConfigurationException, IOException {
-    // check data dirs TODO(zhm) only check local directories
     for (String dataDir : config.getLocalDataDirs()) {
       DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
     }
