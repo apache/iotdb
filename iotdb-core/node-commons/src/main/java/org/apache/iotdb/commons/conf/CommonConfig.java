@@ -1241,6 +1241,18 @@ public class CommonConfig {
         pipeProgressIndexPersistCheckPointGap);
   }
 
+  public long getPipeProgressIndexFlushIntervalMs() {
+    return pipeProgressIndexFlushIntervalMs;
+  }
+
+  public void setPipeProgressIndexFlushIntervalMs(long pipeProgressIndexFlushIntervalMs) {
+    if (this.pipeProgressIndexFlushIntervalMs == pipeProgressIndexFlushIntervalMs) {
+      return;
+    }
+    this.pipeProgressIndexFlushIntervalMs = pipeProgressIndexFlushIntervalMs;
+    logger.info("pipeProgressIndexFlushIntervalMs is set to {}.", pipeProgressIndexFlushIntervalMs);
+  }
+
   public long getPipeConnectorRetryIntervalMs() {
     return pipeConnectorRetryIntervalMs;
   }

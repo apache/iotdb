@@ -52,7 +52,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -121,7 +120,13 @@ public class PipeTaskMeta {
         && PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()) {
       this.persistProgressIndexFuture =
           PipePeriodicalJobExecutor.submitBackgroundJob(
-              this::persistProgressIndex, 0, TimeUnit.SECONDS.toMillis(20));
+              () -> {
+                if (PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()) {
+                  persistProgressIndex();
+                }
+              },
+              0,
+              PipeConfig.getInstance().getPipeProgressIndexFlushIntervalMs());
     }
 
     progressIndex.updateAndGet(

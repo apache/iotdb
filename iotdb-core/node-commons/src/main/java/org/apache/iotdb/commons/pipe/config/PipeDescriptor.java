@@ -110,6 +110,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_progress_index_persist_check_point_gap",
                 String.valueOf(config.getPipeProgressIndexPersistCheckPointGap()))));
+    config.setPipeProgressIndexFlushIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_progress_index_flush_interval_ms",
+                String.valueOf(config.getPipeProgressIndexFlushIntervalMs()))));
 
     config.setPipeAirGapReceiverEnabled(
         Boolean.parseBoolean(
