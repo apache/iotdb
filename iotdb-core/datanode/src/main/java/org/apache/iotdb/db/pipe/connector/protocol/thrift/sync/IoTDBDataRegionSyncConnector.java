@@ -590,7 +590,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   }
 
   public int getBatchSize() {
-    return tabletBatchBuilder.size();
+    return Objects.nonNull(tabletBatchBuilder) ? tabletBatchBuilder.size() : 0;
   }
 
   @Override
