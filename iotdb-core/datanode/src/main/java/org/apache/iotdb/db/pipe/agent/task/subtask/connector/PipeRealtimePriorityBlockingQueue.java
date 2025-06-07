@@ -47,6 +47,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   private final AtomicLong pollHistoricalTsFileCounter = new AtomicLong(0);
 
+  // Need to ensure that NPE does not occur
+  private AtomicInteger offerTsFileCounter = new AtomicInteger(0);
+
   public PipeRealtimePriorityBlockingQueue() {
     super(new PipeDataRegionEventCounter());
   }
@@ -85,18 +88,22 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     Event event = null;
     final int pollHistoricalTsFileThreshold =
         PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
+    final int realTimeQueueMaxWaitingTsFileSize =
+        PIPE_CONFIG.getPipeRealTimeQueueMaxWaitingTsFileSize();
 
-    if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()) {
+    if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()
+        && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
       event =
           pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
               ? tsfileInsertEventDeque.pollFirst()
               : tsfileInsertEventDeque.pollLast();
       pollTsFileCounter.set(0);
     }
+
     if (Objects.isNull(event)) {
       // Sequentially poll the first offered non-TsFileInsertionEvent
       event = super.directPoll();
-      if (Objects.isNull(event)) {
+      if (Objects.isNull(event) && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
         event =
             pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
                 ? tsfileInsertEventDeque.pollFirst()
@@ -126,8 +133,11 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     Event event = null;
     final int pollHistoricalTsFileThreshold =
         PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
+    final int realTimeQueueMaxWaitingTsFileSize =
+        PIPE_CONFIG.getPipeRealTimeQueueMaxWaitingTsFileSize();
 
-    if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()) {
+    if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()
+        && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
       event =
           pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
               ? tsfileInsertEventDeque.pollFirst()
@@ -149,7 +159,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     }
 
     // If no event is available, block until an event is available
-    if (Objects.isNull(event)) {
+    if (Objects.isNull(event) && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
       event = super.waitedPoll();
       if (Objects.isNull(event)) {
         event =
@@ -232,5 +242,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public int getTsFileInsertionEventCount() {
     return tsfileInsertEventDeque.size();
+  }
+
+  public void setOfferTsFileCounter(AtomicInteger offerTsFileCounter) {
+    this.offerTsFileCounter = offerTsFileCounter;
   }
 }
