@@ -167,7 +167,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(
+      final String holderMessage, final boolean shouldReport) {
     try {
       resourceManager.decreaseSnapshotReference(snapshotPath);
       if (!templateFilePath.isEmpty()) {

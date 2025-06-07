@@ -106,7 +106,8 @@ public class PipeTerminateEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(
+      final String holderMessage, final boolean shouldReport) {
     return true;
   }
 

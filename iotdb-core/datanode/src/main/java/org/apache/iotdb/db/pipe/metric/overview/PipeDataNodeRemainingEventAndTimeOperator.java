@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
 import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.codahale.metrics.Clock;
@@ -35,6 +37,7 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -54,6 +57,9 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private final IoTDBHistogram collectInvocationHistogram =
       (IoTDBHistogram) IoTDBMetricManager.getInstance().createHistogram();
 
+  private Timer insertNodeTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer tsfileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
   private volatile long lastInsertNodeEventCountSmoothingTime = Long.MIN_VALUE;
   private final Meter insertNodeEventCountMeter =
       new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
@@ -71,8 +77,9 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     insertNodeEventCount.incrementAndGet();
   }
 
-  void decreaseInsertNodeEventCount() {
+  void decreaseInsertNodeEventCount(final boolean needUpdateTimer, final long transferTime) {
     insertNodeEventCount.decrementAndGet();
+    if (needUpdateTimer) insertNodeTransferTimer.update(transferTime, TimeUnit.NANOSECONDS);
   }
 
   void increaseRawTabletEventCount() {
@@ -228,6 +235,14 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   void markTsFileCollectInvocationCount(final long collectInvocationCount) {
     // If collectInvocationCount == 0, the event will still be committed once
     collectInvocationHistogram.update(Math.max(collectInvocationCount, 1));
+  }
+
+  public void setInsertNodeTransferTimer(Timer insertNodeTransferTimer) {
+    this.insertNodeTransferTimer = insertNodeTransferTimer;
+  }
+
+  public Timer getInsertNodeTransferTimer() {
+    return insertNodeTransferTimer;
   }
 
   //////////////////////////// Switch ////////////////////////////

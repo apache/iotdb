@@ -27,6 +27,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -83,6 +84,14 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
+
+    final Timer timer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_INSERT_NODE_EVENT_TRANSFER_TIME.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            operator.getPipeName());
+    operator.setInsertNodeTransferTimer(timer);
   }
 
   public boolean mayRemainingInsertEventExceedLimit(final String pipeID) {
@@ -140,6 +149,11 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_INSERT_NODE_EVENT_TRANSFER_TIME.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName());
     remainingEventAndTimeOperatorMap.remove(pipeID);
   }
 
@@ -181,12 +195,16 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         .increaseInsertNodeEventCount();
   }
 
-  public void decreaseInsertNodeEventCount(final String pipeName, final long creationTime) {
+  public void decreaseInsertNodeEventCount(
+      final String pipeName,
+      final long creationTime,
+      final boolean needUpdateTimer,
+      final long transferTime) {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .decreaseInsertNodeEventCount();
+        .decreaseInsertNodeEventCount(needUpdateTimer, transferTime);
   }
 
   public void increaseRawTabletEventCount(final String pipeName, final long creationTime) {

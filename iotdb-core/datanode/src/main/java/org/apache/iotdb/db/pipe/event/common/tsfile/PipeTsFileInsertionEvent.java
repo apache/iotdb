@@ -77,6 +77,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   private final TsFileResource resource;
   private File tsFile;
+  private long extractTime = 0;
 
   // This is true iff the modFile exists and should be transferred
   private boolean isWithMod;
@@ -311,7 +312,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(
+      final String holderMessage, final boolean shouldReport) {
     try {
       PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
       if (isWithMod) {

@@ -100,7 +100,8 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(
+      final String holderMessage, final boolean shouldReport) {
     // PipeName == null indicates that the event is the raw event at disruptor,
     // not the event copied and passed to the extractor
     if (Objects.nonNull(pipeName)) {

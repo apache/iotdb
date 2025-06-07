@@ -66,8 +66,9 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
-    return enrichedEvent.internallyDecreaseResourceReferenceCount(holderMessage);
+  public boolean internallyDecreaseResourceReferenceCount(
+      final String holderMessage, final boolean shouldReport) {
+    return enrichedEvent.internallyDecreaseResourceReferenceCount(holderMessage, shouldReport);
   }
 
   @Override

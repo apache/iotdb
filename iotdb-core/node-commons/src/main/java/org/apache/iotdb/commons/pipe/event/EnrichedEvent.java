@@ -202,7 +202,7 @@ public abstract class EnrichedEvent implements Event {
 
     if (referenceCount.get() == 1) {
       // We assume that this function will not throw any exceptions.
-      if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
+      if (!internallyDecreaseResourceReferenceCount(holderMessage, shouldReport)) {
         LOGGER.warn(
             "resource reference count is decreased to 0, but failed to release the resource, EnrichedEvent: {}, stack trace: {}",
             coreReportMessage(),
@@ -256,7 +256,7 @@ public abstract class EnrichedEvent implements Event {
     if (referenceCount.get() >= 1) {
       shouldReportOnCommit = false;
       // We assume that this function will not throw any exceptions.
-      if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
+      if (!internallyDecreaseResourceReferenceCount(holderMessage, false)) {
         LOGGER.warn(
             "resource reference count is decreased to 0, but failed to release the resource, EnrichedEvent: {}, stack trace: {}",
             coreReportMessage(),
@@ -280,7 +280,8 @@ public abstract class EnrichedEvent implements Event {
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
    *     {@code true} otherwise
    */
-  public abstract boolean internallyDecreaseResourceReferenceCount(final String holderMessage);
+  public abstract boolean internallyDecreaseResourceReferenceCount(
+      final String holderMessage, final boolean shouldReport);
 
   protected void reportProgress() {
     if (pipeTaskMeta != null) {
