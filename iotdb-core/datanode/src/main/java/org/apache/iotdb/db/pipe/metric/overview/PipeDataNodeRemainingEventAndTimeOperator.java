@@ -37,7 +37,6 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -77,9 +76,8 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     insertNodeEventCount.incrementAndGet();
   }
 
-  void decreaseInsertNodeEventCount(final boolean needUpdateTimer, final long transferTime) {
+  void decreaseInsertNodeEventCount() {
     insertNodeEventCount.decrementAndGet();
-    if (needUpdateTimer) insertNodeTransferTimer.update(transferTime, TimeUnit.NANOSECONDS);
   }
 
   void increaseRawTabletEventCount() {
@@ -243,6 +241,14 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   public Timer getInsertNodeTransferTimer() {
     return insertNodeTransferTimer;
+  }
+
+  public void setTsFileTransferTimer(Timer tsFileTransferTimer) {
+    this.tsfileTransferTimer = tsFileTransferTimer;
+  }
+
+  public Timer getTsFileTransferTimer() {
+    return tsfileTransferTimer;
   }
 
   //////////////////////////// Switch ////////////////////////////

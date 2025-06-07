@@ -331,7 +331,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .decreaseTsFileEventCount(pipeName, creationTime);
+            .decreaseTsFileEventCount(
+                pipeName, creationTime, shouldReport, System.nanoTime() - extractTime);
       }
     }
   }
