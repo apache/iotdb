@@ -55,7 +55,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
   private static Histogram PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  private static Histogram PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM =
+  private static Histogram PIPE_DATANODE_EVENT_TRANSFER_TIME_HISTOGRAM =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
@@ -65,13 +65,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     this.metricService = metricService;
     PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM =
         metricService.getOrCreateHistogram(
-            Metric.PIPE_DATANODE_INSERT_NODE_EVENT_TRANSFER.toString(),
+            Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "insert_node");
-    PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM =
+    PIPE_DATANODE_EVENT_TRANSFER_TIME_HISTOGRAM =
         metricService.getOrCreateHistogram(
-            Metric.PIPE_DATANODE_TSFILE_EVENT_TRANSFER.toString(),
+            Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "tsfile");
@@ -152,13 +152,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
           "Failed to unbind from pipe remaining event and time metrics, RemainingEventAndTimeOperator map not empty");
     }
     metricService.getOrCreateHistogram(
-        Metric.PIPE_DATANODE_INSERT_NODE_EVENT_TRANSFER.toString(),
+        Metric.PIPE_RECEIVE_EVENT.toString(),
         MetricLevel.IMPORTANT,
         Tag.NAME.toString(),
         "insert_node");
 
     metricService.getOrCreateHistogram(
-        Metric.PIPE_DATANODE_TSFILE_EVENT_TRANSFER.toString(),
+        Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
         MetricLevel.IMPORTANT,
         Tag.NAME.toString(),
         "tsfile");
@@ -281,7 +281,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
     operator.decreaseTsFileEventCount();
     operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-    PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
+    PIPE_DATANODE_EVENT_TRANSFER_TIME_HISTOGRAM.update(transferTime);
   }
 
   public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {
