@@ -616,7 +616,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap.put(
                                   consensusGroupId.getId(),
-                                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
+                                  new PipeTaskMeta(
+                                      MinimumProgressIndex.INSTANCE,
+                                      newLeader,
+                                      consensusGroupId.getId(),
+                                      false));
                             }
                             // else:
                             // "The pipe task meta does not contain the data region group {} or
@@ -790,6 +794,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
                   // Mark the status of the pipe with exception as stopped
                   runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+                  runtimeMeta.onSetPipeDroppedOrStopped();
                   runtimeMeta.setIsStoppedByRuntimeException(true);
 
                   final Map<Integer, PipeRuntimeException> exceptionMap =
