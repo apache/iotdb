@@ -46,6 +46,22 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeHardlinkTsFileDirName();
   }
 
+  public String getPipeProgressIndexPersistDirName() {
+    return COMMON_CONFIG.getPipeProgressIndexPersistDirName();
+  }
+
+  public boolean isPipeProgressIndexPersistEnabled() {
+    return COMMON_CONFIG.isPipeProgressIndexPersistEnabled();
+  }
+
+  public long getPipeProgressIndexPersistCheckPointGap() {
+    return COMMON_CONFIG.getPipeProgressIndexPersistCheckPointGap();
+  }
+
+  public long getPipeProgressIndexFlushIntervalMs() {
+    return COMMON_CONFIG.getPipeProgressIndexFlushIntervalMs();
+  }
+
   public String getPipeHardlinkWALDirName() {
     return COMMON_CONFIG.getPipeHardlinkWALDirName();
   }
@@ -458,6 +474,11 @@ public class PipeConfig {
 
     LOGGER.info("PipeHardlinkBaseDirName: {}", getPipeHardlinkBaseDirName());
     LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());
+    LOGGER.info("PipeProgressIndexPersistDirName: {}", getPipeProgressIndexPersistDirName());
+    LOGGER.info("PipeProgressIndexPersistEnabled: {}", isPipeProgressIndexPersistEnabled());
+    LOGGER.info(
+        "PipeProgressIndexPersistCheckPointGap: {}", getPipeProgressIndexPersistCheckPointGap());
+    LOGGER.info("PipeProgressIndexFlushIntervalMs: {}", getPipeProgressIndexFlushIntervalMs());
     LOGGER.info("PipeHardlinkWALDirName: {}", getPipeHardlinkWALDirName());
     LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
     LOGGER.info("PipeFileReceiverFsyncEnabled: {}", getPipeFileReceiverFsyncEnabled());

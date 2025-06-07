@@ -30,38 +30,23 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 public class PipeModelFixedMemoryBlockMetrics {
 
-  private final AbstractMetricService metricService;
-
   private final PipeModelFixedMemoryBlock fixedMemoryBlock;
 
   private final PipeMemoryBlockType memoryBlockType;
 
+  private AbstractMetricService metricService;
+
   public PipeModelFixedMemoryBlockMetrics(
-      PipeMemoryBlockType type,
-      AbstractMetricService metricService,
-      PipeModelFixedMemoryBlock fixedMemoryBlock) {
+      PipeMemoryBlockType type, PipeModelFixedMemoryBlock fixedMemoryBlock) {
     this.memoryBlockType = type;
     this.fixedMemoryBlock = fixedMemoryBlock;
-    this.metricService = metricService;
-
-    metricService.createAutoGauge(
-        Metric.PIPE_FIXED_MEMORY_TOTAL_MEMORY.toString(),
-        MetricLevel.IMPORTANT,
-        fixedMemoryBlock,
-        PipeModelFixedMemoryBlock::getMemoryUsageInBytes,
-        Tag.NAME.toString(),
-        type.name());
-
-    metricService.createAutoGauge(
-        Metric.PIPE_FIXED_MEMORY_ALLOCATED_MEMORY.toString(),
-        MetricLevel.IMPORTANT,
-        fixedMemoryBlock,
-        PipeModelFixedMemoryBlock::getMemoryUsageInBytes,
-        Tag.NAME.toString(),
-        type.name());
   }
 
   public void registerDynamicMemoryBlockGauge(PipeDynamicMemoryBlock dynamicMemoryBlock) {
+    if (dynamicMemoryBlock == null) {
+      return;
+    }
+
     metricService.createAutoGauge(
         Metric.PIPE_MODEL_DYNAMIC_MEMORY_BLOCK_MEMORY_SIZE.toString(),
         MetricLevel.IMPORTANT,
@@ -80,6 +65,10 @@ public class PipeModelFixedMemoryBlockMetrics {
   }
 
   public void deregisterDynamicMemoryBlockGauge(PipeDynamicMemoryBlock dynamicMemoryBlock) {
+    if (metricService == null) {
+      return;
+    }
+
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_MODEL_DYNAMIC_MEMORY_BLOCK_MEMORY_SIZE.toString(),
@@ -93,7 +82,33 @@ public class PipeModelFixedMemoryBlockMetrics {
         String.valueOf(dynamicMemoryBlock.getId()));
   }
 
-  public void deRegister() {
+  public void register(final AbstractMetricService metricService) {
+    metricService.createAutoGauge(
+        Metric.PIPE_FIXED_MEMORY_TOTAL_MEMORY.toString(),
+        MetricLevel.IMPORTANT,
+        fixedMemoryBlock,
+        PipeModelFixedMemoryBlock::getMemoryUsageInBytes,
+        Tag.NAME.toString(),
+        memoryBlockType.name());
+
+    metricService.createAutoGauge(
+        Metric.PIPE_FIXED_MEMORY_ALLOCATED_MEMORY.toString(),
+        MetricLevel.IMPORTANT,
+        fixedMemoryBlock,
+        PipeModelFixedMemoryBlock::getMemoryUsageInBytes,
+        Tag.NAME.toString(),
+        memoryBlockType.name());
+
+    this.metricService = metricService;
+
+    fixedMemoryBlock.getMemoryBlocks().forEach(this::registerDynamicMemoryBlockGauge);
+  }
+
+  public void deregister() {
+    if (metricService == null) {
+      return;
+    }
+
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_FIXED_MEMORY_TOTAL_MEMORY.toString(),

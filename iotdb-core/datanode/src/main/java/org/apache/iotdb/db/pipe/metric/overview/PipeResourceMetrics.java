@@ -33,6 +33,9 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 public class PipeResourceMetrics implements IMetricSet {
 
   private static final String PIPE_USED_MEMORY = "PipeUsedMemory";
@@ -44,6 +47,9 @@ public class PipeResourceMetrics implements IMetricSet {
   private static final String PIPE_TOTAL_MEMORY = "PipeTotalMemory";
 
   private AbstractMetricService metricService;
+
+  private static final List<PipeModelFixedMemoryBlockMetrics> metrics =
+      new CopyOnWriteArrayList<>();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -101,6 +107,7 @@ public class PipeResourceMetrics implements IMetricSet {
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.ref(),
         PipePhantomReferenceManager::getPhantomReferenceCount);
+    metrics.forEach(p -> p.register(metricService));
   }
 
   @Override
@@ -126,11 +133,19 @@ public class PipeResourceMetrics implements IMetricSet {
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_SIZE.toString());
     // phantom reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString());
+
+    metrics.forEach(PipeModelFixedMemoryBlockMetrics::deregister);
   }
 
   public PipeModelFixedMemoryBlockMetrics registerFixedMemoryBlockMetrics(
       PipeMemoryBlockType type, PipeModelFixedMemoryBlock fixedMemoryBlock) {
-    return new PipeModelFixedMemoryBlockMetrics(type, metricService, fixedMemoryBlock);
+    final PipeModelFixedMemoryBlockMetrics fixedMemoryBlockMetrics =
+        new PipeModelFixedMemoryBlockMetrics(type, fixedMemoryBlock);
+    if (metricService != null) {
+      fixedMemoryBlockMetrics.register(metricService);
+    }
+    metrics.add(fixedMemoryBlockMetrics);
+    return fixedMemoryBlockMetrics;
   }
 
   //////////////////////////// singleton ////////////////////////////
