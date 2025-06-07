@@ -52,6 +52,8 @@ public class PipeModelFixedMemoryBlockMetrics {
         MetricLevel.IMPORTANT,
         dynamicMemoryBlock,
         PipeDynamicMemoryBlock::getMemoryUsageInBytes,
+        Tag.TYPE.toString(),
+        memoryBlockType.name(),
         Tag.NAME.toString(),
         String.valueOf(dynamicMemoryBlock.getId()));
 
@@ -60,6 +62,8 @@ public class PipeModelFixedMemoryBlockMetrics {
         MetricLevel.IMPORTANT,
         dynamicMemoryBlock,
         fixedMemoryBlock::calculateDeficitRatio,
+        Tag.TYPE.toString(),
+        memoryBlockType.name(),
         Tag.NAME.toString(),
         String.valueOf(dynamicMemoryBlock.getId()));
   }
@@ -72,12 +76,16 @@ public class PipeModelFixedMemoryBlockMetrics {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_MODEL_DYNAMIC_MEMORY_BLOCK_MEMORY_SIZE.toString(),
+        Tag.TYPE.toString(),
+        memoryBlockType.name(),
         Tag.NAME.toString(),
         String.valueOf(dynamicMemoryBlock.getId()));
 
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_MODEL_DYNAMIC_MEMORY_BLOCK_MEMORY_EFFICIENCY.toString(),
+        Tag.TYPE.toString(),
+        memoryBlockType.name(),
         Tag.NAME.toString(),
         String.valueOf(dynamicMemoryBlock.getId()));
   }
