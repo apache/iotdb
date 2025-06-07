@@ -81,7 +81,7 @@ public class PipeMeta {
 
   public static PipeMeta deserialize4TaskAgent(final ByteBuffer byteBuffer) {
     final PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(byteBuffer);
-    final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
+    final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer, true);
     return new PipeMeta(
         staticMeta,
         runtimeMeta,

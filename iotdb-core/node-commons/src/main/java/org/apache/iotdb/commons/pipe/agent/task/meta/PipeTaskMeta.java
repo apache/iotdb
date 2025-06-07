@@ -236,15 +236,16 @@ public class PipeTaskMeta {
   }
 
   public static PipeTaskMeta deserialize(
-      final PipeRuntimeMetaVersion version, final ByteBuffer byteBuffer, final int taskIndex) {
+      final PipeRuntimeMetaVersion version,
+      final ByteBuffer byteBuffer,
+      final int taskIndex,
+      final boolean isDataNode) {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(byteBuffer);
 
     final int leaderNodeId = ReadWriteIOUtils.readInt(byteBuffer);
 
-    // PipeTaskMeta created from deserialization is used in DataNode, thus need persist
-    // progressIndex
     final PipeTaskMeta pipeTaskMeta =
-        new PipeTaskMeta(progressIndex, leaderNodeId, taskIndex, true);
+        new PipeTaskMeta(progressIndex, leaderNodeId, taskIndex, isDataNode);
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
@@ -255,16 +256,17 @@ public class PipeTaskMeta {
   }
 
   public static PipeTaskMeta deserialize(
-      final PipeRuntimeMetaVersion version, final InputStream inputStream, final int taskIndex)
+      final PipeRuntimeMetaVersion version,
+      final InputStream inputStream,
+      final int taskIndex,
+      final boolean isDataNode)
       throws IOException {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(inputStream);
 
     final int leaderNodeId = ReadWriteIOUtils.readInt(inputStream);
 
-    // PipeTaskMeta created from deserialization is used in DataNode, thus need persist
-    // progressIndex
     final PipeTaskMeta pipeTaskMeta =
-        new PipeTaskMeta(progressIndex, leaderNodeId, taskIndex, true);
+        new PipeTaskMeta(progressIndex, leaderNodeId, taskIndex, isDataNode);
     final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
