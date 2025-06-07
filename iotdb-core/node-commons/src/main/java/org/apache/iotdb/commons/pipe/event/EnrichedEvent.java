@@ -256,7 +256,7 @@ public abstract class EnrichedEvent implements Event {
     if (referenceCount.get() >= 1) {
       shouldReportOnCommit = false;
       // We assume that this function will not throw any exceptions.
-      if (!internallyDecreaseResourceReferenceCount(holderMessage, false)) {
+      if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
         LOGGER.warn(
             "resource reference count is decreased to 0, but failed to release the resource, EnrichedEvent: {}, stack trace: {}",
             coreReportMessage(),
