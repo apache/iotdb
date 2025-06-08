@@ -1163,6 +1163,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       TableMetadataImpl.throwTableNotExistsException(
           targetTable.getDatabaseName(), targetTable.getObjectName());
     }
+    List<ColumnSchema> tableColumns = tableSchema.get().getColumns();
     Map<String, ColumnSchema> columnSchemaMap = tableSchema.get().getColumnSchemaMap();
 
     // insert columns
@@ -1174,7 +1175,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     ImmutableList.Builder<ColumnSchema> insertedColumnsBuilder = ImmutableList.builder();
 
     // insert null if table column is not in query columns.
-    for (ColumnSchema column : tableSchema.get().getColumns()) {
+    for (ColumnSchema column : tableColumns) {
       if (column.isHidden()) {
         continue;
       }
@@ -1218,7 +1219,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     // Into Node
     IntoNode intoNode =
         new IntoNode(
-            queryContext.getQueryId().genPlanNodeId(), plan.getRoot(), table.getName(), null, null);
+            queryContext.getQueryId().genPlanNodeId(),
+            plan.getRoot(),
+            table.getName(),
+            tableColumns,
+            fields);
     return new RelationPlan(
         intoNode, analysis.getRootScope(), intoNode.getOutputSymbols(), Optional.empty());
   }

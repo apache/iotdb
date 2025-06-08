@@ -170,10 +170,6 @@ public class QueryExecution implements IQueryExecution {
     checkTimeOutForQuery();
     doLogicalPlan();
 
-    //    for(String s: PlanGraphPrinter.getGraph(logicalPlan.getRootNode())) {
-    //      System.out.println(s);
-    //    }
-
     if (skipExecute()) {
       // TODO move this judgement to analyze state?
       LOGGER.debug("[SkipExecute After LogicalPlan]");
