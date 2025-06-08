@@ -628,6 +628,16 @@ public class PipeDescriptor {
       config.setPipeAsyncConnectorMaxClientNumber(Integer.parseInt(value));
     }
 
+    value =
+        parserPipeConfig(
+            properties,
+            "pipe_sink_max_tsfile_client_number",
+            "pipe_async_connector_max_tsfile_client_number",
+            isHotModify);
+    if (value != null) {
+      config.setPipeAsyncConnectorMaxTsFileClientNumber(Integer.parseInt(value));
+    }
+
     value = parserPipeConfig(properties, "pipe_all_sinks_rate_limit_bytes_per_second", isHotModify);
     if (value != null) {
       config.setPipeAllSinksRateLimitBytesPerSecond(Double.parseDouble(value));
