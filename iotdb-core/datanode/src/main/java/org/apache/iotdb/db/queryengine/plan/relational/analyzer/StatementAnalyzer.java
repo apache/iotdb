@@ -219,7 +219,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
 import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.IntType;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
@@ -613,8 +613,6 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitInsert(Insert insert, Optional<Scope> scope) {
-      // queryContext.setQueryType(QueryType.WRITE);
-
       // analyze the query that creates the data
       Scope queryScope = analyze(insert.getQuery(), Optional.empty(), false);
 
@@ -691,12 +689,8 @@ public class StatementAnalyzer {
                 Joiner.on(", ").join(tableTypes), Joiner.on(", ").join(queryTypes)));
       }
 
-      // analysis.setQuery(false);
-      // return createAndAssignScope(insert, scope, null);
       return createAndAssignScope(
-          insert,
-          scope,
-          Field.newUnqualified("rows", BinaryType.TEXT, TsTableColumnCategory.FIELD));
+          insert, scope, Field.newUnqualified("rows", IntType.INT32, TsTableColumnCategory.FIELD));
     }
 
     @Override

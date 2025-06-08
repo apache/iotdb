@@ -3574,32 +3574,39 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 IntoOperator.class.getSimpleName());
 
     try {
-      PartialPath devicePath = new PartialPath("t1");
-      List<TSDataType> inputColumnTypes =
-          ImmutableList.of(TSDataType.TIMESTAMP, TSDataType.STRING, TSDataType.FLOAT);
-      Map<String, InputLocation> inputLocationMap =
-          ImmutableMap.of(
-              "time", new InputLocation(0, 0),
-              "name", new InputLocation(0, 1),
-              "salary", new InputLocation(0, 2));
+      String tableName = node.getTable().getSuffix();
+      PartialPath devicePath = new PartialPath(tableName);
+
+      Map<String, TSDataType> tsDataTypeMap = new LinkedHashMap<>();
+      Map<String, InputLocation> inputLocationMap = new LinkedHashMap<>();
+      List<TSDataType> inputColumnTypes = new ArrayList<>();
+      List<Pair<String, PartialPath>> sourceTargetPathPairList = new ArrayList<>();
+
+      List<ColumnSchema> inputColumns = node.getTableColumns();
+      for (int i = 0; i < inputColumns.size(); i++) {
+        String columnName = inputColumns.get(i).getName();
+        TSDataType columnType = InternalTypeManager.getTSDataType(inputColumns.get(i).getType());
+
+        inputLocationMap.put(columnName, new InputLocation(0, i));
+        tsDataTypeMap.put(columnName, columnType);
+        inputColumnTypes.add(columnType);
+
+        if (inputColumns.get(i).getColumnCategory() != TIME) {
+          sourceTargetPathPairList.add(
+              new Pair<>(
+                  columnName,
+                  new MeasurementPath(String.format("%s.%s", tableName, columnName), columnType)));
+        }
+      }
+
       Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =
           ImmutableMap.of(devicePath, inputLocationMap);
-
-      Map<String, TSDataType> tsDataTypeMap =
-          ImmutableMap.of(
-              "time", TSDataType.TIMESTAMP,
-              "name", TSDataType.STRING,
-              "salary", TSDataType.FLOAT);
       Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap =
           ImmutableMap.of(devicePath, tsDataTypeMap);
+      Map<String, Boolean> targetDeviceToAlignedMap = ImmutableMap.of(tableName, true);
 
-      Map<String, Boolean> targetDeviceToAlignedMap = ImmutableMap.of("t1", true);
-      List<Pair<String, PartialPath>> sourceTargetPathPairList =
-          ImmutableList.of(
-              // new Pair<>("time", new MeasurementPath("t1.time", TSDataType.TIMESTAMP)),
-              new Pair<>("name", new MeasurementPath("t1.name", TSDataType.STRING)),
-              new Pair<>("salary", new MeasurementPath("t1.salary", TSDataType.FLOAT)));
-      long statementSizePerLine = 1000;
+      long statementSizePerLine =
+          OperatorGeneratorUtil.calculateStatementSizePerLine(targetPathToDataTypeMap);
 
       return new IntoOperator(
           operatorContext,
