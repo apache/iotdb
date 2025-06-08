@@ -47,6 +47,7 @@ public class PipeLZ4Compressor extends PipeCompressor {
 
   @Override
   public byte[] decompress(byte[] byteArray, int decompressedLength) throws IOException {
+    checkDecompressedLength(decompressedLength);
     byte[] uncompressed = new byte[decompressedLength];
     DECOMPRESSOR.uncompress(byteArray, 0, byteArray.length, uncompressed, 0);
     return uncompressed;

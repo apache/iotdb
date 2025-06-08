@@ -242,6 +242,7 @@ public class CommonConfig {
   private boolean isPipeConnectorReadFileBufferMemoryControlEnabled = false;
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
+  private int pipeDecompressMaxLengthInBytes = 8192; // 8KB
 
   private int pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold = 5;
   private int pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold = 20;
@@ -1037,6 +1038,18 @@ public class CommonConfig {
 
   public boolean isPipeConnectorRPCThriftCompressionEnabled() {
     return pipeConnectorRPCThriftCompressionEnabled;
+  }
+
+  public void setPipeDecompressMaxLengthInBytes(int pipeDecompressMaxLengthInBytes) {
+    if (this.pipeDecompressMaxLengthInBytes == pipeDecompressMaxLengthInBytes) {
+      return;
+    }
+    this.pipeDecompressMaxLengthInBytes = pipeDecompressMaxLengthInBytes;
+    logger.info("pipeDecompressMaxLengthInBytes is set to {}.", pipeDecompressMaxLengthInBytes);
+  }
+
+  public int getPipeDecompressMaxLengthInBytes() {
+    return pipeDecompressMaxLengthInBytes;
   }
 
   public void setPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold(

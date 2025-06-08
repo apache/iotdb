@@ -374,6 +374,11 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_connector_rpc_thrift_compression_enabled",
                         String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled())))));
+    config.setPipeDecompressMaxLengthInBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_decompress_max_length_in_bytes",
+                String.valueOf(config.getPipeDecompressMaxLengthInBytes()))));
     config.setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
         Long.parseLong(
             Optional.ofNullable(

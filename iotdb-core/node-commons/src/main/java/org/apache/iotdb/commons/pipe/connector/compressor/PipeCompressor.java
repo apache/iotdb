@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.commons.pipe.connector.compressor;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+
 import java.io.IOException;
 
 public abstract class PipeCompressor {
+
+  private static final int MAX_DECOMPRESSED_LENGTH =
+      PipeConfig.getInstance().getPipeDecompressMaxLengthInBytes();
 
   public enum PipeCompressionType {
     SNAPPY((byte) 0),
@@ -72,5 +77,14 @@ public abstract class PipeCompressor {
 
   public byte serialize() {
     return compressionType.getIndex();
+  }
+
+  protected void checkDecompressedLength(int decompressedLength) throws IllegalArgumentException {
+    if (decompressedLength < 0 || decompressedLength > MAX_DECOMPRESSED_LENGTH) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Decompressed length should be between 0 and %d, but got %d.",
+              MAX_DECOMPRESSED_LENGTH, decompressedLength));
+    }
   }
 }

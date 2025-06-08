@@ -187,6 +187,10 @@ public class PipeConfig {
     return COMMON_CONFIG.isPipeConnectorRPCThriftCompressionEnabled();
   }
 
+  public int getPipeDecompressMaxLengthInBytes() {
+    return COMMON_CONFIG.getPipeDecompressMaxLengthInBytes();
+  }
+
   public int getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold() {
     return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold();
   }
@@ -534,6 +538,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeConnectorRPCThriftCompressionEnabled: {}",
         isPipeConnectorRPCThriftCompressionEnabled());
+    LOGGER.info("PipeDecompressMaxLengthInBytes: {}", getPipeDecompressMaxLengthInBytes());
     LOGGER.info(
         "PipeLeaderCacheMemoryUsagePercentage: {}", getPipeLeaderCacheMemoryUsagePercentage());
     LOGGER.info("PipeMaxAlignedSeriesNumInOneBatch: {}", getPipeMaxAlignedSeriesNumInOneBatch());
