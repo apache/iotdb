@@ -67,7 +67,6 @@ public class WALInsertNodeCache {
 
   // Used to adjust the memory usage of the cache
   private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
-  private final AtomicBoolean isBatchLoadEnabled = new AtomicBoolean(true);
   // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
   private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
 
@@ -86,8 +85,6 @@ public class WALInsertNodeCache {
     memoryBlock =
         PipeDataNodeResourceManager.memory()
             .forceAllocateForModelFixedMemoryBlock(requestedAllocateSize, PipeMemoryBlockType.WAL);
-    isBatchLoadEnabled.set(
-        memoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte());
     lruCache =
         Caffeine.newBuilder()
             .maximumWeight(requestedAllocateSize)
@@ -336,16 +333,6 @@ public class WALInsertNodeCache {
   }
 
   /////////////////////////// Test Only ///////////////////////////
-
-  @TestOnly
-  public boolean isBatchLoadEnabled() {
-    return isBatchLoadEnabled.get();
-  }
-
-  @TestOnly
-  public void setIsBatchLoadEnabled(final boolean isBatchLoadEnabled) {
-    this.isBatchLoadEnabled.set(isBatchLoadEnabled);
-  }
 
   @TestOnly
   boolean contains(WALEntryPosition position) {
