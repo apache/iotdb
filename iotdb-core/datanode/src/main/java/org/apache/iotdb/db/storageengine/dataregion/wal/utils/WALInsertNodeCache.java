@@ -26,7 +26,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.overview.PipeWALInsertNodeCacheMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
-import org.apache.iotdb.db.pipe.resource.memory.PipeDynamicMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockType;
 import org.apache.iotdb.db.pipe.resource.memory.PipeModelFixedMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -64,7 +63,7 @@ public class WALInsertNodeCache {
 
   private static PipeModelFixedMemoryBlock walModelFixedMemory = null;
 
-  private final PipeDynamicMemoryBlock memoryBlock;
+  private final PipeModelFixedMemoryBlock memoryBlock;
 
   // Used to adjust the memory usage of the cache
   private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
@@ -89,8 +88,10 @@ public class WALInsertNodeCache {
                     * PIPE_CONFIG.getPipeMaxAllowedPinnedMemTableCount()
                     * CONFIG.getWalFileSizeThresholdInByte()
                     / CONFIG.getDataRegionNum(),
-                0.5 * CONFIG.getAllocateMemoryForPipe() / CONFIG.getDataRegionNum());
-    memoryBlock = walModelFixedMemory.registerPipeBatchMemoryBlock(requestedAllocateSize);
+                    0.5 * CONFIG.getAllocateMemoryForPipe() / CONFIG.getDataRegionNum());
+    memoryBlock =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForModelFixedMemoryBlock(requestedAllocateSize, PipeMemoryBlockType.WAL);
     isBatchLoadEnabled.set(
         memoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte());
     lruCache =
@@ -117,7 +118,6 @@ public class WALInsertNodeCache {
             .recordStats()
             .build(new WALInsertNodeCacheLoader());
 
-    memoryBlock.setExpandable(false);
     PipeWALInsertNodeCacheMetrics.getInstance().register(this, dataRegionId);
   }
 
@@ -130,9 +130,7 @@ public class WALInsertNodeCache {
       // Allocate memory for the fixed memory block of WAL
       walModelFixedMemory =
           PipeDataNodeResourceManager.memory()
-              .forceAllocateForModelFixedMemoryBlock(
-                  PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfWAL(),
-                  PipeMemoryBlockType.WAL);
+              .forceAllocateForModelFixedMemoryBlock(0L, PipeMemoryBlockType.WAL);
     } catch (Exception e) {
       LOGGER.error("Failed to initialize WAL model fixed memory block", e);
       walModelFixedMemory =
