@@ -48,7 +48,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -118,56 +117,8 @@ public class WALInsertNodeCache {
             .recordStats()
             .build(new WALInsertNodeCacheLoader());
 
-    memoryBlock.setExpandable(true);
-    memoryBlock.setExpand(
-        memoryBlock -> {
-          final long oldMemory = memoryBlock.getMemoryUsageInBytes();
-          memoryBlock.updateCurrentMemoryEfficiencyAdjustMem(lruCache.stats().hitRate());
-          final long newMemory = memoryBlock.getMemoryUsageInBytes();
-          if (newMemory > oldMemory) {
-            setExpandCallback(oldMemory, newMemory, dataRegionId);
-          } else if (newMemory < oldMemory) {
-            shrinkCallback(oldMemory, newMemory, dataRegionId);
-          }
-        });
+    memoryBlock.setExpandable(false);
     PipeWALInsertNodeCacheMetrics.getInstance().register(this, dataRegionId);
-  }
-
-  private void setExpandCallback(long oldMemory, long newMemory, Integer dataRegionId) {
-    memoryUsageCheatFactor.updateAndGet(
-        factor ->
-            factor == 0L || newMemory == 0L || oldMemory == 0
-                ? 0.0
-                : factor / ((double) newMemory / oldMemory));
-    isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
-    LOGGER.info(
-        "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has expanded from {} to {}.",
-        dataRegionId,
-        oldMemory,
-        newMemory);
-  }
-
-  private void shrinkCallback(long oldMemory, long newMemory, Integer dataRegionId) {
-    memoryUsageCheatFactor.updateAndGet(
-        factor ->
-            factor == 0L || newMemory == 0L || oldMemory == 0
-                ? 0.0
-                : factor * ((double) oldMemory / newMemory));
-    isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
-    LOGGER.info(
-        "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has shrunk from {} to {}.",
-        dataRegionId,
-        oldMemory,
-        newMemory);
-    if (CONFIG.getWALCacheShrinkClearEnabled()) {
-      try {
-        lruCache.cleanUp();
-      } catch (Exception e) {
-        LOGGER.warn("Failed to clear WALInsertNodeCache for dataRegion ID: {}.", dataRegionId, e);
-        return;
-      }
-      LOGGER.info("Successfully cleared WALInsertNodeCache for dataRegion ID: {}.", dataRegionId);
-    }
   }
 
   // please call this method at PipeLauncher
@@ -254,10 +205,7 @@ public class WALInsertNodeCache {
   public Pair<ByteBuffer, InsertNode> getByteBufferOrInsertNode(final WALEntryPosition position) {
     hasPipeRunning = true;
 
-    final Pair<ByteBuffer, InsertNode> pair =
-        isBatchLoadEnabled.get()
-            ? lruCache.getAll(Collections.singleton(position)).get(position)
-            : lruCache.get(position);
+    final Pair<ByteBuffer, InsertNode> pair = lruCache.get(position);
 
     if (pair == null) {
       throw new IllegalStateException();
