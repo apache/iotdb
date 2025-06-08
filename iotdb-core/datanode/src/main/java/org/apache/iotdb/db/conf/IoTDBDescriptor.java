@@ -2169,6 +2169,11 @@ public class IoTDBDescriptor {
         }
       }
     }
+    conf.setAllocateMemoryPerWalCache(
+        Long.parseLong(
+            properties.getProperty(
+                "allocate_memory_per_wal_cache",
+                Long.toString(conf.getAllocateMemoryPerWalCache()))));
 
     LOGGER.info("initial allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
     LOGGER.info("initial allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());

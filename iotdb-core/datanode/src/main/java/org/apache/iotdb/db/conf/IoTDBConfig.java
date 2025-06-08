@@ -162,6 +162,8 @@ public class IoTDBConfig {
   /** Memory allocated for the pipe */
   private long allocateMemoryForPipe = Runtime.getRuntime().maxMemory() / 10;
 
+  private long allocateMemoryPerWalCache = 64 * 1024 * 1024;
+
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
 
@@ -2135,6 +2137,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForPipe(long allocateMemoryForPipe) {
     this.allocateMemoryForPipe = allocateMemoryForPipe;
+  }
+
+  public long getAllocateMemoryPerWalCache() {
+    return allocateMemoryPerWalCache;
+  }
+
+  public void setAllocateMemoryPerWalCache(final long allocateMemoryForWalCache) {
+    this.allocateMemoryPerWalCache = allocateMemoryForWalCache;
   }
 
   public long getAllocateMemoryForFree() {
