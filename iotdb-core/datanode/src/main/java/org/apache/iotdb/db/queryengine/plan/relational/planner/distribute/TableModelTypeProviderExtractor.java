@@ -106,7 +106,7 @@ public class TableModelTypeProviderExtractor {
       List<Symbol> outputSymbols = node.getOutputSymbols();
       List<Type> outputTypes = node.getOutputType();
 
-      for (int i = 0; i < node.getOutputSize(); i++) {
+      for (int i = 0; i < outputSymbols.size(); i++) {
         beTypeProvider.putTableModelType(outputSymbols.get(i), outputTypes.get(i));
       }
       return null;

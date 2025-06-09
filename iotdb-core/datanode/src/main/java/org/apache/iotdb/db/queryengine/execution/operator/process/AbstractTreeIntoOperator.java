@@ -14,9 +14,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 
-public abstract class TreeModelIntoOperator extends AbstractIntoOperator {
+public abstract class AbstractTreeIntoOperator extends AbstractIntoOperator {
 
-  protected TreeModelIntoOperator(
+  protected AbstractTreeIntoOperator(
       OperatorContext operatorContext,
       Operator child,
       List<TSDataType> inputColumnTypes,
@@ -36,8 +36,8 @@ public abstract class TreeModelIntoOperator extends AbstractIntoOperator {
     for (Map.Entry<PartialPath, Map<String, InputLocation>> entry :
         targetPathToSourceInputLocationMap.entrySet()) {
       PartialPath targetDevice = entry.getKey();
-      TreeModelInsertTabletStatementGenerator generator =
-          new TreeModelInsertTabletStatementGenerator(
+      TreeInsertTabletStatementGenerator generator =
+          new TreeInsertTabletStatementGenerator(
               targetDevice,
               entry.getValue(),
               targetPathToDataTypeMap.get(targetDevice),

@@ -2,91 +2,43 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import org.apache.tsfile.read.common.type.IntType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 public class IntoNode extends SingleChildProcessNode {
   private final String database;
-  private final QualifiedName table;
-  private final List<ColumnSchema> tableColumns;
-  private final List<Symbol> outputSymbols;
-  private final List<Type> outputTypes;
-  private final int outputSize;
+  private final String table;
+  private final List<ColumnSchema> columns;
+  private final Symbol rowCountSymbol;
 
   public IntoNode(
       PlanNodeId id,
       PlanNode child,
       String database,
-      QualifiedName table,
-      List<ColumnSchema> tableColumns,
-      List<Field> outputFields) {
+      String table,
+      List<ColumnSchema> columns,
+      Symbol rowCountSymbol) {
     super(id, child);
     this.database = database;
     this.table = table;
-    this.tableColumns = tableColumns;
-    this.outputSize = outputFields.size();
-    this.outputSymbols = new ArrayList<>();
-    this.outputTypes = new ArrayList<>();
-    for (Field field : outputFields) {
-      outputSymbols.add(Symbol.of(field.getName().orElse("")));
-      outputTypes.add(field.getType());
-    }
-  }
-
-  public IntoNode(
-      PlanNodeId id,
-      PlanNode child,
-      String database,
-      QualifiedName table,
-      List<ColumnSchema> tableColumns,
-      int outputSize,
-      List<Symbol> outputSymbols,
-      List<Type> outputTypes) {
-    super(id, child);
-    this.database = database;
-    this.table = table;
-    this.tableColumns = tableColumns;
-    this.outputSize = outputSize;
-    this.outputSymbols = outputSymbols;
-    this.outputTypes = outputTypes;
-  }
-
-  public PlanNode getChild() {
-    return child;
-  }
-
-  public void setChild(PlanNode child) {
-    this.child = child;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return Collections.singletonList(child);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return ONE_CHILD;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.child = child;
+    this.columns = columns;
+    this.rowCountSymbol = rowCountSymbol;
   }
 
   @Override
@@ -96,37 +48,60 @@ public class IntoNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new IntoNode(
-        id, null, database, table, tableColumns, outputSize, outputSymbols, outputTypes);
+    return new IntoNode(id, null, database, table, columns, rowCountSymbol);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return outputSymbols.stream().map(Symbol::getName).collect(Collectors.toList());
+    return ImmutableList.of(rowCountSymbol.getName());
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
-
-  @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
-
-  @Override
   public List<Symbol> getOutputSymbols() {
-    return outputSymbols;
+    return ImmutableList.of(rowCountSymbol);
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.INTO.serialize(byteBuffer);
+    ReadWriteIOUtils.write(database, byteBuffer);
+    ReadWriteIOUtils.write(table, byteBuffer);
+    Symbol.serialize(rowCountSymbol, byteBuffer);
+    ReadWriteIOUtils.write(columns.size(), byteBuffer);
+    for (ColumnSchema tableColumn : columns) {
+      ColumnSchema.serialize(tableColumn, byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_INTO_NODE.serialize(stream);
+    ReadWriteIOUtils.write(database, stream);
+    ReadWriteIOUtils.write(table, stream);
+    Symbol.serialize(rowCountSymbol, stream);
+    ReadWriteIOUtils.write(columns.size(), stream);
+    for (ColumnSchema tableColumn : columns) {
+      ColumnSchema.serialize(tableColumn, stream);
+    }
+  }
+
+  public static IntoNode deserialize(ByteBuffer byteBuffer) {
+    String database = ReadWriteIOUtils.readString(byteBuffer);
+    String table = ReadWriteIOUtils.readString(byteBuffer);
+    Symbol rowCountSymbol = Symbol.deserialize(byteBuffer);
+    int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<ColumnSchema> columns = new ArrayList<>(columnSize);
+    for (int i = 0; i < columnSize; i++) {
+      columns.add(ColumnSchema.deserialize(byteBuffer));
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new IntoNode(planNodeId, null, database, table, columns, rowCountSymbol);
   }
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
     return new IntoNode(
-        id,
-        Iterables.getOnlyElement(newChildren),
-        database,
-        table,
-        tableColumns,
-        outputSize,
-        outputSymbols,
-        outputTypes);
+        id, Iterables.getOnlyElement(newChildren), database, table, columns, rowCountSymbol);
   }
 
   @Override
@@ -134,31 +109,42 @@ public class IntoNode extends SingleChildProcessNode {
     return "IntoNode-" + this.getPlanNodeId();
   }
 
-  //  @Override
-  //  public boolean equals(Object o) {
-  //  }
-  //
-  //  @Override
-  //  public int hashCode() {
-  //  }
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    IntoNode that = (IntoNode) o;
+    return database.equals(that.database)
+        && table.equals(that.table)
+        && rowCountSymbol.equals(that.rowCountSymbol)
+        && Objects.deepEquals(columns, that.columns);
+  }
 
-  public int getOutputSize() {
-    return outputSize;
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), database, table, rowCountSymbol, columns);
   }
 
   public List<Type> getOutputType() {
-    return outputTypes;
+    return ImmutableList.of(IntType.INT32);
   }
 
   public String getDatabase() {
     return database;
   }
 
-  public QualifiedName getTable() {
+  public String getTable() {
     return table;
   }
 
-  public List<ColumnSchema> getTableColumns() {
-    return tableColumns;
+  public List<ColumnSchema> getColumns() {
+    return columns;
   }
 }

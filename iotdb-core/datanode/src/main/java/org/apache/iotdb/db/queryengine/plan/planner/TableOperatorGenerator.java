@@ -51,19 +51,19 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.AssignUniqueId
 import org.apache.iotdb.db.queryengine.execution.operator.process.CollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.EnforceSingleRowOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.IntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PatternRecognitionOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.RelationalIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillWithGroupOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
@@ -3573,10 +3573,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                IntoOperator.class.getSimpleName());
+                TreeIntoOperator.class.getSimpleName());
 
     try {
-      String tableName = node.getTable().getSuffix();
+      String tableName = node.getTable();
       PartialPath devicePath = new PartialPath(tableName);
 
       Map<String, TSDataType> tsDataTypeMap = new LinkedHashMap<>();
@@ -3585,7 +3585,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       List<TsTableColumnCategory> inputColumnCategories = new ArrayList<>();
       List<Pair<String, PartialPath>> sourceTargetPathPairList = new ArrayList<>();
 
-      List<ColumnSchema> inputColumns = node.getTableColumns();
+      List<ColumnSchema> inputColumns = node.getColumns();
       for (int i = 0; i < inputColumns.size(); i++) {
         String columnName = inputColumns.get(i).getName();
         inputLocationMap.put(columnName, new InputLocation(0, i));
@@ -3614,7 +3614,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       long statementSizePerLine =
           OperatorGeneratorUtil.calculateStatementSizePerLine(targetPathToDataTypeMap);
 
-      return new RelationalIntoOperator(
+      return new TableIntoOperator(
           operatorContext,
           child,
           node.getDatabase(),
