@@ -1,0 +1,18 @@
+{
+  "model_type": "timer",
+  "hidden_size": 512,
+  "num_hidden_layers": 8,
+  "num_attention_heads": 8,
+  "input_token_len": 96,
+  "output_token_lens": [96],
+  "hidden_act": "silu",
+  "intermediate_size": 2048,
+  "max_position_embeddings": 10000,
+  "rope_theta": 10000,
+  "torch_dtype": "float32",
+  "initializer_range": 0.02,
+  "use_cache": true,
+  "iotdb_version": "1.0.0",
+  "architecture": "TimerModel",
+  "task": "forecasting"
+}

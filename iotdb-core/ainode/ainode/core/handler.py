@@ -32,6 +32,7 @@ from ainode.thrift.ainode.ttypes import (
     TTrainingReq,
 )
 from ainode.thrift.common.ttypes import TSStatus
+from ainode.core.constant import TSStatusCode, logging
 
 
 class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
@@ -40,6 +41,7 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         self._inference_manager = InferenceManager(model_manager=self._model_manager)
 
     def registerModel(self, req: TRegisterModelReq) -> TRegisterModelResp:
+        # todo: 可能需要增强
         return self._model_manager.register_model(req)
 
     def deleteModel(self, req: TDeleteModelReq) -> TSStatus:
@@ -56,3 +58,24 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
 
     def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
         pass
+
+    # TODO：处理模型状态回传
+    def updateModelStatus(self, model_id: str, status: int, message: str = "") -> TSStatus:
+        """更新模型状态到ConfigNode"""
+        try:
+            from ainode.core.client import ClientManager
+            from ainode.core.config import AINodeDescriptor
+            
+            ClientManager().borrow_config_node_client().update_model_info(
+                model_id=model_id,
+                model_status=status,
+                attribute=message,
+                ainode_id=[AINodeDescriptor().get_config().get_ainode_id()]
+            )
+            return TSStatus(code=TSStatusCode.SUCCESS_STATUS.get_status_code())
+        except Exception as e:
+            logging.error(f"Failed to update model status: {e}")
+            return TSStatus(
+                code=TSStatusCode.AINODE_INTERNAL_ERROR.get_status_code(),
+                message=str(e)
+            )

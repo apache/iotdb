@@ -510,6 +510,14 @@ MODELS
     : M O D E L S
     ;
 
+USING
+    : U S I N G
+    ;
+
+URI
+    : U R I
+    ;
+
 MODIFY
     : M O D I F Y
     ;

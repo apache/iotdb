@@ -133,6 +133,27 @@ class AttributeNotSupportError(_BaseError):
         self.message = "Attribute {0} is not supported in model {1}".format(
             attribute_name, model_name
         )
+        
+# create model 补充的异常类
+class ModelLoadingError(_BaseError):
+    def __init__(self, model_id: str, error_msg: str):
+        self.message = f"Failed to load model {model_id}: {error_msg}"
+
+
+class ModelFormatError(_BaseError):
+    def __init__(self, model_path: str, expected_format: str):
+        self.message = f"Invalid model format at {model_path}, expected {expected_format}"
+        
+
+class IoTDBModelError(_BaseError):
+    def __init__(self, model_type: str, error_msg: str):
+        self.message = f"IoTDB model error for {model_type}: {error_msg}"
+        
+
+class UnsupportedModelTypeError(_BaseError):
+    def __init__(self, model_type: str):
+        self.message = f"Unsupported model type: {model_type}. Supported types: timer, sundial"
+        
 
 
 # This is used to extract the key message in RuntimeError instead of the traceback message

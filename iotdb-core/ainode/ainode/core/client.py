@@ -246,6 +246,7 @@ class ConfigNodeClient(object):
             self._wait_and_reconnect()
         raise TException(self._MSG_RECONNECTION_FAIL)
 
+    # TODO: create model的新ConfigNode回传函数
     def update_model_info(
         self,
         model_id: str,
@@ -255,8 +256,14 @@ class ConfigNodeClient(object):
         input_length=0,
         output_length=0,
     ) -> None:
+        """
+        更新模型信息到ConfigNode，增强日志记录
+        """
         if ainode_id is None:
             ainode_id = []
+        
+        logger.info(f"Updating model info: {model_id}, status: {model_status}")
+        
         for _ in range(0, self._RETRY_NUM):
             try:
                 req = TUpdateModelInfoReq(model_id, model_status, attribute)
@@ -269,6 +276,7 @@ class ConfigNodeClient(object):
                     verify_success(
                         status, "An error occurs when calling update model info"
                     )
+                    logger.info(f"Successfully updated model info for {model_id}")
                     return status
             except TTransport.TException:
                 logger.warning(
