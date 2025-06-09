@@ -347,6 +347,16 @@ struct TSLastDataQueryReq {
   9: optional bool legalPathNodes
 }
 
+struct TSFastLastDataQueryForOnePrefixPathReq {
+  1: required i64 sessionId
+  2: required list<string> prefixes
+  3: optional i32 fetchSize
+  4: required i64 statementId
+  5: optional bool enableRedirectQuery
+  6: optional bool jdbcQuery
+  7: optional i64 timeout
+}
+
 struct TSFastLastDataQueryForOneDeviceReq {
   1: required i64 sessionId
   2: required string db
@@ -548,6 +558,8 @@ service IClientRPCService {
   TSExecuteStatementResp executeRawDataQueryV2(1:TSRawDataQueryReq req);
 
   TSExecuteStatementResp executeLastDataQueryV2(1:TSLastDataQueryReq req);
+
+  TSExecuteStatementResp executeFastLastDataQueryForOnePrefixPath(1:TSFastLastDataQueryForOnePrefixPathReq req);
 
   TSExecuteStatementResp executeFastLastDataQueryForOneDeviceV2(1:TSFastLastDataQueryForOneDeviceReq req);
 

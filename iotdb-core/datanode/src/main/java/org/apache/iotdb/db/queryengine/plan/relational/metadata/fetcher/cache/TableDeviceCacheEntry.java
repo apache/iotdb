@@ -217,6 +217,18 @@ public class TableDeviceCacheEntry {
     return Objects.nonNull(cache) ? cache.getTimeValuePair(measurement) : null;
   }
 
+  boolean updateInputMap(final @Nonnull Map<String, TimeValuePair> updateMap) {
+    // Shall only call this for original table device
+    for (final String measurement : updateMap.keySet()) {
+      final TimeValuePair result = getTimeValuePair(measurement);
+      if (result == null) {
+        return false;
+      }
+      updateMap.put(measurement, result);
+    }
+    return true;
+  }
+
   // Shall pass in "" if last by time
   Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final String sourceMeasurement, final List<String> targetMeasurements) {

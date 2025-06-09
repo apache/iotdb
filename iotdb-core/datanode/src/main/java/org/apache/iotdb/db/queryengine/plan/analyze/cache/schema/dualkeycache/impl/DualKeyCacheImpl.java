@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
@@ -76,6 +77,26 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     }
   }
 
+  public <R> boolean batchApply(
+      final Map<FK, Map<SK, R>> inputMap, final BiFunction<V, R, Boolean> mappingFunction) {
+    for (final Map.Entry<FK, Map<SK, R>> fkMapEntry : inputMap.entrySet()) {
+      final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(fkMapEntry.getKey());
+      if (cacheEntryGroup == null) {
+        return false;
+      }
+      for (final Map.Entry<SK, R> skrEntry : fkMapEntry.getValue().entrySet()) {
+        final T cacheEntry = cacheEntryGroup.getCacheEntry(skrEntry.getKey());
+        if (cacheEntry == null) {
+          return false;
+        }
+        if (!mappingFunction.apply(cacheEntry.getValue(), skrEntry.getValue())) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   @Override
   public void update(
       final FK firstKey,
@@ -83,7 +104,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       final V value,
       final ToIntFunction<V> updater,
       final boolean createIfNotExists) {
-
     ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
     if (Objects.isNull(cacheEntryGroup)) {
       if (createIfNotExists) {
@@ -329,7 +349,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   private static class SegmentedConcurrentHashMap<K, V> {
 
     private static final int SLOT_NUM = 31;
-
+    private int size = 0;
     private final Map<K, V>[] maps = new ConcurrentHashMap[SLOT_NUM];
 
     V get(final K key) {

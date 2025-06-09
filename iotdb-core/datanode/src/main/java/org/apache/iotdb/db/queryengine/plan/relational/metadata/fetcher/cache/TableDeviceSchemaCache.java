@@ -445,6 +445,11 @@ public class TableDeviceSchemaCache {
         Objects.isNull(timeValuePairs));
   }
 
+  public boolean getLastCache(
+      final Map<TableId, Map<IDeviceID, Map<String, TimeValuePair>>> inputMap) {
+    return dualKeyCache.batchApply(inputMap, TableDeviceCacheEntry::updateInputMap);
+  }
+
   // WARNING: This is not guaranteed to affect table model's cache
   void invalidateLastCache(final PartialPath devicePath, final String measurement) {
     final ToIntFunction<TableDeviceCacheEntry> updateFunction =
