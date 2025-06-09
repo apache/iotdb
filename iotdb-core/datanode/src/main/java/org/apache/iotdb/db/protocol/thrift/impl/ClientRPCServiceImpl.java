@@ -948,8 +948,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       final Map<TableId, Map<IDeviceID, Map<String, TimeValuePair>>> resultMap = new HashMap<>();
       int sensorNum = 0;
 
+      final String prefixString = prefixPath.toString();
       for (final ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
-        // Do not filter by database, since we assume all the regions match the prefix path
+        if (!prefixString.startsWith(region.getDatabaseFullPath())
+            && !region.getDatabaseFullPath().startsWith(prefixString)) {
+          continue;
+        }
         sensorNum += region.fillLastQueryMap(prefixPath, resultMap);
       }
 

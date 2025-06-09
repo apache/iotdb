@@ -530,7 +530,10 @@ public class SessionConnection {
         tsExecuteStatementResp.queryResult,
         tsExecuteStatementResp.isIgnoreTimeStamp(),
         tsExecuteStatementResp.moreData,
-        zoneId);
+        zoneId,
+        timeFactor,
+        false,
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
   }
 
   protected Pair<SessionDataSet, TEndPoint> executeLastDataQueryForOneDevice(
