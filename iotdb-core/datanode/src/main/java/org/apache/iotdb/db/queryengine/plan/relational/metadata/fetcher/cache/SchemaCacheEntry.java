@@ -52,6 +52,7 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
       (int) RamUsageEstimator.shallowSizeOfInstance(SchemaCacheEntry.class) + 75;
 
   private final IMeasurementSchema iMeasurementSchema;
+
   private final Map<String, String> tagMap;
 
   public SchemaCacheEntry(
