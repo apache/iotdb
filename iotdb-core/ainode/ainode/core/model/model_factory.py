@@ -18,6 +18,7 @@
 import os
 import shutil
 from urllib.parse import urljoin, urlparse
+from pathlib import Path
 
 import yaml
 from requests import Session
@@ -34,11 +35,16 @@ from ainode.core.exception import BadConfigValueError, InvalidUriError
 from ainode.core.log import Logger
 from ainode.core.util.serde import get_data_type_byte_from_str
 from ainode.thrift.ainode.ttypes import TConfigs
+from ainode.core.model.config_parser import parse_config_file, convert_iotdb_config_to_ainode_format
 
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"
 
 logger = Logger()
+
+# IoTDB 模型相关文件名
+IOTDB_CONFIG_FILES = ["config.json", "configuration.json"]
+IOTDB_WEIGHT_FILES = ["model.safetensors", "pytorch_model.safetensors", "model.pt", "pytorch_model.pt"]
 
 
 def _parse_uri(uri):
@@ -90,6 +96,39 @@ def _download_file(url: str, storage_path: str) -> None:
     logger.debug(f"download file from {url} to {storage_path} success")
 
 
+def _detect_model_format(base_path: str) -> tuple:
+    """
+    检测模型格式：legacy (model.pt + config.yaml) 或 IoTDB (config.json + safetensors)
+    
+    Args:
+        base_path: 模型目录路径
+        
+    Returns:
+        (format_type, config_file, weight_file): 格式类型和对应的文件名
+    """
+    base_path = Path(base_path)
+    
+    # 检查 IoTDB 格式
+    for config_file in IOTDB_CONFIG_FILES:
+        config_path = base_path / config_file
+        if config_path.exists():
+            # 查找权重文件
+            for weight_file in IOTDB_WEIGHT_FILES:
+                weight_path = base_path / weight_file
+                if weight_path.exists():
+                    logger.debug(f"检测到 IoTDB 格式: {config_file} + {weight_file}")
+                    return "iotdb", config_file, weight_file
+    
+    # 检查 legacy 格式
+    legacy_config = base_path / DEFAULT_CONFIG_FILE_NAME
+    legacy_model = base_path / DEFAULT_MODEL_FILE_NAME
+    if legacy_config.exists() and legacy_model.exists():
+        logger.debug(f"检测到 legacy 格式: {DEFAULT_CONFIG_FILE_NAME} + {DEFAULT_MODEL_FILE_NAME}")
+        return "legacy", DEFAULT_CONFIG_FILE_NAME, DEFAULT_MODEL_FILE_NAME
+    
+    return None, None, None
+
+
 def _register_model_from_network(
     uri: str, model_storage_path: str, config_storage_path: str
 ) -> [TConfigs, str]:
@@ -105,19 +144,57 @@ def _register_model_from_network(
     """
     # concat uri to get complete url
     uri = uri if uri.endswith("/") else uri + "/"
-    target_model_path = urljoin(uri, DEFAULT_MODEL_FILE_NAME)
-    target_config_path = urljoin(uri, DEFAULT_CONFIG_FILE_NAME)
+    
+    # 首先尝试检测 IoTDB 格式
+    iotdb_detected = False
+    configs, attributes = None, None
+    
+    for config_file in IOTDB_CONFIG_FILES:
+        try:
+            target_config_path = urljoin(uri, config_file)
+            _download_file(target_config_path, config_storage_path)
+            
+            # 解析 IoTDB 配置
+            iotdb_config = parse_config_file(config_storage_path)
+            ainode_config = convert_iotdb_config_to_ainode_format(iotdb_config)
+            configs, attributes = _parse_inference_config(ainode_config)
+            
+            # 查找对应的权重文件
+            for weight_file in IOTDB_WEIGHT_FILES:
+                try:
+                    target_model_path = urljoin(uri, weight_file)
+                    _download_file(target_model_path, model_storage_path)
+                    iotdb_detected = True
+                    logger.info(f"成功下载 IoTDB 模型: {config_file} + {weight_file}")
+                    break
+                except Exception as e:
+                    logger.debug(f"未找到权重文件 {weight_file}: {e}")
+                    continue
+            
+            if iotdb_detected:
+                break
+                
+        except Exception as e:
+            logger.debug(f"未找到配置文件 {config_file}: {e}")
+            continue
+    
+    # 如果未检测到 IoTDB 格式，尝试 legacy 格式
+    if not iotdb_detected:
+        logger.debug("未检测到 IoTDB 格式，尝试 legacy 格式")
+        target_model_path = urljoin(uri, DEFAULT_MODEL_FILE_NAME)
+        target_config_path = urljoin(uri, DEFAULT_CONFIG_FILE_NAME)
 
-    # download config file
-    _download_file(target_config_path, config_storage_path)
+        # download config file
+        _download_file(target_config_path, config_storage_path)
 
-    # read and parse config dict from config.yaml
-    with open(config_storage_path, "r", encoding="utf-8") as file:
-        config_dict = yaml.safe_load(file)
-    configs, attributes = _parse_inference_config(config_dict)
+        # read and parse config dict from config.yaml
+        with open(config_storage_path, "r", encoding="utf-8") as file:
+            config_dict = yaml.safe_load(file)
+        configs, attributes = _parse_inference_config(config_dict)
 
-    # if config.yaml is correct, download model file
-    _download_file(target_model_path, model_storage_path)
+        # if config.yaml is correct, download model file
+        _download_file(target_model_path, model_storage_path)
+        
     return configs, attributes
 
 
@@ -134,39 +211,37 @@ def _register_model_from_local(
         configs: TConfigs
         attributes: str
     """
-    # concat uri to get complete path
-    target_model_path = os.path.join(uri, DEFAULT_MODEL_FILE_NAME)
-    target_config_path = os.path.join(uri, DEFAULT_CONFIG_FILE_NAME)
-
-    # check if file exist
-    exist_model_file = os.path.exists(target_model_path)
-    exist_config_file = os.path.exists(target_config_path)
-
-    configs = None
-    attributes = None
-    if exist_model_file and exist_config_file:
-        # copy config.yaml
-        logger.debug(f"copy file from {target_config_path} to {config_storage_path}")
-        shutil.copy(target_config_path, config_storage_path)
-        logger.debug(
-            f"copy file from {target_config_path} to {config_storage_path} success"
-        )
-
-        # read and parse config dict from config.yaml
+    # 检测模型格式
+    format_type, config_file, weight_file = _detect_model_format(uri)
+    
+    if format_type is None:
+        raise InvalidUriError(f"未找到有效的模型文件在路径: {uri}")
+    
+    target_config_path = os.path.join(uri, config_file)
+    target_model_path = os.path.join(uri, weight_file)
+    
+    # 复制配置文件
+    logger.debug(f"copy file from {target_config_path} to {config_storage_path}")
+    shutil.copy(target_config_path, config_storage_path)
+    logger.debug(f"copy file from {target_config_path} to {config_storage_path} success")
+    
+    # 解析配置文件
+    if format_type == "iotdb":
+        # IoTDB 格式
+        iotdb_config = parse_config_file(config_storage_path)
+        ainode_config = convert_iotdb_config_to_ainode_format(iotdb_config)
+        configs, attributes = _parse_inference_config(ainode_config)
+    else:
+        # legacy 格式
         with open(config_storage_path, "r", encoding="utf-8") as file:
             config_dict = yaml.safe_load(file)
         configs, attributes = _parse_inference_config(config_dict)
-
-        # if config.yaml is correct, copy model file
-        logger.debug(f"copy file from {target_model_path} to {model_storage_path}")
-        shutil.copy(target_model_path, model_storage_path)
-        logger.debug(
-            f"copy file from {target_model_path} to {model_storage_path} success"
-        )
-
-    elif not exist_model_file or not exist_config_file:
-        raise InvalidUriError(uri)
-
+    
+    # 复制模型文件
+    logger.debug(f"copy file from {target_model_path} to {model_storage_path}")
+    shutil.copy(target_model_path, model_storage_path)
+    logger.debug(f"copy file from {target_model_path} to {model_storage_path} success")
+    
     return configs, attributes
 
 

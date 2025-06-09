@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 from .base_model import ThuTLBaseModel
-from .sundial import Sundial, SundialConfig
-from .timerxl import TimerXLConfig, TimerXL
+from ..sundial import SundialConfig, modeling_sundial
+from ..timerxl import TimerXLConfig, modeling_timer
 
-__all__ = ["ThuTLBaseModel", "TimerXL", "TimerXLConfig", "Sundial", "SundialConfig"]
+__all__ = ["ThuTLBaseModel", "modeling_timer", "TimerXLConfig", "modeling_sundial", "SundialConfig"]

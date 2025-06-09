@@ -62,6 +62,19 @@ DEFAULT_RECONNECT_TIMES = 3
 
 STD_LEVEL = logging.INFO
 
+# TODO: 检查模型文件名
+IOTDB_CONFIG_FILES = ["config.json", "configuration.json"]
+IOTDB_WEIGHT_FILES = ["model.safetensors", "pytorch_model.safetensors", "model.pt", "pytorch_model.pt"]
+
+# 辅助类：模型状态常量
+class ModelStatus(Enum):
+    LOADING = 0
+    ACTIVE = 1
+    INACTIVE = 2
+    ERROR = 3
+
+    def get_status_code(self) -> int:
+        return self.value
 
 class TSStatusCode(Enum):
     SUCCESS_STATUS = 200
@@ -70,6 +83,9 @@ class TSStatusCode(Enum):
     INVALID_URI_ERROR = 1511
     INVALID_INFERENCE_CONFIG = 1512
     INFERENCE_INTERNAL_ERROR = 1520
+    # create model专用的错误码
+    MODEL_LOADING_ERROR = 1521  # 新增
+    MODEL_FORMAT_ERROR = 1522   # 新增
 
     def get_status_code(self) -> int:
         return self.value

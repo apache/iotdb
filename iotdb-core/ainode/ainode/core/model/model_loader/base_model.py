@@ -24,13 +24,13 @@ from typing import Any, Dict, Iterator, Tuple, Union
 
 import torch
 import torch.nn as nn
-from model_config import ThuTLModelConfig
+from model_config import ModelConfig
 
 
-class ThuTLBaseModel(ABC, nn.Module):
+class BaseModel(ABC, nn.Module):
     """thuTL 模型基类，适配 AINode 架构"""
 
-    def __init__(self, config: "ThuTLModelConfig"):
+    def __init__(self, config: "ModelConfig"):
         super().__init__()
         self.config = config
         self.build_layers()
@@ -71,13 +71,13 @@ class ThuTLBaseModel(ABC, nn.Module):
     @classmethod
     def from_pretrained(
         cls, config_path: Union[str, Path], weights_path: Union[str, Path], **kwargs
-    ) -> "ThuTLBaseModel":
+    ) -> "BaseModel":
         """从预训练模型加载"""
-        from .model_config import ThuTLModelConfig
+        from .model_config import ModelConfig
         from .weight_loader import load_weights
 
         # 加载配置
-        config = ThuTLModelConfig.from_json(config_path)
+        config = ModelConfig.from_json(config_path)
 
         # 创建模型实例
         model = cls(config, **kwargs)

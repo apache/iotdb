@@ -72,6 +72,11 @@ class AINodeConfig(object):
 
         self._version_info = AINODE_VERSION_INFO
         self._build_info = AINODE_BUILD_INFO
+        
+        # create model新增：网络加载约束
+        self._support_iotdb_models = True
+        self._iotdb_model_timeout = 300  # 模型加载超时时间（秒）
+        self._auto_model_format_detection = True
 
     def get_cluster_name(self) -> str:
         return self._cluster_name
@@ -145,6 +150,15 @@ class AINodeConfig(object):
         self._ain_target_config_node_list = parse_endpoint_url(
             ain_target_config_node_list
         )
+        
+    def get_support_iotdb_models(self) -> bool:
+        return self._support_iotdb_models
+        
+    def get_iotdb_model_timeout(self) -> int:
+        return self._iotdb_model_timeout
+        
+    def get_auto_model_format_detection(self) -> bool:
+        return self._auto_model_format_detection
 
 
 @singleton

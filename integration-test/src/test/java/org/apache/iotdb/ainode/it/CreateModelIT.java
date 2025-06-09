@@ -66,12 +66,24 @@ public class CreateModelIT {
           + File.separator
           + "sundial-example";
 
+  // Legacy format paths for backward compatibility testing
+  static final String LEGACY_MODEL_PATH =
+      System.getProperty("user.dir")
+          + File.separator
+          + "src"
+          + File.separator
+          + "test"
+          + File.separator
+          + "resources"
+          + File.separator
+          + "legacy-example";
+
   static String[] setupSqls =
       new String[] {
         "set configuration \"trusted_uri_pattern\"='.*'",
-        "CREATE DATABASE root.thuTL.test",
-        "CREATE TIMESERIES root.thuTL.test.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
-        "CREATE TIMESERIES root.thuTL.test.s1 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "CREATE DATABASE root.iotdb.test",
+        "CREATE TIMESERIES root.iotdb.test.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "CREATE TIMESERIES root.iotdb.test.s1 WITH DATATYPE=FLOAT, ENCODING=RLE",
       };
 
   static String[] timeSeriesData = new String[96];
@@ -82,7 +94,7 @@ public class CreateModelIT {
       float value = (float) Math.sin(i * 0.1) + (float) Math.random() * 0.1f;
       timeSeriesData[i] =
           String.format(
-              "insert into root.thuTL.test(timestamp,s0,s1) values(%d,%.3f,%.3f)",
+              "insert into root.iotdb.test(timestamp,s0,s1) values(%d,%.3f,%.3f)",
               i + 1, value, value + 0.1f);
     }
   }
@@ -179,7 +191,7 @@ public class CreateModelIT {
   public void timerXLInferenceTest() {
     String registerSql = "create model timerxl_inference using uri \"" + TIMERXL_MODEL_PATH + "\"";
     String inferenceSql =
-        "CALL INFERENCE(timerxl_inference, \"select s0 from root.thuTL.test\", generateTime=true)";
+        "CALL INFERENCE(timerxl_inference, \"select s0 from root.iotdb.test\", generateTime=true)";
     String dropSql = "DROP MODEL timerxl_inference";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -268,7 +280,97 @@ public class CreateModelIT {
   }
 
   @Test
-  public void thuTLModelErrorHandlingTest() {
+  public void legacyModelCompatibilityTest() {
+    String registerSql = "create model legacy_test using uri \"" + LEGACY_MODEL_PATH + "\"";
+    String showSql = "SHOW MODELS legacy_test";
+    String dropSql = "DROP MODEL legacy_test";
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      // Register legacy model
+      statement.execute(registerSql);
+
+      // Wait for model to load
+      boolean modelReady = false;
+      int maxRetries = 30;
+
+      for (int i = 0; i < maxRetries; i++) {
+        try (ResultSet resultSet = statement.executeQuery(showSql)) {
+          while (resultSet.next()) {
+            String status = resultSet.getString(3);
+            if (status.equals("ACTIVE")) {
+              modelReady = true;
+              break;
+            } else if (status.equals("LOADING")) {
+              Thread.sleep(1000);
+              break;
+            }
+          }
+        }
+        if (modelReady) break;
+      }
+
+      assertTrue("Legacy model failed to become ACTIVE", modelReady);
+
+      // Delete model
+      statement.execute(dropSql);
+
+    } catch (SQLException | InterruptedException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void iotdbModelFormatDetectionTest() {
+    // Test that IoTDB format (config.json + safetensors) is detected and used properly
+    String registerSql = "create model format_test using uri \"" + TIMERXL_MODEL_PATH + "\"";
+    String showSql = "SHOW MODELS format_test";
+    String dropSql = "DROP MODEL format_test";
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      // Register model
+      statement.execute(registerSql);
+
+      // Check that model loads successfully with IoTDB format
+      boolean modelReady = false;
+      int maxRetries = 30;
+
+      for (int i = 0; i < maxRetries; i++) {
+        try (ResultSet resultSet = statement.executeQuery(showSql)) {
+          while (resultSet.next()) {
+            String modelName = resultSet.getString(1);
+            String status = resultSet.getString(3);
+            
+            assertEquals("format_test", modelName);
+            
+            if (status.equals("ACTIVE")) {
+              modelReady = true;
+              System.out.println("IoTDB format model loaded successfully");
+              break;
+            } else if (status.equals("LOADING")) {
+              Thread.sleep(1000);
+              break;
+            }
+          }
+        }
+        if (modelReady) break;
+      }
+
+      assertTrue("IoTDB format model failed to load", modelReady);
+
+      // Cleanup
+      statement.execute(dropSql);
+
+    } catch (SQLException | InterruptedException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void iotdbModelErrorHandlingTest() {
     // Test invalid URI
     String invalidUriSql = "create model invalid_model using uri \"/nonexistent/path\"";
 

@@ -52,30 +52,51 @@ class InferenceStrategy(ABC):
 
 # [IoTDB] full data deserialized from iotdb is composed of [timestampList, valueList, length],
 # we only get valueList currently.
+# TODO: 模型推理
 class TimerXLStrategy(InferenceStrategy):
-    def infer(self, full_data, predict_length=96, **_):
+    def infer(self, full_data, predict_length=96, **kwargs):
         data = full_data[1][0]
         if data.dtype.byteorder not in ("=", "|"):
             data = data.byteswap().newbyteorder()
         seqs = torch.tensor(data).unsqueeze(0).float()
-        # TODO: unify model inference input
-        output = self.model.generate(seqs, max_new_tokens=predict_length, revin=True)
-        df = pd.DataFrame(output[0])
-        return convert_to_binary(df)
-
+        
+        # 支持IoTDB模型的推理参数
+        revin = kwargs.get("revin", True)
+        max_tokens = kwargs.get("max_new_tokens", predict_length)
+        
+        logger.info(f"TimerXL inference: input_shape={seqs.shape}, predict_length={max_tokens}")
+        
+        try:
+            output = self.model.generate(seqs, max_new_tokens=max_tokens, revin=revin)
+            df = pd.DataFrame(output[0])
+            return convert_to_binary(df)
+        except Exception as e:
+            logger.error(f"TimerXL inference failed: {e}")
+            raise InferenceModelInternalError(f"TimerXL inference error: {str(e)}")
 
 class SundialStrategy(InferenceStrategy):
-    def infer(self, full_data, predict_length=96, **_):
+    def infer(self, full_data, predict_length=96, **kwargs):
         data = full_data[1][0]
         if data.dtype.byteorder not in ("=", "|"):
             data = data.byteswap().newbyteorder()
         seqs = torch.tensor(data).unsqueeze(0).float()
-        # TODO: unify model inference input
-        output = self.model.generate(
-            seqs, max_new_tokens=predict_length, num_samples=10, revin=True
-        )
-        df = pd.DataFrame(output[0].mean(dim=0))
-        return convert_to_binary(df)
+        
+        # 支持IoTDB模型的推理参数
+        revin = kwargs.get("revin", True)
+        max_tokens = kwargs.get("max_new_tokens", predict_length)
+        num_samples = kwargs.get("num_samples", 10)
+        
+        logger.info(f"Sundial inference: input_shape={seqs.shape}, predict_length={max_tokens}, num_samples={num_samples}")
+        
+        try:
+            output = self.model.generate(
+                seqs, max_new_tokens=max_tokens, num_samples=num_samples, revin=revin
+            )
+            df = pd.DataFrame(output[0].mean(dim=0))
+            return convert_to_binary(df)
+        except Exception as e:
+            logger.error(f"Sundial inference failed: {e}")
+            raise InferenceModelInternalError(f"Sundial inference error: {str(e)}")
 
 
 class BuiltInStrategy(InferenceStrategy):
@@ -116,14 +137,46 @@ class RegisteredStrategy(InferenceStrategy):
         return [convert_to_binary(df) for df in results]
 
 
+# def _get_strategy(model_id, model):
+#     if model_id == "_timerxl":
+#         return TimerXLStrategy(model)
+#     if model_id == "_sundial":
+#         return SundialStrategy(model)
+#     if model_id.startswith("_"):
+#         return BuiltInStrategy(model)
+#     return RegisteredStrategy(model)
+
+# 在现有InferenceManager基础上修改策略获取逻辑
+
+# create model更新：策略选择加强
 def _get_strategy(model_id, model):
-    if model_id == "_timerxl":
+    # 支持IoTDB模型的动态策略选择
+    if model_id == "_timerxl" or model_id.startswith("timerxl") or "_timer" in model_id.lower():
         return TimerXLStrategy(model)
-    if model_id == "_sundial":
+    if model_id == "_sundial" or model_id.startswith("sundial") or "_sundial" in model_id.lower():
         return SundialStrategy(model)
     if model_id.startswith("_"):
         return BuiltInStrategy(model)
+    
+    # 对于用户定义的模型，尝试从模型属性中判断类型
+    try:
+        # TODO:这里可以添加逻辑来检查模型的配置文件，以确定应该使用哪种策略
+        model_manager = ModelManager()
+        model_info = model_manager.get_model_status(model_id)
+        
+        # 从模型属性中提取模型类型
+        if "timer" in model_id.lower() or "timerxl" in str(model_info).lower():
+            logger.info(f"Using TimerXL strategy for model {model_id}")
+            return TimerXLStrategy(model)
+        elif "sundial" in model_id.lower() or "sundial" in str(model_info).lower():
+            logger.info(f"Using Sundial strategy for model {model_id}")
+            return SundialStrategy(model)
+            
+    except Exception as e:
+        logger.warning(f"Failed to determine model type for {model_id}, using default strategy: {e}")
+    
     return RegisteredStrategy(model)
+
 
 
 class InferenceManager:

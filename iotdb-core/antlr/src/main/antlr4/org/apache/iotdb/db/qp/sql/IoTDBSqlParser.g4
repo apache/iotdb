@@ -702,6 +702,10 @@ createModel
     | CREATE MODEL modelType=identifier modelId=identifier (WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET)? (FROM MODEL existingModelId=identifier)? ON DATASET LR_BRACKET trainingData RR_BRACKET
     ;
 
+uriClause
+    : USING URI uriValue=STRING_LITERAL
+    ;
+
 trainingData
     : dataElement(COMMA dataElement)*
     ;

@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Union
 
 
 @dataclass
-class ThuTLModelConfig:
+class ModelConfig:
     """thuTL 统一模型配置基类"""
 
     # 基础字段
@@ -53,7 +53,7 @@ class ThuTLModelConfig:
     _extras: Dict[str, Any] = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_json(cls, config_path: Union[str, Path]) -> "ThuTLModelConfig":
+    def from_json(cls, config_path: Union[str, Path]) -> "ModelConfig":
         """从 JSON 配置文件加载"""
         config_data = json.loads(Path(config_path).read_text(encoding="utf-8"))
 
@@ -85,11 +85,11 @@ class ThuTLModelConfig:
     def _get_config_class(cls, model_type: str) -> type:
         """根据模型类型选择配置类"""
         if model_type == "timer":
-            from .timerxl.configuration import TimerXLConfig
+            from ..timerxl.configuration_timer import TimerConfig
 
-            return TimerXLConfig
+            return TimerConfig
         elif model_type == "sundial":
-            from .sundial.configuration import SundialConfig
+            from ..sundial.configuration_sundial import SundialConfig
 
             return SundialConfig
         else:
