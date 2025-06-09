@@ -44,7 +44,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
-public class DeviceViewIntoOperator extends TreeModelIntoOperator {
+public class DeviceViewIntoOperator extends AbstractTreeIntoOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(DeviceViewIntoOperator.class);
