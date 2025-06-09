@@ -93,20 +93,21 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
   public void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     for (int i = 1; i < TIME_BUCKETS.length; i++) {
-      metricService.getOrCreateCounter(
-          String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", TIME_BUCKETS[i]),
-          MetricLevel.IMPORTANT,
-          Tag.NAME.toString(),
-          "insert_node");
+      insertNodeTransferTime[i - 1] =
+          metricService.getOrCreateCounter(
+              String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", TIME_BUCKETS[i]),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              "insert_node");
+
+      tSFileTransferTime[i - 1] =
+          metricService.getOrCreateCounter(
+              String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", TIME_BUCKETS[i]),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              "tsfile");
     }
 
-    for (int i = 1; i < TIME_BUCKETS.length; i++) {
-      metricService.getOrCreateCounter(
-          String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", TIME_BUCKETS[i]),
-          MetricLevel.IMPORTANT,
-          Tag.NAME.toString(),
-          "tsfile");
-    }
     ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::createMetrics);
   }
 
@@ -191,9 +192,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
             Tag.NAME.toString(),
             "insert_node");
       }
-    }
 
-    for (int i = 1; i < TIME_BUCKETS.length; i++) {
       if (Objects.nonNull(tSFileTransferTime[i - 1])) {
         metricService.remove(
             MetricType.COUNTER,
