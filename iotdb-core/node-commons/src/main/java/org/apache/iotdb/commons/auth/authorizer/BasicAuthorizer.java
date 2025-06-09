@@ -132,7 +132,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
-      return null;
+      return userManager.getEntity(username).getPassword();
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
@@ -140,7 +140,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         userManager.updateUserPassword(username, password);
       } catch (AuthException ignore) {
       }
-      return null;
+      return userManager.getEntity(username).getPassword();
     }
     return null;
   }
