@@ -189,6 +189,7 @@ public class ColumnHeaderConstant {
   public static final String SOURCE_COLUMN = "SourceColumn";
   public static final String TARGET_TIMESERIES = "TargetTimeseries";
   public static final String WRITTEN = "Written";
+  public static final String ROWS = "Rows";
 
   // column names for show cq
   public static final String CQID = "CQId";
@@ -566,6 +567,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SOURCE_COLUMN, TSDataType.TEXT),
           new ColumnHeader(TARGET_TIMESERIES, TSDataType.TEXT),
           new ColumnHeader(WRITTEN, TSDataType.INT32));
+
+  public static final List<ColumnHeader> selectIntoTableColumnHeaders =
+      ImmutableList.of(new ColumnHeader(ROWS, TSDataType.INT32));
 
   public static final List<ColumnHeader> getRegionIdColumnHeaders =
       ImmutableList.of(new ColumnHeader(REGION_ID, TSDataType.INT32));

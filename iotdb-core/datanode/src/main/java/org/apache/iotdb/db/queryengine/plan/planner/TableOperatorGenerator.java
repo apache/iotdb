@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -55,6 +56,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PatternRecognitionOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.RelationalIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillWithGroupOperator;
@@ -3580,18 +3582,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       Map<String, TSDataType> tsDataTypeMap = new LinkedHashMap<>();
       Map<String, InputLocation> inputLocationMap = new LinkedHashMap<>();
       List<TSDataType> inputColumnTypes = new ArrayList<>();
+      List<TsTableColumnCategory> inputColumnCategories = new ArrayList<>();
       List<Pair<String, PartialPath>> sourceTargetPathPairList = new ArrayList<>();
 
       List<ColumnSchema> inputColumns = node.getTableColumns();
       for (int i = 0; i < inputColumns.size(); i++) {
         String columnName = inputColumns.get(i).getName();
+        TsTableColumnCategory columnCategory = inputColumns.get(i).getColumnCategory();
         TSDataType columnType = InternalTypeManager.getTSDataType(inputColumns.get(i).getType());
 
         inputLocationMap.put(columnName, new InputLocation(0, i));
         tsDataTypeMap.put(columnName, columnType);
         inputColumnTypes.add(columnType);
+        inputColumnCategories.add(columnCategory);
 
-        if (inputColumns.get(i).getColumnCategory() != TIME) {
+        if (columnCategory != TIME) {
           sourceTargetPathPairList.add(
               new Pair<>(
                   columnName,
@@ -3608,10 +3613,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       long statementSizePerLine =
           OperatorGeneratorUtil.calculateStatementSizePerLine(targetPathToDataTypeMap);
 
-      return new IntoOperator(
+      return new RelationalIntoOperator(
           operatorContext,
           child,
+          node.getDatabase(),
+          devicePath.getIDeviceID(),
           inputColumnTypes,
+          inputColumnCategories,
           targetPathToSourceInputLocationMap,
           targetPathToDataTypeMap,
           targetDeviceToAlignedMap,
