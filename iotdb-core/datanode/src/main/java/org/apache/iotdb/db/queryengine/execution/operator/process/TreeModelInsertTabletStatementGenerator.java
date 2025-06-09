@@ -2,7 +2,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
@@ -11,7 +10,6 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -102,55 +100,6 @@ public class TreeModelInsertTabletStatementGenerator extends InsertTabletStateme
       }
     }
     return lastReadIndex;
-  }
-
-  public InsertTabletStatement constructInsertTabletStatement() {
-    InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
-    insertTabletStatement.setDevicePath(devicePath);
-    insertTabletStatement.setAligned(isAligned);
-    insertTabletStatement.setMeasurements(measurements);
-    insertTabletStatement.setDataTypes(dataTypes);
-    insertTabletStatement.setRowCount(rowCount);
-
-    if (rowCount != rowLimit) {
-      times = Arrays.copyOf(times, rowCount);
-      for (int i = 0; i < columns.length; i++) {
-        bitMaps[i] = bitMaps[i].getRegion(0, rowCount);
-        switch (dataTypes[i]) {
-          case BOOLEAN:
-            columns[i] = Arrays.copyOf((boolean[]) columns[i], rowCount);
-            break;
-          case INT32:
-          case DATE:
-            columns[i] = Arrays.copyOf((int[]) columns[i], rowCount);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            columns[i] = Arrays.copyOf((long[]) columns[i], rowCount);
-            break;
-          case FLOAT:
-            columns[i] = Arrays.copyOf((float[]) columns[i], rowCount);
-            break;
-          case DOUBLE:
-            columns[i] = Arrays.copyOf((double[]) columns[i], rowCount);
-            break;
-          case TEXT:
-          case STRING:
-          case BLOB:
-            columns[i] = Arrays.copyOf((Binary[]) columns[i], rowCount);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataTypes[i]));
-        }
-      }
-    }
-
-    insertTabletStatement.setTimes(times);
-    insertTabletStatement.setBitMaps(bitMaps);
-    insertTabletStatement.setColumns(columns);
-
-    return insertTabletStatement;
   }
 
   @Override

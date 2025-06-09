@@ -72,6 +72,55 @@ public abstract class InsertTabletStatementGenerator {
     }
   }
 
+  public InsertTabletStatement constructInsertTabletStatement() {
+    InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
+    insertTabletStatement.setDevicePath(devicePath);
+    insertTabletStatement.setAligned(isAligned);
+    insertTabletStatement.setMeasurements(measurements);
+    insertTabletStatement.setDataTypes(dataTypes);
+    insertTabletStatement.setRowCount(rowCount);
+
+    if (rowCount != rowLimit) {
+      times = Arrays.copyOf(times, rowCount);
+      for (int i = 0; i < columns.length; i++) {
+        bitMaps[i] = bitMaps[i].getRegion(0, rowCount);
+        switch (dataTypes[i]) {
+          case BOOLEAN:
+            columns[i] = Arrays.copyOf((boolean[]) columns[i], rowCount);
+            break;
+          case INT32:
+          case DATE:
+            columns[i] = Arrays.copyOf((int[]) columns[i], rowCount);
+            break;
+          case INT64:
+          case TIMESTAMP:
+            columns[i] = Arrays.copyOf((long[]) columns[i], rowCount);
+            break;
+          case FLOAT:
+            columns[i] = Arrays.copyOf((float[]) columns[i], rowCount);
+            break;
+          case DOUBLE:
+            columns[i] = Arrays.copyOf((double[]) columns[i], rowCount);
+            break;
+          case TEXT:
+          case STRING:
+          case BLOB:
+            columns[i] = Arrays.copyOf((Binary[]) columns[i], rowCount);
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", dataTypes[i]));
+        }
+      }
+    }
+
+    insertTabletStatement.setTimes(times);
+    insertTabletStatement.setBitMaps(bitMaps);
+    insertTabletStatement.setColumns(columns);
+
+    return insertTabletStatement;
+  }
+
   public boolean isFull() {
     return rowCount == rowLimit;
   }
@@ -89,6 +138,4 @@ public abstract class InsertTabletStatementGenerator {
   public abstract int getWrittenCount(String measurement);
 
   public abstract int processTsBlock(TsBlock tsBlock, int lastReadIndex);
-
-  public abstract InsertTabletStatement constructInsertTabletStatement();
 }
