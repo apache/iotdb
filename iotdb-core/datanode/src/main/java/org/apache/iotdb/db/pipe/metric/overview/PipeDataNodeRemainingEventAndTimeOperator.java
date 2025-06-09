@@ -105,6 +105,9 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   }
 
   double getRemainingInsertEventSmoothingCount() {
+    if (PipeConfig.getInstance().getPipeRemainingInsertNodeCountAverage() == PipeRateAverage.NONE) {
+      return insertNodeEventCount.get();
+    }
     if (System.currentTimeMillis() - lastInsertNodeEventCountSmoothingTime
         >= PipeConfig.getInstance().getPipeRemainingInsertEventCountSmoothingIntervalSeconds()) {
       insertNodeEventCountMeter.mark(insertNodeEventCount.get());
