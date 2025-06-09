@@ -1583,6 +1583,17 @@ public class IoTDBAuthIT {
       }
       assertEquals(AuthUtils.encryptPassword("654321"), resultSet.getString("Value"));
     }
+
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select oldPassword from root.__system.password_history.`userA` order by time desc limit 1")) {
+      if (!resultSet.next()) {
+        fail("Password history not found");
+      }
+      assertEquals(
+          AuthUtils.encryptPassword("123456"),
+          resultSet.getString("root.__system.password_history.userA.oldPassword"));
+    }
   }
 
   @Test

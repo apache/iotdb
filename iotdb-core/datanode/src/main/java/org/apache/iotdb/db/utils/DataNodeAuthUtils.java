@@ -59,7 +59,7 @@ public class DataNodeAuthUtils {
 
   /**
    * @return the timestamp when the password of the user is lastly changed from the given one to a
-   *     new one, or -1 if the password has not been used.
+   *     new one, or -1 if the password has not been changed.
    */
   public static long getPasswordChangeTime(String username, String password) {
 
@@ -72,7 +72,7 @@ public class DataNodeAuthUtils {
                   + username
                   + "` where oldPassword='"
                   + AuthUtils.encryptPassword(password)
-                  + "'",
+                  + "' order by time desc limit 1",
               ZoneId.systemDefault());
       SessionInfo sessionInfo =
           new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
@@ -93,14 +93,9 @@ public class DataNodeAuthUtils {
       }
 
       IQueryExecution queryExecution = Coordinator.getInstance().getQueryExecution(queryId);
-      TsBlock lastTsBlock = null;
+      TsBlock lastTsBlock;
       Optional<TsBlock> batchResult = queryExecution.getBatchResult();
-      while (batchResult.isPresent()) {
-        if (!batchResult.get().isEmpty()) {
-          lastTsBlock = batchResult.get();
-        }
-        batchResult = queryExecution.getBatchResult();
-      }
+      lastTsBlock = batchResult.orElse(null);
       if (lastTsBlock != null) {
         if (lastTsBlock.getPositionCount() <= 0) {
           // no password history, may have upgraded from an older version
