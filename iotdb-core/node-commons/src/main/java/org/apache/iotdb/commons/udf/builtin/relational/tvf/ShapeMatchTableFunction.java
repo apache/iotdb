@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
-import com.google.common.collect.ImmutableSet;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.QetchAlgorthm;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.MatchState;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.Point;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.Section;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -41,8 +39,8 @@ import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSp
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 import org.apache.iotdb.udf.api.type.Type;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.enums.TSDataType;
 
 import java.util.Arrays;
 import java.util.List;
@@ -50,7 +48,8 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 
-// from shape_match(data => t1, col => 's1', pattern => '(1,1),(2,2),(3,1)', smoothValue => 0.5, threshold => 0.5)
+// from shape_match(data => t1, col => 's1', pattern => '(1,1),(2,2),(3,1)', smoothValue => 0.5,
+// threshold => 0.5)
 // 这里还可以再加上结果的范围限制，加速查询（因为UDTF过程当中可能无法获取到下推的谓词）
 // 这里加上平滑参数
 
@@ -94,10 +93,21 @@ public class ShapeMatchTableFunction implements TableFunction {
         ScalarParameterSpecification.builder().name(PATTERN_PARAM).type(Type.STRING).build(),
         ScalarParameterSpecification.builder().name(SMOOTH_PARAM).type(Type.DOUBLE).build(),
         ScalarParameterSpecification.builder().name(THRESHOLD_PARAM).type(Type.DOUBLE).build(),
-        ScalarParameterSpecification.builder().name(WIDTH_PARAM).type(Type.DOUBLE).defaultValue(Double.MAX_VALUE).build(),
-        ScalarParameterSpecification.builder().name(HEIGHT_PARAM).type(Type.DOUBLE).defaultValue(Double.MAX_VALUE).build(),
-        ScalarParameterSpecification.builder().name(TYPE_PARAM).type(Type.STRING).defaultValue("shape").build()
-    );
+        ScalarParameterSpecification.builder()
+            .name(WIDTH_PARAM)
+            .type(Type.DOUBLE)
+            .defaultValue(Double.MAX_VALUE)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(HEIGHT_PARAM)
+            .type(Type.DOUBLE)
+            .defaultValue(Double.MAX_VALUE)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(TYPE_PARAM)
+            .type(Type.STRING)
+            .defaultValue("shape")
+            .build());
   }
 
   @Override
@@ -107,13 +117,15 @@ public class ShapeMatchTableFunction implements TableFunction {
     // calc the index of the column
     TableArgument tableArgument = (TableArgument) arguments.get(TBL_PARAM);
     String expectedFieldName = (String) ((ScalarArgument) arguments.get(COL_PARAM)).getValue();
-    int requiredIndex = findColumnIndex(
-        tableArgument,
-        expectedFieldName,
-        ImmutableSet.of(Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE));
+    int requiredIndex =
+        findColumnIndex(
+            tableArgument,
+            expectedFieldName,
+            ImmutableSet.of(Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE));
 
     // outputColumnSchema description
-    DescribedSchema properColumnSchema = new DescribedSchema.Builder()
+    DescribedSchema properColumnSchema =
+        new DescribedSchema.Builder()
             .addField("time", Type.TIMESTAMP)
             .addField(expectedFieldName, tableArgument.getFieldTypes().get(requiredIndex))
             .addField("matchID", Type.INT32)
@@ -125,7 +137,8 @@ public class ShapeMatchTableFunction implements TableFunction {
         new MapTableFunctionHandle.Builder()
             .addProperty(PATTERN_PARAM, ((ScalarArgument) arguments.get(PATTERN_PARAM)).getValue())
             .addProperty(SMOOTH_PARAM, ((ScalarArgument) arguments.get(SMOOTH_PARAM)).getValue())
-            .addProperty(THRESHOLD_PARAM, ((ScalarArgument) arguments.get(THRESHOLD_PARAM)).getValue())
+            .addProperty(
+                THRESHOLD_PARAM, ((ScalarArgument) arguments.get(THRESHOLD_PARAM)).getValue())
             .addProperty(WIDTH_PARAM, ((ScalarArgument) arguments.get(WIDTH_PARAM)).getValue())
             .addProperty(HEIGHT_PARAM, ((ScalarArgument) arguments.get(HEIGHT_PARAM)).getValue())
             .build();
@@ -134,7 +147,7 @@ public class ShapeMatchTableFunction implements TableFunction {
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
         .requireRecordSnapshot(false)
-        .requiredColumns(TBL_PARAM, Arrays.asList(0,requiredIndex)) // the 0th column is time
+        .requiredColumns(TBL_PARAM, Arrays.asList(0, requiredIndex)) // the 0th column is time
         .handle(handle)
         .build();
   }
@@ -158,8 +171,7 @@ public class ShapeMatchTableFunction implements TableFunction {
         (Double) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(WIDTH_PARAM);
     Double heightLimit =
         (Double) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(HEIGHT_PARAM);
-    String type =
-        (String) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(TYPE_PARAM);
+    String type = (String) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(TYPE_PARAM);
 
     QetchAlgorthm qetchAlgorthm = new QetchAlgorthm();
     qetchAlgorthm.setThreshold(threshold);
@@ -194,7 +206,7 @@ public class ShapeMatchTableFunction implements TableFunction {
       double time = input.getLong(0);
       double value = input.getDouble(1);
 
-      if(qetchAlgorthm.addPoint(new Point(time, value))){
+      if (qetchAlgorthm.addPoint(new Point(time, value))) {
         outputWindow(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
       }
     }
@@ -207,7 +219,9 @@ public class ShapeMatchTableFunction implements TableFunction {
     }
 
     private void outputWindow(
-            List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder, List<MatchState> matchResult) {
+        List<ColumnBuilder> properColumnBuilders,
+        ColumnBuilder passThroughIndexBuilder,
+        List<MatchState> matchResult) {
       // TODO fill the result to the output column
 
       // after the process, the qetchAlgorthm will be empty
