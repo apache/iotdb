@@ -89,6 +89,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -945,7 +946,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // 1. Map<Device, String[] measurements> ISchemaFetcher.getAllSensors(prefix) ~= 50ms
 
       final PartialPath prefixPath = new PartialPath(req.getPrefixes().toArray(new String[0]));
-      final Map<TableId, Map<IDeviceID, Map<String, TimeValuePair>>> resultMap = new HashMap<>();
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> resultMap =
+          new HashMap<>();
       int sensorNum = 0;
 
       final String prefixString = prefixPath.toString();
@@ -966,21 +968,23 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // 2.2 all sensors hit cache, return response ~= 20ms
       final TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
 
-      for (final Map.Entry<TableId, Map<IDeviceID, Map<String, TimeValuePair>>> result :
-          resultMap.entrySet()) {
-        for (final Map.Entry<IDeviceID, Map<String, TimeValuePair>> device2MeasurementLastEntry :
-            result.getValue().entrySet()) {
+      for (final Map.Entry<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>>
+          result : resultMap.entrySet()) {
+        for (final Map.Entry<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>
+            device2MeasurementLastEntry : result.getValue().entrySet()) {
           final String deviceWithSeparator =
               device2MeasurementLastEntry.getKey().toString() + TsFileConstant.PATH_SEPARATOR;
-          for (final Map.Entry<String, TimeValuePair> measurementLastEntry :
+          for (final Map.Entry<String, Pair<TSDataType, TimeValuePair>> measurementLastEntry :
               device2MeasurementLastEntry.getValue().entrySet()) {
-            final TimeValuePair tvPair = measurementLastEntry.getValue();
-            LastQueryUtil.appendLastValue(
-                builder,
-                tvPair.getTimestamp(),
-                deviceWithSeparator + measurementLastEntry.getKey(),
-                tvPair.getValue().getStringValue(),
-                tvPair.getValue().getDataType().name());
+            final TimeValuePair tvPair = measurementLastEntry.getValue().getRight();
+            if (tvPair != TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
+              LastQueryUtil.appendLastValue(
+                  builder,
+                  tvPair.getTimestamp(),
+                  deviceWithSeparator + measurementLastEntry.getKey(),
+                  tvPair.getValue().getStringValue(),
+                  measurementLastEntry.getValue().getLeft().name());
+            }
           }
         }
       }

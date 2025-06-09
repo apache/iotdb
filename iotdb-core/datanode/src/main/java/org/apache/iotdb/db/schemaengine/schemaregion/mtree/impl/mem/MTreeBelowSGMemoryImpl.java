@@ -1142,7 +1142,7 @@ public class MTreeBelowSGMemoryImpl {
 
   public int fillLastQueryMap(
       final PartialPath prefixPath,
-      final Map<TableId, Map<IDeviceID, Map<String, TimeValuePair>>> mapToFill)
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill)
       throws MetadataException {
     final int[] sensorNum = {0};
     try (final EntityUpdater<IMemMNode> updater =
@@ -1151,10 +1151,12 @@ public class MTreeBelowSGMemoryImpl {
 
           @Override
           protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
-            final Map<String, TimeValuePair> measurementMap = new HashMap<>();
+            final Map<String, Pair<TSDataType, TimeValuePair>> measurementMap = new HashMap<>();
             for (final IMemMNode child : node.getChildren().values()) {
               if (child instanceof IMeasurementMNode) {
-                measurementMap.put(child.getName(), null);
+                measurementMap.put(
+                    child.getName(),
+                    new Pair<>(((IMeasurementMNode<?>) child).getDataType(), null));
               }
             }
             final IDeviceID deviceID = node.getPartialPath().getIDeviceID();
