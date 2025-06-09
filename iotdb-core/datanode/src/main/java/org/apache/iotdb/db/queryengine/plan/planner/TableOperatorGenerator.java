@@ -3588,20 +3588,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       List<ColumnSchema> inputColumns = node.getTableColumns();
       for (int i = 0; i < inputColumns.size(); i++) {
         String columnName = inputColumns.get(i).getName();
-        TsTableColumnCategory columnCategory = inputColumns.get(i).getColumnCategory();
-        TSDataType columnType = InternalTypeManager.getTSDataType(inputColumns.get(i).getType());
-
         inputLocationMap.put(columnName, new InputLocation(0, i));
+
+        TsTableColumnCategory columnCategory = inputColumns.get(i).getColumnCategory();
+        if (columnCategory == TIME) {
+          continue;
+        }
+
+        TSDataType columnType = InternalTypeManager.getTSDataType(inputColumns.get(i).getType());
         tsDataTypeMap.put(columnName, columnType);
         inputColumnTypes.add(columnType);
         inputColumnCategories.add(columnCategory);
-
-        if (columnCategory != TIME) {
-          sourceTargetPathPairList.add(
-              new Pair<>(
-                  columnName,
-                  new MeasurementPath(String.format("%s.%s", tableName, columnName), columnType)));
-        }
+        sourceTargetPathPairList.add(
+            new Pair<>(
+                columnName,
+                new MeasurementPath(String.format("%s.%s", tableName, columnName), columnType)));
       }
 
       Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =

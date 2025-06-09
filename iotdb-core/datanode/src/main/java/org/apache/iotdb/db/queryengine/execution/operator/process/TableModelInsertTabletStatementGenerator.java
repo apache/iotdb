@@ -12,15 +12,17 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 
 public class TableModelInsertTabletStatementGenerator extends InsertTabletStatementGenerator {
 
   private final String databaseName;
   private final AtomicInteger writtenCounter;
+  private final int timeColumnIndex;
   private final List<TsTableColumnCategory> tsTableColumnCategories;
 
   public TableModelInsertTabletStatementGenerator(
@@ -35,27 +37,30 @@ public class TableModelInsertTabletStatementGenerator extends InsertTabletStatem
     this.databaseName = databaseName;
     this.devicePath = devicePath;
     this.isAligned = isAligned;
-    this.measurements = measurementToInputLocationMap.keySet().toArray(new String[0]);
+    this.measurements = measurementToDataTypeMap.keySet().toArray(new String[0]);
     this.dataTypes = measurementToDataTypeMap.values().toArray(new TSDataType[0]);
-    this.inputLocations = measurementToInputLocationMap.values().toArray(new InputLocation[0]);
+    this.inputLocations =
+        measurementToInputLocationMap.entrySet().stream()
+            .filter(entry -> !entry.getKey().equalsIgnoreCase(TIME_COLUMN_NAME))
+            .map(Map.Entry::getValue)
+            .toArray(InputLocation[]::new);
     this.writtenCounter = new AtomicInteger(0);
     this.sourceTypeConvertors = sourceTypeConvertors;
     this.rowLimit = rowLimit;
     this.tsTableColumnCategories = tsTableColumnCategories;
+    this.timeColumnIndex =
+        measurementToInputLocationMap.get(TIME_COLUMN_NAME).getValueColumnIndex();
     this.reset();
   }
 
   public int processTsBlock(TsBlock tsBlock, int lastReadIndex) {
     while (lastReadIndex < tsBlock.getPositionCount()) {
+      times[rowCount] = tsBlock.getValueColumns()[timeColumnIndex].getLong(lastReadIndex);
+
       for (int i = 0; i < measurements.length; ++i) {
         int valueColumnIndex = inputLocations[i].getValueColumnIndex();
         Column valueColumn = tsBlock.getValueColumns()[valueColumnIndex];
-        if (tsTableColumnCategories.get(i) == TsTableColumnCategory.TIME) {
-          times[rowCount] = valueColumn.getLong(lastReadIndex);
-          continue;
-        }
-
-        Type sourceTypeConvertor = sourceTypeConvertors.get(valueColumnIndex);
+        Type sourceTypeConvertor = sourceTypeConvertors.get(i);
 
         // if the value is NULL
         if (valueColumn.isNull(lastReadIndex)) {
@@ -111,55 +116,11 @@ public class TableModelInsertTabletStatementGenerator extends InsertTabletStatem
   }
 
   public InsertTabletStatement constructInsertTabletStatement() {
-    InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
-    insertTabletStatement.setDevicePath(devicePath);
-    insertTabletStatement.setAligned(isAligned);
-    insertTabletStatement.setMeasurements(measurements);
-    insertTabletStatement.setDataTypes(dataTypes);
-    insertTabletStatement.setRowCount(rowCount);
+    InsertTabletStatement insertTabletStatement = super.constructInsertTabletStatement();
     insertTabletStatement.setDatabaseName(databaseName);
     insertTabletStatement.setWriteToTable(true);
-
-    if (rowCount != rowLimit) {
-      times = Arrays.copyOf(times, rowCount);
-      for (int i = 0; i < columns.length; i++) {
-        bitMaps[i] = bitMaps[i].getRegion(0, rowCount);
-        switch (dataTypes[i]) {
-          case BOOLEAN:
-            columns[i] = Arrays.copyOf((boolean[]) columns[i], rowCount);
-            break;
-          case INT32:
-          case DATE:
-            columns[i] = Arrays.copyOf((int[]) columns[i], rowCount);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            columns[i] = Arrays.copyOf((long[]) columns[i], rowCount);
-            break;
-          case FLOAT:
-            columns[i] = Arrays.copyOf((float[]) columns[i], rowCount);
-            break;
-          case DOUBLE:
-            columns[i] = Arrays.copyOf((double[]) columns[i], rowCount);
-            break;
-          case TEXT:
-          case STRING:
-          case BLOB:
-            columns[i] = Arrays.copyOf((Binary[]) columns[i], rowCount);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataTypes[i]));
-        }
-      }
-    }
-
-    insertTabletStatement.setTimes(times);
-    insertTabletStatement.setBitMaps(bitMaps);
-    insertTabletStatement.setColumns(columns);
     insertTabletStatement.setColumnCategories(
         tsTableColumnCategories.toArray(new TsTableColumnCategory[0]));
-
     return insertTabletStatement;
   }
 

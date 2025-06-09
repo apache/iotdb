@@ -261,6 +261,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
@@ -596,6 +597,21 @@ public class StatementAnalyzer {
       throw new SemanticException("USE statement is not supported yet.");
     }
 
+    private boolean checkTagColumnsForInsert(
+        List<String> insertColumns, Map<String, ColumnSchema> columnSchemaMap) {
+      List<String> tagColumns =
+          columnSchemaMap.entrySet().stream()
+              .filter(entry -> entry.getValue().getColumnCategory() == TsTableColumnCategory.TAG)
+              .map(Map.Entry::getKey)
+              .collect(Collectors.toList());
+      for (String column : tagColumns) {
+        if (!insertColumns.contains(column)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
     // Do not consider type coercion at the moment
     private boolean typesMatchForInsert(List<Type> tableTypes, List<Type> queryTypes) {
       if (tableTypes.size() != queryTypes.size()) {
@@ -641,9 +657,6 @@ public class StatementAnalyzer {
       List<String> tableColumns =
           columns.stream().map(ColumnSchema::getName).collect(toImmutableList());
 
-      // TODO
-      // analyze target table layout, table columns should contain all tag columns
-
       List<String> insertColumns;
       if (insert.getColumns().isPresent()) {
         insertColumns =
@@ -667,8 +680,16 @@ public class StatementAnalyzer {
         insertColumns = tableColumns;
       }
 
-      // set Insert in analysis
+      // insert columns should contain time and tag columns
+      if (!insertColumns.contains(TIME_COLUMN_NAME)) {
+        throw new SemanticException("time column can not be null");
+      }
       Map<String, ColumnSchema> columnSchemaMap = tableSchema.get().getColumnSchemaMap();
+      if (!checkTagColumnsForInsert(insertColumns, columnSchemaMap)) {
+        throw new SemanticException("Insert must write all tag columns from query");
+      }
+
+      // set Insert in analysis
       analysis.setInsert(
           new Analysis.Insert(
               insert.getTable(),
