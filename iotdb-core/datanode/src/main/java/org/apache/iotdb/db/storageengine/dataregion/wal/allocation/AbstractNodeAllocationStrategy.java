@@ -69,7 +69,7 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
       try {
         return new WALNode(identifier, folder + File.separator + identifier);
       } catch (Exception e) {
-        logger.error("Meet exception when creating wal node", e);
+        logger.warn("Meet exception when creating wal node", e);
         folderManager.updateFolderState(folder, FolderManager.FolderState.ABNORMAL);
       }
     }
