@@ -83,6 +83,11 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     Long.MAX_VALUE
   };
 
+  private final String[] timeUnit = {
+    "1ms", "10ms", "20ms", "40ms", "60ms", "80ms", "100ms", "200ms", "300ms", "400ms", "500ms",
+    "600ms", "700ms", "800ms", "900ms", "1s", "2s", "10s", "inf"
+  };
+
   private final Counter[] insertNodeTransferTime;
 
   private final Counter[] tSFileTransferTime;
@@ -95,14 +100,14 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     for (int i = 1; i < TIME_BUCKETS.length; i++) {
       insertNodeTransferTime[i - 1] =
           metricService.getOrCreateCounter(
-              String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", TIME_BUCKETS[i]),
+              String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", timeUnit[i - 1]),
               MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               "insert_node");
 
       tSFileTransferTime[i - 1] =
           metricService.getOrCreateCounter(
-              String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", TIME_BUCKETS[i]),
+              String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", timeUnit[i - 1]),
               MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               "tsfile");
@@ -188,7 +193,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
       if (Objects.nonNull(insertNodeTransferTime[i - 1])) {
         metricService.remove(
             MetricType.COUNTER,
-            String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", TIME_BUCKETS[i]),
+            String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", timeUnit[i - 1]),
             Tag.NAME.toString(),
             "insert_node");
       }
@@ -196,7 +201,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
       if (Objects.nonNull(tSFileTransferTime[i - 1])) {
         metricService.remove(
             MetricType.COUNTER,
-            String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", TIME_BUCKETS[i]),
+            String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", timeUnit[i - 1]),
             Tag.NAME.toString(),
             "tsfile");
       }

@@ -43,7 +43,7 @@ public class PipeModelFixedMemoryBlockMetrics {
   }
 
   public void registerDynamicMemoryBlockGauge(PipeDynamicMemoryBlock dynamicMemoryBlock) {
-    if (dynamicMemoryBlock == null) {
+    if (metricService == null) {
       return;
     }
 
