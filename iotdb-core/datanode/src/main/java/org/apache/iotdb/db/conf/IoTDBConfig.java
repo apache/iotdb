@@ -162,7 +162,7 @@ public class IoTDBConfig {
   /** Memory allocated for the pipe */
   private long allocateMemoryForPipe = Runtime.getRuntime().maxMemory() / 10;
 
-  private long allocateMemoryPerWalCache = 20 * 1024 * 1024;
+  private long allocateMemoryPerWalCache = 10 * 1024 * 1024;
 
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
