@@ -59,6 +59,10 @@ public class PipeConnectorConstant {
   public static final String SINK_REALTIME_FIRST_KEY = "sink.realtime-first";
   public static final boolean CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE = true;
 
+  public static final String CONNECTOR_FORCE_SEQUENTIAL_KEY = "connector.force-seq";
+  public static final String SINK_FORCE_SEQUENTIAL_KEY = "sink.force-seq";
+  public static final boolean CONNECTOR_FORCE_SEQUENTIAL_DEFAULT_VALUE = false;
+
   public static final String CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY = "connector.batch.enable";
   public static final String SINK_IOTDB_BATCH_MODE_ENABLE_KEY = "sink.batch.enable";
   public static final boolean CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE = true;
