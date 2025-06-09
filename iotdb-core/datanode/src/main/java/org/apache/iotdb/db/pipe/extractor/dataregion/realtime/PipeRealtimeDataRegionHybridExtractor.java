@@ -168,6 +168,11 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                     //  5. Data inserted in the step2 is not captured by PipeB, and if its tsfile
                     //     epoch's state is USING_TABLET, the tsfile event will be ignored, which
                     //     will cause the data loss in the tsfile epoch.
+                    LOGGER.info(
+                        "The tsFile {}'s epoch's start time {} is smaller than the captured insertNodes' min time {}, will regard it as data loss or un-sequential, will extract the tsFile",
+                        ((PipeTsFileInsertionEvent) event.getEvent()).getTsFile(),
+                        ((PipeTsFileInsertionEvent) event.getEvent()).getFileStartTime(),
+                        event.getTsFileEpoch().getInsertNodeMinTime());
                     return TsFileEpoch.State.USING_BOTH;
                   } else {
                     // All data in the tsfile epoch has been extracted in tablet mode, so we should

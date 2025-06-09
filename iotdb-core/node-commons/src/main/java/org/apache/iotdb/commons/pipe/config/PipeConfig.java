@@ -211,6 +211,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAsyncConnectorMaxClientNumber();
   }
 
+  public int getPipeAsyncConnectorMaxTsFileClientNumber() {
+    return COMMON_CONFIG.getPipeAsyncConnectorMaxTsFileClientNumber();
+  }
+
   public double getPipeAllConnectorsRateLimitBytesPerSecond() {
     return COMMON_CONFIG.getPipeAllSinksRateLimitBytesPerSecond();
   }
@@ -578,6 +582,9 @@ public class PipeConfig {
         getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall());
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());
+    LOGGER.info(
+        "PipeAsyncConnectorMaxTsFileClientNumber: {}",
+        getPipeAsyncConnectorMaxTsFileClientNumber());
 
     LOGGER.info(
         "PipeAllConnectorsRateLimitBytesPerSecond: {}",

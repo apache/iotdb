@@ -250,7 +250,9 @@ public class CommonConfig {
   private int pipeAsyncConnectorSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
   private int pipeAsyncConnectorMaxClientNumber =
-      Math.max(16, Runtime.getRuntime().availableProcessors() / 2);
+      Math.max(32, Runtime.getRuntime().availableProcessors() * 2);
+  private int pipeAsyncConnectorMaxTsFileClientNumber =
+      Math.max(16, Runtime.getRuntime().availableProcessors());
 
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
   private int rateLimiterHotReloadCheckIntervalMs = 1000;
@@ -1130,6 +1132,20 @@ public class CommonConfig {
     this.pipeAsyncConnectorMaxClientNumber = pipeAsyncConnectorMaxClientNumber;
     logger.info(
         "pipeAsyncConnectorMaxClientNumber is set to {}.", pipeAsyncConnectorMaxClientNumber);
+  }
+
+  public int getPipeAsyncConnectorMaxTsFileClientNumber() {
+    return pipeAsyncConnectorMaxTsFileClientNumber;
+  }
+
+  public void setPipeAsyncConnectorMaxTsFileClientNumber(
+      int pipeAsyncConnectorMaxTsFileClientNumber) {
+    if (this.pipeAsyncConnectorMaxTsFileClientNumber == pipeAsyncConnectorMaxTsFileClientNumber) {
+      return;
+    }
+    this.pipeAsyncConnectorMaxTsFileClientNumber = pipeAsyncConnectorMaxTsFileClientNumber;
+    logger.info(
+        "pipeAsyncConnectorMaxClientNumber is set to {}.", pipeAsyncConnectorMaxTsFileClientNumber);
   }
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
