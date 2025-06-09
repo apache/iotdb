@@ -763,23 +763,6 @@ public class ConfigNodeDescriptor {
                 properties.getProperty(
                     "enforce_strong_password",
                     String.valueOf(commonDescriptor.getConfig().isEnforceStrongPassword()))));
-
-    commonDescriptor
-        .getConfig()
-        .setPasswordExpirationSeconds(
-            Long.parseLong(
-                properties.getProperty(
-                    "password_expiration_seconds",
-                    String.valueOf(commonDescriptor.getConfig().getPasswordExpirationSeconds()))));
-
-    commonDescriptor
-        .getConfig()
-        .setPasswordReuseIntervalSeconds(
-            Long.parseLong(
-                properties.getProperty(
-                    "password_reuse_interval_seconds",
-                    String.valueOf(
-                        commonDescriptor.getConfig().getPasswordReuseIntervalSeconds()))));
   }
 
   public static ConfigNodeDescriptor getInstance() {
