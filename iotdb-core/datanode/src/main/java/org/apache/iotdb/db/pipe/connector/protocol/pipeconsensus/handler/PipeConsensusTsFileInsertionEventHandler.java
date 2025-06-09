@@ -210,9 +210,9 @@ public class PipeConsensusTsFileInsertionEventHandler
                   tsFile.getName());
         }
 
-        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          connector.removeEventFromBuffer(event);
-        }
+        // if code flow reach here, meaning the file will not be resent and will be ignored.
+        // events that don't need to be retried will be removed from the buffer
+        connector.removeEventFromBuffer(event);
       } catch (final Exception e) {
         onError(e);
         return;
