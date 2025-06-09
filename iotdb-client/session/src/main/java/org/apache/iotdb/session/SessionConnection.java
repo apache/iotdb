@@ -182,9 +182,6 @@ public class SessionConnection {
     DeepCopyRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     DeepCopyRpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
     try {
-      if (transport != null && transport.isOpen()) {
-        close();
-      }
       if (useSSL) {
         transport =
             DeepCopyRpcTransportFactory.INSTANCE.getTransport(
@@ -1052,6 +1049,17 @@ public class SessionConnection {
         session.defaultSessionConnection = this;
         if (session.endPointToSessionConnection == null) {
           session.endPointToSessionConnection = new ConcurrentHashMap<>();
+        }
+        SessionConnection previousConnection =
+            session.endPointToSessionConnection.get(this.endPoint);
+        if (previousConnection != null
+            && previousConnection.transport != null
+            && previousConnection.transport.isOpen()) {
+          try {
+            previousConnection.close();
+          } catch (IoTDBConnectionException e) {
+            logger.warn("close connection failed, {}", e.getMessage());
+          }
         }
         session.endPointToSessionConnection.put(session.defaultEndPoint, this);
         break;
