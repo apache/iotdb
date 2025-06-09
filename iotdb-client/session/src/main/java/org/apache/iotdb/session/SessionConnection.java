@@ -182,6 +182,9 @@ public class SessionConnection {
     DeepCopyRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     DeepCopyRpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
     try {
+      if (transport != null && transport.isOpen()) {
+        close();
+      }
       if (useSSL) {
         transport =
             DeepCopyRpcTransportFactory.INSTANCE.getTransport(
