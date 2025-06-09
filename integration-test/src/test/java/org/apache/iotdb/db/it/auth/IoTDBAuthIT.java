@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -60,6 +61,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /** This is an example for integration test. */
+@SuppressWarnings("EmptyTryBlock")
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAuthIT {
@@ -454,7 +456,7 @@ public class IoTDBAuthIT {
         userStmt.execute("CREATE TIMESERIES root.a.c WITH DATATYPE=INT32,ENCODING=PLAIN");
         userStmt.execute("INSERT INTO root.a(timestamp,b,c) VALUES (1,100,1000)");
         // userStmt.execute("DELETE FROM root.a.b WHERE TIME <= 1000000000");
-        ResultSet resultSet = userStmt.executeQuery("SELECT * FROM root.**");
+        ResultSet resultSet = userStmt.executeQuery("SELECT * FROM root.a");
         validateResultSet(resultSet, "1,100,1000,\n");
         resultSet.close();
 
@@ -1206,7 +1208,7 @@ public class IoTDBAuthIT {
     adminStmt.execute("insert into root.sg.d2(time,s1,s2) values(1,1,1)");
     adminStmt.execute(
         "insert into root.sg.aligned_template(time,temperature,status) values(1,20,true)");
-    try (ResultSet resultSet = adminStmt.executeQuery("select * from root.**;")) {
+    try (ResultSet resultSet = adminStmt.executeQuery("select * from root.sg.**;")) {
       Set<String> standards =
           new HashSet<>(
               Arrays.asList(
@@ -1422,5 +1424,227 @@ public class IoTDBAuthIT {
           "tempuser,",
         };
     resultSetEqualTest("show current_user", expectedHeader, retArray, "tempuser", "temppw");
+  }
+
+  @Test
+  public void testStrongPassword() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET CONFIGURATION 'enforce_strong_password'='true'");
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA 'NO_LOWER_CASE_123'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one lowercase letter.", e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter user root set password 'NO_LOWER_CASE_123'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one lowercase letter.", e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA 'no_upper_case_123'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one uppercase letter.", e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter user root set password 'no_upper_case_123'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one uppercase letter.", e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA 'no_DIGIT'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals("820: Invalid password, must contain at least one digit.", e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter user root set password 'no_DIGIT'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals("820: Invalid password, must contain at least one digit.", e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA 'noSpecial123'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one special character.", e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter user root set password 'noSpecial123'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one special character.", e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA '1234'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one lowercase letter, one uppercase letter, one special character.",
+          e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter user root set password '1234'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "820: Invalid password, must contain at least one lowercase letter, one uppercase letter, one special character.",
+          e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA 'userA'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals("820: Password cannot be the same as user name", e.getMessage());
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter user root set password 'root'");
+      fail();
+    } catch (SQLException e) {
+      assertEquals("820: Password cannot be the same as user name", e.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user userA 'strongPassword#1234'");
+
+      statement.execute("SET CONFIGURATION 'enforce_strong_password'='false'");
+
+      statement.execute("create user userB '1234'");
+      statement.execute("alter user root set password 'root'");
+    }
+  }
+
+  @Test
+  public void testPasswordHistory() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      testPasswordHistoryCreate(statement);
+      testPasswordHistoryAlter(statement);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public void testPasswordHistoryCreate(Statement statement) throws SQLException {
+    statement.execute("create user userA '123456'");
+
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select last password from root.__system.password_history.`userA`")) {
+      if (!resultSet.next()) {
+        fail("Password history not found");
+      }
+      assertEquals(AuthUtils.encryptPassword("123456"), resultSet.getString("Value"));
+    }
+  }
+
+  public void testPasswordHistoryAlter(Statement statement) throws SQLException {
+    statement.execute("alter user userA set password '654321'");
+
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select last password from root.__system.password_history.`userA`")) {
+      if (!resultSet.next()) {
+        fail("Password history not found");
+      }
+      assertEquals(AuthUtils.encryptPassword("654321"), resultSet.getString("Value"));
+    }
+  }
+
+  @Test
+  public void testPasswordExpiration() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET CONFIGURATION 'password_expiration_seconds'='1'");
+      statement.execute("CREATE USER userA 'password0001'");
+    }
+
+    long startTime = System.currentTimeMillis();
+    boolean loginFailed = false;
+    while (System.currentTimeMillis() - startTime < 60000) {
+      try (Connection ignored = EnvFactory.getEnv().getConnection("userA", "password0001")) {
+
+      } catch (SQLException e) {
+        assertEquals("820: Password has expired, please change to a new one", e.getMessage());
+        loginFailed = true;
+        break;
+      }
+    }
+
+    if (!loginFailed) {
+      fail("Password did not expire");
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET CONFIGURATION 'password_expiration_seconds'='0'");
+      statement.execute("ALTER USER userA SET PASSWORD 'password0002'");
+    }
+
+    try (Connection ignored = EnvFactory.getEnv().getConnection("userA", "password0002")) {}
+  }
+
+  @Test
+  public void testPasswordReuseInterval() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET CONFIGURATION 'password_reuse_interval_seconds'='5'");
+
+      statement.execute("CREATE USER userA 'password0001'");
+
+      long startTime = System.currentTimeMillis();
+      statement.execute("ALTER USER userA SET PASSWORD 'password0002'");
+
+      boolean changeSuccess = false;
+      while (System.currentTimeMillis() - startTime < 60000) {
+        try {
+          statement.execute("ALTER USER userA SET PASSWORD 'password0001'");
+          changeSuccess = true;
+          break;
+        } catch (SQLException e) {
+          assertTrue(e.getMessage().startsWith("701: The password has been used at"));
+        }
+      }
+
+      if (!changeSuccess) {
+        fail("Password is not successfully changed");
+      }
+      long currentTimeMillis = System.currentTimeMillis();
+      assertTrue(currentTimeMillis - startTime > 5000);
+    }
   }
 }

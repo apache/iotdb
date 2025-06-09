@@ -251,6 +251,23 @@ public class CommonDescriptor {
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
 
+    config.setEnforceStrongPassword(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enforce_strong_password", String.valueOf(config.isEnforceStrongPassword()))));
+
+    config.setPasswordExpirationSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "password_expiration_seconds",
+                String.valueOf(config.getPasswordExpirationSeconds()))));
+
+    config.setPasswordReuseIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "password_reuse_interval_seconds",
+                String.valueOf(config.getPasswordReuseIntervalSeconds()))));
+
     loadRetryProperties(properties);
     loadBinaryAllocatorProps(properties);
   }

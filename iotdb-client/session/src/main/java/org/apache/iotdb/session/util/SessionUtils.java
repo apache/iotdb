@@ -152,7 +152,7 @@ public class SessionUtils {
     return buffer;
   }
 
-  private static int calculateLength(List<TSDataType> types, List<Object> values)
+  public static int calculateLength(List<TSDataType> types, List<? extends Object> values)
       throws IoTDBConnectionException {
     int res = 0;
     for (int i = 0; i < types.size(); i++) {
@@ -204,7 +204,8 @@ public class SessionUtils {
    * @param buffer buffer to insert
    * @throws IoTDBConnectionException
    */
-  private static void putValues(List<TSDataType> types, List<Object> values, ByteBuffer buffer)
+  public static void putValues(
+      List<TSDataType> types, List<? extends Object> values, ByteBuffer buffer)
       throws IoTDBConnectionException {
     for (int i = 0; i < values.size(); i++) {
       if (values.get(i) == null) {

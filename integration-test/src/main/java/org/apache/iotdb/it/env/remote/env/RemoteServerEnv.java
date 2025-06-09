@@ -134,7 +134,7 @@ public class RemoteServerEnv implements BaseEnv {
       connection =
           DriverManager.getConnection(
               Config.IOTDB_URL_PREFIX + ip_addr + ":" + port,
-              BaseEnv.constructProperties(this.user, this.password, sqlDialect));
+              BaseEnv.constructProperties(username, password, sqlDialect));
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       throw new AssertionError();

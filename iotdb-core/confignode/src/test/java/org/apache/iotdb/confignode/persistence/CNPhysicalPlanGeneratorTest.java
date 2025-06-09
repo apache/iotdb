@@ -76,7 +76,7 @@ public class CNPhysicalPlanGeneratorTest {
   private static final String TEMPLATE_INFO_FILE_NAME = "template_info.bin";
 
   private static void setupAuthorInfo() {
-    authorInfo = new AuthorInfo();
+    authorInfo = new AuthorInfo(null);
     if (!snapshotDir.exists()) {
       snapshotDir.mkdir();
     }

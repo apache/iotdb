@@ -2040,6 +2040,24 @@ public class IoTDBDescriptor {
                       ConfigurationFileUtils.getConfigurationDefaultValue(
                           "timestamp_precision_check_enabled"))));
 
+      commonDescriptor
+          .getConfig()
+          .setPasswordExpirationSeconds(
+              Long.parseLong(
+                  properties.getProperty(
+                      "password_expiration_seconds",
+                      String.valueOf(
+                          commonDescriptor.getConfig().getPasswordExpirationSeconds()))));
+
+      commonDescriptor
+          .getConfig()
+          .setPasswordReuseIntervalSeconds(
+              Long.parseLong(
+                  properties.getProperty(
+                      "password_reuse_interval_seconds",
+                      String.valueOf(
+                          commonDescriptor.getConfig().getPasswordReuseIntervalSeconds()))));
+
       conf.setEnablePartialInsert(
           Boolean.parseBoolean(
               Optional.ofNullable(

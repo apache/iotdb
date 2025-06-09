@@ -69,6 +69,43 @@ public class AuthUtils {
    */
   public static void validatePassword(String password) throws AuthException {
     validateNameOrPassword(password);
+    if (CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
+      boolean hasLowerCase = false;
+      boolean hasUpperCase = false;
+      boolean hasDigit = false;
+      boolean hasSpecialChar = false;
+      for (int i = 0; i < password.length(); i++) {
+        char c = password.charAt(i);
+        if (Character.isLowerCase(c)) {
+          hasLowerCase = true;
+        } else if (Character.isUpperCase(c)) {
+          hasUpperCase = true;
+        } else if (Character.isDigit(c)) {
+          hasDigit = true;
+        } else {
+          hasSpecialChar = true;
+        }
+      }
+
+      if (!hasLowerCase || !hasUpperCase || !hasDigit || !hasSpecialChar) {
+        StringBuilder builder = new StringBuilder("Invalid password, must contain at least");
+        if (!hasLowerCase) {
+          builder.append(" one lowercase letter,");
+        }
+        if (!hasUpperCase) {
+          builder.append(" one uppercase letter,");
+        }
+        if (!hasDigit) {
+          builder.append(" one digit,");
+        }
+        if (!hasSpecialChar) {
+          builder.append(" one special character,");
+        }
+        builder.deleteCharAt(builder.length() - 1);
+        builder.append(".");
+        throw new AuthException(TSStatusCode.ILLEGAL_PASSWORD, builder.toString());
+      }
+    }
   }
 
   /**
@@ -108,18 +145,18 @@ public class AuthUtils {
     int length = str.length();
     if (length < MIN_LENGTH) {
       throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER,
+          TSStatusCode.ILLEGAL_PASSWORD,
           "The length of name or password must be greater than or equal to " + MIN_LENGTH);
     } else if (length > MAX_LENGTH) {
       throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER,
+          TSStatusCode.ILLEGAL_PASSWORD,
           "The length of name or password must be less than or equal to " + MAX_LENGTH);
     } else if (str.contains(" ")) {
       throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER, "The name or password cannot contain spaces");
+          TSStatusCode.ILLEGAL_PASSWORD, "The name or password cannot contain spaces");
     } else if (!str.matches(REX_PATTERN)) {
       throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER,
+          TSStatusCode.ILLEGAL_PASSWORD,
           "The name or password can only contain letters, numbers or !@#$%^*()_+-=");
     }
   }

@@ -398,6 +398,11 @@ public class CommonConfig {
 
   private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
+  private boolean enforceStrongPassword = false;
+  private long passwordExpirationSeconds = 0;
+  // an old password cannot be reused within the given interval if > 0.
+  private long passwordReuseIntervalSeconds = 0;
+
   CommonConfig() {
     // Empty constructor
   }
@@ -2472,5 +2477,29 @@ public class CommonConfig {
 
   public void setTrustedUriPattern(Pattern trustedUriPattern) {
     this.trustedUriPattern = trustedUriPattern;
+  }
+
+  public boolean isEnforceStrongPassword() {
+    return enforceStrongPassword;
+  }
+
+  public void setEnforceStrongPassword(boolean enforceStrongPassword) {
+    this.enforceStrongPassword = enforceStrongPassword;
+  }
+
+  public long getPasswordExpirationSeconds() {
+    return passwordExpirationSeconds;
+  }
+
+  public void setPasswordExpirationSeconds(long passwordExpirationSeconds) {
+    this.passwordExpirationSeconds = passwordExpirationSeconds;
+  }
+
+  public long getPasswordReuseIntervalSeconds() {
+    return passwordReuseIntervalSeconds;
+  }
+
+  public void setPasswordReuseIntervalSeconds(long passwordReuseIntervalSeconds) {
+    this.passwordReuseIntervalSeconds = passwordReuseIntervalSeconds;
   }
 }

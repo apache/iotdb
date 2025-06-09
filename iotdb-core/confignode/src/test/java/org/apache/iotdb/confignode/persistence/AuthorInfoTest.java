@@ -67,7 +67,7 @@ public class AuthorInfoTest {
 
   @BeforeClass
   public static void setup() {
-    authorInfo = new AuthorInfo();
+    authorInfo = new AuthorInfo(null);
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
