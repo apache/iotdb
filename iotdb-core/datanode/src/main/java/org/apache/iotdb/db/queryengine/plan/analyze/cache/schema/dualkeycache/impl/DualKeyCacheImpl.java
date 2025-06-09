@@ -84,7 +84,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       if (cacheEntryGroup == null) {
         return false;
       }
-
       for (final Map.Entry<SK, R> skrEntry : fkMapEntry.getValue().entrySet()) {
         final T cacheEntry = cacheEntryGroup.getCacheEntry(skrEntry.getKey());
         if (cacheEntry == null) {
@@ -105,6 +104,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       final V value,
       final ToIntFunction<V> updater,
       final boolean createIfNotExists) {
+
     ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
     if (Objects.isNull(cacheEntryGroup)) {
       if (createIfNotExists) {
@@ -350,6 +350,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   private static class SegmentedConcurrentHashMap<K, V> {
 
     private static final int SLOT_NUM = 31;
+
     private final Map<K, V>[] maps = new ConcurrentHashMap[SLOT_NUM];
 
     V get(final K key) {
