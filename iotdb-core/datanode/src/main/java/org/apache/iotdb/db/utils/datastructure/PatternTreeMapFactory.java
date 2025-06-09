@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 
 import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -57,23 +58,29 @@ public class PatternTreeMapFactory {
   public static class ModsSerializer implements PathPatternNode.Serializer<ModEntry> {
 
     @Override
-    public void write(ModEntry modification, ByteBuffer buffer) {
+    public void write(final ModEntry modification, final ByteBuffer buffer) {
       modification.serialize(buffer);
     }
 
     @Override
-    public void write(ModEntry modification, PublicBAOS stream) throws IOException {
+    public void write(final ModEntry modification, final PublicBAOS stream) throws IOException {
       modification.serialize(stream);
     }
 
     @Override
-    public void write(ModEntry modification, DataOutputStream stream) throws IOException {
+    public void write(final ModEntry modification, final DataOutputStream stream)
+        throws IOException {
       modification.serialize(stream);
     }
 
     @Override
-    public ModEntry read(ByteBuffer buffer) {
+    public ModEntry read(final ByteBuffer buffer) {
       return ModEntry.createFrom(buffer);
+    }
+
+    @Override
+    public long ramBytesUsed(final ModEntry modification) {
+      return modification.serializedSize();
     }
 
     private static class ModsSerializerHolder {
@@ -119,6 +126,11 @@ public class PatternTreeMapFactory {
     @Override
     public String read(ByteBuffer buffer) {
       return ReadWriteIOUtils.readString(buffer);
+    }
+
+    @Override
+    public long ramBytesUsed(final String s) {
+      return RamUsageEstimator.sizeOf(s);
     }
   }
 }

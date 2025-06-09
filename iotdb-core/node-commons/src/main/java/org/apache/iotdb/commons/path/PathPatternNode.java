@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.commons.path;
 
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -40,7 +42,11 @@ import java.util.function.Supplier;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
-public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
+public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> implements Accountable {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PathPatternNode.class);
+  private static final long MAP_SIZE = RamUsageEstimator.shallowSizeOfInstance(HashMap.class);
+  private static final long SET_SIZE = RamUsageEstimator.shallowSizeOfInstance(HashSet.class);
 
   private final String name;
   private final Map<String, PathPatternNode<V, S>> children;
@@ -156,8 +162,12 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
 
   @Override
   public boolean equals(final Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     final PathPatternNode<?, ?> that = (PathPatternNode<?, ?>) o;
     return mark == that.mark
         && Objects.equals(name, that.name)
@@ -273,6 +283,19 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
     return node;
   }
 
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MAP_SIZE
+        + SET_SIZE
+        + RamUsageEstimator.sizeOf(name)
+        + children.size() * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+        + children.values().stream().map(PathPatternNode::ramBytesUsed).reduce(0L, Long::sum)
+        + valueSet.stream().map(serializer::ramBytesUsed).reduce(0L, Long::sum)
+        + (long) childrenNamesWithNonTrivialWildcard.size()
+            * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+  }
+
   /**
    * Interface to support serialize and deserialize valueSet.
    *
@@ -287,6 +310,8 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
     void write(final T t, final DataOutputStream stream) throws IOException;
 
     T read(final ByteBuffer buffer);
+
+    long ramBytesUsed(T value);
   }
 
   public static class VoidSerializer implements PathPatternNode.Serializer<Void> {
@@ -315,6 +340,11 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> {
     @Override
     public Void read(final ByteBuffer buffer) {
       return null;
+    }
+
+    @Override
+    public long ramBytesUsed(final Void unused) {
+      return 0;
     }
   }
 }

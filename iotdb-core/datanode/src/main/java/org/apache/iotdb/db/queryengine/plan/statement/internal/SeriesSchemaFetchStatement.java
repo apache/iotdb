@@ -26,11 +26,15 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.List;
 import java.util.Map;
 
-public class SeriesSchemaFetchStatement extends Statement {
-
+public class SeriesSchemaFetchStatement extends Statement implements Accountable {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SeriesSchemaFetchStatement.class);
   private final PathPatternTree patternTree;
   private final Map<Integer, Template> templateMap;
   private final boolean withTags;
@@ -87,5 +91,10 @@ public class SeriesSchemaFetchStatement extends Statement {
 
   public boolean isWithAliasForce() {
     return withAliasForce;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE;
   }
 }

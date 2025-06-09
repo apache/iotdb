@@ -51,10 +51,11 @@ import java.util.concurrent.atomic.AtomicLong;
 @ThreadSafe
 public class UpdateDetailContainer implements UpdateContainer {
 
-  static final long MAP_SIZE = RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
+  public static final long CONCURRENT_MAP_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
   public static final long LIST_SIZE = RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
   static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(UpdateClearContainer.class) + MAP_SIZE;
+      RamUsageEstimator.shallowSizeOfInstance(UpdateClearContainer.class) + CONCURRENT_MAP_SIZE;
 
   // <@Nonnull TableName, <deviceId(@Nullable deviceNodes), <@Nonnull attributeKey, @Nonnull
   // attributeValue>>>
@@ -80,7 +81,7 @@ public class UpdateDetailContainer implements UpdateContainer {
             result.addAndGet(
                 RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
                     + RamUsageEstimator.sizeOf(name)
-                    + MAP_SIZE);
+                    + CONCURRENT_MAP_SIZE);
             value = new ConcurrentHashMap<>();
           }
           value.compute(
@@ -90,7 +91,7 @@ public class UpdateDetailContainer implements UpdateContainer {
                   result.addAndGet(
                       RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
                           + sizeOfList(device)
-                          + MAP_SIZE);
+                          + CONCURRENT_MAP_SIZE);
                   attributes = new ConcurrentHashMap<>();
                 }
                 for (final Map.Entry<String, Binary> updateAttribute :
@@ -160,7 +161,7 @@ public class UpdateDetailContainer implements UpdateContainer {
             result.addAndGet(
                 RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
                     + RamUsageEstimator.sizeOf(name)
-                    + MAP_SIZE);
+                    + CONCURRENT_MAP_SIZE);
             return null;
           }
           return value;
@@ -191,7 +192,7 @@ public class UpdateDetailContainer implements UpdateContainer {
               result.addAndGet(
                   RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
                       + sizeOfList(entry.getKey())
-                      + MAP_SIZE);
+                      + CONCURRENT_MAP_SIZE);
               it.remove();
             }
           }
@@ -199,7 +200,7 @@ public class UpdateDetailContainer implements UpdateContainer {
             result.addAndGet(
                 RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
                     + RamUsageEstimator.sizeOf(name)
-                    + MAP_SIZE);
+                    + CONCURRENT_MAP_SIZE);
             return null;
           }
           return value;
@@ -321,7 +322,7 @@ public class UpdateDetailContainer implements UpdateContainer {
                         result.addAndGet(
                             RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
                                 + sizeOfList(device)
-                                + MAP_SIZE);
+                                + CONCURRENT_MAP_SIZE);
                         thisDeviceMap.remove(device);
                       }
                     });
@@ -329,7 +330,7 @@ public class UpdateDetailContainer implements UpdateContainer {
                   result.addAndGet(
                       RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
                           + RamUsageEstimator.sizeOf(table)
-                          + MAP_SIZE);
+                          + CONCURRENT_MAP_SIZE);
                   this.updateMap.remove(table);
                 }
               });
@@ -346,7 +347,7 @@ public class UpdateDetailContainer implements UpdateContainer {
         updateMap.remove(tableName);
     if (Objects.nonNull(deviceMap)) {
       result.addAndGet(
-          deviceMap.size() * (RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + MAP_SIZE)
+          deviceMap.size() * (RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + CONCURRENT_MAP_SIZE)
               + deviceMap.entrySet().stream()
                   .mapToLong(
                       entry -> sizeOfList(entry.getKey()) + sizeOfMapEntries(entry.getValue()))
