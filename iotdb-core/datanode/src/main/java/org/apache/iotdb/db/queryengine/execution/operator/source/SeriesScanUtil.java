@@ -40,6 +40,7 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IMetadata;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -73,6 +74,7 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUI
 
 public class SeriesScanUtil implements Accountable {
 
+  public static final StringArrayDeviceID EMPTY_DEVICE_ID = new StringArrayDeviceID("");
   protected final FragmentInstanceContext context;
 
   // The path of the target series which will be scanned.
@@ -179,17 +181,19 @@ public class SeriesScanUtil implements Accountable {
     this.dataSource = dataSource;
 
     // updated filter concerning TTL
-    long ttl;
-    // Only the data in the table model needs to retain rows where all value
-    // columns are null values, so we can use isIgnoreAllNullRows to
-    // differentiate the data of tree model and table model.
-    if (context.isIgnoreAllNullRows()) {
-      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
-      scanOptions.setTTL(ttl);
+    // IgnoreAllNullRows is false indicating that the current query is a table model query.
+    // In most cases, We can use this condition to determine from which model to obtain the ttl
+    // of the current device. However, it should be noted that for tree model data queried using
+    // table view, ttl also needs to be obtained from the tree model.
+    if (context.isIgnoreAllNullRows() || scanOptions.isTableViewForTreeModel()) {
+      if (deviceID != EMPTY_DEVICE_ID) {
+        long ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+        scanOptions.setTTL(ttl);
+      }
     } else {
       if (scanOptions.timeFilterNeedUpdatedByTll()) {
         String databaseName = dataSource.getDatabaseName();
-        ttl =
+        long ttl =
             databaseName == null
                 ? Long.MAX_VALUE
                 : DataNodeTTLCache.getInstance()

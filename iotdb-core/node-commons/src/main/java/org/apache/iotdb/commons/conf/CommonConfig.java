@@ -199,6 +199,8 @@ public class CommonConfig {
 
   private String pipeHardlinkTsFileDirName = "tsfile";
 
+  private String pipeProgressIndexPersistDirName = "progress";
+
   private String pipeHardlinkWALDirName = "wal";
 
   private boolean pipeHardLinkWALEnabled = false;
@@ -207,6 +209,7 @@ public class CommonConfig {
 
   private int pipeRealTimeQueuePollTsFileThreshold = 10;
   private int pipeRealTimeQueuePollHistoricalTsFileThreshold = 3;
+  private int pipeRealTimeQueueMaxWaitingTsFileSize = 1;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
@@ -218,13 +221,14 @@ public class CommonConfig {
   private int pipeDataStructureTabletSizeInBytes = 2097152;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.2;
   private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.2;
-  private double pipeDataStructureWalMemoryProportion = 0.2;
-  private double PipeDataStructureBatchMemoryProportion = 0.2;
+  private double pipeDataStructureWalMemoryProportion = 0.3;
+  private double PipeDataStructureBatchMemoryProportion = 0.1;
   private double pipeTotalFloatingMemoryProportion = 0.2;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
-  private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 1000;
+  private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 50;
+
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
   private long pipeSubtaskExecutorForcedRestartIntervalMs = Long.MAX_VALUE;
 
@@ -234,7 +238,7 @@ public class CommonConfig {
 
   private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
   private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
-  private int pipeConnectorReadFileBufferSize = 8388608;
+  private int pipeConnectorReadFileBufferSize = 5242880; // 5MB
   private boolean isPipeConnectorReadFileBufferMemoryControlEnabled = false;
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
@@ -260,6 +264,9 @@ public class CommonConfig {
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
   private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 1;
   private boolean pipeAutoRestartEnabled = true;
+  private boolean pipeProgressIndexPersistEnabled = true;
+  private long pipeProgressIndexPersistCheckPointGap = 20;
+  private long pipeProgressIndexFlushIntervalMs = 20 * 1000L;
 
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
@@ -309,6 +316,7 @@ public class CommonConfig {
   private double pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio = 0.1d;
   private double pipeThresholdAllocationStrategyLowUsageThreshold = 0.2d;
   private double pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold = 0.8d;
+  private boolean pipeTransferTsFileSync = false;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -751,6 +759,18 @@ public class CommonConfig {
     }
     this.pipeHardlinkTsFileDirName = pipeTsFileDirName;
     logger.info("pipeHardlinkTsFileDirName is set to {}.", pipeTsFileDirName);
+  }
+
+  public String getPipeProgressIndexPersistDirName() {
+    return pipeProgressIndexPersistDirName;
+  }
+
+  public void setPipeProgressIndexPersistDirName(String pipeProgressIndexPersistDirName) {
+    if (Objects.equals(this.pipeProgressIndexPersistDirName, pipeProgressIndexPersistDirName)) {
+      return;
+    }
+    this.pipeProgressIndexPersistDirName = pipeProgressIndexPersistDirName;
+    logger.info("pipeProgressIndexPersistDir is set to {}.", pipeProgressIndexPersistDirName);
   }
 
   public String getPipeHardlinkWALDirName() {
@@ -1197,6 +1217,44 @@ public class CommonConfig {
     logger.info("pipeAutoRestartEnabled is set to {}.", pipeAutoRestartEnabled);
   }
 
+  public boolean isPipeProgressIndexPersistEnabled() {
+    return pipeProgressIndexPersistEnabled;
+  }
+
+  public void setPipeProgressIndexPersistEnabled(boolean pipeProgressIndexPersistEnabled) {
+    if (this.pipeProgressIndexPersistEnabled == pipeProgressIndexPersistEnabled) {
+      return;
+    }
+    this.pipeProgressIndexPersistEnabled = pipeProgressIndexPersistEnabled;
+    logger.info("pipeProgressIndexPersistEnabled is set to {}.", pipeProgressIndexPersistEnabled);
+  }
+
+  public long getPipeProgressIndexPersistCheckPointGap() {
+    return pipeProgressIndexPersistCheckPointGap;
+  }
+
+  public void setPipeProgressIndexPersistCheckPointGap(long pipeProgressIndexPersistCheckPointGap) {
+    if (this.pipeProgressIndexPersistCheckPointGap == pipeProgressIndexPersistCheckPointGap) {
+      return;
+    }
+    this.pipeProgressIndexPersistCheckPointGap = pipeProgressIndexPersistCheckPointGap;
+    logger.info(
+        "pipeProgressIndexPersistCheckPointGap is set to {}.",
+        pipeProgressIndexPersistCheckPointGap);
+  }
+
+  public long getPipeProgressIndexFlushIntervalMs() {
+    return pipeProgressIndexFlushIntervalMs;
+  }
+
+  public void setPipeProgressIndexFlushIntervalMs(long pipeProgressIndexFlushIntervalMs) {
+    if (this.pipeProgressIndexFlushIntervalMs == pipeProgressIndexFlushIntervalMs) {
+      return;
+    }
+    this.pipeProgressIndexFlushIntervalMs = pipeProgressIndexFlushIntervalMs;
+    logger.info("pipeProgressIndexFlushIntervalMs is set to {}.", pipeProgressIndexFlushIntervalMs);
+  }
+
   public long getPipeConnectorRetryIntervalMs() {
     return pipeConnectorRetryIntervalMs;
   }
@@ -1332,6 +1390,20 @@ public class CommonConfig {
     logger.info(
         "pipeRealTimeQueuePollHistoricalTsFileThreshold is set to {}",
         pipeRealTimeQueuePollHistoricalTsFileThreshold);
+  }
+
+  public int getPipeRealTimeQueueMaxWaitingTsFileSize() {
+    return pipeRealTimeQueueMaxWaitingTsFileSize;
+  }
+
+  public void setPipeRealTimeQueueMaxWaitingTsFileSize(int pipeRealTimeQueueMaxWaitingTsFileSize) {
+    if (this.pipeRealTimeQueueMaxWaitingTsFileSize == pipeRealTimeQueueMaxWaitingTsFileSize) {
+      return;
+    }
+    this.pipeRealTimeQueueMaxWaitingTsFileSize = pipeRealTimeQueueMaxWaitingTsFileSize;
+    logger.info(
+        "pipeRealTimeQueueMaxWaitingTsFileSize is set to {}.",
+        pipeRealTimeQueueMaxWaitingTsFileSize);
   }
 
   public void setPipeAirGapReceiverEnabled(boolean pipeAirGapReceiverEnabled) {
@@ -1948,6 +2020,18 @@ public class CommonConfig {
     logger.info(
         "pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold is set to {}",
         pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold);
+  }
+
+  public boolean getPipeTransferTsFileSync() {
+    return pipeTransferTsFileSync;
+  }
+
+  public void setPipeTransferTsFileSync(boolean pipeTransferTsFileSync) {
+    if (this.pipeTransferTsFileSync == pipeTransferTsFileSync) {
+      return;
+    }
+    this.pipeTransferTsFileSync = pipeTransferTsFileSync;
+    logger.info("pipeTransferTsFileSync is set to {}", pipeTransferTsFileSync);
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {

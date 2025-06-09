@@ -21,7 +21,6 @@ package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -96,20 +95,22 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   protected void onTsFileInsertionEvent(final TsFileInsertionEvent event) {
     // TODO: parse tsfile event on the fly like SubscriptionPipeTabletEventBatch
     try {
-      for (final TabletInsertionEvent parsedEvent : event.toTabletInsertionEvents()) {
-        if (!((PipeRawTabletInsertionEvent) parsedEvent)
-            .increaseReferenceCount(this.getClass().getName())) {
-          LOGGER.warn(
-              "SubscriptionPipeTsFileEventBatch: Failed to increase the reference count of event {}, skipping it.",
-              ((PipeRawTabletInsertionEvent) parsedEvent).coreReportMessage());
-        } else {
-          try {
-            batch.onEvent(parsedEvent);
-          } catch (final Exception ignored) {
-            // no exceptions will be thrown
-          }
-        }
-      }
+      ((PipeTsFileInsertionEvent) event)
+          .consumeTabletInsertionEventsWithRetry(
+              event1 -> {
+                if (!event1.increaseReferenceCount(this.getClass().getName())) {
+                  LOGGER.warn(
+                      "SubscriptionPipeTsFileEventBatch: Failed to increase the reference count of event {}, skipping it.",
+                      event1.coreReportMessage());
+                } else {
+                  try {
+                    batch.onEvent(event1);
+                  } catch (final Exception ignored) {
+                    // no exceptions will be thrown
+                  }
+                }
+              },
+              "SubscriptionPipeTsFileEventBatch::onTsFileInsertionEvent");
     } finally {
       try {
         event.close();

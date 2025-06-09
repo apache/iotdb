@@ -46,6 +46,9 @@ public class PipeDescriptor {
     config.setPipeHardlinkTsFileDirName(
         properties.getProperty(
             "pipe_hardlink_tsfile_dir_name", config.getPipeHardlinkTsFileDirName()));
+    config.setPipeProgressIndexPersistDirName(
+        properties.getProperty(
+            "pipe_progress_index_persist_dir_name", config.getPipeProgressIndexPersistDirName()));
     config.setPipeHardlinkWALDirName(
         properties.getProperty("pipe_hardlink_wal_dir_name", config.getPipeHardlinkWALDirName()));
     config.setPipeHardLinkWALEnabled(
@@ -97,6 +100,21 @@ public class PipeDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
+    config.setPipeProgressIndexPersistEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_progress_index_persist_enabled",
+                String.valueOf(config.isPipeProgressIndexPersistEnabled()))));
+    config.setPipeProgressIndexPersistCheckPointGap(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_progress_index_persist_check_point_gap",
+                String.valueOf(config.getPipeProgressIndexPersistCheckPointGap()))));
+    config.setPipeProgressIndexFlushIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_progress_index_flush_interval_ms",
+                String.valueOf(config.getPipeProgressIndexFlushIntervalMs()))));
 
     config.setPipeAirGapReceiverEnabled(
         Boolean.parseBoolean(
@@ -264,6 +282,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_realtime_queue_poll_historical_tsfile_threshold",
                 String.valueOf(config.getPipeRealTimeQueuePollHistoricalTsFileThreshold()))));
+    config.setPipeRealTimeQueueMaxWaitingTsFileSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_realTime_queue_max_waiting_tsFile_size",
+                String.valueOf(config.getPipeRealTimeQueueMaxWaitingTsFileSize()))));
     config.setPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
         Integer.parseInt(
             properties.getProperty(
@@ -525,6 +548,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_max_aligned_series_num_in_one_batch",
                 String.valueOf(config.getPipeMaxAlignedSeriesNumInOneBatch()))));
+
+    config.setPipeTransferTsFileSync(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_transfer_tsfile_sync", String.valueOf(config.getPipeTransferTsFileSync()))));
 
     config.setPipeRemainingTimeCommitRateAutoSwitchSeconds(
         Long.parseLong(

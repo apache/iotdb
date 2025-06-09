@@ -22,66 +22,63 @@ package org.apache.iotdb.relational.it.query.view.recent;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.read.common.RowRecord;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-
-import java.util.Arrays;
-import java.util.Collection;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 
-@RunWith(Parameterized.class)
+@RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBTableViewQueryWithNotMatchedDataTypeIT {
+public class IoTDBTableViewWithTreeTTLQueryIT {
 
   protected static final String DATABASE_NAME = "test";
 
-  private final boolean aligned;
-
-  protected static final String[] createTreeAlignedDataSqls =
-      new String[] {
-        "CREATE ALIGNED TIMESERIES root.db.battery.b1(current FLOAT)",
-        "INSERT INTO root.db.battery.b1(time, current) aligned values (1, 1)",
-      };
-
-  protected static final String[] createTreeNonAlignedDataSqls =
-      new String[] {
-        "CREATE TIMESERIES root.db.battery.b1.current FLOAT",
-        "INSERT INTO root.db.battery.b1(time, current) values (1, 1)",
-      };
-
-  protected static String[] createTableSqls = {
-    "create database " + DATABASE_NAME,
-    "use " + DATABASE_NAME,
-    "CREATE VIEW view1 (battery TAG, current BLOB FIELD) as root.db.battery.**",
+  protected static String[] createTreeDataSqls = {
+    "CREATE ALIGNED TIMESERIES root.db.battery.b1(voltage INT32, current FLOAT)",
+    "INSERT INTO root.db.battery.b1(time, voltage, current) aligned values (1, 1, 1)",
+    "INSERT INTO root.db.battery.b1(time, voltage, current) aligned values (2, 1, 1)",
+    "INSERT INTO root.db.battery.b1(time, voltage, current) aligned values (3, 1, 1)",
+    "INSERT INTO root.db.battery.b1(time, voltage, current) aligned values (4, 1, 1)",
+    "INSERT INTO root.db.battery.b1(time, voltage, current) aligned values ("
+        + System.currentTimeMillis()
+        + ", 1, 1)",
+    "CREATE TIMESERIES root.db.battery.b2.voltage INT32",
+    "CREATE TIMESERIES root.db.battery.b2.current FLOAT",
+    "INSERT INTO root.db.battery.b2(time, voltage, current) values (1, 1, 1)",
+    "INSERT INTO root.db.battery.b2(time, voltage, current) values (2, 1, 1)",
+    "INSERT INTO root.db.battery.b2(time, voltage, current) values (3, 1, 1)",
+    "INSERT INTO root.db.battery.b2(time, voltage, current) values (4, 1, 1)",
+    "INSERT INTO root.db.battery.b2(time, voltage, current) values ("
+        + System.currentTimeMillis()
+        + ", 1, 1)",
+    "flush",
+    "set ttl to root.db.battery.** 100000"
   };
 
-  public IoTDBTableViewQueryWithNotMatchedDataTypeIT(boolean aligned) {
-    this.aligned = aligned;
-  }
-
-  @Parameterized.Parameters(name = "aligned={0}")
-  public static Collection<Object[]> data() {
-    return Arrays.asList(new Object[][] {{true}, {false}});
-  }
+  protected static String[] createTableSqls = {
+    "CREATE DATABASE " + DATABASE_NAME,
+    "USE " + DATABASE_NAME,
+    "CREATE VIEW view1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD) as root.db.battery.**",
+  };
 
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
     EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
-    prepareData(aligned ? createTreeAlignedDataSqls : createTreeNonAlignedDataSqls);
+    prepareData(createTreeDataSqls);
     prepareTableData(createTableSqls);
   }
 
@@ -93,11 +90,23 @@ public class IoTDBTableViewQueryWithNotMatchedDataTypeIT {
   @Test
   public void test() throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-      session.executeNonQueryStatement("USE " + DATABASE_NAME);
+      session.executeNonQueryStatement("use " + DATABASE_NAME);
       SessionDataSet sessionDataSet =
-          session.executeQueryStatement("select * from view1 where current is not null");
+          session.executeQueryStatement("select count(*) from view1 where battery = 'b1'");
+      Assert.assertTrue(sessionDataSet.hasNext());
+      RowRecord record = sessionDataSet.next();
+      Assert.assertEquals(1, record.getField(0).getLongV());
       Assert.assertFalse(sessionDataSet.hasNext());
       sessionDataSet.close();
+
+      sessionDataSet = session.executeQueryStatement("select * from view1");
+      int count = 0;
+      while (sessionDataSet.hasNext()) {
+        sessionDataSet.next();
+        count++;
+      }
+      sessionDataSet.close();
+      Assert.assertEquals(2, count);
     }
   }
 }
