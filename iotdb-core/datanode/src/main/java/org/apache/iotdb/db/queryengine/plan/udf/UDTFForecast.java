@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.builtin;
+package org.apache.iotdb.db.queryengine.plan.udf;
 
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.ainode.AINodeClient;
 import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.ModelFetcher;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -65,6 +68,7 @@ public class UDTFForecast implements UDTF {
   List<Type> types;
   private LinkedList<Row> inputRows;
   private TsBlockBuilder inputTsBlockBuilder;
+  private final IModelFetcher modelFetcher = ModelFetcher.getInstance();
 
   private static final Set<Type> ALLOWED_INPUT_TYPES = new HashSet<>();
 
@@ -110,6 +114,9 @@ public class UDTFForecast implements UDTF {
       throw new IllegalArgumentException(
           "MODEL_ID parameter must be provided and cannot be empty.");
     }
+    ModelInferenceDescriptor descriptor = modelFetcher.fetchModel(this.model_id);
+    this.targetAINode = descriptor.getTargetAINode();
+    this.maxInputLength = descriptor.getModelInformation().getInputShape()[0];
 
     this.outputInterval = parameters.getLongOrDefault(OUTPUT_INTERVAL, DEFAULT_OUTPUT_INTERVAL);
     this.outputLength =
