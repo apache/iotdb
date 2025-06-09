@@ -250,9 +250,9 @@ public class CommonConfig {
   private int pipeAsyncConnectorSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
   private int pipeAsyncConnectorMaxClientNumber =
-      Math.max(16, Runtime.getRuntime().availableProcessors() * 2);
+      Math.max(128, Runtime.getRuntime().availableProcessors() * 10);
   private int pipeAsyncConnectorMaxTsFileClientNumber =
-      Math.max(8, Runtime.getRuntime().availableProcessors());
+      Math.max(64, Runtime.getRuntime().availableProcessors() * 5);
 
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
   private int rateLimiterHotReloadCheckIntervalMs = 1000;
