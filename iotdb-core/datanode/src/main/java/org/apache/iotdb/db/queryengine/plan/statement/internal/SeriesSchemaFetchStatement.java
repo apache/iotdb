@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement.internal;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternNode;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -28,6 +29,8 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
+
+import javax.annotation.Nonnull;
 
 import java.util.List;
 import java.util.Map;
@@ -44,7 +47,7 @@ public class SeriesSchemaFetchStatement extends Statement implements Accountable
 
   public SeriesSchemaFetchStatement(
       PathPatternTree patternTree,
-      Map<Integer, Template> templateMap,
+      @Nonnull Map<Integer, Template> templateMap,
       boolean withTags,
       boolean withAttributes,
       boolean withTemplate,
@@ -95,6 +98,10 @@ public class SeriesSchemaFetchStatement extends Statement implements Accountable
 
   @Override
   public long ramBytesUsed() {
-    return INSTANCE_SIZE;
+    return INSTANCE_SIZE
+        + PathPatternNode.MAP_SIZE
+        + patternTree.ramBytesUsed()
+        + templateMap.size() * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+        + templateMap.values().stream().map(Template::ramBytesUsed).reduce(0L, Long::sum);
   }
 }

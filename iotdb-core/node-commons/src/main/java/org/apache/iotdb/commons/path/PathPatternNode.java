@@ -45,7 +45,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> implements Accountable {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(PathPatternNode.class);
-  private static final long MAP_SIZE = RamUsageEstimator.shallowSizeOfInstance(HashMap.class);
+  public static final long MAP_SIZE = RamUsageEstimator.shallowSizeOfInstance(HashMap.class);
   private static final long SET_SIZE = RamUsageEstimator.shallowSizeOfInstance(HashSet.class);
 
   private final String name;
