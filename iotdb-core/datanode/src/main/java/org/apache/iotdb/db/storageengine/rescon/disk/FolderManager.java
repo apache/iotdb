@@ -38,28 +38,23 @@ import java.util.Map;
 
 public class FolderManager {
   private static final Logger logger = LoggerFactory.getLogger(FolderManager.class);
-  /**
-   * Represents the operational states of a data folder.
-   */
+
+  /** Represents the operational states of a data folder. */
   public enum FolderState {
-    /**
-     * Indicates the folder is functioning normally with no issues.
-     */
+    /** Indicates the folder is functioning normally with no issues. */
     HEALTHY,
-    /**
-     * Indicates the folder has operational problems requiring attention.
-     */
+    /** Indicates the folder has operational problems requiring attention. */
     ABNORMAL
   }
 
-
   private final List<String> folders;
+
   /**
-   * Map storing the state of each folder (HEALTHY/ABNORMAL).
-   * Key: folder path as String
-   * Value: corresponding FolderState enum value
+   * Map storing the state of each folder (HEALTHY/ABNORMAL). Key: folder path as String Value:
+   * corresponding FolderState enum value
    */
   private final Map<String, FolderState> foldersStates = new HashMap<>();
+
   private final DirectoryStrategy selectStrategy;
 
   public FolderManager(List<String> folders, DirectoryStrategyType type)

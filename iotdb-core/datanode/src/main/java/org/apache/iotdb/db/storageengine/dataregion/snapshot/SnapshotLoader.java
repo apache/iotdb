@@ -297,10 +297,12 @@ public class SnapshotLoader {
           dataDir = folderManager.getNextFolder();
         }
         try {
-          File targetFile = new File(dataDir + File.separator + targetSuffix + File.separator + file.getName());
+          File targetFile =
+              new File(dataDir + File.separator + targetSuffix + File.separator + file.getName());
           if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
             throw new IOException(
-                    String.format("Cannot create directory %s", targetFile.getParentFile().getAbsolutePath()));
+                String.format(
+                    "Cannot create directory %s", targetFile.getParentFile().getAbsolutePath()));
           }
           try {
             Files.createLink(targetFile.toPath(), file.toPath());
@@ -318,12 +320,9 @@ public class SnapshotLoader {
         fileTarget.put(fileKey, dataDir);
       }
       throw new IOException(
-              String.format("Failed to create link or copy file after retries. Source: %s, Target dir: %s/%s/%s",
-                      file.getAbsolutePath(),
-                      dataDir,
-                      targetSuffix,
-                      file.getName())
-      );
+          String.format(
+              "Failed to create link or copy file after retries. Source: %s, Target dir: %s/%s/%s",
+              file.getAbsolutePath(), dataDir, targetSuffix, file.getName()));
     }
   }
 

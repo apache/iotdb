@@ -69,7 +69,7 @@ public class TsFileNameGenerator {
       long version,
       int innerSpaceCompactionCount,
       int crossSpaceCompactionCount)
-          throws DiskSpaceInsufficientException, IOException {
+      throws DiskSpaceInsufficientException, IOException {
     return generateNewTsFilePathWithMkdir(
         sequence,
         logicalStorageGroup,
@@ -94,12 +94,13 @@ public class TsFileNameGenerator {
       int crossSpaceCompactionCount,
       int tierLevel,
       String customSuffix)
-          throws DiskSpaceInsufficientException, IOException {
+      throws DiskSpaceInsufficientException, IOException {
     TierManager tierManager = TierManager.getInstance();
     String tsFileDir = null;
     for (int retryTimes = 0; retryTimes <= 1; ++retryTimes) {
       String baseDir = tierManager.getNextFolderForTsFile(tierLevel, sequence);
-      tsFileDir = baseDir
+      tsFileDir =
+          baseDir
               + File.separator
               + logicalStorageGroup
               + File.separator
@@ -109,16 +110,23 @@ public class TsFileNameGenerator {
       try {
         if (fsFactory.getFile(tsFileDir).exists() || fsFactory.getFile(tsFileDir).mkdirs()) {
           return tsFileDir
-                  + File.separator
-                  + generateNewTsFileName(
-                  time, version, innerSpaceCompactionCount, crossSpaceCompactionCount, customSuffix);
+              + File.separator
+              + generateNewTsFileName(
+                  time,
+                  version,
+                  innerSpaceCompactionCount,
+                  crossSpaceCompactionCount,
+                  customSuffix);
         }
       } catch (Exception ignored) {
       }
       FolderManager folderManager = tierManager.getFolderManager(tierLevel, sequence);
       folderManager.updateFolderState(baseDir, FolderManager.FolderState.ABNORMAL);
-      LOGGER.warn("Failed to process folder [tierLevel={}, sequence={}, baseDir={}], state set to ABNORMAL",
-              tierLevel, sequence, baseDir);
+      LOGGER.warn(
+          "Failed to process folder [tierLevel={}, sequence={}, baseDir={}], state set to ABNORMAL",
+          tierLevel,
+          sequence,
+          baseDir);
     }
     throw new IOException("Failed to create directory after retries: " + tsFileDir);
   }

@@ -74,7 +74,7 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
       }
     }
     return WALFakeNode.getFailureInstance(
-            new IOException("Failed to create WAL node after retries for identifier: " + identifier));
+        new IOException("Failed to create WAL node after retries for identifier: " + identifier));
   }
 
   protected IWALNode createWALNode(String identifier, String folder) {

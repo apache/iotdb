@@ -77,7 +77,7 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
       long filePartitionId,
       String tsfileName,
       int tierLevel)
-          throws DiskSpaceInsufficientException, LoadFileException {
+      throws DiskSpaceInsufficientException, LoadFileException {
     File targetFile;
     String fileDirRoot = null;
     try {

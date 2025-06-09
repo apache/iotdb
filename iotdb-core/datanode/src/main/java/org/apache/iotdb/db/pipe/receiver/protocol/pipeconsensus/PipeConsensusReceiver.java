@@ -1239,7 +1239,8 @@ public class PipeConsensusReceiver {
         try {
           receiverBasePath = getReceiverFileBaseDir();
           if (Objects.isNull(receiverBasePath)) {
-            LOGGER.warn("PipeConsensus-PipeName-{}: Failed to get base directory", consensusPipeName);
+            LOGGER.warn(
+                "PipeConsensus-PipeName-{}: Failed to get base directory", consensusPipeName);
             throw new DiskSpaceInsufficientException(receiveDirs);
           }
         } catch (Exception e) {
@@ -1249,22 +1250,31 @@ public class PipeConsensusReceiver {
 
         try {
           this.localWritingDir = new File(receiverBasePath + File.separator + index);
-          deleteFileOrDirectoryIfExists(this.localWritingDir,
-                  String.format("TsFileWriter-%s roll to new dir and delete last writing dir", index));
+          deleteFileOrDirectoryIfExists(
+              this.localWritingDir,
+              String.format("TsFileWriter-%s roll to new dir and delete last writing dir", index));
 
           if (this.localWritingDir.mkdirs()) {
-            LOGGER.info("PipeConsensus-PipeName-{}: tsfileWriter-{} roll to writing path {}",
-                    consensusPipeName, index, this.localWritingDir.getPath());
+            LOGGER.info(
+                "PipeConsensus-PipeName-{}: tsfileWriter-{} roll to writing path {}",
+                consensusPipeName,
+                index,
+                this.localWritingDir.getPath());
             return;
           }
         } catch (Exception ignored) {
         }
-        LOGGER.warn("PipeConsensus-PipeName-{}: Failed to create receiver tsFileWriter-{} file dir {} (retryTimes={})",
-                consensusPipeName, index, this.localWritingDir.getPath(), retryTimes);
+        LOGGER.warn(
+            "PipeConsensus-PipeName-{}: Failed to create receiver tsFileWriter-{} file dir {} (retryTimes={})",
+            consensusPipeName,
+            index,
+            this.localWritingDir.getPath(),
+            retryTimes);
         folderManager.updateFolderState(receiverBasePath, FolderManager.FolderState.ABNORMAL);
       }
 
-      throw new IOException(String.format(
+      throw new IOException(
+          String.format(
               "PipeConsensus-PipeName-%s: Failed to create tsFileWriter-%d receiver file dir %s",
               consensusPipeName, index, this.localWritingDir.getPath()));
     }

@@ -68,10 +68,10 @@ public class SequenceStrategy extends DirectoryStrategy {
         long freeSpace = dirFile.getFreeSpace();
         long totalSpace = dirFile.getTotalSpace();
         LOGGER.warn(
-                "{} is above the warning threshold, or not accessible, free space {}, total space {}",
-                dir,
-                freeSpace,
-                totalSpace);
+            "{} is above the warning threshold, or not accessible, free space {}, total space {}",
+            dir,
+            freeSpace,
+            totalSpace);
         dirLastPrintTimeMap.put(index, System.currentTimeMillis());
       }
       if (index == start) {

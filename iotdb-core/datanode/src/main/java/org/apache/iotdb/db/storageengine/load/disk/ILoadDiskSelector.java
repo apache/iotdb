@@ -33,7 +33,7 @@ public interface ILoadDiskSelector {
       long filePartitionId,
       String tsfileName,
       int tierLevel)
-          throws DiskSpaceInsufficientException, LoadFileException;
+      throws DiskSpaceInsufficientException, LoadFileException;
 
   enum LoadDiskSelectorType {
     MIN_IO_FIRST("MIN_IO_FIRST"),

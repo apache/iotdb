@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,9 +69,8 @@ public abstract class DirectoryStrategy {
   }
 
   /**
-   * Map storing the state of each folder (HEALTHY/ABNORMAL).
-   * Key: folder path as String
-   * Value: corresponding FolderState enum value
+   * Map storing the state of each folder (HEALTHY/ABNORMAL). Key: folder path as String Value:
+   * corresponding FolderState enum value
    */
   Map<String, FolderManager.FolderState> foldersStates = new HashMap<>();
 
