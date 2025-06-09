@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class IntoNode extends SingleChildProcessNode {
+  private final String database;
   private final QualifiedName table;
   private final List<ColumnSchema> tableColumns;
   private final List<Symbol> outputSymbols;
@@ -30,10 +31,12 @@ public class IntoNode extends SingleChildProcessNode {
   public IntoNode(
       PlanNodeId id,
       PlanNode child,
+      String database,
       QualifiedName table,
       List<ColumnSchema> tableColumns,
       List<Field> outputFields) {
     super(id, child);
+    this.database = database;
     this.table = table;
     this.tableColumns = tableColumns;
     this.outputSize = outputFields.size();
@@ -48,12 +51,14 @@ public class IntoNode extends SingleChildProcessNode {
   public IntoNode(
       PlanNodeId id,
       PlanNode child,
+      String database,
       QualifiedName table,
       List<ColumnSchema> tableColumns,
       int outputSize,
       List<Symbol> outputSymbols,
       List<Type> outputTypes) {
     super(id, child);
+    this.database = database;
     this.table = table;
     this.tableColumns = tableColumns;
     this.outputSize = outputSize;
@@ -91,7 +96,8 @@ public class IntoNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new IntoNode(id, null, table, tableColumns, outputSize, outputSymbols, outputTypes);
+    return new IntoNode(
+        id, null, database, table, tableColumns, outputSize, outputSymbols, outputTypes);
   }
 
   @Override
@@ -115,6 +121,7 @@ public class IntoNode extends SingleChildProcessNode {
     return new IntoNode(
         id,
         Iterables.getOnlyElement(newChildren),
+        database,
         table,
         tableColumns,
         outputSize,
@@ -141,6 +148,10 @@ public class IntoNode extends SingleChildProcessNode {
 
   public List<Type> getOutputType() {
     return outputTypes;
+  }
+
+  public String getDatabase() {
+    return database;
   }
 
   public QualifiedName getTable() {

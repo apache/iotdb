@@ -1221,6 +1221,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         new IntoNode(
             queryContext.getQueryId().genPlanNodeId(),
             plan.getRoot(),
+            targetTable.getDatabaseName(),
             table.getName(),
             tableColumns,
             fields);
