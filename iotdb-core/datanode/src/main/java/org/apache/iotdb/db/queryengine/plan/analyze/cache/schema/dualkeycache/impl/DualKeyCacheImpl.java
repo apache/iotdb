@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
@@ -74,6 +75,26 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         return cacheEntry.getValue();
       }
     }
+  }
+
+  public <R> boolean batchApply(
+      final Map<FK, Map<SK, R>> inputMap, final BiFunction<V, R, Boolean> mappingFunction) {
+    for (final Map.Entry<FK, Map<SK, R>> fkMapEntry : inputMap.entrySet()) {
+      final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(fkMapEntry.getKey());
+      if (cacheEntryGroup == null) {
+        return false;
+      }
+      for (final Map.Entry<SK, R> skrEntry : fkMapEntry.getValue().entrySet()) {
+        final T cacheEntry = cacheEntryGroup.getCacheEntry(skrEntry.getKey());
+        if (cacheEntry == null) {
+          return false;
+        }
+        if (!mappingFunction.apply(cacheEntry.getValue(), skrEntry.getValue())) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   @Override
