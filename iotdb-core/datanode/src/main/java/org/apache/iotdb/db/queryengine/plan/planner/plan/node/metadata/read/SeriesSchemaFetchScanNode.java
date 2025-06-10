@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathPatternNode;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -39,7 +41,8 @@ import java.util.Map;
 
 /** This class defines the scan task of schema fetcher. */
 public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
-
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SeriesSchemaFetchScanNode.class);
   private final Map<Integer, Template> templateMap;
   private final boolean withTags;
   private final boolean withAttributes;
@@ -76,7 +79,7 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
   public PlanNode clone() {
     return new SeriesSchemaFetchScanNode(
         getPlanNodeId(),
-        storageGroup,
+        database,
         patternTree,
         templateMap,
         withTags,
@@ -89,15 +92,13 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
   public String toString() {
     return String.format(
         "SeriesSchemaFetchScanNode-%s:[StorageGroup: %s, DataRegion: %s]",
-        this.getPlanNodeId(),
-        storageGroup,
-        PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
+        this.getPlanNodeId(), database, PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SERIES_SCHEMA_FETCH_SCAN.serialize(byteBuffer);
-    storageGroup.serialize(byteBuffer);
+    database.serialize(byteBuffer);
     patternTree.serialize(byteBuffer);
 
     ReadWriteIOUtils.write(templateMap.size(), byteBuffer);
@@ -113,7 +114,7 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SERIES_SCHEMA_FETCH_SCAN.serialize(stream);
-    storageGroup.serialize(stream);
+    database.serialize(stream);
     patternTree.serialize(stream);
     ReadWriteIOUtils.write(templateMap.size(), stream);
     for (Template template : templateMap.values()) {
@@ -172,5 +173,14 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
 
   public boolean isWithAliasForce() {
     return withAliasForce;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + PathPatternNode.MAP_SIZE
+        + templateMap.size() * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+        + templateMap.values().stream().map(Template::ramBytesUsed).reduce(0L, Long::sum)
+        + super.ramBytesUsed();
   }
 }

@@ -203,7 +203,7 @@ public class LogicalPlanBuilder {
       if (path instanceof MeasurementPath) {
         // non-aligned series
         sourceNodeList.add(
-            reserveMemoryForSeriesSourceNode(
+            reserveMemoryForAccountableNode(
                 new SeriesScanNode(
                     context.getQueryId().genPlanNodeId(),
                     (MeasurementPath) path,
@@ -213,7 +213,7 @@ public class LogicalPlanBuilder {
                     null)));
       } else if (path instanceof AlignedPath) {
         sourceNodeList.add(
-            reserveMemoryForSeriesSourceNode(
+            reserveMemoryForAccountableNode(
                 new AlignedSeriesScanNode(
                     context.getQueryId().genPlanNodeId(),
                     (AlignedPath) path,
@@ -280,14 +280,14 @@ public class LogicalPlanBuilder {
 
           if (selectedPath.isUnderAlignedEntity()) { // aligned series
             sourceNodeList.add(
-                reserveMemoryForSeriesSourceNode(
+                reserveMemoryForAccountableNode(
                     new AlignedLastQueryScanNode(
                         context.getQueryId().genPlanNodeId(),
                         new AlignedPath(selectedPath),
                         outputViewPath)));
           } else { // non-aligned series
             sourceNodeList.add(
-                reserveMemoryForSeriesSourceNode(
+                reserveMemoryForAccountableNode(
                     new LastQueryScanNode(
                         context.getQueryId().genPlanNodeId(), selectedPath, outputViewPath)));
           }
@@ -304,7 +304,7 @@ public class LogicalPlanBuilder {
             alignedPath.addMeasurement(measurementPath);
           }
           sourceNodeList.add(
-              reserveMemoryForSeriesSourceNode(
+              reserveMemoryForAccountableNode(
                   new AlignedLastQueryScanNode(
                       context.getQueryId().genPlanNodeId(), alignedPath, null)));
         } else {
@@ -313,7 +313,7 @@ public class LogicalPlanBuilder {
             MeasurementPath selectedPath =
                 (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
             sourceNodeList.add(
-                reserveMemoryForSeriesSourceNode(
+                reserveMemoryForAccountableNode(
                     new LastQueryScanNode(
                         context.getQueryId().genPlanNodeId(), selectedPath, null)));
           }
@@ -1133,22 +1133,22 @@ public class LogicalPlanBuilder {
 
   @SuppressWarnings({"checkstyle:Indentation", "checkstyle:CommentsIndentation"})
   public LogicalPlanBuilder planDeviceSchemaFetchSource(
-      List<String> storageGroupList, PathPatternTree patternTree, PathPatternTree authorityScope) {
-    PartialPath storageGroupPath;
-    for (String storageGroup : storageGroupList) {
+      List<String> databaseList, PathPatternTree patternTree, PathPatternTree authorityScope) {
+    PartialPath databasePath;
+    for (String database : databaseList) {
       try {
-        storageGroupPath = new PartialPath(storageGroup);
+        databasePath = new PartialPath(database);
         PathPatternTree overlappedPatternTree = new PathPatternTree();
         for (PartialPath pathPattern :
             patternTree.getOverlappedPathPatterns(
-                storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
+                databasePath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
           // pathPattern has been deduplicated, no need to deduplicate again
           overlappedPatternTree.appendFullPath(pathPattern);
         }
         this.root.addChild(
             new DeviceSchemaFetchScanNode(
                 context.getQueryId().genPlanNodeId(),
-                storageGroupPath,
+                databasePath,
                 overlappedPatternTree,
                 authorityScope));
       } catch (IllegalPathException e) {
@@ -1425,7 +1425,7 @@ public class LogicalPlanBuilder {
    * We need to check the memory used by SeriesSourceNodes.(Number of other PlanNodes are rather
    * small compared to SourceNodes and could be safely ignored for now.)
    */
-  private PlanNode reserveMemoryForSeriesSourceNode(final SeriesSourceNode sourceNode) {
+  private PlanNode reserveMemoryForAccountableNode(final SeriesSourceNode sourceNode) {
     this.context.reserveMemoryForFrontEnd(
         MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceNode));
     return sourceNode;

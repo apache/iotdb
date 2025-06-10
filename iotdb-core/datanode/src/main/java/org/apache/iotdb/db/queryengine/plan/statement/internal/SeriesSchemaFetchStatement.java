@@ -20,22 +20,18 @@
 package org.apache.iotdb.db.queryengine.plan.statement.internal;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternNode;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.schemaengine.template.Template;
-
-import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
 
 import java.util.List;
 import java.util.Map;
 
-public class SeriesSchemaFetchStatement extends SchemaFetchStatement {
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(SeriesSchemaFetchStatement.class);
+public class SeriesSchemaFetchStatement extends Statement {
   private final PathPatternTree patternTree;
   private final Map<Integer, Template> templateMap;
   private final boolean withTags;
@@ -92,14 +88,5 @@ public class SeriesSchemaFetchStatement extends SchemaFetchStatement {
 
   public boolean isWithAliasForce() {
     return withAliasForce;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return INSTANCE_SIZE
-        + PathPatternNode.MAP_SIZE
-        + patternTree.ramBytesUsed()
-        + templateMap.size() * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-        + templateMap.values().stream().map(Template::ramBytesUsed).reduce(0L, Long::sum);
   }
 }

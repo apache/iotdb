@@ -894,7 +894,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     for (PlanNode child : node.getChildren()) {
       for (TRegionReplicaSet schemaRegion :
           storageGroupSchemaRegionMap.get(
-              ((SchemaFetchScanNode) child).getStorageGroup().getFullPath())) {
+              ((SchemaFetchScanNode) child).getDatabase().getFullPath())) {
         SchemaFetchScanNode schemaFetchScanNode = (SchemaFetchScanNode) child.clone();
         schemaFetchScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
         schemaFetchScanNode.setRegionReplicaSet(schemaRegion);

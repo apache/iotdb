@@ -53,7 +53,7 @@ public class SeriesSchemaFetchScanNodeTest {
     byteBuffer.flip();
     SeriesSchemaFetchScanNode recoveredNode =
         (SeriesSchemaFetchScanNode) PlanNodeType.deserialize(byteBuffer);
-    Assert.assertEquals("root.sg", recoveredNode.getStorageGroup().getFullPath());
+    Assert.assertEquals("root.sg", recoveredNode.getDatabase().getFullPath());
     Assert.assertEquals(
         "root.sg.**.*", recoveredNode.getPatternTree().getAllPathPatterns().get(0).getFullPath());
     Assert.assertTrue(recoveredNode.isWithTags());
