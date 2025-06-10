@@ -21,17 +21,20 @@ package org.apache.iotdb.db.queryengine.plan.statement.internal;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.List;
 
-public class DeviceSchemaFetchStatement extends Statement {
+public class DeviceSchemaFetchStatement extends SchemaFetchStatement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DeviceSchemaFetchStatement.class);
   private final PathPatternTree patternTree;
   private final PathPatternTree authorityScope;
 
-  public DeviceSchemaFetchStatement(PathPatternTree patternTree, PathPatternTree authorityScope) {
+  public DeviceSchemaFetchStatement(final PathPatternTree patternTree, final PathPatternTree authorityScope) {
     super();
     this.patternTree = patternTree;
     this.authorityScope = authorityScope;
@@ -55,5 +58,10 @@ public class DeviceSchemaFetchStatement extends Statement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitDeviceSchemaFetch(this, context);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return 0;
   }
 }
