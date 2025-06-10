@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
@@ -127,12 +128,15 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public String login4Pipe(final String username, final String password) {
     final User user = userManager.getEntity(username);
-    if (user == null || password == null) {
+    if (Objects.isNull(password)) {
+      return user.getPassword();
+    }
+    if (user == null) {
       return null;
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
-      return userManager.getEntity(username).getPassword();
+      return user.getPassword();
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
