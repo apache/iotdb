@@ -23,7 +23,7 @@ from iotdb.utils.IoTDBConstants import TSDataType
 from util.cache import MemoryLRUCache
 
 from ainode.core.config import AINodeDescriptor
-from ainode.core.dataProvider.dataset import BasicDatabaseForecastDataset
+from ainode.core.ingress.dataset import BasicDatabaseForecastDataset
 from ainode.core.log import Logger
 
 logger = Logger()

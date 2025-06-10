@@ -17,7 +17,7 @@
 #
 from torch.utils.data import Dataset
 
-from ainode.core.dataProvider.iotdb import IoTDBTableModelDataset, IoTDBTreeModelDataset
+from ainode.core.ingress.iotdb import IoTDBTableModelDataset, IoTDBTreeModelDataset
 from ainode.core.util.decorator import singleton
 
 
