@@ -2685,7 +2685,7 @@ public class ConfigManager implements IManager {
 
     TTrainingReq trainingReq = new TTrainingReq();
     trainingReq.setModelId(req.getModelId());
-    trainingReq.setModelType("timer_xl");
+    trainingReq.setModelType("sundial");
     if (req.existingModelId != null) {
       trainingReq.setExistingModelId(req.getExistingModelId());
     }
