@@ -119,3 +119,15 @@ class ModelStorage(object):
     def _remove_from_cache(self, file_path: str) -> None:
         if file_path in self._model_cache:
             del self._model_cache[file_path]
+
+    def get_ckpt_path(self, model_id: str) -> str:
+        """
+        Get the checkpoint path for a given model ID.
+
+        Args:
+            model_id (str): The ID of the model.
+
+        Returns:
+            str: The path to the checkpoint file for the model.
+        """
+        return os.path.join(self._model_dir, f"{model_id}")

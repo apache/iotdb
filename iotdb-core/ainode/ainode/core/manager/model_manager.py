@@ -100,6 +100,18 @@ class ModelManager:
         logger.info(f"load model {model_id}")
         return self.model_storage.load_model(model_id, acceleration)
 
+    def get_ckpt_path(self, model_id: str) -> str:
+        """
+        Get the checkpoint path for a given model ID.
+
+        Args:
+            model_id (str): The ID of the model.
+
+        Returns:
+            str: The path to the checkpoint file for the model.
+        """
+        return self.model_storage.get_ckpt_path(model_id)
+
     @staticmethod
     def load_built_in_model(model_id: str, attributes: {}):
         model_id = model_id.lower()
