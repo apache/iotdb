@@ -134,10 +134,8 @@ public class IoTDBDescriptor {
     loadProps();
     ServiceLoader<IPropertiesLoader> propertiesLoaderServiceLoader =
         ServiceLoader.load(IPropertiesLoader.class);
-    boolean hasProperties = false;
     for (IPropertiesLoader loader : propertiesLoaderServiceLoader) {
       LOGGER.info("Will reload properties from {} ", loader.getClass().getName());
-      hasProperties = true;
       Properties properties = loader.loadProperties();
       TrimProperties trimProperties = new TrimProperties();
       trimProperties.putAll(properties);
@@ -155,10 +153,6 @@ public class IoTDBDescriptor {
       TSFileDescriptor.getInstance()
           .getConfig()
           .setCustomizedProperties(loader.getCustomizedProperties());
-    }
-    // if there are no properties, we need to init memory config
-    if (!hasProperties) {
-      memoryConfig.init(new TrimProperties());
     }
   }
 
