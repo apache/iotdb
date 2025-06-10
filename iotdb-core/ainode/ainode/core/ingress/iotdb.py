@@ -44,7 +44,7 @@ def get_field_value(field: Field):
 
 
 def _cache_enable() -> bool:
-    return AINodeDescriptor().get_config().get_ain_data_storage_cache_size() != 0
+    return AINodeDescriptor().get_config().get_ain_data_storage_cache_size() > 0
 
 
 class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
@@ -92,15 +92,11 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
         for schema in schema_list:
             path_pattern = schema.schemaName
             series_list = []
-
-            if schema.timeRange:
-                time_condition = self.TIME_CONDITION % (
-                    schema.timeRange[0],
-                    schema.timeRange[1],
-                )
-            else:
-                time_condition = ""
-
+            time_condition = (
+                self.TIME_CONDITION % (schema.timeRange[0], schema.timeRange[1])
+                if schema.timeRange
+                else ""
+            )
             with self.session.execute_query_statement(
                 self.SHOW_TIMESERIES % (path_pattern, time_condition)
             ) as show_timeseries_result:

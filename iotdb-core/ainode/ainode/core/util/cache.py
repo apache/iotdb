@@ -22,21 +22,24 @@ from ainode.core.config import AINodeDescriptor
 from ainode.core.util.decorator import singleton
 
 
-def _estimate_size(obj):
+def _estimate_size_in_byte(obj):
     if isinstance(obj, str):
         return len(obj) + 49
     elif isinstance(obj, int):
         return 28
     elif isinstance(obj, list):
-        return 64 + sum(_estimate_size(x) for x in obj)
+        return 64 + sum(_estimate_size_in_byte(x) for x in obj)
     elif isinstance(obj, dict):
-        return 280 + sum(_estimate_size(k) + _estimate_size(v) for k, v in obj.items())
+        return 280 + sum(
+            _estimate_size_in_byte(k) + _estimate_size_in_byte(v)
+            for k, v in obj.items()
+        )
     else:
         return sys.getsizeof(obj)
 
 
 def _get_item_memory(key, value) -> int:
-    return _estimate_size(key) + _estimate_size(value)
+    return _estimate_size_in_byte(key) + _estimate_size_in_byte(value)
 
 
 @singleton

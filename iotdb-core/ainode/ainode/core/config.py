@@ -52,6 +52,7 @@ class AINodeConfig(object):
         # log directory
         self._ain_logs_dir: str = AINODE_LOG_DIR
 
+        # cache size for ingress dataloader (MB)
         self._ain_data_cache_size = 50
 
         # Directory to save models
