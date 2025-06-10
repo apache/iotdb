@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
@@ -127,6 +128,19 @@ public class SortElimination implements PlanOptimizer {
       }
 
       if (node.getSpecification().getOrderingScheme().isPresent()) {
+        context.setCannotEliminateSort(true);
+      }
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitPatternRecognition(PatternRecognitionNode node, Context context) {
+      PlanNode newNode = node.clone();
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, context));
+      }
+
+      if (node.getOrderingScheme().isPresent()) {
         context.setCannotEliminateSort(true);
       }
       return newNode;
