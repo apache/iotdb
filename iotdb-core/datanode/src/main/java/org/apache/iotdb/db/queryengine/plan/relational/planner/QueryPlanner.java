@@ -509,22 +509,26 @@ public class QueryPlanner {
                 }
               }
             });
-    GroupNode groupNode =
-        new GroupNode(
-            queryIdAllocator.genPlanNodeId(),
-            subPlan.getRoot(),
-            new OrderingScheme(sortSymbols, sortOrderings),
-            sortKeyOffset);
-    PlanBuilder planBuilder =
-        new PlanBuilder(
-            subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()), groupNode);
+
+    PlanBuilder planBuilder = null;
+    if (!sortSymbols.isEmpty()) {
+      GroupNode groupNode =
+          new GroupNode(
+              queryIdAllocator.genPlanNodeId(),
+              subPlan.getRoot(),
+              new OrderingScheme(sortSymbols, sortOrderings),
+              sortKeyOffset);
+      planBuilder =
+          new PlanBuilder(
+              subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()), groupNode);
+    }
 
     // create window node
     return new PlanBuilder(
         subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()),
         new WindowNode(
             queryIdAllocator.genPlanNodeId(),
-            planBuilder.getRoot(),
+            planBuilder != null? planBuilder.getRoot() : subPlan.getRoot(),
             specification,
             functions.buildOrThrow(),
             Optional.empty(),
