@@ -71,7 +71,7 @@ public class PipeConnectorConstant {
 
   public static final String CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY = "connector.batch.max-delay-ms";
   public static final String SINK_IOTDB_BATCH_DELAY_MS_KEY = "sink.batch.max-delay-ms";
-  public static final int CONNECTOR_IOTDB_BATCH_DELAY_MS_DEFAULT_VALUE = 200;
+  public static final int CONNECTOR_IOTDB_BATCH_DELAY_MS_DEFAULT_VALUE = 20;
 
   public static final String CONNECTOR_IOTDB_BATCH_SIZE_KEY = "connector.batch.size-bytes";
   public static final String SINK_IOTDB_BATCH_SIZE_KEY = "sink.batch.size-bytes";

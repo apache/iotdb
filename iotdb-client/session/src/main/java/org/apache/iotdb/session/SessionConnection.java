@@ -1094,7 +1094,18 @@ public class SessionConnection {
         if (session.endPointToSessionConnection == null) {
           session.endPointToSessionConnection = new ConcurrentHashMap<>();
         }
-        session.endPointToSessionConnection.put(session.defaultEndPoint, this);
+        session.endPointToSessionConnection.compute(
+            session.defaultEndPoint,
+            (k, v) -> {
+              if (v != null && v.transport != null && v.transport.isOpen()) {
+                try {
+                  v.close();
+                } catch (IoTDBConnectionException e) {
+                  logger.warn("close connection failed, {}", e.getMessage());
+                }
+              }
+              return this;
+            });
         break;
       }
     }
