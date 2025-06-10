@@ -29,16 +29,16 @@
     <artifactId>integration-test</artifactId>
     <name>IoTDB: Integration-Test</name>
     <properties>
-        <integrationTest.excludedGroups />
+        <integrationTest.excludedGroups/>
         <integrationTest.forkCount>1</integrationTest.forkCount>
-        <integrationTest.includedGroups />
+        <integrationTest.includedGroups/>
         <integrationTest.launchNodeInSameJVM>true</integrationTest.launchNodeInSameJVM>
         <integrationTest.nodeMaxHeapSize>200m</integrationTest.nodeMaxHeapSize>
         <integrationTest.nodeNewHeapSize>200m</integrationTest.nodeNewHeapSize>
         <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
         <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
         <integrationTest.dataRegionPerDataNode>0</integrationTest.dataRegionPerDataNode>
-        <integrationTest.testEnv />
+        <integrationTest.testEnv/>
         <lightWeightStandaloneMode.configNodeConsensus>Simple</lightWeightStandaloneMode.configNodeConsensus>
         <!-- -DClusterConfigurations values configured here -->
         <lightWeightStandaloneMode.configNodeNumber>1</lightWeightStandaloneMode.configNodeNumber>
@@ -630,7 +630,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups />
+                <integrationTest.excludedGroups/>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.DailyIT</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -672,7 +672,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups />
+                <integrationTest.excludedGroups/>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
