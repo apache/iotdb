@@ -107,7 +107,7 @@ public class UDTFForecast implements UDTF {
       throws Exception {
     this.types = parameters.getDataTypes();
     checkType();
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.FLOAT);
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
 
     this.model_id = parameters.getString(MODEL_ID_PARAMETER_NAME);
     if (this.model_id == null || this.model_id.isEmpty()) {
@@ -135,15 +135,15 @@ public class UDTFForecast implements UDTF {
                     ));
     this.inputRows = new LinkedList<>();
     List<TSDataType> tsDataTypeList = new ArrayList<>(this.types.size() - 1);
-    for (int i = 1; i < this.types.size(); i++) {
+    for (int i = 0; i < this.types.size(); i++) {
       tsDataTypeList.add(TSDataType.DOUBLE);
     }
     this.inputTsBlockBuilder = new TsBlockBuilder(tsDataTypeList);
   }
 
   private void setByType(Row row, PointCollector collector) throws IOException {
-    for (int i = 0; i < row.size() - 1; i++) {
-      switch (this.types.get(i + 1)) {
+    for (int i = 0; i < row.size(); i++) {
+      switch (this.types.get(i)) {
         case INT32:
           collector.putInt(row.getTime(), row.getInt(i));
           break;
@@ -163,13 +163,35 @@ public class UDTFForecast implements UDTF {
     }
   }
 
+  private void setByType(Row row, TsBlockBuilder tsBlockBuilder) throws IOException {
+    for (int i = 0; i < row.size(); i++) {
+      if (row.isNull(i)) {
+        tsBlockBuilder.getColumnBuilder(i).appendNull();
+        continue;
+      }
+      switch (this.types.get(i)) {
+        case INT32:
+          tsBlockBuilder.getColumnBuilder(i).writeInt(row.getInt(i));
+          break;
+        case INT64:
+          tsBlockBuilder.getColumnBuilder(i).writeLong(row.getLong(i));
+          break;
+        case FLOAT:
+          tsBlockBuilder.getColumnBuilder(i).writeFloat(row.getFloat(i));
+          break;
+        case DOUBLE:
+          tsBlockBuilder.getColumnBuilder(i).writeDouble(row.getDouble(i));
+          break;
+        default:
+          throw new IllegalArgumentException(
+              String.format("Unsupported data type %s", this.types.get(i + 1)));
+      }
+    }
+  }
+
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     if (this.keepInput) {
-      if (row.isNull(row.size() - 1)) {
-        throw new IllegalArgumentException(
-            "The last column of the input row must not be null, it should be a timestamp.");
-      }
       setByType(row, collector);
     }
 
@@ -185,13 +207,7 @@ public class UDTFForecast implements UDTF {
     while (!inputRows.isEmpty()) {
       Row row = inputRows.removeFirst();
       inputTsBlockBuilder.getTimeColumnBuilder().writeLong(row.getTime());
-      for (int i = 0; i < row.size() - 1; i++) {
-        if (row.isNull(i)) {
-          inputTsBlockBuilder.getColumnBuilder(i).appendNull();
-        } else {
-          inputTsBlockBuilder.getColumnBuilder(i).writeFloat(row.getFloat(i));
-        }
-      }
+      setByType(row, inputTsBlockBuilder);
       inputTsBlockBuilder.declarePosition();
     }
 
@@ -251,7 +267,7 @@ public class UDTFForecast implements UDTF {
     }
 
     for (int i = 0; i < forecastResult.getPositionCount(); i++) {
-      collector.putFloat(outputTimes[i], forecastResult.getValueColumns()[0].getFloat(i));
+      collector.putDouble(outputTimes[i], forecastResult.getValueColumns()[0].getDouble(i));
     }
   }
 }
