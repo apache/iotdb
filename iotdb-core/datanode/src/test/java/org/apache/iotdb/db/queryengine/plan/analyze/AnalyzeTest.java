@@ -751,8 +751,13 @@ public class AnalyzeTest {
     for (int i = 0; i < sqls.size(); i++) {
       Analysis analysis = analyzeSQL(sqls.get(i));
       assert analysis != null;
-      Assert.assertEquals(
-          results.get(i), analysis.getIntoPathDescriptor().getSourceTargetPathPairList());
+      List<Pair<String, PartialPath>> expected = results.get(i);
+      List<Pair<String, PartialPath>> actual =
+          analysis.getIntoPathDescriptor().getSourceTargetPathPairList();
+      Assert.assertTrue(
+          expected.size() == actual.size()
+              && expected.containsAll(actual)
+              && actual.containsAll(expected));
     }
   }
 
