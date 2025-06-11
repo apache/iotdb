@@ -1106,6 +1106,12 @@ public class Session implements ISession {
   }
 
   @Override
+  public SessionDataSet executeFastLastDataQueryForOnePrefixPath(final List<String> prefixes)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    return defaultSessionConnection.executeLastDataQueryForOnePrefixPath(prefixes);
+  }
+
+  @Override
   public SessionDataSet executeLastDataQueryForOneDevice(
       String db, String device, List<String> sensors, boolean isLegalPathNodes)
       throws StatementExecutionException, IoTDBConnectionException {

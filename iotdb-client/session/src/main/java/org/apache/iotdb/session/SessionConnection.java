@@ -46,6 +46,7 @@ import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
+import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOnePrefixPathReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -493,6 +494,46 @@ public class SessionConnection {
         timeFactor,
         execResp.isSetTableModel() && execResp.isTableModel(),
         execResp.getColumnIndex2TsBlockColumnIndexList());
+  }
+
+  protected SessionDataSet executeLastDataQueryForOnePrefixPath(final List<String> prefixes)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSFastLastDataQueryForOnePrefixPathReq req =
+        new TSFastLastDataQueryForOnePrefixPathReq(sessionId, prefixes, statementId);
+    req.setFetchSize(session.fetchSize);
+    req.setEnableRedirectQuery(enableRedirect);
+
+    RetryResult<TSExecuteStatementResp> result =
+        callWithReconnect(
+            () -> {
+              req.setSessionId(sessionId);
+              req.setStatementId(statementId);
+              return client.executeFastLastDataQueryForOnePrefixPath(req);
+            });
+    final TSExecuteStatementResp tsExecuteStatementResp = result.getResult();
+
+    if (result.getRetryAttempts() == 0) {
+      RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
+    } else {
+      RpcUtils.verifySuccess(tsExecuteStatementResp.getStatus());
+    }
+
+    return new SessionDataSet(
+        "",
+        tsExecuteStatementResp.getColumns(),
+        tsExecuteStatementResp.getDataTypeList(),
+        tsExecuteStatementResp.columnNameIndexMap,
+        tsExecuteStatementResp.getQueryId(),
+        statementId,
+        client,
+        sessionId,
+        tsExecuteStatementResp.queryResult,
+        tsExecuteStatementResp.isIgnoreTimeStamp(),
+        tsExecuteStatementResp.moreData,
+        zoneId,
+        timeFactor,
+        false,
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
   }
 
   protected Pair<SessionDataSet, TEndPoint> executeLastDataQueryForOneDevice(
