@@ -145,10 +145,7 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
     }
   }
 
-  private PipeTransferCompressedReq() {
-    // Empty constructor
-  }
-
+  /** This method is used to prevent decompression bomb attacks. */
   private static void checkDecompressedLength(
       final int decompressedLength, final int maxDecompressedLength)
       throws IllegalArgumentException {
@@ -158,5 +155,9 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
               "Decompressed length should be between 0 and %d, but got %d.",
               maxDecompressedLength, decompressedLength));
     }
+  }
+
+  private PipeTransferCompressedReq() {
+    // Empty constructor
   }
 }
