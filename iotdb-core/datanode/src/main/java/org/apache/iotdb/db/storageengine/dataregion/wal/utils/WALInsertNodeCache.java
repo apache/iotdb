@@ -112,7 +112,11 @@ public class WALInsertNodeCache {
       // Allocate memory for the fixed memory block of WAL
       walModelFixedMemory =
           PipeDataNodeResourceManager.memory()
-              .forceAllocateForModelFixedMemoryBlock(0L, PipeMemoryBlockType.WAL);
+              .forceAllocateForModelFixedMemoryBlock(
+                  (long)
+                      (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
+                          * PIPE_CONFIG.getPipeDataStructureWalMemoryProportion()),
+                  PipeMemoryBlockType.WAL);
     } catch (Exception e) {
       LOGGER.error("Failed to initialize WAL model fixed memory block", e);
       walModelFixedMemory =
