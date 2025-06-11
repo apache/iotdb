@@ -2458,12 +2458,6 @@ public class IoTDBDescriptor {
     conf.setIotConsensusV2DeletionFileDir(
         properties.getProperty(
             "iot_consensus_v2_deletion_file_dir", conf.getIotConsensusV2DeletionFileDir()));
-
-    conf.setAllocateMemoryPerWalCache(
-        Long.parseLong(
-            properties.getProperty(
-                "allocate_memory_per_wal_cache",
-                Long.toString(conf.getAllocateMemoryPerWalCache()))));
   }
 
   private void loadCQProps(TrimProperties properties) {
