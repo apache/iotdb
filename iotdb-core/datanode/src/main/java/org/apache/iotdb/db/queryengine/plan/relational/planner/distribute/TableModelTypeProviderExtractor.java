@@ -103,6 +103,7 @@ public class TableModelTypeProviderExtractor {
 
     @Override
     public Void visitInto(IntoNode node, Void context) {
+      node.getChild().accept(this, context);
       List<Symbol> outputSymbols = node.getOutputSymbols();
       List<Type> outputTypes = node.getOutputType();
 
