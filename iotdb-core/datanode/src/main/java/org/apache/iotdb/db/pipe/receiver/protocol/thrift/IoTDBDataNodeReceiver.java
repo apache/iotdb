@@ -182,11 +182,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private PipeMemoryBlock allocatedMemoryBlock;
 
-  private static final int MAX_DECOMPRESSION_LENGTH =
+  private static final int MAX_REQ_DECOMPRESSED_LENGTH =
       Math.max(
-          PIPE_CONFIG.getPipeReceiverDecompressMaxLengthInBytes(),
+          PIPE_CONFIG.getPipeReceiverReqDecompressedMaxLengthInBytes(),
           (int)
-              (PIPE_CONFIG.getPipeReceiverDecompressMaxMemoryProportion()
+              (PIPE_CONFIG.getPipeReceiverRqeDecompressedMaxMemoryProportion()
                   * PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()));
 
   static {
@@ -418,7 +418,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             {
               try {
                 return receive(
-                    PipeTransferCompressedReq.fromTPipeTransferReq(req, MAX_DECOMPRESSION_LENGTH));
+                    PipeTransferCompressedReq.fromTPipeTransferReq(
+                        req, MAX_REQ_DECOMPRESSED_LENGTH));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferCompressedTimer(System.nanoTime() - startTime);

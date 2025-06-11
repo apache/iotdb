@@ -325,12 +325,12 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
   }
 
-  public int getPipeReceiverDecompressMaxLengthInBytes() {
-    return COMMON_CONFIG.getPipeReceiverDecompressMaxLengthInBytes();
+  public int getPipeReceiverReqDecompressedMaxLengthInBytes() {
+    return COMMON_CONFIG.getPipeReceiverReqDecompressedMaxLengthInBytes();
   }
 
-  public double getPipeReceiverDecompressMaxMemoryProportion() {
-    return COMMON_CONFIG.getPipeReceiverDecompressMaxMemoryProportion();
+  public double getPipeReceiverRqeDecompressedMaxMemoryProportion() {
+    return COMMON_CONFIG.getPipeReceiverReqDecompressedMaxMemoryProportion();
   }
 
   /////////////////////////////// Hybrid Mode ///////////////////////////////
@@ -618,9 +618,12 @@ public class PipeConfig {
     LOGGER.info(
         "PipeReceiverActualToEstimatedMemoryRatio: {}",
         getPipeReceiverActualToEstimatedMemoryRatio());
-    LOGGER.info("PipeDecompressMaxLengthInBytes: {}", getPipeReceiverDecompressMaxLengthInBytes());
     LOGGER.info(
-        "PipeDecompressMaxMemoryProportion: {}", getPipeReceiverDecompressMaxMemoryProportion());
+        "PipeReqDecompressedMaxLengthInBytes: {}",
+        getPipeReceiverReqDecompressedMaxLengthInBytes());
+    LOGGER.info(
+        "PipeReqDecompressedMaxMemoryProportion: {}",
+        getPipeReceiverRqeDecompressedMaxMemoryProportion());
 
     LOGGER.info(
         "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",

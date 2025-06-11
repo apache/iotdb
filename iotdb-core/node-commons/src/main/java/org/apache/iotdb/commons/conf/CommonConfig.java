@@ -274,8 +274,8 @@ public class CommonConfig {
   private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
   private double pipeReceiverActualToEstimatedMemoryRatio = 3;
 
-  private int pipeReceiverDecompressMaxLengthInBytes = 6291456; // 6MB
-  private double pipeReceiverDecompressMaxMemoryProportion = 0.05; // 5%
+  private int pipeReceiverReqDecompressedMaxLengthInBytes = 6291456; // 6MB
+  private double pipeReceiverReqDecompressedMaxMemoryProportion = 0.05; // 5%
 
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = Integer.MAX_VALUE; // Deprecated
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = Integer.MAX_VALUE; // Deprecated
@@ -1465,35 +1465,37 @@ public class CommonConfig {
     return pipeReceiverActualToEstimatedMemoryRatio;
   }
 
-  public void setPipeReceiverDecompressMaxLengthInBytes(
-      int pipeReceiverDecompressMaxLengthInBytes) {
-    if (this.pipeReceiverDecompressMaxLengthInBytes == pipeReceiverDecompressMaxLengthInBytes) {
+  public void setPipeReceiverReqDecompressedMaxLengthInBytes(
+      int pipeReceiverReqDecompressedMaxLengthInBytes) {
+    if (this.pipeReceiverReqDecompressedMaxLengthInBytes
+        == pipeReceiverReqDecompressedMaxLengthInBytes) {
       return;
     }
-    this.pipeReceiverDecompressMaxLengthInBytes = pipeReceiverDecompressMaxLengthInBytes;
+    this.pipeReceiverReqDecompressedMaxLengthInBytes = pipeReceiverReqDecompressedMaxLengthInBytes;
     logger.info(
-        "pipeReceiverDecompressMaxLengthInBytes is set to {}.",
-        pipeReceiverDecompressMaxLengthInBytes);
+        "pipeReceiverReqDecompressedMaxLengthInBytes is set to {}.",
+        pipeReceiverReqDecompressedMaxLengthInBytes);
   }
 
-  public int getPipeReceiverDecompressMaxLengthInBytes() {
-    return pipeReceiverDecompressMaxLengthInBytes;
+  public int getPipeReceiverReqDecompressedMaxLengthInBytes() {
+    return pipeReceiverReqDecompressedMaxLengthInBytes;
   }
 
-  public void setPipeReceiverDecompressMaxMemoryProportion(
-      double pipeReceiverDecompressMaxMemoryProportion) {
-    if (this.pipeReceiverDecompressMaxMemoryProportion
-        == pipeReceiverDecompressMaxMemoryProportion) {
+  public void setPipeReceiverReqDecompressedMaxMemoryProportion(
+      double pipeReceiverReqDecompressedMaxMemoryProportion) {
+    if (this.pipeReceiverReqDecompressedMaxMemoryProportion
+        == pipeReceiverReqDecompressedMaxMemoryProportion) {
       return;
     }
-    this.pipeReceiverDecompressMaxMemoryProportion = pipeReceiverDecompressMaxMemoryProportion;
+    this.pipeReceiverReqDecompressedMaxMemoryProportion =
+        pipeReceiverReqDecompressedMaxMemoryProportion;
     logger.info(
-        "pipeReceiverDecompressMaxMemoryProportion is set to {}.",
-        pipeReceiverDecompressMaxMemoryProportion);
+        "pipeReceiverReqDecompressedMaxMemoryProportion is set to {}.",
+        pipeReceiverReqDecompressedMaxMemoryProportion);
   }
 
-  public double getPipeReceiverDecompressMaxMemoryProportion() {
-    return pipeReceiverDecompressMaxMemoryProportion;
+  public double getPipeReceiverReqDecompressedMaxMemoryProportion() {
+    return pipeReceiverReqDecompressedMaxMemoryProportion;
   }
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
