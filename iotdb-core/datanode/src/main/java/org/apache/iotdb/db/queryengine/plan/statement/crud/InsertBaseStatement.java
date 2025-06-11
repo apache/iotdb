@@ -185,6 +185,11 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
+    // WRITE_DATA permission should not be required by table model insert
+    if (isWriteToTable()) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
     List<PartialPath> checkedPaths = getPaths().stream().distinct().collect(Collectors.toList());
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathOrPatternListPermission(
