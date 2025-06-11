@@ -187,10 +187,6 @@ public class PipeConfig {
     return COMMON_CONFIG.isPipeConnectorRPCThriftCompressionEnabled();
   }
 
-  public int getPipeDecompressMaxLengthInBytes() {
-    return COMMON_CONFIG.getPipeDecompressMaxLengthInBytes();
-  }
-
   public int getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold() {
     return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold();
   }
@@ -327,6 +323,14 @@ public class PipeConfig {
 
   public double getPipeReceiverActualToEstimatedMemoryRatio() {
     return COMMON_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
+  }
+
+  public int getPipeReceiverDecompressMaxLengthInBytes() {
+    return COMMON_CONFIG.getPipeReceiverDecompressMaxLengthInBytes();
+  }
+
+  public double getPipeReceiverDecompressMaxMemoryProportion() {
+    return COMMON_CONFIG.getPipeReceiverDecompressMaxMemoryProportion();
   }
 
   /////////////////////////////// Hybrid Mode ///////////////////////////////
@@ -538,7 +542,6 @@ public class PipeConfig {
     LOGGER.info(
         "PipeConnectorRPCThriftCompressionEnabled: {}",
         isPipeConnectorRPCThriftCompressionEnabled());
-    LOGGER.info("PipeDecompressMaxLengthInBytes: {}", getPipeDecompressMaxLengthInBytes());
     LOGGER.info(
         "PipeLeaderCacheMemoryUsagePercentage: {}", getPipeLeaderCacheMemoryUsagePercentage());
     LOGGER.info("PipeMaxAlignedSeriesNumInOneBatch: {}", getPipeMaxAlignedSeriesNumInOneBatch());
@@ -615,6 +618,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeReceiverActualToEstimatedMemoryRatio: {}",
         getPipeReceiverActualToEstimatedMemoryRatio());
+    LOGGER.info("PipeDecompressMaxLengthInBytes: {}", getPipeReceiverDecompressMaxLengthInBytes());
+    LOGGER.info(
+        "PipeDecompressMaxMemoryProportion: {}", getPipeReceiverDecompressMaxMemoryProportion());
 
     LOGGER.info(
         "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",

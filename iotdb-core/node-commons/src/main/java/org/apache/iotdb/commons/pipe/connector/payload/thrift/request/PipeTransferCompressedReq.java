@@ -80,8 +80,8 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
   }
 
   /** Get the original req from a compressed req. */
-  public static TPipeTransferReq fromTPipeTransferReq(final TPipeTransferReq transferReq)
-      throws IOException {
+  public static TPipeTransferReq fromTPipeTransferReq(
+      final TPipeTransferReq transferReq, final int maxDecompressedLength) throws IOException {
     final ByteBuffer compressedBuffer = transferReq.body;
 
     final List<PipeCompressor> compressors = new ArrayList<>();
@@ -91,6 +91,7 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
       compressors.add(
           PipeCompressorFactory.getCompressor(ReadWriteIOUtils.readByte(compressedBuffer)));
       uncompressedLengths.add(ReadWriteIOUtils.readInt(compressedBuffer));
+      checkDecompressedLength(uncompressedLengths.get(i), maxDecompressedLength);
     }
 
     byte[] body = new byte[compressedBuffer.remaining()];
@@ -146,5 +147,16 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
 
   private PipeTransferCompressedReq() {
     // Empty constructor
+  }
+
+  private static void checkDecompressedLength(
+      final int decompressedLength, final int maxDecompressedLength)
+      throws IllegalArgumentException {
+    if (decompressedLength < 0 || decompressedLength > maxDecompressedLength) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Decompressed length should be between 0 and %d, but got %d.",
+              maxDecompressedLength, decompressedLength));
+    }
   }
 }

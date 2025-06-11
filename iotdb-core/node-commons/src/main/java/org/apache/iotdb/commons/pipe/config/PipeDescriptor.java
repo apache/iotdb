@@ -374,11 +374,6 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_connector_rpc_thrift_compression_enabled",
                         String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled())))));
-    config.setPipeDecompressMaxLengthInBytes(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_decompress_max_length_in_bytes",
-                String.valueOf(config.getPipeDecompressMaxLengthInBytes()))));
     config.setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
         Long.parseLong(
             Optional.ofNullable(
@@ -440,6 +435,16 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_receiver_actual_to_estimated_memory_ratio",
                 Double.toString(config.getPipeReceiverActualToEstimatedMemoryRatio()))));
+    config.setPipeReceiverDecompressMaxLengthInBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_decompress_max_length_in_bytes",
+                String.valueOf(config.getPipeReceiverDecompressMaxLengthInBytes()))));
+    config.setPipeReceiverDecompressMaxMemoryProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_decompress_max_memory_proportion",
+                String.valueOf(config.getPipeReceiverDecompressMaxMemoryProportion()))));
 
     config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
         Integer.parseInt(
