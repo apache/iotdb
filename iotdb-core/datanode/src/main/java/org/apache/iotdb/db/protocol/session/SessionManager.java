@@ -360,11 +360,9 @@ public class SessionManager implements SessionManagerMBean {
   /**
    * this method can be only used in mqtt model. Do not use this method in client-thread model based
    * service.
-   *
-   * @return false if the session has been initialized.
    */
-  public boolean registerSessionForMqtt(IClientSession session) {
-    return sessions.put(session, placeHolder) == null;
+  public void registerSessionForMqtt(IClientSession session) {
+    sessions.put(session, placeHolder);
   }
 
   /** must be called after registerSession()) will mark the session login. */
