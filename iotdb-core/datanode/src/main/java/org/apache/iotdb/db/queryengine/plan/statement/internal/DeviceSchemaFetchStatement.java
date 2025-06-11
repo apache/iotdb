@@ -31,7 +31,8 @@ public class DeviceSchemaFetchStatement extends Statement {
   private final PathPatternTree patternTree;
   private final PathPatternTree authorityScope;
 
-  public DeviceSchemaFetchStatement(PathPatternTree patternTree, PathPatternTree authorityScope) {
+  public DeviceSchemaFetchStatement(
+      final PathPatternTree patternTree, final PathPatternTree authorityScope) {
     super();
     this.patternTree = patternTree;
     this.authorityScope = authorityScope;

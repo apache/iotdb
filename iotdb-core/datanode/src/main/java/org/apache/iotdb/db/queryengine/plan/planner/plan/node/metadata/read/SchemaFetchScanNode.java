@@ -27,25 +27,25 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.Accountable;
 
 import java.util.Collections;
 import java.util.List;
 
-public abstract class SchemaFetchScanNode extends SourceNode {
-  protected final PartialPath storageGroup;
+public abstract class SchemaFetchScanNode extends SourceNode implements Accountable {
+  protected final PartialPath database;
   protected final PathPatternTree patternTree;
   protected TRegionReplicaSet schemaRegionReplicaSet;
 
-  protected SchemaFetchScanNode(
-      PlanNodeId id, PartialPath storageGroup, PathPatternTree patternTree) {
+  protected SchemaFetchScanNode(PlanNodeId id, PartialPath database, PathPatternTree patternTree) {
     super(id);
-    this.storageGroup = storageGroup;
+    this.database = database;
     this.patternTree = patternTree;
     this.patternTree.constructTree();
   }
 
-  public PartialPath getStorageGroup() {
-    return storageGroup;
+  public PartialPath getDatabase() {
+    return database;
   }
 
   public PathPatternTree getPatternTree() {
@@ -81,6 +81,11 @@ public abstract class SchemaFetchScanNode extends SourceNode {
   @Override
   public void setRegionReplicaSet(TRegionReplicaSet schemaRegionReplicaSet) {
     this.schemaRegionReplicaSet = schemaRegionReplicaSet;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return patternTree.ramBytesUsed() + PartialPath.estimateSize(database);
   }
 
   @Override
