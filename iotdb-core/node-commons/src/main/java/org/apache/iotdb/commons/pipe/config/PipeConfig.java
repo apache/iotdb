@@ -619,10 +619,10 @@ public class PipeConfig {
         "PipeReceiverActualToEstimatedMemoryRatio: {}",
         getPipeReceiverActualToEstimatedMemoryRatio());
     LOGGER.info(
-        "PipeReqDecompressedMaxLengthInBytes: {}",
+        "PipeReceiverReqDecompressedMaxLengthInBytes: {}",
         getPipeReceiverReqDecompressedMaxLengthInBytes());
     LOGGER.info(
-        "PipeReqDecompressedMaxMemoryProportion: {}",
+        "PipeReceiverReqDecompressedMaxMemoryProportion: {}",
         getPipeReceiverReqDecompressedMaxMemoryProportion());
 
     LOGGER.info(
