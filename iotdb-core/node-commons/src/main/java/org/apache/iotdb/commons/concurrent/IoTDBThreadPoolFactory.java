@@ -164,6 +164,25 @@ public class IoTDBThreadPoolFactory {
    * see {@link Executors#newCachedThreadPool(java.util.concurrent.ThreadFactory)}.
    *
    * @param poolName the name of thread pool.
+   * @param corePoolSize the corePoolSize of thread pool
+   * @return thread pool.
+   */
+  public static ExecutorService newCachedThreadPool(String poolName, int corePoolSize) {
+    logger.info(NEW_CACHED_THREAD_POOL_LOGGER_FORMAT, poolName);
+    return new WrappedThreadPoolExecutor(
+        corePoolSize,
+        Integer.MAX_VALUE,
+        60L,
+        TimeUnit.SECONDS,
+        new SynchronousQueue<>(),
+        new IoTThreadFactory(poolName),
+        poolName);
+  }
+
+  /**
+   * see {@link Executors#newCachedThreadPool(java.util.concurrent.ThreadFactory)}.
+   *
+   * @param poolName the name of thread pool.
    * @return thread pool.
    */
   public static ExecutorService newCachedThreadPool(String poolName) {
