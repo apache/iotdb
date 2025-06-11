@@ -54,7 +54,7 @@ public class WALInsertNodeCacheTest {
   private static final String databasePath = "root.test_sg";
   private static final String devicePath = databasePath + ".test_d";
   private static final String dataRegionId = "1";
-  private static final WALInsertNodeCache cache = WALInsertNodeCache.getInstance(1);
+  private static final WALInsertNodeCache cache = WALInsertNodeCache.getInstance();
   private WALMode prevMode;
   private WALNode walNode;
 
