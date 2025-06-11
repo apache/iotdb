@@ -262,11 +262,11 @@ public class PipeMemoryManager {
       }
     }
 
-    if (getFreeMemorySizeInBytes() < fixedSizeInBytes) {
-      return (PipeModelFixedMemoryBlock) forceAllocateWithRetry(getFreeMemorySizeInBytes(), type);
-    }
-
     synchronized (this) {
+      if (getFreeMemorySizeInBytes() < fixedSizeInBytes) {
+        return (PipeModelFixedMemoryBlock) forceAllocateWithRetry(getFreeMemorySizeInBytes(), type);
+      }
+
       return (PipeModelFixedMemoryBlock) forceAllocateWithRetry(fixedSizeInBytes, type);
     }
   }
