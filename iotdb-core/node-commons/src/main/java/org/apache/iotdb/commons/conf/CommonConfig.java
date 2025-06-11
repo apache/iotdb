@@ -274,7 +274,7 @@ public class CommonConfig {
   private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
   private double pipeReceiverActualToEstimatedMemoryRatio = 3;
 
-  private int pipeReceiverDecompressMaxLengthInBytes = 8192; // 8KB
+  private int pipeReceiverDecompressMaxLengthInBytes = 6291456; // 6MB
   private double pipeReceiverDecompressMaxMemoryProportion = 0.05; // 5%
 
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = Integer.MAX_VALUE; // Deprecated

@@ -142,8 +142,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final String[] RECEIVER_FILE_BASE_DIRS = IOTDB_CONFIG.getPipeReceiverFileDirs();
   private static FolderManager folderManager = null;
 
-  private static final int MAX_DECOMPRESSION_LENGTH;
-
   public static final PipePlanToStatementVisitor PLAN_TO_STATEMENT_VISITOR =
       new PipePlanToStatementVisitor();
   public static final PipeStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
@@ -184,6 +182,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private PipeMemoryBlock allocatedMemoryBlock;
 
+  private static final int MAX_DECOMPRESSION_LENGTH =
+      Math.max(
+          PIPE_CONFIG.getPipeReceiverDecompressMaxLengthInBytes(),
+          (int)
+              (PIPE_CONFIG.getPipeReceiverDecompressMaxMemoryProportion()
+                  * PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()));
+
   static {
     try {
       folderManager =
@@ -194,13 +199,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           "Fail to create pipe receiver file folders allocation strategy because all disks of folders are full.",
           e);
     }
-
-    MAX_DECOMPRESSION_LENGTH =
-        Math.max(
-            PIPE_CONFIG.getPipeReceiverDecompressMaxLengthInBytes(),
-            (int)
-                (PIPE_CONFIG.getPipeReceiverDecompressMaxMemoryProportion()
-                    * PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()));
   }
 
   @Override

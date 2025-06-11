@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.connector.compressor;
 import java.io.IOException;
 
 public abstract class PipeCompressor {
+
   public enum PipeCompressionType {
     SNAPPY((byte) 0),
     GZIP((byte) 1),
