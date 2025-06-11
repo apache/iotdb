@@ -240,7 +240,7 @@ public class RpcCompressedTest {
         };
     BitMap[] partBitMap = new BitMap[8];
 
-    String tableName = "table_10";
+    String tableName = "table_13";
     Tablet tablet = new Tablet(tableName, schemas, timestamp, values, partBitMap, 4);
 
     session1.executeNonQueryStatement("create database IF NOT EXISTS dbTest_0");

@@ -401,22 +401,44 @@ public class StatementGenerator {
                 .orElse(null));
       }
     } finally {
+      System.out.println("YYM");
       RPCServiceThriftHandlerMetrics.getInstance()
           .recordDecompressLatencyTimer(
-              endDeCompressedValue
+              (endDeCompressedValue
                   - startDeCompressedValue
                   + endDeCompressedTimes
-                  - startDeCompressedTimes);
+                  - startDeCompressedTimes));
+
       RPCServiceThriftHandlerMetrics.getInstance()
           .recordDecodeLatencyTimer(
-              endDecodeValue - startDecodeValue + endDecodeTime - startDecodeTime);
+              (endDecodeValue - startDecodeValue + endDecodeTime - startDecodeTime));
+
       if (insertTabletReq.isIsCompressed()) {
         RPCServiceThriftHandlerMetrics.getInstance()
-            .recordCompressionRatioTimer(
-                (uncompressedTimestampsSize + uncompressedValuesSize)
-                    / (insertTabletReq.timestamps.remaining()
-                        + insertTabletReq.values.remaining()));
+            .recordUnCompressionSizeTimer((uncompressedTimestampsSize + uncompressedValuesSize));
+
+        long memoryUsage =
+            uncompressedTimestampsSize
+                + uncompressedValuesSize
+                + insertTabletReq.timestamps.remaining()
+                + insertTabletReq.values.remaining();
+        System.out.println(memoryUsage);
+        RPCServiceThriftHandlerMetrics.getInstance().recordMemoryUsage(memoryUsage);
+      } else {
+        RPCServiceThriftHandlerMetrics.getInstance()
+            .recordUnCompressionSizeTimer(
+                (insertTabletReq.timestamps.remaining() + insertTabletReq.values.remaining()));
+
+        long memoryUsage =
+            insertTabletReq.timestamps.remaining() + insertTabletReq.values.remaining();
+        RPCServiceThriftHandlerMetrics.getInstance().recordMemoryUsage(memoryUsage);
       }
+
+      RPCServiceThriftHandlerMetrics.getInstance()
+          .recordCompressionSizeTimer(
+              (insertTabletReq.timestamps.remaining() + insertTabletReq.values.remaining()));
+      System.out.println(
+          insertTabletReq.timestamps.remaining() + insertTabletReq.values.remaining());
     }
     insertStatement.setRowCount(insertTabletReq.size);
     TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];
