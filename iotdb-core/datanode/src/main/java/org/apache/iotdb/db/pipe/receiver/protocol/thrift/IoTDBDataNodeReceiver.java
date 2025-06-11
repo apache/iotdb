@@ -186,7 +186,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       Math.max(
           PIPE_CONFIG.getPipeReceiverReqDecompressedMaxLengthInBytes(),
           (int)
-              (PIPE_CONFIG.getPipeReceiverRqeDecompressedMaxMemoryProportion()
+              (PIPE_CONFIG.getPipeReceiverReqDecompressedMaxMemoryProportion()
                   * PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()));
 
   static {
