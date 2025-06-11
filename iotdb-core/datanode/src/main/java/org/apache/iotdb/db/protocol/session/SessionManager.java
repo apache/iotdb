@@ -334,6 +334,12 @@ public class SessionManager implements SessionManagerMBean {
     currSessionIdleTime.remove();
   }
 
+  public void removeCurrSessionForMqtt(MqttClientSession mqttClientSession) {
+    if (mqttClientSession != null) {
+      sessions.remove(mqttClientSession);
+    }
+  }
+
   /**
    * this method can be only used in client-thread model. Do not use this method in message-thread
    * model based service.
@@ -349,6 +355,16 @@ public class SessionManager implements SessionManagerMBean {
     this.currSessionIdleTime.set(System.nanoTime());
     sessions.put(session, placeHolder);
     return true;
+  }
+
+  /**
+   * this method can be only used in mqtt model. Do not use this method in client-thread model based
+   * service.
+   *
+   * @return false if the session has been initialized.
+   */
+  public boolean registerSessionForMqtt(IClientSession session) {
+    return sessions.put(session, placeHolder) == null;
   }
 
   /** must be called after registerSession()) will mark the session login. */
