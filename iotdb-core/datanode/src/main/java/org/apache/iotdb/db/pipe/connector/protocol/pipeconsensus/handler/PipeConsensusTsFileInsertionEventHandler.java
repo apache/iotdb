@@ -295,10 +295,10 @@ public class PipeConsensusTsFileInsertionEventHandler
 
     if (RetryUtils.needRetryWithIncreasingInterval(exception)) {
       // just in case for overflow
-      if (event.getRetryInterval() << 2 <= 0) {
+      if (event.getRetryInterval() << 1 <= 0) {
         event.setRetryInterval(1000L * 20);
       } else {
-        event.setRetryInterval(Math.min(1000L * 20, event.getRetryInterval() << 2));
+        event.setRetryInterval(Math.min(1000L * 20, event.getRetryInterval() << 1));
       }
     }
 

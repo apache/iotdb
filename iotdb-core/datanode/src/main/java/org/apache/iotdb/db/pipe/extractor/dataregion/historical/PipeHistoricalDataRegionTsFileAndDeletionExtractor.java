@@ -879,7 +879,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       event.setReplicateIndexForIoTV2(
           ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(
               resource.getDataRegionId()));
-      LOGGER.debug(
+      LOGGER.info(
           "[Region{}]Set {} for event {}",
           resource.getDataRegionId(),
           event.getReplicateIndexForIoTV2(),
