@@ -35,4 +35,8 @@ public interface DataNodeConfig {
 
   DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes);
+
+  DataNodeConfig setLoadLastCacheStrategy(String strategyName);
+
+  DataNodeConfig setCacheLastValuesForLoad(boolean cacheLastValuesForLoad);
 }

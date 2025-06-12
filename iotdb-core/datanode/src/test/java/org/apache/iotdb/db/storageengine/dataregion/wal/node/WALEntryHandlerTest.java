@@ -94,7 +94,7 @@ public class WALEntryHandlerTest {
     config.setWalMode(prevMode);
     EnvironmentUtils.cleanDir(logDirectory1);
     EnvironmentUtils.cleanDir(logDirectory2);
-    WALInsertNodeCache.getInstance(1).clear();
+    WALInsertNodeCache.getInstance().clear();
   }
 
   @Test(expected = MemTablePinException.class)

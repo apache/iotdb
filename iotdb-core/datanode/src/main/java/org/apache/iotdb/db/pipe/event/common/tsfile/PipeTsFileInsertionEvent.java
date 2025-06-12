@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
@@ -30,7 +31,7 @@ import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainerProvider;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
@@ -50,11 +51,13 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTsFileInsertionEvent extends EnrichedEvent
@@ -64,6 +67,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   private final TsFileResource resource;
   private File tsFile;
+  private long extractTime = 0;
 
   // This is true iff the modFile exists and should be transferred
   private boolean isWithMod;
@@ -246,6 +250,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
+    extractTime = System.nanoTime();
     try {
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
       if (isWithMod) {
@@ -286,7 +291,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .decreaseTsFileEventCount(pipeName, creationTime);
+            .decreaseTsFileEventCount(pipeName, creationTime, System.nanoTime() - extractTime);
       }
     }
   }
@@ -342,11 +347,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex)) {
-      PipeTimePartitionProgressIndexKeeper.getInstance()
-          .eliminateProgressIndex(
-              resource.getDataRegionId(),
-              resource.getTimePartition(),
-              resource.getMaxProgressIndexAfterClose());
+      PipeTsFileEpochProgressIndexKeeper.getInstance()
+          .eliminateProgressIndex(resource.getDataRegionId(), resource.getTsFilePath());
     }
   }
 
@@ -415,6 +417,49 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
+
+  @FunctionalInterface
+  public interface TabletInsertionEventConsumer {
+    void consume(final PipeRawTabletInsertionEvent event);
+  }
+
+  public void consumeTabletInsertionEventsWithRetry(
+      final TabletInsertionEventConsumer consumer, final String callerName) throws PipeException {
+    final Iterable<TabletInsertionEvent> iterable = toTabletInsertionEvents();
+    final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
+    int tabletEventCount = 0;
+    while (iterator.hasNext()) {
+      final TabletInsertionEvent parsedEvent = iterator.next();
+      tabletEventCount++;
+      int retryCount = 0;
+      while (true) {
+        // If failed due do insufficient memory, retry until success to avoid race among multiple
+        // processor threads
+        try {
+          consumer.consume((PipeRawTabletInsertionEvent) parsedEvent);
+          break;
+        } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+          if (retryCount++ % 100 == 0) {
+            LOGGER.warn(
+                "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count is {}, will keep retrying.",
+                callerName,
+                getTsFile(),
+                tabletEventCount,
+                retryCount,
+                e);
+          } else if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count is {}, will keep retrying.",
+                callerName,
+                getTsFile(),
+                tabletEventCount,
+                retryCount,
+                e);
+          }
+        }
+      }
+    }
+  }
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException {
@@ -531,18 +576,19 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   }
 
   public long count(final boolean skipReportOnCommit) throws IOException {
-    long count = 0;
+    AtomicLong count = new AtomicLong();
 
     if (shouldParseTime()) {
       try {
-        for (final TabletInsertionEvent event : toTabletInsertionEvents()) {
-          final PipeRawTabletInsertionEvent rawEvent = ((PipeRawTabletInsertionEvent) event);
-          count += rawEvent.count();
-          if (skipReportOnCommit) {
-            rawEvent.skipReportOnCommit();
-          }
-        }
-        return count;
+        consumeTabletInsertionEventsWithRetry(
+            event -> {
+              count.addAndGet(event.count());
+              if (skipReportOnCommit) {
+                event.skipReportOnCommit();
+              }
+            },
+            "PipeTsFileInsertionEvent::count");
+        return count.get();
       } finally {
         close();
       }

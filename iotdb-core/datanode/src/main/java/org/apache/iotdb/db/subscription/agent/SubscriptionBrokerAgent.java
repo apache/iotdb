@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -123,6 +124,16 @@ public class SubscriptionBrokerAgent {
       return true;
     }
     return broker.isCommitContextOutdated(commitContext);
+  }
+
+  public List<String> fetchTopicNamesToUnsubscribe(
+      final ConsumerConfig consumerConfig, final Set<String> topicNames) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      return Collections.emptyList();
+    }
+    return broker.fetchTopicNamesToUnsubscribe(topicNames);
   }
 
   /////////////////////////////// broker ///////////////////////////////

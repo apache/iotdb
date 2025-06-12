@@ -262,7 +262,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
-    startIndex = environment.getPipeTaskMeta().getProgressIndex();
+
+    // progressIndex is immutable in `updateToMinimumEqualOrIsAfterProgressIndex`, so data
+    // consistency in `environment.getPipeTaskMeta().getProgressIndex()` is ensured.
+    startIndex = environment.getPipeTaskMeta().restoreProgressIndex();
 
     dataRegionId = environment.getRegionId();
     synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
@@ -517,17 +520,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
 
     if (startIndex instanceof StateProgressIndex) {
-      // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
-      // "equals" max progressIndex must be transmitted to avoid data loss
-      final ProgressIndex innerProgressIndex =
-          ((StateProgressIndex) startIndex).getInnerProgressIndex();
-      return !innerProgressIndex.isAfter(resource.getMaxProgressIndexAfterClose())
-          && !innerProgressIndex.equals(resource.getMaxProgressIndexAfterClose());
+      startIndex = ((StateProgressIndex) startIndex).getInnerProgressIndex();
     }
-
-    // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
-    // "equals" max progressIndex must be transmitted to avoid data loss
-    return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
+    return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+        && !startIndex.equals(resource.getMaxProgressIndexAfterClose());
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {

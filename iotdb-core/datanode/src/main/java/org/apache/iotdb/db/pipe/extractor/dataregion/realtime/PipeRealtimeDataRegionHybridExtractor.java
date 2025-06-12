@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEve
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
@@ -168,6 +169,11 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                     //  5. Data inserted in the step2 is not captured by PipeB, and if its tsfile
                     //     epoch's state is USING_TABLET, the tsfile event will be ignored, which
                     //     will cause the data loss in the tsfile epoch.
+                    LOGGER.info(
+                        "The tsFile {}'s epoch's start time {} is smaller than the captured insertNodes' min time {}, will regard it as data loss or un-sequential, will extract the tsFile",
+                        ((PipeTsFileInsertionEvent) event.getEvent()).getTsFile(),
+                        ((PipeTsFileInsertionEvent) event.getEvent()).getFileStartTime(),
+                        event.getTsFileEpoch().getInsertNodeMinTime());
                     return TsFileEpoch.State.USING_BOTH;
                   } else {
                     // All data in the tsfile epoch has been extracted in tablet mode, so we should
@@ -471,6 +477,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     switch (state) {
       case USING_TSFILE:
         // If the state is USING_TSFILE, discard the event and poll the next one.
+        PipeTsFileEpochProgressIndexKeeper.getInstance()
+            .eliminateProgressIndex(dataRegionId, event.getTsFileEpoch().getFilePath());
         return null;
       case EMPTY:
       case USING_TABLET:

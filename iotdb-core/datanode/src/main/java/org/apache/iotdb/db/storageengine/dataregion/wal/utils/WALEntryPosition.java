@@ -177,7 +177,7 @@ public class WALEntryPosition {
   public void setWalNode(WALNode walNode, long memTableId) {
     this.walNode = walNode;
     identifier = walNode.getIdentifier();
-    cache = WALInsertNodeCache.getInstance(walNode.getRegionId(memTableId));
+    cache = WALInsertNodeCache.getInstance();
   }
 
   public String getIdentifier() {

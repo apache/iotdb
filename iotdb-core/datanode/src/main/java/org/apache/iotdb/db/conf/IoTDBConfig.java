@@ -31,6 +31,7 @@ import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -160,6 +161,8 @@ public class IoTDBConfig {
 
   /** Memory allocated for the pipe */
   private long allocateMemoryForPipe = Runtime.getRuntime().maxMemory() / 10;
+
+  private long allocateMemoryPerWalCache = 512 * 1024;
 
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
@@ -1144,6 +1147,8 @@ public class IoTDBConfig {
 
   private long loadTsFileTabletConversionBatchMemorySizeInBytes = 4096 * 1024;
 
+  private int loadTsFileTabletConversionThreadCount = 5;
+
   private long loadChunkMetadataMemorySizeInBytes = 33554432; // 32MB
 
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
@@ -1209,6 +1214,17 @@ public class IoTDBConfig {
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
   private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
+
+  private LastCacheLoadStrategy lastCacheLoadStrategy = LastCacheLoadStrategy.UPDATE;
+
+  /**
+   * Whether to cache last values when constructing TsFileResource during LOAD. When set to true,
+   * blob series will be forcibly ignored even if lastCacheLoadStrategy =
+   * LastCacheLoadStrategy.UPDATE.
+   */
+  private boolean cacheLastValuesForLoad = true;
+
+  private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
 
   IoTDBConfig() {}
 
@@ -2121,6 +2137,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForPipe(long allocateMemoryForPipe) {
     this.allocateMemoryForPipe = allocateMemoryForPipe;
+  }
+
+  public long getAllocateMemoryPerWalCache() {
+    return allocateMemoryPerWalCache;
+  }
+
+  public void setAllocateMemoryPerWalCache(final long allocateMemoryForWalCache) {
+    this.allocateMemoryPerWalCache = allocateMemoryForWalCache;
   }
 
   public long getAllocateMemoryForFree() {
@@ -4002,6 +4026,14 @@ public class IoTDBConfig {
         loadTsFileTabletConversionBatchMemorySizeInBytes;
   }
 
+  public int getLoadTsFileTabletConversionThreadCount() {
+    return loadTsFileTabletConversionThreadCount;
+  }
+
+  public void setLoadTsFileTabletConversionThreadCount(int loadTsFileTabletConversionThreadCount) {
+    this.loadTsFileTabletConversionThreadCount = loadTsFileTabletConversionThreadCount;
+  }
+
   public long getLoadChunkMetadataMemorySizeInBytes() {
     return loadChunkMetadataMemorySizeInBytes;
   }
@@ -4275,5 +4307,31 @@ public class IoTDBConfig {
 
   public void setWALCompressionAlgorithm(CompressionType WALCompressionAlgorithm) {
     this.WALCompressionAlgorithm = WALCompressionAlgorithm;
+  }
+
+  public LastCacheLoadStrategy getLastCacheLoadStrategy() {
+    return lastCacheLoadStrategy;
+  }
+
+  public void setLastCacheLoadStrategy(LastCacheLoadStrategy lastCacheLoadStrategy) {
+    this.lastCacheLoadStrategy = lastCacheLoadStrategy;
+  }
+
+  public boolean isCacheLastValuesForLoad() {
+    return (lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
+            || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
+        && cacheLastValuesForLoad;
+  }
+
+  public void setCacheLastValuesForLoad(boolean cacheLastValuesForLoad) {
+    this.cacheLastValuesForLoad = cacheLastValuesForLoad;
+  }
+
+  public long getCacheLastValuesMemoryBudgetInByte() {
+    return cacheLastValuesMemoryBudgetInByte;
+  }
+
+  public void setCacheLastValuesMemoryBudgetInByte(long cacheLastValuesMemoryBudgetInByte) {
+    this.cacheLastValuesMemoryBudgetInByte = cacheLastValuesMemoryBudgetInByte;
   }
 }

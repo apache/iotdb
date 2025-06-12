@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -96,8 +98,10 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache.FileTimeIndexCacheReader;
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
@@ -130,7 +134,9 @@ import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.TsFileLastReader;
 import org.apache.tsfile.utils.FSUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -2908,7 +2914,8 @@ public class DataRegion implements IDataRegionForQuery {
   public void loadNewTsFile(
       final TsFileResource newTsFileResource,
       final boolean deleteOriginFile,
-      final boolean isGeneratedByPipe)
+      final boolean isGeneratedByPipe,
+      final boolean isFromConsensus)
       throws LoadFileException {
     final File tsfileToBeInserted = newTsFileResource.getTsFile();
     final long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
@@ -2916,6 +2923,23 @@ public class DataRegion implements IDataRegionForQuery {
     if (!TsFileValidator.getInstance().validateTsFile(newTsFileResource)) {
       throw new LoadFileException(
           "tsfile validate failed, " + newTsFileResource.getTsFile().getName());
+    }
+
+    TsFileLastReader lastReader = null;
+    LastCacheLoadStrategy lastCacheLoadStrategy = config.getLastCacheLoadStrategy();
+    if ((lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
+            || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
+        && newTsFileResource.getLastValues() == null) {
+      try {
+        // init reader outside of lock to boost performance
+        lastReader =
+            new TsFileLastReader(
+                newTsFileResource.getTsFilePath(),
+                true,
+                lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB);
+      } catch (IOException e) {
+        throw new LoadFileException(e);
+      }
     }
 
     writeLock("loadNewTsFile");
@@ -2971,6 +2995,7 @@ public class DataRegion implements IDataRegionForQuery {
                 false);
       }
 
+      onTsFileLoaded(newTsFileResource, isFromConsensus, lastReader);
       logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
     } catch (final DiskSpaceInsufficientException e) {
       logger.error(
@@ -2978,12 +3003,125 @@ public class DataRegion implements IDataRegionForQuery {
           tsfileToBeInserted.getAbsolutePath(),
           tsfileToBeInserted.getParentFile().getName());
       throw new LoadFileException(e);
+    } catch (Exception e) {
+      throw new LoadFileException(e);
     } finally {
       writeUnlock();
-      // TODO: do more precise control
-      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        DataNodeSchemaCache.getInstance().invalidateAll();
+      if (lastReader != null) {
+        try {
+          lastReader.close();
+        } catch (Exception e) {
+          logger.warn("Cannot close last reader after loading TsFile {}", newTsFileResource, e);
+        }
       }
+    }
+  }
+
+  private void onTsFileLoaded(
+      TsFileResource newTsFileResource, boolean isFromConsensus, TsFileLastReader lastReader) {
+    if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable() && !isFromConsensus) {
+      switch (config.getLastCacheLoadStrategy()) {
+        case UPDATE:
+        case UPDATE_NO_BLOB:
+          updateLastCache(newTsFileResource, lastReader);
+          break;
+        case CLEAN_ALL:
+          // The inner cache is shared by TreeDeviceSchemaCacheManager and
+          // TableDeviceSchemaCacheManager,
+          // so cleaning either of them is enough
+          DataNodeSchemaCache.getInstance().invalidateAll();
+          break;
+        case CLEAN_DEVICE:
+          ITimeIndex timeIndex = newTsFileResource.getTimeIndex();
+          if (timeIndex instanceof DeviceTimeIndex) {
+            DeviceTimeIndex deviceTimeIndex = (DeviceTimeIndex) timeIndex;
+            for (IDeviceID deviceID : deviceTimeIndex.getDevices()) {
+              try {
+                DataNodeSchemaCache.getInstance()
+                    .invalidateLastCache(new PartialPath(deviceID, "**"));
+              } catch (IllegalPathException e) {
+                logger.error(
+                    "Failed to construct path for invalidating last cache of {}", deviceID, e);
+                DataNodeSchemaCache.getInstance().invalidateAll();
+                return;
+              }
+            }
+          } else {
+            DataNodeSchemaCache.getInstance().invalidateAll();
+          }
+          break;
+        default:
+          logger.warn(
+              "Unrecognized LastCacheLoadStrategy: {}, fall back to CLEAN_ALL",
+              IoTDBDescriptor.getInstance().getConfig().getLastCacheLoadStrategy());
+          DataNodeSchemaCache.getInstance().invalidateAll();
+          break;
+      }
+    }
+  }
+
+  @SuppressWarnings("java:S112")
+  private void updateLastCache(TsFileResource newTsFileResource, TsFileLastReader lastReader) {
+
+    Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues =
+        newTsFileResource.getLastValues();
+    if (lastValues != null) {
+      for (Entry<IDeviceID, List<Pair<String, TimeValuePair>>> entry : lastValues.entrySet()) {
+        IDeviceID deviceID = entry.getKey();
+        String[] measurements = entry.getValue().stream().map(Pair::getLeft).toArray(String[]::new);
+        TimeValuePair[] timeValuePairs =
+            entry.getValue().stream().map(Pair::getRight).toArray(TimeValuePair[]::new);
+        try {
+          // we do not update schema here, so aligned is not relevant
+          DataNodeSchemaCache.getInstance()
+              .updateLastCache(
+                  databaseName,
+                  new PartialPath(deviceID),
+                  measurements,
+                  null,
+                  false,
+                  value -> timeValuePairs[value],
+                  i -> true,
+                  true,
+                  0L);
+        } catch (IllegalPathException e) {
+          logger.error("Failed to construct path for invalidating last cache of {}", deviceID, e);
+          DataNodeSchemaCache.getInstance().invalidateAll();
+          return;
+        }
+      }
+      newTsFileResource.setLastValues(null);
+      return;
+    }
+
+    if (lastReader != null) {
+      while (lastReader.hasNext()) {
+        Pair<IDeviceID, List<Pair<String, TimeValuePair>>> nextDevice = lastReader.next();
+        IDeviceID deviceID = nextDevice.left;
+        String[] measurements = nextDevice.right.stream().map(Pair::getLeft).toArray(String[]::new);
+        TimeValuePair[] timeValuePairs =
+            nextDevice.right.stream().map(Pair::getRight).toArray(TimeValuePair[]::new);
+        try {
+          // we do not update schema here, so aligned is not relevant
+          DataNodeSchemaCache.getInstance()
+              .updateLastCache(
+                  databaseName,
+                  new PartialPath(deviceID),
+                  measurements,
+                  null,
+                  false,
+                  value -> timeValuePairs[value],
+                  i -> true,
+                  true,
+                  0L);
+        } catch (IllegalPathException e) {
+          logger.error("Failed to construct path for invalidating last cache of {}", deviceID, e);
+          DataNodeSchemaCache.getInstance().invalidateAll();
+          return;
+        }
+      }
+    } else {
+      DataNodeSchemaCache.getInstance().invalidateAll();
     }
   }
 

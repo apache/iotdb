@@ -641,9 +641,23 @@ public class PipeConsensusReceiver {
 
   private TSStatus loadFileToDataRegion(String filePath, ProgressIndex progressIndex)
       throws IOException, LoadFileException {
-    StorageEngine.getInstance()
-        .getDataRegion(((DataRegionId) consensusGroupId))
-        .loadNewTsFile(generateTsFileResource(filePath, progressIndex), true, false);
+    DataRegion region =
+        StorageEngine.getInstance().getDataRegion(((DataRegionId) consensusGroupId));
+    if (region != null) {
+      TsFileResource resource =
+          generateTsFileResource(
+              filePath,
+              progressIndex,
+              IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad());
+      region.loadNewTsFile(resource, true, false, true);
+    } else {
+      // Data region is null indicates that dr has been removed or migrated. In those cases, there
+      // is no need to replicate data. we just return success to avoid leader keeping retry
+      LOGGER.info(
+          "PipeConsensus-PipeName-{}: skip load tsfile-{} when sealing, because this region has been removed or migrated.",
+          consensusPipeName,
+          filePath);
+    }
     return RpcUtils.SUCCESS_STATUS;
   }
 
@@ -687,13 +701,13 @@ public class PipeConsensusReceiver {
                     dataRegion, databaseName, writePointCount, true));
   }
 
-  private TsFileResource generateTsFileResource(String filePath, ProgressIndex progressIndex)
-      throws IOException {
+  private TsFileResource generateTsFileResource(
+      String filePath, ProgressIndex progressIndex, boolean cacheLastValues) throws IOException {
     final File tsFile = new File(filePath);
 
     final TsFileResource tsFileResource = new TsFileResource(tsFile);
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      TsFileResourceUtils.updateTsFileResource(reader, tsFileResource);
+      TsFileResourceUtils.updateTsFileResource(reader, tsFileResource, cacheLastValues);
     }
 
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
