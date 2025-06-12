@@ -57,6 +57,7 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
   @Override
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     super.setUp();
   }
 
