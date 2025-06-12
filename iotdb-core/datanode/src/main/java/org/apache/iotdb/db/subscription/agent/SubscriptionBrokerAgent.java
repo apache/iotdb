@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 public class SubscriptionBrokerAgent {
 
@@ -44,6 +45,9 @@ public class SubscriptionBrokerAgent {
 
   private final Map<String, SubscriptionBroker> consumerGroupIdToSubscriptionBroker =
       new ConcurrentHashMap<>();
+
+  private final Cache<Integer> prefetchingQueueCount =
+      new Cache<>(this::getPrefetchingQueueCountInternal);
 
   //////////////////////////// provided for subscription agent ////////////////////////////
 
@@ -193,6 +197,7 @@ public class SubscriptionBrokerAgent {
               return broker;
             })
         .bindPrefetchingQueue(subtask.getTopicName(), subtask.getInputPendingQueue());
+    prefetchingQueueCount.invalidate();
   }
 
   public void updateCompletedTopicNames(final String consumerGroupId, final String topicName) {
@@ -213,6 +218,7 @@ public class SubscriptionBrokerAgent {
       return;
     }
     broker.unbindPrefetchingQueue(topicName);
+    prefetchingQueueCount.invalidate();
   }
 
   public void removePrefetchingQueue(final String consumerGroupId, final String topicName) {
@@ -223,6 +229,7 @@ public class SubscriptionBrokerAgent {
       return;
     }
     broker.removePrefetchingQueue(topicName);
+    prefetchingQueueCount.invalidate();
   }
 
   public boolean executePrefetch(final String consumerGroupId, final String topicName) {
@@ -251,8 +258,56 @@ public class SubscriptionBrokerAgent {
   }
 
   public int getPrefetchingQueueCount() {
+    return prefetchingQueueCount.get();
+  }
+
+  private int getPrefetchingQueueCountInternal() {
     return consumerGroupIdToSubscriptionBroker.values().stream()
         .map(SubscriptionBroker::getPrefetchingQueueCount)
         .reduce(0, Integer::sum);
+  }
+
+  /////////////////////////////// Cache ///////////////////////////////
+
+  /**
+   * A simple generic cache that computes and stores a value on demand.
+   *
+   * <p>Note that since the get() and invalidate() methods are not modified with synchronized, the
+   * value obtained may not be entirely accurate.
+   *
+   * @param <T> the type of the cached value
+   */
+  private static class Cache<T> {
+
+    private T value;
+    private volatile boolean valid = false;
+    private final Supplier<T> supplier;
+
+    /**
+     * Construct a cache with a supplier that knows how to compute the value.
+     *
+     * @param supplier a Supplier that computes the value when needed
+     */
+    private Cache(final Supplier<T> supplier) {
+      this.supplier = supplier;
+    }
+
+    /** Invalidate the cache. The next call to get() will recompute the value. */
+    private void invalidate() {
+      valid = false;
+    }
+
+    /**
+     * Return the cached value, recomputing it if the cache is invalid.
+     *
+     * @return the current value, recomputed if necessary
+     */
+    private T get() {
+      if (!valid) {
+        value = supplier.get();
+        valid = true;
+      }
+      return value;
+    }
   }
 }
