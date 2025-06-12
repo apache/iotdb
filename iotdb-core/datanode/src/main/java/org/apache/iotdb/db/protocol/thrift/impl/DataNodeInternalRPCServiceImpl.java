@@ -173,6 +173,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTask
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleRequestHandler;
+import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
@@ -1981,6 +1982,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp.setLoadSample(loadSample);
 
       resp.setRegionDisk(FileMetrics.getInstance().getRegionSizeMap());
+      Map<Integer, Long> regionRawDataSize = new HashMap<>();
+      CompressionRatio.getInstance()
+          .getDataRegionRatioMap()
+          .forEach((key, value) -> regionRawDataSize.put(Integer.parseInt(key), value.getLeft()));
+      resp.setDataRegionRawDataSize(regionRawDataSize);
     }
     AuthorityChecker.getAuthorityFetcher().refreshToken();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
