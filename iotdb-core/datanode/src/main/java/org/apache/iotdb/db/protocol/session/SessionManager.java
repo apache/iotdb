@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -171,7 +172,8 @@ public class SessionManager implements SessionManagerMBean {
           // no password history, may have upgraded from an older version
           return null;
         }
-        long lastPasswordTime = tsBlock.getTimeByIndex(0);
+        long lastPasswordTime =
+            CommonDateTimeUtils.convertIoTDBTimeToMillis(tsBlock.getTimeByIndex(0));
         // columns of last query: [timeseriesName, value, dataType]
         String oldPassword = tsBlock.getColumn(1).getBinary(0).toString();
         if (oldPassword.equals(AuthUtils.encryptPassword(password))

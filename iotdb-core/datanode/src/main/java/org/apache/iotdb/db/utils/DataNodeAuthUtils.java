@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -61,7 +62,7 @@ public class DataNodeAuthUtils {
    * @return the timestamp when the password of the user is lastly changed from the given one to a
    *     new one, or -1 if the password has not been changed.
    */
-  public static long getPasswordChangeTime(String username, String password) {
+  public static long getPasswordChangeTimeMillis(String username, String password) {
 
     try {
       Statement statement =
@@ -101,7 +102,8 @@ public class DataNodeAuthUtils {
           // no password history, may have upgraded from an older version
           return -1;
         }
-        return lastTsBlock.getTimeByIndex(lastTsBlock.getPositionCount() - 1);
+        long timeByIndex = lastTsBlock.getTimeByIndex(lastTsBlock.getPositionCount() - 1);
+        return CommonDateTimeUtils.convertIoTDBTimeToMillis(timeByIndex);
       }
     } catch (IoTDBException e) {
       LOGGER.warn("Cannot generate query for checking password expiration", e);
@@ -116,7 +118,7 @@ public class DataNodeAuthUtils {
       return;
     }
 
-    long passwordChangeTime = DataNodeAuthUtils.getPasswordChangeTime(username, password);
+    long passwordChangeTime = DataNodeAuthUtils.getPasswordChangeTimeMillis(username, password);
     long currentTimeMillis = System.currentTimeMillis();
     long elapsedTime = currentTimeMillis - passwordChangeTime;
     if (elapsedTime <= passwordReuseIntervalDays * 1000 * 86400) {
@@ -138,7 +140,7 @@ public class DataNodeAuthUtils {
     try {
       insertRowStatement.setDevicePath(
           new PartialPath(SystemConstant.PREFIX_PASSWORD_HISTORY + ".`" + username + "`"));
-      insertRowStatement.setTime(System.currentTimeMillis());
+      insertRowStatement.setTime(CommonDateTimeUtils.currentTime());
       insertRowStatement.setMeasurements(new String[] {"password", "oldPassword"});
       insertRowStatement.setValues(
           new Object[] {
