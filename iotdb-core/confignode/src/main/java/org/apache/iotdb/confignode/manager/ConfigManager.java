@@ -2671,7 +2671,7 @@ public class ConfigManager implements IManager {
       }
     }
     for (String tableName : dataSchemaForTable.getTableList()) {
-      dataSchemaList.add(new IDataSchema(dataSchemaForTable.curDatabase + DOT + tableName));
+      dataSchemaList.add(new IDataSchema(tableName));
     }
     return dataSchemaList;
   }
