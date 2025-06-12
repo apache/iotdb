@@ -124,8 +124,7 @@ public class DataNodeAuthUtils {
     if (elapsedTime <= passwordReuseIntervalDays * 1000 * 86400) {
       throw new SemanticException(
           String.format(
-              "The password has been used at %s and it cannot be reused before %s",
-              new Date(passwordChangeTime),
+              "The password has been used recently, and it cannot be reused before %s",
               new Date(passwordChangeTime + passwordReuseIntervalDays)));
     }
     LOGGER.info(

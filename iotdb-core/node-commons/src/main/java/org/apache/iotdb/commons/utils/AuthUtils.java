@@ -50,8 +50,10 @@ import java.util.Set;
 public class AuthUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthUtils.class);
   private static final String ROOT_PREFIX = IoTDBConstant.PATH_ROOT;
-  private static final int MIN_LENGTH = 4;
-  private static final int MAX_LENGTH = 32;
+  private static final int NAME_MIN_LENGTH = 4;
+  private static final int NAME_MAX_LENGTH = 32;
+  private static final int PASSWORD_MIN_LENGTH = 12;
+  private static final int PASSWORD_MAX_LENGTH = 32;
 
   // match number, character, and !@#$%^*()_+-=
   // pattern: ^[-\w!@#\$%\^\(\)\+=]*$
@@ -68,7 +70,7 @@ public class AuthUtils {
    * @throws AuthException contains message why password is invalid
    */
   public static void validatePassword(String password) throws AuthException {
-    validateNameOrPassword(password);
+    validateAllPassword(password);
     if (CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
       boolean hasLowerCase = false;
       boolean hasUpperCase = false;
@@ -128,7 +130,7 @@ public class AuthUtils {
    * @throws AuthException contains message why username is invalid
    */
   public static void validateUsername(String username) throws AuthException {
-    validateNameOrPassword(username);
+    validateName(username);
   }
 
   /**
@@ -138,19 +140,39 @@ public class AuthUtils {
    * @throws AuthException contains message why roleName is invalid
    */
   public static void validateRolename(String roleName) throws AuthException {
-    validateNameOrPassword(roleName);
+    validateName(roleName);
   }
 
-  public static void validateNameOrPassword(String str) throws AuthException {
+  public static void validateName(String str) throws AuthException {
     int length = str.length();
-    if (length < MIN_LENGTH) {
+    if (length < NAME_MIN_LENGTH) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
-          "The length of name or password must be greater than or equal to " + MIN_LENGTH);
-    } else if (length > MAX_LENGTH) {
+          "The length of name or password must be greater than or equal to " + NAME_MIN_LENGTH);
+    } else if (length > NAME_MAX_LENGTH) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
-          "The length of name or password must be less than or equal to " + MAX_LENGTH);
+          "The length of name or password must be less than or equal to " + NAME_MAX_LENGTH);
+    } else if (str.contains(" ")) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD, "The name or password cannot contain spaces");
+    } else if (!str.matches(REX_PATTERN)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "The name or password can only contain letters, numbers or !@#$%^*()_+-=");
+    }
+  }
+
+  public static void validateAllPassword(String str) throws AuthException {
+    int length = str.length();
+    if (length < PASSWORD_MIN_LENGTH) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "The length of name or password must be greater than or equal to " + NAME_MIN_LENGTH);
+    } else if (length > PASSWORD_MAX_LENGTH) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "The length of name or password must be less than or equal to " + NAME_MAX_LENGTH);
     } else if (str.contains(" ")) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD, "The name or password cannot contain spaces");

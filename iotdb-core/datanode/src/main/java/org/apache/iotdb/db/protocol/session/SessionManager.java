@@ -180,7 +180,7 @@ public class SessionManager implements SessionManagerMBean {
             && System.currentTimeMillis() - lastPasswordTime
                 > passwordExpirationDays * 1000 * 86400) {
           return new TSStatus(TSStatusCode.ILLEGAL_PASSWORD.getStatusCode())
-              .setMessage("Password has expired, please change to a new one");
+              .setMessage("Password has expired, please use \"ALTER USER\" to change to a new one");
         }
       }
     } catch (IoTDBException e) {
