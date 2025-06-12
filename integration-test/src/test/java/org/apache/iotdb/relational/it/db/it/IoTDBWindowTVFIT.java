@@ -357,7 +357,7 @@ public class IoTDBWindowTVFIT {
         retArray,
         DATABASE_NAME);
 
-    // Test case 8: ts_val with delta=0.0, ignoreNull=false (use default parameter)
+    // Test case 8: ts_val with delta=0.0, ignoreNull=false
     expectedHeader = new String[] {"window_index", "time", "device_id", "ts_val"};
     retArray =
         new String[] {
@@ -369,12 +369,12 @@ public class IoTDBWindowTVFIT {
           "3,2021-01-01T09:05:00.000Z,device1,2021-01-01T10:00:00.000Z,"
         };
     tableResultSetEqualTest(
-        "SELECT window_index, time, device_id, ts_val FROM variation(multi_type, 'ts_val')",
+        "SELECT window_index, time, device_id, ts_val FROM variation(DATA=>multi_type, COL=>'ts_val', IGNORENULL=>false)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
-    // Test case 9: date_val with delta=0.0, ignoreNull=true
+    // Test case 9: date_val with delta=0.0, ignoreNull=true (use default parameter)
     expectedHeader = new String[] {"window_index", "time", "device_id", "date_val"};
     retArray =
         new String[] {
@@ -386,7 +386,7 @@ public class IoTDBWindowTVFIT {
           "1,2021-01-01T09:05:00.000Z,device1,2021-01-02,"
         };
     tableResultSetEqualTest(
-        "SELECT window_index, time, device_id, date_val FROM variation(multi_type, 'date_val', 0.0, true)",
+        "SELECT window_index, time, device_id, date_val FROM variation(multi_type, 'date_val', 0.0)",
         expectedHeader,
         retArray,
         DATABASE_NAME);

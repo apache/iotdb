@@ -71,7 +71,7 @@ public class VariationTableFunction implements TableFunction {
         ScalarParameterSpecification.builder()
             .name(IGNORE_NULL_PARAMETER_NAME)
             .type(Type.BOOLEAN)
-            .defaultValue(false)
+            .defaultValue(true)
             .build());
   }
 
