@@ -50,6 +50,7 @@ public class IoTDBTemplatePermissionIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
     createUser("test", "test123");
     executeNonQuery("create database root.test1");

@@ -49,6 +49,7 @@ import java.util.Set;
 public class IoTDBRelationalAuthIT {
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

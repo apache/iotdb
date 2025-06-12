@@ -68,6 +68,7 @@ import static org.junit.Assert.fail;
 public class IoTDBSessionComplexIT {
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
     createUser("test", "test123");
   }

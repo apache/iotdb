@@ -151,6 +151,7 @@ public class IoTDBSelectIntoIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setQueryThreadCount(1);
     // if we don't change this configuration, we may get an error like: Cannot reserve XXXX bytes of
     // direct buffer memory

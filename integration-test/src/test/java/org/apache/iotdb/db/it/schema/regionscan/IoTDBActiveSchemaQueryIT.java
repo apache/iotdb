@@ -64,6 +64,7 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
 
   @Parameterized.BeforeParam
   public static void before() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     SchemaTestMode schemaTestMode = setUpEnvironment();
     if (schemaTestMode.equals(SchemaTestMode.PBTree)) {
       allocateMemoryForSchemaRegion(10000);

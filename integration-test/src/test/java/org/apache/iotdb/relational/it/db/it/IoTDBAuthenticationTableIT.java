@@ -57,6 +57,7 @@ public class IoTDBAuthenticationTableIT {
   @BeforeClass
   public static void setUpClass() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

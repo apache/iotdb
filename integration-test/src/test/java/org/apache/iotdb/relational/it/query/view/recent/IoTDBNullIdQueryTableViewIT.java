@@ -84,6 +84,7 @@ public class IoTDBNullIdQueryTableViewIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(createSqls);

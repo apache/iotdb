@@ -55,6 +55,7 @@ public class IoTDBSeriesPermissionIT {
 
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
     createUser("test", "test123");
     createUser("test1", "test123");

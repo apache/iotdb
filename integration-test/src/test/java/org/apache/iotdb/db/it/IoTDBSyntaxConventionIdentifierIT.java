@@ -47,6 +47,7 @@ import static org.junit.Assert.fail;
 public class IoTDBSyntaxConventionIdentifierIT {
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

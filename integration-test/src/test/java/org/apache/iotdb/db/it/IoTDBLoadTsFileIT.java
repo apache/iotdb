@@ -83,6 +83,7 @@ public class IoTDBLoadTsFileIT {
   public void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
