@@ -168,11 +168,11 @@ public class AuthUtils {
     if (length < PASSWORD_MIN_LENGTH) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
-          "The length of name or password must be greater than or equal to " + NAME_MIN_LENGTH);
+          "The length of name or password must be greater than or equal to " + PASSWORD_MIN_LENGTH);
     } else if (length > PASSWORD_MAX_LENGTH) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
-          "The length of name or password must be less than or equal to " + NAME_MAX_LENGTH);
+          "The length of name or password must be less than or equal to " + PASSWORD_MAX_LENGTH);
     } else if (str.contains(" ")) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD, "The name or password cannot contain spaces");

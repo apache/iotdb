@@ -135,8 +135,8 @@ public class IoTDBAuthenticationTableIT {
       }
 
       // test users
-      sessionRoot.executeNonQueryStatement("CREATE USER userA 'userA'");
-      sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userA 'userA1234567'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB1234567'");
       // grant an irrelevant privilege so that the new users can use database
       sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userA");
       sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userB");
@@ -387,8 +387,8 @@ public class IoTDBAuthenticationTableIT {
       }
 
       // test role
-      sessionRoot.executeNonQueryStatement("CREATE USER userC 'userC'");
-      sessionRoot.executeNonQueryStatement("CREATE USER userD 'userD'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userC 'userC1234567'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userD 'userD1234567'");
       sessionRoot.executeNonQueryStatement("CREATE ROLE role1");
       sessionRoot.executeNonQueryStatement("CREATE ROLE role2");
       sessionRoot.executeNonQueryStatement("GRANT ROLE role1 TO userC");
@@ -649,8 +649,8 @@ public class IoTDBAuthenticationTableIT {
       }
 
       // test users
-      sessionRoot.executeNonQueryStatement("CREATE USER userA 'userA'");
-      sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userA 'userA1234567'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB1234567'");
 
       try (ITableSession sessionA =
               EnvFactory.getEnv().getTableSessionConnection("userA", "userA");
@@ -829,17 +829,17 @@ public class IoTDBAuthenticationTableIT {
       }
 
       // test role
-      sessionRoot.executeNonQueryStatement("CREATE USER userC 'userC'");
-      sessionRoot.executeNonQueryStatement("CREATE USER userD 'userD'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userC 'userC1234567'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userD 'userD1234567'");
       sessionRoot.executeNonQueryStatement("CREATE ROLE role1");
       sessionRoot.executeNonQueryStatement("CREATE ROLE role2");
       sessionRoot.executeNonQueryStatement("GRANT ROLE role1 TO userC");
       sessionRoot.executeNonQueryStatement("GRANT ROLE role2 TO userD");
 
       try (ITableSession sessionC =
-              EnvFactory.getEnv().getTableSessionConnection("userC", "userC");
+              EnvFactory.getEnv().getTableSessionConnection("userC", "userC1234567");
           ITableSession sessionD =
-              EnvFactory.getEnv().getTableSessionConnection("userD", "userD")) {
+              EnvFactory.getEnv().getTableSessionConnection("userD", "userD1234567")) {
         // grant an irrelevant privilege so that the new users can use database
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userC");
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userD");

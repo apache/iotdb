@@ -99,7 +99,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
               "create database root.ln",
               "create database root.db",
               "set ttl to root.ln 3600000",
-              "create user `thulab` 'passwd'",
+              "create user `thulab` 'passwd123456'",
               "create role `admin`",
               "grant role `admin` to `thulab`",
               "grant read on root.** to role `admin`",
@@ -188,7 +188,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
           Arrays.asList(
               "create database root.ln",
               "set ttl to root.ln 3600000",
-              "create user `thulab` 'passwd'",
+              "create user `thulab` 'passwd123456'",
               "create role `admin`",
               "grant role `admin` to `thulab`",
               "grant read on root.** to role `admin`",

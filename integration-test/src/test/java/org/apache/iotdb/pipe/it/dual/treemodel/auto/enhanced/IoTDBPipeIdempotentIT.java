@@ -305,7 +305,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   public void testCreateUserIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
-        "create user `ln_write_user` 'write_pwd'",
+        "create user `ln_write_user` 'write_pwd123456'",
         "create database root.sg1",
         "count databases",
         "count,",

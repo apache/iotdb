@@ -287,9 +287,9 @@ public class IoTDBSyntaxConventionStringLiteralIT {
             + "line 1:18 mismatched input 'test' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE USER test1 'test'");
+      statement.execute("CREATE USER test1 'test123456789'");
       // password should be STRING_LITERAL
-      statement.execute("CREATE USER test1 test");
+      statement.execute("CREATE USER test1 test123456789");
       fail();
     } catch (SQLException e) {
       Assert.assertEquals(errorMsg, e.getMessage());
@@ -301,9 +301,9 @@ public class IoTDBSyntaxConventionStringLiteralIT {
             + "line 1:17 mismatched input '`test`' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE USER test \"test\"");
+      statement.execute("CREATE USER test \"test123456789\"");
       // password should be STRING_LITERAL
-      statement.execute("CREATE USER test `test`");
+      statement.execute("CREATE USER test `test123456789`");
       fail();
     } catch (SQLException e) {
       Assert.assertEquals(errorMsg1, e.getMessage());

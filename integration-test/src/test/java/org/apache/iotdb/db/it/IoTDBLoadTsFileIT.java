@@ -912,7 +912,7 @@ public class IoTDBLoadTsFileIT {
     // Prepare normal user
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("create user test 'password'");
+      adminStmt.execute("create user test 'password123456'");
       adminStmt.execute(
           String.format(
               "grant create, insert on %s.%s to user test",
@@ -923,7 +923,7 @@ public class IoTDBLoadTsFileIT {
     }
 
     try (final Connection connection =
-            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
       statement.execute(String.format("load '%s'", file.getAbsolutePath()));

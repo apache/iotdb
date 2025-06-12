@@ -50,7 +50,7 @@ public class IoTDBQueryAuthIT {
   private static final String USER_7 = "user7";
   private static final String USER_8 = "user8";
   private static final String USER_9 = "user9";
-  private static final String PASSWORD = "password";
+  private static final String PASSWORD = "password123456";
 
   private static final String[] createSqls =
       new String[] {
