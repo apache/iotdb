@@ -68,6 +68,7 @@ public class IoTDBAuthIT {
 
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
