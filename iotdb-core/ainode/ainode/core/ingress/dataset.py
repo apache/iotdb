@@ -15,10 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from torch.utils.data import Dataset
 
-from ainode.core.ingress.iotdb import IoTDBTableModelDataset, IoTDBTreeModelDataset
-from ainode.core.util.decorator import singleton
+from torch.utils.data import Dataset
 
 
 class BasicDatabaseDataset(Dataset):
@@ -32,31 +30,3 @@ class BasicDatabaseForecastDataset(BasicDatabaseDataset):
         super().__init__(ip, port)
         self.input_len = input_len
         self.output_len = output_len
-
-
-def register_dataset(key: str, dataset: Dataset):
-    DatasetFactory().register(key, dataset)
-
-
-@singleton
-class DatasetFactory(object):
-
-    def __init__(self):
-        self.dataset_list = {
-            "iotdb.table": IoTDBTableModelDataset,
-            "iotdb.tree": IoTDBTreeModelDataset,
-        }
-
-    def register(self, key: str, dataset: Dataset):
-        if key not in self.dataset_list:
-            self.dataset_list[key] = dataset
-        else:
-            raise KeyError(f"Dataset {key} already exists")
-
-    def deregister(self, key: str):
-        del self.dataset_list[key]
-
-    def get_dataset(self, key: str):
-        if key not in self.dataset_list.keys():
-            raise KeyError(f"Dataset {key} does not exist")
-        return self.dataset_list[key]
