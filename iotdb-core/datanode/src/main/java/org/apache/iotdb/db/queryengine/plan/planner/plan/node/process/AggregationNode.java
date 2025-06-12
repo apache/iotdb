@@ -96,6 +96,7 @@ public class AggregationNode extends MultiChildProcessNode {
     this.scanOrder = scanOrder;
   }
 
+  // used by clone & deserialize
   public AggregationNode(
       PlanNodeId id,
       List<AggregationDescriptor> aggregationDescriptorList,
@@ -105,7 +106,7 @@ public class AggregationNode extends MultiChildProcessNode {
       boolean outputEndTime,
       Ordering scanOrder) {
     super(id, new ArrayList<>());
-    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
+    this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
     this.scanOrder = scanOrder;
     this.groupByParameter = groupByParameter;
