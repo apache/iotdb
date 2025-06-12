@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannel
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
+import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -198,6 +199,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctio
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
@@ -303,7 +305,6 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getPreviousFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_FIRST;
@@ -610,7 +611,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                   node.getTimePredicate()
                       .map(expression -> getSeriesScanOptionsBuilder(context, expression))
                       .orElseGet(SeriesScanOptions.Builder::new);
-              builder.withAllSensors(new HashSet<>(measurementColumnNames));
+              builder
+                  .withIsTableViewForTreeModel(true)
+                  .withAllSensors(new HashSet<>(measurementColumnNames));
               if (pushDownPredicateForCurrentMeasurement != null) {
                 builder.withPushDownFilter(
                     convertPredicateToFilter(
@@ -1075,6 +1078,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.isPushLimitToEachDevice(),
             node.getPushDownPredicate());
     seriesScanOptions.setTTLForTableView(viewTTL);
+    seriesScanOptions.setIsTableViewForTreeModel(node instanceof TreeDeviceViewScanNode);
 
     OperatorContext operatorContext =
         context
@@ -1117,6 +1121,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         TableScanOperator.class.getSimpleName(),
         Collections.emptyMap(),
         Long.MAX_VALUE);
+  }
+
+  @Override
+  public Operator visitTreeDeviceViewScan(
+      TreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
+    if (node.getDeviceEntries().isEmpty() || node.getTreeDBName() == null) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  EmptyDataOperator.class.getSimpleName());
+      return new EmptyDataOperator(operatorContext);
+    }
+    throw new IllegalArgumentException("Valid TreeDeviceViewScanNode is not expected here.");
   }
 
   @Override
@@ -2872,6 +2892,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.isPushLimitToEachDevice(),
             node.getPushDownPredicate());
     seriesScanOptions.setTTLForTableView(tableViewTTL);
+    seriesScanOptions.setIsTableViewForTreeModel(node instanceof AggregationTreeDeviceViewScanNode);
 
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
     allSensors.add(""); // for time column
@@ -2963,7 +2984,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         for (int j = 0; j < lastByResult.get().getRight().length; j++) {
           TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
           if (tsPrimitiveType == null
-              || tsPrimitiveType == EMPTY_PRIMITIVE_TYPE
               || (updateTimeFilter != null
                   && !LastQueryUtil.satisfyFilter(
                       updateTimeFilter,

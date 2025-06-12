@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.enums;
 import com.codahale.metrics.Meter;
 
 public enum PipeRateAverage {
+  NONE,
   ONE_MINUTE,
   FIVE_MINUTES,
   FIFTEEN_MINUTES,
@@ -37,6 +38,7 @@ public enum PipeRateAverage {
         return meter.getFifteenMinuteRate();
       case MEAN:
         return meter.getMeanRate();
+      case NONE:
       default:
         throw new UnsupportedOperationException(
             String.format("The type %s is not supported in pipe rate average.", this));

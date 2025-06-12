@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.connector;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractConnectorSubtask;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -64,9 +63,6 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   // when no event can be pulled.
   public static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
       new PipeHeartbeatEvent("cron", false);
-  private static final long CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS =
-      PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() * 1000;
-  private long lastHeartbeatEventInjectTime = System.currentTimeMillis();
 
   public PipeConnectorSubtask(
       final String taskID,
@@ -105,12 +101,8 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     }
 
     try {
-      if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
-          > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS) {
-        transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
-      }
-
       if (Objects.isNull(event)) {
+        transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
         return false;
       }
 
@@ -186,8 +178,6 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
               + e.getMessage(),
           e);
     }
-
-    lastHeartbeatEventInjectTime = System.currentTimeMillis();
 
     event.onTransferred();
     PipeDataRegionConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
