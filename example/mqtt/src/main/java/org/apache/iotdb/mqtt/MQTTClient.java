@@ -40,8 +40,12 @@ public class MQTTClient {
     connection.connect();
     // the config mqttPayloadFormatter must be tree-json
     // jsonPayloadFormatter(connection);
+
     // the config mqttPayloadFormatter must be table-line
-    linePayloadFormatter(connection);
+    // linePayloadFormatter(connection);
+
+    // test customized json formatter of mqtt payload to insert as table row
+    customizedJsonPayloadFormatter2Table(connection);
     connection.disconnect();
   }
 
@@ -58,7 +62,10 @@ public class MQTTClient {
                   + "\"values\":[%f]\n"
                   + "}",
               System.currentTimeMillis(), random.nextDouble());
-      sb.append(payload).append(",");
+      sb.append(payload);
+      if (i < 9) {
+        sb.append(",");
+      }
 
       // publish a json object
       Thread.sleep(1);
@@ -97,5 +104,36 @@ public class MQTTClient {
     payload = "# It's a remark\n " + "test1,tag1=t1,tag2=t2 field4=2,field5=2i32,field6=2f 6";
     connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     Thread.sleep(10);
+  }
+
+  /**
+   * The Customized JSON payload formatter. one json format supported: { "time":1586076045523,
+   * "deviceID":"car_1", "deviceType":"新能源车", "point":"速度", "value":80.0 }
+   */
+  private static void customizedJsonPayloadFormatter2Table(BlockingConnection connection)
+      throws Exception {
+    Random random = new Random();
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < 10; i++) {
+      String payload =
+          String.format(
+              "{\n"
+                  + "\"time\":%d,\n"
+                  + "\"deviceID\":\"car_1\",\n"
+                  + "\"deviceType\":\"新能源车\",\n"
+                  + "\"point\":\"速度\",\n"
+                  + "\"value\":%.2f\n"
+                  + "}",
+              System.currentTimeMillis(), random.nextFloat());
+      sb.append(payload).append(",");
+
+      // publish a json object
+      Thread.sleep(1);
+      connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    }
+    // publish a json array
+    sb.insert(0, "[");
+    sb.replace(sb.lastIndexOf(","), sb.length(), "]");
+    connection.publish(DATABASE + "/myTopic", sb.toString().getBytes(), QoS.AT_LEAST_ONCE, false);
   }
 }
