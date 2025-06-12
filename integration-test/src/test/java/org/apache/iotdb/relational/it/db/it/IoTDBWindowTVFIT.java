@@ -55,10 +55,10 @@ public class IoTDBWindowTVFIT {
         "insert into bid values (2021-01-01T09:07:00, 'TESL', 202.0, 202)",
         "insert into bid values (2021-01-01T09:15:00, 'TESL', 195.0, 332)",
         "create table multi_type (device_id string tag, int_val int32 field, long_val int64 field, float_val float field, double_val double field, bool_val boolean field, str_val string field, blob_val blob field, ts_val timestamp field, date_val date field)",
-        "insert into multi_type values (2021-01-01T09:00:00, 'device1', 1, null, 1.0, null, true, '1', X'01', 2021-01-01T09:00:00, '2021-01-01')",
+        "insert into multi_type values (2021-01-01T09:00:00, 'device1', 1, null, 1.0, null, null, '1', null, 2021-01-01T09:00:00, null)",
         "insert into multi_type values (2021-01-01T09:01:00, 'device1', 2, 2, 2.0, 2.0, true, '1', X'01', 2021-01-01T09:00:00, '2021-01-01')",
-        "insert into multi_type values (2021-01-01T09:02:00, 'device1', 3, 3, 3.0, 3.0, false, '2', X'02', 2021-01-01T10:00:00, '2021-01-02')",
-        "insert into multi_type values (2021-01-01T09:03:00, 'device1', null, null, null, null, null, null, null, null, null)",
+        "insert into multi_type values (2021-01-01T09:02:00, 'device1', 3, 3, 3.0, 3.0, null, '2', X'02', 2021-01-01T10:00:00, '2021-01-02')",
+        "insert into multi_type values (2021-01-01T09:03:00, 'device1', null, null, null, null, false, null, null, null, null)",
         "insert into multi_type values (2021-01-01T09:04:00, 'device1', null, null, null, null, null, null, null, null, null)",
         "insert into multi_type values (2021-01-01T09:05:00, 'device1', 3, 3, 3.0, 3.0, false, '2', X'02', 2021-01-01T10:00:00, '2021-01-02')",
         "FLUSH",
@@ -279,6 +279,8 @@ public class IoTDBWindowTVFIT {
           "0,2021-01-01T09:00:00.000Z,device1,1.0,",
           "0,2021-01-01T09:01:00.000Z,device1,2.0,",
           "1,2021-01-01T09:02:00.000Z,device1,3.0,",
+          "1,2021-01-01T09:03:00.000Z,device1,null,",
+          "1,2021-01-01T09:04:00.000Z,device1,null,",
           "1,2021-01-01T09:05:00.000Z,device1,3.0,"
         };
     tableResultSetEqualTest(
@@ -291,8 +293,11 @@ public class IoTDBWindowTVFIT {
     expectedHeader = new String[] {"window_index", "time", "device_id", "double_val"};
     retArray =
         new String[] {
+          "0,2021-01-01T09:00:00.000Z,device1,null,",
           "0,2021-01-01T09:01:00.000Z,device1,2.0,",
           "0,2021-01-01T09:02:00.000Z,device1,3.0,",
+          "0,2021-01-01T09:03:00.000Z,device1,null,",
+          "0,2021-01-01T09:04:00.000Z,device1,null,",
           "0,2021-01-01T09:05:00.000Z,device1,3.0,"
         };
     tableResultSetEqualTest(
@@ -305,9 +310,11 @@ public class IoTDBWindowTVFIT {
     expectedHeader = new String[] {"window_index", "time", "device_id", "bool_val"};
     retArray =
         new String[] {
-          "0,2021-01-01T09:00:00.000Z,device1,true,",
+          "0,2021-01-01T09:00:00.000Z,device1,null,",
           "0,2021-01-01T09:01:00.000Z,device1,true,",
-          "1,2021-01-01T09:02:00.000Z,device1,false,",
+          "0,2021-01-01T09:02:00.000Z,device1,null,",
+          "1,2021-01-01T09:03:00.000Z,device1,false,",
+          "1,2021-01-01T09:04:00.000Z,device1,null,",
           "1,2021-01-01T09:05:00.000Z,device1,false,"
         };
     tableResultSetEqualTest(
@@ -323,6 +330,8 @@ public class IoTDBWindowTVFIT {
           "0,2021-01-01T09:00:00.000Z,device1,1,",
           "0,2021-01-01T09:01:00.000Z,device1,1,",
           "1,2021-01-01T09:02:00.000Z,device1,2,",
+          "1,2021-01-01T09:03:00.000Z,device1,null,",
+          "1,2021-01-01T09:04:00.000Z,device1,null,",
           "1,2021-01-01T09:05:00.000Z,device1,2,"
         };
     tableResultSetEqualTest(
@@ -335,12 +344,12 @@ public class IoTDBWindowTVFIT {
     expectedHeader = new String[] {"window_index", "time", "device_id", "blob_val"};
     retArray =
         new String[] {
-          "0,2021-01-01T09:00:00.000Z,device1,0x01,",
-          "0,2021-01-01T09:01:00.000Z,device1,0x01,",
-          "1,2021-01-01T09:02:00.000Z,device1,0x02,",
-          "2,2021-01-01T09:03:00.000Z,device1,null,",
-          "2,2021-01-01T09:04:00.000Z,device1,null,",
-          "3,2021-01-01T09:05:00.000Z,device1,0x02,"
+          "0,2021-01-01T09:00:00.000Z,device1,null,",
+          "1,2021-01-01T09:01:00.000Z,device1,0x01,",
+          "2,2021-01-01T09:02:00.000Z,device1,0x02,",
+          "3,2021-01-01T09:03:00.000Z,device1,null,",
+          "3,2021-01-01T09:04:00.000Z,device1,null,",
+          "4,2021-01-01T09:05:00.000Z,device1,0x02,"
         };
     tableResultSetEqualTest(
         "SELECT window_index, time, device_id, blob_val FROM variation(multi_type, 'blob_val', 0.0, false)",
@@ -369,9 +378,11 @@ public class IoTDBWindowTVFIT {
     expectedHeader = new String[] {"window_index", "time", "device_id", "date_val"};
     retArray =
         new String[] {
-          "0,2021-01-01T09:00:00.000Z,device1,2021-01-01,",
+          "0,2021-01-01T09:00:00.000Z,device1,null,",
           "0,2021-01-01T09:01:00.000Z,device1,2021-01-01,",
           "1,2021-01-01T09:02:00.000Z,device1,2021-01-02,",
+          "1,2021-01-01T09:03:00.000Z,device1,null,",
+          "1,2021-01-01T09:04:00.000Z,device1,null,",
           "1,2021-01-01T09:05:00.000Z,device1,2021-01-02,"
         };
     tableResultSetEqualTest(

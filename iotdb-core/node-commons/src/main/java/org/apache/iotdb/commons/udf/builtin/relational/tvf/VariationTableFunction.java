@@ -42,10 +42,8 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.NON_NEGATIVE_DOUBLE_CHECKER;
@@ -134,7 +132,7 @@ public class VariationTableFunction implements TableFunction {
       public TableFunctionDataProcessor getDataProcessor() {
         return delta == 0
             ? new EquivalentVariationDataProcessor(ignoreNull)
-            : new NumericVariationDataProcessor(delta, ignoreNull);
+            : new NonEquivalentVariationDataProcessor(delta, ignoreNull);
       }
     };
   }
@@ -147,62 +145,53 @@ public class VariationTableFunction implements TableFunction {
     }
 
     @Override
-    void handleNonNullValue(
-        Record input,
-        List<ColumnBuilder> properColumnBuilders,
-        ColumnBuilder passThroughIndexBuilder) {
-      Object value = input.getObject(0);
-      if (previousIsNull || !value.equals(baseValue)) {
-        outputWindow(properColumnBuilders, passThroughIndexBuilder);
-        currentStartIndex = curIndex;
-        // use the first value in the window as the base value
-        baseValue = value;
-      }
+    void resetBaseValue(Record input, List<ColumnBuilder> properColumnBuilders) {
+      baseValue = input.getObject(0);
+    }
+
+    @Override
+    boolean isNewGroup(Record input, List<ColumnBuilder> properColumnBuilders) {
+      return !input.getObject(0).equals(baseValue);
     }
   }
 
-  private static class NumericVariationDataProcessor extends VariationDataProcessor {
+  private static class NonEquivalentVariationDataProcessor extends VariationDataProcessor {
     private final double gap;
-    protected double baseValue = 0;
+    private double baseValue = 0;
 
-    public NumericVariationDataProcessor(double delta, boolean ignoreNull) {
+    public NonEquivalentVariationDataProcessor(double delta, boolean ignoreNull) {
       super(ignoreNull);
       this.gap = delta;
     }
 
     @Override
-    void handleNonNullValue(
-        Record input,
-        List<ColumnBuilder> properColumnBuilders,
-        ColumnBuilder passThroughIndexBuilder) {
-      double value = input.getDouble(0);
-      if (previousIsNull || Math.abs(value - baseValue) > gap) {
-        outputWindow(properColumnBuilders, passThroughIndexBuilder);
-        currentStartIndex = curIndex;
-        // use the first value in the window as the base value
-        baseValue = value;
-      }
+    void resetBaseValue(Record input, List<ColumnBuilder> properColumnBuilders) {
+      baseValue = input.getDouble(0);
+    }
+
+    @Override
+    boolean isNewGroup(Record input, List<ColumnBuilder> properColumnBuilders) {
+      return Math.abs(input.getDouble(0) - baseValue) > gap;
     }
   }
 
   private abstract static class VariationDataProcessor implements TableFunctionDataProcessor {
 
     private final boolean ignoreNull;
-    private final Queue<Long> skipIndex = new LinkedList<>();
 
     protected long currentStartIndex = 0;
     protected long curIndex = 0;
-    protected boolean previousIsNull = true;
+    protected boolean currentGroupContainsNonNull = false;
+    protected boolean currentGroupContainsNull = false;
     private long windowIndex = 0;
 
     public VariationDataProcessor(boolean ignoreNull) {
       this.ignoreNull = ignoreNull;
     }
 
-    abstract void handleNonNullValue(
-        Record input,
-        List<ColumnBuilder> properColumnBuilders,
-        ColumnBuilder passThroughIndexBuilder);
+    abstract void resetBaseValue(Record input, List<ColumnBuilder> properColumnBuilders);
+
+    abstract boolean isNewGroup(Record input, List<ColumnBuilder> properColumnBuilders);
 
     @Override
     public void process(
@@ -211,20 +200,29 @@ public class VariationTableFunction implements TableFunction {
         ColumnBuilder passThroughIndexBuilder) {
       if (input.isNull(0)) {
         // handle null value
-        if (ignoreNull) {
-          // skip null values
-          skipIndex.add(curIndex);
-        } else if (!previousIsNull) {
-          // output window and reset currentStartIndex
+        if (!ignoreNull && currentGroupContainsNonNull) {
           outputWindow(properColumnBuilders, passThroughIndexBuilder);
-          currentStartIndex = curIndex;
-          previousIsNull = true;
         }
+        currentGroupContainsNull = true;
       } else {
-        handleNonNullValue(input, properColumnBuilders, passThroughIndexBuilder);
-        previousIsNull = false;
+        // handle non-null value
+        boolean shouldOutput = false;
+        if (!ignoreNull && currentGroupContainsNull) {
+          // null is a special value when IgnoreNull is false.
+          // ==> Must output if current group contains null value.
+          shouldOutput = true;
+        } else if (!currentGroupContainsNonNull) {
+          resetBaseValue(input, properColumnBuilders);
+        } else {
+          // ==> Should output if base value is initialized and new group is detected
+          shouldOutput = isNewGroup(input, properColumnBuilders);
+        }
+        if (shouldOutput) {
+          outputWindow(properColumnBuilders, passThroughIndexBuilder);
+          resetBaseValue(input, properColumnBuilders);
+        }
+        currentGroupContainsNonNull = true;
       }
-
       curIndex++;
     }
 
@@ -236,18 +234,17 @@ public class VariationTableFunction implements TableFunction {
 
     protected void outputWindow(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      boolean increaseIndex = false;
       for (long i = currentStartIndex; i < curIndex; i++) {
-        if (!skipIndex.isEmpty() && i == skipIndex.peek()) {
-          // skip the index if it is in the skip queue
-          skipIndex.poll();
-          continue;
-        }
         properColumnBuilders.get(0).writeLong(windowIndex);
         passThroughIndexBuilder.writeLong(i);
-        increaseIndex = true;
       }
-      windowIndex += increaseIndex ? 1 : 0;
+      if (curIndex > currentStartIndex) {
+        // reset if not empty group
+        windowIndex++;
+        currentGroupContainsNonNull = false;
+        currentGroupContainsNull = false;
+        currentStartIndex = curIndex;
+      }
     }
   }
 }
