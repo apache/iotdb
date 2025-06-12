@@ -314,7 +314,7 @@ public class IoTDBStartCheck {
       String token = System.getenv("user_encrypt_token");
       if (token == null || token.trim().isEmpty()) {
         throw new EncryptException(
-            "encryptType is not UNENCRYPTED, but user_encrypt_token is not set.");
+            "encryptType is not UNENCRYPTED, but user_encrypt_token is not set. Please set it in the environment variable.");
       }
     }
     String encryptMagicString =
