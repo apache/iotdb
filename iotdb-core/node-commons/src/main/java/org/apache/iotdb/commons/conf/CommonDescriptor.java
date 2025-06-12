@@ -256,17 +256,17 @@ public class CommonDescriptor {
             properties.getProperty(
                 "enforce_strong_password", String.valueOf(config.isEnforceStrongPassword()))));
 
-    config.setPasswordExpirationSeconds(
+    config.setPasswordExpirationDays(
         Long.parseLong(
             properties.getProperty(
                 "password_expiration_seconds",
-                String.valueOf(config.getPasswordExpirationSeconds()))));
+                String.valueOf(config.getPasswordExpirationDays()))));
 
-    config.setPasswordReuseIntervalSeconds(
+    config.setPasswordReuseIntervalDays(
         Long.parseLong(
             properties.getProperty(
                 "password_reuse_interval_seconds",
-                String.valueOf(config.getPasswordReuseIntervalSeconds()))));
+                String.valueOf(config.getPasswordReuseIntervalDays()))));
 
     loadRetryProperties(properties);
     loadBinaryAllocatorProps(properties);

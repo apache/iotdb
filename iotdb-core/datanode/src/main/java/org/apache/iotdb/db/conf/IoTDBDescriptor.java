@@ -2042,21 +2042,20 @@ public class IoTDBDescriptor {
 
       commonDescriptor
           .getConfig()
-          .setPasswordExpirationSeconds(
+          .setPasswordExpirationDays(
               Long.parseLong(
                   properties.getProperty(
-                      "password_expiration_seconds",
-                      String.valueOf(
-                          commonDescriptor.getConfig().getPasswordExpirationSeconds()))));
+                      "password_expiration_days",
+                      String.valueOf(commonDescriptor.getConfig().getPasswordExpirationDays()))));
 
       commonDescriptor
           .getConfig()
-          .setPasswordReuseIntervalSeconds(
+          .setPasswordReuseIntervalDays(
               Long.parseLong(
                   properties.getProperty(
-                      "password_reuse_interval_seconds",
+                      "password_reuse_interval_days",
                       String.valueOf(
-                          commonDescriptor.getConfig().getPasswordReuseIntervalSeconds()))));
+                          commonDescriptor.getConfig().getPasswordReuseIntervalDays()))));
 
       conf.setEnablePartialInsert(
           Boolean.parseBoolean(

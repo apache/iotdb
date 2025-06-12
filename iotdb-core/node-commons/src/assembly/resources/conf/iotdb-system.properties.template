@@ -1677,20 +1677,20 @@ trusted_uri_pattern=file:.*
 # 4. contain at least one special character (another character except the above three).
 # Datatype: boolean
 # effectiveMode: hot_reload
-enforce_strong_password=false
+enforce_strong_password=true
 
-# When > 0, the password of a user will expire after last modification/creation in the giving
-# seconds, and the user can no longer login unless the user changes the password.
+# When >= 0, the password of a user will expire after last modification/creation in the giving
+# days, and the user can no longer login unless the user changes the password.
 # Notice: if the cluster have upgraded from an old version, the will not take effective
 # Datatype: int
 # effectiveMode: hot_reload
-password_expiration_seconds=0
+password_expiration_days=-1
 
-# When > 0, the old password of a user cannot be reused within the seconds specified by this item,
+# When >= 0, the old password of a user cannot be reused within the days specified by this item,
 # after a successful password change.
 # Datatype: int
 # effectiveMode: hot_reload
-password_reuse_interval_seconds=0
+password_reuse_interval_days=-1
 
 ####################
 ### UDF Configuration

@@ -110,21 +110,21 @@ public class DataNodeAuthUtils {
   }
 
   public static void verifyPasswordReuse(String username, String password) {
-    long passwordReuseIntervalSeconds =
-        CommonDescriptor.getInstance().getConfig().getPasswordReuseIntervalSeconds();
-    if (password == null || passwordReuseIntervalSeconds <= 0) {
+    long passwordReuseIntervalDays =
+        CommonDescriptor.getInstance().getConfig().getPasswordReuseIntervalDays();
+    if (password == null || passwordReuseIntervalDays < 0) {
       return;
     }
 
     long passwordChangeTime = DataNodeAuthUtils.getPasswordChangeTime(username, password);
     long currentTimeMillis = System.currentTimeMillis();
     long elapsedTime = currentTimeMillis - passwordChangeTime;
-    if (elapsedTime <= passwordReuseIntervalSeconds * 1000) {
+    if (elapsedTime <= passwordReuseIntervalDays * 1000 * 86400) {
       throw new SemanticException(
           String.format(
               "The password has been used at %s and it cannot be reused before %s",
               new Date(passwordChangeTime),
-              new Date(passwordChangeTime + passwordReuseIntervalSeconds)));
+              new Date(passwordChangeTime + passwordReuseIntervalDays)));
     }
     LOGGER.info(
         "It has been {}ms, since the password was changed {} -> {}",

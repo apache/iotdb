@@ -131,9 +131,9 @@ public class SessionManager implements SessionManagerMBean {
 
   private TSStatus checkPasswordExpiration(String username, String password) {
     // check password expiration
-    long passwordExpirationSeconds =
-        CommonDescriptor.getInstance().getConfig().getPasswordExpirationSeconds();
-    if (passwordExpirationSeconds <= 0
+    long passwordExpirationDays =
+        CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays();
+    if (passwordExpirationDays < 0
         || username.equals(CommonDescriptor.getInstance().getConfig().getAdminName())) {
       return null;
     }
@@ -175,7 +175,8 @@ public class SessionManager implements SessionManagerMBean {
         // columns of last query: [timeseriesName, value, dataType]
         String oldPassword = tsBlock.getColumn(1).getBinary(0).toString();
         if (oldPassword.equals(AuthUtils.encryptPassword(password))
-            && System.currentTimeMillis() - lastPasswordTime > passwordExpirationSeconds * 1000) {
+            && System.currentTimeMillis() - lastPasswordTime
+                > passwordExpirationDays * 1000 * 86400) {
           return new TSStatus(TSStatusCode.ILLEGAL_PASSWORD.getStatusCode())
               .setMessage("Password has expired, please change to a new one");
         }
