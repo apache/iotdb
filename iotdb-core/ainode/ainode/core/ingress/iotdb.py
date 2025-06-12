@@ -15,21 +15,22 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import torch
-from torch.utils.data import Dataset
 import numpy as np
+import torch
 from iotdb.Session import Session
 from iotdb.table_session import TableSession, TableSessionConfig
 from iotdb.utils.Field import Field
 from iotdb.utils.IoTDBConstants import TSDataType
+from torch.utils.data import Dataset
 
-from ainode.core.util.decorator import singleton
-from ainode.core.util.cache import MemoryLRUCache
 from ainode.core.config import AINodeDescriptor
 from ainode.core.ingress.dataset import BasicDatabaseForecastDataset
 from ainode.core.log import Logger
+from ainode.core.util.cache import MemoryLRUCache
+from ainode.core.util.decorator import singleton
 
 logger = Logger()
+
 
 def get_field_value(field: Field):
     data_type = field.get_data_type()
@@ -158,9 +159,11 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
             if series_data is not None:
                 series_data = torch.tensor(series_data)
                 result = series_data[window_index : window_index + self.context_length]
-                return (result[0 : self.input_len], result[
-                    -self.output_len :
-                ], np.ones(self.token_num, dtype=np.int32))
+                return (
+                    result[0 : self.input_len],
+                    result[-self.output_len :],
+                    np.ones(self.token_num, dtype=np.int32),
+                )
         result = []
         sql = ""
         try:
@@ -186,9 +189,11 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
         if self.cache_enable:
             self.cache.put(cache_key, result)
         result = torch.tensor(result)
-        return (result[0 : self.input_len], result[
-            -self.output_len :
-        ], np.ones(self.token_num, dtype=np.int32))
+        return (
+            result[0 : self.input_len],
+            result[-self.output_len :],
+            np.ones(self.token_num, dtype=np.int32),
+        )
 
     def __len__(self):
         return self.end_idx - self.start_idx
@@ -289,25 +294,32 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
         schema = series.split(".")
 
         result = []
-        sql = self.FETCH_SERIES_SQL % (schema[0:1], schema[2], window_index, self.context_length)
+        sql = self.FETCH_SERIES_SQL % (
+            schema[0:1],
+            schema[2],
+            window_index,
+            self.context_length,
+        )
         try:
-            with self.session.execute_query_statement(sql
-
-            ) as query_result:
+            with self.session.execute_query_statement(sql) as query_result:
                 while query_result.has_next():
                     result.append(get_field_value(query_result.next().get_fields()[0]))
         except Exception as e:
             logger.error("Executing sql: {} with exception: {}".format(sql, e))
         result = torch.tensor(result)
-        return (result[0 : self.input_len], result[
-            -self.output_len :
-        ], np.ones(self.token_num, dtype=np.int32))
+        return (
+            result[0 : self.input_len],
+            result[-self.output_len :],
+            np.ones(self.token_num, dtype=np.int32),
+        )
 
     def __len__(self):
         return self.end_index - self.start_index
 
+
 def register_dataset(key: str, dataset: Dataset):
     DatasetFactory().register(key, dataset)
+
 
 @singleton
 class DatasetFactory(object):

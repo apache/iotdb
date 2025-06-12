@@ -30,4 +30,3 @@ class BasicDatabaseForecastDataset(BasicDatabaseDataset):
         super().__init__(ip, port)
         self.input_len = input_len
         self.output_len = output_len
-
