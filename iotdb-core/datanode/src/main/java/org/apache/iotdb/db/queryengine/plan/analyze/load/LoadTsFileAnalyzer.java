@@ -27,7 +27,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
-import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -259,16 +258,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.LOAD_FILE_ERROR,
-              "TSFile encryption is enabled, and the Load TSFile function is disabled"));
+              "TsFile encryption is enabled, and the Load TsFile function is disabled"));
       return false;
     }
 
     // check if the system is read only
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
-      return false;
+      LOGGER.info(
+          "LoadTsFileAnalyzer: Current datanode is read only, will try to convert to tablets and insert later.");
     }
 
     return true;
