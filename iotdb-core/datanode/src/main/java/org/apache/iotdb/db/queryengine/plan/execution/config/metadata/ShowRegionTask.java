@@ -110,15 +110,22 @@ public class ShowRegionTask implements IConfigTask {
                 BytesUtils.valueOf(DateTimeUtils.convertLongToDate(regionInfo.getCreateTime())));
         // region size
         String regionSizeStr = "";
+        double compressionRatio = Double.NaN;
         if (regionInfo.getConsensusGroupId().getType().ordinal()
             == TConsensusGroupType.DataRegion.ordinal()) {
-          if (regionInfo.getTsFileSize() != -1) {
-            regionSizeStr = FileUtils.humanReadableByteCountSI(regionInfo.getTsFileSize());
+          long tsFileSize = regionInfo.getTsFileSize();
+          if (tsFileSize != -1) {
+            regionSizeStr = FileUtils.humanReadableByteCountSI(tsFileSize);
           } else {
             regionSizeStr = "Unknown";
           }
+          long rawDataSize = regionInfo.getRawDataSize();
+          if (rawDataSize != -1) {
+            compressionRatio = (double) rawDataSize / tsFileSize;
+          }
         }
         builder.getColumnBuilder(12).writeBinary(BytesUtils.valueOf(regionSizeStr));
+        builder.getColumnBuilder(13).writeDouble(compressionRatio);
         builder.declarePosition();
       }
     }
