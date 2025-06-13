@@ -63,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
@@ -212,6 +213,9 @@ public class TableLogicalPlanner {
     if (statement instanceof Explain) {
       return createRelationPlan(analysis, (Query) ((Explain) statement).getStatement());
     }
+    if (statement instanceof Insert) {
+      return createRelationPlan(analysis, (Insert) statement);
+    }
     if (statement instanceof WrappedStatement) {
       return createRelationPlan(analysis, ((WrappedStatement) statement));
     }
@@ -288,6 +292,10 @@ public class TableLogicalPlanner {
     return getRelationPlanner(analysis).process(statement, null);
   }
 
+  private RelationPlan createRelationPlan(Analysis analysis, Insert insert) {
+    return getRelationPlanner(analysis).process(insert, null);
+  }
+
   private RelationPlan createRelationPlan(Analysis analysis, LoadTsFile loadTsFile) {
     return getRelationPlanner(analysis).process(loadTsFile, null);
   }
@@ -310,7 +318,13 @@ public class TableLogicalPlanner {
 
   private RelationPlanner getRelationPlanner(Analysis analysis) {
     return new RelationPlanner(
-        analysis, symbolAllocator, queryContext, Optional.empty(), sessionInfo, ImmutableMap.of());
+        analysis,
+        symbolAllocator,
+        queryContext,
+        Optional.empty(),
+        sessionInfo,
+        ImmutableMap.of(),
+        metadata);
   }
 
   private PlanNode planCreateOrUpdateDevice(

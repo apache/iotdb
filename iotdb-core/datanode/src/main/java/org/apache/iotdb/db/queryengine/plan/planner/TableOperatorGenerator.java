@@ -23,9 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -40,6 +42,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannel
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
@@ -53,12 +56,14 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator
 import org.apache.iotdb.db.queryengine.execution.operator.process.PatternRecognitionOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillWithGroupOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
@@ -181,6 +186,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
@@ -3382,6 +3388,74 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         evaluationsBuilder.build(),
         measureComputationsBuilder.build(),
         labelNames);
+  }
+
+  @Override
+  public Operator visitInto(IntoNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TreeIntoOperator.class.getSimpleName());
+
+    try {
+      String tableName = node.getTable();
+      PartialPath devicePath = new PartialPath(tableName);
+
+      Map<String, TSDataType> tsDataTypeMap = new LinkedHashMap<>();
+      Map<String, InputLocation> inputLocationMap = new LinkedHashMap<>();
+      List<TSDataType> inputColumnTypes = new ArrayList<>();
+      List<TsTableColumnCategory> inputColumnCategories = new ArrayList<>();
+      List<Pair<String, PartialPath>> sourceTargetPathPairList = new ArrayList<>();
+
+      List<ColumnSchema> inputColumns = node.getColumns();
+      for (int i = 0; i < inputColumns.size(); i++) {
+        String columnName = inputColumns.get(i).getName();
+        inputLocationMap.put(columnName, new InputLocation(0, i));
+
+        TsTableColumnCategory columnCategory = inputColumns.get(i).getColumnCategory();
+        if (columnCategory == TIME) {
+          continue;
+        }
+
+        TSDataType columnType = InternalTypeManager.getTSDataType(inputColumns.get(i).getType());
+        tsDataTypeMap.put(columnName, columnType);
+        inputColumnTypes.add(columnType);
+        inputColumnCategories.add(columnCategory);
+        sourceTargetPathPairList.add(
+            new Pair<>(
+                columnName,
+                new MeasurementPath(String.format("%s.%s", tableName, columnName), columnType)));
+      }
+
+      Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =
+          ImmutableMap.of(devicePath, inputLocationMap);
+      Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap =
+          ImmutableMap.of(devicePath, tsDataTypeMap);
+      Map<String, Boolean> targetDeviceToAlignedMap = ImmutableMap.of(tableName, true);
+
+      long statementSizePerLine =
+          OperatorGeneratorUtil.calculateStatementSizePerLine(targetPathToDataTypeMap);
+
+      return new TableIntoOperator(
+          operatorContext,
+          child,
+          node.getDatabase(),
+          devicePath.getIDeviceID(),
+          inputColumnTypes,
+          inputColumnCategories,
+          targetPathToSourceInputLocationMap,
+          targetPathToDataTypeMap,
+          targetDeviceToAlignedMap,
+          sourceTargetPathPairList,
+          FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
+          statementSizePerLine);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private boolean[] checkStatisticAndScanOrder(
