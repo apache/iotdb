@@ -272,6 +272,9 @@ public class CommonConfig {
   private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
   private double pipeReceiverActualToEstimatedMemoryRatio = 3;
 
+  private int pipeReceiverReqDecompressedMaxLengthInBytes = 6291456; // 6MB
+  private double pipeReceiverReqDecompressedMaxMemoryProportion = 0.05; // 5%
+
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = Integer.MAX_VALUE; // Deprecated
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = Integer.MAX_VALUE; // Deprecated
   private int pipeMaxAllowedPinnedMemTableCount = Integer.MAX_VALUE; // per data region
@@ -1464,6 +1467,39 @@ public class CommonConfig {
 
   public double getPipeReceiverActualToEstimatedMemoryRatio() {
     return pipeReceiverActualToEstimatedMemoryRatio;
+  }
+
+  public void setPipeReceiverReqDecompressedMaxLengthInBytes(
+      int pipeReceiverReqDecompressedMaxLengthInBytes) {
+    if (this.pipeReceiverReqDecompressedMaxLengthInBytes
+        == pipeReceiverReqDecompressedMaxLengthInBytes) {
+      return;
+    }
+    this.pipeReceiverReqDecompressedMaxLengthInBytes = pipeReceiverReqDecompressedMaxLengthInBytes;
+    logger.info(
+        "pipeReceiverReqDecompressedMaxLengthInBytes is set to {}.",
+        pipeReceiverReqDecompressedMaxLengthInBytes);
+  }
+
+  public int getPipeReceiverReqDecompressedMaxLengthInBytes() {
+    return pipeReceiverReqDecompressedMaxLengthInBytes;
+  }
+
+  public void setPipeReceiverReqDecompressedMaxMemoryProportion(
+      double pipeReceiverReqDecompressedMaxMemoryProportion) {
+    if (this.pipeReceiverReqDecompressedMaxMemoryProportion
+        == pipeReceiverReqDecompressedMaxMemoryProportion) {
+      return;
+    }
+    this.pipeReceiverReqDecompressedMaxMemoryProportion =
+        pipeReceiverReqDecompressedMaxMemoryProportion;
+    logger.info(
+        "pipeReceiverReqDecompressedMaxMemoryProportion is set to {}.",
+        pipeReceiverReqDecompressedMaxMemoryProportion);
+  }
+
+  public double getPipeReceiverReqDecompressedMaxMemoryProportion() {
+    return pipeReceiverReqDecompressedMaxMemoryProportion;
   }
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
