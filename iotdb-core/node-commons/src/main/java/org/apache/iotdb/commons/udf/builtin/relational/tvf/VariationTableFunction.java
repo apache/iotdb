@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
 import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.exception.UDFTypeMismatchException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
@@ -45,11 +46,13 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.NON_NEGATIVE_DOUBLE_CHECKER;
 
 public class VariationTableFunction implements TableFunction {
   private static final String DATA_PARAMETER_NAME = "DATA";
   private static final String COL_PARAMETER_NAME = "COL";
   private static final String DELTA_PARAMETER_NAME = "DELTA";
+  private static final String IGNORE_NULL_PARAMETER_NAME = "IGNORENULL";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -62,6 +65,13 @@ public class VariationTableFunction implements TableFunction {
         ScalarParameterSpecification.builder()
             .name(DELTA_PARAMETER_NAME)
             .type(Type.DOUBLE)
+            .defaultValue(0.0)
+            .addChecker(NON_NEGATIVE_DOUBLE_CHECKER)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(IGNORE_NULL_PARAMETER_NAME)
+            .type(Type.BOOLEAN)
+            .defaultValue(true)
             .build());
   }
 
@@ -70,19 +80,31 @@ public class VariationTableFunction implements TableFunction {
     TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
     String expectedFieldName =
         (String) ((ScalarArgument) arguments.get(COL_PARAMETER_NAME)).getValue();
-    int requiredIndex =
-        findColumnIndex(
-            tableArgument,
-            expectedFieldName,
-            ImmutableSet.of(Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE));
+    double delta = (double) ((ScalarArgument) arguments.get(DELTA_PARAMETER_NAME)).getValue();
+    int requiredIndex;
+    try {
+      requiredIndex =
+          findColumnIndex(
+              tableArgument,
+              expectedFieldName,
+              delta == 0
+                  ? ImmutableSet.copyOf(Type.allTypes())
+                  : ImmutableSet.copyOf(Type.numericTypes()));
+    } catch (UDFTypeMismatchException e) {
+      // print more information for the exception
+      throw new UDFTypeMismatchException(
+          e.getMessage() + " The column type must be numeric if DELTA is not 0.", e);
+    }
+
     DescribedSchema properColumnSchema =
         new DescribedSchema.Builder().addField("window_index", Type.INT64).build();
     // outputColumnSchema
     MapTableFunctionHandle handle =
         new MapTableFunctionHandle.Builder()
+            .addProperty(DELTA_PARAMETER_NAME, delta)
             .addProperty(
-                DELTA_PARAMETER_NAME,
-                ((ScalarArgument) arguments.get(DELTA_PARAMETER_NAME)).getValue())
+                IGNORE_NULL_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(IGNORE_NULL_PARAMETER_NAME)).getValue())
             .build();
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
@@ -102,41 +124,104 @@ public class VariationTableFunction implements TableFunction {
       TableFunctionHandle tableFunctionHandle) {
     double delta =
         (double) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(DELTA_PARAMETER_NAME);
+    boolean ignoreNull =
+        (boolean)
+            ((MapTableFunctionHandle) tableFunctionHandle).getProperty(IGNORE_NULL_PARAMETER_NAME);
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        return new VariationDataProcessor(delta);
+        return delta == 0
+            ? new EquivalentVariationDataProcessor(ignoreNull)
+            : new NonEquivalentVariationDataProcessor(delta, ignoreNull);
       }
     };
   }
 
-  private static class VariationDataProcessor implements TableFunctionDataProcessor {
+  private static class EquivalentVariationDataProcessor extends VariationDataProcessor {
+    protected Object baseValue = null;
 
+    public EquivalentVariationDataProcessor(boolean ignoreNull) {
+      super(ignoreNull);
+    }
+
+    @Override
+    void resetBaseValue(Record input, List<ColumnBuilder> properColumnBuilders) {
+      baseValue = input.getObject(0);
+    }
+
+    @Override
+    boolean isNewGroup(Record input, List<ColumnBuilder> properColumnBuilders) {
+      return !input.getObject(0).equals(baseValue);
+    }
+  }
+
+  private static class NonEquivalentVariationDataProcessor extends VariationDataProcessor {
     private final double gap;
-    private long currentStartIndex = -1;
     private double baseValue = 0;
-    private long curIndex = 0;
-    private long windowIndex = 0;
 
-    public VariationDataProcessor(double delta) {
+    public NonEquivalentVariationDataProcessor(double delta, boolean ignoreNull) {
+      super(ignoreNull);
       this.gap = delta;
     }
+
+    @Override
+    void resetBaseValue(Record input, List<ColumnBuilder> properColumnBuilders) {
+      baseValue = input.getDouble(0);
+    }
+
+    @Override
+    boolean isNewGroup(Record input, List<ColumnBuilder> properColumnBuilders) {
+      return Math.abs(input.getDouble(0) - baseValue) > gap;
+    }
+  }
+
+  private abstract static class VariationDataProcessor implements TableFunctionDataProcessor {
+
+    private final boolean ignoreNull;
+
+    protected long currentStartIndex = 0;
+    protected long curIndex = 0;
+    protected boolean currentGroupContainsNonNull = false;
+    protected boolean currentGroupContainsNull = false;
+    private long windowIndex = 0;
+
+    public VariationDataProcessor(boolean ignoreNull) {
+      this.ignoreNull = ignoreNull;
+    }
+
+    abstract void resetBaseValue(Record input, List<ColumnBuilder> properColumnBuilders);
+
+    abstract boolean isNewGroup(Record input, List<ColumnBuilder> properColumnBuilders);
 
     @Override
     public void process(
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
-      double value = input.getDouble(0);
-      if (currentStartIndex == -1) {
-        // init the first window
-        currentStartIndex = curIndex;
-        baseValue = value;
-      } else if (Math.abs(value - baseValue) > gap) {
-        outputWindow(properColumnBuilders, passThroughIndexBuilder);
-        currentStartIndex = curIndex;
-        // use the first value in the window as the base value
-        baseValue = value;
+      if (input.isNull(0)) {
+        // handle null value
+        if (!ignoreNull && currentGroupContainsNonNull) {
+          outputWindow(properColumnBuilders, passThroughIndexBuilder);
+        }
+        currentGroupContainsNull = true;
+      } else {
+        // handle non-null value
+        boolean shouldOutput = false;
+        if (!ignoreNull && currentGroupContainsNull) {
+          // null is a special value when IgnoreNull is false.
+          // ==> Must output if current group contains null value.
+          shouldOutput = true;
+        } else if (!currentGroupContainsNonNull) {
+          resetBaseValue(input, properColumnBuilders);
+        } else {
+          // ==> Should output if base value is initialized and new group is detected
+          shouldOutput = isNewGroup(input, properColumnBuilders);
+        }
+        if (shouldOutput) {
+          outputWindow(properColumnBuilders, passThroughIndexBuilder);
+          resetBaseValue(input, properColumnBuilders);
+        }
+        currentGroupContainsNonNull = true;
       }
       curIndex++;
     }
@@ -147,13 +232,19 @@ public class VariationTableFunction implements TableFunction {
       outputWindow(properColumnBuilders, passThroughIndexBuilder);
     }
 
-    private void outputWindow(
+    protected void outputWindow(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
       for (long i = currentStartIndex; i < curIndex; i++) {
         properColumnBuilders.get(0).writeLong(windowIndex);
         passThroughIndexBuilder.writeLong(i);
       }
-      windowIndex++;
+      if (curIndex > currentStartIndex) {
+        // reset if not empty group
+        windowIndex++;
+        currentGroupContainsNonNull = false;
+        currentGroupContainsNull = false;
+        currentStartIndex = curIndex;
+      }
     }
   }
 }
