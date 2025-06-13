@@ -435,8 +435,8 @@ public abstract class EnrichedEvent implements Event {
     return this.retryInterval;
   }
 
-  public long setRetryInterval(final long retryInterval) {
-    return retryInterval;
+  public void setRetryInterval(final long retryInterval) {
+    this.retryInterval = retryInterval;
   }
 
   public CommitterKey getCommitterKey() {

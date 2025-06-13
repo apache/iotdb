@@ -72,10 +72,10 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Objects;
-import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -101,7 +101,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
   private static final long PIPE_CONSENSUS_EVENT_ENQUEUE_TIMEOUT_IN_MS =
       IOTDB_CONFIG.getConnectionTimeoutInMS() / 6;
   private final Queue<EnrichedEvent> retryEventQueue =
-      new PriorityQueue<>(
+      new PriorityBlockingQueue<>(
           IOTDB_CONFIG.getIotConsensusV2PipelineSize(),
           Comparator.comparingLong(EnrichedEvent::getReplicateIndexForIoTV2));
   // We use enrichedEvent here to make use of EnrichedEvent.equalsInPipeConsensus
@@ -535,9 +535,10 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
                 ? peekedEvent.getRetryInterval()
                 : 0L;
         LOGGER.info(
-            "PipeConsensus-ConsensusGroup-{}: retry with interval {} for {}",
+            "PipeConsensus-ConsensusGroup-{}: retry with interval {} for index {} {}",
             consensusGroupId,
             retryInterval,
+            peekedEvent.getReplicateIndexForIoTV2(),
             peekedEvent);
         // need to retry in background service, otherwise the retryInterval will block the sender
         // procedure.
@@ -616,7 +617,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
    * @param event event to retry
    */
   @SuppressWarnings("java:S899")
-  public void addFailureEventToRetryQueue(final EnrichedEvent event) {
+  public synchronized void addFailureEventToRetryQueue(final EnrichedEvent event) {
     if (event.isReleased()) {
       return;
     }
@@ -630,11 +631,20 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       return;
     }
 
-    retryEventQueue.offer(event);
-    LOGGER.info(
-        "PipeConsensus-ConsensusGroup-{}: Event {} transfer failed, will be added to retry queue.",
-        consensusGroupId,
-        event);
+    boolean res = retryEventQueue.offer(event);
+    if (res) {
+      LOGGER.info(
+          "PipeConsensus-ConsensusGroup-{}: Event {} replicate index {} transfer failed, will be added to retry queue.",
+          consensusGroupId,
+          event,
+          event.getReplicateIndexForIoTV2());
+    } else {
+      LOGGER.warn(
+          "PipeConsensus-ConsensusGroup-{}: Event {} replicate index {} transfer failed, added to retry queue failed, this event will be ignored.",
+          consensusGroupId,
+          event,
+          event.getReplicateIndexForIoTV2());
+    }
 
     if (isClosed.get()) {
       event.clearReferenceCount(PipeConsensusAsyncConnector.class.getName());

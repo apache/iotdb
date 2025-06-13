@@ -210,9 +210,9 @@ public class PipeConsensusTsFileInsertionEventHandler
                   tsFile.getName());
         }
 
-        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          connector.removeEventFromBuffer(event);
-        }
+        // if code flow reach here, meaning the file will not be resent and will be ignored.
+        // events that don't need to be retried will be removed from the buffer
+        connector.removeEventFromBuffer(event);
       } catch (final Exception e) {
         onError(e);
         return;
@@ -295,10 +295,10 @@ public class PipeConsensusTsFileInsertionEventHandler
 
     if (RetryUtils.needRetryWithIncreasingInterval(exception)) {
       // just in case for overflow
-      if (event.getRetryInterval() << 2 <= 0) {
+      if (event.getRetryInterval() << 1 <= 0) {
         event.setRetryInterval(1000L * 20);
       } else {
-        event.setRetryInterval(Math.min(1000L * 20, event.getRetryInterval() << 2));
+        event.setRetryInterval(Math.min(1000L * 20, event.getRetryInterval() << 1));
       }
     }
 
