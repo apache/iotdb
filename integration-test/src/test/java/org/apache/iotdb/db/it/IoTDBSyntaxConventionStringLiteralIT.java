@@ -284,7 +284,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     String errorMsg =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:18 mismatched input 'test' expecting STRING_LITERAL";
+            + "line 1:18 mismatched input 'test123456789' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE USER test1 'test123456789'");
@@ -298,7 +298,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     String errorMsg1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:17 mismatched input '`test`' expecting STRING_LITERAL";
+            + "line 1:17 mismatched input '`test123456789`' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE USER test \"test123456789\"");

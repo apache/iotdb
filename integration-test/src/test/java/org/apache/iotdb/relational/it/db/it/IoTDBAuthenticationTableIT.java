@@ -142,9 +142,9 @@ public class IoTDBAuthenticationTableIT {
       sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userB");
 
       try (ITableSession sessionA =
-              EnvFactory.getEnv().getTableSessionConnection("userA", "userA");
+              EnvFactory.getEnv().getTableSessionConnection("userA", "userA1234567");
           ITableSession sessionB =
-              EnvFactory.getEnv().getTableSessionConnection("userB", "userB")) {
+              EnvFactory.getEnv().getTableSessionConnection("userB", "userB1234567")) {
         sessionA.executeNonQueryStatement("USE \"汉化\"");
         sessionB.executeNonQueryStatement("USE \"汉化\"");
         // userA no privilege
@@ -395,9 +395,9 @@ public class IoTDBAuthenticationTableIT {
       sessionRoot.executeNonQueryStatement("GRANT ROLE role2 TO userD");
 
       try (ITableSession sessionC =
-              EnvFactory.getEnv().getTableSessionConnection("userC", "userC");
+              EnvFactory.getEnv().getTableSessionConnection("userC", "userC1234567");
           ITableSession sessionD =
-              EnvFactory.getEnv().getTableSessionConnection("userD", "userD")) {
+              EnvFactory.getEnv().getTableSessionConnection("userD", "userD1234567")) {
         // grant an irrelevant privilege so that the new users can use database
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userC");
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userD");
@@ -653,9 +653,9 @@ public class IoTDBAuthenticationTableIT {
       sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB1234567'");
 
       try (ITableSession sessionA =
-              EnvFactory.getEnv().getTableSessionConnection("userA", "userA");
+              EnvFactory.getEnv().getTableSessionConnection("userA", "userA1234567");
           ITableSession sessionB =
-              EnvFactory.getEnv().getTableSessionConnection("userB", "userB")) {
+              EnvFactory.getEnv().getTableSessionConnection("userB", "userB1234567")) {
         // grant an irrelevant privilege so that the new users can use database
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userA");
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userB");

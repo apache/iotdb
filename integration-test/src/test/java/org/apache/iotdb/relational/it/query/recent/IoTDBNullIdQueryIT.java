@@ -508,9 +508,9 @@ public class IoTDBNullIdQueryIT {
 
   @Test
   public void setSqlDialectTest() throws SQLException {
-    createUser("tempuser", "temppw");
+    createUser("tempuser", "temppw123456");
 
-    try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+    try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
         Statement userStmt = userCon.createStatement()) {
       assertCurrentSqlDialect(true, userStmt);
 
