@@ -178,7 +178,8 @@ public class IoTDBRelationalAuthIT {
     }
 
     try (Connection userCon1 =
-            EnvFactory.getEnv().getConnection("testuser", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("testuser", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userStmt = userCon1.createStatement()) {
       // 1. user1's privileges
       // testdb.TB select
@@ -249,7 +250,8 @@ public class IoTDBRelationalAuthIT {
     }
 
     try (Connection userCon1 =
-            EnvFactory.getEnv().getConnection("testuser2", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("testuser2", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userStmt = userCon1.createStatement()) {
       // 2. user2's privileges
       // MANAGE_USER with grant option
@@ -493,7 +495,7 @@ public class IoTDBRelationalAuthIT {
     }
 
     try (Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userConStatement = userCon.createStatement()) {
       ResultSet resultSet = userConStatement.executeQuery("List privileges of user test");
       TestUtils.assertResultSetEqual(
@@ -520,7 +522,8 @@ public class IoTDBRelationalAuthIT {
     }
 
     try (Connection userCon =
-            EnvFactory.getEnv().getConnection("test2", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("test2", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userConStatement = userCon.createStatement()) {
       // user2 can grant all to user test
       userConStatement.execute("GRANT ALL to user test");
@@ -536,7 +539,8 @@ public class IoTDBRelationalAuthIT {
     }
 
     try (Connection userCon =
-            EnvFactory.getEnv().getConnection("test2", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("test2", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userConStatement = userCon.createStatement()) {
       // user2 can not grant all to user test
       Assert.assertThrows(

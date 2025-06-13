@@ -424,7 +424,7 @@ public class IoTDBLoadTsFileIT {
 
   @Test
   public void testAuth() throws Exception {
-    createUser("test", "test123");
+    createUser("test", "test123123456");
 
     // device 0, device 1, sg 0
     try (final TsFileGenerator generator =
@@ -473,7 +473,7 @@ public class IoTDBLoadTsFileIT {
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
         "No permissions for this operation, please add privilege WRITE_DATA",
         "test",
-        "test123");
+        "test123123456");
 
     grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.**");
 
@@ -481,7 +481,7 @@ public class IoTDBLoadTsFileIT {
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
         "No permissions for this operation, please add privilege MANAGE_DATABASE",
         "test",
-        "test123");
+        "test123123456");
 
     grantUserSystemPrivileges("test", PrivilegeType.MANAGE_DATABASE);
 
@@ -489,12 +489,12 @@ public class IoTDBLoadTsFileIT {
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
         "Auto create or verify schema error when executing statement LoadTsFileStatement",
         "test",
-        "test123");
+        "test123123456");
 
     grantUserSystemPrivileges("test", PrivilegeType.WRITE_SCHEMA);
 
     executeNonQuery(
-        String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()), "test", "test123");
+        String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()), "test", "test123123456");
   }
 
   @Test

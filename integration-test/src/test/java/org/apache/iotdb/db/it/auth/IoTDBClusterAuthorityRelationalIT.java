@@ -334,7 +334,7 @@ public class IoTDBClusterAuthorityRelationalIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       cleanUserAndRole(client);
-      createUserORRoleAndCheck(client, "user1", true, "password");
+      createUserORRoleAndCheck(client, "user1", true, "password123456");
       createUserORRoleAndCheck(client, "role1", false, "");
       runAndCheck(
           client,
@@ -379,7 +379,7 @@ public class IoTDBClusterAuthorityRelationalIT {
       //        "database2".*       create(with grant option);
 
       // check login
-      TLoginReq req = new TLoginReq("user1", "password");
+      TLoginReq req = new TLoginReq("user1", "password123456");
       expectSuccess(client.login(req));
 
       // check user has role.

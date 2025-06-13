@@ -263,7 +263,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.user", "testUser");
-      connectorAttributes.put("connector.password", "password");
+      connectorAttributes.put("connector.password", "password123456");
 
       final TSStatus status =
           client.createPipe(

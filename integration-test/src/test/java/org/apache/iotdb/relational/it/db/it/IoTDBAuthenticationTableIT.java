@@ -1029,7 +1029,7 @@ public class IoTDBAuthenticationTableIT {
   @Test
   public void testTableAuth() throws Exception {
     File tmpDir = new File(Files.createTempDirectory("load").toUri());
-    createUser("test", "test123");
+    createUser("test", "test123123456");
 
     final TsFileResource resource4 = new TsFileResource(new File(tmpDir, "test1-0-0-0.tsfile"));
     try (final CompactionTableModelTestFileWriter writer =
@@ -1051,7 +1051,7 @@ public class IoTDBAuthenticationTableIT {
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "test123123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       Assert.assertThrows(
           SQLException.class,
@@ -1069,7 +1069,7 @@ public class IoTDBAuthenticationTableIT {
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "test123123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       Assert.assertThrows(
           SQLException.class,
@@ -1087,7 +1087,7 @@ public class IoTDBAuthenticationTableIT {
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "test123123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       userStmt.execute(
           String.format(

@@ -654,7 +654,7 @@ public class IoTDBTableIT {
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       try (final ResultSet resultSet = userStmt.executeQuery("SHOW DATABASES")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
@@ -678,7 +678,7 @@ public class IoTDBTableIT {
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       userStmt.execute("use db");
       userStmt.execute("drop table test");

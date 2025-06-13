@@ -132,7 +132,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.username", "thulab");
-      connectorAttributes.put("connector.password", "passwd");
+      connectorAttributes.put("connector.password", "passwd123456");
 
       final TSStatus status =
           client.createPipe(
@@ -208,7 +208,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.username", "thulab");
-      connectorAttributes.put("connector.password", "passwd");
+      connectorAttributes.put("connector.password", "passwd123456");
 
       final TSStatus status =
           client.createPipe(

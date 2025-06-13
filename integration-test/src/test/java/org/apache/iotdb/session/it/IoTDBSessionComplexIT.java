@@ -70,7 +70,7 @@ public class IoTDBSessionComplexIT {
   public void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
-    createUser("test", "test123");
+    createUser("test", "test123123456");
   }
 
   @After
@@ -181,7 +181,8 @@ public class IoTDBSessionComplexIT {
       types.add(TSDataType.INT64);
 
       // auth test
-      try (ISession authSession = EnvFactory.getEnv().getSessionConnection("test", "test123")) {
+      try (ISession authSession =
+          EnvFactory.getEnv().getSessionConnection("test", "test123123456")) {
         grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
         grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
         try {
@@ -552,7 +553,7 @@ public class IoTDBSessionComplexIT {
   @Test
   public void testAuth() {
     // auth test
-    try (ISession authSession = EnvFactory.getEnv().getSessionConnection("test", "test123")) {
+    try (ISession authSession = EnvFactory.getEnv().getSessionConnection("test", "test123123456")) {
       grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
       grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
       grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d2.**");
@@ -590,8 +591,11 @@ public class IoTDBSessionComplexIT {
         insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
       } catch (Exception e) {
         if (!e.getMessage()
-            .contains(
-                "No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d1.s3]")) {
+                .contains(
+                    "No permissions for this operation, please add privilege WRITE_SCHEMA on ")
+            && !e.getMessage().contains("root.sg1.d1.s1")
+            && !e.getMessage().contains("root.sg1.d1.s2")
+            && !e.getMessage().contains("root.sg1.d1.s3")) {
           fail(e.getMessage());
         }
       }

@@ -146,7 +146,7 @@ public class IoTDBClusterAuthorityIT {
               AuthorType.CREATE_USER.ordinal(),
               "tempuser0",
               "",
-              "passwd",
+              "passwd123456",
               "",
               new HashSet<>(),
               false,

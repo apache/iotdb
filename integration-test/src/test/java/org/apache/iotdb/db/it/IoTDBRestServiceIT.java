@@ -142,7 +142,7 @@ public class IoTDBRestServiceIT {
     HttpPost httpPost = new HttpPost(url);
     httpPost.addHeader("Content-type", "application/json; charset=utf-8");
     httpPost.setHeader("Accept", "application/json");
-    String authorization = getAuthorization("root1", "root1");
+    String authorization = getAuthorization("root1", "root11234567");
     httpPost.setHeader("Authorization", authorization);
     return httpPost;
   }
@@ -379,7 +379,7 @@ public class IoTDBRestServiceIT {
     HttpPost httpPost2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
     HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
 
-    nonQuery(httpClient, "{\"sql\":\"CREATE USER `root1` 'root1123456'\"}", httpPost2);
+    nonQuery(httpClient, "{\"sql\":\"CREATE USER `root1` 'root11234567'\"}", httpPost2);
     nonQuery(httpClient, "{\"sql\":\"GRANT WRITE ON  root.** to user root1\"}", httpPostV2);
   }
 

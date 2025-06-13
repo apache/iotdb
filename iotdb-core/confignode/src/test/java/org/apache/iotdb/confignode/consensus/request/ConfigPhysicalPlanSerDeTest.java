@@ -494,7 +494,7 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlanType.CreateUser,
             "thulab",
             "",
-            "passwd",
+            "passwd123456",
             "",
             new HashSet<>(),
             false,
