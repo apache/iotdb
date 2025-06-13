@@ -136,7 +136,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "create user `ln_write_user` 'write_pwd'")) {
+          senderEnv, "create user `ln_write_user` 'write_pwd123456'")) {
         return;
       }
 
@@ -179,7 +179,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "create user `ln_write_user` 'write_pwd'",
+              "create user `ln_write_user` 'write_pwd123456'",
               "grant manage_database,manage_user,manage_role,use_trigger,use_udf,use_cq,use_pipe on root.** to USER ln_write_user with grant option",
               "GRANT READ_DATA, WRITE_DATA ON root.** TO USER ln_write_user;"))) {
         return;

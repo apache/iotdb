@@ -49,6 +49,7 @@ import java.util.Set;
 public class IoTDBRelationalAuthIT {
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -62,7 +63,7 @@ public class IoTDBRelationalAuthIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement adminStmt = adminCon.createStatement()) {
 
-      adminStmt.execute("create user testuser 'password'");
+      adminStmt.execute("create user testuser 'password123456'");
       adminStmt.execute("create database testdb");
       adminStmt.execute("GRANT MANAGE_USER to user testuser");
       Assert.assertThrows(
@@ -126,8 +127,8 @@ public class IoTDBRelationalAuthIT {
   public void checkAuthorStatementPrivilegeCheck() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("create user testuser 'password'");
-      adminStmt.execute("create user testuser2 'password'");
+      adminStmt.execute("create user testuser 'password123456'");
+      adminStmt.execute("create user testuser2 'password123456'");
       adminStmt.execute("create role testrole");
       adminStmt.execute("create database testdb");
 
@@ -177,7 +178,8 @@ public class IoTDBRelationalAuthIT {
     }
 
     try (Connection userCon1 =
-            EnvFactory.getEnv().getConnection("testuser", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("testuser", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userStmt = userCon1.createStatement()) {
       // 1. user1's privileges
       // testdb.TB select
@@ -248,7 +250,8 @@ public class IoTDBRelationalAuthIT {
     }
 
     try (Connection userCon1 =
-            EnvFactory.getEnv().getConnection("testuser2", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("testuser2", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userStmt = userCon1.createStatement()) {
       // 2. user2's privileges
       // MANAGE_USER with grant option
@@ -258,7 +261,7 @@ public class IoTDBRelationalAuthIT {
       // any select with grant option
 
       // can create user.
-      userStmt.execute("CREATE USER testuser3 'password'");
+      userStmt.execute("CREATE USER testuser3 'password123456'");
 
       // can not create role
       Assert.assertThrows(
@@ -314,7 +317,7 @@ public class IoTDBRelationalAuthIT {
       try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
           Statement adminStmt = adminCon.createStatement()) {
         adminStmt.execute("create database testdb");
-        adminStmt.execute(isUser ? "create user test 'password'" : "create role test");
+        adminStmt.execute(isUser ? "create user test 'password123456'" : "create role test");
         adminStmt.execute("use testdb");
 
         // 1. grant all on table tb1 with grant option
@@ -459,8 +462,8 @@ public class IoTDBRelationalAuthIT {
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("create user test 'password'");
-      adminStmt.execute("create user test2 'password'");
+      adminStmt.execute("create user test 'password123456'");
+      adminStmt.execute("create user test2 'password123456'");
       adminStmt.execute("grant all to user test");
       adminStmt.execute("grant all to user test2 with grant option");
       adminStmt.execute("revoke SELECT ON ANY from user test");
@@ -492,7 +495,7 @@ public class IoTDBRelationalAuthIT {
     }
 
     try (Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userConStatement = userCon.createStatement()) {
       ResultSet resultSet = userConStatement.executeQuery("List privileges of user test");
       TestUtils.assertResultSetEqual(
@@ -519,7 +522,8 @@ public class IoTDBRelationalAuthIT {
     }
 
     try (Connection userCon =
-            EnvFactory.getEnv().getConnection("test2", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("test2", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userConStatement = userCon.createStatement()) {
       // user2 can grant all to user test
       userConStatement.execute("GRANT ALL to user test");
@@ -535,7 +539,8 @@ public class IoTDBRelationalAuthIT {
     }
 
     try (Connection userCon =
-            EnvFactory.getEnv().getConnection("test2", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("test2", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userConStatement = userCon.createStatement()) {
       // user2 can not grant all to user test
       Assert.assertThrows(
@@ -581,9 +586,9 @@ public class IoTDBRelationalAuthIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement adminStmt = adminCon.createStatement()) {
       // normal case
-      adminStmt.execute("create user testuser 'password'");
+      adminStmt.execute("create user testuser 'password123456'");
       // username abnormal
-      adminStmt.execute("create user \"!@#$%^*()_+-=1\" 'password'");
+      adminStmt.execute("create user \"!@#$%^*()_+-=1\" 'password123456'");
 
       // username and password abnormal
       adminStmt.execute("create user \"!@#$%^*()_+-=2\" '!@#$%^*()_+-='");

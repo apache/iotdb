@@ -51,6 +51,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -283,12 +284,12 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     String errorMsg =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:18 mismatched input 'test' expecting STRING_LITERAL";
+            + "line 1:18 mismatched input 'test123456789' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE USER test1 'test'");
+      statement.execute("CREATE USER test1 'test123456789'");
       // password should be STRING_LITERAL
-      statement.execute("CREATE USER test1 test");
+      statement.execute("CREATE USER test1 test123456789");
       fail();
     } catch (SQLException e) {
       Assert.assertEquals(errorMsg, e.getMessage());
@@ -297,12 +298,12 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     String errorMsg1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:17 mismatched input '`test`' expecting STRING_LITERAL";
+            + "line 1:17 mismatched input '`test123456789`' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE USER test \"test\"");
+      statement.execute("CREATE USER test \"test123456789\"");
       // password should be STRING_LITERAL
-      statement.execute("CREATE USER test `test`");
+      statement.execute("CREATE USER test `test123456789`");
       fail();
     } catch (SQLException e) {
       Assert.assertEquals(errorMsg1, e.getMessage());
