@@ -176,10 +176,18 @@ std::vector<TEndPoint> NodesSupplier::fetchLatestEndpoints() {
         std::vector<TEndPoint> ret;
         while (sessionDataSet->hasNext()) {
             auto record = sessionDataSet->next();
-            std::string ip = record->fields.at(columnAddrIdx).stringV;
-            int32_t port = record->fields.at(columnPortIdx).intV;
-            std::string status = record->fields.at(columnStatusIdx).stringV;
-
+            std::string ip;
+            int32_t port;
+            std::string status;
+            if (record->fields.at(columnAddrIdx).stringV.is_initialized()) {
+                ip = record->fields.at(columnAddrIdx).stringV.value();
+            }
+            if (record->fields.at(columnPortIdx).intV.is_initialized()) {
+                port = record->fields.at(columnPortIdx).intV.value();
+            }
+            if (record->fields.at(columnStatusIdx).stringV.is_initialized()) {
+                status = record->fields.at(columnStatusIdx).stringV.value();
+            }
             if (ip == "0.0.0.0" || status == REMOVING_STATUS) {
                 log_warn("Skipping invalid node: " + ip + ":" + to_string(port));
                 continue;

@@ -54,28 +54,56 @@ std::string RowRecord::toString() {
         TSDataType::TSDataType dataType = fields[i].dataType;
         switch (dataType) {
         case TSDataType::BOOLEAN:
-            ret.append(fields[i].boolV ? "true" : "false");
+            if (!fields[i].boolV.is_initialized()) {
+                ret.append("null");
+            } else {
+                ret.append(fields[i].boolV.value() ? "true" : "false");
+            }
             break;
         case TSDataType::INT32:
-            ret.append(std::to_string(fields[i].intV));
+            if (!fields[i].intV.is_initialized()) {
+                ret.append("null");
+            } else {
+                ret.append(std::to_string(fields[i].intV.value()));
+            }
             break;
         case TSDataType::DATE:
-            ret.append(boost::gregorian::to_iso_extended_string(fields[i].dateV));
+            if (!fields[i].dateV.is_initialized()) {
+                ret.append("null");
+            } else {
+                ret.append(boost::gregorian::to_iso_extended_string(fields[i].dateV.value()));
+            }
             break;
         case TSDataType::TIMESTAMP:
         case TSDataType::INT64:
-            ret.append(std::to_string(fields[i].longV));
+            if (!fields[i].longV.is_initialized()) {
+                ret.append("null");
+            } else {
+                ret.append(std::to_string(fields[i].longV.value()));
+            }
             break;
         case TSDataType::FLOAT:
-            ret.append(std::to_string(fields[i].floatV));
+            if (!fields[i].floatV.is_initialized()) {
+                ret.append("null");
+            } else {
+                ret.append(std::to_string(fields[i].floatV.value()));
+            }
             break;
         case TSDataType::DOUBLE:
-            ret.append(std::to_string(fields[i].doubleV));
+            if (!fields[i].doubleV.is_initialized()) {
+                ret.append("null");
+            } else {
+                ret.append(std::to_string(fields[i].doubleV.value()));
+            }
             break;
         case TSDataType::BLOB:
         case TSDataType::STRING:
         case TSDataType::TEXT:
-            ret.append(fields[i].stringV);
+            if (!fields[i].stringV.is_initialized()) {
+                ret.append("null");
+            } else {
+                ret.append(fields[i].stringV.value());
+            }
             break;
         default:
             break;
@@ -133,67 +161,67 @@ bool SessionDataSet::DataIterator::isNullByIndex(int32_t columnIndex) {
     return iotdbRpcDataSet_->isNullByIndex(columnIndex);
 }
 
-bool SessionDataSet::DataIterator::getBooleanByIndex(int32_t columnIndex) {
+boost::optional<bool> SessionDataSet::DataIterator::getBooleanByIndex(int32_t columnIndex) {
     return iotdbRpcDataSet_->getBooleanByIndex(columnIndex);
 }
 
-bool SessionDataSet::DataIterator::getBoolean(const std::string& columnName) {
+boost::optional<bool> SessionDataSet::DataIterator::getBoolean(const std::string& columnName) {
     return iotdbRpcDataSet_->getBoolean(columnName);
 }
 
-double SessionDataSet::DataIterator::getDoubleByIndex(int32_t columnIndex) {
+boost::optional<double> SessionDataSet::DataIterator::getDoubleByIndex(int32_t columnIndex) {
     return iotdbRpcDataSet_->getDoubleByIndex(columnIndex);
 }
 
-double SessionDataSet::DataIterator::getDouble(const std::string& columnName) {
+boost::optional<double> SessionDataSet::DataIterator::getDouble(const std::string& columnName) {
     return iotdbRpcDataSet_->getDouble(columnName);
 }
 
-float SessionDataSet::DataIterator::getFloatByIndex(int32_t columnIndex) {
+boost::optional<float> SessionDataSet::DataIterator::getFloatByIndex(int32_t columnIndex) {
     return iotdbRpcDataSet_->getFloatByIndex(columnIndex);
 }
 
-float SessionDataSet::DataIterator::getFloat(const std::string& columnName) {
+boost::optional<float> SessionDataSet::DataIterator::getFloat(const std::string& columnName) {
     return iotdbRpcDataSet_->getFloat(columnName);
 }
 
-int32_t SessionDataSet::DataIterator::getIntByIndex(int32_t columnIndex) {
+boost::optional<int32_t> SessionDataSet::DataIterator::getIntByIndex(int32_t columnIndex) {
     return iotdbRpcDataSet_->getIntByIndex(columnIndex);
 }
 
-int32_t SessionDataSet::DataIterator::getInt(const std::string& columnName) {
+boost::optional<int32_t> SessionDataSet::DataIterator::getInt(const std::string& columnName) {
     return iotdbRpcDataSet_->getInt(columnName);
 }
 
-int64_t SessionDataSet::DataIterator::getLongByIndex(int32_t columnIndex) {
+boost::optional<int64_t> SessionDataSet::DataIterator::getLongByIndex(int32_t columnIndex) {
     return iotdbRpcDataSet_->getLongByIndex(columnIndex);
 }
 
-int64_t SessionDataSet::DataIterator::getLong(const std::string& columnName) {
+boost::optional<int64_t> SessionDataSet::DataIterator::getLong(const std::string& columnName) {
     return iotdbRpcDataSet_->getLong(columnName);
 }
 
-std::string SessionDataSet::DataIterator::getStringByIndex(int32_t columnIndex) {
+boost::optional<std::string> SessionDataSet::DataIterator::getStringByIndex(int32_t columnIndex) {
     return iotdbRpcDataSet_->getStringByIndex(columnIndex);
 }
 
-std::string SessionDataSet::DataIterator::getString(const std::string& columnName) {
+boost::optional<std::string> SessionDataSet::DataIterator::getString(const std::string& columnName) {
     return iotdbRpcDataSet_->getString(columnName);
 }
 
-int64_t SessionDataSet::DataIterator::getTimestampByIndex(int32_t columnIndex) {
+boost::optional<int64_t> SessionDataSet::DataIterator::getTimestampByIndex(int32_t columnIndex) {
     return iotdbRpcDataSet_->getTimestampByIndex(columnIndex);
 }
 
-int64_t SessionDataSet::DataIterator::getTimestamp(const std::string& columnName) {
+boost::optional<int64_t> SessionDataSet::DataIterator::getTimestamp(const std::string& columnName) {
     return iotdbRpcDataSet_->getTimestamp(columnName);
 }
 
-boost::gregorian::date SessionDataSet::DataIterator::getDateByIndex(int32_t columnIndex) {
+boost::optional<boost::gregorian::date> SessionDataSet::DataIterator::getDateByIndex(int32_t columnIndex) {
     return iotdbRpcDataSet_->getDateByIndex(columnIndex);
 }
 
-boost::gregorian::date SessionDataSet::DataIterator::getDate(const std::string& columnName) {
+boost::optional<boost::gregorian::date> SessionDataSet::DataIterator::getDate(const std::string& columnName) {
     return iotdbRpcDataSet_->getDate(columnName);
 }
 
@@ -225,7 +253,7 @@ shared_ptr<RowRecord> SessionDataSet::constructRowRecordFromValueArray() {
                 field.intV = iotdbRpcDataSet_->getInt(columnName);
                 break;
             case TSDataType::DATE:
-                field.dateV = parseIntToDate(iotdbRpcDataSet_->getInt(columnName));
+                field.dateV = iotdbRpcDataSet_->getDate(columnName);
                 break;
             case TSDataType::INT64:
             case TSDataType::TIMESTAMP:
@@ -243,7 +271,7 @@ shared_ptr<RowRecord> SessionDataSet::constructRowRecordFromValueArray() {
                 field.stringV = iotdbRpcDataSet_->getBinary(columnName)->getStringValue();
                 break;
             default:
-                throw new UnSupportedDataTypeException("Data type %s is not supported." + dataType);
+                throw UnSupportedDataTypeException("Data type %s is not supported." + dataType);
             }
         }
         outFields.emplace_back(field);

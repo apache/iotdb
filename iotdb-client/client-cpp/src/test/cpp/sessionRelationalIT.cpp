@@ -59,7 +59,7 @@ TEST_CASE("Create table success", "[createTable]") {
     sessionDataSet->setFetchSize(1024);
     bool tableExist = false;
     while (sessionDataSet->hasNext()) {
-        if (sessionDataSet->next()->fields[0].stringV == "table0") {
+        if (sessionDataSet->next()->fields[0].stringV.value() == "table0") {
             tableExist = true;
             break;
         }
@@ -112,9 +112,9 @@ TEST_CASE("Test insertRelationalTablet", "[testInsertRelationalTablet]") {
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("SELECT * FROM table1 order by time");
     while (sessionDataSet->hasNext()) {
         auto rowRecord = sessionDataSet->next();
-        REQUIRE(rowRecord->fields[1].stringV == string("tag:") + to_string(cnt));
-        REQUIRE(rowRecord->fields[2].stringV == string("attr:") + to_string(cnt));
-        REQUIRE(fabs(rowRecord->fields[3].doubleV - cnt * 1.1) < 0.0001);
+        REQUIRE(rowRecord->fields[1].stringV.value() == string("tag:") + to_string(cnt));
+        REQUIRE(rowRecord->fields[2].stringV.value() == string("attr:") + to_string(cnt));
+        REQUIRE(fabs(rowRecord->fields[3].doubleV.value() - cnt * 1.1) < 0.0001);
         cnt++;
     }
     REQUIRE(cnt == 15);
@@ -169,6 +169,12 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
         tablet.addValue(8, rowIndex, "blob_" + to_string(row));
         tablet.addValue(9, rowIndex, "string_" + to_string(row));
 
+        if (row % 2 == 0) {
+            for (int col = 0; col <= 9; col++) {
+                tablet.bitMaps[col].mark(row);
+            }
+        }
+
         if (tablet.rowSize == tablet.maxRowNumber) {
             session->insert(tablet, true);
             tablet.reset();
@@ -186,17 +192,62 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
     int rowNum = 0;
     timestamp = 0;
     while (dataIter.next()) {
-        REQUIRE(dataIter.getLongByIndex(1) == timestamp + rowNum);
-        REQUIRE(dataIter.getBooleanByIndex(2) == (rowNum % 2 == 0));
-        REQUIRE(dataIter.getIntByIndex(3) == static_cast<int32_t>(rowNum));
-        REQUIRE(dataIter.getLongByIndex(4) == static_cast<int64_t>(timestamp));
-        REQUIRE(fabs(dataIter.getFloatByIndex(5) - rowNum * 1.1f) < 0.1f);
-        REQUIRE(fabs(dataIter.getDoubleByIndex(6) - rowNum * 1.1f) < 0.1);
-        REQUIRE(dataIter.getStringByIndex(7) == "text_" + to_string(rowNum));
-        REQUIRE(dataIter.getLongByIndex(8) == static_cast<int64_t>(timestamp));
-        REQUIRE(dataIter.getDateByIndex(9) == boost::gregorian::date(2025, 5, 15));
-        REQUIRE(dataIter.getStringByIndex(10) == "blob_" + to_string(rowNum));
-        REQUIRE(dataIter.getStringByIndex(11) == "string_" + to_string(rowNum));
+        if (rowNum % 2 == 0) {
+            REQUIRE_FALSE(dataIter.getBooleanByIndex(2).is_initialized());
+            REQUIRE_FALSE(dataIter.getIntByIndex(3).is_initialized());
+            REQUIRE_FALSE(dataIter.getLongByIndex(4).is_initialized());
+            REQUIRE_FALSE(dataIter.getFloatByIndex(5).is_initialized());
+            REQUIRE_FALSE(dataIter.getDoubleByIndex(6).is_initialized());
+            REQUIRE_FALSE(dataIter.getStringByIndex(7).is_initialized());
+            REQUIRE_FALSE(dataIter.getLongByIndex(8).is_initialized());
+            REQUIRE_FALSE(dataIter.getDateByIndex(9).is_initialized());
+            REQUIRE_FALSE(dataIter.getStringByIndex(10).is_initialized());
+            REQUIRE_FALSE(dataIter.getStringByIndex(11).is_initialized());
+        } else {
+            REQUIRE(dataIter.getLongByIndex(1).value() == timestamp + rowNum);
+            REQUIRE(dataIter.getBooleanByIndex(2).value() == (rowNum % 2 == 0));
+            REQUIRE(dataIter.getIntByIndex(3).value() == static_cast<int32_t>(rowNum));
+            REQUIRE(dataIter.getLongByIndex(4).value() == static_cast<int64_t>(timestamp));
+            REQUIRE(fabs(dataIter.getFloatByIndex(5).value() - rowNum * 1.1f) < 0.1f);
+            REQUIRE(fabs(dataIter.getDoubleByIndex(6).value() - rowNum * 1.1f) < 0.1);
+            REQUIRE(dataIter.getStringByIndex(7).value() == "text_" + to_string(rowNum));
+            REQUIRE(dataIter.getLongByIndex(8).value() == static_cast<int64_t>(timestamp));
+            REQUIRE(dataIter.getDateByIndex(9).value() == boost::gregorian::date(2025, 5, 15));
+            REQUIRE(dataIter.getStringByIndex(10).value() == "blob_" + to_string(rowNum));
+            REQUIRE(dataIter.getStringByIndex(11).value() == "string_" + to_string(rowNum));
+        }
+        rowNum++;
+    }
+    REQUIRE(rowNum == maxRowNumber);
+
+    sessionDataSet = session->executeQueryStatement("SELECT * FROM table1 order by time");
+    rowNum = 0;
+    timestamp = 0;
+    while (sessionDataSet->hasNext()) {
+        auto record = sessionDataSet->next();
+        if (rowNum % 2 == 0) {
+            REQUIRE_FALSE(record->fields[1].boolV.is_initialized());
+            REQUIRE_FALSE(record->fields[2].intV.is_initialized());
+            REQUIRE_FALSE(record->fields[3].longV.is_initialized());
+            REQUIRE_FALSE(record->fields[4].floatV.is_initialized());
+            REQUIRE_FALSE(record->fields[5].doubleV.is_initialized());
+            REQUIRE_FALSE(record->fields[6].stringV.is_initialized());
+            REQUIRE_FALSE(record->fields[7].longV.is_initialized());
+            REQUIRE_FALSE(record->fields[8].dateV.is_initialized());
+            REQUIRE_FALSE(record->fields[9].stringV.is_initialized());
+            REQUIRE_FALSE(record->fields[10].stringV.is_initialized());
+        } else {
+            REQUIRE(record->fields[1].boolV.value() == (rowNum % 2 == 0));
+            REQUIRE(record->fields[2].intV.value() == static_cast<int32_t>(rowNum));
+            REQUIRE(record->fields[3].longV.value() == static_cast<int64_t>(timestamp));
+            REQUIRE(fabs(record->fields[4].floatV.value() - rowNum * 1.1f) < 0.1f);
+            REQUIRE(fabs(record->fields[5].doubleV.value() - rowNum * 1.1f) < 0.1);
+            REQUIRE(record->fields[6].stringV.value() == "text_" + to_string(rowNum));
+            REQUIRE(record->fields[7].longV.value() == static_cast<int64_t>(timestamp));
+            REQUIRE(record->fields[8].dateV.value() == boost::gregorian::date(2025, 5, 15));
+            REQUIRE(record->fields[9].stringV.value() == "blob_" + to_string(rowNum));
+            REQUIRE(record->fields[10].stringV.value() == "string_" + to_string(rowNum));
+        }
         rowNum++;
     }
     REQUIRE(rowNum == maxRowNumber);

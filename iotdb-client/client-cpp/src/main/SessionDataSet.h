@@ -104,29 +104,29 @@ public:
         bool isNull(const std::string& columnName);
         bool isNullByIndex(int32_t columnIndex);
 
-        bool getBooleanByIndex(int32_t columnIndex);
-        bool getBoolean(const std::string& columnName);
+        boost::optional<bool> getBooleanByIndex(int32_t columnIndex);
+        boost::optional<bool> getBoolean(const std::string& columnName);
 
-        double getDoubleByIndex(int32_t columnIndex);
-        double getDouble(const std::string& columnName);
+        boost::optional<double> getDoubleByIndex(int32_t columnIndex);
+        boost::optional<double> getDouble(const std::string& columnName);
 
-        float getFloatByIndex(int32_t columnIndex);
-        float getFloat(const std::string& columnName);
+        boost::optional<float> getFloatByIndex(int32_t columnIndex);
+        boost::optional<float> getFloat(const std::string& columnName);
 
-        int32_t getIntByIndex(int32_t columnIndex);
-        int32_t getInt(const std::string& columnName);
+        boost::optional<int32_t> getIntByIndex(int32_t columnIndex);
+        boost::optional<int32_t> getInt(const std::string& columnName);
 
-        int64_t getLongByIndex(int32_t columnIndex);
-        int64_t getLong(const std::string& columnName);
+        boost::optional<int64_t> getLongByIndex(int32_t columnIndex);
+        boost::optional<int64_t> getLong(const std::string& columnName);
 
-        std::string getStringByIndex(int32_t columnIndex);
-        std::string getString(const std::string& columnName);
+        boost::optional<std::string> getStringByIndex(int32_t columnIndex);
+        boost::optional<std::string> getString(const std::string& columnName);
 
-        int64_t getTimestampByIndex(int32_t columnIndex);
-        int64_t getTimestamp(const std::string& columnName);
+        boost::optional<int64_t> getTimestampByIndex(int32_t columnIndex);
+        boost::optional<int64_t> getTimestamp(const std::string& columnName);
 
-        boost::gregorian::date getDateByIndex(int32_t columnIndex);
-        boost::gregorian::date getDate(const std::string& columnName);
+        boost::optional<boost::gregorian::date> getDateByIndex(int32_t columnIndex);
+        boost::optional<boost::gregorian::date> getDate(const std::string& columnName);
 
         int32_t findColumn(const std::string& columnName);
         const std::vector<std::string>& getColumnNames() const;
