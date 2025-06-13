@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.security.encrypt.AsymmetricEncrypt;
 import org.apache.iotdb.commons.security.encrypt.MessageDigestEncrypt;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
@@ -85,13 +86,20 @@ public class MessageDigestEncryptTest {
     for (User user1 : users) {
       user = manager.getEntity(user1.getName());
       assertEquals(user1.getName(), user.getName());
-      assertEquals(messageDigestEncrypt.encrypt(user1.getPassword()), user.getPassword());
+      assertEquals(
+          messageDigestEncrypt.encrypt(
+              user1.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256),
+          user.getPassword());
     }
   }
 
   @Test
   public void testMessageDigestValidatePassword() {
     String password = "root";
-    assertTrue(messageDigestEncrypt.validate(password, messageDigestEncrypt.encrypt(password)));
+    assertTrue(
+        messageDigestEncrypt.validate(
+            password,
+            messageDigestEncrypt.encrypt(password, AsymmetricEncrypt.DigestAlgorithm.SHA_256),
+            AsymmetricEncrypt.DigestAlgorithm.SHA_256));
   }
 }
