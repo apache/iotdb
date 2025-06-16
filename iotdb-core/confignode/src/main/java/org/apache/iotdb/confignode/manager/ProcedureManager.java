@@ -161,6 +161,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -837,14 +838,13 @@ public class ProcedureManager {
   private TSStatus checkRemoveRegion(
       TRemoveRegionReq req,
       TConsensusGroupId regionId,
-      TDataNodeLocation targetDataNode,
+      @Nullable TDataNodeLocation targetDataNode,
       TDataNodeLocation coordinator) {
     String failMessage =
         regionOperationCommonCheck(
             regionId,
             targetDataNode,
             Arrays.asList(
-                new Pair<>("Target DataNode", targetDataNode),
                 new Pair<>("Coordinator", coordinator)),
             req.getModel());
 
@@ -855,7 +855,7 @@ public class ProcedureManager {
             .getDataNodeLocationsSize()
         == 1) {
       failMessage = String.format("%s only has 1 replica, it cannot be removed", regionId);
-    } else if (configManager
+    } else if (targetDataNode != null && configManager
         .getPartitionManager()
         .getAllReplicaSets(targetDataNode.getDataNodeId())
         .stream()
