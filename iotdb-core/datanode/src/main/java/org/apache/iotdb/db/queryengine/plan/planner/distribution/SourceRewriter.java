@@ -61,11 +61,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.Inner
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.RegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
@@ -82,8 +81,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -756,16 +757,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   }
 
   @Override
-  public List<PlanNode> visitLastQueryScan(
-      LastQueryScanNode node, DistributionPlanContext context) {
-    LastQueryNode mergeNode =
-        new LastQueryNode(context.queryContext.getQueryId().genPlanNodeId(), null, false);
-    return processRawSeriesScan(node, context, mergeNode);
-  }
-
-  @Override
-  public List<PlanNode> visitAlignedLastQueryScan(
-      AlignedLastQueryScanNode node, DistributionPlanContext context) {
+  public List<PlanNode> visitDeviceLastQueryScan(
+      DeviceLastQueryScanNode node, DistributionPlanContext context) {
     LastQueryNode mergeNode =
         new LastQueryNode(context.queryContext.getQueryId().genPlanNodeId(), null, false);
     return processRawSeriesScan(node, context, mergeNode);
@@ -981,8 +974,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
 
   private void addSortForEachLastQueryNode(PlanNode root, Ordering timeseriesOrdering) {
     if (root instanceof LastQueryNode
-        && (root.getChildren().get(0) instanceof LastQueryScanNode
-            || root.getChildren().get(0) instanceof AlignedLastQueryScanNode)) {
+        && (root.getChildren().get(0) instanceof DeviceLastQueryScanNode)) {
       LastQueryNode lastQueryNode = (LastQueryNode) root;
       lastQueryNode.setTimeseriesOrdering(timeseriesOrdering);
       // sort children node
@@ -992,10 +984,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   Comparator.comparing(
                       child -> {
                         String sortKey = "";
-                        if (child instanceof LastQueryScanNode) {
-                          sortKey = ((LastQueryScanNode) child).getOutputSymbolForSort();
-                        } else if (child instanceof AlignedLastQueryScanNode) {
-                          sortKey = ((AlignedLastQueryScanNode) child).getOutputSymbolForSort();
+                        if (child instanceof DeviceLastQueryScanNode) {
+                          sortKey = ((DeviceLastQueryScanNode) child).getOutputSymbolForSort();
                         }
                         return sortKey;
                       }))
@@ -1004,11 +994,17 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           .getChildren()
           .forEach(
               child -> {
-                if (child instanceof AlignedLastQueryScanNode) {
-                  // sort the measurements of AlignedPath for LastQueryMergeOperator
-                  ((AlignedLastQueryScanNode) child)
-                      .getSeriesPath()
-                      .sortMeasurement(Comparator.naturalOrder());
+                if (child instanceof DeviceLastQueryScanNode) {
+                  // sort the measurements for LastQueryMergeOperator
+                  ((DeviceLastQueryScanNode) child)
+                      .getMeasurementSchemas()
+                      .sort(
+                          Comparator.comparing(
+                              iMeasurementSchema ->
+                                  new Binary(
+                                      iMeasurementSchema.getMeasurementName(),
+                                      TSFileConfig.STRING_CHARSET),
+                              Comparator.naturalOrder()));
                 }
               });
     } else {

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -32,8 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -197,14 +195,8 @@ public class LastQueryTest {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     for (String path : paths) {
       MeasurementPath selectPath = new MeasurementPath(path);
-      if (selectPath.isUnderAlignedEntity()) {
-        sourceNodeList.add(
-            new AlignedLastQueryScanNode(
-                context.getQueryId().genPlanNodeId(), new AlignedPath(selectPath), null));
-      } else {
-        sourceNodeList.add(
-            new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath, null));
-      }
+      sourceNodeList.add(
+          new DeviceLastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath, null));
     }
 
     PlanNode root =

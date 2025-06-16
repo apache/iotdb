@@ -30,7 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
 
 public class LastQueryCollectNode extends MultiChildProcessNode {
 

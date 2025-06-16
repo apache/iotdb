@@ -81,10 +81,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
@@ -110,6 +109,7 @@ import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGene
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -278,46 +278,34 @@ public class LogicalPlanBuilder {
                   ? sourceExpression.getViewPath().getFullPath()
                   : null;
 
-          if (selectedPath.isUnderAlignedEntity()) { // aligned series
-            sourceNodeList.add(
-                reserveMemoryForSeriesSourceNode(
-                    new AlignedLastQueryScanNode(
-                        context.getQueryId().genPlanNodeId(),
-                        new AlignedPath(selectedPath),
-                        outputViewPath)));
-          } else { // non-aligned series
-            sourceNodeList.add(
-                reserveMemoryForSeriesSourceNode(
-                    new LastQueryScanNode(
-                        context.getQueryId().genPlanNodeId(), selectedPath, outputViewPath)));
-          }
-        }
-      } else {
-        if (deviceAlignedSet.contains(outputDevice)) {
-          // aligned series
-          List<MeasurementPath> measurementPaths =
-              measurementToExpressionsOfDevice.values().stream()
-                  .map(expression -> (MeasurementPath) ((TimeSeriesOperand) expression).getPath())
-                  .collect(Collectors.toList());
-          AlignedPath alignedPath = new AlignedPath(measurementPaths.get(0).getDevicePath());
-          for (MeasurementPath measurementPath : measurementPaths) {
-            alignedPath.addMeasurement(measurementPath);
-          }
           sourceNodeList.add(
               reserveMemoryForSeriesSourceNode(
-                  new AlignedLastQueryScanNode(
-                      context.getQueryId().genPlanNodeId(), alignedPath, null)));
-        } else {
-          // non-aligned series
-          for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
-            MeasurementPath selectedPath =
-                (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
-            sourceNodeList.add(
-                reserveMemoryForSeriesSourceNode(
-                    new LastQueryScanNode(
-                        context.getQueryId().genPlanNodeId(), selectedPath, null)));
-          }
+                  new DeviceLastQueryScanNode(
+                      context.getQueryId().genPlanNodeId(),
+                      selectedPath.getDevicePath(),
+                      selectedPath.isUnderAlignedEntity(),
+                      Collections.singletonList(selectedPath.getMeasurementSchema()),
+                      outputViewPath)));
         }
+      } else {
+        boolean aligned = false;
+        List<IMeasurementSchema> measurementSchemas =
+            new ArrayList<>(measurementToExpressionsOfDevice.size());
+        PartialPath devicePath = null;
+        for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
+          MeasurementPath selectedPath =
+              (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
+          aligned = selectedPath.isUnderAlignedEntity();
+          devicePath = devicePath == null ? selectedPath.getDevicePath() : devicePath;
+          measurementSchemas.add(selectedPath.getMeasurementSchema());
+        }
+        sourceNodeList.add(
+            new DeviceLastQueryScanNode(
+                context.getQueryId().genPlanNodeId(),
+                devicePath,
+                aligned,
+                measurementSchemas,
+                null));
       }
     }
 
@@ -328,10 +316,8 @@ public class LogicalPlanBuilder {
           Comparator.comparing(
               child -> {
                 String sortKey = "";
-                if (child instanceof LastQueryScanNode) {
-                  sortKey = ((LastQueryScanNode) child).getOutputSymbolForSort();
-                } else if (child instanceof AlignedLastQueryScanNode) {
-                  sortKey = ((AlignedLastQueryScanNode) child).getOutputSymbolForSort();
+                if (child instanceof DeviceLastQueryScanNode) {
+                  sortKey = ((DeviceLastQueryScanNode) child).getOutputSymbolForSort();
                 } else if (child instanceof LastQueryTransformNode) {
                   sortKey = ((LastQueryTransformNode) child).getOutputSymbolForSort();
                 }
