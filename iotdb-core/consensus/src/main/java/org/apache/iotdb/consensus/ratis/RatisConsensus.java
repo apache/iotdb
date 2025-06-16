@@ -158,7 +158,7 @@ class RatisConsensus implements IConsensus {
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(storageDir));
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
-    Utils.initRatisConfig(properties, config.getRatisConfig());
+    Parameters parameters = Utils.initRatisConfig(properties, config.getRatisConfig());
     this.config = config.getRatisConfig();
     this.readOption = this.config.getRead().getReadOption();
     this.canServeStaleRead =
@@ -211,7 +211,7 @@ class RatisConsensus implements IConsensus {
         new IClientManager.Factory<RaftGroup, RatisClient>()
             .createClientManager(new RatisClientPoolFactory(true));
 
-    clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
+    clientRpc = new GrpcFactory(parameters).newRaftClientRpc(ClientId.randomId(), properties);
 
     // do not build server in constructor in case stateMachine is not ready
     server =
