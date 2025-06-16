@@ -444,4 +444,12 @@ public class CommonDescriptor {
     config.setTagAttributeTotalSize(globalConfig.tagAttributeTotalSize);
     config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
   }
+
+  public void initThriftSSL(TrimProperties properties) {
+    config.setEnableSSL(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_thrift_ssl", Boolean.toString(config.isEnableSSL()))));
+    config.setKeyStorePath(properties.getProperty("key_store_path", config.getKeyStorePath()));
+    config.setKeyStorePwd(properties.getProperty("key_store_pwd", config.getKeyStorePath()));
+  }
 }

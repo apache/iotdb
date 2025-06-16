@@ -404,6 +404,21 @@ public class CommonConfig {
 
   private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
+  /** Enable the thrift Service ssl. */
+  private boolean enableSSL = false;
+
+  /** ssl key Store Path. */
+  private String keyStorePath = "";
+
+  /** ssl key Store password. */
+  private String keyStorePwd = "";
+
+  /** ssl trust Store Path. */
+  private String trustStorePath = "";
+
+  /** ssl trust Store password. */
+  private String trustStorePwd = "";
+
   CommonConfig() {
     // Empty constructor
   }
@@ -2560,5 +2575,45 @@ public class CommonConfig {
 
   public void setTrustedUriPattern(Pattern trustedUriPattern) {
     this.trustedUriPattern = trustedUriPattern;
+  }
+
+  public boolean isEnableSSL() {
+    return enableSSL;
+  }
+
+  public void setEnableSSL(boolean enableSSL) {
+    this.enableSSL = enableSSL;
+  }
+
+  public String getKeyStorePath() {
+    return keyStorePath;
+  }
+
+  public void setKeyStorePath(String keyStorePath) {
+    this.keyStorePath = keyStorePath;
+  }
+
+  public String getKeyStorePwd() {
+    return keyStorePwd;
+  }
+
+  public void setKeyStorePwd(String keyStorePwd) {
+    this.keyStorePwd = keyStorePwd;
+  }
+
+  public String getTrustStorePath() {
+    return trustStorePwd;
+  }
+
+  public void setTrustStorePath(String trustStorePath) {
+    this.trustStorePath = trustStorePath;
+  }
+
+  public String getTrustStorePwd() {
+    return trustStorePwd;
+  }
+
+  public void setTrustStorePwd(String trustStorePwd) {
+    this.trustStorePwd = trustStorePwd;
   }
 }

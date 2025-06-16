@@ -438,7 +438,7 @@ dn_metric_internal_reporter_type=MEMORY
 ### SSL Configuration
 ####################
 
-# Does dn_rpc_port enable SSL
+# Does IoTDB enable SSL
 # effectiveMode: restart
 # Datatype: boolean
 enable_thrift_ssl=false
@@ -458,6 +458,17 @@ key_store_path=
 # effectiveMode: restart
 # Datatype: String
 key_store_pwd=
+
+# SSL trust store path
+# linux e.g. /home/iotdb/server.truststore (absolute path) or server.truststore (relative path)
+# windows e.g. C:\\iotdb\\server.truststore (absolute path) or server.truststore (relative path)
+# effectiveMode: restart
+key_trust_path=
+
+# SSL trust store password
+# effectiveMode: restart
+# Datatype: String
+key_trust_pwd=
 
 ####################
 ### Connection Configuration

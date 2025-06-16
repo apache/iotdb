@@ -167,6 +167,8 @@ public abstract class AbstractThriftServiceThread extends Thread {
       boolean compress,
       String keyStorePath,
       String keyStorePwd,
+      String trustStorePath,
+      String trustStorePwd,
       int clientTimeout,
       TTransportFactory transportFactory) {
     this.transportFactory = transportFactory;
@@ -177,6 +179,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
       TSSLTransportFactory.TSSLTransportParameters params =
           new TSSLTransportFactory.TSSLTransportParameters();
       params.setKeyStore(keyStorePath, keyStorePwd);
+      params.setTrustStore(trustStorePath, trustStorePwd);
       params.requireClientAuth(false);
       InetSocketAddress socketAddress = new InetSocketAddress(bindAddress, port);
       serverTransport =
