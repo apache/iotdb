@@ -29,7 +29,6 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Counter;
-import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -54,11 +53,6 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
   private final Map<String, PipeDataNodeRemainingEventAndTimeOperator>
       remainingEventAndTimeOperatorMap = new ConcurrentHashMap<>();
-
-  private static Histogram PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM =
-      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  private static Histogram PIPE_DATANODE_EVENT_TRANSFER_TIME_HISTOGRAM =
-      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   private final long[] TIME_BUCKETS = {
     Long.MIN_VALUE,
@@ -92,6 +86,8 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
   private final Counter[] tSFileTransferTime;
 
+  private final Counter[] tabletTransferTime;
+
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
@@ -111,6 +107,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
               MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               "tsfile");
+
+      tabletTransferTime[i - 1] =
+          metricService.getOrCreateCounter(
+              String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", timeUnit[i - 1]),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              "tablet");
     }
 
     ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::createMetrics);
@@ -205,6 +208,14 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
             Tag.NAME.toString(),
             "tsfile");
       }
+
+      if (Objects.nonNull(tabletTransferTime[i - 1])) {
+        metricService.remove(
+            MetricType.COUNTER,
+            String.format(Metric.PIPE_DATANODE_EVENT_TRANSFER.name() + "_%s", timeUnit[i - 1]),
+            Tag.NAME.toString(),
+            "tablet");
+      }
     }
   }
 
@@ -289,7 +300,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     operator.decreaseInsertNodeEventCount();
 
     operator.getInsertNodeTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-    inc(transferTime, insertNodeTransferTime);
+    increase(transferTime, insertNodeTransferTime);
   }
 
   public void increaseRawTabletEventCount(final String pipeName, final long creationTime) {
@@ -300,12 +311,16 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         .increaseRawTabletEventCount();
   }
 
-  public void decreaseRawTabletEventCount(final String pipeName, final long creationTime) {
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
+  public void decreaseRawTabletEventCount(
+      final String pipeName, final long creationTime, final long transferTime) {
+    PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.computeIfAbsent(
             pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .decreaseRawTabletEventCount();
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
+    operator.decreaseRawTabletEventCount();
+
+    operator.getTabletTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
+    increase(transferTime, tabletTransferTime);
   }
 
   public void increaseTsFileEventCount(final String pipeName, final long creationTime) {
@@ -325,7 +340,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
     operator.decreaseTsFileEventCount();
     operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-    inc(transferTime, tSFileTransferTime);
+    increase(transferTime, tSFileTransferTime);
   }
 
   public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {
@@ -410,7 +425,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     operator.markTsFileCollectInvocationCount(collectInvocationCount);
   }
 
-  private void inc(long number, Counter[] counters) {
+  public void increase(long number, Counter[] counters) {
     if (number < 0) {
       throw new IllegalArgumentException("the number must be non-negative");
     }
@@ -421,10 +436,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     while (left < right) {
       int mid = (right + left) / 2;
 
-      if (number <= TIME_BUCKETS[mid]) {
+      if (number < TIME_BUCKETS[mid]) {
         right = mid;
-      } else {
+      } else if (number > TIME_BUCKETS[mid]) {
         left = mid + 1;
+      } else {
+        counters[mid - 1].inc();
+        return;
       }
     }
 
@@ -461,8 +479,10 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
   private PipeDataNodeRemainingEventAndTimeMetrics() {
     insertNodeTransferTime = new Counter[TIME_BUCKETS.length - 1];
     tSFileTransferTime = new Counter[TIME_BUCKETS.length - 1];
+    tabletTransferTime = new Counter[TIME_BUCKETS.length - 1];
     Arrays.fill(insertNodeTransferTime, DoNothingMetricManager.DO_NOTHING_COUNTER);
     Arrays.fill(tSFileTransferTime, DoNothingMetricManager.DO_NOTHING_COUNTER);
+    Arrays.fill(tabletTransferTime, DoNothingMetricManager.DO_NOTHING_COUNTER);
     PipeEventCommitManager.getInstance().setCommitRateMarker(this::markRegionCommit);
   }
 }

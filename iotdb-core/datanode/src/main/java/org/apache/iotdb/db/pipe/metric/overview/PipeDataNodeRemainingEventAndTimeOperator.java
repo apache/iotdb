@@ -58,6 +58,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   private Timer insertNodeTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer tsfileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer tabletTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private volatile long lastInsertNodeEventCountSmoothingTime = Long.MIN_VALUE;
   private final Meter insertNodeEventCountMeter =
@@ -249,6 +250,14 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   public Timer getTsFileTransferTimer() {
     return tsfileTransferTimer;
+  }
+
+  public void setTabletTransferTimer(Timer tabletTransferTimer) {
+    this.tabletTransferTimer = tabletTransferTimer;
+  }
+
+  public Timer getTabletTransferTimer() {
+    return tabletTransferTimer;
   }
 
   //////////////////////////// Switch ////////////////////////////
