@@ -383,7 +383,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus setDatabase(TDatabaseSchema databaseSchema) {
-
     TSStatus errorResp = null;
     boolean isSystemDatabase = databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
 
