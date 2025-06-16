@@ -48,10 +48,10 @@ public class IoTDBStopNodeIT {
   private final Logger logger = LoggerFactory.getLogger(IoTDBStopNodeIT.class);
 
   /**
-   * When the wal size exceeds `walThrottleSize` * 0.8, the timed wal-delete-thread will try deleting wal forever,
-   * which will block the DataNode from exiting, because task of deleting wal submitted by the ShutdownHook cannot be
-   * executed.
-   * This test ensures that this blocking is fixed.
+   * When the wal size exceeds `walThrottleSize` * 0.8, the timed wal-delete-thread will try
+   * deleting wal forever, which will block the DataNode from exiting, because task of deleting wal
+   * submitted by the ShutdownHook cannot be executed. This test ensures that this blocking is
+   * fixed.
    */
   @Test
   public void testWalThrottleStuck()
