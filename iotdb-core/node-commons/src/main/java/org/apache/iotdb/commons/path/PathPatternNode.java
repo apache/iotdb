@@ -291,7 +291,9 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> impleme
         + RamUsageEstimator.sizeOf(name)
         + children.size() * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
         + children.values().stream().map(PathPatternNode::ramBytesUsed).reduce(0L, Long::sum)
-        + valueSet.stream().map(serializer::ramBytesUsed).reduce(0L, Long::sum)
+        + (Objects.nonNull(valueSet)
+            ? valueSet.stream().map(serializer::ramBytesUsed).reduce(0L, Long::sum)
+            : 0L)
         + (long) childrenNamesWithNonTrivialWildcard.size()
             * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
   }
