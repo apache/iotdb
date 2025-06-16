@@ -469,7 +469,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     // Use hybrid mode by default
     if (!parameters.hasAnyAttributes(EXTRACTOR_MODE_STREAMING_KEY, SOURCE_MODE_STREAMING_KEY)
         && !parameters.hasAnyAttributes(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
-      checkWalEnableAndSetCompressed(parameters);
+      checkWalEnableAndSetUncompressed(parameters);
       realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
       LOGGER.info(
           "Pipe: '{}' ('{}') and '{}' ('{}') is not set, use hybrid mode by default.",
@@ -486,7 +486,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
               Arrays.asList(EXTRACTOR_MODE_STREAMING_KEY, SOURCE_MODE_STREAMING_KEY),
               EXTRACTOR_MODE_STREAMING_DEFAULT_VALUE);
       if (isStreamingMode) {
-        checkWalEnableAndSetCompressed(parameters);
+        checkWalEnableAndSetUncompressed(parameters);
         realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
       } else {
         realtimeExtractor = new PipeRealtimeDataRegionTsFileExtractor();
@@ -502,15 +502,15 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       case EXTRACTOR_REALTIME_MODE_HYBRID_VALUE:
       case EXTRACTOR_REALTIME_MODE_LOG_VALUE:
       case EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE:
-        checkWalEnableAndSetCompressed(parameters);
+        checkWalEnableAndSetUncompressed(parameters);
         realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
         break;
       case EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE:
-        checkWalEnableAndSetCompressed(parameters);
+        checkWalEnableAndSetUncompressed(parameters);
         realtimeExtractor = new PipeRealtimeDataRegionLogExtractor();
         break;
       default:
-        checkWalEnableAndSetCompressed(parameters);
+        checkWalEnableAndSetUncompressed(parameters);
         realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
         if (LOGGER.isWarnEnabled()) {
           LOGGER.warn(
@@ -520,7 +520,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     }
   }
 
-  private void checkWalEnableAndSetCompressed(final PipeParameters parameters)
+  private void checkWalEnableAndSetUncompressed(final PipeParameters parameters)
       throws IllegalPathException {
     if (Boolean.TRUE.equals(
             DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters)
