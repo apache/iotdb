@@ -40,7 +40,6 @@ import org.apache.iotdb.db.exception.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
-import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -312,10 +311,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private boolean checkBeforeAnalyzeFileByFile(Analysis analysis) {
     // check if the system is read only
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
-      return false;
+      LOGGER.info(
+          "LoadTsFileAnalyzer: Current datanode is read only, will try to convert to tablets and insert later.");
     }
 
     return true;
