@@ -248,7 +248,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .decreaseRawTabletEventCount(pipeName, creationTime);
+          .decreaseRawTabletEventCount(pipeName, creationTime, System.nanoTime() - extractedTime);
     }
     allocatedMemoryBlock.close();
 

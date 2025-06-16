@@ -158,6 +158,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             operator.getPipeName()));
+
+    operator.setTsFileTransferTimer(
+        metricService.getOrCreateTimer(
+            Metric.PIPE_TABLET_EVENT_TRANSFER_TIME.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            operator.getPipeName()));
   }
 
   public boolean mayRemainingInsertEventExceedLimit(final String pipeID) {
@@ -248,6 +255,11 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_TSFILE_EVENT_TRANSFER_TIME.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName());
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_TABLET_EVENT_TRANSFER_TIME.toString(),
         Tag.NAME.toString(),
         operator.getPipeName());
     remainingEventAndTimeOperatorMap.remove(pipeID);
