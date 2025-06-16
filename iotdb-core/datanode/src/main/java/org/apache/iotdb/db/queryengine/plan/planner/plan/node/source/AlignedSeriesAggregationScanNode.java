@@ -99,6 +99,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
+  // used by clone & deserialize
   public AlignedSeriesAggregationScanNode(
       PlanNodeId id,
       AlignedPath alignedPath,
@@ -109,14 +110,12 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
       @Nullable GroupByTimeParameter groupByTimeParameter,
       TRegionReplicaSet dataRegionReplicaSet,
       byte descriptorType) {
-    this(
-        id,
-        alignedPath,
-        aggregationDescriptorList,
-        scanOrder,
-        pushDownPredicate,
-        groupByTimeParameter,
-        dataRegionReplicaSet);
+    super(id, aggregationDescriptorList);
+    this.alignedPath = alignedPath;
+    this.scanOrder = scanOrder;
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.pushDownPredicate = pushDownPredicate;
+    this.regionReplicaSet = dataRegionReplicaSet;
     setOutputEndTime(outputEndTime);
     setDescriptorType(descriptorType);
   }
