@@ -328,22 +328,22 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     final ISchemaRegionStatistics statistics = schemaRegion.getSchemaRegionStatistics();
     final String tableName = table.getTableName();
     final long devicesNumber = statistics.getTableDevicesNumber(tableName);
-    return devicePatternList.stream()
-            .allMatch(
-                path ->
-                    ((ExtendedPartialPath) path).isNormalPath()
-                        && Arrays.stream(path.getNodes()).noneMatch(PathPatternUtil::hasWildcard))
+    return !TreeViewSchema.isTreeViewTable(table)
+            && devicePatternList.stream()
+                .allMatch(
+                    path ->
+                        ((ExtendedPartialPath) path).isNormalPath()
+                            && Arrays.stream(path.getNodes())
+                                .noneMatch(PathPatternUtil::hasWildcard))
         ? Math.min(
             TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
             devicePatternList.stream()
                     .map(
                         devicePattern ->
-                            devicePattern.getNodeLength() > 3
-                                ? Arrays.stream(
-                                        devicePattern.getNodes(), 3, devicePattern.getNodeLength())
-                                    .map(RamUsageEstimator::sizeOf)
-                                    .reduce(0L, Long::sum)
-                                : 0L)
+                            Arrays.stream(
+                                    devicePattern.getNodes(), 3, devicePattern.getNodeLength())
+                                .map(RamUsageEstimator::sizeOf)
+                                .reduce(0L, Long::sum))
                     .reduce(0L, Long::sum)
                 + (devicesNumber > 0
                     ? devicePatternList.size()
