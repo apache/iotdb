@@ -53,9 +53,6 @@ public class CreateTrainingTask implements IConfigTask {
       String existingModelId,
       List<String> targetTables,
       List<String> targetDbs) {
-    if (!modelType.equalsIgnoreCase("timer_xl")) {
-      throw new UnsupportedOperationException("Only TimerXL model is supported now.");
-    }
     this.modelId = modelId;
     this.modelType = modelType;
     this.parameters = parameters;
@@ -76,9 +73,6 @@ public class CreateTrainingTask implements IConfigTask {
       List<List<Long>> timeRanges,
       String existingModelId,
       List<String> targetPaths) {
-    if (!modelType.equalsIgnoreCase("timer_xl")) {
-      throw new UnsupportedOperationException("Only TimerXL model is supported now.");
-    }
     this.modelId = modelId;
     this.modelType = modelType;
     this.parameters = parameters;
