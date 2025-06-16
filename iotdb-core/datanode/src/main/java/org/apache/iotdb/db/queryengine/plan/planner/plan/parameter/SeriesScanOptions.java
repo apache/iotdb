@@ -49,6 +49,7 @@ public class SeriesScanOptions {
 
   private final boolean pushLimitToEachDevice;
   private PaginationController paginationController;
+  private boolean isTableViewForTreeModel;
   private long ttlForTableView = Long.MAX_VALUE;
 
   public SeriesScanOptions(
@@ -57,13 +58,15 @@ public class SeriesScanOptions {
       long pushDownLimit,
       long pushDownOffset,
       Set<String> allSensors,
-      boolean pushLimitToEachDevice) {
+      boolean pushLimitToEachDevice,
+      boolean isTableViewForTreeModel) {
     this.globalTimeFilter = globalTimeFilter;
     this.pushDownFilter = pushDownFilter;
     this.pushDownLimit = pushDownLimit;
     this.pushDownOffset = pushDownOffset;
     this.allSensors = allSensors;
     this.pushLimitToEachDevice = pushLimitToEachDevice;
+    this.isTableViewForTreeModel = isTableViewForTreeModel;
   }
 
   public static SeriesScanOptions getDefaultSeriesScanOptions(IFullPath seriesPath) {
@@ -145,6 +148,14 @@ public class SeriesScanOptions {
     return filter;
   }
 
+  public boolean isTableViewForTreeModel() {
+    return isTableViewForTreeModel;
+  }
+
+  public void setIsTableViewForTreeModel(boolean isTableViewForTreeModel) {
+    this.isTableViewForTreeModel = isTableViewForTreeModel;
+  }
+
   /**
    * pushLimitToEachDevice==false means that all devices return total limit rows.
    *
@@ -166,6 +177,7 @@ public class SeriesScanOptions {
     private Set<String> allSensors;
 
     private boolean pushLimitToEachDevice = true;
+    private boolean isTableViewForTreeModel = false;
 
     public Builder withGlobalTimeFilter(Filter globalTimeFilter) {
       this.globalTimeFilter = globalTimeFilter;
@@ -192,6 +204,11 @@ public class SeriesScanOptions {
       return this;
     }
 
+    public Builder withIsTableViewForTreeModel(boolean isTableViewForTreeModel) {
+      this.isTableViewForTreeModel = isTableViewForTreeModel;
+      return this;
+    }
+
     public void withAllSensors(Set<String> allSensors) {
       this.allSensors = allSensors;
     }
@@ -203,7 +220,8 @@ public class SeriesScanOptions {
           pushDownLimit,
           pushDownOffset,
           allSensors,
-          pushLimitToEachDevice);
+          pushLimitToEachDevice,
+          isTableViewForTreeModel);
     }
   }
 }

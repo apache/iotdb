@@ -59,6 +59,7 @@ public class RowComparator {
         }
         break;
       case INT32:
+      case DATE:
         int int1 = column.getInt(offset1);
         int int2 = column.getInt(offset2);
         if (int1 != int2) {
@@ -66,6 +67,7 @@ public class RowComparator {
         }
         break;
       case INT64:
+      case TIMESTAMP:
         long long1 = column.getLong(offset1);
         long long2 = column.getLong(offset2);
         if (long1 != long2) {
@@ -86,7 +88,9 @@ public class RowComparator {
           return false;
         }
         break;
+      case STRING:
       case TEXT:
+      case BLOB:
         Binary bin1 = column.getBinary(offset1);
         Binary bin2 = column.getBinary(offset2);
         if (!bin1.equals(bin2)) {
@@ -126,6 +130,7 @@ public class RowComparator {
         }
         break;
       case INT32:
+      case DATE:
         int int1 = column.getInt(offset1);
         int int2 = column.getInt(offset2);
         if (int1 != int2) {
@@ -133,6 +138,7 @@ public class RowComparator {
         }
         break;
       case INT64:
+      case TIMESTAMP:
         long long1 = column.getLong(offset1);
         long long2 = column.getLong(offset2);
         if (long1 != long2) {
@@ -154,6 +160,8 @@ public class RowComparator {
         }
         break;
       case TEXT:
+      case STRING:
+      case BLOB:
         Binary bin1 = column.getBinary(offset1);
         Binary bin2 = column.getBinary(offset2);
         if (!bin1.equals(bin2)) {
@@ -182,6 +190,7 @@ public class RowComparator {
           }
           break;
         case INT32:
+        case DATE:
           int int1 = column1.getInt(offset1);
           int int2 = column2.getInt(offset2);
           if (int1 != int2) {
@@ -189,6 +198,7 @@ public class RowComparator {
           }
           break;
         case INT64:
+        case TIMESTAMP:
           long long1 = column1.getLong(offset1);
           long long2 = column2.getLong(offset2);
           if (long1 != long2) {
@@ -210,6 +220,8 @@ public class RowComparator {
           }
           break;
         case TEXT:
+        case STRING:
+        case BLOB:
           Binary bin1 = column1.getBinary(offset1);
           Binary bin2 = column2.getBinary(offset2);
           if (!bin1.equals(bin2)) {

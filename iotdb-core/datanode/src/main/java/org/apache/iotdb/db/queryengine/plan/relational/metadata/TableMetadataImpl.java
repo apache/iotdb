@@ -661,7 +661,14 @@ public class TableMetadataImpl implements Metadata {
                   "Second argument of Aggregate functions [%s] should be numberic type and do not use expression",
                   functionName));
         }
-
+        break;
+      case SqlConstant.APPROX_MOST_FREQUENT:
+        if (argumentTypes.size() != 3) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should only have three arguments", functionName));
+        }
+        break;
       case SqlConstant.COUNT:
         break;
       default:
@@ -695,6 +702,66 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
         return DOUBLE;
+      case SqlConstant.APPROX_MOST_FREQUENT:
+        return STRING;
+      default:
+        // ignore
+    }
+
+    // builtin window function
+    // check argument type
+    switch (functionName.toLowerCase(Locale.ENGLISH)) {
+      case SqlConstant.NTILE:
+        if (argumentTypes.size() != 1) {
+          throw new SemanticException(
+              String.format("Window function [%s] should only have one argument", functionName));
+        }
+        break;
+      case SqlConstant.NTH_VALUE:
+        if (argumentTypes.size() != 2 || !isIntegerNumber(argumentTypes.get(1))) {
+          throw new SemanticException(
+              "Window function [nth_value] should only have two argument, and second argument must be integer type");
+        }
+        break;
+      case SqlConstant.TABLE_FIRST_VALUE:
+      case SqlConstant.TABLE_LAST_VALUE:
+        if (argumentTypes.size() != 1) {
+          throw new SemanticException(
+              String.format("Window function [%s] should only have one argument", functionName));
+        }
+      case SqlConstant.LEAD:
+      case SqlConstant.LAG:
+        if (argumentTypes.isEmpty() || argumentTypes.size() > 3) {
+          throw new SemanticException(
+              String.format(
+                  "Window function [%s] should only have one to three argument", functionName));
+        }
+        if (argumentTypes.size() >= 2 && !isIntegerNumber(argumentTypes.get(1))) {
+          throw new SemanticException(
+              String.format(
+                  "Window function [%s]'s second argument must be integer type", functionName));
+        }
+        break;
+      default:
+        // ignore
+    }
+
+    // get return type
+    switch (functionName.toLowerCase(Locale.ENGLISH)) {
+      case SqlConstant.RANK:
+      case SqlConstant.DENSE_RANK:
+      case SqlConstant.ROW_NUMBER:
+      case SqlConstant.NTILE:
+        return INT64;
+      case SqlConstant.PERCENT_RANK:
+      case SqlConstant.CUME_DIST:
+        return DOUBLE;
+      case SqlConstant.TABLE_FIRST_VALUE:
+      case SqlConstant.TABLE_LAST_VALUE:
+      case SqlConstant.NTH_VALUE:
+      case SqlConstant.LEAD:
+      case SqlConstant.LAG:
+        return argumentTypes.get(0);
       default:
         // ignore
     }
@@ -784,11 +851,11 @@ public class TableMetadataImpl implements Metadata {
       TableSchema tableSchema,
       MPPQueryContext context,
       boolean allowCreateTable,
-      boolean isStrictIdColumn)
+      boolean isStrictTagColumn)
       throws LoadAnalyzeTableColumnDisorderException {
     return TableHeaderSchemaValidator.getInstance()
         .validateTableHeaderSchema(
-            database, tableSchema, context, allowCreateTable, isStrictIdColumn);
+            database, tableSchema, context, allowCreateTable, isStrictTagColumn);
   }
 
   @Override

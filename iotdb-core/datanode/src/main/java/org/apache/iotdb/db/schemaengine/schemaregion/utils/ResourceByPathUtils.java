@@ -337,6 +337,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
             context, alignedMemChunk, modsToMemtable == null, globalTimeFilter);
 
     // column index list for the query
+    // Columns with inconsistent types will be ignored and set -1
     List<Integer> columnIndexList =
         alignedMemChunk.buildColumnIndexList(alignedFullPath.getSchemaList());
 
@@ -514,6 +515,10 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     }
     IWritableMemChunk memChunk =
         memTableMap.get(deviceID).getMemChunkMap().get(fullPath.getMeasurement());
+    // check If data type matches
+    if (memChunk.getSchema().getType() != fullPath.getMeasurementSchema().getType()) {
+      return null;
+    }
     // prepare TVList for query. It should clone TVList if necessary.
     Map<TVList, Integer> tvListQueryMap =
         prepareTvListMapForQuery(context, memChunk, modsToMemtable == null, globalTimeFilter);
