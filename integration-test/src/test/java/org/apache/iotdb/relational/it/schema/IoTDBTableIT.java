@@ -783,7 +783,7 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create timeSeries root.\"重庆\".b.d.s1 int32");
+      statement.execute("create timeSeries root.`重庆`.b.d.s1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -808,13 +808,13 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("drop timeSeries root.\"重庆\".b.d.s1");
+      statement.execute("drop timeSeries root.`重庆`.b.d.s1");
       statement.execute("create device template t1 (S1 boolean, s9 int32)");
-      statement.execute("set schema template t1 to root.\"重庆\".b.d");
-      statement.execute("create timeSeries root.\"重庆\".b.c.f.g.h.S1 int32");
+      statement.execute("set schema template t1 to root.`重庆`.b.d");
+      statement.execute("create timeSeries root.`重庆`.b.c.f.g.h.S1 int32");
 
       // Put schema cache
-      statement.execute("select S1, s2 from root.\"重庆\".b.c");
+      statement.execute("select S1, s2 from root.`重庆`.b.c");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -846,7 +846,7 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create timeSeries root.\"重庆\".b.e.s1 int32");
+      statement.execute("create timeSeries root.`重庆`.b.e.s1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -930,7 +930,7 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       // Test create & replace + restrict
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.`重庆`.**");
       fail();
     } catch (final SQLException e) {
       assertTrue(
@@ -980,7 +980,7 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("grant read_schema on root.\"重庆\".** to user testUser");
+      statement.execute("grant read_schema on root.`重庆`.** to user testUser");
     } catch (final SQLException e) {
       fail(e.getMessage());
     }
@@ -999,7 +999,7 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("grant read_data on root.\"重庆\".** to user testUser");
+      statement.execute("grant read_data on root.`重庆`.** to user testUser");
     } catch (final SQLException e) {
       fail(e.getMessage());
     }
