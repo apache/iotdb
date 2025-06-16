@@ -26,6 +26,7 @@ struct TLogEntry {
   1: required list<binary> data
   2: required i64 searchIndex
   3: required bool fromWAL
+  4: required i64 memorySize
 }
 
 struct TSyncLogEntriesReq {
