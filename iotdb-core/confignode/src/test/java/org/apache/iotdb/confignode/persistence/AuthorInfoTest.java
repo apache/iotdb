@@ -233,7 +233,7 @@ public class AuthorInfoTest {
             "user0",
             "",
             "",
-            "newpwd",
+            "newpwd123456",
             new HashSet<>(),
             false,
             new ArrayList<>());

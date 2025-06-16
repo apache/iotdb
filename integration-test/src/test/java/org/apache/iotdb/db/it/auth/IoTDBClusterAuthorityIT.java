@@ -258,7 +258,7 @@ public class IoTDBClusterAuthorityIT {
               "tempuser0",
               "",
               "",
-              "newpwd",
+              "newpwd123456",
               new HashSet<>(),
               false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
