@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -41,7 +42,6 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.client.ainode.AINodeClient;
 import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
-import org.apache.iotdb.commons.client.ainode.AINodeInfo;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -136,6 +136,7 @@ import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
@@ -2671,7 +2672,7 @@ public class ConfigManager implements IManager {
       }
     }
     for (String tableName : dataSchemaForTable.getTableList()) {
-      dataSchemaList.add(new IDataSchema(dataSchemaForTable.curDatabase + DOT + tableName));
+      dataSchemaList.add(new IDataSchema(tableName));
     }
     return dataSchemaList;
   }
@@ -2685,7 +2686,7 @@ public class ConfigManager implements IManager {
 
     TTrainingReq trainingReq = new TTrainingReq();
     trainingReq.setModelId(req.getModelId());
-    trainingReq.setModelType("timer_xl");
+    trainingReq.setModelType("sundial");
     if (req.existingModelId != null) {
       trainingReq.setExistingModelId(req.getExistingModelId());
     }
@@ -2710,8 +2711,11 @@ public class ConfigManager implements IManager {
       updateModelInfo(new TUpdateModelInfoReq(req.modelId, ModelStatus.TRAINING.ordinal()));
       trainingReq.setTargetDataSchema(dataSchema);
 
+      TAINodeInfo registeredAINode = getNodeManager().getRegisteredAINodeInfoList().get(0);
+      TEndPoint targetAINodeEndPoint =
+          new TEndPoint(registeredAINode.getInternalAddress(), registeredAINode.getInternalPort());
       try (AINodeClient client =
-          AINodeClientManager.getInstance().borrowClient(AINodeInfo.endPoint)) {
+          AINodeClientManager.getInstance().borrowClient(targetAINodeEndPoint)) {
         status = client.createTrainingTask(trainingReq);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new IllegalArgumentException(status.message);

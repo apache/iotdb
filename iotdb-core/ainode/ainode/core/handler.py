@@ -16,6 +16,8 @@
 # under the License.
 #
 
+from ainode.core.constant import TSStatusCode
+from ainode.core.log import Logger
 from ainode.core.manager.cluster_manager import ClusterManager
 from ainode.core.manager.inference_manager import InferenceManager
 from ainode.core.manager.model_manager import ModelManager
@@ -32,6 +34,8 @@ from ainode.thrift.ainode.ttypes import (
     TTrainingReq,
 )
 from ainode.thrift.common.ttypes import TSStatus
+
+logger = Logger()
 
 
 class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
