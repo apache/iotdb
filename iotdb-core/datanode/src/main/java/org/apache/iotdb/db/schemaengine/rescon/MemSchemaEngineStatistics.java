@@ -133,8 +133,8 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   }
 
   @Override
-  public Map<String, Long> getTableDeviceNumber() {
-    return tableDeviceNumber;
+  public long getTableDeviceNumber(final String tableName) {
+    return tableDeviceNumber.get(tableName);
   }
 
   @Override

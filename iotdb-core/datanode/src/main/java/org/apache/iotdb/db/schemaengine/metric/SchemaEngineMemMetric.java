@@ -44,7 +44,7 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
 
   private final MemSchemaEngineStatistics engineStatistics;
 
-  public SchemaEngineMemMetric(MemSchemaEngineStatistics engineStatistics) {
+  public SchemaEngineMemMetric(final MemSchemaEngineStatistics engineStatistics) {
     this.engineStatistics = engineStatistics;
   }
 
@@ -100,8 +100,18 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         SCHEMA_CONSENSUS);
   }
 
+  public void bindTableMetrics(final AbstractMetricService metricService, final String tableName) {
+    metricService.createAutoGauge(
+        Metric.SCHEMA_ENGINE.toString(),
+        MetricLevel.IMPORTANT,
+        engineStatistics,
+        statistics -> statistics.getTableDeviceNumber(tableName),
+        Tag.NAME.toString(),
+        DEVICE_NUMBER);
+  }
+
   @Override
-  public void unbindFrom(AbstractMetricService metricService) {
+  public void unbindFrom(final AbstractMetricService metricService) {
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), DEVICE_NUMBER);
     metricService.remove(
@@ -123,6 +133,8 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
     metricService.remove(
         MetricType.GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), SCHEMA_CONSENSUS);
   }
+
+  public static void unbindTableMetrics() {}
 
   /**
    * Encode SchemaRegionConsensusProtocol to ordinal.
