@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
@@ -174,9 +173,6 @@ public class CommonConfig {
   /** Disk Monitor. */
   private double diskSpaceWarningThreshold = 0.05;
 
-  /** Ip and port of target AI node. */
-  private TEndPoint targetAINodeEndPoint = new TEndPoint("127.0.0.1", 10810);
-
   /** Time partition origin in milliseconds. */
   private long timePartitionOrigin = 0;
 
@@ -250,7 +246,9 @@ public class CommonConfig {
   private int pipeAsyncConnectorSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
   private int pipeAsyncConnectorMaxClientNumber =
-      Math.max(16, Runtime.getRuntime().availableProcessors() / 2);
+      Math.max(32, Runtime.getRuntime().availableProcessors() * 2);
+  private int pipeAsyncConnectorMaxTsFileClientNumber =
+      Math.max(16, Runtime.getRuntime().availableProcessors());
 
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
   private int rateLimiterHotReloadCheckIntervalMs = 1000;
@@ -331,10 +329,10 @@ public class CommonConfig {
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
   private int subscriptionSubtaskExecutorMaxThreadNum = 2;
 
-  private int subscriptionPrefetchTabletBatchMaxDelayInMs = 1000; // 1s
-  private long subscriptionPrefetchTabletBatchMaxSizeInBytes = 16 * MB;
-  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 5000; // 5s
-  private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 80 * MB;
+  private int subscriptionPrefetchTabletBatchMaxDelayInMs = 20; // 1s
+  private long subscriptionPrefetchTabletBatchMaxSizeInBytes = MB;
+  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 1000; // 5s
+  private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 2 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionDefaultTimeoutInMs = 10_000; // 10s
   private long subscriptionLaunchRetryIntervalMs = 1000;
@@ -661,14 +659,6 @@ public class CommonConfig {
 
   public void setStatusReason(String statusReason) {
     this.statusReason = statusReason;
-  }
-
-  public TEndPoint getTargetAINodeEndPoint() {
-    return targetAINodeEndPoint;
-  }
-
-  public void setTargetAINodeEndPoint(TEndPoint targetAINodeEndPoint) {
-    this.targetAINodeEndPoint = targetAINodeEndPoint;
   }
 
   public int getTTimePartitionSlotTransmitLimit() {
@@ -1133,6 +1123,20 @@ public class CommonConfig {
     this.pipeAsyncConnectorMaxClientNumber = pipeAsyncConnectorMaxClientNumber;
     logger.info(
         "pipeAsyncConnectorMaxClientNumber is set to {}.", pipeAsyncConnectorMaxClientNumber);
+  }
+
+  public int getPipeAsyncConnectorMaxTsFileClientNumber() {
+    return pipeAsyncConnectorMaxTsFileClientNumber;
+  }
+
+  public void setPipeAsyncConnectorMaxTsFileClientNumber(
+      int pipeAsyncConnectorMaxTsFileClientNumber) {
+    if (this.pipeAsyncConnectorMaxTsFileClientNumber == pipeAsyncConnectorMaxTsFileClientNumber) {
+      return;
+    }
+    this.pipeAsyncConnectorMaxTsFileClientNumber = pipeAsyncConnectorMaxTsFileClientNumber;
+    logger.info(
+        "pipeAsyncConnectorMaxClientNumber is set to {}.", pipeAsyncConnectorMaxTsFileClientNumber);
   }
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
