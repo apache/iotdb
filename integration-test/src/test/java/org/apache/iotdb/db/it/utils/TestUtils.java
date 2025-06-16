@@ -623,7 +623,8 @@ public class TestUtils {
   public static void assertResultSetEqual(
       final ResultSet actualResultSet,
       final String expectedHeader,
-      final Collection<String> expectedResult) {
+      final Collection<String> expectedResult,
+      final boolean printResult) {
     try {
       final ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
       final StringBuilder header = new StringBuilder();
@@ -631,22 +632,49 @@ public class TestUtils {
         header.append(resultSetMetaData.getColumnName(i)).append(",");
       }
       assertEquals(expectedHeader, header.toString());
+      if (printResult) {
+        System.out.println(header);
+      }
 
       final Collection<String> actualRetSet =
           expectedResult instanceof Set ? new HashSet<>() : new ArrayList<>();
 
+      int rowCount = 0;
       while (actualResultSet.next()) {
+        if (printResult) {
+          System.out.println("Row " + rowCount++);
+        }
         StringBuilder builder = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           builder.append(actualResultSet.getString(i)).append(",");
+          if (printResult) {
+            System.out.println(
+                "Column "
+                    + i
+                    + "("
+                    + resultSetMetaData.getColumnName(i)
+                    + ")"
+                    + ": "
+                    + actualResultSet.getString(i));
+          }
         }
         actualRetSet.add(builder.toString());
+        if (printResult) {
+          System.out.println(builder);
+        }
       }
       assertEquals(expectedResult, actualRetSet);
     } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));
     }
+  }
+
+  public static void assertResultSetEqual(
+      final ResultSet actualResultSet,
+      final String expectedHeader,
+      final Collection<String> expectedResult) {
+    assertResultSetEqual(actualResultSet, expectedHeader, expectedResult, false);
   }
 
   public static void assertResultSetEqual(

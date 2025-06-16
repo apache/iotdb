@@ -743,7 +743,8 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select data_region_num from information_schema.data_nodes"),
           "data_region_num,",
-          Collections.singleton("1,"));
+          Collections.singleton("1,"),
+          true);
     }
   }
 
