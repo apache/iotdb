@@ -511,6 +511,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<IMeasurementSchema> measurementSchemas = commonParameter.measurementSchemas;
     List<String> measurementColumnNames = commonParameter.measurementColumnNames;
     List<ColumnSchema> fullColumnSchemas = commonParameter.columnSchemas;
+    List<Symbol> symbolInputs = commonParameter.symbolInputs;
     int[] columnsIndexArray = commonParameter.columnsIndexArray;
 
     boolean isSingleColumn = measurementSchemas.size() == 1;
@@ -816,7 +817,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             for (int i = 0; i < fullColumnSchemas.size(); i++) {
               ColumnSchema columnSchema = fullColumnSchemas.get(i);
               symbolInputLocationMap
-                  .computeIfAbsent(new Symbol(columnSchema.getName()), key -> new ArrayList<>())
+                  .computeIfAbsent(
+                      new Symbol(symbolInputs.get(i).getName()), key -> new ArrayList<>())
                   .add(new InputLocation(0, i));
               inputDataTypeList.add(getTSDataType(columnSchema.getType()));
             }
@@ -868,6 +870,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     List<Symbol> outputColumnNames;
     List<ColumnSchema> columnSchemas;
+    List<Symbol> symbolInputs;
     int[] columnsIndexArray;
     Map<Symbol, ColumnSchema> columnSchemaMap;
     Map<Symbol, Integer> tagAndAttributeColumnsIndexMap;
@@ -886,6 +889,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       int outputColumnCount =
           keepNonOutputMeasurementColumns ? node.getAssignments().size() : outputColumnNames.size();
       columnSchemas = new ArrayList<>(outputColumnCount);
+      symbolInputs = new ArrayList<>(outputColumnCount);
       columnsIndexArray = new int[outputColumnCount];
       columnSchemaMap = node.getAssignments();
       tagAndAttributeColumnsIndexMap = node.getTagAndAttributeIndexMap();
@@ -900,6 +904,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         ColumnSchema schema =
             requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
 
+        symbolInputs.add(columnName);
         switch (schema.getColumnCategory()) {
           case TAG:
           case ATTRIBUTE:
@@ -938,6 +943,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           if (keepNonOutputMeasurementColumns) {
             columnSchemas.add(entry.getValue());
             columnsIndexArray[idx++] = measurementColumnCount;
+            symbolInputs.add(entry.getKey());
           }
           measurementColumnCount++;
           String realMeasurementName =
@@ -952,13 +958,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         } else if (entry.getValue().getColumnCategory() == TIME) {
           timeColumnName = entry.getKey().getName();
           // for non aligned series table view scan, here the time column will not be obtained
-          // through
-          // this structure, but we need to ensure that the length of columnSchemas is consistent
-          // with
-          // the length of columnsIndexArray
+          // through this structure, but we need to ensure that the length of columnSchemas is
+          // consistent with the length of columnsIndexArray
           if (keepNonOutputMeasurementColumns && !addedTimeColumn) {
             columnSchemas.add(entry.getValue());
             columnsIndexArray[idx++] = -1;
+            symbolInputs.add(entry.getKey());
           }
         }
       }
