@@ -776,6 +776,9 @@ public class IoTDBTableIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      statement.execute("create database tree_view_db");
+      statement.execute("use tree_view_db");
+
       try {
         statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.**");
         fail();
@@ -784,9 +787,6 @@ public class IoTDBTableIT {
             "701: Cannot specify view pattern to match more than one tree database.",
             e.getMessage());
       }
-
-      statement.execute("create database tree_view_db");
-      statement.execute("use tree_view_db");
       statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.a.**");
       statement.execute("drop view tree_table");
     }
