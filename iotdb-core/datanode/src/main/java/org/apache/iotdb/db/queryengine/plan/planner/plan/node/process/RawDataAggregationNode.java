@@ -89,6 +89,7 @@ public class RawDataAggregationNode extends SingleChildProcessNode {
     this.scanOrder = scanOrder;
   }
 
+  // used by clone & deserialize
   public RawDataAggregationNode(
       PlanNodeId id,
       List<AggregationDescriptor> aggregationDescriptorList,
@@ -98,7 +99,7 @@ public class RawDataAggregationNode extends SingleChildProcessNode {
       boolean outputEndTime,
       Ordering scanOrder) {
     super(id);
-    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
+    this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
     this.scanOrder = scanOrder;
     this.groupByParameter = groupByParameter;
