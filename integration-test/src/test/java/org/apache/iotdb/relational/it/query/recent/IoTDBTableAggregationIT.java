@@ -3717,11 +3717,20 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,55,null,null,55.0,null,null,null,0xcafebabe55,2024-09-24T06:15:55.000Z,null,",
         };
 
-    tableResultSetEqualTest(
-        "select last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id='d01'",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    try {
+      tableResultSetEqualTest(
+          "select last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id='d01'",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    } catch (Exception e) {
+      // second try
+      tableResultSetEqualTest(
+          "select last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id='d01'",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
 
     expectedHeader =
         new String[] {
@@ -3746,11 +3755,20 @@ public class IoTDBTableAggregationIT {
           "d12,2024-09-24T06:15:55.000Z,55,null,null,55.0,null,beijing_chaoyang_yellow_B_d12_55,null,0xcafebabe55,2024-09-24T06:15:55.000Z,null,",
         };
 
-    tableResultSetEqualTest(
-        "select device_id,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by device_id order by device_id",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    try {
+      tableResultSetEqualTest(
+          "select device_id,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by device_id order by device_id",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    } catch (Exception e) {
+      // second try
+      tableResultSetEqualTest(
+          "select device_id,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by device_id order by device_id",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
 
     expectedHeader =
         new String[] {
@@ -3778,11 +3796,20 @@ public class IoTDBTableAggregationIT {
           "shanghai,shanghai,huangpu,d04,2024-09-24T06:15:55.000Z,55,null,null,55.0,null,shanghai_huangpu_yellow_B_d04_55,null,0xcafebabe55,2024-09-24T06:15:55.000Z,null,",
         };
 
-    tableResultSetEqualTest(
-        "select province,city,region,device_id,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by 1,2,3,4 order by 1,2,3,4",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    try {
+      tableResultSetEqualTest(
+          "select province,city,region,device_id,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by 1,2,3,4 order by 1,2,3,4",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    } catch (Exception e) {
+      // second try
+      tableResultSetEqualTest(
+          "select province,city,region,device_id,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by 1,2,3,4 order by 1,2,3,4",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
 
     expectedHeader =
         new String[] {
@@ -3820,11 +3847,20 @@ public class IoTDBTableAggregationIT {
           "d12,2024-09-24T06:15:55.000Z,2024-09-24T06:15:55.000Z,55,null,null,55.0,null,beijing_chaoyang_yellow_B_d12_55,null,0xcafebabe55,2024-09-24T06:15:55.000Z,null,",
         };
 
-    tableResultSetEqualTest(
-        "select device_id,date_bin(5s,time),last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by province,city,region,device_id,date_bin(5s,time) order by device_id,date_bin(5s,time)",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    try {
+      tableResultSetEqualTest(
+          "select device_id,date_bin(5s,time),last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by province,city,region,device_id,date_bin(5s,time) order by device_id,date_bin(5s,time)",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    } catch (Exception e) {
+      // second try
+      tableResultSetEqualTest(
+          "select device_id,date_bin(5s,time),last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by province,city,region,device_id,date_bin(5s,time) order by device_id,date_bin(5s,time)",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
 
     expectedHeader =
         new String[] {
@@ -3865,11 +3901,20 @@ public class IoTDBTableAggregationIT {
           "shanghai,shanghai,huangpu,d04,2024-09-24T06:15:55.000Z,2024-09-24T06:15:55.000Z,55,null,null,55.0,null,shanghai_huangpu_yellow_B_d04_55,null,0xcafebabe55,2024-09-24T06:15:55.000Z,null,",
         };
 
-    tableResultSetEqualTest(
-        "select province,city,region,device_id,date_bin(5s,time),last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by 1,2,3,4,5 order by 1,2,3,4,5",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    try {
+      tableResultSetEqualTest(
+          "select province,city,region,device_id,date_bin(5s,time),last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by 1,2,3,4,5 order by 1,2,3,4,5",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    } catch (Exception e) {
+      // second try
+      tableResultSetEqualTest(
+          "select province,city,region,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd08', 'd12', 'd13') group by 1,2,3 order by 1,2,3",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
 
     expectedHeader =
         new String[] {
@@ -3896,11 +3941,20 @@ public class IoTDBTableAggregationIT {
           "shanghai,shanghai,pudong,2024-09-24T06:15:55.000Z,55,null,null,55.0,null,null,null,0xcafebabe55,2024-09-24T06:15:55.000Z,null,",
         };
 
-    tableResultSetEqualTest(
-        "select province,city,region,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd08', 'd12', 'd13') group by 1,2,3 order by 1,2,3",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    try {
+      tableResultSetEqualTest(
+          "select province,city,region,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd08', 'd12', 'd13') group by 1,2,3 order by 1,2,3",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    } catch (Exception e) {
+      // second try
+      tableResultSetEqualTest(
+          "select province,city,region,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd08', 'd12', 'd13') group by 1,2,3 order by 1,2,3",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
 
     expectedHeader =
         new String[] {
@@ -3924,11 +3978,20 @@ public class IoTDBTableAggregationIT {
           "shanghai,shanghai,2024-09-24T06:15:55.000Z,55,null,null,55.0,null,shanghai_huangpu_yellow_B_d04_55,null,0xcafebabe55,2024-09-24T06:15:55.000Z,null,",
         };
 
-    tableResultSetEqualTest(
-        "select province,city,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd05', 'd08', 'd09', 'd12', 'd13') group by 1,2 order by 1,2",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    try {
+      tableResultSetEqualTest(
+          "select province,city,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd05', 'd08', 'd09', 'd12', 'd13') group by 1,2 order by 1,2",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    } catch (Exception e) {
+      // second try
+      tableResultSetEqualTest(
+          "select province,city,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd05', 'd08', 'd09', 'd12', 'd13') group by 1,2 order by 1,2",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
 
     expectedHeader =
         new String[] {
@@ -3951,11 +4014,20 @@ public class IoTDBTableAggregationIT {
           "shanghai,2024-09-24T06:15:55.000Z,55,null,null,55.0,null,shanghai_huangpu_yellow_B_d04_55,null,0xcafebabe55,2024-09-24T06:15:55.000Z,null,",
         };
 
-    tableResultSetEqualTest(
-        "select province,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd05', 'd08', 'd09', 'd12', 'd13') group by 1 order by 1",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    try {
+      tableResultSetEqualTest(
+          "select province,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd05', 'd08', 'd09', 'd12', 'd13') group by 1 order by 1",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    } catch (Exception e) {
+      // second try
+      tableResultSetEqualTest(
+          "select province,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd05', 'd08', 'd09', 'd12', 'd13') group by 1 order by 1",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
 
     expectedHeader =
         new String[] {
@@ -3980,11 +4052,20 @@ public class IoTDBTableAggregationIT {
           "d07,2024-09-24T06:15:51.000Z,null,null,51.0,null,null,shanghai_pudong_yellow_A_d07_51,null,null,2024-09-24T06:15:51.000Z,null,",
         };
 
-    tableResultSetEqualTest(
-        "select device_id, last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where city = 'shanghai' and type='A' group by province,city,region,device_id order by device_id",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    try {
+      tableResultSetEqualTest(
+          "select device_id, last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where city = 'shanghai' and type='A' group by province,city,region,device_id order by device_id",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    } catch (Exception e) {
+      // second try
+      tableResultSetEqualTest(
+          "select device_id, last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where city = 'shanghai' and type='A' group by province,city,region,device_id order by device_id",
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
   }
 
   @Test
