@@ -740,11 +740,16 @@ public class IoTDBDatabaseIT {
           "_col0,",
           Collections.singleton(EnvFactory.getEnv().getConfigNodeWrapperList().size() + ","));
 
+      Set<String> resultSet = new HashSet<>();
+      // data region created from writing password history
+      resultSet.add("1,");
+      for (int i = 1; i < EnvFactory.getEnv().getDataNodeWrapperList().size(); i++) {
+        resultSet.add("0,");
+      }
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select data_region_num from information_schema.data_nodes"),
           "data_region_num,",
-          Collections.singleton("1,"),
-          true);
+          resultSet);
     }
   }
 
