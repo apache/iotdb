@@ -764,10 +764,10 @@ public class IoTDBTableIT {
   public void testTreeViewTable() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create database root.\"重庆\".b");
-      statement.execute("create timeSeries root.\"重庆\".b.c.S1 int32");
-      statement.execute("create timeSeries root.\"重庆\".b.c.s2 string");
-      statement.execute("create timeSeries root.\"重庆\".b.S1 int32");
+      statement.execute("create database root.`重庆`.b");
+      statement.execute("create timeSeries root.`重庆`.b.c.S1 int32");
+      statement.execute("create timeSeries root.`重庆`.b.c.s2 string");
+      statement.execute("create timeSeries root.`重庆`.b.S1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
