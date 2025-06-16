@@ -29,7 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is used to record the global statistics of SchemaEngine in Memory mode. */
@@ -48,6 +50,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   private final AtomicLong totalMeasurementNumber = new AtomicLong(0);
   private final AtomicLong totalViewNumber = new AtomicLong(0);
   private final AtomicLong totalDeviceNumber = new AtomicLong(0);
+  private final ConcurrentMap<String, Long> tableDeviceNumber = new ConcurrentHashMap<>();
   private final Map<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
   private volatile boolean allowToCreateNewSeries = true;
 
@@ -130,6 +133,11 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   }
 
   @Override
+  public Map<String, Long> getTableDeviceNumber() {
+    return tableDeviceNumber;
+  }
+
+  @Override
   public int getSchemaRegionNumber() {
     return SchemaEngine.getInstance().getSchemaRegionNumber();
   }
@@ -184,6 +192,20 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   public void deleteDevice(long cnt) {
     totalDeviceNumber.addAndGet(-cnt);
+  }
+
+  public void addTableDevice(final String table) {
+    tableDeviceNumber.compute(table, (tableName, num) -> Objects.nonNull(num) ? num + 1 : 1L);
+  }
+
+  public void decreaseTableDevice(final String table, final long decrease) {
+    tableDeviceNumber.computeIfPresent(table, (tableName, num) -> num - decrease);
+  }
+
+  // Reset table device, will alter the schema statistics as well
+  public void resetTableDevice(final String table) {
+    final long num = tableDeviceNumber.remove(table);
+    totalDeviceNumber.addAndGet(-num);
   }
 
   @Override
