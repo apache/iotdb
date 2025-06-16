@@ -272,6 +272,7 @@ public class WALManager implements IService {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
       walDeleteThread = null;
     }
+    deleteOutdatedFilesInWALNodes();
     clear();
   }
 
