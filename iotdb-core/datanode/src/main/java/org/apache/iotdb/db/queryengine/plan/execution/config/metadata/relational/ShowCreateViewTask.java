@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
@@ -146,10 +145,10 @@ public class ShowCreateViewTask extends AbstractTableTask {
 
     final String[] pathNodes = TreeViewSchema.getPrefixPattern(table).getNodes();
     builder.append(pathNodes[0]);
-    for (int i=1; i<pathNodes.length-1; ++i) {
+    for (int i = 1; i < pathNodes.length - 1; ++i) {
       builder.append(".\"").append(pathNodes[i]).append("\"");
     }
-    builder.append(".").append(pathNodes[pathNodes.length-1]);
+    builder.append(".").append(pathNodes[pathNodes.length - 1]);
 
     return builder.toString();
   }
