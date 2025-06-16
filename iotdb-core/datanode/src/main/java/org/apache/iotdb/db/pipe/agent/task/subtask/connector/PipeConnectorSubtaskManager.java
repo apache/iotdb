@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeC
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -47,6 +48,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeConnectorSubtaskManager {
 
@@ -112,11 +114,16 @@ public class PipeConnectorSubtaskManager {
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
+      AtomicInteger counter = new AtomicInteger(0);
       // Shared pending queue for all subtasks
       final UnboundedBlockingPendingQueue<Event> pendingQueue =
           realTimeFirst
               ? new PipeRealtimePriorityBlockingQueue()
               : new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
+
+      if (realTimeFirst) {
+        ((PipeRealtimePriorityBlockingQueue) pendingQueue).setOfferTsFileCounter(counter);
+      }
 
       for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
         final PipeConnector pipeConnector =
@@ -128,6 +135,9 @@ public class PipeConnectorSubtaskManager {
         // 1. Construct, validate and customize PipeConnector, and then handshake (create
         // connection) with the target
         try {
+          if (pipeConnector instanceof IoTDBDataRegionAsyncConnector) {
+            ((IoTDBDataRegionAsyncConnector) pipeConnector).setTransferTsFileCounter(counter);
+          }
           pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
           pipeConnector.customize(
               pipeConnectorParameters, new PipeTaskRuntimeConfiguration(environment));

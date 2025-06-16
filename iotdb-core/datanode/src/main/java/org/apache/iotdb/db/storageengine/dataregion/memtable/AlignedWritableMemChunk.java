@@ -834,9 +834,18 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   public List<Integer> buildColumnIndexList(List<IMeasurementSchema> schemaList) {
     List<Integer> columnIndexList = new ArrayList<>();
-    for (IMeasurementSchema measurementSchema : schemaList) {
+    for (IMeasurementSchema requiredMeasurementSchema : schemaList) {
+      Integer measurementIndex =
+          measurementIndexMap.get(requiredMeasurementSchema.getMeasurementName());
+      if (measurementIndex == null) {
+        columnIndexList.add(-1);
+        continue;
+      }
+      IMeasurementSchema schemaInMemChunk = this.schemaList.get(measurementIndex);
       columnIndexList.add(
-          measurementIndexMap.getOrDefault(measurementSchema.getMeasurementName(), -1));
+          schemaInMemChunk.getType() == requiredMeasurementSchema.getType()
+              ? measurementIndex
+              : -1);
     }
     return columnIndexList;
   }

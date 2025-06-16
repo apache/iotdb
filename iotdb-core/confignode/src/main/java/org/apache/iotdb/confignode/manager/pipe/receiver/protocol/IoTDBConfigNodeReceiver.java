@@ -280,6 +280,11 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus checkPermission(final ConfigPhysicalPlan plan) {
+    TSStatus status = loginIfNecessary();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+
     switch (plan.getType()) {
       case CreateDatabase:
         return PathUtils.isTableModelDatabase(((DatabaseSchemaPlan) plan).getSchema().getName())
@@ -426,7 +431,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RevokeUser:
       case RevokeRole:
         for (final int permission : ((AuthorTreePlan) plan).getPermissions()) {
-          final TSStatus status =
+          status =
               configManager
                   .checkUserPrivilegeGrantOpt(
                       username,
@@ -447,7 +452,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RRevokeUserAny:
       case RRevokeRoleAny:
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
-          final TSStatus status =
+          status =
               configManager
                   .checkUserPrivileges(
                       username, new PrivilegeUnion(PrivilegeType.values()[permission], true, true))
@@ -462,7 +467,6 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RRevokeUserAll:
       case RRevokeRoleAll:
         for (PrivilegeType privilegeType : PrivilegeType.values()) {
-          final TSStatus status;
           if (privilegeType.isRelationalPrivilege()) {
             status =
                 configManager
@@ -486,7 +490,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RRevokeUserDBPriv:
       case RRevokeRoleDBPriv:
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
-          final TSStatus status =
+          status =
               configManager
                   .checkUserPrivileges(
                       username,
@@ -505,7 +509,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RRevokeUserTBPriv:
       case RRevokeRoleTBPriv:
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
-          final TSStatus status =
+          status =
               configManager
                   .checkUserPrivileges(
                       username,
@@ -525,7 +529,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RRevokeUserSysPri:
       case RRevokeRoleSysPri:
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
-          final TSStatus status =
+          status =
               configManager
                   .checkUserPrivileges(
                       username, new PrivilegeUnion(PrivilegeType.values()[permission], true))
@@ -978,9 +982,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     return configManager.getClusterManager().getClusterId();
   }
 
+  // The configNode will try to log in per plan because:
+  // 1. The number of plans at configNode is rather small.
+  // 2. The detection period (300s) is too long for configPlans.
   @Override
   protected boolean shouldLogin() {
-    return lastSuccessfulLoginTime == Long.MIN_VALUE || super.shouldLogin();
+    return true;
   }
 
   @Override

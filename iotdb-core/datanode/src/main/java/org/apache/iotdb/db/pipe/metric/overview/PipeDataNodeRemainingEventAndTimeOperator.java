@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.pipe.metric.overview;
 
-import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
+import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
 import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.codahale.metrics.Clock;
@@ -53,6 +55,9 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
   private final IoTDBHistogram collectInvocationHistogram =
       (IoTDBHistogram) IoTDBMetricManager.getInstance().createHistogram();
+
+  private Timer insertNodeTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer tsfileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private volatile long lastInsertNodeEventCountSmoothingTime = Long.MIN_VALUE;
   private final Meter insertNodeEventCountMeter =
@@ -106,7 +111,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       lastInsertNodeEventCountSmoothingTime = System.currentTimeMillis();
     }
     return PipeConfig.getInstance()
-        .getPipeRemainingTimeCommitRateAverageTime()
+        .getPipeRemainingInsertNodeCountAverage()
         .getMeterRate(insertNodeEventCountMeter);
   }
 
@@ -135,7 +140,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
    * @return The estimated remaining time
    */
   double getRemainingTime() {
-    final PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
+    final PipeRateAverage pipeRemainingTimeCommitRateAverageTime =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
     final double invocationValue = collectInvocationHistogram.getMean();
@@ -228,6 +233,22 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   void markTsFileCollectInvocationCount(final long collectInvocationCount) {
     // If collectInvocationCount == 0, the event will still be committed once
     collectInvocationHistogram.update(Math.max(collectInvocationCount, 1));
+  }
+
+  public void setInsertNodeTransferTimer(Timer insertNodeTransferTimer) {
+    this.insertNodeTransferTimer = insertNodeTransferTimer;
+  }
+
+  public Timer getInsertNodeTransferTimer() {
+    return insertNodeTransferTimer;
+  }
+
+  public void setTsFileTransferTimer(Timer tsFileTransferTimer) {
+    this.tsfileTransferTimer = tsFileTransferTimer;
+  }
+
+  public Timer getTsFileTransferTimer() {
+    return tsfileTransferTimer;
   }
 
   //////////////////////////// Switch ////////////////////////////

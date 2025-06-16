@@ -49,8 +49,8 @@ import java.util.Objects;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_CONSENSUS_BATCH_SIZE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PLAIN_BATCH_DELAY_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_DELAY_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_DELAY_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_SIZE_KEY;
@@ -60,7 +60,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConsensusTransferBatchReqBuilder.class);
 
-  protected final List<Event> events = new ArrayList<>();
+  protected final List<EnrichedEvent> events = new ArrayList<>();
   protected final List<Long> requestCommitIds = new ArrayList<>();
   protected final List<TPipeConsensusTransferReq> batchReqs = new ArrayList<>();
   // limit in delayed time
@@ -95,7 +95,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
     final long requestMaxBatchSizeInBytes =
         parameters.getLongOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
-            CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
+            CONNECTOR_IOTDB_CONSENSUS_BATCH_SIZE_DEFAULT_VALUE);
 
     allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
@@ -138,7 +138,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
     // The deduplication logic here is to avoid the accumulation of the same event in a batch when
     // retrying.
     if ((events.isEmpty() || !events.get(events.size() - 1).equals(event))) {
-      events.add(event);
+      events.add((EnrichedEvent) event);
       requestCommitIds.add(requestCommitId);
       final int bufferSize = buildTabletInsertionBuffer(event);
 
@@ -179,7 +179,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
     return batchReqs.isEmpty();
   }
 
-  public List<Event> deepCopyEvents() {
+  public List<EnrichedEvent> deepCopyEvents() {
     return new ArrayList<>(events);
   }
 

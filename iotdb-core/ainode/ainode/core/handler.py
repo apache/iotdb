@@ -20,9 +20,17 @@ from ainode.core.manager.cluster_manager import ClusterManager
 from ainode.core.manager.inference_manager import InferenceManager
 from ainode.core.manager.model_manager import ModelManager
 from ainode.thrift.ainode import IAINodeRPCService
-from ainode.thrift.ainode.ttypes import (TDeleteModelReq, TRegisterModelReq,
-                                         TAIHeartbeatReq, TInferenceReq, TRegisterModelResp, TInferenceResp,
-                                         TAIHeartbeatResp, TTrainingReq, TForecastReq)
+from ainode.thrift.ainode.ttypes import (
+    TAIHeartbeatReq,
+    TAIHeartbeatResp,
+    TDeleteModelReq,
+    TForecastReq,
+    TInferenceReq,
+    TInferenceResp,
+    TRegisterModelReq,
+    TRegisterModelResp,
+    TTrainingReq,
+)
 from ainode.thrift.common.ttypes import TSStatus
 
 

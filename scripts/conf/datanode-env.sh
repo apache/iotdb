@@ -327,9 +327,9 @@ fi
 
 
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Diotdb.jmx.local=$JMX_LOCAL"
-if [[ ! "$CONFIGNODE_JMX_OPTS" =~ -Xms ]]; then  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${ON_HEAP_MEMORY}"; fi
-if [[ ! "$CONFIGNODE_JMX_OPTS" =~ -Xmx ]]; then IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${ON_HEAP_MEMORY}"; fi
-if [[ ! "$CONFIGNODE_JMX_OPTS" =~ -XX:MaxDirectMemorySize= ]]; then IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY}"; fi
+if [[ ! "$IOTDB_JMX_OPTS" =~ -Xms ]]; then IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${ON_HEAP_MEMORY}"; fi
+if [[ ! "$IOTDB_JMX_OPTS" =~ -Xmx ]]; then IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${ON_HEAP_MEMORY}"; fi
+if [[ ! "$IOTDB_JMX_OPTS" =~ -XX:MaxDirectMemorySize= ]]; then IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY}"; fi
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFER_SIZE}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+CrashOnOutOfMemoryError"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UseAdaptiveSizePolicy"
