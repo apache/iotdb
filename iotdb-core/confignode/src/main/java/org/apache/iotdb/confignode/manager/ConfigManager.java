@@ -2835,7 +2835,7 @@ public class ConfigManager implements IManager {
               .size()
           > 1) {
         return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
-            .setMessage("Cannot specify view pattern to match more than one tree database");
+            .setMessage("Cannot specify view pattern to match more than one tree database.");
       }
       return procedureManager.createTableView(pair.left, pair.right, req.isReplace());
     } else {
