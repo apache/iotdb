@@ -39,9 +39,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftO
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
+
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -465,5 +468,21 @@ public class AggregationAlignByDeviceTest {
               "last_value(root.sg.d1.s2)",
               "max_time(root.sg.d1.s2)"));
     }
+
+    // order by time
+    sql = "select last_value(s1),last_value(s2)from root.sg.d1 order by time align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0);
+    assertTrue(firstFiRoot instanceof AggregationMergeSortNode);
+    assertTrue(firstFiRoot.getChildren().get(0) instanceof DeviceViewNode);
+    List<SortItem> sortItemList =
+        ((AggregationMergeSortNode) firstFiRoot).getMergeOrderParameter().getSortItemList();
+    assertEquals(sortItemList.get(0).getSortKey().toLowerCase(), "device");
+    assertEquals(sortItemList.get(1).getSortKey().toLowerCase(), "time");
   }
 }
