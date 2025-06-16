@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -427,6 +428,10 @@ public final class PlanMatchPattern {
     return node(AggregationTableScanNode.class);
   }
 
+  public static PlanMatchPattern window(PlanMatchPattern source) {
+    return node(WindowNode.class, source);
+  }
+
   public static PlanMatchPattern markDistinct(
       String markerSymbol, List<String> distinctSymbols, PlanMatchPattern source) {
     return node(MarkDistinctNode.class, source)
@@ -507,14 +512,14 @@ public final class PlanMatchPattern {
       TopNRankingMatcher.Builder builder = new TopNRankingMatcher.Builder(source);
       handler.accept(builder);
       return builder.build();
-  }
-
-  public static PlanMatchPattern patternRecognition(Consumer<PatternRecognitionMatcher.Builder> handler, PlanMatchPattern source)
-  {
-      PatternRecognitionMatcher.Builder builder = new PatternRecognitionMatcher.Builder(source);
-      handler.accept(builder);
-      return builder.build();
   }*/
+
+  //  public static PlanMatchPattern patternRecognition(
+  //      Consumer<PatternRecognitionMatcher.Builder> handler, PlanMatchPattern source) {
+  //    PatternRecognitionMatcher.Builder builder = new PatternRecognitionMatcher.Builder(source);
+  //    handler.accept(builder);
+  //    return builder.build();
+  //  }
 
   public static PlanMatchPattern join(PlanMatchPattern left, PlanMatchPattern right) {
     return node(JoinNode.class, left, right);

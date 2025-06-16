@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -96,6 +97,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
     this.hitCachedResults = hitCachedResults;
     this.dbName = qualifiedObjectName.getDatabaseName();
 
+    this.operatorContext.recordSpecifiedInfo(
+        PlanGraphPrinter.CACHED_DEVICE_NUMBER, Integer.toString(cachedDeviceEntries.size()));
     for (int i = 0; i < parameter.tableAggregators.size(); i++) {
       if (parameter.tableAggregators.get(i).getAccumulator() instanceof LastAccumulator) {
         lastTimeAggregationIdx = i;
@@ -249,8 +252,14 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               hitCachedResults.get(currentHitCacheIndex).getRight()[measurementIdx];
           long lastByTime = hitCachedResults.get(currentHitCacheIndex).getLeft().getAsLong();
           if (tsPrimitiveType == EMPTY_PRIMITIVE_TYPE) {
-            throw new IllegalStateException(
-                "If the read value is [EMPTY_PRIMITIVE_TYPE], we should never reach here");
+            // there is no data for this time series
+            if (aggregator.getStep().isOutputPartial()) {
+              columnBuilder.writeBinary(
+                  new Binary(
+                      serializeTimeValue(getTSDataType(schema.getType()), lastByTime, true, null)));
+            } else {
+              columnBuilder.appendNull();
+            }
           } else {
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(

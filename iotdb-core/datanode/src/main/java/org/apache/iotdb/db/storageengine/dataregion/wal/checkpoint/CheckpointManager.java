@@ -279,7 +279,7 @@ public class CheckpointManager implements AutoCloseable {
       }
       MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
       if (!memTableInfo.isPinned()) {
-        WALInsertNodeCache.getInstance(memTableInfo.getDataRegionId()).addMemTable(memTableId);
+        WALInsertNodeCache.getInstance().addMemTable(memTableId);
       }
       memTableInfo.pin();
     } finally {
@@ -309,7 +309,7 @@ public class CheckpointManager implements AutoCloseable {
       MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
       memTableInfo.unpin();
       if (!memTableInfo.isPinned()) {
-        WALInsertNodeCache.getInstance(memTableInfo.getDataRegionId()).removeMemTable(memTableId);
+        WALInsertNodeCache.getInstance().removeMemTable(memTableId);
         if (memTableInfo.isFlushed()) {
           memTableId2Info.remove(memTableId);
         }

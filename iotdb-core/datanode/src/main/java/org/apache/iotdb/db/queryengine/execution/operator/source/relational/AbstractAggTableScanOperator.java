@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.I
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
+import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.window.IWindow;
 import org.apache.iotdb.db.queryengine.execution.operator.window.TimeWindow;
@@ -42,7 +43,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.file.metadata.statistics.StringStatistics;
 import org.apache.tsfile.read.common.TimeRange;
@@ -174,7 +174,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
     if (this.deviceEntries.isEmpty() || this.deviceEntries.get(this.currentDeviceIndex) == null) {
       // for device which is not exist
-      deviceEntry = new AlignedDeviceEntry(new StringArrayDeviceID(""), new Binary[0]);
+      deviceEntry = new AlignedDeviceEntry(SeriesScanUtil.EMPTY_DEVICE_ID, new Binary[0]);
     } else {
       deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
     }

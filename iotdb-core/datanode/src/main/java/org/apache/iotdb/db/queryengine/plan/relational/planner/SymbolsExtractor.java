@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultExpressionTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
@@ -87,11 +88,9 @@ public final class SymbolsExtractor {
     return ImmutableSet.copyOf(extractAll(aggregation));
   }
 
-  /*
-  public static Set<Symbol> extractUnique(WindowNode.Function function)
-  {
-      return ImmutableSet.copyOf(extractAll(function));
-  }*/
+  public static Set<Symbol> extractUnique(WindowNode.Function function) {
+    return ImmutableSet.copyOf(extractAll(function));
+  }
 
   public static List<Symbol> extractAll(Expression expression) {
     ImmutableList.Builder<Symbol> builder = ImmutableList.builder();
@@ -110,19 +109,17 @@ public final class SymbolsExtractor {
     return builder.build();
   }
 
-  /*
-  public static List<Symbol> extractAll(WindowNode.Function function)
-  {
-      ImmutableList.Builder<Symbol> builder = ImmutableList.builder();
-      for (Expression argument : function.getArguments()) {
-          builder.addAll(extractAll(argument));
-      }
-      function.getFrame().getEndValue().ifPresent(builder::add);
-      function.getFrame().getSortKeyCoercedForFrameEndComparison().ifPresent(builder::add);
-      function.getFrame().getStartValue().ifPresent(builder::add);
-      function.getFrame().getSortKeyCoercedForFrameStartComparison().ifPresent(builder::add);
-      return builder.build();
-  }*/
+  public static List<Symbol> extractAll(WindowNode.Function function) {
+    ImmutableList.Builder<Symbol> builder = ImmutableList.builder();
+    for (Expression argument : function.getArguments()) {
+      builder.addAll(extractAll(argument));
+    }
+    function.getFrame().getEndValue().ifPresent(builder::add);
+    function.getFrame().getSortKeyCoercedForFrameEndComparison().ifPresent(builder::add);
+    function.getFrame().getStartValue().ifPresent(builder::add);
+    function.getFrame().getSortKeyCoercedForFrameStartComparison().ifPresent(builder::add);
+    return builder.build();
+  }
 
   // to extract qualified name with prefix
   public static Set<QualifiedName> extractNames(

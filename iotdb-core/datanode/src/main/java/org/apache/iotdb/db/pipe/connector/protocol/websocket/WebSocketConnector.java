@@ -141,11 +141,14 @@ public class WebSocketConnector implements PipeConnector {
     }
 
     try {
-      for (TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
-        // Skip report if any tablet events is added
-        ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReportOnCommit();
-        transfer(event);
-      }
+      ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+          .consumeTabletInsertionEventsWithRetry(
+              event -> {
+                // Skip report if any tablet events is added
+                ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReportOnCommit();
+                transfer(event);
+              },
+              "WebSocketConnector::transfer");
     } finally {
       tsFileInsertionEvent.close();
     }

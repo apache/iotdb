@@ -25,6 +25,7 @@ import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
@@ -184,6 +185,9 @@ public interface ISession extends AutoCloseable {
 
   SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSet executeFastLastDataQueryForOnePrefixPath(final List<String> prefixes)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException;
 
   SessionDataSet executeLastDataQueryForOneDevice(
       String db, String device, List<String> sensors, boolean isLegalPathNodes)

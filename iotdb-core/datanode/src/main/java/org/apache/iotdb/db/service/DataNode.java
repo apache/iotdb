@@ -178,7 +178,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     DataNodeHolder.INSTANCE = this;
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     registerManager = new RegisterManager();
     DataNodeSystemPropertiesHandler.getInstance()
@@ -781,8 +780,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   /** Set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
-    // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
-    registerManager.register(DataNodeInternalRPCService.getInstance());
+
+    registerInternalRPCService();
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because
@@ -791,12 +790,22 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // Start client RPCService to indicate that the current DataNode provide external services
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
+        .setRpcImplClassName(getClientRPCServiceImplClassName());
     if (config.isEnableRpcService()) {
       registerManager.register(ExternalRPCService.getInstance());
     }
     // init service protocols
     initProtocols();
+  }
+
+  protected void registerInternalRPCService() throws StartupException {
+    // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
+    registerManager.register(DataNodeInternalRPCService.getInstance());
+  }
+
+  // make it easier for users to extend ClientRPCServiceImpl to export more rpc services
+  protected String getClientRPCServiceImplClassName() {
+    return ClientRPCServiceImpl.class.getName();
   }
 
   private void setUpMetricService() throws StartupException {

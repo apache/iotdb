@@ -567,7 +567,8 @@ public class LogDispatcher {
         data.buildSerializedRequests();
         // construct request from wal
         logBatches.addTLogEntry(
-            new TLogEntry(data.getSerializedRequests(), data.getSearchIndex(), true));
+            new TLogEntry(
+                data.getSerializedRequests(), data.getSearchIndex(), true, data.getMemorySize()));
       }
       // In the case of corrupt Data, we return true so that we can send a batch as soon as
       // possible, avoiding potential duplication
@@ -577,7 +578,11 @@ public class LogDispatcher {
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, Batch logBatches) {
       logBatches.addTLogEntry(
-          new TLogEntry(request.getSerializedRequests(), request.getSearchIndex(), false));
+          new TLogEntry(
+              request.getSerializedRequests(),
+              request.getSearchIndex(),
+              false,
+              request.getMemorySize()));
     }
   }
 }
