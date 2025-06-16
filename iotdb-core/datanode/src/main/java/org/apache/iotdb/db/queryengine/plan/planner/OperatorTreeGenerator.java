@@ -1189,8 +1189,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     if (!sortItemList.get(0).getSortKey().equalsIgnoreCase("Device")) {
-      throw new IllegalArgumentException(
-          "Only order by device align by device support AggregationMergeSortNode.");
+      throw new IllegalStateException(
+          "AggregationMergeSortNode without order by device should not appear here");
     }
 
     boolean timeAscending = true;
