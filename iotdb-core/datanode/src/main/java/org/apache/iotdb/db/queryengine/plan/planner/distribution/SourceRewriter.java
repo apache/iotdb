@@ -297,10 +297,10 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         deviceViewNode.setOutputColumnNames(newPartialOutputColumns);
         transferAggregatorsRecursively(planNode, context);
 
-        List<IDeviceID> devices = deviceViewNode.getDevices();
+        List<String> devices = deviceViewNode.getDevices();
         for (int j = 0; j < devices.size(); j++) {
           if (deviceViewNode.getChildren().get(j) instanceof ProjectNode) {
-            IDeviceID device = devices.get(j);
+            String device = devices.get(j);
 
             // construct output column names for each child ProjectNode
             List<Integer> newMeasurementIdxList =
@@ -315,7 +315,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
 
                           // construct new FunctionExpression with device for ProjectNode
                           List<Expression> withDeviceExpressions =
-                              getWithDeviceExpressions(aggExpression, device.toString());
+                              getWithDeviceExpressions(aggExpression, device);
                           aggExpression =
                               new FunctionExpression(
                                   aggExpression.getFunctionName(),
@@ -362,8 +362,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   argument instanceof TimeSeriesOperand,
                   "Argument of AggregationFunction should be TimeSeriesOperand here");
               return new TimeSeriesOperand(
-                  new PartialPath(device, argument.getExpressionString(), false),
-                  ((TimeSeriesOperand) argument).getType());
+                  new PartialPath(device, argument.getExpressionString(), false));
             })
         .collect(Collectors.toList());
   }
