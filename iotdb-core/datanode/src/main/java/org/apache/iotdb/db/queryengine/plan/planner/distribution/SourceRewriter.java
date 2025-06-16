@@ -363,7 +363,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   argument instanceof TimeSeriesOperand,
                   "Argument of AggregationFunction should be TimeSeriesOperand here");
               return new TimeSeriesOperand(
-                  new PartialPath(device, argument.getExpressionString(), false));
+                  new PartialPath(device, argument.getExpressionString(), false),
+                  ((TimeSeriesOperand) argument).getType());
             })
         .collect(Collectors.toList());
   }
