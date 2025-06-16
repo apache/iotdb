@@ -71,6 +71,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.Inferenc
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindowType;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.TailInferenceWindow;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
+import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
