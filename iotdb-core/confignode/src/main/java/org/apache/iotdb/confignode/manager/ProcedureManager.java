@@ -137,7 +137,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.io.IOException;
@@ -786,9 +785,7 @@ public class ProcedureManager {
       TDataNodeLocation coordinator) {
     String failMessage =
         regionOperationCommonCheck(
-            regionId,
-            targetDataNode,
-            Arrays.asList(new Pair<>("Coordinator", coordinator)));
+            regionId, targetDataNode, Arrays.asList(new Pair<>("Coordinator", coordinator)));
 
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     if (configManager
