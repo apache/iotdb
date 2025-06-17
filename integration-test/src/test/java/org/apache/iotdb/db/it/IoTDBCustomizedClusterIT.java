@@ -41,9 +41,7 @@ import java.util.Date;
 
 import static org.junit.Assert.fail;
 
-/**
- * Tests that may not be satisfied with the default cluster settings.
- */
+/** Tests that may not be satisfied with the default cluster settings. */
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBCustomizedClusterIT {
