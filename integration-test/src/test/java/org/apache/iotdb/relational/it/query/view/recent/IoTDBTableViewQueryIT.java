@@ -351,6 +351,11 @@ public class IoTDBTableViewQueryIT {
           "select * from (select time, battery as device1 from view1 where battery = 'b1') as t1 full outer join (select time, battery as device2 from view2 where battery = 'b') as t2 using(time)",
           "select * from (select time, battery as device1 from table1 where battery = 'b1') as t1 full outer join (select time, battery as device2 from table1 where battery = 'b') as t2 using(time)",
           true);
+      compareQueryResults(
+          session,
+          "select * from (select * from view1 where battery = 'b1') join (select * from view1 where battery = 'b1' and (voltage > 0 or current > 0)) using(time)",
+          "select * from (select * from table1 where battery = 'b1') join (select * from table1 where battery = 'b1' and (voltage > 0 or current > 0)) using(time)",
+          true);
     }
   }
 

@@ -82,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -331,12 +332,23 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         }
       }
 
+      OrderByParameter orderByParameter;
+      List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
+      if (!sortItemList.get(0).getSortKey().equalsIgnoreCase("Device")) {
+        // When reach here, it means DeviceView is order by time with only one device, it is no
+        // problem to transform order by time to order by device.
+        // SortItems here will only be Time and Device, see planDeviceView().
+        orderByParameter =
+            new OrderByParameter(ImmutableList.of(sortItemList.get(1), sortItemList.get(0)));
+      } else {
+        orderByParameter = node.getMergeOrderParameter();
+      }
       boolean hasGroupBy =
           analysis.getGroupByTimeParameter() != null || analysis.hasGroupByParameter();
       AggregationMergeSortNode mergeSortNode =
           new AggregationMergeSortNode(
               context.queryContext.getQueryId().genPlanNodeId(),
-              node.getMergeOrderParameter(),
+              orderByParameter,
               node.getOutputColumnNames(),
               deviceViewOutputExpressions,
               hasGroupBy);
