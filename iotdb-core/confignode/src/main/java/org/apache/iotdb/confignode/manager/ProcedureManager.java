@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -135,6 +136,9 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -778,15 +782,13 @@ public class ProcedureManager {
   private TSStatus checkRemoveRegion(
       TRemoveRegionReq req,
       TConsensusGroupId regionId,
-      TDataNodeLocation targetDataNode,
+      @Nullable TDataNodeLocation targetDataNode,
       TDataNodeLocation coordinator) {
     String failMessage =
         regionOperationCommonCheck(
             regionId,
             targetDataNode,
-            Arrays.asList(
-                new Pair<>("Target DataNode", targetDataNode),
-                new Pair<>("Coordinator", coordinator)));
+            Arrays.asList(new Pair<>("Coordinator", coordinator)));
 
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     if (configManager
@@ -796,11 +798,12 @@ public class ProcedureManager {
             .getDataNodeLocationsSize()
         == 1) {
       failMessage = String.format("%s only has 1 replica, it cannot be removed", regionId);
-    } else if (configManager
-        .getPartitionManager()
-        .getAllReplicaSets(targetDataNode.getDataNodeId())
-        .stream()
-        .noneMatch(replicaSet -> replicaSet.getRegionId().equals(regionId))) {
+    } else if (targetDataNode != null
+        && configManager
+            .getPartitionManager()
+            .getAllReplicaSets(targetDataNode.getDataNodeId())
+            .stream()
+            .noneMatch(replicaSet -> replicaSet.getRegionId().equals(regionId))) {
       failMessage =
           String.format(
               "Target DataNode %s doesn't contain Region %s", req.getDataNodeId(), regionId);
@@ -1131,6 +1134,23 @@ public class ProcedureManager {
         return status;
       }
 
+      // SPECIAL CASE
+      if (targetDataNode == null) {
+        // If targetDataNode is null, it means the target DataNode does not exist in the
+        // NodeManager.
+        // In this case, simply clean up the partition table once and do nothing else.
+        LOGGER.warn(
+            "Remove region: Target DataNode {} not found, will simply clean up the partition table of region {} and do nothing else.",
+            req.getDataNodeId(),
+            req.getRegionId());
+        this.executor
+            .getEnvironment()
+            .getRegionMaintainHandler()
+            .removeRegionLocation(
+                regionId, buildFakeDataNodeLocation(req.getDataNodeId(), "FakeIpForRemoveRegion"));
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
+
       // submit procedure
       RemoveRegionPeerProcedure procedure =
           new RemoveRegionPeerProcedure(regionId, coordinator, targetDataNode);
@@ -1140,6 +1160,12 @@ public class ProcedureManager {
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
+  }
+
+  private static TDataNodeLocation buildFakeDataNodeLocation(int dataNodeId, String message) {
+    TEndPoint fakeEndPoint = new TEndPoint(message, -1);
+    return new TDataNodeLocation(
+        dataNodeId, fakeEndPoint, fakeEndPoint, fakeEndPoint, fakeEndPoint, fakeEndPoint);
   }
 
   // endregion
