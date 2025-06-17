@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.security.encrypt.AsymmetricEncrypt;
 import org.apache.iotdb.commons.security.encrypt.AsymmetricEncryptFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
@@ -120,7 +121,24 @@ public class AuthUtils {
     return AsymmetricEncryptFactory.getEncryptProvider(
             CommonDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
             CommonDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
-        .validate(originPassword, encryptPassword);
+        .validate(originPassword, encryptPassword, AsymmetricEncrypt.DigestAlgorithm.SHA_256);
+  }
+
+  /**
+   * Checking whether origin password is mapping to encrypt password by encryption
+   *
+   * @param originPassword the password before encryption
+   * @param encryptPassword the password after encryption
+   * @param digestAlgorithm the algorithm for encryption
+   */
+  public static boolean validatePassword(
+      String originPassword,
+      String encryptPassword,
+      AsymmetricEncrypt.DigestAlgorithm digestAlgorithm) {
+    return AsymmetricEncryptFactory.getEncryptProvider(
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
+        .validate(originPassword, encryptPassword, digestAlgorithm);
   }
 
   /**
@@ -230,7 +248,7 @@ public class AuthUtils {
     return AsymmetricEncryptFactory.getEncryptProvider(
             CommonDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
             CommonDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
-        .encrypt(password);
+        .encrypt(password, AsymmetricEncrypt.DigestAlgorithm.SHA_256);
   }
 
   /**

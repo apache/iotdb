@@ -155,7 +155,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       // 1. prepare: compute regionCounter, databaseRegionCounter, and combinationCounter
 
       prepare(availableDataNodeMap, allocatedRegionGroups, Collections.emptyList());
-      computeInitialDbLoad(databaseAllocatedRegionGroupMap);
+      computeInitialDbLoad(availableDataNodeMap, databaseAllocatedRegionGroupMap);
 
       // 2. Build allowed candidate set for each region that needs to be migrated.
       // For each region in remainReplicasMap, the candidate destination nodes are all nodes in
@@ -432,9 +432,11 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   /**
    * Compute the initial load for each database on each data node.
    *
+   * @param availableDataNodeMap currently available DataNodes, ensure size() >= replicationFactor
    * @param databaseAllocatedRegionGroupMap Mapping of each database to its list of replica sets.
    */
   private void computeInitialDbLoad(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap) {
     initialDbLoad = new HashMap<>();
 
@@ -446,7 +448,9 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       for (TRegionReplicaSet replicaSet : replicaSets) {
         for (TDataNodeLocation location : replicaSet.getDataNodeLocations()) {
           int nodeId = location.getDataNodeId();
-          load[nodeId]++;
+          if (availableDataNodeMap.containsKey(nodeId)) {
+            load[nodeId]++;
+          }
         }
       }
       initialDbLoad.put(database, load);
