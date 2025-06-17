@@ -539,7 +539,7 @@ public class DatabasePartitionTable {
     regionGroup.addRegionLocation(node);
   }
 
-  void removeRegionLocation(TConsensusGroupId regionId, int nodeId) {
+  void removeRegionLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
       LOGGER.warn(
@@ -548,18 +548,16 @@ public class DatabasePartitionTable {
           databaseName);
       return;
     }
-    if (regionGroup.getReplicaSet().getDataNodeLocations().stream()
-        .map(TDataNodeLocation::getDataNodeId)
-        .noneMatch(id -> id == nodeId)) {
+    if (!regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
       LOGGER.info(
           "Node is not in region locations when removeRegionOldLocation in {}, "
               + "no need to remove it, node: {}, region: {}",
           databaseName,
-          nodeId,
+          node,
           regionId);
       return;
     }
-    regionGroup.removeRegionLocation(nodeId);
+    regionGroup.removeRegionLocation(node);
   }
 
   /**
