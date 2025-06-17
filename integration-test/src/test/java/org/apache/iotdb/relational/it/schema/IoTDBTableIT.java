@@ -889,6 +889,15 @@ public class IoTDBTableIT {
       }
 
       statement.execute("alter view tree_table rename to view_table");
+
+      // Test clear cache
+      try {
+        statement.execute("select * from tree_table");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("550: Table 'tree_view_db.tree_table' does not exist.", e.getMessage());
+      }
+
       statement.execute("alter view view_table rename column s1 to s11");
       statement.execute("alter view view_table set properties ttl=100");
       statement.execute("comment on view view_table is 'comment'");
