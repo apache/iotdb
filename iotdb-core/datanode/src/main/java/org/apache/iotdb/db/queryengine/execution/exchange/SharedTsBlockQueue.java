@@ -37,7 +37,9 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.LinkedList;
+import java.util.Optional;
 import java.util.Queue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
@@ -80,6 +82,8 @@ public class SharedTsBlockQueue {
 
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+
+  private volatile Throwable abortedCause = null;
 
   // used for SharedTsBlockQueue listener
   private final ExecutorService executorService;
@@ -177,6 +181,18 @@ public class SharedTsBlockQueue {
    */
   public TsBlock remove() {
     if (closed) {
+      // try throw underlying exception instead of "Source handle is aborted."
+      if (abortedCause != null) {
+        throw new IllegalStateException(abortedCause);
+      }
+      try {
+        blocked.get();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException(e);
+      } catch (ExecutionException e) {
+        throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
+      }
       throw new IllegalStateException("queue has been destroyed");
     }
     TsBlock tsBlock = queue.remove();
@@ -186,8 +202,8 @@ public class SharedTsBlockQueue {
             localFragmentInstanceId.getQueryId(),
             fullFragmentInstanceId,
             localPlanNodeId,
-            tsBlock.getRetainedSizeInBytes());
-    bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
+            tsBlock.getSizeInBytes());
+    bufferRetainedSizeInBytes -= tsBlock.getSizeInBytes();
     // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
     // corresponding LocalSinkChannel.
     if (sinkChannel != null) {
@@ -226,10 +242,10 @@ public class SharedTsBlockQueue {
                 localFragmentInstanceId.getQueryId(),
                 fullFragmentInstanceId,
                 localPlanNodeId,
-                tsBlock.getRetainedSizeInBytes(),
+                tsBlock.getSizeInBytes(),
                 maxBytesCanReserve);
     blockedOnMemory = pair.left;
-    bufferRetainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
+    bufferRetainedSizeInBytes += tsBlock.getSizeInBytes();
 
     // reserve memory failed, we should wait until there is enough memory
     if (!Boolean.TRUE.equals(pair.right)) {
@@ -332,6 +348,7 @@ public class SharedTsBlockQueue {
     if (closed) {
       return;
     }
+    abortedCause = t;
     closed = true;
     if (!blocked.isDone()) {
       blocked.setException(t);
@@ -353,5 +370,9 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
+  }
+
+  public Optional<Throwable> getAbortedCause() {
+    return Optional.ofNullable(abortedCause);
   }
 }
