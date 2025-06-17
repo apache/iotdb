@@ -829,6 +829,31 @@ public class RatisConfig {
         this.leaderOutstandingAppendsMax = leaderOutstandingAppendsMax;
         return this;
       }
+
+      public Grpc.Builder setEnableSSL(boolean isEnableSSL) {
+        this.isEnableSSL = isEnableSSL;
+        return this;
+      }
+
+      public Grpc.Builder setSslTrustStorePath(String sslTrustStorePath) {
+        this.sslTrustStorePath = sslTrustStorePath;
+        return this;
+      }
+
+      public Grpc.Builder setSslTrustStorePassword(String sslTrustStorePassword) {
+        this.sslTrustStorePassword = sslTrustStorePassword;
+        return this;
+      }
+
+      public Grpc.Builder setSslKeyStorePath(String sslKeyStorePath) {
+        this.sslKeyStorePath = sslKeyStorePath;
+        return this;
+      }
+
+      public Grpc.Builder setSslKeyStorePassword(String sslKeyStorePassword) {
+        this.sslKeyStorePassword = sslKeyStorePassword;
+        return this;
+      }
     }
   }
 

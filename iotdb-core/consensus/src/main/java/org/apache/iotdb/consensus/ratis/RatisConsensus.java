@@ -264,7 +264,7 @@ class RatisConsensus implements IConsensus {
     try {
       diskGuardian.stop();
     } catch (InterruptedException e) {
-      logger.warn("{}: interrupted when shutting down add Executor with exception {}", this, e);
+      logger.warn("{}: interrupted when shutting down add Executor with exception ", this, e);
       Thread.currentThread().interrupt();
     } finally {
       clientManager.close();
@@ -815,7 +815,7 @@ class RatisConsensus implements IConsensus {
     try {
       leaderId = server.get().getDivision(raftGroupId).getInfo().getLeaderId();
     } catch (IOException e) {
-      logger.warn("fetch division info for group " + groupId + " failed due to: ", e);
+      logger.warn("fetch division info for group {} failed due to: ", groupId, e);
       return null;
     }
     if (leaderId == null) {

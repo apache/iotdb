@@ -169,6 +169,11 @@ public class ConsensusManager {
                                               CONF.getConfigNodeRatisGrpcFlowControlWindow()))
                                       .setLeaderOutstandingAppendsMax(
                                           CONF.getConfigNodeRatisGrpcLeaderOutstandingAppendsMax())
+                                      .setEnableSSL(COMMON_CONF.isEnableSSL())
+                                      .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
+                                      .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
+                                      .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())
+                                      .setSslTrustStorePassword(COMMON_CONF.getTrustStorePwd())
                                       .build())
                               .setRpc(
                                   RatisConfig.Rpc.newBuilder()
