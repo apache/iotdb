@@ -125,8 +125,7 @@ public class SeriesScanOptions {
   public void setTTLForTableDevice(long dataTTL) {
     // Devices in the table model share a same table ttl, so it only needs to be set once
     if (timeFilterUpdatedByTll.compareAndSet(false, true)) {
-      this.globalTimeFilter =
-          updateFilterUsingTTL(globalTimeFilter, Math.min(ttlForTableView, dataTTL));
+      this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
     }
   }
 
