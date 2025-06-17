@@ -376,10 +376,11 @@ public class ConfigNodeTestUtils {
 
   public static void insertTreeModelData(Statement statement) throws SQLException {
     for (int i = 0; i < 1024; i++) {
-      statement.execute(
+      statement.addBatch(
           String.format(
               "INSERT INTO root.sg.d%d(timestamp,speed,temperature) values(%d, %d, %d)",
               i, i, i, i));
     }
+    statement.executeBatch();
   }
 }
