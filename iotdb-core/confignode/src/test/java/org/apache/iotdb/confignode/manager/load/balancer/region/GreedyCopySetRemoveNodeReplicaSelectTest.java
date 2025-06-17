@@ -81,15 +81,20 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
         DATA_REGION_PER_DATA_NODE * TEST_DATA_NODE_NUM / DATA_REPLICATION_FACTOR;
 
     List<TRegionReplicaSet> allocateResult = new ArrayList<>();
+    List<TRegionReplicaSet> databaseAllocateResult = new ArrayList<>();
     for (int index = 0; index < dataRegionGroupNum; index++) {
-      allocateResult.add(
+      TRegionReplicaSet replicaSet =
           GCR_ALLOCATOR.generateOptimalRegionReplicasDistribution(
               AVAILABLE_DATA_NODE_MAP,
               FREE_SPACE_MAP,
               allocateResult,
               allocateResult,
               DATA_REPLICATION_FACTOR,
-              new TConsensusGroupId(TConsensusGroupType.DataRegion, index)));
+              new TConsensusGroupId(TConsensusGroupType.DataRegion, index));
+      TRegionReplicaSet replicaSetCopy = new TRegionReplicaSet(replicaSet);
+
+      allocateResult.add(replicaSet);
+      databaseAllocateResult.add(replicaSetCopy);
     }
 
     List<TRegionReplicaSet> migratedReplicas =
@@ -158,7 +163,7 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
     }
     Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap = new HashMap<>();
     Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap = new HashMap<>();
-    databaseAllocatedRegionGroupMap.put("database", allocateResult);
+    databaseAllocatedRegionGroupMap.put("database", databaseAllocateResult);
 
     for (TRegionReplicaSet remainReplicaSet : remainReplicas) {
       remainReplicasMap.put(remainReplicaSet.getRegionId(), remainReplicaSet);
