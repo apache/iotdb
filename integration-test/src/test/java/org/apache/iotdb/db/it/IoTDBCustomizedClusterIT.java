@@ -23,7 +23,6 @@ import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -38,14 +37,18 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Date;
 
 import static org.junit.Assert.fail;
 
+/**
+ * Tests that may not be satisfied with the default cluster settings.
+ */
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBStopNodeIT {
+@Category({ClusterIT.class})
+public class IoTDBCustomizedClusterIT {
 
-  private final Logger logger = LoggerFactory.getLogger(IoTDBStopNodeIT.class);
+  private final Logger logger = LoggerFactory.getLogger(IoTDBCustomizedClusterIT.class);
 
   /**
    * When the wal size exceeds `walThrottleSize` * 0.8, the timed wal-delete-thread will try
@@ -111,7 +114,8 @@ public class IoTDBStopNodeIT {
       int followerIndex = (leaderIndex + 1) % simpleEnv.getDataNodeWrapperList().size();
       simpleEnv.getDataNodeWrapperList().get(followerIndex).stop();
       System.out.println(
-          "Stopping data node "
+          new Date()
+              + ":Stopping data node "
               + simpleEnv.getDataNodeWrapperList().get(followerIndex).getIpAndPortString());
 
       DataNodeWrapper leader = simpleEnv.getDataNodeWrapperList().get(leaderIndex);
@@ -131,7 +135,7 @@ public class IoTDBStopNodeIT {
 
       // stop the leader
       leader.getInstance().destroy();
-      System.out.println("Stopping data node " + leader.getIpAndPortString());
+      System.out.println(new Date() + ":Stopping data node " + leader.getIpAndPortString());
       // confirm the death of the leader
       long startTime = System.currentTimeMillis();
       while (leader.isAlive()) {
