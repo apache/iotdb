@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -49,7 +50,12 @@ public class TypeProvider {
   }
 
   public TSDataType getType(String symbol) {
-    return typeMap.get(symbol);
+    TSDataType type = typeMap.get(symbol);
+    if (templatedInfo == null || type != null) {
+      return type;
+    }
+    IMeasurementSchema schema = templatedInfo.getSchemaMap().get(symbol);
+    return schema == null ? null : schema.getType();
   }
 
   public void setType(String symbol, TSDataType dataType) {
