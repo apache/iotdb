@@ -683,7 +683,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
     if (context.isBuildPlanUseTemplate()) {
       Ordering scanOrder = context.getTemplatedInfo().getScanOrder();
-      List<AggregationDescriptor> aggregationDescriptors;
       if (node.getDescriptorType() == 1) {
         scanOrder = scanOrder.reverse();
       }
