@@ -1088,7 +1088,6 @@ struct TUpdateModelInfoReq {
 struct TDataSchemaForTable{
     1: required list<string> databaseList
     2: required list<string> tableList
-    3: required string curDatabase
 }
 
 struct TDataSchemaForTree{

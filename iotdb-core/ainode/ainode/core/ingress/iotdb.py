@@ -15,16 +15,19 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import numpy as np
 import torch
 from iotdb.Session import Session
 from iotdb.table_session import TableSession, TableSessionConfig
 from iotdb.utils.Field import Field
 from iotdb.utils.IoTDBConstants import TSDataType
-from util.cache import MemoryLRUCache
+from torch.utils.data import Dataset
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.ingress.dataset import BasicDatabaseForecastDataset
 from ainode.core.log import Logger
+from ainode.core.util.cache import MemoryLRUCache
+from ainode.core.util.decorator import singleton
 
 logger = Logger()
 
@@ -55,7 +58,7 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
         model_id: str,
         input_len: int,
         out_len: int,
-        schema_list: list,
+        data_schema_list: list,
         ip: str = "127.0.0.1",
         port: int = 6667,
         username: str = "root",
@@ -81,15 +84,16 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
         )
         self.session.open(False)
         self.context_length = self.input_len + self.output_len
-        self._fetch_schema(schema_list)
+        self.token_num = self.context_length // self.input_len
+        self._fetch_schema(data_schema_list)
         self.start_idx = int(self.total_count * start_split)
         self.end_idx = int(self.total_count * end_split)
         self.cache_enable = _cache_enable()
         self.cache_key_prefix = model_id + "_"
 
-    def _fetch_schema(self, schema_list: list):
+    def _fetch_schema(self, data_schema_list: list):
         series_to_length = {}
-        for schema in schema_list:
+        for schema in data_schema_list:
             path_pattern = schema.schemaName
             series_list = []
             time_condition = (
@@ -155,10 +159,13 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
             if series_data is not None:
                 series_data = torch.tensor(series_data)
                 result = series_data[window_index : window_index + self.context_length]
-                return result[0 : self.input_len].unsqueeze(-1), result[
-                    -self.output_len :
-                ].unsqueeze(-1)
+                return (
+                    result[0 : self.input_len],
+                    result[-self.output_len :],
+                    np.ones(self.token_num, dtype=np.int32),
+                )
         result = []
+        sql = ""
         try:
             if self.cache_enable:
                 sql = self.FETCH_SERIES_SQL % (
@@ -178,13 +185,15 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
                 while query_result.has_next():
                     result.append(get_field_value(query_result.next().get_fields()[0]))
         except Exception as e:
-            logger.error(e)
+            logger.error("Executing sql: {} with exception: {}".format(sql, e))
         if self.cache_enable:
             self.cache.put(cache_key, result)
         result = torch.tensor(result)
-        return result[0 : self.input_len].unsqueeze(-1), result[
-            -self.output_len :
-        ].unsqueeze(-1)
+        return (
+            result[0 : self.input_len],
+            result[-self.output_len :],
+            np.ones(self.token_num, dtype=np.int32),
+        )
 
     def __len__(self):
         return self.end_idx - self.start_idx
@@ -228,9 +237,9 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
 
         self.session = TableSession(table_session_config)
         self.context_length = self.input_len + self.output_len
+        self.token_num = self.context_length // self.input_len
         self._fetch_schema(data_schema_list)
 
-        v = self.total_count * start_split
         self.start_index = int(self.total_count * start_split)
         self.end_index = self.total_count * end_split
 
@@ -285,19 +294,52 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
         schema = series.split(".")
 
         result = []
+        sql = self.FETCH_SERIES_SQL % (
+            schema[0:1],
+            schema[2],
+            window_index,
+            self.context_length,
+        )
         try:
-            with self.session.execute_query_statement(
-                self.FETCH_SERIES_SQL
-                % (schema[0:1], schema[2], window_index, self.context_length)
-            ) as query_result:
+            with self.session.execute_query_statement(sql) as query_result:
                 while query_result.has_next():
                     result.append(get_field_value(query_result.next().get_fields()[0]))
         except Exception as e:
-            logger.error("Error happens when loading dataset str(e))")
+            logger.error("Executing sql: {} with exception: {}".format(sql, e))
         result = torch.tensor(result)
-        return result[0 : self.input_len].unsqueeze(-1), result[
-            -self.output_len :
-        ].unsqueeze(-1)
+        return (
+            result[0 : self.input_len],
+            result[-self.output_len :],
+            np.ones(self.token_num, dtype=np.int32),
+        )
 
     def __len__(self):
         return self.end_index - self.start_index
+
+
+def register_dataset(key: str, dataset: Dataset):
+    DatasetFactory().register(key, dataset)
+
+
+@singleton
+class DatasetFactory(object):
+
+    def __init__(self):
+        self.dataset_list = {
+            "iotdb.table": IoTDBTableModelDataset,
+            "iotdb.tree": IoTDBTreeModelDataset,
+        }
+
+    def register(self, key: str, dataset: Dataset):
+        if key not in self.dataset_list:
+            self.dataset_list[key] = dataset
+        else:
+            raise KeyError(f"Dataset {key} already exists")
+
+    def deregister(self, key: str):
+        del self.dataset_list[key]
+
+    def get_dataset(self, key: str):
+        if key not in self.dataset_list.keys():
+            raise KeyError(f"Dataset {key} does not exist")
+        return self.dataset_list[key]

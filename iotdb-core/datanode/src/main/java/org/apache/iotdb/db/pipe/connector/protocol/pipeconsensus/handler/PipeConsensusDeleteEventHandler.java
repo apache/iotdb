@@ -87,8 +87,10 @@ public class PipeConsensusDeleteEventHandler
         LOGGER.info(
             "DeleteNodeTransfer: no.{} event successfully processed!",
             event.getReplicateIndexForIoTV2());
-        connector.removeEventFromBuffer(event);
       }
+      // if code flow reach here, meaning the file will not be resent and will be ignored.
+      // events that don't need to be retried will be removed from the buffer
+      connector.removeEventFromBuffer(event);
 
       long duration = System.nanoTime() - createTime;
       metric.recordConnectorWalTransferTimer(duration);
