@@ -451,8 +451,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                       TypeFactory.getType(columnSchema.getDataType()),
                       false,
                       columnSchema.getColumnCategory()));
+          containsFieldColumn = true;
         }
       }
+    }
+    // For non-aligned series, scan cannot be performed when no field columns
+    // can be obtained, so an empty result set is returned.
+    if (!containsFieldColumn || node.getDeviceEntries().isEmpty()) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  EmptyDataOperator.class.getSimpleName());
+      return new EmptyDataOperator(operatorContext);
     }
     String treePrefixPath = DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable);
     IDeviceID.TreeDeviceIdColumnValueExtractor extractor =
