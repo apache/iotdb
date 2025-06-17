@@ -3051,7 +3051,8 @@ public class DataRegion implements IDataRegionForQuery {
 
     TsFileLastReader lastReader = null;
     LastCacheLoadStrategy lastCacheLoadStrategy = config.getLastCacheLoadStrategy();
-    if ((lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
+    if (!isFromConsensus
+        && (lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
             || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
         && newTsFileResource.getLastValues() == null) {
       try {
