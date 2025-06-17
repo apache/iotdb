@@ -59,7 +59,6 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private Timer insertNodeTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer tsfileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
-  private volatile long lastInsertNodeEventCountSmoothingTime = Long.MIN_VALUE;
   private final InsertNodeEMA insertNodeEventCountEMA = new InsertNodeEMA();
 
   private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
@@ -104,11 +103,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   }
 
   double getRemainingInsertEventSmoothingCount() {
-    if (System.currentTimeMillis() - lastInsertNodeEventCountSmoothingTime
-        >= PipeConfig.getInstance().getPipeRemainingInsertEventCountSmoothingIntervalSeconds()) {
-      insertNodeEventCountEMA.update(insertNodeEventCount.get());
-      lastInsertNodeEventCountSmoothingTime = System.currentTimeMillis();
-    }
+    insertNodeEventCountEMA.update(insertNodeEventCount.get());
     return insertNodeEventCountEMA.insertNodeEMAValue;
   }
 

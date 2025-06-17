@@ -285,7 +285,6 @@ public class CommonConfig {
   private long pipeStorageEngineFlushTimeIntervalMs = Long.MAX_VALUE;
   private int pipeMaxAllowedRemainingInsertEventCountPerPipe = 10000;
   private int pipeMaxAllowedTotalRemainingInsertEventCount = 50000;
-  private int pipeRemainingEventCountSmoothingIntervalSeconds = 10;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
   private int pipeMetaReportMaxLogIntervalRounds = 36;
@@ -307,7 +306,7 @@ public class CommonConfig {
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
   private long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
   private PipeRateAverage pipeRemainingTimeCommitRateAverageTime = PipeRateAverage.FIVE_MINUTES;
-  private double pipeRemainingInsertNodeCountEMAAlpha = 0.5;
+  private double pipeRemainingInsertNodeCountEMAAlpha = 0.1;
   private double pipeTsFileScanParsingThreshold = 0.05;
   private double pipeDynamicMemoryHistoryWeight = 0.5;
   private double pipeDynamicMemoryAdjustmentThreshold = 0.05;
@@ -1589,23 +1588,6 @@ public class CommonConfig {
     logger.info(
         "pipeMaxAllowedTotalRemainingInsertEventCount is set to {}",
         pipeMaxAllowedTotalRemainingInsertEventCount);
-  }
-
-  public int getPipeRemainingInsertEventCountSmoothingIntervalSeconds() {
-    return pipeRemainingEventCountSmoothingIntervalSeconds;
-  }
-
-  public void setPipeRemainingInsertEventCountSmoothingIntervalSeconds(
-      int pipeRemainingEventCountSmoothingIntervalSeconds) {
-    if (this.pipeRemainingEventCountSmoothingIntervalSeconds
-        == pipeRemainingEventCountSmoothingIntervalSeconds) {
-      return;
-    }
-    this.pipeRemainingEventCountSmoothingIntervalSeconds =
-        pipeRemainingEventCountSmoothingIntervalSeconds;
-    logger.info(
-        "pipeRemainingEventCountSmoothingIntervalSeconds is set to {}",
-        pipeRemainingEventCountSmoothingIntervalSeconds);
   }
 
   public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
