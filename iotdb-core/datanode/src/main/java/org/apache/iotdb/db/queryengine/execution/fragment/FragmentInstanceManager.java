@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
@@ -56,7 +57,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.Objects.requireNonNull;
@@ -421,8 +421,10 @@ public class FragmentInstanceManager {
             execution
                 .getStateMachine()
                 .failed(
-                    new TimeoutException(
-                        "Query has executed more than " + execution.getTimeoutInMs() + "ms"));
+                    new QueryTimeoutRuntimeException(
+                        "Query has executed more than "
+                            + execution.getTimeoutInMs()
+                            + "ms, and now is in flushing state"));
           }
         });
   }
