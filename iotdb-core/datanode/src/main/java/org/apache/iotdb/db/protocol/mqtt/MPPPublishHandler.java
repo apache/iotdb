@@ -88,6 +88,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
           ZoneId.systemDefault().toString(),
           TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
           ClientVersion.V_1_0);
+      sessionManager.registerSessionForMqtt(session);
       clientIdToSessionMap.put(msg.getClientID(), session);
     }
   }
@@ -96,6 +97,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   public void onDisconnect(InterceptDisconnectMessage msg) {
     MqttClientSession session = clientIdToSessionMap.remove(msg.getClientID());
     if (null != session) {
+      sessionManager.removeCurrSessionForMqtt(session);
       sessionManager.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
     }
   }
