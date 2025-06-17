@@ -764,6 +764,7 @@ public class IoTDBTableIT {
   public void testTreeViewTable() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
+      statement.execute("create database root.another");
       statement.execute("create database root.`重庆`.b");
       statement.execute("create timeSeries root.`重庆`.b.c.S1 int32");
       statement.execute("create timeSeries root.`重庆`.b.c.s2 string");
@@ -777,6 +778,15 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       statement.execute("create database tree_view_db");
       statement.execute("use tree_view_db");
+
+      try {
+        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: Cannot specify view pattern to match more than one tree database.",
+            e.getMessage());
+      }
       statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".**");
       statement.execute("drop view tree_table");
     }
