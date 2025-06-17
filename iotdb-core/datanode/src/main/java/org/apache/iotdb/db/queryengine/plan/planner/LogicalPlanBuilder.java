@@ -234,7 +234,6 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLast(Analysis analysis, Ordering timeseriesOrdering) {
-    Set<IDeviceID> deviceAlignedSet = new HashSet<>();
     Set<IDeviceID> deviceExistViewSet = new HashSet<>();
     // <Device, <Measurement, Expression>>
     Map<IDeviceID, Map<String, Expression>> outputPathToSourceExpressionMap = new LinkedHashMap<>();
@@ -254,9 +253,6 @@ public class LogicalPlanBuilder {
                       ? new TreeMap<>(timeseriesOrdering.getStringComparator())
                       : new LinkedHashMap<>())
           .put(outputPath.getMeasurement(), sourceExpression);
-      if (outputPath.isUnderAlignedEntity()) {
-        deviceAlignedSet.add(outputDevice);
-      }
       if (sourceExpression.isViewExpression()) {
         deviceExistViewSet.add(outputDevice);
       }
