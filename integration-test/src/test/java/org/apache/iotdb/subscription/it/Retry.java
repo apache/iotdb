@@ -17,20 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.query;
+package org.apache.iotdb.subscription.it;
 
-/** This class is used to throw run time exception when query is time out. */
-public class QueryTimeoutRuntimeException extends RuntimeException {
-  public static final String QUERY_TIMEOUT_EXCEPTION_MESSAGE =
-      "Current query is time out, query start time is %d, ddl is %d, current time is %d, please check your statement or modify timeout parameter.";
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-  public QueryTimeoutRuntimeException(long startTime, long currentTime, long timeout) {
-    super(
-        String.format(
-            QUERY_TIMEOUT_EXCEPTION_MESSAGE, startTime, startTime + timeout, currentTime));
-  }
-
-  public QueryTimeoutRuntimeException(String message) {
-    super(message);
-  }
+/** Marks a test method to specify how many times it should be retried (first run + retries). */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface Retry {
+  /** Total execution count = 1 (initial run) + number of retries */
+  int times() default 3;
 }

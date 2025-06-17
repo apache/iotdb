@@ -138,7 +138,7 @@ public class SortOperator implements ProcessOperator {
       if (tsBlock == null) {
         return null;
       }
-      dataSize += tsBlock.getRetainedSizeInBytes();
+      dataSize += tsBlock.getSizeInBytes();
       cacheTsBlock(tsBlock);
     } catch (IoTDBException e) {
       clear();
@@ -184,7 +184,7 @@ public class SortOperator implements ProcessOperator {
   }
 
   private void cacheTsBlock(TsBlock tsBlock) throws IoTDBException {
-    long bytesSize = tsBlock.getRetainedSizeInBytes();
+    long bytesSize = tsBlock.getSizeInBytes();
     if (bytesSize + cachedBytes < SORT_BUFFER_SIZE) {
       cachedBytes += bytesSize;
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
