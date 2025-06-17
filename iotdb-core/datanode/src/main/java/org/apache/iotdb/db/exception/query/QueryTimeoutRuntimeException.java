@@ -29,4 +29,8 @@ public class QueryTimeoutRuntimeException extends RuntimeException {
         String.format(
             QUERY_TIMEOUT_EXCEPTION_MESSAGE, startTime, startTime + timeout, currentTime));
   }
+
+  public QueryTimeoutRuntimeException(String message) {
+    super(message);
+  }
 }
