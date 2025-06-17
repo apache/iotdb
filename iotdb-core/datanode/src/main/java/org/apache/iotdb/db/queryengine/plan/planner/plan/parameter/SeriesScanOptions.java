@@ -39,7 +39,7 @@ public class SeriesScanOptions {
   private Filter globalTimeFilter;
   private final Filter originalTimeFilter;
 
-  private final AtomicBoolean timeFilterUpdatedByTll = new AtomicBoolean(false);
+  private final AtomicBoolean timeFilterUpdatedByTtl = new AtomicBoolean(false);
 
   private final Filter pushDownFilter;
 
@@ -119,12 +119,12 @@ public class SeriesScanOptions {
   }
 
   public boolean timeFilterNeedUpdatedByTtl() {
-    return !timeFilterUpdatedByTll.get();
+    return !timeFilterUpdatedByTtl.get();
   }
 
   public void setTTLForTableDevice(long dataTTL) {
     // Devices in the table model share a same table ttl, so it only needs to be set once
-    if (timeFilterUpdatedByTll.compareAndSet(false, true)) {
+    if (timeFilterUpdatedByTtl.compareAndSet(false, true)) {
       this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
     }
   }
