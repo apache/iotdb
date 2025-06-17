@@ -698,7 +698,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     final String[] path = new String[nodeNames.size() + 1];
     path[0] = ctx.ROOT().getText();
     for (int i = 0; i < nodeNames.size(); i++) {
-      path[i + 1] = parseNodeString(nodeNames.get(i).getText());
+      path[i + 1] =
+          parseNodeString(
+              nodeNames.get(i).nodeNameWithoutWildcard() != null
+                  ? ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
+                      .getValue()
+                  : nodeNames.get(i).getText());
     }
     return new PartialPath(path);
   }

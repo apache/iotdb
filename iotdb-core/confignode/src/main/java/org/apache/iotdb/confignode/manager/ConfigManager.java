@@ -58,6 +58,7 @@ import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
@@ -2821,10 +2822,21 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createTableView(final TCreateTableViewReq req) {
-    TSStatus status = confirmLeader();
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       final Pair<String, TsTable> pair =
           TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
+      if (clusterSchemaManager
+              .getMatchedDatabaseSchemasByPrefix(
+                  new PartialPath(
+                      Arrays.copyOf(
+                          TreeViewSchema.getPrefixPattern(pair.getRight()).getNodes(),
+                          TreeViewSchema.getPrefixPattern(pair.getRight()).getNodeLength() - 1)))
+              .size()
+          > 1) {
+        return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+            .setMessage("Cannot specify view pattern to match more than one tree database.");
+      }
       return procedureManager.createTableView(pair.left, pair.right, req.isReplace());
     } else {
       return status;

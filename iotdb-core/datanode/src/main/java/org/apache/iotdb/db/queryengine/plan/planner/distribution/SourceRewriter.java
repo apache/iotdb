@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.BaseSourceRewriter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.Horizontal
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
@@ -80,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -95,6 +98,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LAST_VALUE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
@@ -242,6 +246,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       Map<Integer, List<Integer>> newMeasurementIdxMap = new HashMap<>();
       List<String> newPartialOutputColumns = new ArrayList<>();
       Set<Expression> deviceViewOutputExpressions = analysis.getDeviceViewOutputExpressions();
+      // Used to rewrite child ProjectNode if it exists
+      List<FunctionExpression> actualPartialAggregations = new ArrayList<>();
 
       int i = 0, newIdxSum = 0;
       for (Expression expression : deviceViewOutputExpressions) {
@@ -249,6 +255,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           newPartialOutputColumns.add(expression.getOutputSymbol());
           i++;
           newIdxSum++;
+          // just a placeholder, convenient for after process
+          actualPartialAggregations.add(null);
           continue;
         }
         FunctionExpression aggExpression = (FunctionExpression) expression;
@@ -269,6 +277,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                 .setTreeModelType(partialFunctionExpression.getOutputSymbol(), dataType);
           }
           newPartialOutputColumns.add(partialFunctionExpression.getOutputSymbol());
+          actualPartialAggregations.add(partialFunctionExpression);
         }
         newMeasurementIdxMap.put(
             i++,
@@ -289,14 +298,57 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         DeviceViewNode deviceViewNode = (DeviceViewNode) planNode;
         deviceViewNode.setOutputColumnNames(newPartialOutputColumns);
         transferAggregatorsRecursively(planNode, context);
+
+        List<IDeviceID> devices = deviceViewNode.getDevices();
+        for (int j = 0; j < devices.size(); j++) {
+          if (deviceViewNode.getChildren().get(j) instanceof ProjectNode) {
+            IDeviceID device = devices.get(j);
+
+            // construct output column names for each child ProjectNode
+            List<Integer> newMeasurementIdxList =
+                deviceViewNode.getDeviceToMeasurementIndexesMap().get(device);
+            List<String> newProjectOutputs =
+                newMeasurementIdxList.stream()
+                    .map(
+                        // process each measurement
+                        measurementIdx -> {
+                          FunctionExpression aggExpression =
+                              actualPartialAggregations.get(measurementIdx);
+
+                          // construct new FunctionExpression with device for ProjectNode
+                          List<Expression> withDeviceExpressions =
+                              getWithDeviceExpressions(aggExpression, device.toString());
+                          aggExpression =
+                              new FunctionExpression(
+                                  aggExpression.getFunctionName(),
+                                  aggExpression.getFunctionAttributes(),
+                                  withDeviceExpressions);
+                          return aggExpression.getExpressionString();
+                        })
+                    .collect(Collectors.toList());
+            ((ProjectNode) deviceViewNode.getChildren().get(j))
+                .setOutputColumnNames(newProjectOutputs);
+          }
+        }
       }
 
+      OrderByParameter orderByParameter;
+      List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
+      if (!sortItemList.get(0).getSortKey().equalsIgnoreCase("Device")) {
+        // When reach here, it means DeviceView is order by time with only one device, it is no
+        // problem to transform order by time to order by device.
+        // SortItems here will only be Time and Device, see planDeviceView().
+        orderByParameter =
+            new OrderByParameter(ImmutableList.of(sortItemList.get(1), sortItemList.get(0)));
+      } else {
+        orderByParameter = node.getMergeOrderParameter();
+      }
       boolean hasGroupBy =
           analysis.getGroupByTimeParameter() != null || analysis.hasGroupByParameter();
       AggregationMergeSortNode mergeSortNode =
           new AggregationMergeSortNode(
               context.queryContext.getQueryId().genPlanNodeId(),
-              node.getMergeOrderParameter(),
+              orderByParameter,
               node.getOutputColumnNames(),
               deviceViewOutputExpressions,
               hasGroupBy);
@@ -311,6 +363,22 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       deviceViewNodeList.forEach(mergeSortNode::addChild);
       return Collections.singletonList(mergeSortNode);
     }
+  }
+
+  private static List<Expression> getWithDeviceExpressions(
+      FunctionExpression aggExpression, String device) {
+    return aggExpression.getExpressions().stream()
+        .map(
+            // process each argument of FunctionExpression
+            argument -> {
+              checkArgument(
+                  argument instanceof TimeSeriesOperand,
+                  "Argument of AggregationFunction should be TimeSeriesOperand here");
+              return new TimeSeriesOperand(
+                  new PartialPath(device, argument.getExpressionString(), false),
+                  ((TimeSeriesOperand) argument).getType());
+            })
+        .collect(Collectors.toList());
   }
 
   /**

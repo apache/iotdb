@@ -17,30 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.table;
+package org.apache.iotdb.subscription.it;
 
-import org.apache.iotdb.commons.schema.table.TsTable;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import javax.annotation.Nullable;
-
-public interface ITableCache {
-
-  void init(final byte[] tableInitializationBytes);
-
-  void preUpdateTable(final String database, final TsTable table, final @Nullable String oldName);
-
-  void rollbackUpdateTable(
-      final String database, final String tableName, final @Nullable String oldName);
-
-  void commitUpdateTable(
-      final String database, final String tableName, final @Nullable String oldName);
-
-  /**
-   * @param database shouldn't start with `root.`
-   */
-  void invalid(final String database);
-
-  void invalid(final String database, final String tableName);
-
-  void invalid(final String database, final String tableName, final String columnName);
+/** Marks a test method to specify how many times it should be retried (first run + retries). */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface Retry {
+  /** Total execution count = 1 (initial run) + number of retries */
+  int times() default 3;
 }
