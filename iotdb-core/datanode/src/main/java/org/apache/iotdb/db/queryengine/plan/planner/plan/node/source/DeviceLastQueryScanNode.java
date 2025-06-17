@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -294,7 +295,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
   }
 
   public static DeviceLastQueryScanNode deserialize(ByteBuffer byteBuffer) {
-    PartialPath devicePath = PartialPath.deserialize(byteBuffer);
+    PartialPath devicePath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     boolean aligned = ReadWriteIOUtils.readBool(byteBuffer);
     int measurementSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(measurementSize);
