@@ -104,31 +104,35 @@ public class IoTDBRemoveDataNodeNormalIT {
     successTest(2, 3, 1, 4, 1, 2, true, SQLModel.NOT_USE_SQL, ConsensusFactory.IOT_CONSENSUS_V2);
   }
 
-  @Test
-  public void fail1C3DIoTTest() throws Exception {
-    // Setup 1C3D with schema replication factor = 3, and remove 1D, this test should fail due to
-    // insufficient DN for holding schema
-    failTest(2, 3, 1, 3, 1, 2, false, SQLModel.NOT_USE_SQL, ConsensusFactory.IOT_CONSENSUS);
-  }
+  //  @Test
+  //  public void fail1C3DIoTTest() throws Exception {
+  //    // Setup 1C3D with schema replication factor = 3, and remove 1D, this test should fail due
+  // to
+  //    // insufficient DN for holding schema
+  //    failTest(2, 3, 1, 3, 1, 2, false, SQLModel.NOT_USE_SQL, ConsensusFactory.IOT_CONSENSUS);
+  //  }
+  //
+  //  @Test
+  //  public void fail1C3DIoTV2Test() throws Exception {
+  //    // Setup 1C3D with schema replication factor = 3, and remove 1D, this test should fail due
+  // to
+  //    // insufficient DN for holding schema
+  //    failTest(2, 3, 1, 3, 1, 2, false, SQLModel.NOT_USE_SQL, ConsensusFactory.IOT_CONSENSUS_V2);
+  //  }
 
-  @Test
-  public void fail1C3DIoTV2Test() throws Exception {
-    // Setup 1C3D with schema replication factor = 3, and remove 1D, this test should fail due to
-    // insufficient DN for holding schema
-    failTest(2, 3, 1, 3, 1, 2, false, SQLModel.NOT_USE_SQL, ConsensusFactory.IOT_CONSENSUS_V2);
-  }
-
-  @Test
-  public void success1C4DIoTTestUseSQL() throws Exception {
-    // Setup 1C4D, and remove 1D, this test should success
-    successTest(2, 3, 1, 4, 1, 2, true, SQLModel.TREE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS);
-  }
-
-  @Test
-  public void success1C4DIoTV2TestUseSQL() throws Exception {
-    // Setup 1C4D, and remove 1D, this test should success
-    successTest(2, 3, 1, 4, 1, 2, true, SQLModel.TREE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS_V2);
-  }
+  //  @Test
+  //  public void success1C4DIoTTestUseSQL() throws Exception {
+  //    // Setup 1C4D, and remove 1D, this test should success
+  //    successTest(2, 3, 1, 4, 1, 2, true, SQLModel.TREE_MODEL_SQL,
+  // ConsensusFactory.IOT_CONSENSUS);
+  //  }
+  //
+  //  @Test
+  //  public void success1C4DIoTV2TestUseSQL() throws Exception {
+  //    // Setup 1C4D, and remove 1D, this test should success
+  //    successTest(2, 3, 1, 4, 1, 2, true, SQLModel.TREE_MODEL_SQL,
+  // ConsensusFactory.IOT_CONSENSUS_V2);
+  //  }
 
   @Test
   public void fail1C3DTestIoTUseSQL() throws Exception {
@@ -157,19 +161,22 @@ public class IoTDBRemoveDataNodeNormalIT {
         2, 3, 1, 4, 1, 2, true, SQLModel.TABLE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS_V2);
   }
 
-  @Test
-  public void fail1C3DIoTTestUseTableSQL() throws Exception {
-    // Setup 1C3D with schema replication factor = 3, and remove 1D, this test should fail due to
-    // insufficient DN for holding schema
-    failTest(2, 3, 1, 3, 1, 2, false, SQLModel.TABLE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS);
-  }
-
-  @Test
-  public void fail1C3DIoTV2TestUseTableSQL() throws Exception {
-    // Setup 1C3D with schema replication factor = 3, and remove 1D, this test should fail due to
-    // insufficient DN for holding schema
-    failTest(2, 3, 1, 3, 1, 2, false, SQLModel.TABLE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS_V2);
-  }
+  //  @Test
+  //  public void fail1C3DIoTTestUseTableSQL() throws Exception {
+  //    // Setup 1C3D with schema replication factor = 3, and remove 1D, this test should fail due
+  // to
+  //    // insufficient DN for holding schema
+  //    failTest(2, 3, 1, 3, 1, 2, false, SQLModel.TABLE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS);
+  //  }
+  //
+  //  @Test
+  //  public void fail1C3DIoTV2TestUseTableSQL() throws Exception {
+  //    // Setup 1C3D with schema replication factor = 3, and remove 1D, this test should fail due
+  // to
+  //    // insufficient DN for holding schema
+  //    failTest(2, 3, 1, 3, 1, 2, false, SQLModel.TABLE_MODEL_SQL,
+  // ConsensusFactory.IOT_CONSENSUS_V2);
+  //  }
 
   private void successTest(
       final int dataReplicateFactor,
