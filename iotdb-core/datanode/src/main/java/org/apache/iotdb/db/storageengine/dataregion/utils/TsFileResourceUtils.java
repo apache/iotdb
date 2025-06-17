@@ -413,9 +413,8 @@ public class TsFileResourceUtils {
   }
 
   public static void updateTsFileResource(
-      TsFileSequenceReader reader, TsFileResource tsFileResource, boolean cacheLastValues)
-      throws IOException {
-    updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource, cacheLastValues);
+      TsFileSequenceReader reader, TsFileResource tsFileResource) throws IOException {
+    updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource, false);
     tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
     tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
   }

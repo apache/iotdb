@@ -92,7 +92,7 @@ TEST_CASE("Test insertRecord by string", "[testInsertRecord]") {
         long index = 1;
         count++;
         for (const Field &f: sessionDataSet->next()->fields) {
-            REQUIRE(f.longV == index);
+            REQUIRE(f.longV.value() == index);
             index++;
         }
     }
@@ -137,7 +137,7 @@ TEST_CASE("Test insertRecords ", "[testInsertRecords]") {
         long index = 1;
         count++;
         for (const Field &f: sessionDataSet->next()->fields) {
-            REQUIRE(f.longV == index);
+            REQUIRE(f.longV.value() == index);
             index++;
         }
     }
@@ -211,10 +211,10 @@ TEST_CASE("Test insertRecord with new datatypes ", "[testTypedInsertRecordNewDat
         for (int i = 0; i < 4; i++) {
             REQUIRE(types[i] == record->fields[i].dataType);
         }
-        REQUIRE(record->fields[0].longV == value1);
-        REQUIRE(record->fields[1].dateV == value2);
-        REQUIRE(record->fields[2].stringV == value3);
-        REQUIRE(record->fields[3].stringV == value4);
+        REQUIRE(record->fields[0].longV.value() == value1);
+        REQUIRE(record->fields[1].dateV.value() == value2);
+        REQUIRE(record->fields[2].stringV.value() == value3);
+        REQUIRE(record->fields[3].stringV.value() == value4);
         count++;
     }
     REQUIRE(count == 100);
@@ -337,7 +337,7 @@ TEST_CASE("Test insertTablet ", "[testInsertTablet]") {
         long index = 0;
         count++;
         for (const Field& f: sessionDataSet->next()->fields) {
-            REQUIRE(f.longV == index);
+            REQUIRE(f.longV.value() == index);
             index++;
         }
     }
@@ -387,14 +387,14 @@ TEST_CASE("Test insertTablets ", "[testInsertTablets]") {
         long index = 0;
         count++;
         for (const Field& f: sessionDataSet->next()->fields) {
-            REQUIRE(f.longV == index);
+            REQUIRE(f.longV.value() == index);
             index++;
         }
     }
     REQUIRE(count == 100);
 }
 
-TEST_CASE("Test insertTablet new datatype", "[testInsertTabletNewDatatype]") {
+TEST_CASE("Test insertTablet multi datatype", "[testInsertTabletMultiDatatype]") {
     CaseReporter cr("testInsertTabletNewDatatype");
     string deviceId = "root.test.d2";
     vector<pair<string, TSDataType::TSDataType>> schemaList;
@@ -437,18 +437,14 @@ TEST_CASE("Test insertTablet new datatype", "[testInsertTabletNewDatatype]") {
         tablet.reset();
     }
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select s1,s2,s3,s4 from root.test.d2");
+    auto dataIter = sessionDataSet->getIterator();
     sessionDataSet->setFetchSize(1024);
     int count = 0;
-    while (sessionDataSet->hasNext()) {
-        auto record = sessionDataSet->next();
-        REQUIRE(record->fields.size() == 4);
-        for (int i = 0; i < 4; i++) {
-            REQUIRE(dataTypes[i] == record->fields[i].dataType);
-        }
-        REQUIRE(record->fields[0].longV == s1Value);
-        REQUIRE(record->fields[1].dateV == s2Value);
-        REQUIRE(record->fields[2].stringV == s3Value);
-        REQUIRE(record->fields[3].stringV == s4Value);
+    while (dataIter.next()) {
+        REQUIRE(dataIter.getLongByIndex(2).value() == s1Value);
+        REQUIRE(dataIter.getDateByIndex(3).value() == s2Value);
+        REQUIRE(dataIter.getStringByIndex(4).value() == s3Value);
+        REQUIRE(dataIter.getStringByIndex(5).value() == s4Value);
         count++;
     }
     REQUIRE(count == 100);
@@ -472,8 +468,8 @@ TEST_CASE("Test Last query ", "[testLastQuery]") {
     long index = 0;
     while (sessionDataSet->hasNext()) {
         vector<Field> fields = sessionDataSet->next()->fields;
-        REQUIRE("1" <= fields[1].stringV);
-        REQUIRE(fields[1].stringV <= "3");
+        REQUIRE("1" <= fields[1].stringV.value());
+        REQUIRE(fields[1].stringV.value() <= "3");
         index++;
     }
 }
@@ -509,9 +505,9 @@ TEST_CASE("Test Huge query ", "[testHugeQuery]") {
     while (sessionDataSet->hasNext()) {
         auto rowRecord = sessionDataSet->next();
         REQUIRE(rowRecord->timestamp == count);
-        REQUIRE(rowRecord->fields[0].longV== 1);
-        REQUIRE(rowRecord->fields[1].longV == 2);
-        REQUIRE(rowRecord->fields[2].longV == 3);
+        REQUIRE(rowRecord->fields[0].longV.value() == 1);
+        REQUIRE(rowRecord->fields[1].longV.value() == 2);
+        REQUIRE(rowRecord->fields[2].longV.value() == 3);
         count++;
         if (count % 1000 == 0) {
             std::cout << count << "\t" << std::flush;
@@ -585,11 +581,11 @@ TEST_CASE("Test executeRawDataQuery ", "[executeRawDataQuery]") {
         vector<Field> fields = rowRecordPtr->fields;
         REQUIRE(rowRecordPtr->timestamp == ts);
         REQUIRE(fields[0].dataType == TSDataType::INT64);
-        REQUIRE(fields[0].longV == ts);
+        REQUIRE(fields[0].longV.value() == ts);
         REQUIRE(fields[1].dataType == TSDataType::INT64);
-        REQUIRE(fields[1].longV == ts * 2);
+        REQUIRE(fields[1].longV.value() == ts * 2);
         REQUIRE(fields[2].dataType == TSDataType::INT64);
-        REQUIRE(fields[2].longV == ts *3);
+        REQUIRE(fields[2].longV.value() == ts *3);
         ts++;
     }
 
@@ -617,10 +613,10 @@ TEST_CASE("Test executeRawDataQuery ", "[executeRawDataQuery]") {
         vector<Field> fields = rowRecordPtr->fields;
         REQUIRE(rowRecordPtr->timestamp == ts);
         REQUIRE(fields[0].dataType == TSDataType::INT64);
-        REQUIRE(fields[0].longV == 9);
+        REQUIRE(fields[0].longV.value() == 9);
         REQUIRE(fields[1].dataType == TSDataType::UNKNOWN);
         REQUIRE(fields[2].dataType == TSDataType::INT64);
-        REQUIRE(fields[2].longV == 999);
+        REQUIRE(fields[2].longV.value() == 999);
     }
 
     //== Test executeRawDataQuery() with empty data
@@ -686,9 +682,9 @@ TEST_CASE("Test executeLastDataQuery ", "[testExecuteLastDataQuery]") {
 
         vector<Field> fields = rowRecordPtr->fields;
         REQUIRE(rowRecordPtr->timestamp == tsCheck[index]);
-        REQUIRE(fields[0].stringV == paths[index]);
-        REQUIRE(fields[1].stringV == valueCheck[index]);
-        REQUIRE(fields[2].stringV == "INT64");
+        REQUIRE(fields[0].stringV.value() == paths[index]);
+        REQUIRE(fields[1].stringV.value() == valueCheck[index]);
+        REQUIRE(fields[2].stringV.value() == "INT64");
         index++;
     }
 
@@ -708,9 +704,9 @@ TEST_CASE("Test executeLastDataQuery ", "[testExecuteLastDataQuery]") {
 
         vector<Field> fields = rowRecordPtr->fields;
         REQUIRE(rowRecordPtr->timestamp == tsCheck[index]);
-        REQUIRE(fields[0].stringV == paths[index]);
-        REQUIRE(fields[1].stringV == valueCheck[index]);
-        REQUIRE(fields[2].stringV == "INT64");
+        REQUIRE(fields[0].stringV.value() == paths[index]);
+        REQUIRE(fields[1].stringV.value() == valueCheck[index]);
+        REQUIRE(fields[2].stringV.value() == "INT64");
         index++;
     }
 
