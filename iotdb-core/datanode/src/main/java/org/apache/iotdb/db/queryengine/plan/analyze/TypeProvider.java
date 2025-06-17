@@ -49,7 +49,11 @@ public class TypeProvider {
   }
 
   public TSDataType getType(String symbol) {
-    return typeMap.get(symbol);
+    TSDataType type = typeMap.get(symbol);
+    if (templatedInfo == null || type != null) {
+      return type;
+    }
+    return templatedInfo.getSchemaMap().get(symbol).getType();
   }
 
   public void setType(String symbol, TSDataType dataType) {
