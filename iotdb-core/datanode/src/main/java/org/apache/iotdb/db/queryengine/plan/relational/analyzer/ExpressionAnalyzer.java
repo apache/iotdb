@@ -103,9 +103,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
-import javax.annotation.Nullable;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
+
+import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1560,7 +1561,9 @@ public class ExpressionAnalyzer {
       return type;
     }
 
-    /** @return the common supertype between the value type and subquery type */
+    /**
+     * @return the common supertype between the value type and subquery type
+     */
     private Type analyzePredicateWithSubquery(
         Expression node,
         Type declaredValueType,
@@ -1811,7 +1814,10 @@ public class ExpressionAnalyzer {
       Scope subqueryScope = Scope.builder().withParent(context.getContext().getScope()).build();
 
       List<RowType.Field> fields =
-          analyzer.analyze(node.getSubquery(), subqueryScope).getRelationType().getAllFields()
+          analyzer
+              .analyze(node.getSubquery(), subqueryScope)
+              .getRelationType()
+              .getAllFields()
               .stream()
               .map(
                   field -> {
