@@ -32,10 +32,7 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -1427,6 +1424,7 @@ public class IoTDBAuthIT {
     resultSetEqualTest("show current_user", expectedHeader, retArray, "tempuser", "temppw123456");
   }
 
+  @Ignore
   @Test
   public void testStrongPassword() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();

@@ -755,14 +755,6 @@ public class ConfigNodeDescriptor {
   public void loadHotModifiedProps(TrimProperties properties) {
     Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
         .ifPresent(conf::setClusterName);
-
-    commonDescriptor
-        .getConfig()
-        .setEnforceStrongPassword(
-            Boolean.parseBoolean(
-                properties.getProperty(
-                    "enforce_strong_password",
-                    String.valueOf(commonDescriptor.getConfig().isEnforceStrongPassword()))));
   }
 
   public static ConfigNodeDescriptor getInstance() {
