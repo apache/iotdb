@@ -705,6 +705,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         scanOrder = scanOrder.reverse();
         aggregationDescriptors = context.getTemplatedInfo().getDescendingDescriptorList();
       }
+      aggregationDescriptors.forEach(
+          aggregationDescriptor ->
+              aggregationDescriptor.setStep(node.getAggregationDescriptorList().get(0).getStep()));
 
       return constructAlignedSeriesAggregationScanOperator(
           node.getPlanNodeId(),

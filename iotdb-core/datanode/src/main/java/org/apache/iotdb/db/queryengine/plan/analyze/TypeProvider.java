@@ -58,7 +58,11 @@ public class TypeProvider {
   }
 
   public TSDataType getTreeModelType(String symbol) {
-    return treeModelTypeMap.get(symbol);
+    TSDataType type = treeModelTypeMap.get(symbol);
+    if (templatedInfo == null || type != null) {
+      return type;
+    }
+    return templatedInfo.getSchemaMap().get(symbol).getType();
   }
 
   public void setTreeModelType(String symbol, TSDataType dataType) {
