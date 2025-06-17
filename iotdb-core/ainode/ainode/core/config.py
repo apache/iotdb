@@ -154,6 +154,30 @@ class AINodeConfig(object):
         self._ain_target_config_node_list = parse_endpoint_url(
             ain_target_config_node_list
         )
+        
+    def get_support_iotdb_models(self) -> bool:
+        """是否支持IoTDB模型格式"""
+        return getattr(self, '_support_iotdb_models', True)
+
+    def set_support_iotdb_models(self, support: bool) -> None:
+        """设置是否支持IoTDB模型格式"""
+        self._support_iotdb_models = support
+
+    def get_model_loading_timeout(self) -> int:
+        """获取模型加载超时时间（秒）"""
+        return getattr(self, '_model_loading_timeout', 300)
+
+    def set_model_loading_timeout(self, timeout: int) -> None:
+        """设置模型加载超时时间（秒）"""
+        self._model_loading_timeout = timeout
+
+    def get_auto_model_format_detection(self) -> bool:
+        """是否启用自动模型格式检测"""
+        return getattr(self, '_auto_model_format_detection', True)
+
+    def set_auto_model_format_detection(self, auto_detect: bool) -> None:
+        """设置是否启用自动模型格式检测"""
+        self._auto_model_format_detection = auto_detect
 
 
 @singleton
@@ -168,6 +192,20 @@ class AINodeDescriptor(object):
         system_properties_file = os.path.join(
             self._config.get_ain_system_dir(), AINODE_SYSTEM_FILE_NAME
         )
+        if "ain_support_iotdb_models" in config_keys:
+            self._config.set_support_iotdb_models(
+                bool(int(file_configs["ain_support_iotdb_models"]))
+            )
+
+        if "ain_model_loading_timeout" in config_keys:
+            self._config.set_model_loading_timeout(
+                int(file_configs["ain_model_loading_timeout"])
+            )
+
+        if "ain_auto_model_format_detection" in config_keys:
+            self._config.set_auto_model_format_detection(
+                bool(int(file_configs["ain_auto_model_format_detection"]))
+            )
         if os.path.exists(system_properties_file):
             system_configs = load_properties(system_properties_file)
             if "ainode_id" in system_configs:

@@ -74,11 +74,15 @@ class UnsupportedError(_BaseError):
         self.message = "{0} is not supported in current version".format(msg)
 
 
+
 class InvalidUriError(_BaseError):
-    def __init__(self, uri: str):
-        self.message = "Invalid uri: {}, there are no {} or {} under this uri.".format(
-            uri, DEFAULT_MODEL_FILE_NAME, DEFAULT_CONFIG_FILE_NAME
-        )
+    def __init__(self, uri: str, details: str = ""):
+        if details:
+            self.message = "Invalid uri: {}, {}".format(uri, details)
+        else:
+            # 修复硬编码错误
+            self.message = "Invalid uri: {}, no valid model files found (checked both IoTDB and legacy formats)".format(uri)
+
 
 
 class InvalidWindowArgumentError(_BaseError):
@@ -134,6 +138,35 @@ class AttributeNotSupportError(_BaseError):
             attribute_name, model_name
         )
 
+# new error
+class ModelLoadingError(_BaseError):
+    def __init__(self, model_id: str, error_msg: str):
+        self.message = f"Failed to load model {model_id}: {error_msg}"
+
+
+class ModelFormatError(_BaseError):
+    def __init__(self, model_path: str, expected_format: str):
+        self.message = f"Invalid model format at {model_path}, expected {expected_format}"
+
+
+class IoTDBModelError(_BaseError):
+    def __init__(self, model_type: str, error_msg: str):
+        self.message = f"IoTDB model error for {model_type}: {error_msg}"
+
+
+class UnsupportedModelTypeError(_BaseError):
+    def __init__(self, model_type: str):
+        self.message = f"Unsupported model type: {model_type}. Supported types: timer, sundial"
+
+
+class ConfigValidationError(_BaseError):
+    def __init__(self, config_path: str, validation_msg: str):
+        self.message = f"Configuration validation failed for {config_path}: {validation_msg}"
+
+
+class WeightFileError(_BaseError):
+    def __init__(self, weight_path: str, error_msg: str):
+        self.message = f"Weight file error at {weight_path}: {error_msg}"
 
 # This is used to extract the key message in RuntimeError instead of the traceback message
 def runtime_error_extractor(error_message):

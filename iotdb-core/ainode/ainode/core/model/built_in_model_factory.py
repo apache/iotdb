@@ -528,8 +528,7 @@ timerxl_attribute_map = {
             AINodeDescriptor().get_config().get_ain_models_dir(),
             "weights",
             "timerxl",
-            "model.safetensors",
-        ),
+        ),  # 移除具体文件名，让from_pretrained自动检测
         value_choices=[""],
     ),
 }
