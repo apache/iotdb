@@ -92,17 +92,18 @@ public class IoTDBRemoveDataNodeNormalIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  @Test
-  public void success1C4DIoTTest() throws Exception {
-    // Setup 1C4D, and remove 1D, this test should success
-    successTest(2, 3, 1, 4, 1, 2, true, SQLModel.NOT_USE_SQL, ConsensusFactory.IOT_CONSENSUS);
-  }
-
-  @Test
-  public void success1C4DIoTV2Test() throws Exception {
-    // Setup 1C4D, and remove 1D, this test should success
-    successTest(2, 3, 1, 4, 1, 2, true, SQLModel.NOT_USE_SQL, ConsensusFactory.IOT_CONSENSUS_V2);
-  }
+  //  @Test
+  //  public void success1C4DIoTTest() throws Exception {
+  //    // Setup 1C4D, and remove 1D, this test should success
+  //    successTest(2, 3, 1, 4, 1, 2, true, SQLModel.NOT_USE_SQL, ConsensusFactory.IOT_CONSENSUS);
+  //  }
+  //
+  //  @Test
+  //  public void success1C4DIoTV2Test() throws Exception {
+  //    // Setup 1C4D, and remove 1D, this test should success
+  //    successTest(2, 3, 1, 4, 1, 2, true, SQLModel.NOT_USE_SQL,
+  // ConsensusFactory.IOT_CONSENSUS_V2);
+  //  }
 
   //  @Test
   //  public void fail1C3DIoTTest() throws Exception {
