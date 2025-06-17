@@ -103,10 +103,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
+import javax.annotation.Nullable;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
-
-import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1009,7 +1008,7 @@ public class ExpressionAnalyzer {
             case "NEXT":
               return setExpressionType(node, analyzePhysicalNavigation(node, context, name));
             default:
-              throw new IllegalStateException("unexpected pattern recognition function " + name);
+              throw new SemanticException("unexpected pattern recognition function " + name);
           }
 
         } else if (isAggregation) {
@@ -1561,9 +1560,7 @@ public class ExpressionAnalyzer {
       return type;
     }
 
-    /**
-     * @return the common supertype between the value type and subquery type
-     */
+    /** @return the common supertype between the value type and subquery type */
     private Type analyzePredicateWithSubquery(
         Expression node,
         Type declaredValueType,
@@ -1814,10 +1811,7 @@ public class ExpressionAnalyzer {
       Scope subqueryScope = Scope.builder().withParent(context.getContext().getScope()).build();
 
       List<RowType.Field> fields =
-          analyzer
-              .analyze(node.getSubquery(), subqueryScope)
-              .getRelationType()
-              .getAllFields()
+          analyzer.analyze(node.getSubquery(), subqueryScope).getRelationType().getAllFields()
               .stream()
               .map(
                   field -> {
@@ -2193,19 +2187,28 @@ public class ExpressionAnalyzer {
   public static boolean isPatternRecognitionFunction(FunctionCall node) {
     QualifiedName qualifiedName = node.getName();
     if (qualifiedName.getParts().size() > 1) {
-      return false;
+      throw new SemanticException(
+          "Pattern recognition function name must not be qualified: " + qualifiedName);
     }
     Identifier identifier = qualifiedName.getOriginalParts().get(0);
     if (identifier.isDelimited()) {
-      return false;
+      throw new SemanticException(
+          "Pattern recognition function name must not be delimited: " + identifier.getValue());
     }
     String name = identifier.getValue().toUpperCase(ENGLISH);
-    return name.equals("RPR_FIRST")
+    if (name.equals("LAST") || name.equals("FIRST")) {
+      throw new SemanticException(
+          "Pattern recognition function names cannot be LAST or FIRST, use RPR_LAST or RPR_FIRST instead.");
+    } else if (!(name.equals("RPR_FIRST")
         || name.equals("RPR_LAST")
         || name.equals("PREV")
         || name.equals("NEXT")
         || name.equals("CLASSIFIER")
-        || name.equals("MATCH_NUMBER");
+        || name.equals("MATCH_NUMBER"))) {
+      throw new SemanticException("Unknown pattern recognition function: " + name);
+    } else {
+      return true;
+    }
   }
 
   public static ExpressionAnalysis analyzePatternRecognitionExpression(
