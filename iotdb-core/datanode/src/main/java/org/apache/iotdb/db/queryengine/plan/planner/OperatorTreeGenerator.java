@@ -239,7 +239,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
@@ -699,20 +698,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     if (context.isBuildPlanUseTemplate()) {
       Ordering scanOrder = context.getTemplatedInfo().getScanOrder();
-      List<AggregationDescriptor> aggregationDescriptors;
-      if (node.getDescriptorType() == 0 || node.getDescriptorType() == 2) {
-        aggregationDescriptors = context.getTemplatedInfo().getAscendingDescriptorList();
-      } else {
+      if (node.getDescriptorType() == 1) {
         scanOrder = scanOrder.reverse();
-        aggregationDescriptors = context.getTemplatedInfo().getDescendingDescriptorList();
       }
-      AggregationStep step = node.getAggregationDescriptorList().get(0).getStep();
-      aggregationDescriptors.forEach(aggregationDescriptor -> aggregationDescriptor.setStep(step));
 
       return constructAlignedSeriesAggregationScanOperator(
           node.getPlanNodeId(),
           node.getAlignedPath(),
-          aggregationDescriptors,
+          node.getAggregationDescriptorList(),
           context.getTemplatedInfo().getPushDownPredicate(),
           scanOrder,
           context.getTemplatedInfo().getGroupByTimeParameter(),
