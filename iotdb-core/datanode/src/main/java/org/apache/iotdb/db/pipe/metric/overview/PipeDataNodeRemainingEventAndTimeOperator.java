@@ -278,7 +278,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     public void update(final double newValue) {
       final double alpha = PipeConfig.getInstance().getPipeRemainingInsertNodeCountEMAAlpha();
       if (insertNodeEMAValue == 0) {
-        insertNodeEMAValue = newValue; // 初始值
+        insertNodeEMAValue = newValue;
       } else {
         insertNodeEMAValue = alpha * newValue + (1 - alpha) * insertNodeEMAValue;
       }
