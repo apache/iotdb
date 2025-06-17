@@ -308,6 +308,8 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
       aggregationDescriptorList = typeProvider.getTemplatedInfo().getAscendingDescriptorList();
     } else if (descriptorType == 1) {
       aggregationDescriptorList = typeProvider.getTemplatedInfo().getDescendingDescriptorList();
+    } else {
+      throw new IllegalStateException("Unexpected descriptorType: " + descriptorType);
     }
     AggregationStep step = AggregationStep.deserialize(byteBuffer);
     aggregationDescriptorList.forEach(aggregationDescriptor -> aggregationDescriptor.setStep(step));
