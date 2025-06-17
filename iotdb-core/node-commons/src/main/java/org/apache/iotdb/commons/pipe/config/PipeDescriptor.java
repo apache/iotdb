@@ -208,12 +208,12 @@ public class PipeDescriptor {
                     "pipe_remaining_time_commit_rate_average_time",
                     String.valueOf(config.getPipeRemainingTimeCommitRateAverageTime()))
                 .trim()));
-    config.setPipeRemainingInsertNodeCountAverage(
-        PipeRateAverage.valueOf(
+    config.setPipeRemainingInsertNodeCountEMAAlpha(
+        Double.parseDouble(
             properties
                 .getProperty(
-                    "pipe_remaining_insert_node_count_average",
-                    String.valueOf(config.getPipeRemainingInsertNodeCountAverage()))
+                    "pipe_remaining_insert_node_count_ema_alpha",
+                    String.valueOf(config.getPipeRemainingInsertNodeCountEMAAlpha()))
                 .trim()));
   }
 

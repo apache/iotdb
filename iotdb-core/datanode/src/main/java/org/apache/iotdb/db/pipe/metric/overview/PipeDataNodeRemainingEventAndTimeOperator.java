@@ -60,8 +60,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private Timer tsfileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private volatile long lastInsertNodeEventCountSmoothingTime = Long.MIN_VALUE;
-  private final Meter insertNodeEventCountMeter =
-      new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
+  private final InsertNodeEMA insertNodeEventCountEMA = new InsertNodeEMA();
 
   private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
   private double lastSchemaRegionCommitSmoothingValue = Long.MAX_VALUE;
@@ -105,17 +104,12 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   }
 
   double getRemainingInsertEventSmoothingCount() {
-    if (PipeConfig.getInstance().getPipeRemainingInsertNodeCountAverage() == PipeRateAverage.NONE) {
-      return insertNodeEventCount.get();
-    }
     if (System.currentTimeMillis() - lastInsertNodeEventCountSmoothingTime
         >= PipeConfig.getInstance().getPipeRemainingInsertEventCountSmoothingIntervalSeconds()) {
-      insertNodeEventCountMeter.mark(insertNodeEventCount.get());
+      insertNodeEventCountEMA.update(insertNodeEventCount.get());
       lastInsertNodeEventCountSmoothingTime = System.currentTimeMillis();
     }
-    return PipeConfig.getInstance()
-        .getPipeRemainingInsertNodeCountAverage()
-        .getMeterRate(insertNodeEventCountMeter);
+    return insertNodeEventCountEMA.insertNodeEMAValue;
   }
 
   long getRemainingEvents() {
@@ -276,5 +270,18 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     super.freezeRate(isStopPipe);
     dataRegionCommitMeter.set(null);
     schemaRegionCommitMeter.set(null);
+  }
+
+  private static class InsertNodeEMA {
+    private double insertNodeEMAValue;
+
+    public void update(final double newValue) {
+      final double alpha = PipeConfig.getInstance().getPipeRemainingInsertNodeCountEMAAlpha();
+      if (insertNodeEMAValue == 0) {
+        insertNodeEMAValue = newValue; // 初始值
+      } else {
+        insertNodeEMAValue = alpha * newValue + (1 - alpha) * insertNodeEMAValue;
+      }
+    }
   }
 }
