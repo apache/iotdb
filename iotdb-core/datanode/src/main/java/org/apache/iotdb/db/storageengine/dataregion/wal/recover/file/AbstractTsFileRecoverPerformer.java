@@ -115,7 +115,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
   protected void reconstructResourceFile() throws IOException {
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath())) {
-      TsFileResourceUtils.updateTsFileResource(reader, tsFileResource, false);
+      TsFileResourceUtils.updateTsFileResource(reader, tsFileResource);
     }
 
     // set progress index for pipe to avoid data loss
