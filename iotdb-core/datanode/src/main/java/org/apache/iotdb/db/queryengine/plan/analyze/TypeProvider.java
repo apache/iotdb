@@ -26,6 +26,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -62,7 +63,8 @@ public class TypeProvider {
     if (templatedInfo == null || type != null) {
       return type;
     }
-    return templatedInfo.getSchemaMap().get(symbol).getType();
+    IMeasurementSchema schema = templatedInfo.getSchemaMap().get(symbol);
+    return schema == null ? null : schema.getType();
   }
 
   public void setTreeModelType(String symbol, TSDataType dataType) {
