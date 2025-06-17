@@ -46,6 +46,10 @@ public class IoTDBTableViewWithTreeTTLQueryIT {
   protected static final String DATABASE_NAME = "test";
 
   protected static String[] createTreeDataSqls = {
+    "CREATE ALIGNED TIMESERIES root.db.battery.b0(voltage INT32, current FLOAT)",
+    "INSERT INTO root.db.battery.b0(time, voltage, current) aligned values ("
+        + (System.currentTimeMillis() - 100000)
+        + ", 1, 1)",
     "CREATE ALIGNED TIMESERIES root.db.battery.b1(voltage INT32, current FLOAT)",
     "INSERT INTO root.db.battery.b1(time, voltage, current) aligned values (1, 1, 1)",
     "INSERT INTO root.db.battery.b1(time, voltage, current) aligned values (2, 1, 1)",
@@ -63,8 +67,38 @@ public class IoTDBTableViewWithTreeTTLQueryIT {
     "INSERT INTO root.db.battery.b2(time, voltage, current) values ("
         + System.currentTimeMillis()
         + ", 1, 1)",
+    "CREATE ALIGNED TIMESERIES root.db.battery.b3(voltage INT32, current FLOAT)",
+    "INSERT INTO root.db.battery.b3(time, voltage, current) aligned values ("
+        + (System.currentTimeMillis() - 100000)
+        + ", 1, 1)",
+    "CREATE ALIGNED TIMESERIES root.db.battery.b4(voltage INT32, current FLOAT)",
+    "INSERT INTO root.db.battery.b4(time, voltage, current) aligned values ("
+        + (System.currentTimeMillis() - 100000)
+        + ", 1, 1)",
+    "CREATE ALIGNED TIMESERIES root.db.battery.b5(voltage INT32, current FLOAT)",
+    "INSERT INTO root.db.battery.b5(time, voltage, current) aligned values ("
+        + (System.currentTimeMillis() - 100000)
+        + ", 1, 1)",
+    "CREATE ALIGNED TIMESERIES root.db.battery.b6(voltage INT32, current FLOAT)",
+    "INSERT INTO root.db.battery.b6(time, voltage, current) aligned values ("
+        + (System.currentTimeMillis() - 100000)
+        + ", 1, 1)",
+    "CREATE ALIGNED TIMESERIES root.db.battery.b7(voltage INT32, current FLOAT)",
+    "INSERT INTO root.db.battery.b7(time, voltage, current) aligned values ("
+        + (System.currentTimeMillis() - 100000)
+        + ", 1, 1)",
+    "CREATE ALIGNED TIMESERIES root.db.battery.b8(voltage INT32, current FLOAT)",
+    "INSERT INTO root.db.battery.b8(time, voltage, current) aligned values ("
+        + (System.currentTimeMillis() - 100000)
+        + ", 1, 1)",
+    "CREATE ALIGNED TIMESERIES root.db.battery.b9(voltage INT32, current FLOAT)",
+    "INSERT INTO root.db.battery.b9(time, voltage, current) aligned values ("
+        + (System.currentTimeMillis() - 100000)
+        + ", 1, 1)",
     "flush",
-    "set ttl to root.db.battery.** 100000"
+    "set ttl to root.db.battery.** 200000",
+    "set ttl to root.db.battery.b0 50000",
+    "set ttl to root.db.battery.b6 50000",
   };
 
   protected static String[] createTableSqls = {
@@ -106,7 +140,7 @@ public class IoTDBTableViewWithTreeTTLQueryIT {
         count++;
       }
       sessionDataSet.close();
-      Assert.assertEquals(2, count);
+      Assert.assertEquals(8, count);
     }
   }
 }
