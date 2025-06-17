@@ -272,7 +272,8 @@ public class SubscriptionCoordinator {
             new TUnsubscribeReq()
                 .setConsumerId(null)
                 .setConsumerGroupId(topicNameWithConsumerGroupName.get().right)
-                .setTopicNames(Collections.singleton(topicNameWithConsumerGroupName.get().left)));
+                .setTopicNames(Collections.singleton(topicNameWithConsumerGroupName.get().left))
+                .setIsTableModel(req.isTableModel));
   }
 
   public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) {
