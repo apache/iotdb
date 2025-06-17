@@ -16,12 +16,12 @@
 # under the License.
 
 from pathlib import Path
-from typing import Dict, Iterator, Tuple, Union, Optional
+from typing import Dict, Iterator, Optional, Tuple, Union
 
 import torch
 
+from ainode.core.constant import WEIGHT_FORMAT_PRIORITY
 from ainode.core.log import Logger
-from ainode.core.constant import WEIGHT_FORMAT_PRIORITY  # 使用constant中定义的优先级
 
 logger = Logger()
 
@@ -30,14 +30,14 @@ def load_weights_as_state_dict(
     weights_path: Union[str, Path]
 ) -> Dict[str, torch.Tensor]:
     """
-    加载权重文件并返回state_dict格式
-    优先级：.safetensors > .pt > .pth > .bin
+    Load weight file and return it in state_dict format.
+    Priority: .safetensors > .pt > .pth > .bin
 
     Args:
-        weights_path: 权重文件路径
+        weights_path: Path to weight file or directory
 
     Returns:
-        权重字典 {key: tensor}
+        Dictionary of weights {key: tensor}
     """
     weights_path = Path(weights_path)
 
@@ -46,46 +46,43 @@ def load_weights_as_state_dict(
     elif weights_path.is_dir():
         return _load_weights_from_directory(weights_path)
     else:
-        raise FileNotFoundError(f"权重路径不存在: {weights_path}")
+        raise FileNotFoundError(f"Weight path does not exist: {weights_path}")
 
 
 def load_weights_for_from_pretrained(
-    model_dir: Union[str, Path], 
-    weight_filename: Optional[str] = None
+    model_dir: Union[str, Path], weight_filename: Optional[str] = None
 ) -> Dict[str, torch.Tensor]:
     """
-    专门为from_pretrained方法加载权重
-    
+    Load weights specifically for from_pretrained method
+
     Args:
-        model_dir: 模型目录
-        weight_filename: 指定权重文件名，如果为None则自动检测
-        
+        model_dir: Model directory
+        weight_filename: Optional weight file name. If None, auto-detect.
+
     Returns:
-        权重字典
+        Dictionary of weights
     """
     model_dir = Path(model_dir)
-    
+
     if weight_filename:
-        # 使用指定的权重文件
         weight_path = model_dir / weight_filename
         if weight_path.exists():
             return _load_single_weight_file(weight_path)
         else:
-            raise FileNotFoundError(f"指定的权重文件不存在: {weight_path}")
+            raise FileNotFoundError(f"Specified weight file not found: {weight_path}")
     else:
-        # 自动检测权重文件
         return _load_weights_from_directory(model_dir)
 
 
 def iter_weights(weights_path: Union[str, Path]) -> Iterator[Tuple[str, torch.Tensor]]:
     """
-    迭代器方式加载权重，节省内存
+    Load weights using an iterator to save memory
 
     Args:
-        weights_path: 权重路径
+        weights_path: Path to weight file or directory
 
     Yields:
-        (key, tensor) 元组
+        Tuple (key, tensor)
     """
     weights = load_weights_as_state_dict(weights_path)
     for key, tensor in weights.items():
@@ -93,65 +90,57 @@ def iter_weights(weights_path: Union[str, Path]) -> Iterator[Tuple[str, torch.Te
 
 
 def _load_single_weight_file(file_path: Path) -> Dict[str, torch.Tensor]:
-    """加载单个权重文件"""
+    """Load a single weight file"""
     suffix = file_path.suffix.lower()
 
-    logger.debug(f"加载权重文件: {file_path}")
+    logger.debug(f"Loading weight file: {file_path}")
 
     if suffix == ".safetensors":
         return _load_safetensors_file(file_path)
     elif suffix in [".pt", ".pth", ".bin"]:
         return _load_pytorch_file(file_path)
     else:
-        raise ValueError(f"不支持的权重文件格式: {suffix}")
+        raise ValueError(f"Unsupported weight file format: {suffix}")
 
 
 def _load_weights_from_directory(dir_path: Path) -> Dict[str, torch.Tensor]:
-    """从目录加载权重，按优先级查找"""
-    # 使用constant中定义的优先级
+    """Load weights from a directory by checking priority patterns"""
     priority_patterns = WEIGHT_FORMAT_PRIORITY
 
-    # 查找单一文件
+    # Try to find a single file first
     for pattern in priority_patterns:
         file_path = dir_path / pattern
         if file_path.exists():
-            logger.debug(f"找到权重文件: {file_path}")
+            logger.debug(f"Found weight file: {file_path}")
             return _load_single_weight_file(file_path)
 
-    # 查找分片文件
+    # Look for sharded files
     safetensor_files = list(dir_path.glob("*.safetensors"))
     pytorch_files = list(dir_path.glob("*.pt")) + list(dir_path.glob("*.pth"))
 
     if safetensor_files:
-        logger.info(f"找到 {len(safetensor_files)} 个SafeTensors分片文件")
+        logger.info(f"Found {len(safetensor_files)} SafeTensors shard files")
         return _load_sharded_safetensors(safetensor_files)
     elif pytorch_files:
-        logger.info(f"找到 {len(pytorch_files)} 个PyTorch分片文件")
+        logger.info(f"Found {len(pytorch_files)} PyTorch shard files")
         return _load_sharded_pytorch(pytorch_files)
 
-    raise FileNotFoundError(f"在目录 {dir_path} 中找不到权重文件")
+    raise FileNotFoundError(f"No weight file found in directory: {dir_path}")
 
 
 def _load_safetensors_file(file_path: Path) -> Dict[str, torch.Tensor]:
-    """加载SafeTensors格式文件"""
+    """Load SafeTensors format weight file"""
     try:
         from safetensors import safe_open
     except ImportError:
-        logger.warning("safetensors未安装，尝试使用PyTorch格式")
-        # 尝试查找对应的.pt文件
-        pt_path = file_path.with_suffix(".pt")
-        if pt_path.exists():
-            logger.info(f"Fallback到PyTorch格式: {pt_path}")
-            return _load_pytorch_file(pt_path)
-        
-        # 尝试查找其他PyTorch格式文件
-        for suffix in [".pth", ".bin"]:
-            fallback_path = file_path.with_suffix(suffix)
+        logger.warning("safetensors not installed, falling back to PyTorch format")
+        for fallback_suffix in [".pt", ".pth", ".bin"]:
+            fallback_path = file_path.with_suffix(fallback_suffix)
             if fallback_path.exists():
-                logger.info(f"Fallback到PyTorch格式: {fallback_path}")
+                logger.info(f"Falling back to PyTorch format: {fallback_path}")
                 return _load_pytorch_file(fallback_path)
-        
-        raise ImportError("需要安装safetensors: pip install safetensors")
+
+        raise ImportError("safetensors is required: pip install safetensors")
 
     weights = {}
     try:
@@ -159,22 +148,21 @@ def _load_safetensors_file(file_path: Path) -> Dict[str, torch.Tensor]:
             for key in f.keys():
                 weights[key] = f.get_tensor(key)
     except Exception as e:
-        logger.error(f"SafeTensors文件损坏或格式错误: {e}")
+        logger.error(f"SafeTensors file is corrupted or malformed: {e}")
         raise
 
-    logger.debug(f"SafeTensors加载完成: {len(weights)} 个参数")
+    logger.debug(f"SafeTensors loaded: {len(weights)} parameters")
     return weights
 
 
 def _load_pytorch_file(file_path: Path) -> Dict[str, torch.Tensor]:
-    """加载PyTorch格式文件"""
+    """Load PyTorch-format weight file"""
     try:
         weights = torch.load(file_path, map_location="cpu")
     except Exception as e:
-        logger.error(f"PyTorch文件加载失败: {e}")
+        logger.error(f"Failed to load PyTorch file: {e}")
         raise
 
-    # 处理不同的权重结构
     if isinstance(weights, dict):
         if "state_dict" in weights:
             weights = weights["state_dict"]
@@ -182,22 +170,23 @@ def _load_pytorch_file(file_path: Path) -> Dict[str, torch.Tensor]:
             weights = weights["model"]
         elif "model_state_dict" in weights:
             weights = weights["model_state_dict"]
-    
-    # 验证权重格式
-    if not isinstance(weights, dict):
-        raise ValueError(f"权重文件格式不正确，期望dict，得到: {type(weights)}")
 
-    logger.debug(f"PyTorch权重加载完成: {len(weights)} 个参数")
+    if not isinstance(weights, dict):
+        raise ValueError(
+            f"Invalid weight file format, expected dict, got: {type(weights)}"
+        )
+
+    logger.debug(f"PyTorch weights loaded: {len(weights)} parameters")
     return weights
 
 
 def _load_sharded_safetensors(file_list: list) -> Dict[str, torch.Tensor]:
-    """加载分片的SafeTensors文件"""
+    """Load sharded SafeTensors weight files"""
     try:
         from safetensors import safe_open
     except ImportError:
-        logger.error("分片SafeTensors文件需要安装safetensors库")
-        raise ImportError("需要安装safetensors: pip install safetensors")
+        logger.error("Sharded SafeTensors files require safetensors to be installed")
+        raise ImportError("safetensors is required: pip install safetensors")
 
     weights = {}
     for file_path in sorted(file_list):
@@ -205,68 +194,73 @@ def _load_sharded_safetensors(file_list: list) -> Dict[str, torch.Tensor]:
             with safe_open(file_path, framework="pt", device="cpu") as f:
                 for key in f.keys():
                     if key in weights:
-                        logger.warning(f"权重键冲突，覆盖: {key}")
+                        logger.warning(
+                            f"Duplicate key detected in shard, overwriting: {key}"
+                        )
                     weights[key] = f.get_tensor(key)
         except Exception as e:
-            logger.error(f"加载分片文件失败: {file_path}, 错误: {e}")
+            logger.error(f"Failed to load shard file: {file_path}, Error: {e}")
             raise
 
     logger.debug(
-        f"分片SafeTensors加载完成: {len(file_list)} 个文件, {len(weights)} 个参数"
+        f"Sharded SafeTensors loaded: {len(file_list)} files, {len(weights)} parameters"
     )
     return weights
 
 
 def _load_sharded_pytorch(file_list: list) -> Dict[str, torch.Tensor]:
-    """加载分片的PyTorch文件"""
+    """Load sharded PyTorch-format weight files"""
     weights = {}
     for file_path in sorted(file_list):
         try:
             shard_weights = torch.load(file_path, map_location="cpu")
             if isinstance(shard_weights, dict):
-                # 处理键冲突
                 for key, value in shard_weights.items():
                     if key in weights:
-                        logger.warning(f"权重键冲突，覆盖: {key}")
+                        logger.warning(
+                            f"Duplicate key detected in shard, overwriting: {key}"
+                        )
                     weights[key] = value
         except Exception as e:
-            logger.error(f"加载分片文件失败: {file_path}, 错误: {e}")
+            logger.error(f"Failed to load shard file: {file_path}, Error: {e}")
             raise
 
     logger.debug(
-        f"分片PyTorch权重加载完成: {len(file_list)} 个文件, {len(weights)} 个参数"
+        f"Sharded PyTorch weights loaded: {len(file_list)} files, {len(weights)} parameters"
     )
     return weights
 
 
 def get_available_weight_files(model_dir: Union[str, Path]) -> Dict[str, list]:
     """
-    获取目录中可用的权重文件
-    
+    Get available weight files from a directory
+
     Args:
-        model_dir: 模型目录
-        
+        model_dir: Model directory
+
     Returns:
-        {"single": [...], "sharded_safetensors": [...], "sharded_pytorch": [...]}
+        {
+            "single": [...],
+            "sharded_safetensors": [...],
+            "sharded_pytorch": [...]
+        }
     """
     model_dir = Path(model_dir)
-    result = {
-        "single": [],
-        "sharded_safetensors": [],
-        "sharded_pytorch": []
-    }
-    
-    # 查找单一文件
+    result = {"single": [], "sharded_safetensors": [], "sharded_pytorch": []}
+
     for pattern in WEIGHT_FORMAT_PRIORITY:
         file_path = model_dir / pattern
         if file_path.exists():
             result["single"].append(str(file_path))
-    
-    # 查找分片文件
-    result["sharded_safetensors"] = [str(p) for p in model_dir.glob("*.safetensors") 
-                                   if p.name not in WEIGHT_FORMAT_PRIORITY]
-    result["sharded_pytorch"] = [str(p) for p in model_dir.glob("*.pt") 
-                               if p.name not in WEIGHT_FORMAT_PRIORITY]
+
+    result["sharded_safetensors"] = [
+        str(p)
+        for p in model_dir.glob("*.safetensors")
+        if p.name not in WEIGHT_FORMAT_PRIORITY
+    ]
+    result["sharded_pytorch"] = [
+        str(p) for p in model_dir.glob("*.pt") if p.name not in WEIGHT_FORMAT_PRIORITY
+    ]
     result["sharded_pytorch"].extend([str(p) for p in model_dir.glob("*.pth")])
-    
+
     return result

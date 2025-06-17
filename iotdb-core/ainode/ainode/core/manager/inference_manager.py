@@ -50,21 +50,23 @@ class InferenceStrategy(ABC):
         pass
 
 
-# [IoTDB] full data deserialized from iotdb is composed of [timestampList, valueList, length],
-# we only get valueList currently.
+# [IoTDB] Full data deserialized from IoTDB is composed of [timestampList, valueList, length],
+# currently we only use valueList.
 class TimerXLStrategy(InferenceStrategy):
     def infer(self, full_data, predict_length=96, **kwargs):
         data = full_data[1][0]
         if data.dtype.byteorder not in ("=", "|"):
             data = data.byteswap().newbyteorder()
         seqs = torch.tensor(data).unsqueeze(0).float()
-        
-        # 支持IoTDB模型的推理参数
+
+        # Inference parameters for IoTDB models
         revin = kwargs.get("revin", True)
         max_tokens = kwargs.get("max_new_tokens", predict_length)
-        
-        logger.debug(f"TimerXL inference: input_shape={seqs.shape}, predict_length={max_tokens}")
-        
+
+        logger.debug(
+            f"TimerXL inference: input_shape={seqs.shape}, predict_length={max_tokens}"
+        )
+
         try:
             output = self.model.generate(seqs, max_new_tokens=max_tokens, revin=revin)
             df = pd.DataFrame(output[0])
@@ -80,14 +82,16 @@ class SundialStrategy(InferenceStrategy):
         if data.dtype.byteorder not in ("=", "|"):
             data = data.byteswap().newbyteorder()
         seqs = torch.tensor(data).unsqueeze(0).float()
-        
-        # 支持IoTDB模型的推理参数
+
+        # Inference parameters for IoTDB models
         revin = kwargs.get("revin", True)
         max_tokens = kwargs.get("max_new_tokens", predict_length)
         num_samples = kwargs.get("num_samples", 10)
-        
-        logger.debug(f"Sundial inference: input_shape={seqs.shape}, predict_length={max_tokens}, num_samples={num_samples}")
-        
+
+        logger.debug(
+            f"Sundial inference: input_shape={seqs.shape}, predict_length={max_tokens}, num_samples={num_samples}"
+        )
+
         try:
             output = self.model.generate(
                 seqs, max_new_tokens=max_tokens, num_samples=num_samples, revin=revin
@@ -133,48 +137,48 @@ class RegisteredStrategy(InferenceStrategy):
             msg = runtime_error_extractor(str(e)) or str(e)
             raise InferenceModelInternalError(msg)
 
-        # concatenate or return first window for forecast
+        # Return binary outputs per window
         return [convert_to_binary(df) for df in results]
 
 
 def _get_strategy(model_id, model):
     """
-    改进的策略选择逻辑，支持IoTDB模型的动态策略选择
+    Improved strategy selection logic, supports dynamic strategy selection for IoTDB models
     """
-    # 硬编码的内置模型
+    # Hardcoded built-in models
     if model_id == "_timerxl":
         return TimerXLStrategy(model)
     if model_id == "_sundial":
         return SundialStrategy(model)
     if model_id.startswith("_"):
         return BuiltInStrategy(model)
-    
-    # 对于用户定义的模型，尝试从模型名称中推断类型
+
+    # For user-defined models, try to infer type from model name
     model_id_lower = model_id.lower()
-    
-    # 检查模型名称中是否包含类型指示符
+
+    # Check for type indicators in model name
     if "timer" in model_id_lower or "timerxl" in model_id_lower:
         logger.info(f"Using TimerXL strategy for model {model_id} based on name")
         return TimerXLStrategy(model)
     elif "sundial" in model_id_lower:
         logger.info(f"Using Sundial strategy for model {model_id} based on name")
         return SundialStrategy(model)
-    
-    # 尝试从模型属性或状态中判断类型
+
+    # Optionally determine type from model attributes or configuration
     try:
-        # 这里可以添加更复杂的逻辑来检查模型的配置文件
-        # 或者从ModelManager中获取模型信息
+        # Add more advanced logic here if needed, such as parsing model metadata
         pass
     except Exception as e:
-        logger.warning(f"Failed to determine model type for {model_id}, using default strategy: {e}")
-    
-    # 默认使用RegisteredStrategy
+        logger.warning(
+            f"Failed to determine model type for {model_id}, using default strategy: {e}"
+        )
+
+    # Fallback to generic registered model strategy
     logger.info(f"Using Registered strategy for model {model_id}")
     return RegisteredStrategy(model)
 
 
 class InferenceManager:
-
     def __init__(self, model_manager: ModelManager):
         self.model_manager = model_manager
 
@@ -244,15 +248,14 @@ class InferenceManager:
             resp_cls=TInferenceResp,
             single_output=False,
         )
-        
+
     def get_model_info(self, model_id: str) -> dict:
-        """获取模型推理相关信息"""
         try:
             model_status = self.model_manager.get_model_status(model_id)
             return {
                 "model_id": model_id,
                 "status": model_status,
-                "strategy": "determined_at_runtime"
+                "strategy": "determined_at_runtime",
             }
         except Exception as e:
             logger.error(f"Failed to get model info for {model_id}: {e}")

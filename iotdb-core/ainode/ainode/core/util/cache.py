@@ -20,8 +20,8 @@ import time
 from collections import OrderedDict
 
 from ainode.core.config import AINodeDescriptor
-from ainode.core.util.decorator import singleton
 from ainode.core.log import Logger
+from ainode.core.util.decorator import singleton
 
 logger = Logger()
 
@@ -60,7 +60,7 @@ def _get_item_memory(key, value) -> int:
 @singleton
 class MemoryLRUCache:
     """Enhanced LRU cache with better memory management for IoTDB models"""
-    
+
     def __init__(self):
         self.cache = OrderedDict()
         self.max_memory_bytes = (
@@ -69,12 +69,7 @@ class MemoryLRUCache:
             * 1024
         )
         self.current_memory = 0
-        self._cache_stats = {
-            "hits": 0,
-            "misses": 0,
-            "evictions": 0,
-            "total_items": 0
-        }
+        self._cache_stats = {"hits": 0, "misses": 0, "evictions": 0, "total_items": 0}
         self._last_cleanup = time.time()
 
     def get(self, key):
@@ -82,7 +77,7 @@ class MemoryLRUCache:
         if key not in self.cache:
             self._cache_stats["misses"] += 1
             return None
-        
+
         value = self.cache[key]
         self.cache.move_to_end(key)
         self._cache_stats["hits"] += 1
@@ -125,7 +120,9 @@ class MemoryLRUCache:
             value = self.cache.pop(key)
             removed_memory = _get_item_memory(key, value)
             self.current_memory -= removed_memory
-            logger.debug(f"Manually removed cache item: {key}, freed {removed_memory} bytes")
+            logger.debug(
+                f"Manually removed cache item: {key}, freed {removed_memory} bytes"
+            )
             return True
         return False
 
@@ -143,8 +140,10 @@ class MemoryLRUCache:
     def get_cache_stats(self) -> dict:
         """Get cache statistics"""
         total_requests = self._cache_stats["hits"] + self._cache_stats["misses"]
-        hit_rate = self._cache_stats["hits"] / total_requests if total_requests > 0 else 0
-        
+        hit_rate = (
+            self._cache_stats["hits"] / total_requests if total_requests > 0 else 0
+        )
+
         return {
             "hits": self._cache_stats["hits"],
             "misses": self._cache_stats["misses"],
@@ -152,7 +151,7 @@ class MemoryLRUCache:
             "total_items": len(self.cache),
             "hit_rate": hit_rate,
             "memory_usage_mb": self.get_current_memory_mb(),
-            "memory_limit_mb": self.max_memory_bytes / (1024 * 1024)
+            "memory_limit_mb": self.max_memory_bytes / (1024 * 1024),
         }
 
     def cleanup_if_needed(self):

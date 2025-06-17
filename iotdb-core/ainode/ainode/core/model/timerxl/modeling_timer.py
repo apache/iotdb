@@ -511,7 +511,6 @@ class TimerForPrediction(TimerPreTrainedModel, TSGenerationMixin):
         max_output_length: Optional[int] = None,
         revin: Optional[bool] = False,
     ) -> Union[Tuple, MoeCausalLMOutputWithPast]:
-
         output_attentions = (
             output_attentions
             if output_attentions is not None

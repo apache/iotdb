@@ -154,35 +154,34 @@ class AINodeConfig(object):
         self._ain_target_config_node_list = parse_endpoint_url(
             ain_target_config_node_list
         )
-        
+
     def get_support_iotdb_models(self) -> bool:
-        """是否支持IoTDB模型格式"""
-        return getattr(self, '_support_iotdb_models', True)
+        """Check whether IoTDB model format is supported"""
+        return getattr(self, "_support_iotdb_models", True)
 
     def set_support_iotdb_models(self, support: bool) -> None:
-        """设置是否支持IoTDB模型格式"""
+        """Set whether to support IoTDB model format"""
         self._support_iotdb_models = support
 
     def get_model_loading_timeout(self) -> int:
-        """获取模型加载超时时间（秒）"""
-        return getattr(self, '_model_loading_timeout', 300)
+        """Get model loading timeout (in seconds)"""
+        return getattr(self, "_model_loading_timeout", 300)
 
     def set_model_loading_timeout(self, timeout: int) -> None:
-        """设置模型加载超时时间（秒）"""
+        """Set model loading timeout (in seconds)"""
         self._model_loading_timeout = timeout
 
     def get_auto_model_format_detection(self) -> bool:
-        """是否启用自动模型格式检测"""
-        return getattr(self, '_auto_model_format_detection', True)
+        """Check whether automatic model format detection is enabled"""
+        return getattr(self, "_auto_model_format_detection", True)
 
     def set_auto_model_format_detection(self, auto_detect: bool) -> None:
-        """设置是否启用自动模型格式检测"""
+        """Set whether to enable automatic model format detection"""
         self._auto_model_format_detection = auto_detect
 
 
 @singleton
 class AINodeDescriptor(object):
-
     def __init__(self):
         self._config = AINodeConfig()
         self._load_config_from_file()

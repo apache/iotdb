@@ -30,13 +30,19 @@ def get_status(status_code: TSStatusCode, message: str = None) -> TSStatus:
     return status
 
 
-def get_model_status(status_code: TSStatusCode, model_id: str = "", message: str = None) -> TSStatus:
+def get_model_status(
+    status_code: TSStatusCode, model_id: str = "", message: str = None
+) -> TSStatus:
     """Create model-specific TSStatus object"""
     status = TSStatus(status_code.get_status_code())
     if message:
         status.message = f"Model {model_id}: {message}" if model_id else message
     else:
-        status.message = f"Model {model_id} operation completed" if model_id else "Operation completed"
+        status.message = (
+            f"Model {model_id} operation completed"
+            if model_id
+            else "Operation completed"
+        )
     return status
 
 

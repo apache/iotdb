@@ -517,7 +517,6 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
         revin: Optional[bool] = False,
         num_samples: Optional[int] = 1,
     ) -> Union[Tuple, MoeCausalLMOutputWithPast]:
-
         output_attentions = (
             output_attentions
             if output_attentions is not None

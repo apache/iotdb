@@ -15,11 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import json
 import os
 import shutil
-import json
-from urllib.parse import urljoin, urlparse
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
 
 import yaml
 from requests import Session
@@ -38,56 +38,62 @@ from ainode.core.constant import (
 )
 from ainode.core.exception import BadConfigValueError, InvalidUriError
 from ainode.core.log import Logger
-from ainode.core.util.serde import get_data_type_byte_from_str
-from ainode.thrift.ainode.ttypes import TConfigs
-
 from ainode.core.model.config_parser import (
-    parse_config_file,
     convert_iotdb_config_to_ainode_format,
-    validate_iotdb_config
+    parse_config_file,
+    validate_iotdb_config,
 )
 from ainode.core.model.safetensor_loader import load_weights_as_state_dict
+from ainode.core.util.serde import get_data_type_byte_from_str
+from ainode.thrift.ainode.ttypes import TConfigs
 
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"
 
 logger = Logger()
 
+
 def _detect_model_format(base_path: str) -> tuple:
     """
-    检测模型格式，支持IoTDB和legacy格式
-    
+    Detect model format: supports both IoTDB and legacy formats
+
     Args:
-        base_path: 模型目录路径或网络URI
-        
+        base_path: Model directory path or network URI
+
     Returns:
-        (format_type, config_file, weight_file): 格式类型和对应的文件名
+        (format_type, config_file, weight_file): Format type and corresponding file names
     """
-    base_path = Path(base_path) if not base_path.startswith(('http://', 'https://')) else base_path
-    
-    # 首先检查IoTDB格式 (优先级更高)
+    base_path = (
+        Path(base_path)
+        if not base_path.startswith(("http://", "https://"))
+        else base_path
+    )
+
+    # Check IoTDB format first (higher priority)
     for config_file in IOTDB_CONFIG_FILES:
         if isinstance(base_path, Path):
             config_path = base_path / config_file
             if config_path.exists():
-                # 查找对应的权重文件
+                # Look for corresponding weight file
                 for weight_file in WEIGHT_FORMAT_PRIORITY:
                     weight_path = base_path / weight_file
                     if weight_path.exists():
-                        logger.info(f"检测到IoTDB格式: {config_file} + {weight_file}")
+                        logger.info(
+                            f"IoTDB format detected: {config_file} + {weight_file}"
+                        )
                         return "iotdb", config_file, weight_file
         else:
-            # 网络路径暂时跳过检测，在下载时处理
+            # Skip detection for remote paths; will be handled during download
             pass
-    
-    # 检查legacy格式
+
+    # Check legacy format
     if isinstance(base_path, Path):
         legacy_config = base_path / DEFAULT_CONFIG_FILE_NAME
         legacy_model = base_path / DEFAULT_MODEL_FILE_NAME
         if legacy_config.exists() and legacy_model.exists():
-            logger.info("检测到legacy格式")
+            logger.info("Legacy format detected")
             return "legacy", DEFAULT_CONFIG_FILE_NAME, DEFAULT_MODEL_FILE_NAME
-    
+
     return None, None, None
 
 
@@ -138,143 +144,167 @@ def _download_file(url: str, storage_path: str) -> None:
                 file.write(chunk)
 
     logger.debug(f"download file from {url} to {storage_path} success")
-    
-def _download_file_with_fallback(base_uri: str, file_candidates: list, storage_path: str) -> str:
+
+
+def _download_file_with_fallback(
+    base_uri: str, file_candidates: list, storage_path: str
+) -> str:
     """
-    按优先级顺序尝试下载文件
-    
+    Try downloading files in priority order
+
     Args:
-        base_uri: 基础URI
-        file_candidates: 候选文件名列表
-        storage_path: 存储路径
-        
+        base_uri: Base URI
+        file_candidates: List of candidate filenames
+        storage_path: Local storage path
+
     Returns:
-        成功下载的文件名
+        The successfully downloaded filename
     """
     base_uri = base_uri if base_uri.endswith("/") else base_uri + "/"
-    
+
     for filename in file_candidates:
         try:
             file_url = urljoin(base_uri, filename)
             _download_file(file_url, storage_path)
-            logger.info(f"成功下载文件: {filename}")
+            logger.info(f"Successfully downloaded file: {filename}")
             return filename
         except Exception as e:
-            logger.debug(f"下载文件 {filename} 失败: {e}")
+            logger.debug(f"Failed to download file {filename}: {e}")
             continue
-    
-    raise InvalidUriError(f"无法从 {base_uri} 下载任何候选文件: {file_candidates}")
+
+    raise InvalidUriError(
+        f"Unable to download any candidate file from {base_uri}: {file_candidates}"
+    )
 
 
 def _register_model_from_network(
     uri: str, model_storage_path: str, config_storage_path: str
 ) -> [TConfigs, str]:
     """
-    从网络注册模型，完全集成 config_parser 和 safetensor_loader
+    Register model from network with full integration of config_parser and safetensor_loader
     """
     uri = uri if uri.endswith("/") else uri + "/"
-    
-    # 尝试下载配置文件（IoTDB格式优先）
+
+    # Try downloading configuration file (IoTDB format preferred)
     try:
         config_filename = _download_file_with_fallback(
             uri, IOTDB_CONFIG_FILES + [DEFAULT_CONFIG_FILE_NAME], config_storage_path
         )
         format_type = "iotdb" if config_filename in IOTDB_CONFIG_FILES else "legacy"
     except Exception as e:
-        logger.error(f"配置文件下载失败: {e}")
+        logger.error(f"Failed to download config file: {e}")
         raise InvalidUriError(uri)
-    
-    # 使用 config_parser 解析配置文件
+
+    # Parse configuration file using config_parser
     try:
         config_dict = parse_config_file(config_storage_path)
-        
+
         if format_type == "iotdb":
-            # 验证IoTDB配置
+            # Validate IoTDB configuration
             if not validate_iotdb_config(config_dict):
-                raise BadConfigValueError("config_file", config_storage_path, "IoTDB配置验证失败")
-            
-            # 转换IoTDB配置为AINode格式
+                raise BadConfigValueError(
+                    "config_file",
+                    config_storage_path,
+                    "IoTDB configuration validation failed",
+                )
+
+            # Convert IoTDB config to AINode format
             ainode_config = convert_iotdb_config_to_ainode_format(config_dict)
             configs, attributes = _parse_inference_config(ainode_config)
         else:
-            # 处理legacy格式
+            # Handle legacy format
             configs, attributes = _parse_inference_config(config_dict)
     except Exception as e:
-        logger.error(f"配置文件解析失败: {e}")
+        logger.error(f"Failed to parse config file: {e}")
         raise BadConfigValueError("config_file", config_storage_path, str(e))
-    
-    # 下载模型权重文件
+
+    # Download model weight file
     try:
-        weight_candidates = WEIGHT_FORMAT_PRIORITY if format_type == "iotdb" else [DEFAULT_MODEL_FILE_NAME]
-        weight_filename = _download_file_with_fallback(uri, weight_candidates, model_storage_path)
-        
-        # 使用 safetensor_loader 验证下载的权重文件
+        weight_candidates = (
+            WEIGHT_FORMAT_PRIORITY
+            if format_type == "iotdb"
+            else [DEFAULT_MODEL_FILE_NAME]
+        )
+        weight_filename = _download_file_with_fallback(
+            uri, weight_candidates, model_storage_path
+        )
+
+        # Validate downloaded weight file with safetensor_loader
         if format_type == "iotdb":
             try:
                 weights = load_weights_as_state_dict(model_storage_path)
-                logger.info(f"权重文件验证成功，包含 {len(weights)} 个参数")
+                logger.info(
+                    f"Weight file validated successfully with {len(weights)} parameters"
+                )
             except Exception as e:
-                logger.error(f"下载的权重文件验证失败: {e}")
-                raise InvalidUriError(f"权重文件损坏: {weight_filename}")
-                
+                logger.error(f"Failed to validate downloaded weight file: {e}")
+                raise InvalidUriError(f"Corrupted weight file: {weight_filename}")
+
     except Exception as e:
-        logger.error(f"模型文件下载失败: {e}")
+        logger.error(f"Failed to download model file: {e}")
         raise InvalidUriError(uri)
-    
+
     return configs, attributes
 
 
-# 修改 _register_model_from_local 函数
 def _register_model_from_local(
     uri: str, model_storage_path: str, config_storage_path: str
 ) -> [TConfigs, str]:
     """
-    从本地注册模型，完全集成 config_parser 和 safetensor_loader
+    Register model from local path with full integration of config_parser and safetensor_loader
     """
-    # 检测模型格式
+    # Detect model format
     format_type, config_file, weight_file = _detect_model_format(uri)
-    
+
     if format_type is None:
-        raise InvalidUriError(f"未找到有效的模型文件在路径: {uri}")
-    
+        raise InvalidUriError(f"No valid model files found in path: {uri}")
+
     source_config_path = os.path.join(uri, config_file)
     source_model_path = os.path.join(uri, weight_file)
-    
-    # 复制配置文件
-    logger.debug(f"复制配置文件: {source_config_path} -> {config_storage_path}")
+
+    # Copy configuration file
+    logger.debug(f"Copying config file: {source_config_path} -> {config_storage_path}")
     shutil.copy(source_config_path, config_storage_path)
-    
-    # 使用 config_parser 解析配置文件
+
+    # Parse configuration file
     try:
         config_dict = parse_config_file(config_storage_path)
-        
+
         if format_type == "iotdb":
-            # 验证IoTDB配置
+            # Validate IoTDB configuration
             if not validate_iotdb_config(config_dict):
-                raise BadConfigValueError("config_file", config_storage_path, "IoTDB配置验证失败")
-            
-            # 验证源权重文件
+                raise BadConfigValueError(
+                    "config_file",
+                    config_storage_path,
+                    "IoTDB configuration validation failed",
+                )
+
+            # Validate weight file
             try:
                 weights = load_weights_as_state_dict(source_model_path)
-                logger.info(f"源权重文件验证成功，包含 {len(weights)} 个参数")
+                logger.info(
+                    f"Source weight file validated successfully with {len(weights)} parameters"
+                )
             except Exception as e:
-                logger.error(f"源权重文件验证失败: {e}")
-                raise InvalidUriError(f"权重文件损坏: {source_model_path}")
-            
+                logger.error(f"Failed to validate source weight file: {e}")
+                raise InvalidUriError(f"Corrupted weight file: {source_model_path}")
+
             ainode_config = convert_iotdb_config_to_ainode_format(config_dict)
             configs, attributes = _parse_inference_config(ainode_config)
         else:
             configs, attributes = _parse_inference_config(config_dict)
-            
+
     except Exception as e:
-        logger.error(f"配置文件解析失败: {e}")
+        logger.error(f"Failed to parse config file: {e}")
         raise BadConfigValueError("config_file", config_storage_path, str(e))
-    
-    # 复制模型文件
-    logger.debug(f"复制模型文件: {source_model_path} -> {model_storage_path}")
+
+    # Copy model file
+    logger.debug(f"Copying model file: {source_model_path} -> {model_storage_path}")
     shutil.copy(source_model_path, model_storage_path)
-    
+
     return configs, attributes
+
+
 def _register_model_from_local_old(
     uri: str, model_storage_path: str, config_storage_path: str
 ) -> [TConfigs, str]:
@@ -323,14 +353,15 @@ def _register_model_from_local_old(
 
     return configs, attributes
 
+
 def _convert_iotdb_config_to_ainode_format(iotdb_config: dict) -> dict:
     """
-    将IoTDB配置转换为AINode格式
+    IoTDB -> AINode
     """
     model_type = iotdb_config.get("model_type", "unknown")
     input_length = iotdb_config.get("input_token_len", 96)
     output_length = iotdb_config.get("output_token_lens", [96])[0]
-    
+
     ainode_config = {
         "configs": {
             "input_shape": [input_length, 1],
@@ -344,7 +375,7 @@ def _convert_iotdb_config_to_ainode_format(iotdb_config: dict) -> dict:
             "original_config": iotdb_config,
         },
     }
-    
+
     logger.debug(f"转换IoTDB配置: {model_type} -> AINode格式")
     return ainode_config
 

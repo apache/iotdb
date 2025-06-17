@@ -56,8 +56,8 @@ DEFAULT_TRIAL_ID = TRIAL_ID_PREFIX + "0"
 # DEFAULT_MODEL_FILE_NAME = "model.safetensors"
 # DEFAULT_CONFIG_FILE_NAME = "config.json"
 
-DEFAULT_MODEL_FILE_NAME = "model.pt"           # change default file -> model.pt
-DEFAULT_CONFIG_FILE_NAME = "config.yaml"       # change default config file -> config.yaml
+DEFAULT_MODEL_FILE_NAME = "model.pt"  # change default file -> model.pt
+DEFAULT_CONFIG_FILE_NAME = "config.yaml"  # change default config file -> config.yaml
 DEFAULT_CHUNK_SIZE = 8192
 
 DEFAULT_RECONNECT_TIMEOUT = 20
@@ -66,24 +66,29 @@ DEFAULT_RECONNECT_TIMES = 3
 STD_LEVEL = logging.INFO
 
 
-# 将补丁文件暂时命名为IoTDB格式
+# Temporarily name the patch files using IoTDB format
 IOTDB_CONFIG_FILES = ["config.json", "configuration.json"]
-IOTDB_WEIGHT_FILES = ["model.safetensors", "pytorch_model.safetensors", "model.pt", "pytorch_model.pt"]
+IOTDB_WEIGHT_FILES = [
+    "model.safetensors",
+    "pytorch_model.safetensors",
+    "model.pt",
+    "pytorch_model.pt",
+]
 
-# 打一个补丁，优先检测safetensor文件
+# Apply a patch: prioritize safetensors files
 MODEL_FORMAT_PRIORITY = {
-    # IoTDB格式优先级更高
+    # Give higher priority to IoTDB format
     "iotdb": ["config.json", "configuration.json"],
-    # Legacy格式作为fallback
-    "legacy": ["config.yaml"]
+    # Use legacy format as a fallback
+    "legacy": ["config.yaml"],
 }
 
 WEIGHT_FORMAT_PRIORITY = [
-    "model.safetensors",      # 优先使用safetensors
+    "model.safetensors",  # Prefer safetensors
     "pytorch_model.safetensors",
-    "model.pt",               # fallback到pt格式
+    "model.pt",  # Fallback to .pt format
     "pytorch_model.pt",
-    "pytorch_model.bin"
+    "pytorch_model.bin",
 ]
 
 

@@ -158,7 +158,9 @@ def get_data_type_byte_from_str(value):
         return TSDataType.TEXT.value
 
 
-def convert_iotdb_data_to_binary(data_frame: pd.DataFrame, model_format: str = "legacy"):
+def convert_iotdb_data_to_binary(
+    data_frame: pd.DataFrame, model_format: str = "legacy"
+):
     """
     Enhanced binary conversion with IoTDB model format support
     """
@@ -166,10 +168,10 @@ def convert_iotdb_data_to_binary(data_frame: pd.DataFrame, model_format: str = "
         if model_format == "iotdb":
             # Enhanced processing for IoTDB models
             logger.debug(f"Converting IoTDB format data: shape={data_frame.shape}")
-            
+
         # Use existing conversion logic
         return convert_to_binary(data_frame)
-        
+
     except Exception as e:
         logger.error(f"Binary conversion failed for format {model_format}: {e}")
         raise BadConfigValueError("data_conversion", model_format, str(e))
@@ -181,15 +183,17 @@ def validate_data_types(data_frame: pd.DataFrame) -> bool:
     """
     try:
         supported_types = ["bool", "int32", "int64", "float32", "float64", "object"]
-        
+
         for dtype in data_frame.dtypes:
             dtype_str = str(dtype)
-            if not any(supported_type in dtype_str for supported_type in supported_types):
+            if not any(
+                supported_type in dtype_str for supported_type in supported_types
+            ):
                 logger.warning(f"Unsupported data type detected: {dtype_str}")
                 return False
-                
+
         return True
-        
+
     except Exception as e:
         logger.error(f"Data type validation failed: {e}")
         return False
