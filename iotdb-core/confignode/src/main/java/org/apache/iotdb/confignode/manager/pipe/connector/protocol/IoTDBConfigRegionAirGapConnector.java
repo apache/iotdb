@@ -90,8 +90,8 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
   }
 
   @Override
-  protected boolean needRateLimit() {
-    return false;
+  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
+    // Do nothing
   }
 
   @Override
