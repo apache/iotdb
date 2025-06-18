@@ -104,7 +104,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   }
 
   @Override
-  protected boolean needRateLimit() {
+  protected boolean needTsFileRateLimit() {
     return false;
   }
 

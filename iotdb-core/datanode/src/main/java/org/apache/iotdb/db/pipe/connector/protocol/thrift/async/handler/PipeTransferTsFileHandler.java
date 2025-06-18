@@ -163,7 +163,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     client.setShouldReturnSelf(false);
     client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
-    TsFileSendRateLimiter.getInstance().acquire(readFileBufferSize);
+    if (connector.isEnableSendTsFileLimit()) {
+      TsFileSendRateLimiter.getInstance().acquire(readFileBufferSize);
+    }
     final int readLength = reader.read(readBuffer);
 
     if (readLength == -1) {

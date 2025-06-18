@@ -180,7 +180,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       while (true) {
-        if (needRateLimit()) {
+        if (needTsFileRateLimit()) {
           TsFileSendRateLimiter.getInstance().acquire(readFileBufferSize);
         }
         final int readLength = reader.read(readBuffer);
@@ -252,7 +252,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   protected abstract PipeTransferFilePieceReq getTransferMultiFilePieceReq(
       final String fileName, final long position, final byte[] payLoad) throws IOException;
 
-  protected abstract boolean needRateLimit();
+  protected abstract boolean needTsFileRateLimit();
 
   @Override
   public void close() {
