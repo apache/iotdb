@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.metric.overview;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
-import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALInsertNodeCache;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -52,8 +51,7 @@ public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
         Metric.PIPE_WAL_INSERT_NODE_CACHE_REQUEST_COUNT.toString(),
         MetricLevel.IMPORTANT,
         WALInsertNodeCache.getInstance(),
-        WALInsertNodeCache::getCacheRequestCount,
-        Tag.REGION.toString());
+        WALInsertNodeCache::getCacheRequestCount);
   }
 
   @Override
