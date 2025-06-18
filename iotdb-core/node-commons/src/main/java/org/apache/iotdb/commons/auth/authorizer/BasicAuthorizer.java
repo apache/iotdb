@@ -123,11 +123,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       return false;
     }
     if (AuthUtils.validatePassword(
-            password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
+        password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
       return true;
     }
     if (AuthUtils.validatePassword(
-            password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
+        password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
       userManager.updateUserPassword(username, password);
       return true;
     }
