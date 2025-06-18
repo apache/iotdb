@@ -72,11 +72,11 @@ def _detect_model_format(base_path: str) -> tuple:
     # Check IoTDB format first (higher priority)
     for config_file in IOTDB_CONFIG_FILES:
         if isinstance(base_path, Path):
-            config_path = base_path / config_file
+            config_path = os.path.join(base_path, config_file)
             if config_path.exists():
                 # Look for corresponding weight file
                 for weight_file in WEIGHT_FORMAT_PRIORITY:
-                    weight_path = base_path / weight_file
+                    weight_path = os.path.join(base_path, weight_file)
                     if weight_path.exists():
                         logger.info(
                             f"IoTDB format detected: {config_file} + {weight_file}"
@@ -88,8 +88,8 @@ def _detect_model_format(base_path: str) -> tuple:
 
     # Check legacy format
     if isinstance(base_path, Path):
-        legacy_config = base_path / DEFAULT_CONFIG_FILE_NAME
-        legacy_model = base_path / DEFAULT_MODEL_FILE_NAME
+        legacy_config = os.path.join(base_path, DEFAULT_CONFIG_FILE_NAME)
+        legacy_model = os.path.join(base_path, DEFAULT_MODEL_FILE_NAME)
         if legacy_config.exists() and legacy_model.exists():
             logger.info("Legacy format detected")
             return "legacy", DEFAULT_CONFIG_FILE_NAME, DEFAULT_MODEL_FILE_NAME
@@ -242,10 +242,23 @@ def _register_model_from_network(
 
     except Exception as e:
         logger.error(f"Failed to download model file: {e}")
+        _cleanup_model_storage(model_storage_path, config_storage_path)
         raise InvalidUriError(uri)
 
     return configs, attributes
 
+def _cleanup_model_storage(model_storage_path: str, config_storage_path: str):
+    """
+    Remove model storage directories and their contents
+    """
+    
+    for path in [model_storage_path, config_storage_path]:
+        try:
+            if os.path.exists(path):
+                shutil.rmtree(path)
+                logger.debug(f"Cleaned up directory: {path}")
+        except Exception as e:
+            logger.warning(f"Failed to cleanup {path}: {e}")
 
 def _register_model_from_local(
     uri: str, model_storage_path: str, config_storage_path: str
@@ -376,7 +389,7 @@ def _convert_iotdb_config_to_ainode_format(iotdb_config: dict) -> dict:
         },
     }
 
-    logger.debug(f"转换IoTDB配置: {model_type} -> AINode格式")
+    logger.debug(f"Switch IoTDB format: {model_type} to AINode format")
     return ainode_config
 
 

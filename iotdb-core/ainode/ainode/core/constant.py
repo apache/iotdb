@@ -53,17 +53,17 @@ AINODE_LOG_FILE_LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING, logging.
 
 TRIAL_ID_PREFIX = "__trial_"
 DEFAULT_TRIAL_ID = TRIAL_ID_PREFIX + "0"
-# DEFAULT_MODEL_FILE_NAME = "model.safetensors"
-# DEFAULT_CONFIG_FILE_NAME = "config.json"
 
-DEFAULT_MODEL_FILE_NAME = "model.pt"  # change default file -> model.pt
-DEFAULT_CONFIG_FILE_NAME = "config.yaml"  # change default config file -> config.yaml
+DEFAULT_MODEL_FILE_NAME = "model.pt" 
+DEFAULT_CONFIG_FILE_NAME = "config.yaml"  
 DEFAULT_CHUNK_SIZE = 8192
 
 DEFAULT_RECONNECT_TIMEOUT = 20
 DEFAULT_RECONNECT_TIMES = 3
 
 STD_LEVEL = logging.INFO
+
+STATUS_CODE_MAP = {"LOADING": 0, "ACTIVE": 1, "INACTIVE": 2, "ERROR": 3}
 
 
 # Temporarily name the patch files using IoTDB format

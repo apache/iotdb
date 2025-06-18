@@ -75,6 +75,7 @@ def convert_iotdb_config_to_ainode_format(
         AINode format configuration dictionary
     """
     model_type = iotdb_config.get("model_type", "unknown")
+    # under discussion
     input_length = iotdb_config.get("input_token_len", 96)
     output_length = (
         iotdb_config.get("output_token_lens", [96])[0]

@@ -22,31 +22,20 @@ import psutil
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.log import Logger
+from ainode.core.util.decorator import singleton
 from ainode.thrift.ainode.ttypes import TAIHeartbeatReq, TAIHeartbeatResp
 from ainode.thrift.common.ttypes import TLoadSample
 
 logger = Logger()
 
 
+@singleton
 class ClusterManager:
-    _instance = None
-    _lock = threading.Lock()
-
-    def __new__(cls):
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = super().__new__(cls)
-                    cls._instance._initialized = False
-        return cls._instance
-
     def __init__(self):
-        if not self._initialized:
-            self._node_status = "STARTING"
-            self._start_time = time.time()
-            self._last_heartbeat = 0
-            self._heartbeat_count = 0
-            self._initialized = True
+        self._node_status = "STARTING"
+        self._start_time = time.time()
+        self._last_heartbeat = 0
+        self._heartbeat_count = 0
 
     @staticmethod
     def get_heart_beat(req: TAIHeartbeatReq) -> TAIHeartbeatResp:
@@ -103,7 +92,17 @@ class ClusterManager:
             )
 
     def get_node_info(self) -> dict:
-        """Retrieve detailed node information"""
+        """
+        Optional utility method for retrieving detailed node information.
+        This method maybe? useful for:
+        - Administrative dashboards and monitoring tools
+        - Debugging and troubleshooting cluster issues
+        - Health checks and status reporting
+        - Integration with external monitoring systems
+        
+        The following methods are not required for core AINode functionality but helpful for operations.
+        In several days they will be discussed.
+        """
         try:
             config = AINodeDescriptor().get_config()
             uptime = time.time() - self._start_time
@@ -125,12 +124,32 @@ class ClusterManager:
             return {"error": str(e)}
 
     def set_node_status(self, status: str):
-        """Set the status of the current node"""
+        """
+        Optional method for manually setting node status.
+        Use cases:
+        - Graceful shutdown procedures (set to "SHUTTING_DOWN")
+        - Maintenance mode activation (set to "MAINTENANCE")
+        - Error recovery scenarios (set to "RECOVERING")
+        - Testing and debugging purposes
+        
+        The status is automatically managed during normal operation,
+        so manual setting is only needed for special scenarios.
+        """
         self._node_status = status
         logger.info(f"Node status updated to: {status}")
 
     def get_system_metrics(self) -> dict:
-        """Retrieve system-level metrics"""
+        """
+        Optional method for detailed system metrics collection.
+        Benefits:
+        - More comprehensive monitoring than basic heartbeat
+        - Resource usage analysis and capacity planning
+        - Performance troubleshooting and optimization
+        - Integration with monitoring frameworks (Prometheus, etc.)
+        
+        This provides richer metrics than the basic load sample in heartbeat,
+        but is not required for core cluster functionality.
+        """
         try:
             cpu_percent = psutil.cpu_percent(interval=1)
             memory = psutil.virtual_memory()

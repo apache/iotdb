@@ -23,7 +23,7 @@ from yaml import YAMLError
 
 from ainode.core.client import ClientManager
 from ainode.core.config import AINodeDescriptor
-from ainode.core.constant import BuiltInModelType, TSStatusCode
+from ainode.core.constant import BuiltInModelType, TSStatusCode, STATUS_CODE_MAP
 from ainode.core.exception import (
     BadConfigValueError,
     BuiltInModelNotSupportError,
@@ -37,6 +37,7 @@ from ainode.core.log import Logger
 from ainode.core.model.built_in_model_factory import fetch_built_in_model
 from ainode.core.model.model_storage import ModelStorage
 from ainode.core.util.status import get_status
+from ainode.core.util.lock import ReadWriteLock
 from ainode.thrift.ainode.ttypes import (
     TDeleteModelReq,
     TRegisterModelReq,
@@ -51,7 +52,7 @@ class ModelManager:
     def __init__(self):
         self.model_storage = ModelStorage()
         self._model_status_cache = {}  # Cache for model statuses
-        self._status_lock = threading.Lock()
+        self._status_lock = ReadWriteLock()
 
     def register_model(self, req: TRegisterModelReq) -> TRegisterModelResp:
         logger.info(f"Register model {req.modelId} from {req.uri}")
@@ -285,8 +286,7 @@ class ModelManager:
                     "timestamp": time.time(),
                 }
 
-            status_code_map = {"LOADING": 0, "ACTIVE": 1, "INACTIVE": 2, "ERROR": 3}
-            status_code = status_code_map.get(status, 3)
+            status_code = STATUS_CODE_MAP.get(status, 3)
 
             try:
                 ClientManager().borrow_config_node_client().update_model_info(

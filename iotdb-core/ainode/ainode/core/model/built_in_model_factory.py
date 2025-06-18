@@ -525,10 +525,7 @@ timerxl_attribute_map = {
         name=AttributeName.CKPT_PATH.value,
         default_value=os.path.join(
             os.getcwd(),
-            AINodeDescriptor().get_config().get_ain_models_dir(),
-            "weights",
-            "timerxl",
-        ),  # 移除具体文件名，让from_pretrained自动检测
+        ),  
         value_choices=[""],
     ),
 }

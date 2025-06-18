@@ -75,14 +75,8 @@ class UnsupportedError(_BaseError):
 
 
 class InvalidUriError(_BaseError):
-    def __init__(self, uri: str, details: str = ""):
-        if details:
-            self.message = "Invalid uri: {}, {}".format(uri, details)
-        else:
-            # fix path error
-            self.message = "Invalid uri: {}, no valid model files found (checked both IoTDB and legacy formats)".format(
-                uri
-            )
+    def __init__(self, uri: str, details: str = "no valid model files found (checked both IoTDB and legacy formats)"):
+        self.message = "Invalid uri: {}, {}".format(uri, details)
 
 
 class InvalidWindowArgumentError(_BaseError):

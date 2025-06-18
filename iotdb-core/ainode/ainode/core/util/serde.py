@@ -163,6 +163,8 @@ def convert_iotdb_data_to_binary(
 ):
     """
     Enhanced binary conversion with IoTDB model format support
+    The method is under discussion with unify model inference input
+    At present it could be replaced with method: convert_into_binary
     """
     try:
         if model_format == "iotdb":
@@ -182,7 +184,7 @@ def validate_data_types(data_frame: pd.DataFrame) -> bool:
     Validate data types in DataFrame for IoTDB compatibility
     """
     try:
-        supported_types = ["bool", "int32", "int64", "float32", "float64", "object"]
+        supported_types = ["int32", "int64", "float32", "float64"]
 
         for dtype in data_frame.dtypes:
             dtype_str = str(dtype)

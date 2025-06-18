@@ -18,7 +18,6 @@
 
 from ainode.core.constant import TSStatusCode
 
-# only for test
 from ainode.core.exception import (
     ConfigValidationError,
     IoTDBModelError,
@@ -30,6 +29,7 @@ from ainode.core.log import Logger
 from ainode.core.manager.cluster_manager import ClusterManager
 from ainode.core.manager.inference_manager import InferenceManager
 from ainode.core.manager.model_manager import ModelManager
+from ainode.core.util.status import get_status
 from ainode.thrift.ainode import IAINodeRPCService
 from ainode.thrift.ainode.ttypes import (
     TAIHeartbeatReq,
@@ -51,24 +51,6 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def __init__(self):
         self._model_manager = ModelManager()
         self._inference_manager = InferenceManager(model_manager=self._model_manager)
-
-    # def registerModel(self, req: TRegisterModelReq) -> TRegisterModelResp:
-    #     return self._model_manager.register_model(req)
-
-    # def deleteModel(self, req: TDeleteModelReq) -> TSStatus:
-    #     return self._model_manager.delete_model(req)
-
-    # def inference(self, req: TInferenceReq) -> TInferenceResp:
-    #     return self._inference_manager.inference(req)
-
-    # def forecast(self, req: TForecastReq) -> TSStatus:
-    #     return self._inference_manager.forecast(req)
-
-    # def getAIHeartbeat(self, req: TAIHeartbeatReq) -> TAIHeartbeatResp:
-    #     return ClusterManager.get_heart_beat(req)
-
-    # def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
-    #     pass
 
     # only for test
     def registerModel(self, req: TRegisterModelReq) -> TRegisterModelResp:
@@ -97,7 +79,7 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
             logger.error(
                 f"Failed to register model: error known: {req.modelId}, with error: {e}"
             )
-            from ainode.core.util.status import get_status
+            
 
             return TRegisterModelResp(
                 get_status(TSStatusCode.INVALID_URI_ERROR, str(e))
@@ -106,7 +88,6 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
             logger.error(
                 f"Failed to register model: unknown error: {req.modelId}, with error: {e}"
             )
-            from ainode.core.util.status import get_status
 
             return TRegisterModelResp(
                 get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
@@ -130,7 +111,6 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
 
         except Exception as e:
             logger.error(f"Failed to delete models: {req.modelId}, with error: {e}")
-            from ainode.core.util.status import get_status
 
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
 
@@ -138,12 +118,12 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         """
         Perform inference with enhanced logging
         """
-        logger.debug(f"Starting inference: model ID={req.modelId}")
+        logger.info(f"Starting inference: model ID={req.modelId}")
 
         try:
             result = self._inference_manager.inference(req)
             if result.status.code == TSStatusCode.SUCCESS_STATUS.get_status_code():
-                logger.debug(f"Inference succeeded: {req.modelId}")
+                logger.info(f"Inference succeeded: {req.modelId}")
             else:
                 logger.warning(
                     f"Inference failed: {req.modelId}, Status: {result.status}"
@@ -162,12 +142,12 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         """
         Perform forecasting with enhanced logging
         """
-        logger.debug(f"Starting forecast: model ID={req.modelId}")
+        logger.info(f"Starting forecast: model ID={req.modelId}")
 
         try:
             result = self._inference_manager.forecast(req)
             if result.status.code == TSStatusCode.SUCCESS_STATUS.get_status_code():
-                logger.debug(f"Forecast succeeded: {req.modelId}")
+                logger.info(f"Forecast succeeded: {req.modelId}")
             else:
                 logger.warning(
                     f"Forecast failed: {req.modelId}, Status: {result.status}"
@@ -181,7 +161,27 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
             return get_status(TSStatusCode.INFERENCE_INTERNAL_ERROR, str(e))
 
     def getAIHeartbeat(self, req: TAIHeartbeatReq) -> TAIHeartbeatResp:
-        return ClusterManager.get_heart_beat(req)
+        """
+        Get AI node heartbeat with comprehensive error handling
+        """
+        
+        try:
+            result = ClusterManager.get_heart_beat(req)
+            return result
+            
+        except (OSError, IOError) as e:
+            logger.warning(f"System resource access failed in heartbeat: {e}")
+            return TAIHeartbeatResp(
+                heartbeatTimestamp=req.heartbeatTimestamp,
+                status="RESOURCE_ERROR"
+            )
+            
+        except Exception as e:
+            logger.error(f"Unexpected error in heartbeat: {e}")
+            return TAIHeartbeatResp(
+                heartbeatTimestamp=req.heartbeatTimestamp,
+                status="ERROR"
+            )
 
     def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
         logger.info("Training task is not implemented yet")

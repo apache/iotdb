@@ -52,6 +52,7 @@ class InferenceStrategy(ABC):
 
 # [IoTDB] Full data deserialized from IoTDB is composed of [timestampList, valueList, length],
 # currently we only use valueList.
+# The method there is under discussion.
 class TimerXLStrategy(InferenceStrategy):
     def infer(self, full_data, predict_length=96, **kwargs):
         data = full_data[1][0]
@@ -59,16 +60,18 @@ class TimerXLStrategy(InferenceStrategy):
             data = data.byteswap().newbyteorder()
         seqs = torch.tensor(data).unsqueeze(0).float()
 
-        # Inference parameters for IoTDB models
         revin = kwargs.get("revin", True)
-        max_tokens = kwargs.get("max_new_tokens", predict_length)
+        
+        if "max_new_tokens" in kwargs:
+            logger.warning("Using deprecated parameter 'max_new_tokens', please use 'predict_length' instead")
+            predict_length = kwargs.get("max_new_tokens", predict_length)
 
         logger.debug(
-            f"TimerXL inference: input_shape={seqs.shape}, predict_length={max_tokens}"
+            f"TimerXL inference: input_shape={seqs.shape}, predict_length={predict_length}"
         )
 
         try:
-            output = self.model.generate(seqs, max_new_tokens=max_tokens, revin=revin)
+            output = self.model.generate(seqs, max_new_tokens=predict_length, revin=revin)
             df = pd.DataFrame(output[0])
             return convert_to_binary(df)
         except Exception as e:
@@ -83,18 +86,20 @@ class SundialStrategy(InferenceStrategy):
             data = data.byteswap().newbyteorder()
         seqs = torch.tensor(data).unsqueeze(0).float()
 
-        # Inference parameters for IoTDB models
         revin = kwargs.get("revin", True)
-        max_tokens = kwargs.get("max_new_tokens", predict_length)
         num_samples = kwargs.get("num_samples", 10)
+        
+        if "max_new_tokens" in kwargs:
+            logger.warning("Using deprecated parameter 'max_new_tokens', please use 'predict_length' instead")
+            predict_length = kwargs.get("max_new_tokens", predict_length)
 
         logger.debug(
-            f"Sundial inference: input_shape={seqs.shape}, predict_length={max_tokens}, num_samples={num_samples}"
+            f"Sundial inference: input_shape={seqs.shape}, predict_length={predict_length}, num_samples={num_samples}"
         )
 
         try:
             output = self.model.generate(
-                seqs, max_new_tokens=max_tokens, num_samples=num_samples, revin=revin
+                seqs, max_new_tokens=predict_length, num_samples=num_samples, revin=revin
             )
             df = pd.DataFrame(output[0].mean(dim=0))
             return convert_to_binary(df)
