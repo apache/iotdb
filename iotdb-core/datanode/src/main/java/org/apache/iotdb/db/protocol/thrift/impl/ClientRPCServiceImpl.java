@@ -2322,7 +2322,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInStatus();
       }
-
       req.setMeasurementsList(
           PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
 
