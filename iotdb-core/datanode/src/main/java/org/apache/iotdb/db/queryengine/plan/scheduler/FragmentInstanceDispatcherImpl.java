@@ -196,13 +196,14 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                     RpcUtils.getStatus(
                         TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
               } finally {
-                for (SubPlan child : plan.getChildren()) {
-                  queue.add(new Pair<>(child, success));
+                if (!success) {
                   // In case of failure, only one notification needs to be sent to the outer layer.
                   // If the failure is not notified and the child FI is not sent, the outer loop
                   // won't be able to exit.
-                  if (!success) {
-                    break;
+                  queue.add(new Pair<>(null, false));
+                } else {
+                  for (SubPlan child : plan.getChildren()) {
+                    queue.add(new Pair<>(child, true));
                   }
                 }
                 // friendly for gc, clear the plan node tree, for some queries select all devices,
