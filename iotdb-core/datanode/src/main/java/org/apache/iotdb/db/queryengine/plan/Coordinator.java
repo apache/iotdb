@@ -188,7 +188,8 @@ public class Coordinator {
     this.dispatchExecutor =
         IoTDBThreadPoolFactory.newCachedThreadPool(
             ThreadName.FRAGMENT_INSTANCE_DISPATCH.getName(),
-            Math.max(20, Runtime.getRuntime().availableProcessors() * 2));
+            Math.max(20, Runtime.getRuntime().availableProcessors() * 2),
+            CONFIG.getRpcMaxConcurrentClientNum());
     this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
     this.statementRewrite = new StatementRewriteFactory().getStatementRewrite();
     this.logicalPlanOptimizers =

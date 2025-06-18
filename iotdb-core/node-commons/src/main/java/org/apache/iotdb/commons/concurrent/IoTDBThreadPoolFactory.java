@@ -165,13 +165,15 @@ public class IoTDBThreadPoolFactory {
    *
    * @param poolName the name of thread pool.
    * @param corePoolSize the corePoolSize of thread pool
+   * @param maximumPoolSize the maximumPoolSize of thread pool
    * @return thread pool.
    */
-  public static ExecutorService newCachedThreadPool(String poolName, int corePoolSize) {
+  public static ExecutorService newCachedThreadPool(
+      String poolName, int corePoolSize, int maximumPoolSize) {
     logger.info(NEW_CACHED_THREAD_POOL_LOGGER_FORMAT, poolName);
     return new WrappedThreadPoolExecutor(
         corePoolSize,
-        Integer.MAX_VALUE,
+        maximumPoolSize,
         60L,
         TimeUnit.SECONDS,
         new SynchronousQueue<>(),
