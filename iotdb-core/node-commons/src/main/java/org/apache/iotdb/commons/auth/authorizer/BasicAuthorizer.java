@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.auth.user.IUserManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.security.encrypt.AsymmetricEncrypt;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -118,9 +119,19 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public boolean login(String username, String password) throws AuthException {
     User user = userManager.getUser(username);
-    return user != null
-        && password != null
-        && AuthUtils.validatePassword(password, user.getPassword());
+    if (user == null || password == null) {
+      return false;
+    }
+    if (AuthUtils.validatePassword(
+        password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
+      return true;
+    }
+    if (AuthUtils.validatePassword(
+        password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
+      userManager.updateUserPassword(username, password);
+      return true;
+    }
+    return false;
   }
 
   @Override
