@@ -217,7 +217,7 @@ namespace TSEncoding
         GORILLA = (char)8,
         ZIGZAG = (char)9,
         FREQ = (char)10,
-        PERIOD = (char)14
+        FLEA = (char)14
     };
 }
 

@@ -54,7 +54,7 @@ class TSEncoding(IntEnum):
     CHIMP = 11
     SPRINTZ = 12
     RLBE = 13
-    PERIOD = 14
+    FLEA = 14
 
 
 @unique

@@ -30,7 +30,7 @@ public enum TSEncoding {
   GORILLA((byte) 8),
   ZIGZAG((byte) 9),
   FREQ((byte) 10),
-  PERIOD((byte) 14);
+  FLEA((byte) 14);
 
   private final byte type;
 
@@ -73,7 +73,7 @@ public enum TSEncoding {
       case 10:
         return TSEncoding.FREQ;
       case 14:
-        return TSEncoding.PERIOD;
+        return TSEncoding.FLEA;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }

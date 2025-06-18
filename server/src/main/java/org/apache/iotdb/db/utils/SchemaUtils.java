@@ -50,10 +50,10 @@ import java.util.Set;
 
 public class SchemaUtils {
 
-  private SchemaUtils() {}
+  private SchemaUtils() {
+  }
 
-  private static final Map<TSDataType, Set<TSEncoding>> schemaChecker =
-      new EnumMap<>(TSDataType.class);
+  private static final Map<TSDataType, Set<TSEncoding>> schemaChecker = new EnumMap<>(TSDataType.class);
 
   static {
     Set<TSEncoding> booleanSet = new HashSet<>();
@@ -68,7 +68,7 @@ public class SchemaUtils {
     intSet.add(TSEncoding.GORILLA);
     intSet.add(TSEncoding.ZIGZAG);
     intSet.add(TSEncoding.FREQ);
-    intSet.add(TSEncoding.PERIOD);
+    intSet.add(TSEncoding.FLEA);
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);
 
@@ -118,8 +118,10 @@ public class SchemaUtils {
   }
 
   /**
-   * If the datatype of 'aggregation' depends on 'measurementDataType' (min_value, max_value),
-   * return 'measurementDataType' directly, or return a list whose elements are all the datatype of
+   * If the datatype of 'aggregation' depends on 'measurementDataType' (min_value,
+   * max_value),
+   * return 'measurementDataType' directly, or return a list whose elements are
+   * all the datatype of
    * 'aggregation' and its length is the same as 'measurementDataType'.
    *
    * @param measurementDataType
@@ -186,7 +188,8 @@ public class SchemaUtils {
   }
 
   /**
-   * judge whether the order of aggregation calculation is consistent with the order of traversing
+   * judge whether the order of aggregation calculation is consistent with the
+   * order of traversing
    * data
    */
   public static boolean isConsistentWithScanOrder(
@@ -213,7 +216,8 @@ public class SchemaUtils {
   }
 
   /**
-   * If e or one of its recursive causes is a PathNotExistException or StorageGroupNotSetException,
+   * If e or one of its recursive causes is a PathNotExistException or
+   * StorageGroupNotSetException,
    * return such an exception or null if it cannot be found.
    *
    * @param currEx

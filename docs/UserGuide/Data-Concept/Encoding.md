@@ -64,11 +64,9 @@ FREQ encoding is lossy. It transforms the time sequence to the frequency domain 
   
 ZIGZAG encoding maps signed integers to unsigned integers so that numbers with a small absolute value (for instance, -1) have a small variant encoded value too. It does this in a way that "zig-zags" back and forth through the positive and negative integers.
 
-* PERIOD
+* FLEA
 
-PERIOD encoding is suitable for encoding data that is periodic in nature. By calculating the periodicity of the data, it is possible to use lossy frequency-domain data to preserve the periodic character of the data, thus applying a smaller space for storing the residual data.
-
-For the residual data, since most of the residual data is small and a small portion of the residual data is large, PERIOD encoding employs a separate storage method, storing the high and low bits of the residual data separately.
+FLEA (Frequency-based Lossless Encoding Algorithm) is a novel lossless compression algorithm designed specifically for patterned time series. It uniquely leverages frequency-domain analysis within a rate-optimal framework, decomposing data into frequency and residual components whose encoding costs are jointly minimized by adaptively selecting a quantization parameter. By further employing a bi-regional encoding strategy with specialized coders for dense and sparse frequency data, alongside a hybrid residual encoder, FLEA achieves state-of-the-art compression ratios, particularly on data exhibiting periodic or cyclical structures.
 
 ## Correspondence between data type and encoding
 
