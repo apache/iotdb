@@ -138,7 +138,7 @@ public class PipeTaskMeta {
     return progressIndex.get();
   }
 
-  private synchronized void persistProgressIndex() {
+  public synchronized void persistProgressIndex() {
     if (lastPersistCount.get() == updateCount.get()) {
       // in case of multiple threads calling updateProgressIndex at the same time
       return;
