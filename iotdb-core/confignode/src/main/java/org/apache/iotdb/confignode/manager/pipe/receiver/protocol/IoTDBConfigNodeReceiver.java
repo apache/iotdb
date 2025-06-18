@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
@@ -205,10 +204,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 .recordTransferConfigSnapshotSealTimer(System.nanoTime() - startTime);
             return resp;
           case TRANSFER_COMPRESSED:
-            return receive(
-                PipeTransferCompressedReq.fromTPipeTransferReq(
-                    req,
-                    PipeConfig.getInstance().getPipeReceiverReqDecompressedMaxLengthInBytes()));
+            return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
           default:
             break;
         }

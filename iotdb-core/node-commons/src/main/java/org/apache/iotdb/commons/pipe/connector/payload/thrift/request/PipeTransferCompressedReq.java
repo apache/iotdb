@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -35,6 +36,9 @@ import java.util.Arrays;
 import java.util.List;
 
 public class PipeTransferCompressedReq extends TPipeTransferReq {
+
+  private static final int MAX_DECOMPRESSED_LENGTH =
+      PipeConfig.getInstance().getPipeReceiverReqDecompressedMaxLengthInBytes();
 
   /** Generate a compressed req with provided compressors. */
   public static TPipeTransferReq toTPipeTransferReq(
@@ -80,8 +84,8 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
   }
 
   /** Get the original req from a compressed req. */
-  public static TPipeTransferReq fromTPipeTransferReq(
-      final TPipeTransferReq transferReq, final int maxDecompressedLength) throws IOException {
+  public static TPipeTransferReq fromTPipeTransferReq(final TPipeTransferReq transferReq)
+      throws IOException {
     final ByteBuffer compressedBuffer = transferReq.body;
 
     final List<PipeCompressor> compressors = new ArrayList<>();
@@ -91,7 +95,7 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
       compressors.add(
           PipeCompressorFactory.getCompressor(ReadWriteIOUtils.readByte(compressedBuffer)));
       uncompressedLengths.add(ReadWriteIOUtils.readInt(compressedBuffer));
-      checkDecompressedLength(uncompressedLengths.get(i), maxDecompressedLength);
+      checkDecompressedLength(uncompressedLengths.get(i));
     }
 
     byte[] body = new byte[compressedBuffer.remaining()];
@@ -146,14 +150,13 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
   }
 
   /** This method is used to prevent decompression bomb attacks. */
-  private static void checkDecompressedLength(
-      final int decompressedLength, final int maxDecompressedLength)
+  private static void checkDecompressedLength(final int decompressedLength)
       throws IllegalArgumentException {
-    if (decompressedLength < 0 || decompressedLength > maxDecompressedLength) {
+    if (decompressedLength < 0 || decompressedLength > MAX_DECOMPRESSED_LENGTH) {
       throw new IllegalArgumentException(
           String.format(
               "Decompressed length should be between 0 and %d, but got %d.",
-              maxDecompressedLength, decompressedLength));
+              MAX_DECOMPRESSED_LENGTH, decompressedLength));
     }
   }
 

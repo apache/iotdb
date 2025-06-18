@@ -333,10 +333,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeReceiverReqDecompressedMaxLengthInBytes();
   }
 
-  public double getPipeReceiverReqDecompressedMaxMemoryProportion() {
-    return COMMON_CONFIG.getPipeReceiverReqDecompressedMaxMemoryProportion();
-  }
-
   /////////////////////////////// Hybrid Mode ///////////////////////////////
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
@@ -628,9 +624,6 @@ public class PipeConfig {
     LOGGER.info(
         "PipeReceiverReqDecompressedMaxLengthInBytes: {}",
         getPipeReceiverReqDecompressedMaxLengthInBytes());
-    LOGGER.info(
-        "PipeReceiverReqDecompressedMaxMemoryProportion: {}",
-        getPipeReceiverReqDecompressedMaxMemoryProportion());
 
     LOGGER.info(
         "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",
