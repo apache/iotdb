@@ -946,6 +946,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // 1. Map<Device, String[] measurements> ISchemaFetcher.getAllSensors(prefix) ~= 50ms
 
       final PartialPath prefixPath = new PartialPath(req.getPrefixes().toArray(new String[0]));
+      if (prefixPath.hasWildcard()) {
+        RpcUtils.getTSExecuteStatementResp(
+            new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+                .setMessage(
+                    "The \"executeFastLastDataQueryForOnePrefixPath\" dos not support wildcards."));
+      }
+
       final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> resultMap =
           new HashMap<>();
       int sensorNum = 0;
