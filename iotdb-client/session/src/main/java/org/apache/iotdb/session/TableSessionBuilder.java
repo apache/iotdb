@@ -271,7 +271,12 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
     }
     this.sqlDialect = TABLE;
     Session newSession = new Session(this);
-    newSession.open(enableCompression, connectionTimeoutInMs);
+    try {
+      newSession.open(enableCompression, connectionTimeoutInMs);
+    } catch (IoTDBConnectionException e) {
+      newSession.close();
+      throw e;
+    }
     return new TableSession(newSession);
   }
 }
