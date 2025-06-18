@@ -223,7 +223,7 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_ENABLE_SEND_TSFILE_LIMIT =
       "connector.enable-send-tsfile-limit";
   public static final String SINK_ENABLE_SEND_TSFILE_LIMIT = "sink.enable-send-tsfile-limit";
-  public static final boolean CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE = true;
+  public static final boolean CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE = false;
 
   public static final String CONNECTOR_RATE_LIMIT_KEY = "connector.rate-limit-bytes-per-second";
   public static final String SINK_RATE_LIMIT_KEY = "sink.rate-limit-bytes-per-second";

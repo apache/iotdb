@@ -238,7 +238,7 @@ public class PipeDataNodeTaskBuilder {
             Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
             EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE);
 
-    if (!isRealtimeEnabled || shouldTerminatePipeOnAllHistoricalEventsConsumed) {
+    if (isRealtimeEnabled && !shouldTerminatePipeOnAllHistoricalEventsConsumed) {
       final Boolean enableSendTsFileLimit =
           connectorParameters.getBooleanByKeys(
               PipeConnectorConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
@@ -246,7 +246,7 @@ public class PipeDataNodeTaskBuilder {
 
       if (enableSendTsFileLimit == null) {
         connectorParameters.addAttribute(
-            PipeConnectorConstant.SINK_ENABLE_SEND_TSFILE_LIMIT, "false");
+            PipeConnectorConstant.SINK_ENABLE_SEND_TSFILE_LIMIT, "true");
         LOGGER.info(
             "PipeDataNodeTaskBuilder: When the realtime sync is enabled, we enable rate limiter in sending tsfile by default to reserve disk and network IO for realtime sending.");
       } else if (!enableSendTsFileLimit) {
