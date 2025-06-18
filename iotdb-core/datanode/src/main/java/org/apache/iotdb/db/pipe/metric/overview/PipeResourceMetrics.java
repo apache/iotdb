@@ -133,7 +133,7 @@ public class PipeResourceMetrics implements IMetricSet {
     metricService.remove(MetricType.RATE, Metric.PIPE_TSFILE_SEND_DISK_IO.toString());
   }
 
-  public void recordDiskIO(long bytes) {
+  public void recordDiskIO(final long bytes) {
     diskIOCounter.inc(bytes);
   }
 
