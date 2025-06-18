@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
+import org.apache.iotdb.commons.pipe.connector.limiter.TsFileSendRateLimiter;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
@@ -179,6 +180,9 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       while (true) {
+        if (needRateLimit()) {
+          TsFileSendRateLimiter.getInstance().acquire(readFileBufferSize);
+        }
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
           break;
@@ -247,6 +251,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
   protected abstract PipeTransferFilePieceReq getTransferMultiFilePieceReq(
       final String fileName, final long position, final byte[] payLoad) throws IOException;
+
+  protected abstract boolean needRateLimit();
 
   @Override
   public void close() {

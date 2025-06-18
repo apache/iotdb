@@ -17,14 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.util.limiter;
+package org.apache.iotdb.commons.pipe.connector.limiter;
 
-import org.apache.iotdb.commons.pipe.connector.limiter.GlobalRateLimiter;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 public class TsFileSendRateLimiter extends GlobalRateLimiter {
+
+  private static final PipeConfig CONFIG = PipeConfig.getInstance();
+
   @Override
   protected double getThroughputBytesPerSecond() {
-    return 0;
+    return CONFIG.getPipeSendTsFileRateLimitBytesPerSecond();
   }
 
   //////////////////////////// Singleton ////////////////////////////

@@ -104,6 +104,11 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   }
 
   @Override
+  protected boolean needRateLimit() {
+    return false;
+  }
+
+  @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
         "IoTDBConfigRegionConnector can't transfer TabletInsertionEvent.");
