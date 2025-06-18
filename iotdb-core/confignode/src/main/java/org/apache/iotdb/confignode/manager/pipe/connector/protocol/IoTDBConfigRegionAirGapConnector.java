@@ -90,6 +90,11 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
   }
 
   @Override
+  protected boolean needRateLimit() {
+    return false;
+  }
+
+  @Override
   protected boolean mayNeedHandshakeWhenFail() {
     return true;
   }

@@ -246,7 +246,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
   }
 
   @Override
-  protected boolean needTsFileRateLimit() {
+  protected boolean needRateLimit() {
     return false;
   }
 }

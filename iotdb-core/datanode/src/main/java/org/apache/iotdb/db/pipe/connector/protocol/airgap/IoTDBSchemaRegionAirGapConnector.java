@@ -199,6 +199,11 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   }
 
   @Override
+  protected boolean needRateLimit() {
+    return false;
+  }
+
+  @Override
   protected byte[] getTransferSingleFilePieceBytes(
       final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
