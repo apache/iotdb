@@ -273,8 +273,6 @@ public class PartitionCache {
           TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
           storageGroupSchema.setName(storageGroupName);
           if (SchemaConstant.SYSTEM_DATABASE.equals(storageGroupName)) {
-            storageGroupSchema.setSchemaReplicationFactor(1);
-            storageGroupSchema.setDataReplicationFactor(1);
             storageGroupSchema.setMinSchemaRegionGroupNum(1);
             storageGroupSchema.setMaxSchemaRegionGroupNum(1);
             storageGroupSchema.setMaxDataRegionGroupNum(1);

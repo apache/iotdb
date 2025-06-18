@@ -103,8 +103,6 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
           && showDatabaseResp.getDatabaseInfoMapSize() == 0) {
         TDatabaseSchema databaseSchema = new TDatabaseSchema();
         databaseSchema.setName(SchemaConstant.SYSTEM_DATABASE);
-        databaseSchema.setSchemaReplicationFactor(1);
-        databaseSchema.setDataReplicationFactor(1);
         databaseSchema.setMaxSchemaRegionGroupNum(1);
         databaseSchema.setMinSchemaRegionGroupNum(1);
         databaseSchema.setMaxDataRegionGroupNum(1);
