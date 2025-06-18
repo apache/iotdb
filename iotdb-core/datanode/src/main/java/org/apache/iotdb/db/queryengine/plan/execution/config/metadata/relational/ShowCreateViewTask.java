@@ -141,7 +141,14 @@ public class ShowCreateViewTask extends AbstractTableTask {
         .append(table.getPropValue(TsTable.TTL_PROPERTY).orElse("'" + TTL_INFINITE + "'"))
         .append(")");
 
-    builder.append(" AS ").append(table.getPropValue(TreeViewSchema.TREE_PATH_PATTERN).get());
+    builder.append(" AS ");
+
+    final String[] pathNodes = TreeViewSchema.getPrefixPattern(table).getNodes();
+    builder.append(pathNodes[0]);
+    for (int i = 1; i < pathNodes.length - 1; ++i) {
+      builder.append(".\"").append(pathNodes[i]).append("\"");
+    }
+    builder.append(".").append(pathNodes[pathNodes.length - 1]);
 
     return builder.toString();
   }

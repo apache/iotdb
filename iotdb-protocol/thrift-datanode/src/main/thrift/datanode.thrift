@@ -341,6 +341,7 @@ struct TUpdateTemplateReq {
 struct TUpdateTableReq {
   1: required byte type
   2: required binary tableInfo
+  3: optional string oldName
 }
 
 struct TInvalidateTableCacheReq {

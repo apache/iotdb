@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
@@ -327,7 +328,13 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     final ISchemaRegionStatistics statistics = schemaRegion.getSchemaRegionStatistics();
     final String tableName = table.getTableName();
     final long devicesNumber = statistics.getTableDevicesNumber(tableName);
-    return devicePatternList.stream().allMatch(path -> ((ExtendedPartialPath) path).isNormalPath())
+    return !TreeViewSchema.isTreeViewTable(table)
+            && devicePatternList.stream()
+                .allMatch(
+                    path ->
+                        ((ExtendedPartialPath) path).isNormalPath()
+                            && Arrays.stream(path.getNodes())
+                                .noneMatch(PathPatternUtil::hasWildcard))
         ? Math.min(
             TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
             devicePatternList.stream()
