@@ -9,6 +9,7 @@ import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 
 import javax.ws.rs.core.Response;
 
+import java.util.ArrayList;
 import java.util.Collections;
 
 public class FastLastHandler {
@@ -47,5 +48,7 @@ public class FastLastHandler {
     dataSet.addDataTypesItem("TEXT");
     dataSet.addDataTypesItem("TEXT");
     dataSet.addDataTypesItem("TEXT");
+    dataSet.setValues(new ArrayList<>());
+    dataSet.setTimestamps(new ArrayList<>());
   }
 }
