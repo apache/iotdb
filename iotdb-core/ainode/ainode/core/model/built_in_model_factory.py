@@ -525,7 +525,7 @@ timerxl_attribute_map = {
         name=AttributeName.CKPT_PATH.value,
         default_value=os.path.join(
             os.getcwd(),
-        ),  
+        ),
         value_choices=[""],
     ),
 }

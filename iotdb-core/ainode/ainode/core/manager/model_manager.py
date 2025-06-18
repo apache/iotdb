@@ -23,7 +23,7 @@ from yaml import YAMLError
 
 from ainode.core.client import ClientManager
 from ainode.core.config import AINodeDescriptor
-from ainode.core.constant import BuiltInModelType, TSStatusCode, STATUS_CODE_MAP
+from ainode.core.constant import STATUS_CODE_MAP, BuiltInModelType, TSStatusCode
 from ainode.core.exception import (
     BadConfigValueError,
     BuiltInModelNotSupportError,
@@ -36,8 +36,8 @@ from ainode.core.exception import (
 from ainode.core.log import Logger
 from ainode.core.model.built_in_model_factory import fetch_built_in_model
 from ainode.core.model.model_storage import ModelStorage
-from ainode.core.util.status import get_status
 from ainode.core.util.lock import ReadWriteLock
+from ainode.core.util.status import get_status
 from ainode.thrift.ainode.ttypes import (
     TDeleteModelReq,
     TRegisterModelReq,

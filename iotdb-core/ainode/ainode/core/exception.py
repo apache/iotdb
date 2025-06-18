@@ -75,7 +75,11 @@ class UnsupportedError(_BaseError):
 
 
 class InvalidUriError(_BaseError):
-    def __init__(self, uri: str, details: str = "no valid model files found (checked both IoTDB and legacy formats)"):
+    def __init__(
+        self,
+        uri: str,
+        details: str = "no valid model files found (checked both IoTDB and legacy formats)",
+    ):
         self.message = "Invalid uri: {}, {}".format(uri, details)
 
 

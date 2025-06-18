@@ -99,7 +99,7 @@ class ClusterManager:
         - Debugging and troubleshooting cluster issues
         - Health checks and status reporting
         - Integration with external monitoring systems
-        
+
         The following methods are not required for core AINode functionality but helpful for operations.
         In several days they will be discussed.
         """
@@ -131,7 +131,7 @@ class ClusterManager:
         - Maintenance mode activation (set to "MAINTENANCE")
         - Error recovery scenarios (set to "RECOVERING")
         - Testing and debugging purposes
-        
+
         The status is automatically managed during normal operation,
         so manual setting is only needed for special scenarios.
         """
@@ -146,7 +146,7 @@ class ClusterManager:
         - Resource usage analysis and capacity planning
         - Performance troubleshooting and optimization
         - Integration with monitoring frameworks (Prometheus, etc.)
-        
+
         This provides richer metrics than the basic load sample in heartbeat,
         but is not required for core cluster functionality.
         """

@@ -61,9 +61,11 @@ class TimerXLStrategy(InferenceStrategy):
         seqs = torch.tensor(data).unsqueeze(0).float()
 
         revin = kwargs.get("revin", True)
-        
+
         if "max_new_tokens" in kwargs:
-            logger.warning("Using deprecated parameter 'max_new_tokens', please use 'predict_length' instead")
+            logger.warning(
+                "Using deprecated parameter 'max_new_tokens', please use 'predict_length' instead"
+            )
             predict_length = kwargs.get("max_new_tokens", predict_length)
 
         logger.debug(
@@ -71,7 +73,9 @@ class TimerXLStrategy(InferenceStrategy):
         )
 
         try:
-            output = self.model.generate(seqs, max_new_tokens=predict_length, revin=revin)
+            output = self.model.generate(
+                seqs, max_new_tokens=predict_length, revin=revin
+            )
             df = pd.DataFrame(output[0])
             return convert_to_binary(df)
         except Exception as e:
@@ -88,9 +92,11 @@ class SundialStrategy(InferenceStrategy):
 
         revin = kwargs.get("revin", True)
         num_samples = kwargs.get("num_samples", 10)
-        
+
         if "max_new_tokens" in kwargs:
-            logger.warning("Using deprecated parameter 'max_new_tokens', please use 'predict_length' instead")
+            logger.warning(
+                "Using deprecated parameter 'max_new_tokens', please use 'predict_length' instead"
+            )
             predict_length = kwargs.get("max_new_tokens", predict_length)
 
         logger.debug(
@@ -99,7 +105,10 @@ class SundialStrategy(InferenceStrategy):
 
         try:
             output = self.model.generate(
-                seqs, max_new_tokens=predict_length, num_samples=num_samples, revin=revin
+                seqs,
+                max_new_tokens=predict_length,
+                num_samples=num_samples,
+                revin=revin,
             )
             df = pd.DataFrame(output[0].mean(dim=0))
             return convert_to_binary(df)

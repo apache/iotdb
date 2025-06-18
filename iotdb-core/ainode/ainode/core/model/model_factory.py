@@ -247,11 +247,12 @@ def _register_model_from_network(
 
     return configs, attributes
 
+
 def _cleanup_model_storage(model_storage_path: str, config_storage_path: str):
     """
     Remove model storage directories and their contents
     """
-    
+
     for path in [model_storage_path, config_storage_path]:
         try:
             if os.path.exists(path):
@@ -259,6 +260,7 @@ def _cleanup_model_storage(model_storage_path: str, config_storage_path: str):
                 logger.debug(f"Cleaned up directory: {path}")
         except Exception as e:
             logger.warning(f"Failed to cleanup {path}: {e}")
+
 
 def _register_model_from_local(
     uri: str, model_storage_path: str, config_storage_path: str

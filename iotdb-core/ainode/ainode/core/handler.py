@@ -17,7 +17,6 @@
 #
 
 from ainode.core.constant import TSStatusCode
-
 from ainode.core.exception import (
     ConfigValidationError,
     IoTDBModelError,
@@ -79,7 +78,6 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
             logger.error(
                 f"Failed to register model: error known: {req.modelId}, with error: {e}"
             )
-            
 
             return TRegisterModelResp(
                 get_status(TSStatusCode.INVALID_URI_ERROR, str(e))
@@ -164,23 +162,21 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         """
         Get AI node heartbeat with comprehensive error handling
         """
-        
+
         try:
             result = ClusterManager.get_heart_beat(req)
             return result
-            
+
         except (OSError, IOError) as e:
             logger.warning(f"System resource access failed in heartbeat: {e}")
             return TAIHeartbeatResp(
-                heartbeatTimestamp=req.heartbeatTimestamp,
-                status="RESOURCE_ERROR"
+                heartbeatTimestamp=req.heartbeatTimestamp, status="RESOURCE_ERROR"
             )
-            
+
         except Exception as e:
             logger.error(f"Unexpected error in heartbeat: {e}")
             return TAIHeartbeatResp(
-                heartbeatTimestamp=req.heartbeatTimestamp,
-                status="ERROR"
+                heartbeatTimestamp=req.heartbeatTimestamp, status="ERROR"
             )
 
     def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
