@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationMana
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -83,7 +84,7 @@ public class FragmentInstanceContext extends QueryContext {
 
   private final MemoryReservationManager memoryReservationManager;
 
-  private IDataRegionForQuery dataRegion;
+  protected IDataRegionForQuery dataRegion;
   private Filter globalTimeFilter;
 
   // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
@@ -93,7 +94,7 @@ public class FragmentInstanceContext extends QueryContext {
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
 
   // Shared by all scan operators in this fragment instance to avoid memory problem
-  private IQueryDataSource sharedQueryDataSource;
+  protected IQueryDataSource sharedQueryDataSource;
 
   /** closed tsfile used in this fragment instance. */
   private Set<TsFileResource> closedFilePaths;
@@ -185,7 +186,7 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public static FragmentInstanceContext createFragmentInstanceContextForCompaction(long queryId) {
-    return new FragmentInstanceContext(queryId);
+    return new FragmentInstanceContext(queryId, null, null, null);
   }
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
@@ -288,13 +289,19 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   // used for compaction
-  private FragmentInstanceContext(long queryId) {
+  protected FragmentInstanceContext(
+      long queryId,
+      MemoryReservationManager memoryReservationManager,
+      Filter timeFilter,
+      DataRegion dataRegion) {
     this.queryId = queryId;
     this.id = null;
     this.stateMachine = null;
     this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
-    this.memoryReservationManager = null;
+    this.dataRegion = dataRegion;
+    this.globalTimeFilter = timeFilter;
+    this.memoryReservationManager = memoryReservationManager;
   }
 
   public void start() {

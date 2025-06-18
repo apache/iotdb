@@ -627,10 +627,10 @@ public class Session implements ISession {
 
   @Override
   public synchronized void close() throws IoTDBConnectionException {
-    if (isClosed) {
-      return;
-    }
     try {
+      if (isClosed) {
+        return;
+      }
       if (enableRedirection) {
         for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
           sessionConnection.close();
