@@ -186,6 +186,10 @@ public class WALManager implements IService {
             getThrottleThreshold());
       }
       firstLoop = false;
+      if (Thread.interrupted()) {
+        logger.info("Timed wal delete thread is interrupted.");
+        return;
+      }
     }
   }
 
@@ -264,12 +268,15 @@ public class WALManager implements IService {
     if (config.getWalMode() == WALMode.DISABLE) {
       return;
     }
-
+    logger.info("Stopping WALManager");
     if (walDeleteThread != null) {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
       walDeleteThread = null;
     }
+    logger.info("Deleting outdated files before exiting");
+    deleteOutdatedFilesInWALNodes();
     clear();
+    logger.info("WALManager stopped");
   }
 
   private void shutdownThread(ExecutorService thread, ThreadName threadName) {
