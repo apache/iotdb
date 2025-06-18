@@ -158,7 +158,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final boolean isConvertOnTypeMismatch;
   private final long tabletConversionThresholdBytes;
 
-  LoadTsFileAnalyzer(
+  public LoadTsFileAnalyzer(
       LoadTsFileStatement loadTsFileStatement,
       MPPQueryContext context,
       IPartitionFetcher partitionFetcher,
