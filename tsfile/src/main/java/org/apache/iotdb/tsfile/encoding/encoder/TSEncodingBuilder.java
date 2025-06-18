@@ -73,8 +73,8 @@ public abstract class TSEncodingBuilder {
         return new Freq();
       case ZIGZAG:
         return new Zigzag();
-      case PERIOD:
-        return new Period();
+      case FLEA:
+        return new Flea();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -403,7 +403,7 @@ public abstract class TSEncodingBuilder {
   }
 
   /** for all TSDataType. */
-  public static class Period extends TSEncodingBuilder {
+  public static class Flea extends TSEncodingBuilder {
     // private int maxStringLength =
     // TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
 
@@ -411,9 +411,9 @@ public abstract class TSEncodingBuilder {
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
         case INT32:
-          return new PeriodEncoder();
+          return new FLEAEncoder();
         default:
-          throw new UnSupportedDataTypeException("PERIOD doesn't support data type: " + type);
+          throw new UnSupportedDataTypeException("FLEA doesn't support data type: " + type);
       }
     }
 

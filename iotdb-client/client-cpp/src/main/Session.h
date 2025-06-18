@@ -231,7 +231,7 @@ namespace TSEncoding
         CHIMP = (char)11,
         SPRINTZ = (char)12,
         RLBE = (char)13,
-        PERIOD = (char)14
+        FLEA = (char)14
     };
 }
 
