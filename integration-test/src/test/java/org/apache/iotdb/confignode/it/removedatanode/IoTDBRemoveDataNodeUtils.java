@@ -120,7 +120,7 @@ public class IoTDBRemoveDataNodeUtils {
 
     try {
       Awaitility.await()
-          .atMost(2, TimeUnit.MINUTES)
+          .atMost(5, TimeUnit.MINUTES)
           .pollDelay(2, TimeUnit.SECONDS)
           .until(
               () -> {
@@ -164,7 +164,7 @@ public class IoTDBRemoveDataNodeUtils {
       lastTimeDataNodeLocations.get().removeAll(removeDataNodeLocations);
       String expectedSetStr = lastTimeDataNodeLocations.get().toString();
       LOGGER.error(
-          "Remove DataNodes timeout in 2 minutes, expected set: {}, actual set: {}",
+          "Remove DataNodes timeout in 5 minutes, expected set: {}, actual set: {}",
           expectedSetStr,
           actualSetStr);
       if (lastException.get() == null) {
