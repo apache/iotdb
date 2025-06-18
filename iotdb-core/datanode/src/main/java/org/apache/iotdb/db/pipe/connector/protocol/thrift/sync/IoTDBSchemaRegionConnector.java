@@ -246,7 +246,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
   }
 
   @Override
-  protected boolean needRateLimit() {
-    return false;
+  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
+    // Do nothing
   }
 }
