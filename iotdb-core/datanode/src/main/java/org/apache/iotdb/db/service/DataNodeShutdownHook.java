@@ -72,6 +72,7 @@ public class DataNodeShutdownHook extends Thread {
                   }
                   logger.info(stackTraceBuilder.toString());
                 } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
                   return;
                 }
               }
