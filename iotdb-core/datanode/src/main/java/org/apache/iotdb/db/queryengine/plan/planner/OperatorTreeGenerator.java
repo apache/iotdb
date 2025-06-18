@@ -3007,7 +3007,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitDeviceLastQueryScan(
       DeviceLastQueryScanNode node, LocalExecutionPlanContext context) {
-    DATA_NODE_SCHEMA_CACHE.cleanUp();
     final PartialPath devicePath = node.getDevicePath();
     List<IMeasurementSchema> measurementSchemas = node.getMeasurementSchemas();
     List<Integer> unCachedMeasurementIndexes = new ArrayList<>();
