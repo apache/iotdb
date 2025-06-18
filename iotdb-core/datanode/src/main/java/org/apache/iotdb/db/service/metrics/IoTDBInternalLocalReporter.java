@@ -105,7 +105,6 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
         databaseSchema.setName(SchemaConstant.SYSTEM_DATABASE);
         databaseSchema.setMaxSchemaRegionGroupNum(1);
         databaseSchema.setMinSchemaRegionGroupNum(1);
-
         databaseSchema.setMaxDataRegionGroupNum(1);
         databaseSchema.setMinDataRegionGroupNum(1);
         TSStatus tsStatus = client.setDatabase(databaseSchema);
