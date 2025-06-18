@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
 import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.codahale.metrics.Clock;
@@ -54,9 +56,10 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private final IoTDBHistogram collectInvocationHistogram =
       (IoTDBHistogram) IoTDBMetricManager.getInstance().createHistogram();
 
-  private volatile long lastInsertNodeEventCountSmoothingTime = Long.MIN_VALUE;
-  private final Meter insertNodeEventCountMeter =
-      new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
+  private Timer insertNodeTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer tsfileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  private final InsertNodeEMA insertNodeEventCountEMA = new InsertNodeEMA();
 
   private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
   private double lastSchemaRegionCommitSmoothingValue = Long.MAX_VALUE;
@@ -100,14 +103,8 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   }
 
   double getRemainingInsertEventSmoothingCount() {
-    if (System.currentTimeMillis() - lastInsertNodeEventCountSmoothingTime
-        >= PipeConfig.getInstance().getPipeRemainingInsertEventCountSmoothingIntervalSeconds()) {
-      insertNodeEventCountMeter.mark(insertNodeEventCount.get());
-      lastInsertNodeEventCountSmoothingTime = System.currentTimeMillis();
-    }
-    return PipeConfig.getInstance()
-        .getPipeRemainingInsertNodeCountAverage()
-        .getMeterRate(insertNodeEventCountMeter);
+    insertNodeEventCountEMA.update(insertNodeEventCount.get());
+    return insertNodeEventCountEMA.insertNodeEMAValue;
   }
 
   long getRemainingEvents() {
@@ -230,6 +227,22 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     collectInvocationHistogram.update(Math.max(collectInvocationCount, 1));
   }
 
+  public void setInsertNodeTransferTimer(Timer insertNodeTransferTimer) {
+    this.insertNodeTransferTimer = insertNodeTransferTimer;
+  }
+
+  public Timer getInsertNodeTransferTimer() {
+    return insertNodeTransferTimer;
+  }
+
+  public void setTsFileTransferTimer(Timer tsFileTransferTimer) {
+    this.tsfileTransferTimer = tsFileTransferTimer;
+  }
+
+  public Timer getTsFileTransferTimer() {
+    return tsfileTransferTimer;
+  }
+
   //////////////////////////// Switch ////////////////////////////
 
   // Thread-safe & Idempotent
@@ -252,5 +265,18 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     super.freezeRate(isStopPipe);
     dataRegionCommitMeter.set(null);
     schemaRegionCommitMeter.set(null);
+  }
+
+  private static class InsertNodeEMA {
+    private double insertNodeEMAValue;
+
+    public void update(final double newValue) {
+      final double alpha = PipeConfig.getInstance().getPipeRemainingInsertNodeCountEMAAlpha();
+      if (insertNodeEMAValue == 0) {
+        insertNodeEMAValue = newValue;
+      } else {
+        insertNodeEMAValue = alpha * newValue + (1 - alpha) * insertNodeEMAValue;
+      }
+    }
   }
 }

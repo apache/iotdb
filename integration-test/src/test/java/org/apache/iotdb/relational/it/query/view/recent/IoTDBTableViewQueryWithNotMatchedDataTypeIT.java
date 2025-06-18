@@ -94,7 +94,8 @@ public class IoTDBTableViewQueryWithNotMatchedDataTypeIT {
   public void test() throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE " + DATABASE_NAME);
-      SessionDataSet sessionDataSet = session.executeQueryStatement("select * from view1");
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement("select * from view1 where current is not null");
       Assert.assertFalse(sessionDataSet.hasNext());
       sessionDataSet.close();
     }

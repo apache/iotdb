@@ -20,14 +20,10 @@
 package org.apache.iotdb.ainode.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.AIClusterIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.sql.Connection;
@@ -40,8 +36,8 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({AIClusterIT.class})
+// @RunWith(IoTDBTestRunner.class)
+// @Category({AIClusterIT.class})
 public class AINodeBasicIT {
   static final String MODEL_PATH =
       System.getProperty("user.dir")

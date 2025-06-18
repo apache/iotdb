@@ -30,6 +30,7 @@
 #include <thrift/transport/TBufferTransports.h>
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <cstdint>
+#include <boost/optional/optional.hpp>
 
 #include "client_types.h"
 #include "common_types.h"
@@ -178,13 +179,13 @@ enum TSStatusCode {
 class Field {
 public:
     TSDataType::TSDataType dataType = TSDataType::UNKNOWN;
-    bool boolV{};
-    int intV{};
-    boost::gregorian::date dateV;
-    int64_t longV{};
-    float floatV{};
-    double doubleV{};
-    std::string stringV;
+    boost::optional<bool> boolV;
+    boost::optional<int> intV;
+    boost::optional<boost::gregorian::date> dateV;
+    boost::optional<int64_t> longV;
+    boost::optional<float> floatV;
+    boost::optional<double> doubleV;
+    boost::optional<std::string> stringV;
 
     explicit Field(TSDataType::TSDataType a) {
         dataType = a;

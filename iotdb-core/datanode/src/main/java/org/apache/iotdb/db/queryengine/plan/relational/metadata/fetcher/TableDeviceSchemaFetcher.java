@@ -118,8 +118,10 @@ public class TableDeviceSchemaFetcher {
               relationSqlParser,
               SessionManager.getInstance().getCurrSession(),
               queryId,
-              SessionManager.getInstance()
-                  .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
+              context == null
+                  ? SessionManager.getInstance()
+                      .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession())
+                  : context.getSession(),
               "Fetch Device for insert",
               LocalExecutionPlanner.getInstance().metadata,
               // Never timeout for insert
@@ -468,8 +470,10 @@ public class TableDeviceSchemaFetcher {
               relationSqlParser,
               SessionManager.getInstance().getCurrSession(),
               queryId,
-              SessionManager.getInstance()
-                  .getSessionInfo(SessionManager.getInstance().getCurrSession()),
+              mppQueryContext == null
+                  ? SessionManager.getInstance()
+                      .getSessionInfo(SessionManager.getInstance().getCurrSession())
+                  : mppQueryContext.getSession(),
               String.format(
                   "fetch device for query %s : %s",
                   mppQueryContext.getQueryId(), mppQueryContext.getSql()),

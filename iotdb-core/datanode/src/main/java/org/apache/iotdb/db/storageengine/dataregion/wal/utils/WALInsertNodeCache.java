@@ -24,10 +24,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.metric.overview.PipeWALInsertNodeCacheMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
-import org.apache.iotdb.db.pipe.resource.memory.PipeDynamicMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockType;
 import org.apache.iotdb.db.pipe.resource.memory.PipeModelFixedMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -40,7 +38,6 @@ import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
-import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.tsfile.utils.Pair;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -49,13 +46,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /** This cache is used by {@link WALEntryPosition}. */
 public class WALInsertNodeCache {
@@ -68,11 +63,6 @@ public class WALInsertNodeCache {
 
   private static PipeModelFixedMemoryBlock walModelFixedMemory = null;
 
-  private final PipeDynamicMemoryBlock memoryBlock;
-
-  // Used to adjust the memory usage of the cache
-  private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
-  private final AtomicBoolean isBatchLoadEnabled = new AtomicBoolean(true);
   // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
   private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
 
@@ -81,24 +71,16 @@ public class WALInsertNodeCache {
 
   private volatile boolean hasPipeRunning = false;
 
-  private WALInsertNodeCache(final Integer dataRegionId) {
+  private WALInsertNodeCache() {
     if (walModelFixedMemory == null) {
       init();
     }
 
     final long requestedAllocateSize =
         (long)
-            Math.min(
-                1.0
-                    * PIPE_CONFIG.getPipeMaxAllowedPinnedMemTableCount()
-                    * CONFIG.getWalFileSizeThresholdInByte()
-                    / CONFIG.getDataRegionNum(),
-                0.5
-                    * MEMORY_CONFIG.getPipeMemoryManager().getTotalMemorySizeInBytes()
-                    / CONFIG.getDataRegionNum());
-    memoryBlock = walModelFixedMemory.registerPipeBatchMemoryBlock(requestedAllocateSize);
-    isBatchLoadEnabled.set(
-        memoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte());
+            (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
+                * PIPE_CONFIG.getPipeDataStructureWalMemoryProportion());
+
     lruCache =
         Caffeine.newBuilder()
             .maximumWeight(requestedAllocateSize)
@@ -107,12 +89,9 @@ public class WALInsertNodeCache {
                     (position, pair) -> {
                       long weightInLong = 0L;
                       if (pair.right != null) {
-                        weightInLong =
-                            (long)
-                                (InsertNodeMemoryEstimator.sizeOf(pair.right)
-                                    * memoryUsageCheatFactor.get());
+                        weightInLong = InsertNodeMemoryEstimator.sizeOf(pair.right);
                       } else {
-                        weightInLong = (long) (position.getSize() * memoryUsageCheatFactor.get());
+                        weightInLong = position.getSize();
                       }
                       if (weightInLong <= 0) {
                         return Integer.MAX_VALUE;
@@ -122,57 +101,6 @@ public class WALInsertNodeCache {
                     })
             .recordStats()
             .build(new WALInsertNodeCacheLoader());
-
-    memoryBlock.setExpandable(true);
-    memoryBlock.setExpand(
-        memoryBlock -> {
-          final long oldMemory = memoryBlock.getMemoryUsageInBytes();
-          memoryBlock.updateCurrentMemoryEfficiencyAdjustMem(lruCache.stats().hitRate());
-          final long newMemory = memoryBlock.getMemoryUsageInBytes();
-          if (newMemory > oldMemory) {
-            setExpandCallback(oldMemory, newMemory, dataRegionId);
-          } else if (newMemory < oldMemory) {
-            shrinkCallback(oldMemory, newMemory, dataRegionId);
-          }
-        });
-    PipeWALInsertNodeCacheMetrics.getInstance().register(this, dataRegionId);
-  }
-
-  private void setExpandCallback(long oldMemory, long newMemory, Integer dataRegionId) {
-    memoryUsageCheatFactor.updateAndGet(
-        factor ->
-            factor == 0L || newMemory == 0L || oldMemory == 0
-                ? 0.0
-                : factor / ((double) newMemory / oldMemory));
-    isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
-    LOGGER.info(
-        "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has expanded from {} to {}.",
-        dataRegionId,
-        oldMemory,
-        newMemory);
-  }
-
-  private void shrinkCallback(long oldMemory, long newMemory, Integer dataRegionId) {
-    memoryUsageCheatFactor.updateAndGet(
-        factor ->
-            factor == 0L || newMemory == 0L || oldMemory == 0
-                ? 0.0
-                : factor * ((double) oldMemory / newMemory));
-    isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
-    LOGGER.info(
-        "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has shrunk from {} to {}.",
-        dataRegionId,
-        oldMemory,
-        newMemory);
-    if (CONFIG.getWALCacheShrinkClearEnabled()) {
-      try {
-        lruCache.cleanUp();
-      } catch (Exception e) {
-        LOGGER.warn("Failed to clear WALInsertNodeCache for dataRegion ID: {}.", dataRegionId, e);
-        return;
-      }
-      LOGGER.info("Successfully cleared WALInsertNodeCache for dataRegion ID: {}.", dataRegionId);
-    }
   }
 
   // please call this method at PipeLauncher
@@ -185,7 +113,9 @@ public class WALInsertNodeCache {
       walModelFixedMemory =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForModelFixedMemoryBlock(
-                  PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfWAL(),
+                  (long)
+                      (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
+                          * PIPE_CONFIG.getPipeDataStructureWalMemoryProportion()),
                   PipeMemoryBlockType.WAL);
     } catch (Exception e) {
       LOGGER.error("Failed to initialize WAL model fixed memory block", e);
@@ -259,10 +189,7 @@ public class WALInsertNodeCache {
   public Pair<ByteBuffer, InsertNode> getByteBufferOrInsertNode(final WALEntryPosition position) {
     hasPipeRunning = true;
 
-    final Pair<ByteBuffer, InsertNode> pair =
-        isBatchLoadEnabled.get()
-            ? lruCache.getAll(Collections.singleton(position)).get(position)
-            : lruCache.get(position);
+    final Pair<ByteBuffer, InsertNode> pair = lruCache.get(position);
 
     if (pair == null) {
       throw new IllegalStateException();
@@ -383,17 +310,13 @@ public class WALInsertNodeCache {
 
   /////////////////////////// Singleton ///////////////////////////
 
-  public static WALInsertNodeCache getInstance(final Integer regionId) {
-    return InstanceHolder.getOrCreateInstance(regionId);
+  public static WALInsertNodeCache getInstance() {
+    return InstanceHolder.INSTANCE;
   }
 
   private static class InstanceHolder {
 
-    private static final Map<Integer, WALInsertNodeCache> INSTANCE_MAP = new ConcurrentHashMap<>();
-
-    public static WALInsertNodeCache getOrCreateInstance(final Integer key) {
-      return INSTANCE_MAP.computeIfAbsent(key, k -> new WALInsertNodeCache(key));
-    }
+    public static final WALInsertNodeCache INSTANCE = new WALInsertNodeCache();
 
     private InstanceHolder() {
       // forbidding instantiation
@@ -403,16 +326,6 @@ public class WALInsertNodeCache {
   /////////////////////////// Test Only ///////////////////////////
 
   @TestOnly
-  public boolean isBatchLoadEnabled() {
-    return isBatchLoadEnabled.get();
-  }
-
-  @TestOnly
-  public void setIsBatchLoadEnabled(final boolean isBatchLoadEnabled) {
-    this.isBatchLoadEnabled.set(isBatchLoadEnabled);
-  }
-
-  @TestOnly
   boolean contains(WALEntryPosition position) {
     return lruCache.getIfPresent(position) != null;
   }
@@ -420,7 +333,6 @@ public class WALInsertNodeCache {
   @TestOnly
   public void clear() {
     lruCache.invalidateAll();
-    memoryBlock.close();
     memTablesNeedSearch.clear();
   }
 }

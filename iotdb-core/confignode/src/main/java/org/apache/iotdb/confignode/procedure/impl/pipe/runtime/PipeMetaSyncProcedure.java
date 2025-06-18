@@ -158,7 +158,9 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
                       consensusGroupIdToTaskMetaMap.get(taskIndex).setLeaderNodeId(newLeader);
                     } else {
                       consensusGroupIdToTaskMetaMap.put(
-                          taskIndex, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
+                          taskIndex,
+                          new PipeTaskMeta(
+                              MinimumProgressIndex.INSTANCE, newLeader, taskIndex, false));
                     }
                   });
               final Set<Integer> taskIdToRemove =

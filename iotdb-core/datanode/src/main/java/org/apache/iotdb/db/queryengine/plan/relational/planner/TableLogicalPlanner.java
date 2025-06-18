@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -480,6 +481,10 @@ public class TableLogicalPlanner {
 
       analysis.setSchemaPartitionInfo(
           ClusterPartitionFetcher.getInstance().getSchemaPartition(tree));
+
+      if (analysis.getSchemaPartitionInfo().getSchemaPartitionMap().size() > 1) {
+        throw new SemanticException("Tree device view with multiple databases is unsupported yet.");
+      }
     } else {
       analysis.setSchemaPartitionInfo(
           statement.isIdDetermined()

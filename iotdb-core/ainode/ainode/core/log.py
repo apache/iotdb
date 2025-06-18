@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 import inspect
 import logging
 import multiprocessing
@@ -24,6 +25,7 @@ import sys
 import threading
 
 from ainode.core.constant import (
+    AINODE_LOG_DIR,
     AINODE_LOG_FILE_LEVELS,
     AINODE_LOG_FILE_NAMES,
     STD_LEVEL,
@@ -76,7 +78,7 @@ class Logger:
     _lock: process lock for logger. This is just a precaution, we currently do not have multiprocessing
     """
 
-    def __init__(self, log_dir=None):
+    def __init__(self, log_dir=AINODE_LOG_DIR):
 
         self.logger_format = logging.Formatter(
             fmt="%(asctime)s %(levelname)s %(" "message)s", datefmt="%Y-%m-%d %H:%M:%S"
@@ -114,7 +116,7 @@ class Logger:
             for file_handler in self.file_handlers:
                 self.logger.addHandler(file_handler)
         else:
-            log_dir = "default path"
+            log_dir = "None"
 
         self.logger.addFilter(LoggerFilter())
         self._lock = threading.Lock()

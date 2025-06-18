@@ -104,6 +104,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   // Only useful for insertRows
   private final Set<String> tableNames;
 
+  private long extractTime = 0;
+
   public PipeInsertNodeTabletInsertionEvent(
       final Boolean isTableModel,
       final String databaseNameFromDataRegion,
@@ -198,6 +200,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
+    extractTime = System.nanoTime();
     try {
       PipeDataNodeResourceManager.wal().pin(walEntryHandler);
       if (Objects.nonNull(pipeName)) {
@@ -238,7 +241,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeAgent.task().decreaseFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .decreaseInsertNodeEventCount(pipeName, creationTime);
+            .decreaseInsertNodeEventCount(pipeName, creationTime, System.nanoTime() - extractTime);
       }
     }
   }

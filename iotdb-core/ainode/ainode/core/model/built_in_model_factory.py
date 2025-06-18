@@ -41,8 +41,8 @@ from ainode.core.exception import (
 from ainode.core.log import Logger
 from ainode.core.model.sundial import modeling_sundial
 from ainode.core.model.sundial.configuration_sundial import SundialConfig
-from ainode.TimerXL.models import timer_xl
-from ainode.TimerXL.models.configuration_timer import TimerxlConfig
+from ainode.core.model.timerxl import modeling_timer
+from ainode.core.model.timerxl.configuration_timer import TimerConfig
 
 logger = Logger()
 
@@ -113,7 +113,7 @@ def fetch_built_in_model(model_id, inference_attributes):
     elif model_id == BuiltInModelType.STRAY.value:
         model = STRAYModel(attributes)
     elif model_id == BuiltInModelType.TIMER_XL.value:
-        model = timer_xl.Model(TimerxlConfig.from_dict(attributes))
+        model = modeling_timer.TimerForPrediction(TimerConfig.from_dict(attributes))
     elif model_id == BuiltInModelType.SUNDIAL.value:
         model = modeling_sundial.SundialForPrediction(
             SundialConfig.from_dict(attributes)

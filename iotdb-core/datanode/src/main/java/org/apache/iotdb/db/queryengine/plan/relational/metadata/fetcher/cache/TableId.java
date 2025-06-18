@@ -26,7 +26,7 @@ import javax.annotation.Nullable;
 
 import java.util.Objects;
 
-class TableId {
+public class TableId {
 
   private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(TableId.class);
 
@@ -36,7 +36,7 @@ class TableId {
 
   private final String tableName;
 
-  TableId(final @Nullable String database, final @Nonnull String tableName) {
+  public TableId(final @Nullable String database, final @Nonnull String tableName) {
     this.database = database;
     this.tableName = tableName;
   }

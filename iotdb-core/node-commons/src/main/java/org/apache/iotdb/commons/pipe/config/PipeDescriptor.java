@@ -46,6 +46,9 @@ public class PipeDescriptor {
     config.setPipeHardlinkTsFileDirName(
         properties.getProperty(
             "pipe_hardlink_tsfile_dir_name", config.getPipeHardlinkTsFileDirName()));
+    config.setPipeProgressIndexPersistDirName(
+        properties.getProperty(
+            "pipe_progress_index_persist_dir_name", config.getPipeProgressIndexPersistDirName()));
     config.setPipeHardlinkWALDirName(
         properties.getProperty("pipe_hardlink_wal_dir_name", config.getPipeHardlinkWALDirName()));
     config.setPipeHardLinkWALEnabled(
@@ -97,6 +100,21 @@ public class PipeDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
+    config.setPipeProgressIndexPersistEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_progress_index_persist_enabled",
+                String.valueOf(config.isPipeProgressIndexPersistEnabled()))));
+    config.setPipeProgressIndexPersistCheckPointGap(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_progress_index_persist_check_point_gap",
+                String.valueOf(config.getPipeProgressIndexPersistCheckPointGap()))));
+    config.setPipeProgressIndexFlushIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_progress_index_flush_interval_ms",
+                String.valueOf(config.getPipeProgressIndexFlushIntervalMs()))));
 
     config.setPipeAirGapReceiverEnabled(
         Boolean.parseBoolean(
@@ -190,12 +208,12 @@ public class PipeDescriptor {
                     "pipe_remaining_time_commit_rate_average_time",
                     String.valueOf(config.getPipeRemainingTimeCommitRateAverageTime()))
                 .trim()));
-    config.setPipeRemainingInsertNodeCountAverage(
-        PipeRateAverage.valueOf(
+    config.setPipeRemainingInsertNodeCountEMAAlpha(
+        Double.parseDouble(
             properties
                 .getProperty(
-                    "pipe_remaining_insert_node_count_average",
-                    String.valueOf(config.getPipeRemainingInsertNodeCountAverage()))
+                    "pipe_remaining_insert_node_count_ema_alpha",
+                    String.valueOf(config.getPipeRemainingInsertNodeCountEMAAlpha()))
                 .trim()));
   }
 
@@ -264,6 +282,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_realtime_queue_poll_historical_tsfile_threshold",
                 String.valueOf(config.getPipeRealTimeQueuePollHistoricalTsFileThreshold()))));
+    config.setPipeRealTimeQueueMaxWaitingTsFileSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_realTime_queue_max_waiting_tsFile_size",
+                String.valueOf(config.getPipeRealTimeQueueMaxWaitingTsFileSize()))));
     config.setPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
         Integer.parseInt(
             properties.getProperty(
@@ -453,12 +476,6 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_total_remaining_insert_event_count",
                 String.valueOf(config.getPipeMaxAllowedTotalRemainingInsertEventCount()))));
-    config.setPipeRemainingInsertEventCountSmoothingIntervalSeconds(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_remaining_insert_event_count_smoothing_interval_seconds",
-                String.valueOf(
-                    config.getPipeRemainingInsertEventCountSmoothingIntervalSeconds()))));
     config.setPipeStuckRestartMinIntervalMs(
         Long.parseLong(
             properties.getProperty(
@@ -525,6 +542,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_max_aligned_series_num_in_one_batch",
                 String.valueOf(config.getPipeMaxAlignedSeriesNumInOneBatch()))));
+
+    config.setPipeTransferTsFileSync(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_transfer_tsfile_sync", String.valueOf(config.getPipeTransferTsFileSync()))));
 
     config.setPipeRemainingTimeCommitRateAutoSwitchSeconds(
         Long.parseLong(
@@ -598,6 +620,16 @@ public class PipeDescriptor {
             isHotModify);
     if (value != null) {
       config.setPipeAsyncConnectorMaxClientNumber(Integer.parseInt(value));
+    }
+
+    value =
+        parserPipeConfig(
+            properties,
+            "pipe_sink_max_tsfile_client_number",
+            "pipe_async_connector_max_tsfile_client_number",
+            isHotModify);
+    if (value != null) {
+      config.setPipeAsyncConnectorMaxTsFileClientNumber(Integer.parseInt(value));
     }
 
     value = parserPipeConfig(properties, "pipe_all_sinks_rate_limit_bytes_per_second", isHotModify);
