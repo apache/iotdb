@@ -127,6 +127,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.BiFunction;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
@@ -185,11 +186,13 @@ public class Coordinator {
     this.executor = getQueryExecutor();
     this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
+    int dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
     this.dispatchExecutor =
         IoTDBThreadPoolFactory.newCachedThreadPool(
             ThreadName.FRAGMENT_INSTANCE_DISPATCH.getName(),
-            Math.max(20, Runtime.getRuntime().availableProcessors() * 2),
-            CONFIG.getRpcMaxConcurrentClientNum());
+            dispatchThreadNum,
+            dispatchThreadNum,
+            new ThreadPoolExecutor.CallerRunsPolicy());
     this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
     this.statementRewrite = new StatementRewriteFactory().getStatementRewrite();
     this.logicalPlanOptimizers =
