@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -240,6 +241,9 @@ public class IoTDBRemoveUnknownDataNodeIT {
             dataRegionPerDataNode * dataNodeNum / dataReplicateFactor);
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
+    final Set<Integer> removeDataNodes = new HashSet<>();
+    final List<TDataNodeLocation> removeDataNodeLocations = new ArrayList<>();
+
     try (final Connection connection = makeItCloseQuietly(getConnectionWithSQLType(model));
         final Statement statement = makeItCloseQuietly(connection.createStatement());
         SyncConfigNodeIServiceClient client =
@@ -269,16 +273,14 @@ public class IoTDBRemoveUnknownDataNodeIT {
         allDataNodeId.add(result.getInt(ColumnHeaderConstant.NODE_ID));
       }
 
-      // Select data nodes to remove
-      final Set<Integer> removeDataNodes = selectRemoveDataNodes(allDataNodeId, removeDataNodeNum);
-
+      // Randomly select data nodes to remove
+      removeDataNodes.addAll(selectRemoveDataNodes(allDataNodeId, removeDataNodeNum));
       List<DataNodeWrapper> removeDataNodeWrappers =
           removeDataNodes.stream()
               .map(dataNodeId -> EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeId).get())
               .collect(Collectors.toList());
-
       AtomicReference<SyncConfigNodeIServiceClient> clientRef = new AtomicReference<>(client);
-      List<TDataNodeLocation> removeDataNodeLocations =
+      removeDataNodeLocations.addAll(
           clientRef
               .get()
               .getDataNodeConfiguration(-1)
@@ -287,15 +289,22 @@ public class IoTDBRemoveUnknownDataNodeIT {
               .stream()
               .map(TDataNodeConfiguration::getLocation)
               .filter(location -> removeDataNodes.contains(location.getDataNodeId()))
-              .collect(Collectors.toList());
-
+              .collect(Collectors.toList()));
       // Stop DataNodes before removing them
       stopDataNodes(removeDataNodeWrappers);
       LOGGER.info("RemoveDataNodes: {} are stopped.", removeDataNodes);
+    } catch (InconsistentDataException e) {
+      LOGGER.error("Unexpected error:", e);
+    }
 
+    // Establish a new connection after stopping data nodes
+    try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        final Statement statement = makeItCloseQuietly(connection.createStatement());
+        SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      AtomicReference<SyncConfigNodeIServiceClient> clientRef = new AtomicReference<>(client);
       if (SQLModel.NOT_USE_SQL.equals(model)) {
         TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(removeDataNodeLocations);
-
         // Remove data nodes
         TDataNodeRemoveResp removeResp = clientRef.get().removeDataNode(removeReq);
         LOGGER.info("Submit Remove DataNodes result {} ", removeResp);
@@ -345,12 +354,6 @@ public class IoTDBRemoveUnknownDataNodeIT {
       }
 
       LOGGER.info("Remove DataNodes success");
-    } catch (InconsistentDataException e) {
-      LOGGER.error("Unexpected error:", e);
-    }
-
-    try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
-        final Statement statement = makeItCloseQuietly(connection.createStatement())) {
 
       // Check the data region distribution after removing data nodes
       Map<Integer, Set<Integer>> afterRegionMap = getDataRegionMap(statement);

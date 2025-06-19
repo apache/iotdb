@@ -384,7 +384,15 @@ public class PipeConsensusServerImpl {
             String.format("error when set peer %s to active %s", peer, isActive), e);
       }
     } catch (ClientManagerException e) {
-      throw new ConsensusGroupModifyPeerException(e);
+      if (isForDeletionPurpose) {
+        // for remove peer, if target peer is already down, we can skip this step.
+        LOGGER.warn(
+            "target peer may be down, error when set peer {} to active {}", peer, isActive, e);
+      } else {
+        // for add peer, if target peer is down, we need to throw exception to identify the failure
+        // of this addPeerProcedure.
+        throw new ConsensusGroupModifyPeerException(e);
+      }
     }
   }
 
@@ -653,7 +661,8 @@ public class PipeConsensusServerImpl {
         Thread.sleep(checkIntervalInMs);
       }
     } catch (ClientManagerException | TException e) {
-      throw new ConsensusGroupModifyPeerException(
+      // in case of target peer is down or can not serve, we simply skip it.
+      LOGGER.warn(
           String.format(
               "error when waiting %s to release all region related resource. %s",
               targetPeer, e.getMessage()),
