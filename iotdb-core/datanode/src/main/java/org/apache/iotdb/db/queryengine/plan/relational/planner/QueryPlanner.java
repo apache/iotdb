@@ -528,7 +528,7 @@ public class QueryPlanner {
         subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()),
         new WindowNode(
             queryIdAllocator.genPlanNodeId(),
-            planBuilder != null? planBuilder.getRoot() : subPlan.getRoot(),
+            planBuilder != null ? planBuilder.getRoot() : subPlan.getRoot(),
             specification,
             functions.buildOrThrow(),
             Optional.empty(),

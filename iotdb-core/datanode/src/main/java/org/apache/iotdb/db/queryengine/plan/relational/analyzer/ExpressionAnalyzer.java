@@ -1778,7 +1778,9 @@ public class ExpressionAnalyzer {
                           "Window frame of type RANGE PRECEDING or FOLLOWING requires ORDER BY"));
       if (orderBy.getSortItems().size() != 1) {
         throw new SemanticException(
-            String.format("Window frame of type RANGE PRECEDING or FOLLOWING requires single sort item in ORDER BY (actual: %s)", orderBy.getSortItems().size()));
+            String.format(
+                "Window frame of type RANGE PRECEDING or FOLLOWING requires single sort item in ORDER BY (actual: %s)",
+                orderBy.getSortItems().size()));
       }
       Expression sortKey = Iterables.getOnlyElement(orderBy.getSortItems()).getSortKey();
       Type sortKeyType;

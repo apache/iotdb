@@ -88,7 +88,8 @@ public class RangeFrame implements Frame {
         || frameInfo.getStartType() == UNBOUNDED_PRECEDING
             && frameInfo.getEndType() == CURRENT_ROW) {
       if (currentPosition == 0
-          || !peerGroupComparator.equalColumnLists(allSortedColumns, currentPosition - 1, currentPosition)) {
+          || !peerGroupComparator.equalColumnLists(
+              allSortedColumns, currentPosition - 1, currentPosition)) {
         // New peer group
         int frameStart = frameInfo.getStartType() == CURRENT_ROW ? peerGroupStart : 0;
         int frameEnd = frameInfo.getEndType() == CURRENT_ROW ? peerGroupEnd - 1 : partitionSize - 1;
