@@ -4343,7 +4343,15 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
     tableAssertTestFail(
         "select approx_most_frequent(province, 'test', 100) from table1",
-        "701: The second and third argument of 'approx_most_frequent' function must be numeric literal",
+        "701: The second and third argument of 'approx_most_frequent' function must be positive integer literal",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_most_frequent(province, 1.5, 100) from table1",
+        "701: The second and third argument of 'approx_most_frequent' function must be positive integer literal",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_most_frequent() from table1",
+        "701: Aggregation functions [approx_most_frequent] should only have three arguments",
         DATABASE_NAME);
   }
 
