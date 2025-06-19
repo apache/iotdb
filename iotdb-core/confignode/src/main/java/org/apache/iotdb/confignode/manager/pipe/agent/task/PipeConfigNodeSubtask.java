@@ -26,8 +26,9 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractConnectorSubtask;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -117,7 +118,8 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
-            new PipeTaskRuntimeEnvironment(pipeName, creationTime, CONFIG_REGION_ID.getId()));
+            new PipeTaskProcessorRuntimeEnvironment(
+                pipeName, creationTime, CONFIG_REGION_ID.getId(), null));
 
     processor =
         PipeConfigNodeAgent.plugin()
@@ -142,7 +144,8 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
       // 3. Customize connector
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskRuntimeEnvironment(pipeName, creationTime, CONFIG_REGION_ID.getId()));
+              new PipeTaskConnectorRuntimeEnvironment(
+                  pipeName, creationTime, CONFIG_REGION_ID.getId()));
       outputPipeConnector.customize(connectorParameters, runtimeConfiguration);
 
       // 4. Handshake
