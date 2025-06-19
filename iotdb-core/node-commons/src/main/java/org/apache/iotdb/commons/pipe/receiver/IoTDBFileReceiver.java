@@ -156,47 +156,55 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       }
     }
 
-    final String receiverFileBaseDir;
-    try {
-      receiverFileBaseDir = getReceiverFileBaseDir();
-      if (Objects.isNull(receiverFileBaseDir)) {
+    String receiverFileBaseDir;
+    File newReceiverDir = null;
+    for (int retryTimes = 0; retryTimes <= 1; retryTimes++) {
+      try {
+        receiverFileBaseDir = getReceiverFileBaseDir();
+        if (Objects.isNull(receiverFileBaseDir)) {
+          LOGGER.warn(
+              "Receiver id = {}: Failed to init pipe receiver file folder manager because all disks of folders are full.",
+              receiverId.get());
+          return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
+        }
+      } catch (Exception e) {
         LOGGER.warn(
-            "Receiver id = {}: Failed to init pipe receiver file folder manager because all disks of folders are full.",
-            receiverId.get());
+            "Receiver id = {}: Failed to create pipe receiver file folder because all disks of folders are full.",
+            receiverId.get(),
+            e);
         return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
       }
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to create pipe receiver file folder because all disks of folders are full.",
-          receiverId.get(),
-          e);
-      return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
-    }
 
-    // Create a new receiver file dir
-    final File newReceiverDir = new File(receiverFileBaseDir, Long.toString(receiverId.get()));
-    if (!newReceiverDir.exists() && !newReceiverDir.mkdirs()) {
+      try {
+        // Create a new receiver file dir
+        newReceiverDir = new File(receiverFileBaseDir, Long.toString(receiverId.get()));
+        if (newReceiverDir.exists() || newReceiverDir.mkdirs()) {
+          receiverFileDirWithIdSuffix.set(newReceiverDir);
+          LOGGER.info(
+              "Receiver id = {}: Handshake successfully! Sender's host = {}, port = {}. Receiver's file dir = {}.",
+              receiverId.get(),
+              getSenderHost(),
+              getSenderPort(),
+              newReceiverDir.getPath());
+          return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
+        }
+      } catch (Exception ignored) {
+      }
       LOGGER.warn(
           "Receiver id = {}: Failed to create receiver file dir {}.",
           receiverId.get(),
           newReceiverDir.getPath());
-      return new TPipeTransferResp(
-          RpcUtils.getStatus(
-              TSStatusCode.PIPE_HANDSHAKE_ERROR,
-              String.format("Failed to create receiver file dir %s.", newReceiverDir.getPath())));
+      markFileBaseDirStateAbnormal(receiverFileBaseDir);
     }
-    receiverFileDirWithIdSuffix.set(newReceiverDir);
-
-    LOGGER.info(
-        "Receiver id = {}: Handshake successfully! Sender's host = {}, port = {}. Receiver's file dir = {}.",
-        receiverId.get(),
-        getSenderHost(),
-        getSenderPort(),
-        newReceiverDir.getPath());
-    return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
+    return new TPipeTransferResp(
+        RpcUtils.getStatus(
+            TSStatusCode.PIPE_HANDSHAKE_ERROR,
+            String.format("Failed to create receiver file dir %s.", newReceiverDir.getPath())));
   }
 
   protected abstract String getReceiverFileBaseDir() throws Exception;
+
+  protected abstract void markFileBaseDirStateAbnormal(String dir);
 
   protected abstract String getSenderHost();
 

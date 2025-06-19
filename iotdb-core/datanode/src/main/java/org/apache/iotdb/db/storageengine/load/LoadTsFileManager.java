@@ -221,13 +221,25 @@ public class LoadTsFileManager {
           uuid2WriterManager.computeIfAbsent(
               uuid,
               o -> {
-                try {
-                  return new TsFileWriterManager(new File(getNextFolder(), uuid));
-                } catch (DiskSpaceInsufficientException e) {
-                  exception.set(e);
-                  return null;
+                String folder = null;
+                for (int retryTimes = 0; retryTimes <= 1; retryTimes++) {
+                  try {
+                    folder = getNextFolder();
+                    return new TsFileWriterManager(new File(folder, uuid));
+                  } catch (DiskSpaceInsufficientException e) {
+                    exception.set(e);
+                    return null;
+                  } catch (Exception ignored) {
+                    synchronized (FOLDER_MANAGER) {
+                      FOLDER_MANAGER
+                          .get()
+                          .updateFolderState(folder, FolderManager.FolderState.ABNORMAL);
+                    }
+                  }
                 }
+                return null;
               });
+
       if (exception.get() != null || writerManager == null) {
         throw new IOException(
             "Failed to create TsFileWriterManager for uuid "

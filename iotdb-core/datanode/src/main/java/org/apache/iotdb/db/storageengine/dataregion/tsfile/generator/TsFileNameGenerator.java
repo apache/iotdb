@@ -24,11 +24,14 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,6 +46,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 public class TsFileNameGenerator {
 
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileNameGenerator.class);
 
   public static String generateNewTsFilePath(
       String tsFileDir,
@@ -65,7 +69,7 @@ public class TsFileNameGenerator {
       long version,
       int innerSpaceCompactionCount,
       int crossSpaceCompactionCount)
-      throws DiskSpaceInsufficientException {
+      throws DiskSpaceInsufficientException, IOException {
     return generateNewTsFilePathWithMkdir(
         sequence,
         logicalStorageGroup,
@@ -90,33 +94,41 @@ public class TsFileNameGenerator {
       int crossSpaceCompactionCount,
       int tierLevel,
       String customSuffix)
-      throws DiskSpaceInsufficientException {
-    String tsFileDir =
-        generateTsFileDir(
-            sequence, logicalStorageGroup, virtualStorageGroup, timePartitionId, tierLevel);
-    fsFactory.getFile(tsFileDir).mkdirs();
-    return tsFileDir
-        + File.separator
-        + generateNewTsFileName(
-            time, version, innerSpaceCompactionCount, crossSpaceCompactionCount, customSuffix);
-  }
-
-  public static String generateTsFileDir(
-      boolean sequence,
-      String logicalStorageGroup,
-      String virtualStorageGroup,
-      long timePartitionId,
-      int tierLevel)
-      throws DiskSpaceInsufficientException {
+      throws DiskSpaceInsufficientException, IOException {
     TierManager tierManager = TierManager.getInstance();
-    String baseDir = tierManager.getNextFolderForTsFile(tierLevel, sequence);
-    return baseDir
-        + File.separator
-        + logicalStorageGroup
-        + File.separator
-        + virtualStorageGroup
-        + File.separator
-        + timePartitionId;
+    String tsFileDir = null;
+    for (int retryTimes = 0; retryTimes <= 1; ++retryTimes) {
+      String baseDir = tierManager.getNextFolderForTsFile(tierLevel, sequence);
+      tsFileDir =
+          baseDir
+              + File.separator
+              + logicalStorageGroup
+              + File.separator
+              + virtualStorageGroup
+              + File.separator
+              + timePartitionId;
+      try {
+        if (fsFactory.getFile(tsFileDir).exists() || fsFactory.getFile(tsFileDir).mkdirs()) {
+          return tsFileDir
+              + File.separator
+              + generateNewTsFileName(
+                  time,
+                  version,
+                  innerSpaceCompactionCount,
+                  crossSpaceCompactionCount,
+                  customSuffix);
+        }
+      } catch (Exception ignored) {
+      }
+      FolderManager folderManager = tierManager.getFolderManager(tierLevel, sequence);
+      folderManager.updateFolderState(baseDir, FolderManager.FolderState.ABNORMAL);
+      LOGGER.warn(
+          "Failed to process folder [tierLevel={}, sequence={}, baseDir={}], state set to ABNORMAL",
+          tierLevel,
+          sequence,
+          baseDir);
+    }
+    throw new IOException("Failed to create directory after retries: " + tsFileDir);
   }
 
   public static String generateNewTsFileName(
