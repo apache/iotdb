@@ -620,7 +620,7 @@ public class PartitionInfo implements SnapshotProcessor {
         .forEach(
             databasePartitionTable ->
                 databasePartitionTable.removeRegionLocation(
-                    req.getRegionId(), req.getDeprecatedLocation()));
+                    req.getRegionId(), req.getDeprecatedLocation().getDataNodeId()));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

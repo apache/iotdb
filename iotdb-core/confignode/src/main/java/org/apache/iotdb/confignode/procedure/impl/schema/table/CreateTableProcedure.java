@@ -148,7 +148,7 @@ public class CreateTableProcedure
 
   private void preReleaseTable(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager());
+        SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), null);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
@@ -181,7 +181,8 @@ public class CreateTableProcedure
 
   private void commitReleaseTable(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
+        SchemaUtils.commitReleaseTable(
+            database, table.getTableName(), env.getConfigManager(), null);
 
     if (!failedResults.isEmpty()) {
       LOGGER.warn(
@@ -230,7 +231,8 @@ public class CreateTableProcedure
 
   private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.rollbackPreRelease(database, table.getTableName(), env.getConfigManager());
+        SchemaUtils.rollbackPreRelease(
+            database, table.getTableName(), env.getConfigManager(), null);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache

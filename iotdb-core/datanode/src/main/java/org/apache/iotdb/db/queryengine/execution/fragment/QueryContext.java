@@ -91,7 +91,7 @@ public class QueryContext {
   }
 
   // if the mods file does not exist, do not add it to the cache
-  private boolean checkIfModificationExists(TsFileResource tsFileResource) {
+  protected boolean checkIfModificationExists(TsFileResource tsFileResource) {
     if (nonExistentModFiles.contains(tsFileResource.getTsFileID())) {
       return false;
     }

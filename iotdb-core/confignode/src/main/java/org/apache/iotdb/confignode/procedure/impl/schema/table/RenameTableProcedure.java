@@ -80,7 +80,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
         case COMMIT_RELEASE:
           LOGGER.info(
               "Commit release info of table {}.{} when renaming table", database, tableName);
-          commitRelease(env);
+          commitRelease(env, tableName);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized RenameTableState " + state));
@@ -119,7 +119,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
 
   @Override
   protected void preRelease(final ConfigNodeProcedureEnv env) {
-    super.preRelease(env);
+    super.preRelease(env, tableName);
     setNextState(RenameTableState.RENAME_TABLE);
   }
 
@@ -153,7 +153,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
         case PRE_RELEASE:
           LOGGER.info(
               "Start rollback pre release info of table {}.{}", database, table.getTableName());
-          rollbackPreRelease(env);
+          rollbackPreRelease(env, tableName);
           break;
       }
     } finally {

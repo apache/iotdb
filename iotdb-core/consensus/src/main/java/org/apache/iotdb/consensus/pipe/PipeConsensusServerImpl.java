@@ -581,8 +581,7 @@ public class PipeConsensusServerImpl {
   }
 
   private boolean isRemotePeerConsensusPipesTransmissionCompleted(
-      Peer targetPeer, List<String> consensusPipeNames, boolean refreshCachedProgressIndex)
-      throws ConsensusGroupModifyPeerException {
+      Peer targetPeer, List<String> consensusPipeNames, boolean refreshCachedProgressIndex) {
     try (SyncPipeConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       TCheckConsensusPipeCompletedResp resp =
@@ -603,8 +602,7 @@ public class PipeConsensusServerImpl {
       return resp.isCompleted;
     } catch (Exception e) {
       LOGGER.warn("{} cannot check consensus pipes transmission completed", thisNode, e);
-      throw new ConsensusGroupModifyPeerException(
-          String.format("%s cannot check consensus pipes transmission completed", thisNode), e);
+      return true;
     }
   }
 

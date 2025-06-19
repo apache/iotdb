@@ -397,6 +397,7 @@ struct TSGroupByQueryIntervalReq {
   10: optional i64 interval
   11: optional i32 fetchSize
   12: optional i64 timeout
+  13: optional bool isAligned
 }
 
 struct TSCreateMultiTimeseriesReq {

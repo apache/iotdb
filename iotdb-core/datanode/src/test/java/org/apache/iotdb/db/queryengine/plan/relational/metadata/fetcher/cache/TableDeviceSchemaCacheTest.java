@@ -111,11 +111,11 @@ public class TableDeviceSchemaCacheTest {
     testTable1.addColumnSchema(
         new FieldColumnSchema(
             measurement6, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
-    DataNodeTableCache.getInstance().preUpdateTable(database1, testTable1);
-    DataNodeTableCache.getInstance().commitUpdateTable(database1, table1);
+    DataNodeTableCache.getInstance().preUpdateTable(database1, testTable1, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database1, table1, null);
 
-    DataNodeTableCache.getInstance().preUpdateTable(database2, testTable1);
-    DataNodeTableCache.getInstance().commitUpdateTable(database2, table1);
+    DataNodeTableCache.getInstance().preUpdateTable(database2, testTable1, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database2, table1, null);
 
     final TsTable testTable2 = new TsTable(table2);
     columnHeaderList.forEach(
@@ -143,8 +143,8 @@ public class TableDeviceSchemaCacheTest {
     testTable2.addColumnSchema(
         new FieldColumnSchema(
             measurement6, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
-    DataNodeTableCache.getInstance().preUpdateTable(database1, testTable2);
-    DataNodeTableCache.getInstance().commitUpdateTable(database1, table2);
+    DataNodeTableCache.getInstance().preUpdateTable(database1, testTable2, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database1, table2, null);
 
     originMemConfig = memoryConfig.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes();
     changeSchemaCacheMemorySize(1300L);

@@ -609,7 +609,7 @@ public class IoTDBDatabaseIT {
       statement.execute(
           "create table test.test (a tag, b attribute, c int32 comment 'turbine') comment 'test'");
       statement.execute(
-          "CREATE VIEW test.view_table (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) RESTRICT WITH (ttl=100) AS root.a.**");
+          "CREATE VIEW test.view_table (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) RESTRICT WITH (ttl=100) AS root.\"a\".**");
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from databases"),
@@ -692,7 +692,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("select * from views"),
           "database,table_name,view_definition,",
           Collections.singleton(
-              "test,view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.a.**,"));
+              "test,view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"a\".**,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(

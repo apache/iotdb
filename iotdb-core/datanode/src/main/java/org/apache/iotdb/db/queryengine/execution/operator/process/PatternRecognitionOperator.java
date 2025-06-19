@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowsPerMatch
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SkipToPosition;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -150,6 +151,11 @@ public class PatternRecognitionOperator implements ProcessOperator {
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;
+  }
+
+  @Override
+  public ListenableFuture<?> isBlocked() {
+    return child.isBlocked();
   }
 
   @Override

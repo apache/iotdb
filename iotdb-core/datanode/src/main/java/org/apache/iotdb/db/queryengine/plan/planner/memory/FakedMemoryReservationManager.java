@@ -17,30 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.table;
+package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
-import org.apache.iotdb.commons.schema.table.TsTable;
+public class FakedMemoryReservationManager implements MemoryReservationManager {
 
-import javax.annotation.Nullable;
+  @Override
+  public void reserveMemoryCumulatively(long size) {}
 
-public interface ITableCache {
+  @Override
+  public void reserveMemoryImmediately() {}
 
-  void init(final byte[] tableInitializationBytes);
+  @Override
+  public void releaseMemoryCumulatively(long size) {}
 
-  void preUpdateTable(final String database, final TsTable table, final @Nullable String oldName);
-
-  void rollbackUpdateTable(
-      final String database, final String tableName, final @Nullable String oldName);
-
-  void commitUpdateTable(
-      final String database, final String tableName, final @Nullable String oldName);
-
-  /**
-   * @param database shouldn't start with `root.`
-   */
-  void invalid(final String database);
-
-  void invalid(final String database, final String tableName);
-
-  void invalid(final String database, final String tableName, final String columnName);
+  @Override
+  public void releaseAllReservedMemory() {}
 }

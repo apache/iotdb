@@ -1564,21 +1564,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus updateTable(final TUpdateTableReq req) {
     switch (TsTableInternalRPCType.getType(req.type)) {
       case PRE_UPDATE_TABLE:
-        Pair<String, TsTable> pair =
+        final Pair<String, TsTable> pair =
             TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
-        DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right);
+        DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right, req.oldName);
         break;
       case ROLLBACK_UPDATE_TABLE:
         DataNodeTableCache.getInstance()
             .rollbackUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo));
+                ReadWriteIOUtils.readString(req.tableInfo),
+                req.oldName);
         break;
       case COMMIT_UPDATE_TABLE:
         DataNodeTableCache.getInstance()
             .commitUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo));
+                ReadWriteIOUtils.readString(req.tableInfo),
+                req.oldName);
         break;
       default:
         LOGGER.warn("Unsupported type {} when updating table", req.type);
