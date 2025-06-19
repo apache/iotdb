@@ -687,10 +687,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       // For consensus pipe, we only focus on the progressIndex that is generated from local write
       // instead of replication or something else.
       ProgressIndex dedicatedProgressIndex =
-          tryToExtractLocalProgressIndexForIoTV2(resource.getMaxProgressIndexAfterClose());
+          tryToExtractLocalProgressIndexForIoTV2(resource.getMaxProgressIndex());
       return greaterThanStartIndex(dedicatedProgressIndex);
     }
-    return greaterThanStartIndex(resource.getMaxProgressIndexAfterClose());
+    return greaterThanStartIndex(resource.getMaxProgressIndex());
   }
 
   private boolean greaterThanStartIndex(ProgressIndex progressIndex) {
