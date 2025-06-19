@@ -15,29 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import threading
-import time
 from typing import Callable
 
 from torch import nn
 from yaml import YAMLError
 
-from ainode.core.client import ClientManager
-from ainode.core.config import AINodeDescriptor
-from ainode.core.constant import STATUS_CODE_MAP, BuiltInModelType, TSStatusCode
+from ainode.core.constant import TSStatusCode
 from ainode.core.exception import (
     BadConfigValueError,
-    BuiltInModelNotSupportError,
-    ConfigValidationError,
     InvalidUriError,
-    ModelFormatError,
-    ModelLoadingError,
-    WeightFileError,
 )
 from ainode.core.log import Logger
-from ainode.core.model.built_in_model_factory import fetch_built_in_model
 from ainode.core.model.model_storage import ModelStorage
-from ainode.core.util.lock import ReadWriteLock
 from ainode.core.util.status import get_status
 from ainode.thrift.ainode.ttypes import (
     TDeleteModelReq,

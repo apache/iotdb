@@ -117,39 +117,13 @@ class RegisteredStrategy(InferenceStrategy):
 
 
 def _get_strategy(model_id, model):
-    """
-    Improved strategy selection logic, supports dynamic strategy selection for IoTDB models
-    """
-    # Hardcoded built-in models
-    if model_id == "_timerxl":
+    # TODO: Refactor this ugly logic
+    if "timerxl" in model_id:
         return TimerXLStrategy(model)
-    if model_id == "_sundial":
+    if "sundial" in model_id:
         return SundialStrategy(model)
     if model_id.startswith("_"):
         return BuiltInStrategy(model)
-
-    # For user-defined models, try to infer type from model name
-    model_id_lower = model_id.lower()
-
-    # Check for type indicators in model name
-    if "timer" in model_id_lower or "timerxl" in model_id_lower:
-        logger.info(f"Using TimerXL strategy for model {model_id} based on name")
-        return TimerXLStrategy(model)
-    elif "sundial" in model_id_lower:
-        logger.info(f"Using Sundial strategy for model {model_id} based on name")
-        return SundialStrategy(model)
-
-    # Optionally determine type from model attributes or configuration
-    try:
-        # Add more advanced logic here if needed, such as parsing model metadata
-        pass
-    except Exception as e:
-        logger.warning(
-            f"Failed to determine model type for {model_id}, using default strategy: {e}"
-        )
-
-    # Fallback to generic registered model strategy
-    logger.info(f"Using Registered strategy for model {model_id}")
     return RegisteredStrategy(model)
 
 

@@ -16,15 +16,10 @@
 # under the License.
 #
 
-import json
 import os
 import shutil
 from collections.abc import Callable
-from pathlib import Path
 
-import torch
-import torch._dynamo
-from iotdb.thrift.common.ttypes import TSStatus
 from pylru import lrucache
 from torch import nn
 
@@ -161,4 +156,3 @@ class ModelStorage(object):
         """
         # Only support built-in models for now
         return os.path.join(self._builtin_model_dir, f"{model_id}")
-
