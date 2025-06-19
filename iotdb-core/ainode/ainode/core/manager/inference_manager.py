@@ -21,7 +21,7 @@ import pandas as pd
 import torch
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 
-from ainode.core.constant import TSStatusCode
+from ainode.core.constant import TSStatusCode, BuiltInModelType
 from ainode.core.exception import (
     InferenceModelInternalError,
     InvalidWindowArgumentError,
@@ -210,18 +210,15 @@ class InferenceManager:
         try:
             raw = data_getter(req)
             full_data = deserializer(raw)
-            attrs = extract_attrs(req)
+            inference_attrs = extract_attrs(req)
 
             # load model
-            if model_id.startswith("_"):
-                model = self.model_manager.load_built_in_model(model_id, attrs)
-            else:
-                accel = str(attrs.get("acceleration", "")).lower() == "true"
-                model = self.model_manager.load_model(model_id, accel)
+            accel = str(inference_attrs.get("acceleration", "")).lower() == "true"
+            model = self.model_manager.load_model(model_id, BuiltInModelType.is_built_in_model(model_id), accel)
 
             # inference by strategy
             strategy = _get_strategy(model_id, model)
-            outputs = strategy.infer(full_data, **attrs)
+            outputs = strategy.infer(full_data, **inference_attrs)
 
             # construct response
             status = get_status(TSStatusCode.SUCCESS_STATUS)

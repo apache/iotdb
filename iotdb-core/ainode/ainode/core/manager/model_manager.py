@@ -19,6 +19,7 @@ import threading
 import time
 from typing import Callable
 
+from torch import nn
 from yaml import YAMLError
 
 from ainode.core.client import ClientManager
@@ -153,38 +154,24 @@ class ModelManager:
         """
         logger.info(f"Load model {model_id}")
         try:
-            model = self.model_storage.load_model(model_id, is_built_in, acceleration)
+            model = self.model_storage.load_model(model_id.lower(), is_built_in, acceleration)
             logger.info(f"Model {model_id} loaded")
             return model
         except Exception as e:
             logger.error(f"Failed to load model {model_id}: {e}")
-            self._update_model_status(
-                model_id, "ERROR", f"Model loading failed: {str(e)}"
-            )
             raise
 
-    def save_model(self, model_id: str, save_directory: str = None) -> TSStatus:
+    def save_model(self, model_id: str, is_built_in: bool, model: nn.Module) -> TSStatus:
         """
         Save the model using save_pretrained
         """
         logger.info(f"Saving model {model_id}")
         try:
-            success = self.model_storage.save_model_with_save_pretrained(
-                model_id,
-                self.model_storage.load_model(model_id, acceleration=False),
-                save_directory,
+            self.model_storage.save_model(model_id, is_built_in, model)
+            logger.info(f"Saving model {model_id} successfully")
+            return get_status(
+                TSStatusCode.SUCCESS_STATUS, f"Model {model_id} saved successfully"
             )
-
-            if success:
-                return get_status(
-                    TSStatusCode.SUCCESS_STATUS, f"Model {model_id} saved successfully"
-                )
-            else:
-                return get_status(
-                    TSStatusCode.AINODE_INTERNAL_ERROR,
-                    f"Failed to save model {model_id}",
-                )
-
         except Exception as e:
             logger.error(f"Save model failed: {e}")
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
@@ -200,10 +187,3 @@ class ModelManager:
             str: The path to the checkpoint file for the model.
         """
         return self.model_storage.get_ckpt_path(model_id)
-
-    @staticmethod
-    def load_built_in_model(model_id: str, attributes: {}):
-        model_id = model_id.lower()
-        if model_id not in BuiltInModelType.values():
-            raise BuiltInModelNotSupportError(model_id)
-        return fetch_built_in_model(model_id, attributes)

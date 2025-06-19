@@ -177,6 +177,12 @@ class BuiltInModelType(Enum):
             values.append(item.value)
         return values
 
+    @staticmethod
+    def is_built_in_model(model_id: str) -> bool:
+        """
+        Check if the model ID corresponds to a built-in model.
+        """
+        return model_id in BuiltInModelType.values()
 
 class AttributeName(Enum):
     # forecast Attribute

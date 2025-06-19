@@ -17,7 +17,7 @@
 #
 import os
 from abc import abstractmethod
-from typing import Dict, List
+from typing import Dict, List, Callable
 
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
@@ -103,10 +103,9 @@ def get_model_attributes(model_id: str):
     return attribute_map
 
 
-def fetch_built_in_model(model_id: str, model_dir: str):
+def fetch_built_in_model(model_id: str, model_dir: str) -> Callable:
     """
-    The create_built_in_model function will create the built-in model, which does not require user
-    registration. This module will parse the inference attributes and create the built-in model.
+    Fetch the built-in model according to its id and directory, not that this directory only contains model weights and config.
     Args:
         model_id: the unique id of the model
         model_dir: for huggingface models only, the directory where the model is stored
@@ -134,11 +133,9 @@ def fetch_built_in_model(model_id: str, model_dir: str):
     elif model_id == BuiltInModelType.STRAY.value:
         model = STRAYModel(attributes)
     elif model_id == BuiltInModelType.TIMER_XL.value:
-        model = modeling_timer.TimerForPrediction(TimerConfig.from_dict(attributes))
+        model = modeling_timer.TimerForPrediction.from_pretrained(model_dir)
     elif model_id == BuiltInModelType.SUNDIAL.value:
-        model = modeling_sundial.SundialForPrediction(
-            SundialConfig.from_dict(attributes)
-        )
+        model = modeling_sundial.SundialForPrediction.from_pretrained(model_dir)
     else:
         raise BuiltInModelNotSupportError(model_id)
 

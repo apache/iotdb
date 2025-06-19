@@ -467,7 +467,7 @@ class TimerForPrediction(TimerPreTrainedModel, TSGenerationMixin):
             self.output_token_len_map[output_token_len] = i
         self.lm_heads = nn.ModuleList(lm_head_list)
         self.loss_function = torch.nn.MSELoss(reduction="none")
-        
+        self.post_init()
 
     def set_decoder(self, decoder):
         self.model = decoder

@@ -24,7 +24,9 @@ from pathlib import Path
 
 import torch
 import torch._dynamo
+from iotdb.thrift.common.ttypes import TSStatus
 from pylru import lrucache
+from torch import nn
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import (
@@ -218,7 +220,6 @@ class ModelStorage(object):
         Returns:
             model: The model instance corresponding to specific model_id
         """
-        model_id = model_id.lower()
         with self._lock_pool.get_lock(model_id).read_lock():
             if is_built_in:
                 if model_id not in BuiltInModelType.values():
@@ -230,7 +231,25 @@ class ModelStorage(object):
             else:
                 # TODO: support load the user-defined model
                 # model_dir = os.path.join(self._model_dir, f"{model_id}")
-                pass
+                raise NotImplementedError
+
+    def save_model(self, model_id: str, is_built_in: bool, model: nn.Module):
+        """
+        Save the model using save_pretrained
+
+        Returns:
+            Whether saving succeeded
+        """
+        with self._lock_pool.get_lock(model_id).write_lock():
+            if is_built_in:
+                if model_id not in BuiltInModelType.values():
+                    raise BuiltInModelNotSupportError(model_id)
+                model_dir = os.path.join(self._builtin_model_dir, f"{model_id}")
+                model.save_pretrained(model_dir)
+            else:
+                # TODO: support save the user-defined model
+                # model_dir = os.path.join(self._model_dir, f"{model_id}")
+                raise NotImplementedError
 
 
     def delete_model(self, model_id: str) -> None:
@@ -417,47 +436,6 @@ class ModelStorage(object):
         except Exception as e:
             logger.error(f"from_pretrained failed for {model_type}: {e}")
             raise ModelLoadingError(model_type, str(e))
-
-    def save_model_with_save_pretrained(
-        self, model_id: str, model_obj, save_directory: str = None
-    ) -> bool:
-        """
-        Save the model using save_pretrained
-
-        Returns:
-            Whether saving succeeded
-        """
-        try:
-            if save_directory is None:
-                save_directory = os.path.join(self._model_dir, f"{model_id}_saved")
-
-            os.makedirs(save_directory, exist_ok=True)
-
-            if not hasattr(model_obj, "save_pretrained"):
-                logger.warning(f"Model {model_id} does not support save_pretrained")
-                return False
-
-            logger.info(f"Saving model {model_id} to {save_directory}")
-
-            model_obj.save_pretrained(
-                save_directory=save_directory,
-                safe_serialization=True,  # Use safetensors format
-                save_config=True,
-            )
-
-            config_file = os.path.join(save_directory, "config.json")
-            weight_file = os.path.join(save_directory, "model.safetensors")
-
-            if os.path.exists(config_file) and os.path.exists(weight_file):
-                logger.info(f"Model {model_id} saved successfully")
-                return True
-            else:
-                logger.error(f"Save verification failed for {model_id}")
-                return False
-
-        except Exception as e:
-            logger.error(f"save_pretrained failed for {model_id}: {e}")
-            return False
 
     def _should_convert_to_torchscript(self, config_dict: dict) -> bool:
         """
