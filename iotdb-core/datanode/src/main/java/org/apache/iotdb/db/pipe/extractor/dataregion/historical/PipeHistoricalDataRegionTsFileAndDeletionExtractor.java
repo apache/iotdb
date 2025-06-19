@@ -612,8 +612,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                       // Some resource is marked as deleted but not removed from the list.
                       !resource.isDeleted()
                           && (
-                          // Some resource may not be closed due to the control of
-                          // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                          // If the tsFile is not already marked closing, it is not captured by the
+                          // pipe realtime module. Thus, we can wait for the realtime sync module to
+                          // handle this, to avoid blocking the pipe sync process.
                           resource.getProcessor().alreadyMarkedClosing()
                               && mayTsFileContainUnprocessedData(resource)
                               && isTsFileResourceOverlappedWithTimeRange(resource)
@@ -629,8 +630,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                       // Some resource is marked as deleted but not removed from the list.
                       !resource.isDeleted()
                           && (
-                          // Some resource may not be closed due to the control of
-                          // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                          // If the tsFile is not already marked closing, it is not captured by the
+                          // pipe realtime module. Thus, we can wait for the realtime sync module to
+                          // handle this, to avoid blocking the pipe sync process.
                           resource.getProcessor().alreadyMarkedClosing()
                               && mayTsFileContainUnprocessedData(resource)
                               && isTsFileResourceOverlappedWithTimeRange(resource)
