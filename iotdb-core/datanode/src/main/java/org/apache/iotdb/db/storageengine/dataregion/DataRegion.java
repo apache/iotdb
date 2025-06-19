@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -29,6 +30,8 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -37,6 +40,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -50,11 +54,15 @@ import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
+import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
+import org.apache.iotdb.db.exception.runtime.TableNotExistsRuntimeException;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -70,6 +78,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -112,6 +121,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
@@ -145,12 +155,15 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.thrift.TException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.TsFileLastReader;
 import org.apache.tsfile.utils.FSUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -191,6 +204,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.commons.utils.PathUtils.isTableModelDatabase;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.SEQUENCE_TSFILE;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.UNSEQUENCE_TSFILE;
 import static org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource.BROKEN_SUFFIX;
@@ -1394,9 +1408,41 @@ public class DataRegion implements IDataRegionForQuery {
     if (tableName != null) {
       tsFileProcessor.registerToTsFile(
           tableName,
-          t ->
-              TableSchema.of(DataNodeTableCache.getInstance().getTable(getDatabaseName(), t))
-                  .toTsFileTableSchemaNoAttribute());
+          t -> {
+            TsTable tsTable = DataNodeTableCache.getInstance().getTable(getDatabaseName(), t);
+            if (tsTable == null) {
+              // There is a high probability that the leader node has been executed and is currently
+              // located in the follower node.
+              if (node.isGeneratedByRemoteConsensusLeader()) {
+                // If current node is follower, after request config node and get the answer that
+                // table is exist or not, then tell leader node when table is not exist.
+                try {
+                  TDescTableResp resp =
+                      ConfigNodeClientManager.getInstance()
+                          .borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)
+                          .describeTable(getDatabaseName(), tableName, false);
+                  tsTable =
+                      (resp != null) && (resp.tableInfo != null)
+                          ? TsTableInternalRPCUtil.deserializeSingleTsTable(resp.getTableInfo())
+                          : null;
+                } catch (TException | ClientManagerException e) {
+                  logger.error(
+                      "Remote request config node failed that judgment if table is exist, occur exception. {}",
+                      e.getMessage());
+                }
+                if (tsTable == null) {
+                  throw new TableNotExistsRuntimeException(getDatabaseName(), tableName);
+                }
+              } else {
+                // Here may be invoked by leader node, the table is very unexpected not exist in the
+                // DataNodeTableCache
+                logger.error(
+                    "Due tsTable is null, table schema can't be got, leader node occur special situation need to resolve.");
+                throw new TableLostRuntimeException(getDatabaseName(), tableName);
+              }
+            }
+            return TableSchema.of(tsTable).toTsFileTableSchemaNoAttribute();
+          });
     }
   }
 
@@ -2992,7 +3038,8 @@ public class DataRegion implements IDataRegionForQuery {
   public void loadNewTsFile(
       final TsFileResource newTsFileResource,
       final boolean deleteOriginFile,
-      final boolean isGeneratedByPipe)
+      final boolean isGeneratedByPipe,
+      final boolean isFromConsensus)
       throws LoadFileException {
     final File tsfileToBeInserted = newTsFileResource.getTsFile();
     final long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
@@ -3000,6 +3047,24 @@ public class DataRegion implements IDataRegionForQuery {
     if (!TsFileValidator.getInstance().validateTsFile(newTsFileResource)) {
       throw new LoadFileException(
           "tsfile validate failed, " + newTsFileResource.getTsFile().getName());
+    }
+
+    TsFileLastReader lastReader = null;
+    LastCacheLoadStrategy lastCacheLoadStrategy = config.getLastCacheLoadStrategy();
+    if (!isFromConsensus
+        && (lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
+            || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
+        && newTsFileResource.getLastValues() == null) {
+      try {
+        // init reader outside of lock to boost performance
+        lastReader =
+            new TsFileLastReader(
+                newTsFileResource.getTsFilePath(),
+                true,
+                lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB);
+      } catch (IOException e) {
+        throw new LoadFileException(e);
+      }
     }
 
     writeLock("loadNewTsFile");
@@ -3064,6 +3129,7 @@ public class DataRegion implements IDataRegionForQuery {
                 false);
       }
 
+      onTsFileLoaded(newTsFileResource, isFromConsensus, lastReader);
       logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
     } catch (final DiskSpaceInsufficientException e) {
       logger.error(
@@ -3071,12 +3137,104 @@ public class DataRegion implements IDataRegionForQuery {
           tsfileToBeInserted.getAbsolutePath(),
           tsfileToBeInserted.getParentFile().getName());
       throw new LoadFileException(e);
+    } catch (Exception e) {
+      throw new LoadFileException(e);
     } finally {
       writeUnlock();
-      // TODO: do more precise control
-      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        TreeDeviceSchemaCacheManager.getInstance().cleanUp();
+      if (lastReader != null) {
+        try {
+          lastReader.close();
+        } catch (Exception e) {
+          logger.warn("Cannot close last reader after loading TsFile {}", newTsFileResource, e);
+        }
       }
+    }
+  }
+
+  private void onTsFileLoaded(
+      TsFileResource newTsFileResource, boolean isFromConsensus, TsFileLastReader lastReader) {
+    if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable() && !isFromConsensus) {
+      switch (config.getLastCacheLoadStrategy()) {
+        case UPDATE:
+        case UPDATE_NO_BLOB:
+          updateLastCache(newTsFileResource, lastReader);
+          break;
+        case CLEAN_ALL:
+          // The inner cache is shared by TreeDeviceSchemaCacheManager and
+          // TableDeviceSchemaCacheManager,
+          // so cleaning either of them is enough
+          TreeDeviceSchemaCacheManager.getInstance().cleanUp();
+          break;
+        case CLEAN_DEVICE:
+          boolean isTableModel = isTableModelDatabase(databaseName);
+          ITimeIndex timeIndex = newTsFileResource.getTimeIndex();
+          if (timeIndex instanceof ArrayDeviceTimeIndex) {
+            ArrayDeviceTimeIndex deviceTimeIndex = (ArrayDeviceTimeIndex) timeIndex;
+            deviceTimeIndex
+                .getDevices()
+                .forEach(
+                    deviceID ->
+                        TableDeviceSchemaCache.getInstance()
+                            .invalidateLastCache(isTableModel ? databaseName : null, deviceID));
+          } else {
+            TreeDeviceSchemaCacheManager.getInstance().invalidateDatabaseLastCache(databaseName);
+          }
+          break;
+        default:
+          logger.warn(
+              "Unrecognized LastCacheLoadStrategy: {}, fall back to CLEAN_ALL",
+              IoTDBDescriptor.getInstance().getConfig().getLastCacheLoadStrategy());
+          TreeDeviceSchemaCacheManager.getInstance().cleanUp();
+          break;
+      }
+    }
+  }
+
+  @SuppressWarnings("java:S112")
+  private void updateLastCache(TsFileResource newTsFileResource, TsFileLastReader lastReader) {
+    boolean isTableModel = isTableModelDatabase(databaseName);
+
+    Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues =
+        newTsFileResource.getLastValues();
+    if (lastValues != null) {
+      for (Entry<IDeviceID, List<Pair<String, TimeValuePair>>> entry : lastValues.entrySet()) {
+        IDeviceID deviceID = entry.getKey();
+        String[] measurements = entry.getValue().stream().map(Pair::getLeft).toArray(String[]::new);
+        TimeValuePair[] timeValuePairs =
+            entry.getValue().stream().map(Pair::getRight).toArray(TimeValuePair[]::new);
+        if (isTableModel) {
+          TableDeviceSchemaCache.getInstance()
+              .updateLastCacheIfExists(databaseName, deviceID, measurements, timeValuePairs);
+        } else {
+          // we do not update schema here, so aligned is not relevant
+          TreeDeviceSchemaCacheManager.getInstance()
+              .updateLastCacheIfExists(
+                  databaseName, deviceID, measurements, timeValuePairs, false, null);
+        }
+      }
+      newTsFileResource.setLastValues(null);
+      return;
+    }
+
+    if (lastReader != null) {
+      while (lastReader.hasNext()) {
+        Pair<IDeviceID, List<Pair<String, TimeValuePair>>> nextDevice = lastReader.next();
+        IDeviceID deviceID = nextDevice.left;
+        String[] measurements = nextDevice.right.stream().map(Pair::getLeft).toArray(String[]::new);
+        TimeValuePair[] timeValuePairs =
+            nextDevice.right.stream().map(Pair::getRight).toArray(TimeValuePair[]::new);
+        if (isTableModel) {
+          TableDeviceSchemaCache.getInstance()
+              .updateLastCacheIfExists(databaseName, deviceID, measurements, timeValuePairs);
+        } else {
+          // we do not update schema here, so aligned is not relevant
+          TreeDeviceSchemaCacheManager.getInstance()
+              .updateLastCacheIfExists(
+                  databaseName, deviceID, measurements, timeValuePairs, false, null);
+        }
+      }
+    } else {
+      TreeDeviceSchemaCacheManager.getInstance().cleanUp();
     }
   }
 
@@ -3884,7 +4042,8 @@ public class DataRegion implements IDataRegionForQuery {
     long acquireDirectBufferMemCost = 0;
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
         || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
-      acquireDirectBufferMemCost = config.getWalBufferSize();
+      acquireDirectBufferMemCost =
+          config.getWalMode().equals(WALMode.DISABLE) ? 0 : config.getWalBufferSize();
     } else if (config
         .getDataRegionConsensusProtocolClass()
         .equals(ConsensusFactory.RATIS_CONSENSUS)) {

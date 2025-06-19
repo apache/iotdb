@@ -414,7 +414,7 @@ public class PipeEnrichedProcedureTest {
         createTableProcedure.getTable().getColumnNum(),
         deserializedProcedure.getTable().getColumnNum());
     Assert.assertEquals(
-        createTableProcedure.getTable().getIdNums(), deserializedProcedure.getTable().getIdNums());
+        createTableProcedure.getTable().getTagNum(), deserializedProcedure.getTable().getTagNum());
   }
 
   @Test
@@ -617,8 +617,8 @@ public class PipeEnrichedProcedureTest {
         createTableViewProcedure.getTable().getColumnNum(),
         deserializedProcedure.getTable().getColumnNum());
     Assert.assertEquals(
-        createTableViewProcedure.getTable().getIdNums(),
-        deserializedProcedure.getTable().getIdNums());
+        createTableViewProcedure.getTable().getTagNum(),
+        deserializedProcedure.getTable().getTagNum());
   }
 
   @Test

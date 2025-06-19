@@ -22,10 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinWindowFunction;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -62,6 +64,11 @@ public interface Metadata {
 
   boolean isAggregationFunction(
       final SessionInfo session, final String functionName, final AccessControl accessControl);
+
+  default boolean isWindowFunction(
+      final SessionInfo session, final String functionName, final AccessControl accessControl) {
+    return TableBuiltinWindowFunction.getBuiltInWindowFunctionName().contains(functionName);
+  }
 
   Type getType(final TypeSignature signature) throws TypeNotFoundException;
 
@@ -194,4 +201,9 @@ public interface Metadata {
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
 
   TableFunction getTableFunction(final String functionName);
+
+  /**
+   * @return ModelFetcher
+   */
+  IModelFetcher getModelFetcher();
 }

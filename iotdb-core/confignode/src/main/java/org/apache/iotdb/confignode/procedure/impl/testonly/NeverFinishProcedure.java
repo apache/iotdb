@@ -22,8 +22,6 @@ package org.apache.iotdb.confignode.procedure.impl.testonly;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
@@ -42,7 +40,7 @@ public class NeverFinishProcedure extends StateMachineProcedure<ConfigNodeProced
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, Integer state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     setNextState(state + 1);
     Thread.sleep(1000);
     return Flow.HAS_MORE_STATE;

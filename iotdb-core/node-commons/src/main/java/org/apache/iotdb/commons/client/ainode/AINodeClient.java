@@ -56,7 +56,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -161,21 +160,12 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   public TInferenceResp inference(
       String modelId,
-      List<String> inputColumnNames,
-      List<String> inputTypeList,
-      Map<String, Integer> columnIndexMap,
       TsBlock inputTsBlock,
       Map<String, String> inferenceAttributes,
       TWindowParams windowParams)
       throws TException {
     try {
-      TInferenceReq inferenceReq =
-          new TInferenceReq(
-              modelId,
-              tsBlockSerde.serialize(inputTsBlock),
-              inputTypeList,
-              inputColumnNames,
-              columnIndexMap);
+      TInferenceReq inferenceReq = new TInferenceReq(modelId, tsBlockSerde.serialize(inputTsBlock));
       if (windowParams != null) {
         inferenceReq.setWindowParams(windowParams);
       }
@@ -184,10 +174,10 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       }
       return client.inference(inferenceReq);
     } catch (IOException e) {
-      throw new TException("An exception occurred while serializing input tsblock", e);
+      throw new TException("An exception occurred while serializing input data", e);
     } catch (TException e) {
       logger.warn(
-          "Failed to connect to AINode from DataNode when executing {}: {}",
+          "Error happens in AINode when executing {}: {}",
           Thread.currentThread().getStackTrace()[1].getMethodName(),
           e.getMessage());
       throw new TException(MSG_CONNECTION_FAIL);
@@ -209,7 +199,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       TSStatus tsStatus = new TSStatus(CAN_NOT_CONNECT_AINODE.getStatusCode());
       tsStatus.setMessage(
           String.format(
-              "Failed to connect to AINode from DataNode when executing %s: %s",
+              "Failed to connect to AINode when executing %s: %s",
               Thread.currentThread().getStackTrace()[1].getMethodName(), e.getMessage()));
       return new TForecastResp(tsStatus, ByteBuffer.allocate(0));
     }
@@ -220,7 +210,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       return client.createTrainingTask(req);
     } catch (TException e) {
       logger.warn(
-          "Failed to connect to AINode from DataNode when executing {}: {}",
+          "Failed to connect to AINode when executing {}: {}",
           Thread.currentThread().getStackTrace()[1].getMethodName(),
           e.getMessage());
       throw new TException(MSG_CONNECTION_FAIL);
@@ -229,7 +219,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   @Override
   public void close() throws Exception {
-    Optional.ofNullable(transport).ifPresent(TTransport::close);
+    clientManager.returnClient(endPoint, this);
   }
 
   @Override
@@ -258,7 +248,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     @Override
     public void destroyObject(TEndPoint tEndPoint, PooledObject<AINodeClient> pooledObject)
         throws Exception {
-      pooledObject.getObject().close();
+      pooledObject.getObject().invalidate();
     }
 
     @Override

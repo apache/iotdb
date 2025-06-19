@@ -339,6 +339,25 @@ public class SubscriptionBroker {
     return prefetchingQueue.isCommitContextOutdated(commitContext);
   }
 
+  public List<String> fetchTopicNamesToUnsubscribe(final Set<String> topicNames) {
+    final List<String> topicNamesToUnsubscribe = new ArrayList<>();
+
+    for (final String topicName : topicNames) {
+      final SubscriptionPrefetchingQueue prefetchingQueue =
+          topicNameToPrefetchingQueue.get(topicName);
+      // If there is no prefetching queue for the topic, check if it's completed
+      if (Objects.isNull(prefetchingQueue) && completedTopicNames.containsKey(topicName)) {
+        LOGGER.info(
+            "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is completed, reply to client heartbeat request",
+            topicName,
+            brokerId);
+        topicNamesToUnsubscribe.add(topicName);
+      }
+    }
+
+    return topicNamesToUnsubscribe;
+  }
+
   /////////////////////////////// prefetching queue ///////////////////////////////
 
   public void bindPrefetchingQueue(

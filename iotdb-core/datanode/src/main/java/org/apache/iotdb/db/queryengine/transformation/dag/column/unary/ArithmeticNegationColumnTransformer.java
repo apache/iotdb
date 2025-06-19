@@ -58,7 +58,8 @@ public class ArithmeticNegationColumnTransformer extends UnaryColumnTransformer 
   @Override
   protected final void checkType() {
     if (!childColumnTransformer.isReturnTypeNumeric()) {
-      throw new UnsupportedOperationException("Unsupported Type: " + returnType.toString());
+      throw new UnsupportedOperationException(
+          "Unsupported Type: " + childColumnTransformer.getType().toString());
     }
   }
 }

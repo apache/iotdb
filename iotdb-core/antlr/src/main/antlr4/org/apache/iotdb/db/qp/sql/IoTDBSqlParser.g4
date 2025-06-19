@@ -57,7 +57,7 @@ ddlStatement
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // Subscription
-    | createTopic | dropTopic | showTopics | showSubscriptions
+    | createTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
@@ -691,6 +691,9 @@ showSubscriptions
     : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
     ;
 
+dropSubscription
+    : DROP SUBSCRIPTION (IF EXISTS)? subscriptionId=identifier
+    ;
 
 // AI Model =========================================================================================
 // ---- Create Model
@@ -780,16 +783,17 @@ viewSourcePaths
 
 // Table view
 createTableView
-    : CREATE (OR REPLACE)? TABLE VIEW qualifiedName
-        LR_BRACKET (viewColumnDefinition (COMMA viewColumnDefinition)*) RR_BRACKET
-        AS prefixPath
+    : CREATE (OR REPLACE)? VIEW qualifiedName
+        LR_BRACKET (viewColumnDefinition (COMMA viewColumnDefinition)*)? RR_BRACKET
         comment?
-        (WITH properties)?
         (RESTRICT)?
+        (WITH properties)?
+        AS prefixPath
     ;
 
 viewColumnDefinition
-    : identifier (type)? (columnCategory=(TAG | TIME | FIELD))? comment?
+    : identifier columnCategory=(TAG | TIME | FIELD) comment?
+    | identifier type (columnCategory=(TAG | TIME | FIELD))? comment?
     | identifier (type)? (columnCategory=FIELD)? FROM original_measurement=identifier comment?
     ;
 

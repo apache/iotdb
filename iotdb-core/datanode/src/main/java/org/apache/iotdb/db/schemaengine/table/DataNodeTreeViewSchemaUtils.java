@@ -19,23 +19,53 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 
 import java.util.Arrays;
+import java.util.StringJoiner;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.commons.schema.table.TreeViewSchema.TREE_PATH_PATTERN;
 import static org.apache.iotdb.commons.schema.table.TreeViewSchema.getPrefixPattern;
 
 public class DataNodeTreeViewSchemaUtils {
 
+  public static void checkTableInWrite(final String database, final TsTable table) {
+    if (isTreeViewTable(table)) {
+      throw new SemanticException(
+          new IoTDBException(
+              String.format(
+                  "The table %s.%s is a view from tree, cannot be written or deleted from",
+                  database, table.getTableName()),
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+    }
+  }
+
+  // For better performance
+  public static boolean isTreeViewTable(final TsTable table) {
+    return table.containsPropWithoutLock(TREE_PATH_PATTERN);
+  }
+
   public static String[] getPatternNodes(final TsTable table) {
     final PartialPath path = getPrefixPattern(table);
     return Arrays.copyOf(path.getNodes(), path.getNodeLength() - 1);
+  }
+
+  public static String getPrefixPath(final TsTable table) {
+    final PartialPath path = getPrefixPattern(table);
+    StringJoiner joiner = new StringJoiner(".");
+    for (int i = 0; i < path.getNodeLength() - 1; i++) {
+      joiner.add(path.getNodes()[i]);
+    }
+    return joiner.toString();
   }
 
   public static IDeviceID convertToIDeviceID(final TsTable table, final String[] idValues) {

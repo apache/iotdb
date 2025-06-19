@@ -640,6 +640,58 @@ public class IrExpressionInterpreter {
             toExpression(left, type(leftExpression)),
             toExpression(right, type(rightExpression)));
       } else {
+        if (!(left instanceof Number) || !(right instanceof Number)) {
+          throw new IllegalArgumentException("Both object must be type of number");
+        }
+
+        if (left instanceof Integer && right instanceof Integer) {
+          Integer leftNum = (Integer) left;
+          Integer rightNum = (Integer) right;
+          if (operator == ComparisonExpression.Operator.LESS_THAN) {
+            return leftNum < rightNum;
+          } else if (operator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
+            return leftNum <= rightNum;
+          } else if (operator == ComparisonExpression.Operator.EQUAL) {
+            return leftNum.equals(rightNum);
+          }
+        }
+
+        if (left instanceof Long && right instanceof Long) {
+          Long leftNum = (Long) left;
+          Long rightNum = (Long) right;
+          if (operator == ComparisonExpression.Operator.LESS_THAN) {
+            return leftNum < rightNum;
+          } else if (operator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
+            return leftNum <= rightNum;
+          } else if (operator == ComparisonExpression.Operator.EQUAL) {
+            return leftNum.equals(rightNum);
+          }
+        }
+
+        if (left instanceof Float && right instanceof Float) {
+          Float leftNum = (Float) left;
+          Float rightNum = (Float) right;
+          if (operator == ComparisonExpression.Operator.LESS_THAN) {
+            return leftNum < rightNum;
+          } else if (operator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
+            return leftNum <= rightNum;
+          } else if (operator == ComparisonExpression.Operator.EQUAL) {
+            return leftNum.equals(rightNum);
+          }
+        }
+
+        if (left instanceof Double && right instanceof Double) {
+          Double leftNum = (Double) left;
+          Double rightNum = (Double) right;
+          if (operator == ComparisonExpression.Operator.LESS_THAN) {
+            return leftNum < rightNum;
+          } else if (operator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
+            return leftNum <= rightNum;
+          } else if (operator == ComparisonExpression.Operator.EQUAL) {
+            return leftNum.equals(rightNum);
+          }
+        }
+
         return new ComparisonExpression(
             operator,
             toExpression(left, type(leftExpression)),

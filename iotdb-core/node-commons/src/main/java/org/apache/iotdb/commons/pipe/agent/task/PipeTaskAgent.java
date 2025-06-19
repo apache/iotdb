@@ -514,6 +514,7 @@ public abstract class PipeTaskAgent {
     // but the pipe task meta has not been cleaned up (in case of failure when executing
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+    existedPipeMeta.getRuntimeMeta().onSetPipeDroppedOrStopped();
 
     // Drop pipe tasks
     final Map<Integer, PipeTask> pipeTasks =
@@ -555,6 +556,7 @@ public abstract class PipeTaskAgent {
     // but the pipe task meta has not been cleaned up (in case of failure when executing
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+    existedPipeMeta.getRuntimeMeta().onSetPipeDroppedOrStopped();
 
     // Drop pipe tasks
     final Map<Integer, PipeTask> pipeTasks =
@@ -647,6 +649,7 @@ public abstract class PipeTaskAgent {
 
     // Set pipe meta status to STOPPED
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+    existedPipeMeta.getRuntimeMeta().onSetPipeDroppedOrStopped();
   }
 
   ////////////////////////// Checker //////////////////////////
@@ -661,7 +664,10 @@ public abstract class PipeTaskAgent {
       final PipeMeta existedPipeMeta, final String pipeName, final long creationTime)
       throws IllegalStateException {
     // Verify that Pipe is disabled if TSFile encryption is enabled
-    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+    if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+        && !Objects.equals(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            "org.apache.tsfile.encrypt.UNENCRYPTED")) {
       throw new PipeException(
           String.format(
               "Failed to create Pipe %s because TSFile is configured with encryption, which prohibits the use of Pipe",

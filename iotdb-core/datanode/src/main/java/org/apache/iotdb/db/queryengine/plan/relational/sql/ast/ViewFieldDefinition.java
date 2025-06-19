@@ -36,7 +36,7 @@ public class ViewFieldDefinition extends ColumnDefinition {
       final DataType type,
       final @Nullable String charsetName,
       final @Nullable String comment,
-      final Identifier from) {
+      final @Nullable Identifier from) {
     super(location, name, type, TsTableColumnCategory.FIELD, charsetName, comment);
     this.from = from;
   }

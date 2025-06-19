@@ -106,6 +106,7 @@ public enum ThreadName {
   ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL("AsyncDataNodePipeConsensusServiceClientPool"),
   PIPE_CONSENSUS_DELETION_SERIALIZE("DAL-Serialize"),
   PIPE_CONSENSUS_TSFILE_WRITER_CHECKER("PipeConsensus-TsFileWriter-Checker"),
+  PIPE_CONSENSUS_BACKGROUND_TASK_EXECUTOR("PipeConsensusBackgroundTaskExecutor"),
 
   // -------------------------- IoTConsensus --------------------------
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
@@ -147,6 +148,8 @@ public enum ThreadName {
   PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
   PIPE_RECEIVER_AIR_GAP_AGENT("Pipe-Receiver-Air-Gap-Agent"),
   PIPE_AIR_GAP_RECEIVER("Pipe-Air-Gap-Receiver"),
+  PIPE_PROGRESS_INDEX_BACKGROUND_SERVICE("Pipe-Progress-Index-Background-Service"),
+  LOAD_DATATYPE_CONVERT_POOL("Load-Datatype-Convert-Pool"),
   SUBSCRIPTION_EXECUTOR_POOL("Subscription-Executor-Pool"),
   SUBSCRIPTION_RUNTIME_META_SYNCER("Subscription-Runtime-Meta-Syncer"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
@@ -193,6 +196,7 @@ public enum ThreadName {
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
   BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
+  BINARY_ALLOCATOR_AUTO_RELEASER("BinaryAllocator-Auto-Releaser"),
 
   // the unknown thread name is used for metrics
   UNKNOWN("UNKNOWN");
@@ -266,7 +270,8 @@ public enum ThreadName {
               PIPE_CONSENSUS_RPC_PROCESSOR,
               ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL,
               PIPE_CONSENSUS_DELETION_SERIALIZE,
-              PIPE_CONSENSUS_TSFILE_WRITER_CHECKER));
+              PIPE_CONSENSUS_TSFILE_WRITER_CHECKER,
+              PIPE_CONSENSUS_BACKGROUND_TASK_EXECUTOR));
 
   private static final Set<ThreadName> ratisThreadNames =
       new HashSet<>(
@@ -303,6 +308,7 @@ public enum ThreadName {
               PIPE_ASYNC_CONNECTOR_CLIENT_POOL,
               PIPE_RECEIVER_AIR_GAP_AGENT,
               PIPE_AIR_GAP_RECEIVER,
+              PIPE_PROGRESS_INDEX_BACKGROUND_SERVICE,
               SUBSCRIPTION_EXECUTOR_POOL,
               SUBSCRIPTION_RUNTIME_META_SYNCER,
               WINDOW_EVALUATION_SERVICE,

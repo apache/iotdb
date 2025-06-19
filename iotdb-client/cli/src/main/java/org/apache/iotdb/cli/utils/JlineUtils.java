@@ -117,6 +117,18 @@ public class JlineUtils {
     org.jline.reader.impl.DefaultParser parser = new org.jline.reader.impl.DefaultParser();
     builder.parser(parser);
     LineReader lineReader = builder.build();
+
+    try {
+      // Load the history file, if loading fails, purge the history file.
+      lineReader.getHistory().attach(lineReader);
+      lineReader.getHistory().load();
+    } catch (Exception e) {
+      try {
+        lineReader.getHistory().purge();
+      } catch (Exception ex) {
+        // Ignore
+      }
+    }
     if (OSUtils.IS_WINDOWS) {
       // If enabled cursor remains in begin parenthesis (gitbash).
       lineReader.setVariable(LineReader.BLINK_MATCHING_PAREN, 0);

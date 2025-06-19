@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure;
 
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -38,8 +35,7 @@ public abstract class InternalProcedure<Env> extends Procedure<Env> {
   protected abstract void periodicExecute(final Env env);
 
   @Override
-  protected Procedure<Env>[] execute(Env env)
-      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
+  protected Procedure<Env>[] execute(Env env) throws InterruptedException {
     throw new UnsupportedOperationException();
   }
 

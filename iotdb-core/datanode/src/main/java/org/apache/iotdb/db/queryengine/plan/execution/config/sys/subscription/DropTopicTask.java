@@ -39,6 +39,7 @@ public class DropTopicTask implements IConfigTask {
     this.dropTopicStatement = new DropTopicStatement();
     this.dropTopicStatement.setTopicName(dropTopic.getTopicName());
     this.dropTopicStatement.setIfExists(dropTopic.hasIfExistsCondition());
+    this.dropTopicStatement.setTableModel(true);
   }
 
   @Override

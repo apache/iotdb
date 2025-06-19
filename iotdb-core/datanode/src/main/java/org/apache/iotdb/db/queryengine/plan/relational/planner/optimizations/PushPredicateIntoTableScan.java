@@ -120,7 +120,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinN
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.ONLY_SUPPORT_EQUI_JOIN;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.UNSUPPORTED_JOIN_CRITERIA;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processInnerJoin;
@@ -566,7 +566,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         final ColumnSchema columnSchema = entry.getValue();
         if (ATTRIBUTE.equals(columnSchema.getColumnCategory())) {
           attributeColumns.add(columnSchema.getName());
-          tableScanNode.getIdAndAttributeIndexMap().put(columnSymbol, attributeIndex++);
+          tableScanNode.getTagAndAttributeIndexMap().put(columnSymbol, attributeIndex++);
         }
       }
 
@@ -583,8 +583,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               attributeColumns,
               queryContext);
       if (deviceEntriesMap.size() > 1) {
-        throw new UnsupportedOperationException(
-            "Tree device view with multiple databases is unsupported yet.");
+        throw new SemanticException("Tree device view with multiple databases is unsupported yet.");
       }
       final String deviceDatabase =
           !deviceEntriesMap.isEmpty() ? deviceEntriesMap.keySet().iterator().next() : null;
@@ -753,8 +752,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
           equiJoinClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
         } else {
+          if (conjunct.equals(TRUE_LITERAL) && node.getAsofCriteria().isPresent()) {
+            continue;
+          }
           if (node.getJoinType() != INNER) {
-            throw new SemanticException(ONLY_SUPPORT_EQUI_JOIN);
+            throw new SemanticException(String.format(UNSUPPORTED_JOIN_CRITERIA, conjunct));
           }
           joinFilterBuilder.add(conjunct);
         }

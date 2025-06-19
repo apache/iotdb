@@ -25,6 +25,9 @@ public class ConsumerConstant {
 
   /////////////////////////////// common ///////////////////////////////
 
+  // TODO: hide from the client
+  public static final String SQL_DIALECT_KEY = "sql-dialect";
+
   public static final String HOST_KEY = "host";
   public static final String PORT_KEY = "port";
   public static final String NODE_URLS_KEY = "node-urls";

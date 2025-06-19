@@ -45,6 +45,7 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.EquiJoinClause.flipBatch;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
 
 public class JoinNode extends TwoChildProcessNode {
@@ -153,6 +154,23 @@ public class JoinNode extends TwoChildProcessNode {
     this.joinType = joinType;
     this.criteria = criteria;
     this.asofCriteria = asofCriteria;
+  }
+
+  /**
+   * @return a new JoinNode with the flipped attributes
+   */
+  public JoinNode flip() {
+    return new JoinNode(
+        id,
+        joinType.flip(),
+        rightChild,
+        leftChild,
+        flipBatch(criteria),
+        asofCriteria,
+        rightOutputSymbols,
+        leftOutputSymbols,
+        filter,
+        spillable);
   }
 
   @Override
@@ -374,6 +392,12 @@ public class JoinNode extends TwoChildProcessNode {
       return new EquiJoinClause(right, left);
     }
 
+    public static List<EquiJoinClause> flipBatch(List<EquiJoinClause> input) {
+      ImmutableList.Builder<EquiJoinClause> builder = ImmutableList.builder();
+      input.forEach(clause -> builder.add(clause.flip()));
+      return builder.build();
+    }
+
     @Override
     public boolean equals(Object obj) {
       if (this == obj) {
@@ -487,6 +511,21 @@ public class JoinNode extends TwoChildProcessNode {
 
     public String getJoinLabel() {
       return joinLabel;
+    }
+
+    public JoinType flip() {
+      switch (this) {
+        case INNER:
+          return INNER;
+        case FULL:
+          return FULL;
+        case LEFT:
+          return RIGHT;
+        case RIGHT:
+          return LEFT;
+        default:
+      }
+      throw new IllegalArgumentException("Unsupported join type: " + this);
     }
   }
 }

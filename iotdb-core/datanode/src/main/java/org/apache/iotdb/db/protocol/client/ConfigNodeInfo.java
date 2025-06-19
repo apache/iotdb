@@ -57,7 +57,6 @@ public class ConfigNodeInfo {
     this.onlineConfigNodes = new HashSet<>();
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     ConfigNodeInfoHolder.INSTANCE = new ConfigNodeInfo();
   }

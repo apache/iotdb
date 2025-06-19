@@ -38,7 +38,7 @@ services:
       - dn_seed_config_node=iotdb-service:10710
       - IOTDB_JMX_OPTS=-Xms4G -Xmx4G -XX:MaxDirectMemorySize=1G
       - CONFIGNODE_JMX_OPTS=-Xms1G -Xmx1G -XX:MaxDirectMemorySize=256M
-     volumes:
+    volumes:
         - ./data:/iotdb/data
         - ./logs:/iotdb/logs
     networks:

@@ -418,7 +418,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitCreateTableView(final CreateTableView node, final C context) {
+  protected Void visitCreateView(final CreateView node, final C context) {
     for (final Property property : node.getProperties()) {
       process(property, context);
     }
@@ -514,6 +514,54 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
       QuantifiedComparisonExpression node, C context) {
     process(node.getValue(), context);
     process(node.getSubquery(), context);
+
+    return null;
+  }
+
+  @Override
+  protected Void visitExcludedPattern(ExcludedPattern node, C context) {
+    process(node.getPattern(), context);
+
+    return null;
+  }
+
+  @Override
+  protected Void visitPatternAlternation(PatternAlternation node, C context) {
+    for (RowPattern rowPattern : node.getPatterns()) {
+      process(rowPattern, context);
+    }
+
+    return null;
+  }
+
+  @Override
+  protected Void visitPatternConcatenation(PatternConcatenation node, C context) {
+    for (RowPattern rowPattern : node.getPatterns()) {
+      process(rowPattern, context);
+    }
+
+    return null;
+  }
+
+  @Override
+  protected Void visitPatternPermutation(PatternPermutation node, C context) {
+    for (RowPattern rowPattern : node.getPatterns()) {
+      process(rowPattern, context);
+    }
+
+    return null;
+  }
+
+  @Override
+  protected Void visitPatternVariable(PatternVariable node, C context) {
+    process(node.getName(), context);
+
+    return null;
+  }
+
+  @Override
+  protected Void visitQuantifiedPattern(QuantifiedPattern node, C context) {
+    process(node.getPattern(), context);
 
     return null;
   }

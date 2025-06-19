@@ -44,8 +44,9 @@ public class SyncStatus {
    * @throws InterruptedException
    */
   public synchronized void addNextBatch(Batch batch) throws InterruptedException {
-    while (pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()
-        || !iotConsensusMemoryManager.reserve(batch.getSerializedSize(), false)) {
+    while ((pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()
+            || !iotConsensusMemoryManager.reserve(batch.getMemorySize(), false))
+        && !Thread.interrupted()) {
       wait();
     }
     pendingBatches.add(batch);
@@ -64,7 +65,7 @@ public class SyncStatus {
       while (current.isSynced()) {
         controller.update(current.getEndIndex(), false);
         iterator.remove();
-        iotConsensusMemoryManager.free(current.getSerializedSize(), false);
+        iotConsensusMemoryManager.free(current.getMemorySize(), false);
         if (iterator.hasNext()) {
           current = iterator.next();
         } else {
@@ -79,7 +80,7 @@ public class SyncStatus {
   public synchronized void free() {
     long size = 0;
     for (Batch pendingBatch : pendingBatches) {
-      size += pendingBatch.getSerializedSize();
+      size += pendingBatch.getMemorySize();
     }
     pendingBatches.clear();
     controller.update(0L, true);

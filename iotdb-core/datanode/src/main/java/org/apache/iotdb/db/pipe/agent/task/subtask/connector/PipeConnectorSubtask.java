@@ -22,11 +22,11 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.connector;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractConnectorSubtask;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
@@ -63,9 +63,6 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   // when no event can be pulled.
   public static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
       new PipeHeartbeatEvent("cron", false);
-  private static final long CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS =
-      PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() * 1000;
-  private long lastHeartbeatEventInjectTime = System.currentTimeMillis();
 
   public PipeConnectorSubtask(
       final String taskID,
@@ -104,12 +101,8 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     }
 
     try {
-      if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
-          > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS) {
-        transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
-      }
-
       if (Objects.isNull(event)) {
+        transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
         return false;
       }
 
@@ -186,8 +179,6 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
           e);
     }
 
-    lastHeartbeatEventInjectTime = System.currentTimeMillis();
-
     event.onTransferred();
     PipeDataRegionConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
   }
@@ -231,41 +222,50 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     // Try to remove the events as much as possible
     inputPendingQueue.discardEventsOfPipe(pipeNameToDrop, regionId);
 
-    // synchronized to use the lastEvent & lastExceptionEvent
-    synchronized (this) {
-      // Here we discard the last event, and re-submit the pipe task to avoid that the pipe task has
-      // stopped submission but will not be stopped by critical exceptions, because when it acquires
-      // lock, the pipe is already dropped, thus it will do nothing.
-      // Note that since we use a new thread to stop all the pipes, we will not encounter deadlock
-      // here. Or else we will.
-      if (lastEvent instanceof EnrichedEvent
-          && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())
-          && regionId == ((EnrichedEvent) lastEvent).getRegionId()) {
-        // Do not clear last event's reference count because it may be on transferring
-        lastEvent = null;
-        // Submit self to avoid that the lastEvent has been retried "max times" times and has
-        // stopped executing.
-        // 1. If the last event is still on execution, or submitted by the previous "onSuccess" or
-        //    "onFailure", the "submitSelf" cause nothing.
-        // 2. If the last event is waiting the instance lock to call "onSuccess", then the callback
-        //    method will skip this turn of submission.
-        // 3. If the last event is waiting to call "onFailure", then it will be ignored because the
-        //    last event has been set to null.
-        // 4. If the last event has called "onFailure" and caused the subtask to stop submission,
-        //    it's submitted here and the "report" will wait for the "drop pipe" lock to stop all
-        //    the pipes with critical exceptions. As illustrated above, the "report" will do
-        //    nothing.
-        submitSelf();
+    highPriorityLockTaskCount.incrementAndGet();
+    try {
+      synchronized (highPriorityLockTaskCount) {
+        highPriorityLockTaskCount.notifyAll();
       }
 
-      // We only clear the lastEvent's reference count when it's already on failure. Namely, we
-      // clear the lastExceptionEvent. It's safe to potentially clear it twice because we have the
-      // "nonnull" detection.
-      if (lastExceptionEvent instanceof EnrichedEvent
-          && pipeNameToDrop.equals(((EnrichedEvent) lastExceptionEvent).getPipeName())
-          && regionId == ((EnrichedEvent) lastExceptionEvent).getRegionId()) {
-        clearReferenceCountAndReleaseLastExceptionEvent();
+      // synchronized to use the lastEvent & lastExceptionEvent
+      synchronized (this) {
+        // Here we discard the last event, and re-submit the pipe task to avoid that the pipe task
+        // has stopped submission but will not be stopped by critical exceptions, because when it
+        // acquires lock, the pipe is already dropped, thus it will do nothing. Note that since we
+        // use a new thread to stop all the pipes, we will not encounter deadlock here. Or else we
+        // will.
+        if (lastEvent instanceof EnrichedEvent
+            && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())
+            && regionId == ((EnrichedEvent) lastEvent).getRegionId()) {
+          // Do not clear the last event's reference counts because it may be on transferring
+          lastEvent = null;
+          // Submit self to avoid that the lastEvent has been retried "max times" times and has
+          // stopped executing.
+          // 1. If the last event is still on execution, or submitted by the previous "onSuccess" or
+          //    "onFailure", the "submitSelf" causes nothing.
+          // 2. If the last event is waiting the instance lock to call "onSuccess", then the
+          //    callback method will skip this turn of submission.
+          // 3. If the last event is waiting to call "onFailure", then it will be ignored because
+          //    the last event has been set to null.
+          // 4. If the last event has called "onFailure" and caused the subtask to stop submission,
+          //    it's submitted here and the "report" will wait for the "drop pipe" lock to stop all
+          //    the pipes with critical exceptions. As illustrated above, the "report" will do
+          //    nothing.
+          submitSelf();
+        }
+
+        // We only clear the lastEvent's reference counts when it's already on failure. Namely, we
+        // clear the lastExceptionEvent. It's safe to potentially clear it twice because we have the
+        // "nonnull" detection.
+        if (lastExceptionEvent instanceof EnrichedEvent
+            && pipeNameToDrop.equals(((EnrichedEvent) lastExceptionEvent).getPipeName())
+            && regionId == ((EnrichedEvent) lastExceptionEvent).getRegionId()) {
+          clearReferenceCountAndReleaseLastExceptionEvent();
+        }
       }
+    } finally {
+      highPriorityLockTaskCount.decrementAndGet();
     }
 
     if (outputPipeConnector instanceof IoTDBConnector) {
@@ -301,6 +301,34 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   public int getAsyncConnectorRetryEventQueueSize() {
     return outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
         ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
+        : 0;
+  }
+
+  public int getPendingHandlersSize() {
+    return outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
+        ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getPendingHandlersSize()
+        : 0;
+  }
+
+  public int getBatchSize() {
+    if (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector) {
+      return ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getBatchSize();
+    }
+    if (outputPipeConnector instanceof IoTDBDataRegionSyncConnector) {
+      return ((IoTDBDataRegionSyncConnector) outputPipeConnector).getBatchSize();
+    }
+    return 0;
+  }
+
+  public double getTotalUncompressedSize() {
+    return outputPipeConnector instanceof IoTDBConnector
+        ? ((IoTDBConnector) outputPipeConnector).getTotalUncompressedSize()
+        : 0;
+  }
+
+  public double getTotalCompressedSize() {
+    return outputPipeConnector instanceof IoTDBConnector
+        ? ((IoTDBConnector) outputPipeConnector).getTotalCompressedSize()
         : 0;
   }
 

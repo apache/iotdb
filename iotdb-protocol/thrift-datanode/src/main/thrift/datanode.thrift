@@ -341,6 +341,7 @@ struct TUpdateTemplateReq {
 struct TUpdateTableReq {
   1: required byte type
   2: required binary tableInfo
+  3: optional string oldName
 }
 
 struct TInvalidateTableCacheReq {
@@ -396,7 +397,7 @@ struct TLoadCommandReq {
     1: required i32 commandType
     2: required string uuid
     3: optional bool isGeneratedByPipe
-    4: optional binary progressIndex
+    4: optional map<common.TTimePartitionSlot, binary> timePartition2ProgressIndex
 }
 
 struct TAttributeUpdateReq {
