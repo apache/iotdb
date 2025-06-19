@@ -29,6 +29,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -85,6 +86,9 @@ public class DataNodeShutdownHook extends Thread {
         .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       triggerSnapshotForAllDataRegion();
     }
+
+    // Persist progress index before shutdown to accurate recovery after restart
+    PipeDataNodeAgent.task().persistAllProgressIndexLocally();
 
     // Shutdown pipe progressIndex background service
     PipePeriodicalJobExecutor.shutdownBackgroundService();
