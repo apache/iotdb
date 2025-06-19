@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
@@ -34,6 +36,7 @@ import org.apache.iotdb.db.subscription.task.subtask.SubscriptionReceiverSubtask
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
@@ -45,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -105,6 +109,11 @@ public abstract class SubscriptionPrefetchingQueue {
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
 
+  // for prefetch v2
+  private volatile TsFileInsertionEvent currentTsFileInsertionEvent;
+  private volatile TabletInsertionEvent currentTabletInsertionEvent;
+  private volatile SubscriptionTsFileToTabletIterator currentToTabletIterator;
+
   public SubscriptionPrefetchingQueue(
       final String brokerId,
       final String topicName,
@@ -148,6 +157,19 @@ public abstract class SubscriptionPrefetchingQueue {
 
     // no need to clean up events in inputPendingQueue, see
     // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close
+
+    if (Objects.nonNull(currentToTabletIterator)) {
+      currentToTabletIterator.close();
+      currentToTabletIterator = null;
+    }
+    if (Objects.nonNull(currentTsFileInsertionEvent)) {
+      ((EnrichedEvent) currentTsFileInsertionEvent).clearReferenceCount(this.getClass().getName());
+      currentTsFileInsertionEvent = null;
+    }
+    if (Objects.nonNull(currentTabletInsertionEvent)) {
+      ((EnrichedEvent) currentTabletInsertionEvent).clearReferenceCount(this.getClass().getName());
+      currentTabletInsertionEvent = null;
+    }
   }
 
   /////////////////////////////////  lock  /////////////////////////////////
@@ -188,7 +210,7 @@ public abstract class SubscriptionPrefetchingQueue {
     }
   }
 
-  public SubscriptionEvent pollInternal(final String consumerId) {
+  private SubscriptionEvent pollInternal(final String consumerId) {
     states.markPollRequest();
 
     if (prefetchingQueue.isEmpty()) {
@@ -258,6 +280,65 @@ public abstract class SubscriptionPrefetchingQueue {
     return null;
   }
 
+  protected SubscriptionEvent pollInternalV2(final String consumerId) {
+    states.markPollRequest();
+
+    while (SubscriptionAgent.receiver().remainingMs() != 0) {
+      SubscriptionEvent event;
+      try {
+        if (prefetchingQueue.isEmpty()) {
+          Thread.sleep(100);
+          onEvent();
+        }
+
+        final long size = prefetchingQueue.size();
+        long count = 0;
+
+        while (count++ < size // limit control
+            && Objects.nonNull(
+                event =
+                    prefetchingQueue.poll(
+                        SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
+                        TimeUnit.MILLISECONDS))) {
+          if (event.isCommitted()) {
+            LOGGER.warn(
+                "Subscription: SubscriptionPrefetchingQueue {} poll committed event {} from prefetching queue (broken invariant), remove it",
+                this,
+                event);
+            // no need to update inFlightEvents
+            continue;
+          }
+
+          if (!event.pollable()) {
+            LOGGER.warn(
+                "Subscription: SubscriptionPrefetchingQueue {} poll non-pollable event {} from prefetching queue (broken invariant), nack and remove it",
+                this,
+                event);
+            event.nack(); // now pollable
+            // no need to update inFlightEvents and prefetchingQueue
+            continue;
+          }
+
+          // This operation should be performed before updating inFlightEvents to prevent multiple
+          // consumers from consuming the same event.
+          event.recordLastPolledTimestamp(); // now non-pollable
+
+          inFlightEvents.put(new Pair<>(consumerId, event.getCommitContext()), event);
+          event.recordLastPolledConsumerId(consumerId);
+          return event;
+        }
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn(
+            "Subscription: SubscriptionPrefetchingQueue {} interrupted while polling events.",
+            this,
+            e);
+      }
+    }
+
+    return null;
+  }
+
   /////////////////////////////// prefetch ///////////////////////////////
 
   public boolean executePrefetch() {
@@ -278,6 +359,23 @@ public abstract class SubscriptionPrefetchingQueue {
         remapInFlightEventsSnapshot(committedCleaner, pollableNacker);
         return false;
       }
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean executePrefetchV2() {
+    acquireReadLock();
+    try {
+      if (isClosed()) {
+        return false;
+      }
+      reportStateIfNeeded();
+      tryPrefetchV2();
+      peekOnce();
+      remapInFlightEventsSnapshot(committedCleaner, pollableNacker);
+      // always return false
+      return false;
     } finally {
       releaseReadLock();
     }
@@ -418,6 +516,130 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     // At this moment, the inputPendingQueue is empty.
+  }
+
+  private synchronized void tryPrefetchV2() {
+    if (!prefetchingQueue.isEmpty()) {
+      return;
+    }
+
+    if (Objects.nonNull(currentTsFileInsertionEvent)) {
+      constructToTabletIterator(currentTsFileInsertionEvent);
+      return;
+    }
+
+    if (Objects.nonNull(currentTabletInsertionEvent)) {
+      constructIntoTsFileBatch(currentTabletInsertionEvent);
+      return;
+    }
+
+    if (Objects.nonNull(currentToTabletIterator)) {
+      while (currentToTabletIterator.hasNext()) {
+        final TabletInsertionEvent tabletInsertionEvent = currentToTabletIterator.next();
+        if (constructIntoTsFileBatch(tabletInsertionEvent)) {
+          return;
+        }
+      }
+      currentToTabletIterator.close();
+      currentToTabletIterator = null;
+    }
+
+    final Event event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
+    if (Objects.isNull(event)) {
+      // The event will be null in two cases:
+      // 1. The inputPendingQueue is empty.
+      // 2. The tsfile event has been deduplicated.
+      return;
+    }
+
+    if (!(event instanceof EnrichedEvent)) {
+      LOGGER.warn(
+          "Subscription: SubscriptionPrefetchingQueue {} only support prefetch EnrichedEvent. Ignore {}.",
+          this,
+          event);
+      return;
+    }
+
+    if (event instanceof PipeTerminateEvent) {
+      final PipeTerminateEvent terminateEvent = (PipeTerminateEvent) event;
+      // add mark completed hook
+      terminateEvent.addOnCommittedHook(
+          () -> {
+            markCompleted();
+            return null;
+          });
+      // commit directly
+      ((PipeTerminateEvent) event)
+          .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
+      LOGGER.info(
+          "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
+          this,
+          terminateEvent);
+      return;
+    }
+
+    if (event instanceof TabletInsertionEvent) {
+      onEvent((TabletInsertionEvent) event);
+    }
+
+    if (event instanceof TsFileInsertionEvent) {
+      if (Objects.nonNull(currentToTabletIterator)) {
+        LOGGER.warn(
+            "Subscription: SubscriptionPrefetchingQueue {} prefetch TsFileInsertionEvent when ToTabletIterator is not null (broken invariant). Ignore {}.",
+            this,
+            event);
+      } else {
+        constructToTabletIterator((PipeTsFileInsertionEvent) event);
+        return;
+      }
+    }
+
+    // TODO:
+    //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
+    //  - UserDefinedEnrichedEvent: ignored?
+    //  - Others: events related to meta sync, safe to ignore
+    LOGGER.info(
+        "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
+        this,
+        event);
+    ((EnrichedEvent) event)
+        .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), false);
+
+    onEvent();
+  }
+
+  private boolean constructToTabletIterator(final TsFileInsertionEvent event) {
+    currentTsFileInsertionEvent = null;
+    final Iterator<TabletInsertionEvent> tabletInsertionEventsIterator;
+    try {
+      tabletInsertionEventsIterator = event.toTabletInsertionEvents().iterator();
+      currentToTabletIterator =
+          new SubscriptionTsFileToTabletIterator(event, tabletInsertionEventsIterator);
+      return true;
+    } catch (final PipeException e) {
+      LOGGER.warn("Exception {} occurred when {} construct ToTabletIterator", this, e, e);
+      currentTsFileInsertionEvent = event;
+      return false;
+    }
+  }
+
+  private boolean constructIntoTsFileBatch(final TabletInsertionEvent event) {
+    currentTabletInsertionEvent = null;
+    if (((EnrichedEvent) event).increaseReferenceCount(this.getClass().getName())) {
+      PipeEventCommitManager.getInstance()
+          .enrichWithCommitterKeyAndCommitId(
+              (EnrichedEvent) event,
+              currentToTabletIterator.getCreationTime(),
+              currentToTabletIterator.getRegionId());
+      return onEvent(event);
+    } else {
+      LOGGER.warn(
+          "Failed to increase reference count for {} when {} construct IntoTsFileBatch",
+          event,
+          this);
+      currentTabletInsertionEvent = event;
+      return false;
+    }
   }
 
   /**
@@ -761,4 +983,48 @@ public abstract class SubscriptionPrefetchingQueue {
         }
         return ev;
       };
+
+  /////////////////////////////// tsfile to tablet iteration ///////////////////////////////
+
+  private static class SubscriptionTsFileToTabletIterator
+      implements Iterator<TabletInsertionEvent>, AutoCloseable {
+
+    private final TsFileInsertionEvent tsFileInsertionEvent;
+    private final Iterator<TabletInsertionEvent> tabletInsertionEventsIterator;
+
+    private SubscriptionTsFileToTabletIterator(
+        final TsFileInsertionEvent tsFileInsertionEvent,
+        final Iterator<TabletInsertionEvent> tabletInsertionEventsIterator) {
+      this.tsFileInsertionEvent = tsFileInsertionEvent;
+      this.tabletInsertionEventsIterator = tabletInsertionEventsIterator;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return tabletInsertionEventsIterator.hasNext();
+    }
+
+    @Override
+    public TabletInsertionEvent next() {
+      return tabletInsertionEventsIterator.next();
+    }
+
+    @Override
+    public void close() {
+      try {
+        tsFileInsertionEvent.close();
+      } catch (final Exception ignored) {
+      }
+      ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+          .clearReferenceCount(this.getClass().getName());
+    }
+
+    public long getCreationTime() {
+      return ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getCreationTime();
+    }
+
+    public int getRegionId() {
+      return ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getRegionId();
+    }
+  }
 }

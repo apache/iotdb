@@ -479,7 +479,10 @@ public class SubscriptionBroker {
                       brokerId));
       return false;
     }
-    return prefetchingQueue.executePrefetch();
+
+    return prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue
+        ? prefetchingQueue.executePrefetch()
+        : prefetchingQueue.executePrefetchV2();
   }
 
   public int getPipeEventCount(final String topicName) {

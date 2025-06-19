@@ -93,31 +93,10 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   protected void onTsFileInsertionEvent(final TsFileInsertionEvent event) {
-    // TODO: parse tsfile event on the fly like SubscriptionPipeTabletEventBatch
-    try {
-      ((PipeTsFileInsertionEvent) event)
-          .consumeTabletInsertionEventsWithRetry(
-              event1 -> {
-                if (!event1.increaseReferenceCount(this.getClass().getName())) {
-                  LOGGER.warn(
-                      "SubscriptionPipeTsFileEventBatch: Failed to increase the reference count of event {}, skipping it.",
-                      event1.coreReportMessage());
-                } else {
-                  try {
-                    batch.onEvent(event1);
-                  } catch (final Exception ignored) {
-                    // no exceptions will be thrown
-                  }
-                }
-              },
-              "SubscriptionPipeTsFileEventBatch::onTsFileInsertionEvent");
-    } finally {
-      try {
-        event.close();
-      } catch (final Exception ignored) {
-        // no exceptions will be thrown
-      }
-    }
+    LOGGER.warn(
+        "SubscriptionPipeTsFileEventBatch {} ignore TsFileInsertionEvent {} when batching.",
+        this,
+        event);
   }
 
   @Override
