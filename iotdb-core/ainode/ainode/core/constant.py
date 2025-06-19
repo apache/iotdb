@@ -175,6 +175,9 @@ class BuiltInModelType(Enum):
         """
         Check if the model ID corresponds to a built-in model.
         """
+        # TODO: Unify this ugly hard code
+        if "timerxl" in model_id or "sundial" in model_id:
+            return True
         return model_id in BuiltInModelType.values()
 
 

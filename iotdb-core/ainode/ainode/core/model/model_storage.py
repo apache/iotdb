@@ -55,7 +55,7 @@ class ModelStorage(object):
                 logger.error(e)
                 raise e
         self._builtin_model_dir = os.path.join(
-            os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir()
+            os.getcwd(), AINodeDescriptor().get_config().get_ain_builtin_models_dir()
         )
         if not os.path.exists(self._builtin_model_dir):
             try:

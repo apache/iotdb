@@ -112,7 +112,7 @@ class RegisteredStrategy(InferenceStrategy):
             msg = runtime_error_extractor(str(e)) or str(e)
             raise InferenceModelInternalError(msg)
 
-        # Return binary outputs per window
+        # concatenate or return first window for forecast
         return [convert_to_binary(df) for df in results]
 
 

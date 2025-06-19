@@ -20,6 +20,7 @@ from abc import abstractmethod
 from typing import Callable, Dict, List
 
 import numpy as np
+from huggingface_hub import hf_hub_download
 from sklearn.preprocessing import MinMaxScaler
 from sktime.annotation.hmm_learn import GMMHMM, GaussianHMM
 from sktime.annotation.stray import STRAY
@@ -29,7 +30,7 @@ from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.trend import STLForecaster
 
 from ainode.core.config import AINodeDescriptor
-from ainode.core.constant import AttributeName, BuiltInModelType
+from ainode.core.constant import AttributeName, BuiltInModelType, TIMER_REPO_ID
 from ainode.core.exception import (
     BuiltInModelNotSupportError,
     InferenceModelInternalError,
@@ -40,14 +41,12 @@ from ainode.core.exception import (
 )
 from ainode.core.log import Logger
 from ainode.core.model.sundial import modeling_sundial
-from ainode.core.model.sundial.configuration_sundial import SundialConfig
 from ainode.core.model.timerxl import modeling_timer
-from ainode.core.model.timerxl.configuration_timer import TimerConfig
 
 logger = Logger()
 
 
-def download_built_in_model_if_necessary(model_id: str, local_dir: str):
+def download_built_in_model_if_necessary(model_id: str, local_dir):
     """
     Download the built-in model from HuggingFace repository when necessary.
     """
@@ -59,7 +58,6 @@ def download_built_in_model_if_necessary(model_id: str, local_dir: str):
             )
             repo_id = TIMER_REPO_ID[model_id]
             try:
-                weights_path = os.path.join(local_dir, "model.safetensors")
                 hf_hub_download(
                     repo_id=repo_id,
                     filename="model.safetensors",
@@ -70,7 +68,7 @@ def download_built_in_model_if_necessary(model_id: str, local_dir: str):
                 hf_hub_download(
                     repo_id=repo_id,
                     filename="config.json",
-                    local_dir=config_path,
+                    local_dir=local_dir,
                 )
                 logger.info(f"Got config to {config_path}")
             except Exception as e:
@@ -107,7 +105,7 @@ def get_model_attributes(model_id: str):
     return attribute_map
 
 
-def fetch_built_in_model(model_id: str, model_dir: str) -> Callable:
+def fetch_built_in_model(model_id: str, model_dir) -> Callable:
     """
     Fetch the built-in model according to its id and directory, not that this directory only contains model weights and config.
     Args:
