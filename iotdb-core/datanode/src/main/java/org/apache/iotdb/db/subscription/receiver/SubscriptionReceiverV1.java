@@ -705,6 +705,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final List<String> topicNamesToUnsubscribe =
         SubscriptionAgent.broker().fetchTopicNamesToUnsubscribe(consumerConfig, topics.keySet());
 
+    // If it is empty, it could be that the consumer has been closed, or there are no completed
+    // topics. In this case, it should immediately return.
+    if (topicNamesToUnsubscribe.isEmpty()) {
+      return;
+    }
+
     unsubscribe(consumerConfig, new HashSet<>(topicNamesToUnsubscribe));
     LOGGER.info(
         "Subscription: consumer {} unsubscribe {} (completed topics) successfully",

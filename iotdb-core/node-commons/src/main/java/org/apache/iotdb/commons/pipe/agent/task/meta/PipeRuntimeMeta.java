@@ -140,6 +140,15 @@ public class PipeRuntimeMeta {
     this.isStoppedByRuntimeException.set(isStoppedByRuntimeException);
   }
 
+  public void persistProgressIndex() {
+    // Iterate through all the task metas and persist their progress index
+    for (final PipeTaskMeta taskMeta : consensusGroupId2TaskMetaMap.values()) {
+      if (taskMeta.getProgressIndex() != null) {
+        taskMeta.persistProgressIndex();
+      }
+    }
+  }
+
   /**
    * We use negative regionId to identify the external pipe source, which is not a consensus group
    * id. Then we can reuse the regionId to schedule the external pipe source and store the progress
