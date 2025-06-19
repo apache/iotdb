@@ -52,7 +52,7 @@ public class VariationTableFunction implements TableFunction {
   private static final String DATA_PARAMETER_NAME = "DATA";
   private static final String COL_PARAMETER_NAME = "COL";
   private static final String DELTA_PARAMETER_NAME = "DELTA";
-  private static final String IGNORE_NULL_PARAMETER_NAME = "IGNORENULL";
+  private static final String IGNORE_NULL_PARAMETER_NAME = "IGNORE_NULL";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -159,20 +159,11 @@ public class VariationTableFunction implements TableFunction {
     }
 
     @Override
-    boolean isNewGroup(Record input) {
-      if (input.isNull(0)) { // current row is null
-        if (isCurrentBaseValueIsNull()) { // current base value of current group is also null
-          // in such case, whether ignoreNull is true or false, current row always belongs to current group
-          return false;
-        } else { // current base value is not null
-          // ignoreNull is true, current null row belongs to current group
-          // ignoreNull is false, current null row doesn't belong to current group
-          return !ignoreNull;
-        }
-      } else { // current row is not null
-
+    boolean outOfBound(Record input) {
+      if (isCurrentBaseValueIsNull()) {
+        throw new IllegalStateException("When comparing, base value should never be null");
       }
-      return baseValue != null && !input.getObject(0).equals(baseValue);
+      return !input.getObject(0).equals(baseValue);
     }
   }
 
@@ -202,8 +193,11 @@ public class VariationTableFunction implements TableFunction {
     }
 
     @Override
-    boolean isNewGroup(Record input) {
-      return !baseValueIsNull && Math.abs(input.getDouble(0) - baseValue) > gap;
+    boolean outOfBound(Record input) {
+      if (isCurrentBaseValueIsNull()) {
+        throw new IllegalStateException("When comparing, base value should never be null");
+      }
+      return Math.abs(input.getDouble(0) - baseValue) > gap;
     }
   }
 
@@ -236,7 +230,33 @@ public class VariationTableFunction implements TableFunction {
       }
     }
 
-    abstract boolean isNewGroup(Record input);
+    boolean isNewGroup(Record input) {
+      if (input.isNull(0)) { // current row is null
+        if (isCurrentBaseValueIsNull()) { // current base value of current group is also null
+          // in such case, whether ignoreNull is true or false, current row always belongs to
+          // current group
+          return false;
+        } else { // current base value is not null
+          // ignoreNull is true, current null row belongs to current group
+          // ignoreNull is false, current null row doesn't belong to current group
+          return !ignoreNull;
+        }
+      } else { // current row is not null
+        if (isCurrentBaseValueIsNull()) { // current base value of current group is null
+          // ignoreNull is true, current non-null row belongs to current group
+          // ignoreNull is false, current non-null row doesn't belong to current group
+          return !ignoreNull;
+        } else { // current base value is not null
+          // compare current row with the current non-null base value
+          // if the diff between current row and base value exceed threshold, current non-null row
+          // doesn't belong to current group
+          // if the diff within the threshold, current non-null row belongs to current group
+          return outOfBound(input);
+        }
+      }
+    }
+
+    abstract boolean outOfBound(Record input);
 
     @Override
     public void process(
@@ -264,7 +284,9 @@ public class VariationTableFunction implements TableFunction {
     }
 
     protected void outputWindow(
-        List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder, Record input) {
+        List<ColumnBuilder> properColumnBuilders,
+        ColumnBuilder passThroughIndexBuilder,
+        Record input) {
       for (long i = currentStartIndex; i < curIndex; i++) {
         properColumnBuilders.get(0).writeLong(windowIndex);
         passThroughIndexBuilder.writeLong(i);

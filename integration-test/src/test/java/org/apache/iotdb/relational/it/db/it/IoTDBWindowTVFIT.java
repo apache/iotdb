@@ -238,7 +238,7 @@ public class IoTDBWindowTVFIT {
 
   @Test
   public void testVariationWithMultiTypeAndNullValue() {
-    // Test case 1: int_val with delta=1.0, ignoreNull=false
+    // Test case 1: int_val with delta=1.0, ignore_null=false
     String[] expectedHeader = new String[] {"window_index", "time", "device_id", "int_val"};
     String[] retArray =
         new String[] {
@@ -255,7 +255,7 @@ public class IoTDBWindowTVFIT {
         retArray,
         DATABASE_NAME);
 
-    // Test case 2: long_val column with delta=1.0, ignoreNull=false
+    // Test case 2: long_val column with delta=1.0, ignore_null=false
     expectedHeader = new String[] {"window_index", "time", "device_id", "long_val"};
     retArray =
         new String[] {
@@ -272,7 +272,7 @@ public class IoTDBWindowTVFIT {
         retArray,
         DATABASE_NAME);
 
-    // Test case 3: float_val with delta=1.0, ignoreNull=true
+    // Test case 3: float_val with delta=1.0, ignore_null=true
     expectedHeader = new String[] {"window_index", "time", "device_id", "float_val"};
     retArray =
         new String[] {
@@ -289,7 +289,7 @@ public class IoTDBWindowTVFIT {
         retArray,
         DATABASE_NAME);
 
-    // Test case 4: double_val with delta=1.0, ignoreNull=true
+    // Test case 4: double_val with delta=1.0, ignore_null=true
     expectedHeader = new String[] {"window_index", "time", "device_id", "double_val"};
     retArray =
         new String[] {
@@ -306,7 +306,7 @@ public class IoTDBWindowTVFIT {
         retArray,
         DATABASE_NAME);
 
-    // Test case 5: bool_val with delta=0.0, ignoreNull=true
+    // Test case 5: bool_val with delta=0.0, ignore_null=true
     expectedHeader = new String[] {"window_index", "time", "device_id", "bool_val"};
     retArray =
         new String[] {
@@ -323,7 +323,7 @@ public class IoTDBWindowTVFIT {
         retArray,
         DATABASE_NAME);
 
-    // Test case 6: str_val with delta=0.0, ignoreNull=true
+    // Test case 6: str_val with delta=0.0, ignore_null=true
     expectedHeader = new String[] {"window_index", "time", "device_id", "str_val"};
     retArray =
         new String[] {
@@ -340,7 +340,7 @@ public class IoTDBWindowTVFIT {
         retArray,
         DATABASE_NAME);
 
-    // Test case 7: blob_val with delta=0.0, ignoreNull=false
+    // Test case 7: blob_val with delta=0.0, ignore_null=false
     expectedHeader = new String[] {"window_index", "time", "device_id", "blob_val"};
     retArray =
         new String[] {
@@ -357,7 +357,7 @@ public class IoTDBWindowTVFIT {
         retArray,
         DATABASE_NAME);
 
-    // Test case 8: ts_val with delta=0.0, ignoreNull=false
+    // Test case 8: ts_val with delta=0.0, ignore_null=false
     expectedHeader = new String[] {"window_index", "time", "device_id", "ts_val"};
     retArray =
         new String[] {
@@ -369,12 +369,12 @@ public class IoTDBWindowTVFIT {
           "3,2021-01-01T09:05:00.000Z,device1,2021-01-01T10:00:00.000Z,"
         };
     tableResultSetEqualTest(
-        "SELECT window_index, time, device_id, ts_val FROM variation(DATA=>multi_type, COL=>'ts_val', IGNORENULL=>false)",
+        "SELECT window_index, time, device_id, ts_val FROM variation(DATA=>multi_type, COL=>'ts_val', ignore_null=>false)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
-    // Test case 9: date_val with delta=0.0, ignoreNull=true (use default parameter)
+    // Test case 9: date_val with delta=0.0, ignore_null=true (use default parameter)
     expectedHeader = new String[] {"window_index", "time", "device_id", "date_val"};
     retArray =
         new String[] {
