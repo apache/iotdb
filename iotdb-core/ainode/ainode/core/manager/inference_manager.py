@@ -21,7 +21,7 @@ import pandas as pd
 import torch
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 
-from ainode.core.constant import TSStatusCode, BuiltInModelType
+from ainode.core.constant import BuiltInModelType, TSStatusCode
 from ainode.core.exception import (
     InferenceModelInternalError,
     InvalidWindowArgumentError,
@@ -50,71 +50,32 @@ class InferenceStrategy(ABC):
         pass
 
 
-# [IoTDB] Full data deserialized from IoTDB is composed of [timestampList, valueList, length],
-# currently we only use valueList.
-# The method there is under discussion.
+# [IoTDB] full data deserialized from iotdb is composed of [timestampList, valueList, length],
+# we only get valueList currently.
 class TimerXLStrategy(InferenceStrategy):
-    def infer(self, full_data, predict_length=96, **kwargs):
+    def infer(self, full_data, predict_length=96, **_):
         data = full_data[1][0]
         if data.dtype.byteorder not in ("=", "|"):
             data = data.byteswap().newbyteorder()
         seqs = torch.tensor(data).unsqueeze(0).float()
-
-        revin = kwargs.get("revin", True)
-
-        if "max_new_tokens" in kwargs:
-            logger.warning(
-                "Using deprecated parameter 'max_new_tokens', please use 'predict_length' instead"
-            )
-            predict_length = kwargs.get("max_new_tokens", predict_length)
-
-        logger.debug(
-            f"TimerXL inference: input_shape={seqs.shape}, predict_length={predict_length}"
-        )
-
-        try:
-            output = self.model.generate(
-                seqs, max_new_tokens=predict_length, revin=revin
-            )
-            df = pd.DataFrame(output[0])
-            return convert_to_binary(df)
-        except Exception as e:
-            logger.error(f"TimerXL inference failed: {e}")
-            raise InferenceModelInternalError(f"TimerXL inference error: {str(e)}")
+        # TODO: unify model inference input
+        output = self.model.generate(seqs, max_new_tokens=predict_length, revin=True)
+        df = pd.DataFrame(output[0])
+        return convert_to_binary(df)
 
 
 class SundialStrategy(InferenceStrategy):
-    def infer(self, full_data, predict_length=96, **kwargs):
+    def infer(self, full_data, predict_length=96, **_):
         data = full_data[1][0]
         if data.dtype.byteorder not in ("=", "|"):
             data = data.byteswap().newbyteorder()
         seqs = torch.tensor(data).unsqueeze(0).float()
-
-        revin = kwargs.get("revin", True)
-        num_samples = kwargs.get("num_samples", 10)
-
-        if "max_new_tokens" in kwargs:
-            logger.warning(
-                "Using deprecated parameter 'max_new_tokens', please use 'predict_length' instead"
-            )
-            predict_length = kwargs.get("max_new_tokens", predict_length)
-
-        logger.debug(
-            f"Sundial inference: input_shape={seqs.shape}, predict_length={predict_length}, num_samples={num_samples}"
+        # TODO: unify model inference input
+        output = self.model.generate(
+            seqs, max_new_tokens=predict_length, num_samples=10, revin=True
         )
-
-        try:
-            output = self.model.generate(
-                seqs,
-                max_new_tokens=predict_length,
-                num_samples=num_samples,
-                revin=revin,
-            )
-            df = pd.DataFrame(output[0].mean(dim=0))
-            return convert_to_binary(df)
-        except Exception as e:
-            logger.error(f"Sundial inference failed: {e}")
-            raise InferenceModelInternalError(f"Sundial inference error: {str(e)}")
+        df = pd.DataFrame(output[0].mean(dim=0))
+        return convert_to_binary(df)
 
 
 class BuiltInStrategy(InferenceStrategy):
@@ -214,7 +175,9 @@ class InferenceManager:
 
             # load model
             accel = str(inference_attrs.get("acceleration", "")).lower() == "true"
-            model = self.model_manager.load_model(model_id, BuiltInModelType.is_built_in_model(model_id), accel)
+            model = self.model_manager.load_model(
+                model_id, BuiltInModelType.is_built_in_model(model_id), accel
+            )
 
             # inference by strategy
             strategy = _get_strategy(model_id, model)
@@ -259,15 +222,3 @@ class InferenceManager:
             resp_cls=TInferenceResp,
             single_output=False,
         )
-
-    def get_model_info(self, model_id: str) -> dict:
-        try:
-            model_status = self.model_manager.get_model_status(model_id)
-            return {
-                "model_id": model_id,
-                "status": model_status,
-                "strategy": "determined_at_runtime",
-            }
-        except Exception as e:
-            logger.error(f"Failed to get model info for {model_id}: {e}")
-            return {"model_id": model_id, "status": "UNKNOWN", "error": str(e)}

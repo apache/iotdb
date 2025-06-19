@@ -17,7 +17,7 @@
 #
 import os
 from abc import abstractmethod
-from typing import Dict, List, Callable
+from typing import Callable, Dict, List
 
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
@@ -46,6 +46,7 @@ from ainode.core.model.timerxl.configuration_timer import TimerConfig
 
 logger = Logger()
 
+
 def download_built_in_model_if_necessary(model_id: str, local_dir: str):
     """
     Download the built-in model from HuggingFace repository when necessary.
@@ -73,8 +74,11 @@ def download_built_in_model_if_necessary(model_id: str, local_dir: str):
                 )
                 logger.info(f"Got config to {config_path}")
             except Exception as e:
-                logger.error(f"Failed to download huggingface model to {local_dir} due to {e}")
+                logger.error(
+                    f"Failed to download huggingface model to {local_dir} due to {e}"
+                )
                 raise e
+
 
 def get_model_attributes(model_id: str):
     if model_id == BuiltInModelType.ARIMA.value:
@@ -543,6 +547,10 @@ timerxl_attribute_map = {
         name=AttributeName.CKPT_PATH.value,
         default_value=os.path.join(
             os.getcwd(),
+            AINodeDescriptor().get_config().get_ain_models_dir(),
+            "weights",
+            "timerxl",
+            "model.safetensors",
         ),
         value_choices=[""],
     ),

@@ -33,11 +33,19 @@ from ainode.core.constant import (
     DEFAULT_CONFIG_FILE_NAME,
     DEFAULT_MODEL_FILE_NAME,
     JSON_CONFIG_FILES,
-    WEIGHT_FORMAT_PRIORITY, BuiltInModelType,
+    WEIGHT_FORMAT_PRIORITY,
+    BuiltInModelType,
 )
-from ainode.core.exception import ModelLoadingError, ModelNotExistError, BuiltInModelNotSupportError
+from ainode.core.exception import (
+    BuiltInModelNotSupportError,
+    ModelLoadingError,
+    ModelNotExistError,
+)
 from ainode.core.log import Logger
-from ainode.core.model.built_in_model_factory import download_built_in_model_if_necessary, fetch_built_in_model
+from ainode.core.model.built_in_model_factory import (
+    download_built_in_model_if_necessary,
+    fetch_built_in_model,
+)
 from ainode.core.model.config_parser import (
     convert_iotdb_config_to_ainode_format,
     detect_config_format,
@@ -213,7 +221,9 @@ class ModelStorage(object):
             self._model_cache[model_path] = model
             return model
 
-    def load_model(self, model_id: str, is_built_in: bool, acceleration: bool) -> Callable:
+    def load_model(
+        self, model_id: str, is_built_in: bool, acceleration: bool
+    ) -> Callable:
         """
         Load a model with automatic detection of .safetensors or .pt format
 
@@ -250,7 +260,6 @@ class ModelStorage(object):
                 # TODO: support save the user-defined model
                 # model_dir = os.path.join(self._model_dir, f"{model_id}")
                 raise NotImplementedError
-
 
     def delete_model(self, model_id: str) -> None:
         """

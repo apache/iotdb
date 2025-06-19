@@ -54,93 +54,51 @@ class ModelManager:
         self.model_storage = ModelStorage()
 
     def register_model(self, req: TRegisterModelReq) -> TRegisterModelResp:
-        logger.info(f"Starting register model {req.modelId} from {req.uri}")
-
+        logger.info(f"register model {req.modelId} from {req.uri}")
         try:
             configs, attributes = self.model_storage.register_model(
                 req.modelId, req.uri
             )
-
-            # Validate the model files after registration
-            try:
-                validation_result = self.model_storage.validate_model_files(req.modelId)
-                if not validation_result["valid"]:
-                    error_msg = (
-                        f"Model validation failed: {validation_result['errors']}"
-                    )
-                    logger.error(error_msg)
-                    self.model_storage.delete_model(req.modelId)
-                    return TRegisterModelResp(
-                        get_status(TSStatusCode.INVALID_URI_ERROR, error_msg)
-                    )
-
-                # Log model format
-                model_format = validation_result.get("format", "unknown")
-                logger.info(
-                    f"Model {req.modelId} registered, with format: {model_format}"
-                )
-
-            except Exception as e:
-                logger.warning(f"Registered model without validation: {e}")
-
             return TRegisterModelResp(
                 get_status(TSStatusCode.SUCCESS_STATUS), configs, attributes
             )
-
         except InvalidUriError as e:
             logger.warning(e)
-            self._update_model_status(req.modelId, "ERROR", str(e))
             self.model_storage.delete_model(req.modelId)
             return TRegisterModelResp(
                 get_status(TSStatusCode.INVALID_URI_ERROR, e.message)
             )
         except BadConfigValueError as e:
             logger.warning(e)
-            self._update_model_status(req.modelId, "ERROR", str(e))
             self.model_storage.delete_model(req.modelId)
             return TRegisterModelResp(
                 get_status(TSStatusCode.INVALID_INFERENCE_CONFIG, e.message)
             )
-        except (
-            ModelLoadingError,
-            ModelFormatError,
-            ConfigValidationError,
-            WeightFileError,
-        ) as e:
-            logger.warning(f"IoTDB model failed: {e}")
-            self._update_model_status(req.modelId, "ERROR", str(e))
-            self.model_storage.delete_model(req.modelId)
-            return TRegisterModelResp(
-                get_status(TSStatusCode.INVALID_URI_ERROR, str(e))
-            )
         except YAMLError as e:
             logger.warning(e)
-            self._update_model_status(req.modelId, "ERROR", "YAML parsing error")
             self.model_storage.delete_model(req.modelId)
             if hasattr(e, "problem_mark"):
                 mark = e.problem_mark
                 return TRegisterModelResp(
                     get_status(
                         TSStatusCode.INVALID_INFERENCE_CONFIG,
-                        f"An error occurred while parsing the YAML file at line {mark.line + 1} column {mark.column + 1}.",
+                        f"An error occurred while parsing the yaml file, "
+                        f"at line {mark.line + 1} column {mark.column + 1}.",
                     )
                 )
             return TRegisterModelResp(
                 get_status(
                     TSStatusCode.INVALID_INFERENCE_CONFIG,
-                    "An error occurred while parsing the YAML file",
+                    f"An error occurred while parsing the yaml file",
                 )
             )
         except Exception as e:
-            logger.warning(f"Unknown error: {e}")
-            self._update_model_status(req.modelId, "ERROR", str(e))
+            logger.warning(e)
             self.model_storage.delete_model(req.modelId)
-            return TRegisterModelResp(
-                get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
-            )
+            return TRegisterModelResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR))
 
     def delete_model(self, req: TDeleteModelReq) -> TSStatus:
-        logger.info(f"Delete model {req.modelId}")
+        logger.info(f"delete model {req.modelId}")
         try:
             self.model_storage.delete_model(req.modelId)
             return get_status(TSStatusCode.SUCCESS_STATUS)
@@ -148,20 +106,26 @@ class ModelManager:
             logger.warning(e)
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
 
-    def load_model(self, model_id: str, is_built_in: bool, acceleration: bool = False) -> Callable:
+    def load_model(
+        self, model_id: str, is_built_in: bool, acceleration: bool = False
+    ) -> Callable:
         """
         Load the model with the given model_id.
         """
         logger.info(f"Load model {model_id}")
         try:
-            model = self.model_storage.load_model(model_id.lower(), is_built_in, acceleration)
+            model = self.model_storage.load_model(
+                model_id.lower(), is_built_in, acceleration
+            )
             logger.info(f"Model {model_id} loaded")
             return model
         except Exception as e:
             logger.error(f"Failed to load model {model_id}: {e}")
             raise
 
-    def save_model(self, model_id: str, is_built_in: bool, model: nn.Module) -> TSStatus:
+    def save_model(
+        self, model_id: str, is_built_in: bool, model: nn.Module
+    ) -> TSStatus:
         """
         Save the model using save_pretrained
         """

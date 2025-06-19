@@ -16,6 +16,7 @@
 # under the License.
 #
 
+from ainode.core.constant import TSStatusCode
 from ainode.core.log import Logger
 from ainode.core.manager.cluster_manager import ClusterManager
 from ainode.core.manager.inference_manager import InferenceManager

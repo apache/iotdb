@@ -19,6 +19,7 @@ import os
 
 from ainode.core.constant import (
     AINODE_BUILD_INFO,
+    AINODE_BUILTIN_MODELS_DIR,
     AINODE_CLUSTER_NAME,
     AINODE_CONF_DIRECTORY_NAME,
     AINODE_CONF_FILE_NAME,
@@ -33,7 +34,7 @@ from ainode.core.constant import (
     AINODE_SYSTEM_DIR,
     AINODE_SYSTEM_FILE_NAME,
     AINODE_THRIFT_COMPRESSION_ENABLED,
-    AINODE_VERSION_INFO, AINODE_BUILTIN_MODELS_DIR,
+    AINODE_VERSION_INFO,
 )
 from ainode.core.exception import BadNodeUrlError
 from ainode.core.log import Logger
