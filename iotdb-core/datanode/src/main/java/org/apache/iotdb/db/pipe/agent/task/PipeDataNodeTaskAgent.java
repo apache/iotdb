@@ -843,6 +843,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Shutdown Logic /////////////////////////
 
   public void persistAllProgressIndexLocally() {
+    if (!PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()) {
+      LOGGER.info(
+          "Pipe progress index persist disabled. Skipping persist all progress index locally.");
+      return;
+    }
     if (!tryReadLockWithTimeOut(10)) {
       LOGGER.info("Failed to persist all progress index locally because of timeout.");
       return;
