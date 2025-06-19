@@ -481,7 +481,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   @Override
   public TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
-    if (Objects.isNull(compressionTimer)) {
+    if (Objects.isNull(compressionTimer) && Objects.nonNull(attributeSortedString)) {
       compressionTimer =
           PipeDataRegionConnectorMetrics.getInstance().getCompressionTimer(attributeSortedString);
     }
