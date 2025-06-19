@@ -126,6 +126,7 @@ public class IoTConsensusServerImpl {
   private final ScheduledExecutorService backgroundTaskService;
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
+  private IndexedConsensusRequest lastConsensusRequest;
 
   public IoTConsensusServerImpl(
       String storageDir,
@@ -208,12 +209,14 @@ public class IoTConsensusServerImpl {
           writeToStateMachineStartTime - getStateMachineLockTime);
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
+      lastConsensusRequest = indexedConsensusRequest;
       if (indexedConsensusRequest.getSearchIndex() % 100000 == 0) {
         logger.info(
-            "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
+            "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}, lastConsensusRequest: {}",
             thisNode.getGroupId(),
             getMinSyncIndex(),
-            indexedConsensusRequest.getSearchIndex());
+            indexedConsensusRequest.getSearchIndex(),
+            lastConsensusRequest.getSerializedRequests());
       }
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
       long startWriteTime = System.nanoTime();

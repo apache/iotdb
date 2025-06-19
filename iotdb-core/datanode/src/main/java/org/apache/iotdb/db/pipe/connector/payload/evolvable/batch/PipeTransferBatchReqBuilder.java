@@ -44,10 +44,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TS_FILE_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_MS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PLAIN_BATCH_DELAY_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_TS_FILE_BATCH_DELAY_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE;
@@ -93,15 +93,14 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
     final Integer requestMaxDelayInMillis =
         parameters.getIntByKeys(CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY, SINK_IOTDB_BATCH_DELAY_MS_KEY);
     if (Objects.isNull(requestMaxDelayInMillis)) {
-      final int requestMaxDelayInSeconds =
+      final int requestMaxDelayConfig =
           parameters.getIntOrDefault(
               Arrays.asList(
                   CONNECTOR_IOTDB_BATCH_DELAY_SECONDS_KEY, SINK_IOTDB_BATCH_DELAY_SECONDS_KEY),
               usingTsFileBatch
-                  ? CONNECTOR_IOTDB_TS_FILE_BATCH_DELAY_DEFAULT_VALUE
-                  : CONNECTOR_IOTDB_PLAIN_BATCH_DELAY_DEFAULT_VALUE);
-      requestMaxDelayInMs =
-          requestMaxDelayInSeconds < 0 ? Integer.MAX_VALUE : requestMaxDelayInSeconds * 1000;
+                  ? CONNECTOR_IOTDB_TS_FILE_BATCH_DELAY_DEFAULT_VALUE * 1000
+                  : CONNECTOR_IOTDB_BATCH_DELAY_MS_DEFAULT_VALUE);
+      requestMaxDelayInMs = requestMaxDelayConfig < 0 ? Integer.MAX_VALUE : requestMaxDelayConfig;
     } else {
       requestMaxDelayInMs =
           requestMaxDelayInMillis < 0 ? Integer.MAX_VALUE : requestMaxDelayInMillis;
@@ -123,20 +122,18 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
    * duplicated.
    *
    * @param event the given {@link Event}
-   * @return {@link Pair}<{@link TEndPoint}, {@link PipeTabletEventPlainBatch}> not null means this
-   *     {@link PipeTabletEventPlainBatch} can be transferred. the first element is the leader
-   *     endpoint to transfer to (might be null), the second element is the batch to be transferred.
    */
-  public synchronized Pair<TEndPoint, PipeTabletEventBatch> onEvent(
-      final TabletInsertionEvent event) throws IOException, WALPipeException {
+  public synchronized void onEvent(final TabletInsertionEvent event)
+      throws IOException, WALPipeException {
     if (!(event instanceof EnrichedEvent)) {
       LOGGER.warn(
           "Unsupported event {} type {} when building transfer request", event, event.getClass());
-      return null;
+      return;
     }
 
     if (!useLeaderCache) {
-      return defaultBatch.onEvent(event) ? new Pair<>(null, defaultBatch) : null;
+      defaultBatch.onEvent(event);
+      return;
     }
 
     String deviceId = null;
@@ -147,35 +144,38 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
     }
 
     if (Objects.isNull(deviceId)) {
-      return defaultBatch.onEvent(event) ? new Pair<>(null, defaultBatch) : null;
+      defaultBatch.onEvent(event);
+      return;
     }
 
     final TEndPoint endPoint =
         IoTDBDataNodeCacheLeaderClientManager.LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId);
     if (Objects.isNull(endPoint)) {
-      return defaultBatch.onEvent(event) ? new Pair<>(null, defaultBatch) : null;
+      defaultBatch.onEvent(event);
+      return;
     }
-
-    final PipeTabletEventPlainBatch batch =
-        endPointToBatch.computeIfAbsent(
+    endPointToBatch
+        .computeIfAbsent(
             endPoint,
-            k -> new PipeTabletEventPlainBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes));
-    return batch.onEvent(event) ? new Pair<>(endPoint, batch) : null;
+            k -> new PipeTabletEventPlainBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes))
+        .onEvent(event);
   }
 
   /** Get all batches that have at least 1 event. */
-  public synchronized List<Pair<TEndPoint, PipeTabletEventBatch>> getAllNonEmptyBatches() {
-    final List<Pair<TEndPoint, PipeTabletEventBatch>> nonEmptyBatches = new ArrayList<>();
-    if (!defaultBatch.isEmpty()) {
-      nonEmptyBatches.add(new Pair<>(null, defaultBatch));
+  public synchronized List<Pair<TEndPoint, PipeTabletEventBatch>>
+      getAllNonEmptyAndShouldEmitBatches() {
+    final List<Pair<TEndPoint, PipeTabletEventBatch>> nonEmptyAndShouldEmitBatches =
+        new ArrayList<>();
+    if (!defaultBatch.isEmpty() && defaultBatch.shouldEmit()) {
+      nonEmptyAndShouldEmitBatches.add(new Pair<>(null, defaultBatch));
     }
     endPointToBatch.forEach(
         (endPoint, batch) -> {
-          if (!batch.isEmpty()) {
-            nonEmptyBatches.add(new Pair<>(endPoint, batch));
+          if (!batch.isEmpty() && batch.shouldEmit()) {
+            nonEmptyAndShouldEmitBatches.add(new Pair<>(endPoint, batch));
           }
         });
-    return nonEmptyBatches;
+    return nonEmptyAndShouldEmitBatches;
   }
 
   public boolean isEmpty() {

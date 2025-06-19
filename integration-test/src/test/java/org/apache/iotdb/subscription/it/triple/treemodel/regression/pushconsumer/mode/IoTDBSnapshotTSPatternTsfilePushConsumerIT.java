@@ -27,6 +27,8 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
+import org.apache.iotdb.subscription.it.Retry;
+import org.apache.iotdb.subscription.it.RetryRule;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
@@ -43,6 +45,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -65,6 +68,9 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 @Category({MultiClusterIT2SubscriptionTreeRegressionConsumer.class})
 public class IoTDBSnapshotTSPatternTsfilePushConsumerIT
     extends AbstractSubscriptionTreeRegressionIT {
+
+  @Rule public RetryRule retryRule = new RetryRule();
+
   private static final String database = "root.test.SnapshotTSPatternTsfilePushConsumer";
   private static final String database2 = "root.SnapshotTSPatternTsfilePushConsumer";
   private static final String device = database + ".d_0";
@@ -124,6 +130,7 @@ public class IoTDBSnapshotTSPatternTsfilePushConsumerIT
     subs.dropTopic(topicName);
     dropDB(database);
     dropDB(database2);
+    schemaList.clear();
     super.tearDown();
   }
 
@@ -143,6 +150,7 @@ public class IoTDBSnapshotTSPatternTsfilePushConsumerIT
   }
 
   @Test
+  @Retry
   public void do_test()
       throws InterruptedException,
           TException,

@@ -256,6 +256,7 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
     final Set<IMeasurementSchema> seen = new HashSet<>();
     final List<Integer> distinctIndices =
         IntStream.range(0, aggregatedSchemas.size())
+            .filter(i -> Objects.nonNull(aggregatedSchemas.get(i)))
             .filter(i -> seen.add(aggregatedSchemas.get(i))) // Only keep the first occurrence index
             .boxed()
             .collect(Collectors.toList());

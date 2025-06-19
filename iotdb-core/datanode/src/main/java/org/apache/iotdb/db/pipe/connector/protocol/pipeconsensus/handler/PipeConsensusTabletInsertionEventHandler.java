@@ -95,8 +95,11 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
         LOGGER.info(
             "InsertNodeTransfer: no.{} event successfully processed!",
             ((EnrichedEvent) event).getReplicateIndexForIoTV2());
-        connector.removeEventFromBuffer((EnrichedEvent) event);
       }
+
+      // if code flow reach here, meaning the file will not be resent and will be ignored.
+      // events that don't need to be retried will be removed from the buffer
+      connector.removeEventFromBuffer((EnrichedEvent) event);
 
       long duration = System.nanoTime() - createTime;
       metric.recordConnectorWalTransferTimer(duration);

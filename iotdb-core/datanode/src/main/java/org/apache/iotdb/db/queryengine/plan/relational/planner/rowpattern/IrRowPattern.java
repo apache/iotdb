@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -32,61 +34,61 @@ public abstract class IrRowPattern {
 
   public static void serialize(IrRowPattern pattern, ByteBuffer byteBuffer) {
     if (pattern instanceof IrAlternation) {
-      ReadWriteIOUtils.write(0, byteBuffer); // Type marker for IrAlternation
+      ReadWriteIOUtils.write(0, byteBuffer);
       IrAlternation.serialize((IrAlternation) pattern, byteBuffer);
     } else if (pattern instanceof IrAnchor) {
-      ReadWriteIOUtils.write(1, byteBuffer); // Type marker for IrAnchor
+      ReadWriteIOUtils.write(1, byteBuffer);
       IrAnchor.serialize((IrAnchor) pattern, byteBuffer);
     } else if (pattern instanceof IrConcatenation) {
-      ReadWriteIOUtils.write(2, byteBuffer); // Type marker for IrConcatenation
+      ReadWriteIOUtils.write(2, byteBuffer);
       IrConcatenation.serialize((IrConcatenation) pattern, byteBuffer);
     } else if (pattern instanceof IrEmpty) {
-      ReadWriteIOUtils.write(3, byteBuffer); // Type marker for IrEmpty
+      ReadWriteIOUtils.write(3, byteBuffer);
       IrEmpty.serialize((IrEmpty) pattern, byteBuffer);
     } else if (pattern instanceof IrExclusion) {
-      ReadWriteIOUtils.write(4, byteBuffer); // Type marker for IrExclusion
+      ReadWriteIOUtils.write(4, byteBuffer);
       IrExclusion.serialize((IrExclusion) pattern, byteBuffer);
     } else if (pattern instanceof IrLabel) {
-      ReadWriteIOUtils.write(5, byteBuffer); // Type marker for IrLabel
+      ReadWriteIOUtils.write(5, byteBuffer);
       IrLabel.serialize((IrLabel) pattern, byteBuffer);
     } else if (pattern instanceof IrPermutation) {
-      ReadWriteIOUtils.write(6, byteBuffer); // Type marker for IrPermutation
+      ReadWriteIOUtils.write(6, byteBuffer);
       IrPermutation.serialize((IrPermutation) pattern, byteBuffer);
     } else if (pattern instanceof IrQuantified) {
-      ReadWriteIOUtils.write(7, byteBuffer); // Type marker for IrQuantified
+      ReadWriteIOUtils.write(7, byteBuffer);
       IrQuantified.serialize((IrQuantified) pattern, byteBuffer);
     } else {
-      throw new IllegalArgumentException("Unknown IrRowPattern type");
+      throw new SemanticException("Unknown IrRowPattern type");
     }
   }
 
   public static void serialize(IrRowPattern pattern, DataOutputStream stream) throws IOException {
     if (pattern instanceof IrAlternation) {
-      ReadWriteIOUtils.write(0, stream); // Type marker for IrAlternation
+      ReadWriteIOUtils.write(0, stream);
       IrAlternation.serialize((IrAlternation) pattern, stream);
     } else if (pattern instanceof IrAnchor) {
-      ReadWriteIOUtils.write(1, stream); // Type marker for IrAnchor
+      ReadWriteIOUtils.write(1, stream);
       IrAnchor.serialize((IrAnchor) pattern, stream);
     } else if (pattern instanceof IrConcatenation) {
-      ReadWriteIOUtils.write(2, stream); // Type marker for IrConcatenation
+      ReadWriteIOUtils.write(2, stream);
       IrConcatenation.serialize((IrConcatenation) pattern, stream);
     } else if (pattern instanceof IrEmpty) {
-      ReadWriteIOUtils.write(3, stream); // Type marker for IrEmpty
+      ReadWriteIOUtils.write(3, stream);
       IrEmpty.serialize((IrEmpty) pattern, stream);
     } else if (pattern instanceof IrExclusion) {
-      ReadWriteIOUtils.write(4, stream); // Type marker for IrExclusion
+      ReadWriteIOUtils.write(4, stream);
       IrExclusion.serialize((IrExclusion) pattern, stream);
     } else if (pattern instanceof IrLabel) {
-      ReadWriteIOUtils.write(5, stream); // Type marker for IrLabel
+      ReadWriteIOUtils.write(5, stream);
       IrLabel.serialize((IrLabel) pattern, stream);
     } else if (pattern instanceof IrPermutation) {
-      ReadWriteIOUtils.write(6, stream); // Type marker for IrPermutation
+      ReadWriteIOUtils.write(6, stream);
       IrPermutation.serialize((IrPermutation) pattern, stream);
     } else if (pattern instanceof IrQuantified) {
-      ReadWriteIOUtils.write(7, stream); // Type marker for IrQuantified
+      ReadWriteIOUtils.write(7, stream);
       IrQuantified.serialize((IrQuantified) pattern, stream);
     } else {
-      throw new IllegalArgumentException("Unknown IrRowPattern type");
+      throw new SemanticException("Unknown IrRowPattern type");
     }
   }
 
@@ -111,7 +113,7 @@ public abstract class IrRowPattern {
       case 7:
         return IrQuantified.deserialize(byteBuffer);
       default:
-        throw new IllegalArgumentException("Unknown IrRowPattern type");
+        throw new SemanticException("Unknown IrRowPattern type");
     }
   }
 }

@@ -698,18 +698,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     if (context.isBuildPlanUseTemplate()) {
       Ordering scanOrder = context.getTemplatedInfo().getScanOrder();
-      List<AggregationDescriptor> aggregationDescriptors;
-      if (node.getDescriptorType() == 0 || node.getDescriptorType() == 2) {
-        aggregationDescriptors = context.getTemplatedInfo().getAscendingDescriptorList();
-      } else {
+      if (node.getDescriptorType() == 1) {
         scanOrder = scanOrder.reverse();
-        aggregationDescriptors = context.getTemplatedInfo().getDescendingDescriptorList();
       }
 
       return constructAlignedSeriesAggregationScanOperator(
           node.getPlanNodeId(),
           node.getAlignedPath(),
-          aggregationDescriptors,
+          node.getAggregationDescriptorList(),
           context.getTemplatedInfo().getPushDownPredicate(),
           scanOrder,
           context.getTemplatedInfo().getGroupByTimeParameter(),
@@ -1189,8 +1185,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     if (!sortItemList.get(0).getSortKey().equalsIgnoreCase("Device")) {
-      throw new IllegalArgumentException(
-          "Only order by device align by device support AggregationMergeSortNode.");
+      throw new IllegalStateException(
+          "AggregationMergeSortNode without order by device should not appear here");
     }
 
     boolean timeAscending = true;

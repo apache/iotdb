@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannel
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
+import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -198,6 +199,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctio
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
@@ -303,7 +305,6 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getPreviousFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_FIRST;
@@ -450,8 +451,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                       TypeFactory.getType(columnSchema.getDataType()),
                       false,
                       columnSchema.getColumnCategory()));
+          containsFieldColumn = true;
         }
       }
+    }
+    // For non-aligned series, scan cannot be performed when no field columns
+    // can be obtained, so an empty result set is returned.
+    if (!containsFieldColumn || node.getDeviceEntries().isEmpty()) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  EmptyDataOperator.class.getSimpleName());
+      return new EmptyDataOperator(operatorContext);
     }
     String treePrefixPath = DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable);
     IDeviceID.TreeDeviceIdColumnValueExtractor extractor =
@@ -509,6 +523,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<IMeasurementSchema> measurementSchemas = commonParameter.measurementSchemas;
     List<String> measurementColumnNames = commonParameter.measurementColumnNames;
     List<ColumnSchema> fullColumnSchemas = commonParameter.columnSchemas;
+    List<Symbol> symbolInputs = commonParameter.symbolInputs;
     int[] columnsIndexArray = commonParameter.columnsIndexArray;
 
     boolean isSingleColumn = measurementSchemas.size() == 1;
@@ -610,7 +625,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                   node.getTimePredicate()
                       .map(expression -> getSeriesScanOptionsBuilder(context, expression))
                       .orElseGet(SeriesScanOptions.Builder::new);
-              builder.withAllSensors(new HashSet<>(measurementColumnNames));
+              builder
+                  .withIsTableViewForTreeModel(true)
+                  .withAllSensors(new HashSet<>(measurementColumnNames));
               if (pushDownPredicateForCurrentMeasurement != null) {
                 builder.withPushDownFilter(
                     convertPredicateToFilter(
@@ -812,7 +829,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             for (int i = 0; i < fullColumnSchemas.size(); i++) {
               ColumnSchema columnSchema = fullColumnSchemas.get(i);
               symbolInputLocationMap
-                  .computeIfAbsent(new Symbol(columnSchema.getName()), key -> new ArrayList<>())
+                  .computeIfAbsent(
+                      new Symbol(symbolInputs.get(i).getName()), key -> new ArrayList<>())
                   .add(new InputLocation(0, i));
               inputDataTypeList.add(getTSDataType(columnSchema.getType()));
             }
@@ -864,6 +882,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     List<Symbol> outputColumnNames;
     List<ColumnSchema> columnSchemas;
+    List<Symbol> symbolInputs;
     int[] columnsIndexArray;
     Map<Symbol, ColumnSchema> columnSchemaMap;
     Map<Symbol, Integer> tagAndAttributeColumnsIndexMap;
@@ -882,6 +901,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       int outputColumnCount =
           keepNonOutputMeasurementColumns ? node.getAssignments().size() : outputColumnNames.size();
       columnSchemas = new ArrayList<>(outputColumnCount);
+      symbolInputs = new ArrayList<>(outputColumnCount);
       columnsIndexArray = new int[outputColumnCount];
       columnSchemaMap = node.getAssignments();
       tagAndAttributeColumnsIndexMap = node.getTagAndAttributeIndexMap();
@@ -896,6 +916,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         ColumnSchema schema =
             requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
 
+        symbolInputs.add(columnName);
         switch (schema.getColumnCategory()) {
           case TAG:
           case ATTRIBUTE:
@@ -934,6 +955,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           if (keepNonOutputMeasurementColumns) {
             columnSchemas.add(entry.getValue());
             columnsIndexArray[idx++] = measurementColumnCount;
+            symbolInputs.add(entry.getKey());
           }
           measurementColumnCount++;
           String realMeasurementName =
@@ -948,13 +970,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         } else if (entry.getValue().getColumnCategory() == TIME) {
           timeColumnName = entry.getKey().getName();
           // for non aligned series table view scan, here the time column will not be obtained
-          // through
-          // this structure, but we need to ensure that the length of columnSchemas is consistent
-          // with
-          // the length of columnsIndexArray
+          // through this structure, but we need to ensure that the length of columnSchemas is
+          // consistent with the length of columnsIndexArray
           if (keepNonOutputMeasurementColumns && !addedTimeColumn) {
             columnSchemas.add(entry.getValue());
             columnsIndexArray[idx++] = -1;
+            symbolInputs.add(entry.getKey());
           }
         }
       }
@@ -1075,6 +1096,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.isPushLimitToEachDevice(),
             node.getPushDownPredicate());
     seriesScanOptions.setTTLForTableView(viewTTL);
+    seriesScanOptions.setIsTableViewForTreeModel(node instanceof TreeDeviceViewScanNode);
 
     OperatorContext operatorContext =
         context
@@ -1117,6 +1139,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         TableScanOperator.class.getSimpleName(),
         Collections.emptyMap(),
         Long.MAX_VALUE);
+  }
+
+  @Override
+  public Operator visitTreeDeviceViewScan(
+      TreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
+    if (node.getDeviceEntries().isEmpty() || node.getTreeDBName() == null) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  EmptyDataOperator.class.getSimpleName());
+      return new EmptyDataOperator(operatorContext);
+    }
+    throw new IllegalArgumentException("Valid TreeDeviceViewScanNode is not expected here.");
   }
 
   @Override
@@ -2872,6 +2910,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.isPushLimitToEachDevice(),
             node.getPushDownPredicate());
     seriesScanOptions.setTTLForTableView(tableViewTTL);
+    seriesScanOptions.setIsTableViewForTreeModel(node instanceof AggregationTreeDeviceViewScanNode);
 
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
     allSensors.add(""); // for time column
@@ -2963,7 +3002,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         for (int j = 0; j < lastByResult.get().getRight().length; j++) {
           TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
           if (tsPrimitiveType == null
-              || tsPrimitiveType == EMPTY_PRIMITIVE_TYPE
               || (updateTimeFilter != null
                   && !LastQueryUtil.satisfyFilter(
                       updateTimeFilter,

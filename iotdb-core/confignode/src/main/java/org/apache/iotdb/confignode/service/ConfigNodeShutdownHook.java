@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -87,6 +88,8 @@ public class ConfigNodeShutdownHook extends Thread {
             "Reporting ConfigNode shutdown failed. The cluster will still take the current ConfigNode as Running for a few seconds.");
       }
     }
+    // Shutdown pipe progressIndex background service
+    PipePeriodicalJobExecutor.shutdownBackgroundService();
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(

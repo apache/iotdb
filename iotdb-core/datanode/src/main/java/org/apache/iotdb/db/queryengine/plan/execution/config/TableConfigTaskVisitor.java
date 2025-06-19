@@ -1377,8 +1377,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         node.isUseAllData(),
         node.getTargetTimeRanges(),
         node.getExistingModelId(),
-        node.getTargetDbs(),
-        tableList);
+        tableList,
+        node.getTargetDbs());
   }
 
   @Override

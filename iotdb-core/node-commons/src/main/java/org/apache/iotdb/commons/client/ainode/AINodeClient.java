@@ -199,7 +199,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       TSStatus tsStatus = new TSStatus(CAN_NOT_CONNECT_AINODE.getStatusCode());
       tsStatus.setMessage(
           String.format(
-              "Failed to connect to AINode from DataNode when executing %s: %s",
+              "Failed to connect to AINode when executing %s: %s",
               Thread.currentThread().getStackTrace()[1].getMethodName(), e.getMessage()));
       return new TForecastResp(tsStatus, ByteBuffer.allocate(0));
     }
@@ -210,7 +210,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       return client.createTrainingTask(req);
     } catch (TException e) {
       logger.warn(
-          "Failed to connect to AINode from DataNode when executing {}: {}",
+          "Failed to connect to AINode when executing {}: {}",
           Thread.currentThread().getStackTrace()[1].getMethodName(),
           e.getMessage());
       throw new TException(MSG_CONNECTION_FAIL);

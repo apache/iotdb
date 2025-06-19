@@ -1,3 +1,5 @@
+#!/bin/bash
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,3 +17,36 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
+echo ---------------------
+echo Starting Printing the WAL
+echo ---------------------
+
+source "$(dirname "$0")/../../conf/iotdb-common.sh"
+#get_iotdb_include and checkAllVariables is in iotdb-common.sh
+VARS=$(get_iotdb_include "$*")
+checkAllVariables
+export IOTDB_HOME="${IOTDB_HOME}/.."
+eval set -- "$VARS"
+
+
+if [ -n "$JAVA_HOME" ]; then
+    for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
+        if [ -x "$java" ]; then
+            JAVA="$java"
+            break
+        fi
+    done
+else
+    JAVA=java
+fi
+
+CLASSPATH=""
+for f in ${IOTDB_HOME}/lib/*.jar; do
+  CLASSPATH=${CLASSPATH}":"$f
+done
+
+MAIN_CLASS=org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALPrintTool
+
+"$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+exit $?
