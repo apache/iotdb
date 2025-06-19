@@ -269,6 +269,12 @@ public class PipeDescriptor {
                 "pipe_total_floating_memory_proportion",
                 String.valueOf(config.getPipeTotalFloatingMemoryProportion()))));
 
+    config.setWALCacheBatchLoadEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_wal_cache_batch_load_enabled",
+                Boolean.toString(config.getWALCacheBatchLoadEnabled()))));
+
     config.setPipeRealTimeQueuePollTsFileThreshold(
         Integer.parseInt(
             Optional.ofNullable(

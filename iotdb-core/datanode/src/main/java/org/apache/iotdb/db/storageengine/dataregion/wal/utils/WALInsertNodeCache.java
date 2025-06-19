@@ -21,9 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockType;
@@ -46,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -56,9 +54,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WALInsertNodeCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WALInsertNodeCache.class);
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig MEMORY_CONFIG =
-      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
   private static PipeModelFixedMemoryBlock walModelFixedMemory = null;
@@ -76,10 +71,7 @@ public class WALInsertNodeCache {
       init();
     }
 
-    final long requestedAllocateSize =
-        (long)
-            (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
-                * PIPE_CONFIG.getPipeDataStructureWalMemoryProportion());
+    final long requestedAllocateSize = walModelFixedMemory.getMemoryUsageInBytes();
 
     lruCache =
         Caffeine.newBuilder()
@@ -108,16 +100,27 @@ public class WALInsertNodeCache {
     if (walModelFixedMemory != null) {
       return;
     }
-    try {
-      // Allocate memory for the fixed memory block of WAL
-      walModelFixedMemory =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForModelFixedMemoryBlock(
-                  (long)
-                      (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
-                          * PIPE_CONFIG.getPipeDataStructureWalMemoryProportion()),
-                  PipeMemoryBlockType.WAL);
-    } catch (Exception e) {
+
+    Exception e = null;
+    // Allocate memory for the fixed memory block of WAL. If the allocation fails, try again until
+    // the appropriate memory is allocated.
+    for (long i = PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfWAL();
+        i > 0;
+        i = i / 2) {
+      try {
+        // Allocate memory for the fixed memory block of WAL
+        walModelFixedMemory =
+            PipeDataNodeResourceManager.memory()
+                .forceAllocateForModelFixedMemoryBlock(i, PipeMemoryBlockType.WAL);
+        LOGGER.info("Successfully initialized WAL model fixed memory block, size: {}", i);
+        break;
+      } catch (Exception exception) {
+        e = exception;
+      }
+    }
+
+    // If the allocation fails, we will log an error and force allocate a memory block of size 0.
+    if (walModelFixedMemory == null) {
       LOGGER.error("Failed to initialize WAL model fixed memory block", e);
       walModelFixedMemory =
           PipeDataNodeResourceManager.memory()
@@ -189,7 +192,10 @@ public class WALInsertNodeCache {
   public Pair<ByteBuffer, InsertNode> getByteBufferOrInsertNode(final WALEntryPosition position) {
     hasPipeRunning = true;
 
-    final Pair<ByteBuffer, InsertNode> pair = lruCache.get(position);
+    final Pair<ByteBuffer, InsertNode> pair =
+        PIPE_CONFIG.getWALCacheBatchLoadEnabled()
+            ? lruCache.getAll(Collections.singleton(position)).get(position)
+            : lruCache.getIfPresent(position);
 
     if (pair == null) {
       throw new IllegalStateException();

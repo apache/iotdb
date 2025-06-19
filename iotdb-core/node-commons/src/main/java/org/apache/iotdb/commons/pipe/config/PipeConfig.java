@@ -107,6 +107,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
   }
 
+  public boolean getWALCacheBatchLoadEnabled() {
+    return COMMON_CONFIG.getWALCacheBatchLoadEnabled();
+  }
+
   /////////////////////////////// Subtask Connector ///////////////////////////////
 
   public int getPipeRealTimeQueuePollTsFileThreshold() {
