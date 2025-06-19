@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -67,8 +68,13 @@ public class IoTDBRemoveDataNodeUtils {
   public static Set<Integer> selectRemoveDataNodes(
       Set<Integer> allDataNodeId, int removeDataNodeNum) {
     Set<Integer> removeDataNodeIds = new HashSet<>();
-    for (int i = 0; i < removeDataNodeNum; i++) {
-      int removeDataNodeId = allDataNodeId.iterator().next();
+    Iterator<Integer> iterator = allDataNodeId.iterator();
+    while (removeDataNodeIds.size() < removeDataNodeNum) {
+      int removeDataNodeId = iterator.next();
+      if (removeDataNodeId <= 1) {
+        // Skip DN-1 to make the test more stable
+        continue;
+      }
       removeDataNodeIds.add(removeDataNodeId);
       allDataNodeId.remove(removeDataNodeId);
     }
