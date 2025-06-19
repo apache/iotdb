@@ -66,7 +66,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("testPipe").getCode());
 
       // Test reconstruction
-      connectorAttributes.put("password", "test");
+      connectorAttributes.put("password123456", "test");
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           client
@@ -77,7 +77,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
               .getCode());
 
       // Test conflict
-      connectorAttributes.put("password", "conflict");
+      connectorAttributes.put("password123456", "conflict");
       Assert.assertEquals(
           TSStatusCode.PIPE_ERROR.getStatusCode(),
           client
@@ -119,7 +119,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("testPipe").getCode());
 
       // Test reconstruction
-      connectorAttributes.put("password", "test");
+      connectorAttributes.put("password123456", "test");
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           client
@@ -130,7 +130,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
               .getCode());
 
       // Test conflict
-      connectorAttributes.put("password", "conflict");
+      connectorAttributes.put("password123456", "conflict");
       Assert.assertEquals(
           TSStatusCode.PIPE_ERROR.getStatusCode(),
           client
