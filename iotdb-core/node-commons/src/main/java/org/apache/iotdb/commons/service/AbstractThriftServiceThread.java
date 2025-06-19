@@ -179,7 +179,9 @@ public abstract class AbstractThriftServiceThread extends Thread {
       TSSLTransportFactory.TSSLTransportParameters params =
           new TSSLTransportFactory.TSSLTransportParameters();
       params.setKeyStore(keyStorePath, keyStorePwd);
-      params.setTrustStore(trustStorePath, trustStorePwd);
+      if (trustStorePath != null && !trustStorePath.isEmpty()) {
+        params.setTrustStore(trustStorePath, trustStorePwd);
+      }
       params.requireClientAuth(false);
       InetSocketAddress socketAddress = new InetSocketAddress(bindAddress, port);
       serverTransport =
