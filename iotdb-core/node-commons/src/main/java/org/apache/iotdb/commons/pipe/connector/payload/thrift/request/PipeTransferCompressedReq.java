@@ -37,9 +37,6 @@ import java.util.List;
 
 public class PipeTransferCompressedReq extends TPipeTransferReq {
 
-  private static final int MAX_DECOMPRESSED_LENGTH =
-      PipeConfig.getInstance().getPipeReceiverReqDecompressedMaxLengthInBytes();
-
   /** Generate a compressed req with provided compressors. */
   public static TPipeTransferReq toTPipeTransferReq(
       final TPipeTransferReq originalReq, final List<PipeCompressor> compressors)
@@ -152,11 +149,13 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
   /** This method is used to prevent decompression bomb attacks. */
   private static void checkDecompressedLength(final int decompressedLength)
       throws IllegalArgumentException {
-    if (decompressedLength < 0 || decompressedLength > MAX_DECOMPRESSED_LENGTH) {
+    final int maxDecompressedLength =
+        PipeConfig.getInstance().getPipeReceiverReqDecompressedMaxLengthInBytes();
+    if (decompressedLength < 0 || decompressedLength > maxDecompressedLength) {
       throw new IllegalArgumentException(
           String.format(
               "Decompressed length should be between 0 and %d, but got %d.",
-              MAX_DECOMPRESSED_LENGTH, decompressedLength));
+              maxDecompressedLength, decompressedLength));
     }
   }
 
