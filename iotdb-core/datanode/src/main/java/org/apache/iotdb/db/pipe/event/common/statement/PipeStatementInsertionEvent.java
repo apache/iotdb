@@ -53,6 +53,8 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
 
   private final PipeTabletMemoryBlock allocatedMemoryBlock;
 
+  private long extractedTime = Long.MIN_VALUE;
+
   public PipeStatementInsertionEvent(
       String pipeName,
       long creationTime,
@@ -91,6 +93,7 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
           .increaseRawTabletEventCount(pipeName, creationTime);
+      extractedTime = System.nanoTime();
     }
     return true;
   }
@@ -99,7 +102,7 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .decreaseRawTabletEventCount(pipeName, creationTime);
+          .decreaseRawTabletEventCount(pipeName, creationTime, System.nanoTime() - extractedTime);
     }
     allocatedMemoryBlock.close();
 
