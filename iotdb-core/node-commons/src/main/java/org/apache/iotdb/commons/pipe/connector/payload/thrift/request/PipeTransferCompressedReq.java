@@ -112,6 +112,19 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
     return decompressedReq;
   }
 
+  /** This method is used to prevent decompression bomb attacks. */
+  private static void checkDecompressedLength(final int decompressedLength)
+      throws IllegalArgumentException {
+    final int maxDecompressedLength =
+        PipeConfig.getInstance().getPipeReceiverReqDecompressedMaxLengthInBytes();
+    if (decompressedLength < 0 || decompressedLength > maxDecompressedLength) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Decompressed length should be between 0 and %d, but got %d.",
+              maxDecompressedLength, decompressedLength));
+    }
+  }
+
   /**
    * For air-gap connectors. Generate the bytes of a compressed req from the bytes of original req.
    */
@@ -143,19 +156,6 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
       outputStream.write(body);
 
       return byteArrayOutputStream.toByteArray();
-    }
-  }
-
-  /** This method is used to prevent decompression bomb attacks. */
-  private static void checkDecompressedLength(final int decompressedLength)
-      throws IllegalArgumentException {
-    final int maxDecompressedLength =
-        PipeConfig.getInstance().getPipeReceiverReqDecompressedMaxLengthInBytes();
-    if (decompressedLength < 0 || decompressedLength > maxDecompressedLength) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Decompressed length should be between 0 and %d, but got %d.",
-              maxDecompressedLength, decompressedLength));
     }
   }
 
