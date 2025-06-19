@@ -33,8 +33,9 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -67,18 +68,9 @@ public class IoTDBRemoveDataNodeUtils {
 
   public static Set<Integer> selectRemoveDataNodes(
       Set<Integer> allDataNodeId, int removeDataNodeNum) {
-    Set<Integer> removeDataNodeIds = new HashSet<>();
-    Iterator<Integer> iterator = allDataNodeId.iterator();
-    while (removeDataNodeIds.size() < removeDataNodeNum) {
-      int removeDataNodeId = iterator.next();
-      if (removeDataNodeId <= 1) {
-        // Skip DN-1 to make the test more stable
-        continue;
-      }
-      removeDataNodeIds.add(removeDataNodeId);
-      allDataNodeId.remove(removeDataNodeId);
-    }
-    return removeDataNodeIds;
+    List<Integer> shuffledDataNodeIds = new ArrayList<>(allDataNodeId);
+    Collections.shuffle(shuffledDataNodeIds);
+    return new HashSet<>(shuffledDataNodeIds.subList(0, removeDataNodeNum));
   }
 
   public static void restartDataNodes(List<DataNodeWrapper> dataNodeWrappers) {
