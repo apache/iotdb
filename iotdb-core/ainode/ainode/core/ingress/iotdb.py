@@ -200,6 +200,7 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
 
 
 class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
+
     def __init__(
         self,
         input_len: int,
@@ -322,6 +323,7 @@ def register_dataset(key: str, dataset: Dataset):
 
 @singleton
 class DatasetFactory(object):
+
     def __init__(self):
         self.dataset_list = {
             "iotdb.table": IoTDBTableModelDataset,

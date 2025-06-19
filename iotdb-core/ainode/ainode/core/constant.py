@@ -31,6 +31,7 @@ AINODE_SYSTEM_FILE_NAME = "system.properties"
 AINODE_INFERENCE_RPC_ADDRESS = "127.0.0.1"
 AINODE_INFERENCE_RPC_PORT = 10810
 AINODE_MODELS_DIR = "data/ainode/models"
+AINODE_BUILTIN_MODELS_DIR = "data/ainode/models/weights" # For built-in models, we only need to store their weights and config.
 AINODE_SYSTEM_DIR = "data/ainode/system"
 AINODE_LOG_DIR = "logs/ainode"
 AINODE_THRIFT_COMPRESSION_ENABLED = False
@@ -63,34 +64,19 @@ DEFAULT_RECONNECT_TIMES = 3
 
 STD_LEVEL = logging.INFO
 
-STATUS_CODE_MAP = {"LOADING": 0, "ACTIVE": 1, "INACTIVE": 2, "ERROR": 3}
 
-
-# Temporarily name the patch files using IoTDB format
-IOTDB_CONFIG_FILES = ["config.json", "configuration.json"]
-IOTDB_WEIGHT_FILES = [
-    "model.safetensors",
-    "pytorch_model.safetensors",
-    "model.pt",
-    "pytorch_model.pt",
+CONFIG_FORMAT_PRIORITY = [
+    "config.json", # Use JSON config by default
+    "config.yaml", # Fallback to YAML config
 ]
-
-# Apply a patch: prioritize safetensors files
-MODEL_FORMAT_PRIORITY = {
-    # Give higher priority to IoTDB format
-    "iotdb": ["config.json", "configuration.json"],
-    # Use legacy format as a fallback
-    "legacy": ["config.yaml"],
-}
-
 WEIGHT_FORMAT_PRIORITY = [
-    "model.safetensors",  # Prefer safetensors
-    "pytorch_model.safetensors",
+    "model.safetensors",  # Use safetensors by default
     "model.pt",  # Fallback to .pt format
-    "pytorch_model.pt",
-    "pytorch_model.bin",
 ]
-
+TIMER_REPO_ID = {
+    "_timerxl": "thuml/timer-base-84m",
+    "_sundial": "thuml/sundial-base-128m",
+}
 
 class TSStatusCode(Enum):
     SUCCESS_STATUS = 200

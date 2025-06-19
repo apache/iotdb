@@ -51,20 +51,9 @@ logger = Logger()
 class ModelManager:
     def __init__(self):
         self.model_storage = ModelStorage()
-        self._model_status_cache = {}  # Cache for model statuses
-        self._status_lock = ReadWriteLock()
 
     def register_model(self, req: TRegisterModelReq) -> TRegisterModelResp:
-        logger.info(f"Register model {req.modelId} from {req.uri}")
-
-        # Validate model name
-        if not self._validate_model_name(req.modelId):
-            return TRegisterModelResp(
-                get_status(TSStatusCode.INVALID_URI_ERROR, "Invalid model name")
-            )
-
-        # Set model status to LOADING
-        self._update_model_status(req.modelId, "LOADING", "Model registration started")
+        logger.info(f"Starting register model {req.modelId} from {req.uri}")
 
         try:
             configs, attributes = self.model_storage.register_model(
@@ -79,7 +68,6 @@ class ModelManager:
                         f"Model validation failed: {validation_result['errors']}"
                     )
                     logger.error(error_msg)
-                    self._update_model_status(req.modelId, "ERROR", error_msg)
                     self.model_storage.delete_model(req.modelId)
                     return TRegisterModelResp(
                         get_status(TSStatusCode.INVALID_URI_ERROR, error_msg)
@@ -93,11 +81,6 @@ class ModelManager:
 
             except Exception as e:
                 logger.warning(f"Registered model without validation: {e}")
-
-            # Set model status to ACTIVE
-            self._update_model_status(
-                req.modelId, "ACTIVE", "Model registration completed"
-            )
 
             return TRegisterModelResp(
                 get_status(TSStatusCode.SUCCESS_STATUS), configs, attributes
@@ -158,25 +141,19 @@ class ModelManager:
     def delete_model(self, req: TDeleteModelReq) -> TSStatus:
         logger.info(f"Delete model {req.modelId}")
         try:
-            # Set model status to INACTIVE
-            self._update_model_status(req.modelId, "INACTIVE", "Model deletion started")
-
             self.model_storage.delete_model(req.modelId)
-
-            # Remove from cache
-            with self._status_lock:
-                self._model_status_cache.pop(req.modelId, None)
-
             return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
             logger.warning(e)
-            self._update_model_status(req.modelId, "ERROR", str(e))
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
 
-    def load_model(self, model_id: str, acceleration: bool = False) -> Callable:
+    def load_model(self, model_id: str, is_built_in: bool, acceleration: bool = False) -> Callable:
+        """
+        Load the model with the given model_id.
+        """
         logger.info(f"Load model {model_id}")
         try:
-            model = self.model_storage.load_model(model_id, acceleration)
+            model = self.model_storage.load_model(model_id, is_built_in, acceleration)
             logger.info(f"Model {model_id} loaded")
             return model
         except Exception as e:
@@ -212,34 +189,6 @@ class ModelManager:
             logger.error(f"Save model failed: {e}")
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
 
-    def clone_model(self, source_model_id: str, target_model_id: str) -> TSStatus:
-        """
-        Clone a model using save_pretrained + from_pretrained
-        """
-        logger.info(f"Cloning model {source_model_id} to {target_model_id}")
-        try:
-            success = self.model_storage.clone_model_with_save_load(
-                source_model_id, target_model_id
-            )
-
-            if success:
-                self._update_model_status(
-                    target_model_id, "ACTIVE", "Model cloned successfully"
-                )
-                return get_status(
-                    TSStatusCode.SUCCESS_STATUS,
-                    f"Model cloned: {source_model_id} -> {target_model_id}",
-                )
-            else:
-                return get_status(
-                    TSStatusCode.AINODE_INTERNAL_ERROR,
-                    f"Failed to clone model {source_model_id}",
-                )
-
-        except Exception as e:
-            logger.error(f"Clone model failed: {e}")
-            return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
-
     def get_ckpt_path(self, model_id: str) -> str:
         """
         Get the checkpoint path for a given model ID.
@@ -251,68 +200,6 @@ class ModelManager:
             str: The path to the checkpoint file for the model.
         """
         return self.model_storage.get_ckpt_path(model_id)
-
-    def _validate_model_name(self, model_name: str) -> bool:
-        """
-        Validate the model name format
-
-        Args:
-            model_name: Name of the model
-
-        Returns:
-            Whether the name is valid
-        """
-        if not model_name:
-            return False
-
-        import re
-
-        pattern = r"^[a-zA-Z0-9_-]+$"
-
-        if re.match(pattern, model_name):
-            logger.debug(f"Model name validated: {model_name}")
-            return True
-        else:
-            logger.error(f"Illegal model name: {model_name}")
-            return False
-
-    def _update_model_status(self, model_id: str, status: str, message: str = ""):
-        """Update model status and notify ConfigNode"""
-        try:
-            with self._status_lock:
-                self._model_status_cache[model_id] = {
-                    "status": status,
-                    "message": message,
-                    "timestamp": time.time(),
-                }
-
-            status_code = STATUS_CODE_MAP.get(status, 3)
-
-            try:
-                ClientManager().borrow_config_node_client().update_model_info(
-                    model_id=model_id,
-                    model_status=status_code,
-                    attribute=message,
-                    ainode_id=[AINodeDescriptor().get_config().get_ainode_id()],
-                )
-                logger.info(f"Model {model_id} status updated to {status}: {message}")
-            except Exception as e:
-                logger.warning(f"Failed to notify ConfigNode about model status: {e}")
-
-        except Exception as e:
-            logger.error(f"Failed to update model status for {model_id}: {e}")
-
-    def get_model_status(self, model_id: str) -> dict:
-        """Get model status"""
-        with self._status_lock:
-            return self._model_status_cache.get(
-                model_id, {"status": "UNKNOWN", "message": ""}
-            )
-
-    def list_models(self) -> dict:
-        """List all models and their statuses"""
-        with self._status_lock:
-            return dict(self._model_status_cache)
 
     @staticmethod
     def load_built_in_model(model_id: str, attributes: {}):

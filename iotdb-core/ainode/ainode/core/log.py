@@ -79,6 +79,7 @@ class Logger:
     """
 
     def __init__(self, log_dir=AINODE_LOG_DIR):
+
         self.logger_format = logging.Formatter(
             fmt="%(asctime)s %(levelname)s %(" "message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )

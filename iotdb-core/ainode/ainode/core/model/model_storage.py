@@ -30,11 +30,12 @@ from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import (
     DEFAULT_CONFIG_FILE_NAME,
     DEFAULT_MODEL_FILE_NAME,
-    IOTDB_CONFIG_FILES,
-    WEIGHT_FORMAT_PRIORITY,
+    JSON_CONFIG_FILES,
+    WEIGHT_FORMAT_PRIORITY, BuiltInModelType,
 )
-from ainode.core.exception import ModelLoadingError, ModelNotExistError
+from ainode.core.exception import ModelLoadingError, ModelNotExistError, BuiltInModelNotSupportError
 from ainode.core.log import Logger
+from ainode.core.model.built_in_model_factory import download_built_in_model_if_necessary, fetch_built_in_model
 from ainode.core.model.config_parser import (
     convert_iotdb_config_to_ainode_format,
     detect_config_format,
@@ -55,6 +56,9 @@ logger = Logger()
 class ModelStorage(object):
     def __init__(self):
         self._model_dir = os.path.join(
+            os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir()
+        )
+        self._builtin_model_dir = os.path.join(
             os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir()
         )
         if not os.path.exists(self._model_dir):
@@ -90,47 +94,6 @@ class ModelStorage(object):
         config_storage_path = os.path.join(storage_path, DEFAULT_CONFIG_FILE_NAME)
 
         return fetch_model_by_uri(uri, model_storage_path, config_storage_path)
-
-    def _detect_local_model_format(self, model_dir: str) -> tuple:
-        """
-        Detect the local model format with config_parser integration
-
-        Returns:
-            (format_type, config_file, weight_file)
-        """
-        model_path = Path(model_dir)
-
-        # Use config_parser to detect config format
-        for config_file in IOTDB_CONFIG_FILES:
-            config_path = model_path / config_file
-            if config_path.exists():
-                try:
-                    config_format = detect_config_format(config_path)
-                    if config_format == "iotdb":
-                        config_dict = parse_config_file(config_path)
-                        if validate_iotdb_config(config_dict):
-                            # Find corresponding weight file
-                            for weight_file in WEIGHT_FORMAT_PRIORITY:
-                                weight_path = model_path / weight_file
-                                if weight_path.exists():
-                                    logger.info(
-                                        f"IoTDB format detected: {config_file} + {weight_file}"
-                                    )
-                                    return "iotdb", config_file, weight_file
-                except Exception as e:
-                    logger.warning(
-                        f"Config file validation failed: {config_path}, Error: {e}"
-                    )
-                    continue
-
-        # Check legacy format
-        legacy_config = model_path / DEFAULT_CONFIG_FILE_NAME
-        legacy_model = model_path / DEFAULT_MODEL_FILE_NAME
-        if legacy_config.exists() and legacy_model.exists():
-            logger.info("Legacy format detected")
-            return "legacy", DEFAULT_CONFIG_FILE_NAME, DEFAULT_MODEL_FILE_NAME
-
-        return None, None, None
 
     def _load_iotdb_model(
         self, model_dir: str, config_file: str, weight_file: str, acceleration: bool
@@ -248,45 +211,27 @@ class ModelStorage(object):
             self._model_cache[model_path] = model
             return model
 
-    def load_model(self, model_id: str, acceleration: bool) -> Callable:
+    def load_model(self, model_id: str, is_built_in: bool, acceleration: bool) -> Callable:
         """
-        Load a model with automatic detection of IoTDB or legacy format
+        Load a model with automatic detection of .safetensors or .pt format
 
         Returns:
-            model: A model object that can be deployed cross-platform
+            model: The model instance corresponding to specific model_id
         """
-        model_dir = os.path.join(self._model_dir, f"{model_id}")
-
+        model_id = model_id.lower()
         with self._lock_pool.get_lock(model_id).read_lock():
-            format_type, config_file, weight_file = self._detect_local_model_format(
-                model_dir
-            )
-
-            if format_type == "iotdb":
-                logger.info(f"Loading IoTDB format model: {model_id}")
-                return self._load_iotdb_model(
-                    model_dir, config_file, weight_file, acceleration
-                )
-            elif format_type == "legacy":
-                logger.info(f"Loading legacy format model: {model_id}")
-                legacy_model_path = os.path.join(model_dir, DEFAULT_MODEL_FILE_NAME)
-                return self._load_legacy_model(legacy_model_path, acceleration)
+            if is_built_in:
+                if model_id not in BuiltInModelType.values():
+                    raise BuiltInModelNotSupportError(model_id)
+                # For built-in models, we support auto download
+                model_dir = os.path.join(self._builtin_model_dir, f"{model_id}")
+                download_built_in_model_if_necessary(model_id, model_dir)
+                return fetch_built_in_model(model_id, model_dir)
             else:
-                # If format detection fails, fallback to legacy loading
-                legacy_model_path = os.path.join(model_dir, DEFAULT_MODEL_FILE_NAME)
-                if os.path.exists(legacy_model_path):
-                    logger.warning(
-                        f"Format detection failed, attempting legacy load: {model_id}"
-                    )
-                    return self._load_legacy_model(legacy_model_path, acceleration)
-                else:
-                    available_files = get_available_weight_files(model_dir)
-                    logger.error(
-                        f"Model load failed, available files: {available_files}"
-                    )
-                    raise ModelNotExistError(
-                        f"No valid model file found in: {model_dir}"
-                    )
+                # TODO: support load the user-defined model
+                # model_dir = os.path.join(self._model_dir, f"{model_id}")
+                pass
+
 
     def delete_model(self, model_id: str) -> None:
         """

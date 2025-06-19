@@ -46,6 +46,35 @@ from ainode.core.model.timerxl.configuration_timer import TimerConfig
 
 logger = Logger()
 
+def download_built_in_model_if_necessary(model_id: str, local_dir: str):
+    """
+    Download the built-in model from HuggingFace repository when necessary.
+    """
+    if "_timer" == model_id or "_sundial" == model_id:
+        weights_path = os.path.join(local_dir, "model.safetensors")
+        if not os.path.exists(weights_path):
+            logger.info(
+                f"Weight not found at {weights_path}, downloading from HuggingFace..."
+            )
+            repo_id = TIMER_REPO_ID[model_id]
+            try:
+                weights_path = os.path.join(local_dir, "model.safetensors")
+                hf_hub_download(
+                    repo_id=repo_id,
+                    filename="model.safetensors",
+                    local_dir=local_dir,
+                )
+                logger.info(f"Got weight to {weights_path}")
+                config_path = os.path.join(local_dir, "config.json")
+                hf_hub_download(
+                    repo_id=repo_id,
+                    filename="config.json",
+                    local_dir=config_path,
+                )
+                logger.info(f"Got config to {config_path}")
+            except Exception as e:
+                logger.error(f"Failed to download huggingface model to {local_dir} due to {e}")
+                raise e
 
 def get_model_attributes(model_id: str):
     if model_id == BuiltInModelType.ARIMA.value:
@@ -74,25 +103,17 @@ def get_model_attributes(model_id: str):
     return attribute_map
 
 
-def fetch_built_in_model(model_id, inference_attributes):
+def fetch_built_in_model(model_id: str, model_dir: str):
     """
+    The create_built_in_model function will create the built-in model, which does not require user
+    registration. This module will parse the inference attributes and create the built-in model.
     Args:
         model_id: the unique id of the model
-        inference_attributes: a list of attributes to be inferred, in this function, the attributes will include some
-            parameters of the built-in model. Some parameters are optional, and if the parameters are not
-            specified, the default value will be used.
+        model_dir: for huggingface models only, the directory where the model is stored
     Returns:
         model: the built-in model
-        attributes: a dict of attributes, where the key is the attribute name, the value is the parsed value of the
-            attribute
-    Description:
-        the create_built_in_model function will create the built-in model, which does not require user
-        registration. This module will parse the inference attributes and create the built-in model.
     """
-    attribute_map = get_model_attributes(model_id)
-
-    # parse the inference attributes, attributes is a Dict[str, Any]
-    attributes = parse_attribute(inference_attributes, attribute_map)
+    attributes = get_model_attributes(model_id)
 
     # build the built-in model
     if model_id == BuiltInModelType.ARIMA.value:

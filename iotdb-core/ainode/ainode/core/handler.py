@@ -51,10 +51,9 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         self._model_manager = ModelManager()
         self._inference_manager = InferenceManager(model_manager=self._model_manager)
 
-    # only for test
     def registerModel(self, req: TRegisterModelReq) -> TRegisterModelResp:
         """
-        register model
+        Register a model
         """
         logger.info(f"Start register model: {req.modelId}, URI: {req.uri}")
 
@@ -113,76 +112,13 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
 
     def inference(self, req: TInferenceReq) -> TInferenceResp:
-        """
-        Perform inference with enhanced logging
-        """
-        logger.info(f"Starting inference: model ID={req.modelId}")
-
-        try:
-            result = self._inference_manager.inference(req)
-            if result.status.code == TSStatusCode.SUCCESS_STATUS.get_status_code():
-                logger.info(f"Inference succeeded: {req.modelId}")
-            else:
-                logger.warning(
-                    f"Inference failed: {req.modelId}, Status: {result.status}"
-                )
-            return result
-
-        except Exception as e:
-            logger.error(f"Inference failed: {req.modelId}, Error: {e}")
-            from ainode.core.util.status import get_status
-
-            return TInferenceResp(
-                get_status(TSStatusCode.INFERENCE_INTERNAL_ERROR, str(e)), []
-            )
+        return self._inference_manager.inference(req)
 
     def forecast(self, req: TForecastReq) -> TSStatus:
-        """
-        Perform forecasting with enhanced logging
-        """
-        logger.info(f"Starting forecast: model ID={req.modelId}")
-
-        try:
-            result = self._inference_manager.forecast(req)
-            if result.status.code == TSStatusCode.SUCCESS_STATUS.get_status_code():
-                logger.info(f"Forecast succeeded: {req.modelId}")
-            else:
-                logger.warning(
-                    f"Forecast failed: {req.modelId}, Status: {result.status}"
-                )
-            return result
-
-        except Exception as e:
-            logger.error(f"Forecast failed: {req.modelId}, Error: {e}")
-            from ainode.core.util.status import get_status
-
-            return get_status(TSStatusCode.INFERENCE_INTERNAL_ERROR, str(e))
+        return self._inference_manager.forecast(req)
 
     def getAIHeartbeat(self, req: TAIHeartbeatReq) -> TAIHeartbeatResp:
-        """
-        Get AI node heartbeat with comprehensive error handling
-        """
-
-        try:
-            result = ClusterManager.get_heart_beat(req)
-            return result
-
-        except (OSError, IOError) as e:
-            logger.warning(f"System resource access failed in heartbeat: {e}")
-            return TAIHeartbeatResp(
-                heartbeatTimestamp=req.heartbeatTimestamp, status="RESOURCE_ERROR"
-            )
-
-        except Exception as e:
-            logger.error(f"Unexpected error in heartbeat: {e}")
-            return TAIHeartbeatResp(
-                heartbeatTimestamp=req.heartbeatTimestamp, status="ERROR"
-            )
+        return ClusterManager.get_heart_beat(req)
 
     def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
-        logger.info("Training task is not implemented yet")
-        from ainode.core.util.status import get_status
-
-        return get_status(
-            TSStatusCode.AINODE_INTERNAL_ERROR, "Training task not implemented yet"
-        )
+        pass

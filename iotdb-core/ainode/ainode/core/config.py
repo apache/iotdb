@@ -33,7 +33,7 @@ from ainode.core.constant import (
     AINODE_SYSTEM_DIR,
     AINODE_SYSTEM_FILE_NAME,
     AINODE_THRIFT_COMPRESSION_ENABLED,
-    AINODE_VERSION_INFO,
+    AINODE_VERSION_INFO, AINODE_BUILTIN_MODELS_DIR,
 )
 from ainode.core.exception import BadNodeUrlError
 from ainode.core.log import Logger
@@ -57,7 +57,7 @@ class AINodeConfig(object):
 
         # Directory to save models
         self._ain_models_dir = AINODE_MODELS_DIR
-
+        self._ain_builtin_models_dir = AINODE_BUILTIN_MODELS_DIR
         self._ain_system_dir = AINODE_SYSTEM_DIR
 
         # Whether to enable compression for thrift
@@ -129,6 +129,12 @@ class AINodeConfig(object):
 
     def set_ain_models_dir(self, ain_models_dir: str) -> None:
         self._ain_models_dir = ain_models_dir
+
+    def get_ain_builtin_models_dir(self) -> str:
+        return self._ain_builtin_models_dir
+
+    def set_ain_builtin_models_dir(self, ain_builtin_models_dir: str) -> None:
+        self._ain_builtin_models_dir = ain_builtin_models_dir
 
     def get_ain_system_dir(self) -> str:
         return self._ain_system_dir

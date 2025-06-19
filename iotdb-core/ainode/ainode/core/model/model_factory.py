@@ -31,8 +31,8 @@ from ainode.core.constant import (
     DEFAULT_MODEL_FILE_NAME,
     DEFAULT_RECONNECT_TIMEOUT,
     DEFAULT_RECONNECT_TIMES,
-    IOTDB_CONFIG_FILES,
-    IOTDB_WEIGHT_FILES,
+    JSON_CONFIG_FILES,
+    WEIGHT_FILES,
     MODEL_FORMAT_PRIORITY,
     WEIGHT_FORMAT_PRIORITY,
 )
@@ -70,7 +70,7 @@ def _detect_model_format(base_path: str) -> tuple:
     )
 
     # Check IoTDB format first (higher priority)
-    for config_file in IOTDB_CONFIG_FILES:
+    for config_file in JSON_CONFIG_FILES:
         if isinstance(base_path, Path):
             config_path = os.path.join(base_path, config_file)
             if config_path.exists():
@@ -169,7 +169,7 @@ def _download_file_with_fallback(
             logger.info(f"Successfully downloaded file: {filename}")
             return filename
         except Exception as e:
-            logger.debug(f"Failed to download file {filename}: {e}")
+            logger.debug(f"Failed to download file {filename}: {e}, try next file format.")
             continue
 
     raise InvalidUriError(
@@ -185,12 +185,12 @@ def _register_model_from_network(
     """
     uri = uri if uri.endswith("/") else uri + "/"
 
-    # Try downloading configuration file (IoTDB format preferred)
+    # Try downloading configuration file (safetensor by default)
     try:
         config_filename = _download_file_with_fallback(
-            uri, IOTDB_CONFIG_FILES + [DEFAULT_CONFIG_FILE_NAME], config_storage_path
+            uri, JSON_CONFIG_FILES + [DEFAULT_CONFIG_FILE_NAME], config_storage_path
         )
-        format_type = "iotdb" if config_filename in IOTDB_CONFIG_FILES else "legacy"
+        format_type = "iotdb" if config_filename in JSON_CONFIG_FILES else "legacy"
     except Exception as e:
         logger.error(f"Failed to download config file: {e}")
         raise InvalidUriError(uri)
@@ -506,6 +506,7 @@ def _parse_inference_config(config_dict):
 
 
 def fetch_model_by_uri(uri: str, model_storage_path: str, config_storage_path: str):
+    # TODO: This logic definitely has some bugs
     is_network_path, uri = _parse_uri(uri)
 
     if is_network_path:
