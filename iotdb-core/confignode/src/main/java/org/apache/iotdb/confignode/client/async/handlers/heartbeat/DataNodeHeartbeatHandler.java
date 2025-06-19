@@ -158,6 +158,11 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
     if (heartbeatResp.isSetRegionDisk()) {
       loadManager.getLoadCache().updateRegionSizeMap(nodeId, heartbeatResp.getRegionDisk());
     }
+    if (heartbeatResp.isSetDataRegionRawDataSize()) {
+      loadManager
+          .getLoadCache()
+          .updateRegionRawSizeMap(nodeId, heartbeatResp.getDataRegionRawDataSize());
+    }
   }
 
   @Override
