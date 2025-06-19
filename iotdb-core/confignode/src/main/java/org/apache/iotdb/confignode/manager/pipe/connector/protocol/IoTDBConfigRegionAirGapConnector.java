@@ -90,6 +90,11 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
   }
 
   @Override
+  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
+    // Do nothing
+  }
+
+  @Override
   protected boolean mayNeedHandshakeWhenFail() {
     return true;
   }
