@@ -161,30 +161,6 @@ class AINodeConfig(object):
             ain_target_config_node_list
         )
 
-    def get_support_iotdb_models(self) -> bool:
-        """Check whether IoTDB model format is supported"""
-        return getattr(self, "_support_iotdb_models", True)
-
-    def set_support_iotdb_models(self, support: bool) -> None:
-        """Set whether to support IoTDB model format"""
-        self._support_iotdb_models = support
-
-    def get_model_loading_timeout(self) -> int:
-        """Get model loading timeout (in seconds)"""
-        return getattr(self, "_model_loading_timeout", 300)
-
-    def set_model_loading_timeout(self, timeout: int) -> None:
-        """Set model loading timeout (in seconds)"""
-        self._model_loading_timeout = timeout
-
-    def get_auto_model_format_detection(self) -> bool:
-        """Check whether automatic model format detection is enabled"""
-        return getattr(self, "_auto_model_format_detection", True)
-
-    def set_auto_model_format_detection(self, auto_detect: bool) -> None:
-        """Set whether to enable automatic model format detection"""
-        self._auto_model_format_detection = auto_detect
-
 
 @singleton
 class AINodeDescriptor(object):
@@ -197,20 +173,6 @@ class AINodeDescriptor(object):
         system_properties_file = os.path.join(
             self._config.get_ain_system_dir(), AINODE_SYSTEM_FILE_NAME
         )
-        if "ain_support_iotdb_models" in config_keys:
-            self._config.set_support_iotdb_models(
-                bool(int(file_configs["ain_support_iotdb_models"]))
-            )
-
-        if "ain_model_loading_timeout" in config_keys:
-            self._config.set_model_loading_timeout(
-                int(file_configs["ain_model_loading_timeout"])
-            )
-
-        if "ain_auto_model_format_detection" in config_keys:
-            self._config.set_auto_model_format_detection(
-                bool(int(file_configs["ain_auto_model_format_detection"]))
-            )
         if os.path.exists(system_properties_file):
             system_configs = load_properties(system_properties_file)
             if "ainode_id" in system_configs:

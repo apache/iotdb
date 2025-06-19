@@ -20,7 +20,6 @@ from enum import Enum
 
 import numpy as np
 import pandas as pd
-from transformers import logger
 
 from ainode.core.exception import BadConfigValueError
 
@@ -156,46 +155,3 @@ def get_data_type_byte_from_str(value):
         return TSDataType.DOUBLE.value
     elif value == "text":
         return TSDataType.TEXT.value
-
-
-def convert_iotdb_data_to_binary(
-    data_frame: pd.DataFrame, model_format: str = "legacy"
-):
-    """
-    Enhanced binary conversion with IoTDB model format support
-    The method is under discussion with unify model inference input
-    At present it could be replaced with method: convert_into_binary
-    """
-    try:
-        if model_format == "iotdb":
-            # Enhanced processing for IoTDB models
-            logger.debug(f"Converting IoTDB format data: shape={data_frame.shape}")
-
-        # Use existing conversion logic
-        return convert_to_binary(data_frame)
-
-    except Exception as e:
-        logger.error(f"Binary conversion failed for format {model_format}: {e}")
-        raise BadConfigValueError("data_conversion", model_format, str(e))
-
-
-def validate_data_types(data_frame: pd.DataFrame) -> bool:
-    """
-    Validate data types in DataFrame for IoTDB compatibility
-    """
-    try:
-        supported_types = ["int32", "int64", "float32", "float64"]
-
-        for dtype in data_frame.dtypes:
-            dtype_str = str(dtype)
-            if not any(
-                supported_type in dtype_str for supported_type in supported_types
-            ):
-                logger.warning(f"Unsupported data type detected: {dtype_str}")
-                return False
-
-        return True
-
-    except Exception as e:
-        logger.error(f"Data type validation failed: {e}")
-        return False

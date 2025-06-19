@@ -65,14 +65,6 @@ DEFAULT_RECONNECT_TIMES = 3
 STD_LEVEL = logging.INFO
 
 
-CONFIG_FORMAT_PRIORITY = [
-    "config.json", # Use JSON config by default
-    "config.yaml", # Fallback to YAML config
-]
-WEIGHT_FORMAT_PRIORITY = [
-    "model.safetensors",  # Use safetensors by default
-    "model.pt",  # Fallback to .pt format
-]
 TIMER_REPO_ID = {
     "_timerxl": "thuml/timer-base-84m",
     "_sundial": "thuml/sundial-base-128m",

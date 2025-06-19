@@ -33,6 +33,7 @@ from transformers.utils import ModelOutput
 
 
 class TSGenerationMixin(GenerationMixin):
+
     @torch.no_grad()
     def generate(
         self,
