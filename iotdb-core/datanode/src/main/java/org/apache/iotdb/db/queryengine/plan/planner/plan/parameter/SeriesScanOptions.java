@@ -37,8 +37,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class SeriesScanOptions {
 
   private Filter globalTimeFilter;
+  private final Filter originalTimeFilter;
 
-  private final AtomicBoolean timeFilterUpdatedByTll = new AtomicBoolean(false);
+  private final AtomicBoolean timeFilterUpdatedByTtl = new AtomicBoolean(false);
 
   private final Filter pushDownFilter;
 
@@ -61,6 +62,7 @@ public class SeriesScanOptions {
       boolean pushLimitToEachDevice,
       boolean isTableViewForTreeModel) {
     this.globalTimeFilter = globalTimeFilter;
+    this.originalTimeFilter = globalTimeFilter;
     this.pushDownFilter = pushDownFilter;
     this.pushDownLimit = pushDownLimit;
     this.pushDownOffset = pushDownOffset;
@@ -116,16 +118,22 @@ public class SeriesScanOptions {
     }
   }
 
-  public boolean timeFilterNeedUpdatedByTll() {
-    return !timeFilterUpdatedByTll.get();
+  public boolean timeFilterNeedUpdatedByTtl() {
+    return !timeFilterUpdatedByTtl.get();
   }
 
-  public void setTTL(long dataTTL) {
-    if (timeFilterUpdatedByTll.compareAndSet(false, true)) {
-      // ttlForTableView should be set before calling setTTL
-      this.globalTimeFilter =
-          updateFilterUsingTTL(globalTimeFilter, Math.min(ttlForTableView, dataTTL));
+  public void setTTLForTableDevice(long dataTTL) {
+    // Devices in the table model share a same table ttl, so it only needs to be set once
+    if (timeFilterUpdatedByTtl.compareAndSet(false, true)) {
+      this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
     }
+  }
+
+  public void setTTLForTreeDevice(long dataTTL) {
+    // ttlForTableView should be set before calling setTTL.
+    // Different devices have different ttl, so we regenerate the globalTimeFilter each time
+    this.globalTimeFilter =
+        updateFilterUsingTTL(originalTimeFilter, Math.min(ttlForTableView, dataTTL));
   }
 
   public void setTTLForTableView(long ttlForTableView) {
