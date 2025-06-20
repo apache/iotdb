@@ -273,15 +273,6 @@
     <logger level="debug" name="PipeLog" additivity="false">
         <appender-ref ref="PipeLog"/>
     </logger>
-    <logger level="info" name="org.apache.iotdb.pipe.api" addtivity="false">
-        <appender-ref ref="PIPE"/>
-    </logger>
-    <logger level="info" name="org.apache.iotdb.db.pipe" addtivity="false">
-        <appender-ref ref="PIPE"/>
-    </logger>
-    <logger level="info" name="org.apache.iotdb.commons.pipe" addtivity="false">
-        <appender-ref ref="PIPE"/>
-    </logger>
     <logger level="info" name="EXPLAIN_ANALYZE">
         <appender-ref ref="EXPLAIN_ANALYZE"/>
     </logger>
