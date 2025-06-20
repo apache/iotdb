@@ -622,9 +622,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new UDFClassLoader(libRoot) {
           @Override
           public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+            LOGGER.info("Loading class [{}]", name);
             // Prevent UDF from accessing restricted classes
             // Using Process or File in UDF is not allowed
-            if (name.startsWith("java.lang.Process") || name.startsWith("java.io.File")) {
+            if (name.startsWith("java.lang.System")) {
               LOGGER.warn(
                   "SANDBOX: UDF {} class {} is trying to access restricted class, which is not allowed",
                   createFunctionStatement.getUdfName(),
@@ -655,20 +656,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                               e.getMessage())))
               .orElse(RpcUtils.SUCCESS_STATUS);
       if (maybeValidationFailed.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Failed to validate UDF class [{}] for function [{}] in sandbox, reason: {}",
-            createFunctionStatement.getClassName(),
-            createFunctionStatement.getUdfName(),
-            maybeValidationFailed.getMessage());
+        LOGGER.warn(maybeValidationFailed.getMessage());
         future.setException(
             new IoTDBException(
-                "Failed to validate UDF class '"
-                    + createFunctionStatement.getClassName()
-                    + "' for function '"
-                    + createFunctionStatement.getUdfName()
-                    + "', reason: "
-                    + maybeValidationFailed.getMessage(),
-                maybeValidationFailed.getCode()));
+                maybeValidationFailed.getMessage(), maybeValidationFailed.getCode()));
         return Optional.of(future);
       }
     } catch (Exception e) {
