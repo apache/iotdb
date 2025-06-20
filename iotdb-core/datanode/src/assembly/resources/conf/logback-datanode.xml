@@ -147,10 +147,10 @@
             <level>INFO</level>
         </filter>
     </appender>
-    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY_DEBUG">
-        <file>${IOTDB_HOME}/logs/log_datanode_query_debug.log</file>
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY">
+        <file>${IOTDB_HOME}/logs/query.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-query-debug-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/query-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -159,7 +159,7 @@
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
+            <level>DEBUG</level>
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="SLOW_SQL">
@@ -193,9 +193,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="COMPACTION">
-        <file>${IOTDB_HOME}/logs/log_datanode_compaction.log</file>
+        <file>${IOTDB_HOME}/logs/compaction.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-compaction-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/compaction-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -204,13 +204,13 @@
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
+            <level>DEBUG</level>
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="PIPE">
-        <file>${IOTDB_HOME}/logs/log_datanode_pipe.log</file>
+        <file>${IOTDB_HOME}/logs/pipe.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-pipe-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/pipe-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -219,7 +219,7 @@
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
+            <level>DEBUG</level>
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="EXPLAIN_ANALYZE">
@@ -254,8 +254,8 @@
     <logger level="info" name="IoTDB_AUDIT_LOGGER">
         <appender-ref ref="AUDIT"/>
     </logger>
-    <logger level="info" name="QUERY_DEBUG">
-        <appender-ref ref="QUERY_DEBUG"/>
+    <logger level="info" name="QUERY">
+        <appender-ref ref="QUERY"/>
     </logger>
     <logger level="info" name="SLOW_SQL">
         <appender-ref ref="SLOW_SQL"/>
