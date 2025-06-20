@@ -209,8 +209,6 @@ public class VariationTableFunction implements TableFunction {
     protected long currentStartIndex = 0;
     // current row index
     protected long curIndex = 0;
-    // whether previous row is null
-    protected boolean previousIsNull = false;
     // current window number
     private long windowIndex = 0;
 
@@ -265,7 +263,6 @@ public class VariationTableFunction implements TableFunction {
         ColumnBuilder passThroughIndexBuilder) {
       if (curIndex == 0) { // first row, init state
         resetBaseValue(input);
-        previousIsNull = input.isNull(0);
       } else { // not first row
         if (isNewGroup(input)) { // current row doesn't belong to current group
           outputWindow(properColumnBuilders, passThroughIndexBuilder, input);
