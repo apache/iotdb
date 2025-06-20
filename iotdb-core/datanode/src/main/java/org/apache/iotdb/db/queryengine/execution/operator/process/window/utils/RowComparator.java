@@ -185,10 +185,6 @@ public class RowComparator {
       Column column1 = columns1.get(i);
       Column column2 = columns2.get(i);
 
-      if (column1.isNull(offset1) || column1.isNull(offset2)) {
-        return false;
-      }
-
       switch (dataType) {
         case BOOLEAN:
           boolean bool1 = column1.getBoolean(offset1);
