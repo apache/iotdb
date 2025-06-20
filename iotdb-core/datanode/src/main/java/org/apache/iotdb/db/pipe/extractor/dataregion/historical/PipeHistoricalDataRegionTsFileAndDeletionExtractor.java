@@ -612,13 +612,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                       // Some resource is marked as deleted but not removed from the list.
                       !resource.isDeleted()
                           && (
-                          // Some resource may not be closed due to the control of
-                          // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                          !resource.isClosed()
-                              || mayTsFileContainUnprocessedData(resource)
-                                  && isTsFileResourceOverlappedWithTimeRange(resource)
-                                  && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
-                                  && mayTsFileResourceOverlappedWithPattern(resource)))
+                          // If the tsFile is not already marked closing, it is not captured by the
+                          // pipe realtime module. Thus, we can wait for the realtime sync module to
+                          // handle this, to avoid blocking the pipe sync process.
+                          resource.getProcessor().alreadyMarkedClosing()
+                              && mayTsFileContainUnprocessedData(resource)
+                              && isTsFileResourceOverlappedWithTimeRange(resource)
+                              && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                              && mayTsFileResourceOverlappedWithPattern(resource)))
               .collect(Collectors.toList());
       resourceList.addAll(sequenceTsFileResources);
 
@@ -629,13 +630,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                       // Some resource is marked as deleted but not removed from the list.
                       !resource.isDeleted()
                           && (
-                          // Some resource may not be closed due to the control of
-                          // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                          !resource.isClosed()
-                              || mayTsFileContainUnprocessedData(resource)
-                                  && isTsFileResourceOverlappedWithTimeRange(resource)
-                                  && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
-                                  && mayTsFileResourceOverlappedWithPattern(resource)))
+                          // If the tsFile is not already marked closing, it is not captured by the
+                          // pipe realtime module. Thus, we can wait for the realtime sync module to
+                          // handle this, to avoid blocking the pipe sync process.
+                          resource.getProcessor().alreadyMarkedClosing()
+                              && mayTsFileContainUnprocessedData(resource)
+                              && isTsFileResourceOverlappedWithTimeRange(resource)
+                              && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                              && mayTsFileResourceOverlappedWithPattern(resource)))
               .collect(Collectors.toList());
       resourceList.addAll(unsequenceTsFileResources);
 
@@ -687,10 +689,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       // For consensus pipe, we only focus on the progressIndex that is generated from local write
       // instead of replication or something else.
       ProgressIndex dedicatedProgressIndex =
-          tryToExtractLocalProgressIndexForIoTV2(resource.getMaxProgressIndexAfterClose());
+          tryToExtractLocalProgressIndexForIoTV2(resource.getMaxProgressIndex());
       return greaterThanStartIndex(dedicatedProgressIndex);
     }
-    return greaterThanStartIndex(resource.getMaxProgressIndexAfterClose());
+    return greaterThanStartIndex(resource.getMaxProgressIndex());
   }
 
   private boolean greaterThanStartIndex(ProgressIndex progressIndex) {
