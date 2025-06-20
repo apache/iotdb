@@ -65,7 +65,8 @@ import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 @SuppressWarnings("squid:S6548")
 public class TimeSeriesMetadataCache {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
+  private static final Logger QUERY_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE =
       config.getAllocateMemoryForTimeSeriesMetaDataCache();
@@ -84,7 +85,7 @@ public class TimeSeriesMetadataCache {
 
   private TimeSeriesMetadataCache() {
     if (CACHE_ENABLE) {
-      logger.info(
+      QUERY_LOGGER.info(
           "TimeSeriesMetadataCache size = {}", MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE);
     }
     lruCache =
