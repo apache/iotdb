@@ -597,7 +597,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   private static Optional<SettableFuture<ConfigTaskResult>> executeInThreadSandboxWithTimeout(
-      Callable<Optional<SettableFuture<ConfigTaskResult>>> task, long timeout, TimeUnit unit) {
+      Callable<Optional<SettableFuture<ConfigTaskResult>>> task, long timeout, TimeUnit unit)
+      throws Exception {
     ExecutorService executor = Executors.newSingleThreadExecutor();
     Future<Optional<SettableFuture<ConfigTaskResult>>> future = executor.submit(task);
 
@@ -607,8 +608,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.cancel(true);
       throw new UDFException(
           "UDF validation timed out after " + timeout + " " + unit.toString().toLowerCase(), e);
-    } catch (Exception e) {
-      throw new UDFException("UDF validation failed", e);
     } finally {
       executor.shutdownNow();
     }
