@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -47,7 +48,7 @@ import java.util.stream.Collectors;
 
 public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
-  private static final Logger logger = LoggerFactory.getLogger(FixedRateFragInsStateTracker.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   private static final long SAME_STATE_PRINT_RATE_IN_MS = 10L * 60 * 1000;
 

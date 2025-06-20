@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.StateMachine;
 import org.apache.iotdb.db.queryengine.execution.StateMachine.StateChangeListener;
@@ -54,7 +55,7 @@ import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanc
 
 @ThreadSafe
 public class FragmentInstanceStateMachine {
-  private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceStateMachine.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   private final long createdTime = System.currentTimeMillis();
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -39,7 +40,7 @@ import static java.util.Objects.requireNonNull;
 /** The base class of query logical plan nodes, which is used to compose logical read plan. */
 public abstract class PlanNode implements IConsensusRequest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PlanNode.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   protected static final int NO_CHILD_ALLOWED = 0;
   protected static final int ONE_CHILD = 1;

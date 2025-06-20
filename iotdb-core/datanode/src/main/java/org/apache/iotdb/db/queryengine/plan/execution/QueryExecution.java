@@ -79,7 +79,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DIST
  * corresponding physical nodes. 3. Collect and monitor the progress/states of this query.
  */
 public class QueryExecution implements IQueryExecution {
-  private static final Logger LOGGER = LoggerFactory.getLogger(QueryExecution.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final int MAX_RETRY_COUNT = 3;

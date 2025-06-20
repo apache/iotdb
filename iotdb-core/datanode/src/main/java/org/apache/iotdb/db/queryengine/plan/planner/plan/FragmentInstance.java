@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.commons.partition.ExecutorType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -45,7 +46,7 @@ import java.util.Objects;
 
 public class FragmentInstance implements IConsensusRequest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstance.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
