@@ -38,7 +38,7 @@ import java.util.Optional;
 
 public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
 
-  private static final Logger logger = LoggerFactory.getLogger(MinIOSelector.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final Map<String, String> rootDisks2DataDirsMapForLoad;
 

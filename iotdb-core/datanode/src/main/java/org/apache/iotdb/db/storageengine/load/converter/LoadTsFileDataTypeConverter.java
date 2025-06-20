@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -37,7 +38,7 @@ import java.util.Optional;
 
 public class LoadTsFileDataTypeConverter {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileDataTypeConverter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 

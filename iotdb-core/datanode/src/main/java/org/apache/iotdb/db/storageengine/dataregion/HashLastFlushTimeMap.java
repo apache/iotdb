@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -30,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
-  private static final Logger logger = LoggerFactory.getLogger(HashLastFlushTimeMap.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   long LONG_SIZE = 24;
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.flush;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.JMXService;
@@ -38,7 +39,7 @@ import java.util.concurrent.Future;
 @SuppressWarnings("squid:S6548")
 public class FlushManager implements FlushManagerMBean, IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FlushManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private FlushTaskPoolManager flushPool = FlushTaskPoolManager.getInstance();
 

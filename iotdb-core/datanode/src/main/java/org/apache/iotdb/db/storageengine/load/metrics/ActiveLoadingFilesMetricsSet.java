@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.metrics;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
@@ -39,7 +40,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class ActiveLoadingFilesMetricsSet implements IMetricSet {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadingFilesMetricsSet.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   protected static final String FAILED_PREFIX = "failed - ";
   protected static final String PENDING_PREFIX = "pending - ";

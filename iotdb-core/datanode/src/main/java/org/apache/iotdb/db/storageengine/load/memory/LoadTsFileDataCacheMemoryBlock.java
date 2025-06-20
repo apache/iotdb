@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.memory;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 
 import org.slf4j.Logger;
@@ -29,7 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBlock {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(LoadTsFileDataCacheMemoryBlock.class);
+      LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
   private static final long MINIMUM_MEMORY_SIZE_IN_BYTES = 1024 * 1024L; // 1 MB
 
   private final AtomicLong limitedMemorySizeInBytes;

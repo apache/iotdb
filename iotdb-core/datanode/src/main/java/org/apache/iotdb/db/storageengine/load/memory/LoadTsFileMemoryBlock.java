@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.memory;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -31,7 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class LoadTsFileMemoryBlock extends LoadTsFileAbstractMemoryBlock {
-  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileMemoryBlock.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private final long totalMemorySizeInBytes;
   private final AtomicLong memoryUsageInBytes;

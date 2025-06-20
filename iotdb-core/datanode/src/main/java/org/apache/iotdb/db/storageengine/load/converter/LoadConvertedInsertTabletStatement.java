@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.converter;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ArrayConverter;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -30,7 +31,7 @@ import org.slf4j.LoggerFactory;
 public class LoadConvertedInsertTabletStatement extends PipeConvertedInsertTabletStatement {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(LoadConvertedInsertTabletStatement.class);
+      LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private final boolean shouldConvertOnTypeMismatch;
 

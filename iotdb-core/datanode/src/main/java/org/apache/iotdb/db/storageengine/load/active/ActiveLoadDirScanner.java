@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
 
@@ -46,7 +47,7 @@ import java.util.stream.Stream;
 
 public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadDirScanner.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private static final String RESOURCE = ".resource";
   private static final String MODS = ".mods";

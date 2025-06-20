@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.memory;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
@@ -31,7 +32,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class LoadTsFileMemoryManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileMemoryManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final LocalExecutionPlanner QUERY_ENGINE_MEMORY_MANAGER =
       LocalExecutionPlanner.getInstance();

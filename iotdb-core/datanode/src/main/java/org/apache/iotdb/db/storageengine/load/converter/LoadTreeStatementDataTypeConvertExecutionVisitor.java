@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
@@ -52,7 +53,7 @@ import static org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil.calc
 public class LoadTreeStatementDataTypeConvertExecutionVisitor
     extends StatementVisitor<Optional<TSStatus>, Void> {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(LoadTreeStatementDataTypeConvertExecutionVisitor.class);
+      LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private static final long TABLET_BATCH_MEMORY_SIZE_IN_BYTES =
       IoTDBDescriptor.getInstance()
