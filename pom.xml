@@ -1676,7 +1676,7 @@
                                 </goals>
                                 <phase>generate-sources</phase>
                                 <configuration>
-                                    <generator>go:package_prefix=github.com/apache/iotdb-client-go/</generator>
+                                    <generator>go:package_prefix=github.com/apache/iotdb-client-go/v2/</generator>
                                     <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
