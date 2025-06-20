@@ -562,6 +562,11 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitPatternRecognition(PatternRecognitionNode node, PlanContext context) {
     context.clearExpectedOrderingScheme();
+    if (node.getPartitionBy().isEmpty()) {
+      Optional<OrderingScheme> orderingScheme = node.getOrderingScheme();
+      orderingScheme.ifPresent(scheme -> nodeOrderingMap.put(node.getPlanNodeId(), scheme));
+    }
+
     if (node.getChildren().isEmpty()) {
       return Collections.singletonList(node);
     }
@@ -1649,6 +1654,11 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitWindowFunction(WindowNode node, PlanContext context) {
     context.clearExpectedOrderingScheme();
+    if (node.getSpecification().getPartitionBy().isEmpty()) {
+      Optional<OrderingScheme> orderingScheme = node.getSpecification().getOrderingScheme();
+      orderingScheme.ifPresent(scheme -> nodeOrderingMap.put(node.getPlanNodeId(), scheme));
+    }
+
     if (node.getChildren().isEmpty()) {
       return Collections.singletonList(node);
     }

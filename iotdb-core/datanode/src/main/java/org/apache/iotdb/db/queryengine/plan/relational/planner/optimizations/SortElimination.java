@@ -127,7 +127,8 @@ public class SortElimination implements PlanOptimizer {
         newNode.addChild(child.accept(this, context));
       }
 
-      if (node.getSpecification().getOrderingScheme().isPresent()) {
+      // We can continue to eliminate sort when there is only PARTITION BY
+      if (node.getSpecification().getPartitionBy().isEmpty() || node.getSpecification().getOrderingScheme().isPresent()) {
         context.setCannotEliminateSort(true);
       }
       return newNode;
@@ -140,7 +141,8 @@ public class SortElimination implements PlanOptimizer {
         newNode.addChild(child.accept(this, context));
       }
 
-      if (node.getOrderingScheme().isPresent()) {
+      // Same as window function
+      if (node.getPartitionBy().isEmpty() || node.getOrderingScheme().isPresent()) {
         context.setCannotEliminateSort(true);
       }
       return newNode;
