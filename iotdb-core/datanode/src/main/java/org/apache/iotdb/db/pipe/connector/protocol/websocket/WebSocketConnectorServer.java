@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class WebSocketConnectorServer extends WebSocketServer {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final AtomicLong eventIdGenerator = new AtomicLong(0);
   // Map<pipeName, Queue<Tuple<eventId, connector, event>>>

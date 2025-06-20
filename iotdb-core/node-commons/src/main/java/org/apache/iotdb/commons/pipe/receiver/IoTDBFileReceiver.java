@@ -64,7 +64,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
  */
 public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBFileReceiver.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   protected final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
 
   // Used to generate transfer id, which is used to identify a receiver thread.

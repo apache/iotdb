@@ -43,7 +43,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 class OpcUaKeyStoreLoader {
-  private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaKeyStoreLoader.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final Pattern IP_ADDR_PATTERN =
       Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");

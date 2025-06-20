@@ -128,7 +128,7 @@ public abstract class IoTDBConnector implements PipeConnector {
   private static final String PARSE_URL_ERROR_MESSAGE =
       "Error occurred while parsing node urls from target servers, please check the specified 'host':'port' or 'node-urls'";
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final List<TEndPoint> nodeUrls = new ArrayList<>();
 

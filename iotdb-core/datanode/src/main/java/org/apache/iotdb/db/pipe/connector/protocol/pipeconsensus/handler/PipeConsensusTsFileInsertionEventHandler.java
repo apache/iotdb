@@ -51,8 +51,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class PipeConsensusTsFileInsertionEventHandler
     implements AsyncMethodCallback<TPipeConsensusTransferResp> {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConsensusTsFileInsertionEventHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final PipeTsFileInsertionEvent event;
   private final PipeConsensusAsyncConnector connector;

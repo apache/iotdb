@@ -43,8 +43,7 @@ import java.util.stream.Collectors;
 
 public class PipeConsensusTabletBatchEventHandler
     implements AsyncMethodCallback<TPipeConsensusBatchTransferResp> {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConsensusTabletBatchEventHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private final List<Long> requestCommitIds;
   private final List<Event> events;
   private final TPipeConsensusBatchTransferReq req;

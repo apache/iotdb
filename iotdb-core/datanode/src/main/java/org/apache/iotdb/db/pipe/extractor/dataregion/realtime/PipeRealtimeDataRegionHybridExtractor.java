@@ -46,8 +46,7 @@ import java.util.Objects;
 
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final boolean isPipeEpochKeepTsFileAfterStuckRestartEnabled =
       PipeConfig.getInstance().isPipeEpochKeepTsFileAfterStuckRestartEnabled();

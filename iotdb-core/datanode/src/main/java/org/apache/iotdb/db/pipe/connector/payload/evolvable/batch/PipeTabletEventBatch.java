@@ -35,7 +35,7 @@ import java.util.Objects;
 
 public abstract class PipeTabletEventBatch implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventBatch.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final List<EnrichedEvent> events = new ArrayList<>();
 

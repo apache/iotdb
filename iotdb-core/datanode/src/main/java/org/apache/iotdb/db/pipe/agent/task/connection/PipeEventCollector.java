@@ -44,7 +44,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeEventCollector implements EventCollector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCollector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 

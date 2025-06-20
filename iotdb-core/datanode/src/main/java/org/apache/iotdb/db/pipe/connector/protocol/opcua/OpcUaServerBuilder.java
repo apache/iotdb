@@ -74,7 +74,7 @@ import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.
  * Eclipse Milo.
  */
 public class OpcUaServerBuilder implements Closeable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaServerBuilder.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final String WILD_CARD_ADDRESS = "0.0.0.0";
 

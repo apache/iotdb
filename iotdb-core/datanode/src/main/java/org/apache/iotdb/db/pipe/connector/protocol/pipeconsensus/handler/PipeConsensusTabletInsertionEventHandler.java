@@ -38,8 +38,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeConsensusTransferResp>
     implements AsyncMethodCallback<E> {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConsensusTabletInsertionEventHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final TabletInsertionEvent event;
 

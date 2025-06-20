@@ -35,8 +35,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransferTrackableHandler {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeTransferTabletInsertionEventHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final TabletInsertionEvent event;
   protected final TPipeTransferReq req;

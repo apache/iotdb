@@ -40,7 +40,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeDataNodePluginAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodePluginAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
 

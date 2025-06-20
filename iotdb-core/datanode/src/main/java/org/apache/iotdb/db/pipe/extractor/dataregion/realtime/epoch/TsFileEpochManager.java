@@ -41,7 +41,7 @@ import java.util.stream.Stream;
 
 public class TsFileEpochManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileEpochManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final String[] EMPTY_MEASUREMENT_ARRAY = new String[0];
 

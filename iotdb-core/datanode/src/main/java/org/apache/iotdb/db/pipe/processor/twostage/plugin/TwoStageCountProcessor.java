@@ -73,7 +73,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class TwoStageCountProcessor implements PipeProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageCountProcessor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private String pipeName;
   private long creationTime;

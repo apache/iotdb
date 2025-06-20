@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 
 public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
-  protected static final Logger LOGGER = LoggerFactory.getLogger(CachedSchemaPatternMatcher.class);
+  protected static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final ReentrantReadWriteLock lock;
 

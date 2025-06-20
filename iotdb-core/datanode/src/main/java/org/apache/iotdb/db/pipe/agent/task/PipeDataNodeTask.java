@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 
 public class PipeDataNodeTask implements PipeTask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final String pipeName;
   private final int regionId;

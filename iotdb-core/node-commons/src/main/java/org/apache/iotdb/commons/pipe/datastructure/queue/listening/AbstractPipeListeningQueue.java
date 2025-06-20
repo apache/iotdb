@@ -41,7 +41,7 @@ import java.util.List;
  */
 public abstract class AbstractPipeListeningQueue extends AbstractSerializableListeningQueue<Event> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractPipeListeningQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   // The cache of the snapshot events list and the tail index of the queue
   // when the snapshot events are generated.

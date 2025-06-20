@@ -42,7 +42,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 
 public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TumblingTimeSamplingProcessor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private long intervalInCurrentPrecision;
 

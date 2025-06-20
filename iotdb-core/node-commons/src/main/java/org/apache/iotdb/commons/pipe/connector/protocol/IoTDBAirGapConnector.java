@@ -79,7 +79,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     }
   }
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 

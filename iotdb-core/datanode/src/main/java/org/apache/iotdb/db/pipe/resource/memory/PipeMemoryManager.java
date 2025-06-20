@@ -36,7 +36,7 @@ import java.util.function.LongUnaryOperator;
 
 public class PipeMemoryManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeMemoryManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final boolean PIPE_MEMORY_MANAGEMENT_ENABLED =
       PipeConfig.getInstance().getPipeMemoryManagementEnabled();

@@ -36,7 +36,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class PipeSnapshotResourceManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSnapshotResourceManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   public static final String PIPE_SNAPSHOT_DIR_NAME = "pipe_snapshot";
 

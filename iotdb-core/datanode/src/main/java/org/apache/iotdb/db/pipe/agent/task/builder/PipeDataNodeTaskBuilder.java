@@ -54,7 +54,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 
 public class PipeDataNodeTaskBuilder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskBuilder.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final PipeStaticMeta pipeStaticMeta;
   private final int regionId;

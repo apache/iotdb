@@ -54,8 +54,7 @@ import java.util.stream.Collectors;
 public class PipeStatementDataTypeConvertExecutionVisitor
     extends StatementVisitor<Optional<TSStatus>, TSStatus> {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeStatementDataTypeConvertExecutionVisitor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @FunctionalInterface
   public interface StatementExecutor {

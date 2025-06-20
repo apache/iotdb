@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 public class TwoStageAggregateReceiver implements IoTDBReceiver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageAggregateReceiver.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @Override
   public IoTDBConnectorRequestVersion getVersion() {

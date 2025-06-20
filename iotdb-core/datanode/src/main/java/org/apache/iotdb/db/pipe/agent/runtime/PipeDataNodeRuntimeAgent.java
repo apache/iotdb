@@ -49,7 +49,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeDataNodeRuntimeAgent implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeRuntimeAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);

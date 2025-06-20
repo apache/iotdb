@@ -52,8 +52,7 @@ import java.util.Objects;
 
 public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBDataRegionAirGapConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {

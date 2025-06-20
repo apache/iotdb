@@ -39,8 +39,7 @@ import java.util.Map;
 public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
     implements IoTDBDataNodeCacheLeaderClientManager {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBDataNodeSyncClientManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   public IoTDBDataNodeSyncClientManager(
       final List<TEndPoint> endPoints,

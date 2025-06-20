@@ -24,8 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DisruptorQueueExceptionHandler implements ExceptionHandler<Object> {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(DisruptorQueueExceptionHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @Override
   public void handleEventException(final Throwable ex, final long sequence, final Object event) {

@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class PipePhantomReferenceManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePhantomReferenceManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final Set<PipeEventPhantomReference> PIPE_EVENT_PHANTOM_REFERENCES =
       ConcurrentHashMap.newKeySet();

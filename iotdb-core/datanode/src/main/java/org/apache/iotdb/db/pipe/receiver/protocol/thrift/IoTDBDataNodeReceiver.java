@@ -116,7 +116,7 @@ import java.util.stream.Stream;
 
 public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeReceiver.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final String[] RECEIVER_FILE_BASE_DIRS = IOTDB_CONFIG.getPipeReceiverFileDirs();

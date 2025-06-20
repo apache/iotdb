@@ -75,8 +75,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeRealtimeDataRegionExtractor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected String pipeName;
   protected long creationTime;

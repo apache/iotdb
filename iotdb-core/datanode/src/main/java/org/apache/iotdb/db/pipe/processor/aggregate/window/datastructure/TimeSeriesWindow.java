@@ -44,7 +44,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class TimeSeriesWindow {
-  private static final Logger LOGGER = LoggerFactory.getLogger(TimeSeriesWindow.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   // A window is typically with a timestamp. We define it here to avoid
   // boxing/unboxing and simplify the logics.

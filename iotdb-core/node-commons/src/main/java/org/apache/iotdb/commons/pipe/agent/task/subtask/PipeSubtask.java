@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public abstract class PipeSubtask
     implements FutureCallback<Boolean>, Callable<Boolean>, AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   // Used for identifying the subtask
   protected final String taskID;

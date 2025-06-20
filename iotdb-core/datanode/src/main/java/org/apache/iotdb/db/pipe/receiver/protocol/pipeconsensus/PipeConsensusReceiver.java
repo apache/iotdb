@@ -88,7 +88,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class PipeConsensusReceiver {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiver.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long PIPE_CONSENSUS_RECEIVER_MAX_WAITING_TIME_IN_MS =
       (long) IOTDB_CONFIG.getConnectionTimeoutInMS()

@@ -33,7 +33,7 @@ import java.util.Optional;
 
 public class PipeTransferSliceReqHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferSliceReqHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private int orderId = -1;
 

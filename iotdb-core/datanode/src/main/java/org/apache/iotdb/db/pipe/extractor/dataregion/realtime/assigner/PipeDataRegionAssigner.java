@@ -44,7 +44,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeDataRegionAssigner implements Closeable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataRegionAssigner.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final int nonForwardingEventsProgressReportInterval =
       PipeConfig.getInstance().getPipeNonForwardingEventsProgressReportInterval();

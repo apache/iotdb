@@ -57,7 +57,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class IoTDBLegacyPipeReceiverAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLegacyPipeReceiverAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final String PATCH_SUFFIX = ".patch";
 

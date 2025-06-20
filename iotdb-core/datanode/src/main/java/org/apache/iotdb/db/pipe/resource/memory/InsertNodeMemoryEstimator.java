@@ -51,7 +51,7 @@ import java.util.Objects;
 
 public class InsertNodeMemoryEstimator {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(InsertNodeMemoryEstimator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final String INSERT_TABLET_NODE = "InsertTabletNode";
   private static final String INSERT_ROW_NODE = "InsertRowNode";

@@ -41,7 +41,7 @@ import java.time.ZoneId;
 /** This loader is used to load tsFiles. If .mods file exists, it will be loaded as well. */
 public class TsFileLoader implements ILoader {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileLoader.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final File tsFile;
   private final String database;

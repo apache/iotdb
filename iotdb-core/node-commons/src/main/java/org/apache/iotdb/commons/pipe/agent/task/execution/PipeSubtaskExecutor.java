@@ -36,7 +36,7 @@ import java.util.concurrent.ExecutorService;
 
 public abstract class PipeSubtaskExecutor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskExecutor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final ExecutorService subtaskCallbackListeningExecutor =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(

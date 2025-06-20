@@ -26,8 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ConsensusPipeDataNodeRuntimeAgentGuardian implements ConsensusPipeGuardian {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ConsensusPipeDataNodeRuntimeAgentGuardian.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private boolean registered = false;
 
   @Override

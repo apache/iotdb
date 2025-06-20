@@ -37,7 +37,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 
 public abstract class PipePattern {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePattern.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final String pattern;
 

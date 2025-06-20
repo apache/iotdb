@@ -31,8 +31,7 @@ import java.io.File;
 
 public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   /**
    * Delete the data directory and all of its subdirectories that contain the

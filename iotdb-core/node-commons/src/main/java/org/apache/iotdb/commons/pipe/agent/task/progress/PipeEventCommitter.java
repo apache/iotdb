@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /** Used to queue {@link Event}s for one pipe of one region to commit in order. */
 public class PipeEventCommitter {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final CommitterKey committerKey;
 

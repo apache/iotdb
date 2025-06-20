@@ -60,7 +60,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 
 public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSslSyncConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected IoTDBSyncClientManager clientManager;
 

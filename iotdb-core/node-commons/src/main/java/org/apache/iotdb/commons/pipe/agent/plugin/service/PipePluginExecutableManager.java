@@ -37,7 +37,7 @@ import java.nio.file.Paths;
 
 public class PipePluginExecutableManager extends ExecutableManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginExecutableManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   public PipePluginExecutableManager(String temporaryLibRoot, String libRoot) {
     super(temporaryLibRoot, libRoot);

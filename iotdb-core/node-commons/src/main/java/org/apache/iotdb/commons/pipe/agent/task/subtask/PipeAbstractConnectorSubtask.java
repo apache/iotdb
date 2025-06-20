@@ -37,7 +37,7 @@ import java.util.concurrent.ExecutorService;
 
 public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeAbstractConnectorSubtask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   // For output (transfer events to the target system in connector)
   protected PipeConnector outputPipeConnector;

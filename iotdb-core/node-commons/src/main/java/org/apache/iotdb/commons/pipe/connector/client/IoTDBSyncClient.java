@@ -44,7 +44,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class IoTDBSyncClient extends IClientRPCService.Client
     implements ThriftClient, AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncClient.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final AtomicInteger SLICE_ORDER_ID_GENERATOR = new AtomicInteger(0);
 

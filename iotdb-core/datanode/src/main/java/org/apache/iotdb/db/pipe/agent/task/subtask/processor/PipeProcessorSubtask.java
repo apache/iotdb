@@ -52,7 +52,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeProcessorSubtask extends PipeReportableSubtask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final AtomicReference<PipeProcessorSubtaskWorkerManager> subtaskWorkerManager =
       new AtomicReference<>();

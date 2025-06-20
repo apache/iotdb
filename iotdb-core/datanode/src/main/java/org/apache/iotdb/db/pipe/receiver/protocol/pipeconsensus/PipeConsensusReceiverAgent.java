@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiverAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final Map<
           Byte,

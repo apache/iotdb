@@ -38,8 +38,7 @@ import java.util.concurrent.ConcurrentMap;
 
 public class PipeSchemaRegionListenerMetrics implements IMetricSet {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeSchemaRegionListenerMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;

@@ -93,7 +93,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 
 public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionExtractor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;

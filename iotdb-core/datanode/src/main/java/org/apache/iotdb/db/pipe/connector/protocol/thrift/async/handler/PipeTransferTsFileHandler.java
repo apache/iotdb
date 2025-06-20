@@ -61,7 +61,7 @@ import java.util.stream.Collectors;
 
 public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTsFileHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   // Used to rate limit the transfer
   private final Map<Pair<String, Long>, Double> pipeName2WeightMap;

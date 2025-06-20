@@ -33,7 +33,7 @@ import java.io.IOException;
 
 public abstract class PipeData {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeData.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected long serialNumber;
 

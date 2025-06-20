@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class PipeWALResource implements Closeable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeWALResource.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final WALEntryHandler walEntryHandler;
 

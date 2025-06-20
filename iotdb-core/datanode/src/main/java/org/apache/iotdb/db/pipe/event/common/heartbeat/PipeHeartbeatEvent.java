@@ -38,7 +38,7 @@ import java.util.Objects;
 
 public class PipeHeartbeatEvent extends EnrichedEvent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatEvent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final String dataRegionId;
 

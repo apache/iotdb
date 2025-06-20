@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
 
 public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeAirGapConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {

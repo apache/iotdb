@@ -37,7 +37,7 @@ import java.util.function.Supplier;
 
 public abstract class IoTDBReceiverAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBReceiverAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected static final Map<Byte, Supplier<IoTDBReceiver>> RECEIVER_CONSTRUCTORS = new HashMap<>();
 

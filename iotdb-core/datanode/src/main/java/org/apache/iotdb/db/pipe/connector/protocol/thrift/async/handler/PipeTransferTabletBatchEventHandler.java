@@ -44,8 +44,7 @@ import java.util.stream.Collectors;
 
 public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHandler {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeTransferTabletBatchEventHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final List<EnrichedEvent> events;
   private final Map<Pair<String, Long>, Long> pipeName2BytesAccumulated;

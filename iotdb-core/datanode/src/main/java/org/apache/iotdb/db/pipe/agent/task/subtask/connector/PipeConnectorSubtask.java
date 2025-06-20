@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
 
 public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   // For input
   protected final UnboundedBlockingPendingQueue<Event> inputPendingQueue;

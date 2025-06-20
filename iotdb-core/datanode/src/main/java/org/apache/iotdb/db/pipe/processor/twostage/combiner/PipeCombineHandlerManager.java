@@ -44,7 +44,7 @@ import java.util.function.Function;
 
 public class PipeCombineHandlerManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeCombineHandlerManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final ConcurrentMap<String, PipeCombineHandler> pipeId2CombineHandler =
       new ConcurrentHashMap<>();

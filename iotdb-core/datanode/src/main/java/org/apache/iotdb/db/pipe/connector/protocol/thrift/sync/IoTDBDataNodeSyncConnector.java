@@ -49,7 +49,7 @@ import java.util.stream.Collectors;
 
 public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeSyncConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected IoTDBDataNodeSyncClientManager clientManager;
 

@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeReceiverStatusHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverStatusHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final int CONFLICT_RETRY_MAX_TIMES = 100;
 

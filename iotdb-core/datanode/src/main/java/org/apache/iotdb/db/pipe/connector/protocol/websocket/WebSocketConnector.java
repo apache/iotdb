@@ -41,7 +41,7 @@ import java.util.Optional;
 
 public class WebSocketConnector implements PipeConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private Integer port;
   private WebSocketConnectorServer server;

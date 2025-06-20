@@ -39,7 +39,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeConsensusTabletBinaryReq extends TPipeConsensusTransferReq {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusTabletBinaryReq.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private transient ByteBuffer byteBuffer;
 
   private PipeConsensusTabletBinaryReq() {

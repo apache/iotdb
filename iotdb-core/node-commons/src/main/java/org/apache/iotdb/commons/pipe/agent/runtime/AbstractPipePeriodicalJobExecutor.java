@@ -39,8 +39,7 @@ import java.util.concurrent.TimeUnit;
  */
 public abstract class AbstractPipePeriodicalJobExecutor {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(AbstractPipePeriodicalJobExecutor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final ScheduledExecutorService executorService;
   private final long minIntervalSeconds;

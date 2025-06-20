@@ -38,8 +38,7 @@ import java.util.Map;
 
 public class PipeConvertedInsertRowStatement extends InsertRowStatement {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConvertedInsertRowStatement.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   public PipeConvertedInsertRowStatement(final InsertRowStatement insertRowStatement) {
     super();

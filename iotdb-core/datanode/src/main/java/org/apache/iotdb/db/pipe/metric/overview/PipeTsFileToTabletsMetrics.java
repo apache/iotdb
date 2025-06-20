@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 public class PipeTsFileToTabletsMetrics implements IMetricSet {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileToTabletsMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;

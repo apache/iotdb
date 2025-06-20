@@ -30,7 +30,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTsFileResourceSegmentLock {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResourceSegmentLock.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final int SEGMENT_LOCK_MIN_SIZE = 32;
   private static final int SEGMENT_LOCK_MAX_SIZE = 128;

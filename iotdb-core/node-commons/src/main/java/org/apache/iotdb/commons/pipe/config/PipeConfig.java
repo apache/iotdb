@@ -386,7 +386,7 @@ public class PipeConfig {
 
   /////////////////////////////// Utils ///////////////////////////////
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   public void printAllConfigs() {
     LOGGER.info(

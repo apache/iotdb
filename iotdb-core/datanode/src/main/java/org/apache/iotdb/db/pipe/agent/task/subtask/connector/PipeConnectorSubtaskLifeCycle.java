@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 
 public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtaskLifeCycle.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final PipeConnectorSubtaskExecutor executor;
   protected final PipeConnectorSubtask subtask;

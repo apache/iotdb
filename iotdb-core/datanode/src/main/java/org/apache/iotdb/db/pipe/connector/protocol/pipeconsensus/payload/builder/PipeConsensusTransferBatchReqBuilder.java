@@ -55,8 +55,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 
 public abstract class PipeConsensusTransferBatchReqBuilder implements AutoCloseable {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConsensusTransferBatchReqBuilder.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final List<Event> events = new ArrayList<>();
   protected final List<Long> requestCommitIds = new ArrayList<>();

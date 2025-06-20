@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class IoTDBClientManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBClientManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final List<TEndPoint> endPointList;
   protected long currentClientIndex = 0;

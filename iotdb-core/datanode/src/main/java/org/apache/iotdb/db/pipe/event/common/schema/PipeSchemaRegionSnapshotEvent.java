@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
 
 public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
     implements ReferenceTrackableEvent {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSchemaRegionSnapshotEvent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private String mTreeSnapshotPath;
   private String tagLogSnapshotPath;
   private String databaseName;

@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 
 public class DataRegionWatermarkInjector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataRegionWatermarkInjector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   public static final long MIN_INJECTION_INTERVAL_IN_MS = 30 * 1000L; // 30s
 

@@ -39,8 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SwingingDoorTrendingSamplingProcessor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   /**
    * The maximum absolute difference the user set if the data's value is within

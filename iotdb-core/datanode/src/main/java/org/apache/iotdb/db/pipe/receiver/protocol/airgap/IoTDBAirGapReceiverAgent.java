@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class IoTDBAirGapReceiverAgent implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapReceiverAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final ExecutorService listenExecutor =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(

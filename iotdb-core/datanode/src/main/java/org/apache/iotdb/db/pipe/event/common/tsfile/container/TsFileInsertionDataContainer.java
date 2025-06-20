@@ -37,7 +37,7 @@ import java.io.IOException;
 
 public abstract class TsFileInsertionDataContainer implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionDataContainer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   protected final String pipeName;
   protected final long creationTime;

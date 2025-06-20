@@ -58,8 +58,7 @@ import java.util.Set;
 
 public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContainer {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(TsFileInsertionQueryDataContainer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   private final TsFileReader tsFileReader;

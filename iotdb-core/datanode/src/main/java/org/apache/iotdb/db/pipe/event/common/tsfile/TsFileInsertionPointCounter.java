@@ -39,7 +39,7 @@ import java.util.Set;
 
 public class TsFileInsertionPointCounter implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionPointCounter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final PipePattern pattern;
 
