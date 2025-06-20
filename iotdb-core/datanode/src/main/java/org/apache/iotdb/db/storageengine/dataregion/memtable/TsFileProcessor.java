@@ -121,8 +121,11 @@ import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.WORK
 public class TsFileProcessor {
 
   /** Logger fot this class. */
-  private static final Logger writeLogger = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
-  private static final Logger queryLogger = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
+  private static final Logger writeLogger =
+      LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
+
+  private static final Logger queryLogger =
+      LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private static final Logger otherLogger = LoggerFactory.getLogger(TsFileProcessor.class);
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
@@ -1090,7 +1093,8 @@ public class TsFileProcessor {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
-    writeLogger.info("File {} is closed synchronously", tsFileResource.getTsFile().getAbsolutePath());
+    writeLogger.info(
+        "File {} is closed synchronously", tsFileResource.getTsFile().getAbsolutePath());
   }
 
   /** async close one tsfile, register and close it by another thread */
