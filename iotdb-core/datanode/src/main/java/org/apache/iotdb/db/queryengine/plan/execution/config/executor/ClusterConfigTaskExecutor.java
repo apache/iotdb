@@ -536,12 +536,37 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         // ensure that jar file contains the class and the class is a UDF
         Class<?> clazz = Class.forName(createFunctionStatement.getClassName(), true, classLoader);
         UDF udf = (UDF) clazz.getDeclaredConstructor().newInstance();
-      } catch (ClassNotFoundException
-          | NoSuchMethodException
-          | InstantiationException
-          | IllegalAccessException
-          | InvocationTargetException
-          | ClassCastException e) {
+
+        final TSStatus maybeValidationFailed =
+            udf.validate()
+                .map(
+                    e ->
+                        RpcUtils.getStatus(
+                            TSStatusCode.UDF_LOAD_CLASS_ERROR,
+                            String.format(
+                                "Fail to validate UDF class [%s] for function [%s] in sandbox, reason: %s",
+                                createFunctionStatement.getClassName(),
+                                createFunctionStatement.getUdfName(),
+                                e.getMessage())))
+                .orElse(RpcUtils.SUCCESS_STATUS);
+        if (maybeValidationFailed.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          LOGGER.warn(
+              "Failed to validate UDF class [{}] for function [{}] in sandbox, reason: {}",
+              createFunctionStatement.getClassName(),
+              createFunctionStatement.getUdfName(),
+              maybeValidationFailed.getMessage());
+          future.setException(
+              new IoTDBException(
+                  "Failed to validate UDF class '"
+                      + createFunctionStatement.getClassName()
+                      + "' for function '"
+                      + createFunctionStatement.getUdfName()
+                      + "', reason: "
+                      + maybeValidationFailed.getMessage(),
+                  maybeValidationFailed.getCode()));
+          return future;
+        }
+      } catch (Exception e) {
         LOGGER.warn(
             "Failed to create function when try to create UDF({}) instance first.",
             createFunctionStatement.getUdfName(),
@@ -567,7 +592,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | IOException | TException e) {
+    } catch (Exception e) {
       future.setException(e);
     }
     return future;
