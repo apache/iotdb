@@ -37,6 +37,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Date;
 
 import static org.junit.Assert.assertEquals;
@@ -57,25 +61,30 @@ public class IoTDBCustomizedClusterIT {
   @Category(DailyIT.class)
   @Test
   public void testRepeatedlyRestartWholeClusterWithWrite() throws Exception {
-    testRepeatedlyRestartWholeCluster((s, i, env) -> {
-      if (i != 0) {
-        ResultSet resultSet = s.executeQuery("SELECT last s1 FROM root.**");
-        ResultSetMetaData metaData = resultSet.getMetaData();
-        assertEquals(4, metaData.getColumnCount());
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt ++;
-          StringBuilder result = new StringBuilder();
-          for (int j = 0; j < metaData.getColumnCount(); j++) {
-            result.append(metaData.getColumnName(j + 1)).append(":").append(resultSet.getString(j + 1)).append(",");
+    testRepeatedlyRestartWholeCluster(
+        (s, i, env) -> {
+          if (i != 0) {
+            ResultSet resultSet = s.executeQuery("SELECT last s1 FROM root.**");
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            assertEquals(4, metaData.getColumnCount());
+            int cnt = 0;
+            while (resultSet.next()) {
+              cnt++;
+              StringBuilder result = new StringBuilder();
+              for (int j = 0; j < metaData.getColumnCount(); j++) {
+                result
+                    .append(metaData.getColumnName(j + 1))
+                    .append(":")
+                    .append(resultSet.getString(j + 1))
+                    .append(",");
+              }
+              System.out.println(result);
+            }
           }
-          System.out.println(result);
-        }
-      }
-      s.execute("INSERT INTO root.db1.d1 (time, s1) VALUES (1, 1)");
-      s.execute("INSERT INTO root.db2.d1 (time, s1) VALUES (1, 1)");
-      s.execute("INSERT INTO root.db3.d1 (time, s1) VALUES (1, 1)");
-    });
+          s.execute("INSERT INTO root.db1.d1 (time, s1) VALUES (1, 1)");
+          s.execute("INSERT INTO root.db2.d1 (time, s1) VALUES (1, 1)");
+          s.execute("INSERT INTO root.db3.d1 (time, s1) VALUES (1, 1)");
+        });
   }
 
   @Category(DailyIT.class)
@@ -84,37 +93,47 @@ public class IoTDBCustomizedClusterIT {
     SimpleEnv receiverEnv = new SimpleEnv();
     receiverEnv.initClusterEnvironment(1, 1);
     try {
-      testRepeatedlyRestartWholeCluster((s, i, env) -> {
-        // use another thread to make creating and restart concurrent
-        // otherwise, all tasks will be done before restart and the cluster will not attempt to recover tasks
-        s.execute(String.format("CREATE PIPE p%d_1 WITH SINK ('sink'='iotdb-thrift-sink', 'node-urls' = '%s')", i, receiverEnv.getDataNodeWrapper(0).getIpAndPortString()));
-        s.execute(String.format("CREATE PIPE p%d_2 WITH SINK ('sink'='iotdb-thrift-sink', 'node-urls' = '%s')", i, receiverEnv.getDataNodeWrapper(0).getIpAndPortString()));
-        s.execute(String.format("CREATE PIPE p%d_3 WITH SINK ('sink'='iotdb-thrift-sink', 'node-urls' = '%s')", i, receiverEnv.getDataNodeWrapper(0).getIpAndPortString()));
-      });
+      testRepeatedlyRestartWholeCluster(
+          (s, i, env) -> {
+            // use another thread to make creating and restart concurrent
+            // otherwise, all tasks will be done before restart and the cluster will not attempt to
+            // recover tasks
+            s.execute(
+                String.format(
+                    "CREATE PIPE p%d_1 WITH SINK ('sink'='iotdb-thrift-sink', 'node-urls' = '%s')",
+                    i, receiverEnv.getDataNodeWrapper(0).getIpAndPortString()));
+            s.execute(
+                String.format(
+                    "CREATE PIPE p%d_2 WITH SINK ('sink'='iotdb-thrift-sink', 'node-urls' = '%s')",
+                    i, receiverEnv.getDataNodeWrapper(0).getIpAndPortString()));
+            s.execute(
+                String.format(
+                    "CREATE PIPE p%d_3 WITH SINK ('sink'='iotdb-thrift-sink', 'node-urls' = '%s')",
+                    i, receiverEnv.getDataNodeWrapper(0).getIpAndPortString()));
+          });
     } finally {
       receiverEnv.cleanClusterEnvironment();
     }
   }
 
-
   private void testRepeatedlyRestartWholeCluster(RestartAction restartAction) throws Exception {
     SimpleEnv simpleEnv = new SimpleEnv();
     try {
       simpleEnv
-              .getConfig()
-              .getCommonConfig()
-              .setDataReplicationFactor(3)
-              .setSchemaReplicationFactor(3)
-              .setSchemaRegionConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus")
-              .setConfigNodeConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus")
-              .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.iot.IoTConsensus");
+          .getConfig()
+          .getCommonConfig()
+          .setDataReplicationFactor(3)
+          .setSchemaReplicationFactor(3)
+          .setSchemaRegionConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus")
+          .setConfigNodeConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus")
+          .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.iot.IoTConsensus");
       simpleEnv.initClusterEnvironment(3, 3);
 
       int repeat = 100;
       for (int i = 0; i < repeat; i++) {
         logger.info("Round {} restart", i);
         try (Connection connection = simpleEnv.getConnection();
-             Statement statement = connection.createStatement()) {
+            Statement statement = connection.createStatement()) {
           ResultSet resultSet = statement.executeQuery("SHOW CLUSTER");
           ResultSetMetaData metaData = resultSet.getMetaData();
           int columnCount = metaData.getColumnCount();
@@ -122,9 +141,9 @@ public class IoTDBCustomizedClusterIT {
             StringBuilder row = new StringBuilder();
             for (int j = 0; j < columnCount; j++) {
               row.append(metaData.getColumnName(j + 1))
-                      .append(":")
-                      .append(resultSet.getString(j + 1))
-                      .append(",");
+                  .append(":")
+                  .append(resultSet.getString(j + 1))
+                  .append(",");
             }
             System.out.println(row);
           }
@@ -143,7 +162,8 @@ public class IoTDBCustomizedClusterIT {
         try {
           simpleEnv.checkClusterStatusWithoutUnknown();
         } catch (PortOccupiedException e) {
-          logger.info("Some ports are occupied during restart, which cannot be processed, just pass the test.");
+          logger.info(
+              "Some ports are occupied during restart, which cannot be processed, just pass the test.");
           return;
         }
       }

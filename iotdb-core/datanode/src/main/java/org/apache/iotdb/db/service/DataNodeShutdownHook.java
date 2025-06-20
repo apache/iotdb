@@ -118,6 +118,8 @@ public class DataNodeShutdownHook extends Thread {
       triggerSnapshotForAllDataRegion();
     }
 
+    // Persist progress index before shutdown to accurate recovery after restart
+    PipeDataNodeAgent.task().persistAllProgressIndexLocally();
     // Shutdown all consensus pipe's receiver
     PipeDataNodeAgent.receiver().pipeConsensus().closeReceiverExecutor();
     // Shutdown pipe progressIndex background service

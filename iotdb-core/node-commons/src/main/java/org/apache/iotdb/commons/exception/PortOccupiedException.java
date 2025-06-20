@@ -20,12 +20,12 @@ package org.apache.iotdb.commons.exception;
 
 import java.util.Arrays;
 
-public class PortOccupiedException extends RuntimeException{
-    public PortOccupiedException() {
-        super("Some ports are occupied");
-    }
+public class PortOccupiedException extends RuntimeException {
+  public PortOccupiedException() {
+    super("Some ports are occupied");
+  }
 
-    public PortOccupiedException(int... ports) {
-        super(String.format("Ports %s are occupied", Arrays.toString(ports)));
-    }
+  public PortOccupiedException(int... ports) {
+    super(String.format("Ports %s are occupied", Arrays.toString(ports)));
+  }
 }

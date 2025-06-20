@@ -698,7 +698,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     final String[] path = new String[nodeNames.size() + 1];
     path[0] = ctx.ROOT().getText();
     for (int i = 0; i < nodeNames.size(); i++) {
-      path[i + 1] = parseNodeString(nodeNames.get(i).getText());
+      path[i + 1] =
+          parseNodeString(
+              nodeNames.get(i).nodeNameWithoutWildcard() != null
+                  ? ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
+                      .getValue()
+                  : nodeNames.get(i).getText());
     }
     return new PartialPath(path);
   }
@@ -3264,17 +3269,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             "The second argument of 'approx_count_distinct' function must be a literal");
       }
     } else if (name.toString().equalsIgnoreCase(APPROX_MOST_FREQUENT)) {
-      if (!isNumericLiteral(arguments.get(1)) || !isNumericLiteral(arguments.get(2))) {
+      if (arguments.size() == 3
+          && (!(arguments.get(1) instanceof LongLiteral)
+              || !(arguments.get(2) instanceof LongLiteral))) {
         throw new SemanticException(
-            "The second and third argument of 'approx_most_frequent' function must be numeric literal");
+            "The second and third argument of 'approx_most_frequent' function must be positive integer literal");
       }
     }
 
     return new FunctionCall(getLocation(ctx), name, window, nulls, distinct, mode, arguments);
-  }
-
-  public boolean isNumericLiteral(Expression expression) {
-    return expression instanceof LongLiteral || expression instanceof DoubleLiteral;
   }
 
   @Override

@@ -306,6 +306,11 @@ public class ForecastTableFunction implements TableFunction {
     String timeColumn =
         (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
 
+    if (timeColumn == null || timeColumn.isEmpty()) {
+      throw new SemanticException(
+          String.format("%s should never be null or empty.", TIMECOL_PARAMETER_NAME));
+    }
+
     // predicated columns should never contain partition by columns and time column
     Set<String> excludedColumns = new HashSet<>(input.getPartitionBy());
     excludedColumns.add(timeColumn);
@@ -571,6 +576,7 @@ public class ForecastTableFunction implements TableFunction {
                 modelId, predicatedResult.getPositionCount(), outputLength),
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
+
       for (int columnIndex = 1, size = predicatedResult.getValueColumnCount();
           columnIndex <= size;
           columnIndex++) {
@@ -628,7 +634,15 @@ public class ForecastTableFunction implements TableFunction {
         throw new IoTDBRuntimeException(message, resp.getStatus().getCode());
       }
 
-      return SERDE.deserialize(ByteBuffer.wrap(resp.getForecastResult()));
+      TsBlock res = SERDE.deserialize(ByteBuffer.wrap(resp.getForecastResult()));
+      if (res.getValueColumnCount() != inputData.getValueColumnCount()) {
+        throw new IoTDBRuntimeException(
+            String.format(
+                "Model %s output %s columns, doesn't equal to specified %s",
+                modelId, res.getValueColumnCount(), inputData.getValueColumnCount()),
+            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      }
+      return res;
     }
   }
 

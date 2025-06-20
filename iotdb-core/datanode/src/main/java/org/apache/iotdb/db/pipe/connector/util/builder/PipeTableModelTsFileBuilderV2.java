@@ -31,6 +31,7 @@ import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
@@ -164,17 +165,16 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
       List<IMeasurementSchema> aggregatedSchemas =
           tablets.stream()
               .flatMap(tablet -> tablet.getSchemas().stream())
-              .filter(Objects::nonNull)
               .collect(Collectors.toList());
       List<ColumnCategory> aggregatedColumnCategories =
           tablets.stream()
               .flatMap(tablet -> tablet.getColumnTypes().stream())
-              .filter(Objects::nonNull)
               .collect(Collectors.toList());
 
       final Set<IMeasurementSchema> seen = new HashSet<>();
       final List<Integer> distinctIndices =
           IntStream.range(0, aggregatedSchemas.size())
+              .filter(i -> Objects.nonNull(aggregatedSchemas.get(i)))
               .filter(
                   i -> seen.add(aggregatedSchemas.get(i))) // Only keep the first occurrence index
               .boxed()
@@ -195,15 +195,23 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
 
     for (int i = 0, size = tabletList.size(); i < size; ++i) {
       final Tablet tablet = tabletList.get(i);
+      MeasurementSchema[] measurementSchemas =
+          tablet.getSchemas().stream()
+              .map(schema -> (MeasurementSchema) schema)
+              .toArray(MeasurementSchema[]::new);
+      Object[] values = Arrays.copyOf(tablet.getValues(), tablet.getValues().length);
+      BitMap[] bitMaps = Arrays.copyOf(tablet.getBitMaps(), tablet.getBitMaps().length);
+      ColumnCategory[] columnCategory = tablet.getColumnTypes().toArray(new ColumnCategory[0]);
 
       // convert date value to int refer to
       // org.apache.iotdb.db.storageengine.dataregion.memtable.WritableMemChunk.writeNonAlignedTablet
-      final Object[] values = Arrays.copyOf(tablet.getValues(), tablet.getValues().length);
+      int validatedIndex = 0;
       for (int j = 0; j < tablet.getSchemas().size(); ++j) {
-        final IMeasurementSchema schema = tablet.getSchemas().get(j);
-        if (Objects.nonNull(schema)
-            && Objects.equals(TSDataType.DATE, schema.getType())
-            && values[j] instanceof LocalDate[]) {
+        final MeasurementSchema schema = measurementSchemas[j];
+        if (Objects.isNull(schema) || Objects.isNull(columnCategory[j])) {
+          continue;
+        }
+        if (Objects.equals(TSDataType.DATE, schema.getType()) && values[j] instanceof LocalDate[]) {
           final LocalDate[] dates = ((LocalDate[]) values[j]);
           final int[] dateValues = new int[dates.length];
           for (int k = 0; k < Math.min(dates.length, tablet.getRowSize()); k++) {
@@ -213,6 +221,18 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
           }
           values[j] = dateValues;
         }
+        measurementSchemas[validatedIndex] = schema;
+        values[validatedIndex] = values[j];
+        bitMaps[validatedIndex] = bitMaps[j];
+        columnCategory[validatedIndex] = columnCategory[j];
+        validatedIndex++;
+      }
+
+      if (validatedIndex != measurementSchemas.length) {
+        values = Arrays.copyOf(values, validatedIndex);
+        measurementSchemas = Arrays.copyOf(measurementSchemas, validatedIndex);
+        bitMaps = Arrays.copyOf(bitMaps, validatedIndex);
+        columnCategory = Arrays.copyOf(columnCategory, validatedIndex);
       }
 
       final RelationalInsertTabletNode insertTabletNode =
@@ -221,24 +241,19 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
               new PartialPath(tablet.getTableName()),
               // the data of the table model is aligned
               true,
-              tablet.getSchemas().stream()
-                  .filter(Objects::nonNull)
-                  .map(IMeasurementSchema::getMeasurementName)
+              Arrays.stream(measurementSchemas)
+                  .map(MeasurementSchema::getMeasurementName)
                   .toArray(String[]::new),
-              tablet.getSchemas().stream()
-                  .map(IMeasurementSchema::getType)
+              Arrays.stream(measurementSchemas)
+                  .map(MeasurementSchema::getType)
                   .toArray(TSDataType[]::new),
               // TODO: cast
-              tablet.getSchemas().stream()
-                  .filter(Objects::nonNull)
-                  .map(schema -> (MeasurementSchema) schema)
-                  .toArray(MeasurementSchema[]::new),
+              measurementSchemas,
               tablet.getTimestamps(),
-              tablet.getBitMaps(),
+              bitMaps,
               values,
               tablet.getRowSize(),
-              tablet.getColumnTypes().stream()
-                  .filter(Objects::nonNull)
+              Arrays.stream(columnCategory)
                   .map(TsTableColumnCategory::fromTsFileColumnCategory)
                   .toArray(TsTableColumnCategory[]::new));
 

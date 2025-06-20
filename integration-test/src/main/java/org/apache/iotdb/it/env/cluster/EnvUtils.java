@@ -99,27 +99,33 @@ public class EnvUtils {
   }
 
   private static boolean checkPortsAvailable(final List<Integer> ports) {
-      try {
-          return listPortOccupation(ports).isEmpty();
-      } catch (IOException e) {
-        IoTDBTestLogger.logger.error("Cannot check available ports", e);
-        return false;
-      }
+    try {
+      return listPortOccupation(ports).isEmpty();
+    } catch (IOException e) {
+      IoTDBTestLogger.logger.error("Cannot check available ports", e);
+      return false;
+    }
   }
 
-  public static Map<Integer, Long> listPortOccupation(final List<Integer> ports) throws IOException {
-    return SystemUtils.IS_OS_WINDOWS ? listPortOccupationWindows(ports) : listPortOccupationUnix(ports);
+  public static Map<Integer, Long> listPortOccupation(final List<Integer> ports)
+      throws IOException {
+    return SystemUtils.IS_OS_WINDOWS
+        ? listPortOccupationWindows(ports)
+        : listPortOccupationUnix(ports);
   }
 
   /**
    * List occupied port and the associated pid on windows.
+   *
    * @param ports ports to be checked
    * @return (occupiedPort, pid) pairs
    */
-  public static Map<Integer, Long> listPortOccupationWindows(final List<Integer> ports) throws IOException {
+  public static Map<Integer, Long> listPortOccupationWindows(final List<Integer> ports)
+      throws IOException {
     Process process = Runtime.getRuntime().exec("netstat -aon -p tcp");
     Map<Integer, Long> result = new HashMap<>();
-    try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+    try (BufferedReader reader =
+        new BufferedReader(new InputStreamReader(process.getInputStream()))) {
       String line;
       while ((line = reader.readLine()) != null) {
         String[] split = line.trim().split("\\s+");
@@ -133,7 +139,6 @@ public class EnvUtils {
             break;
           }
         }
-
       }
     } catch (EOFException ignored) {
     }
@@ -142,13 +147,16 @@ public class EnvUtils {
 
   /**
    * List occupied port and the associated pid on Unix.
+   *
    * @param ports ports to be checked
    * @return (occupiedPort, pid) pairs
    */
-  public static Map<Integer, Long> listPortOccupationUnix(final List<Integer> ports) throws IOException {
+  public static Map<Integer, Long> listPortOccupationUnix(final List<Integer> ports)
+      throws IOException {
     Process process = Runtime.getRuntime().exec("lsof -iTCP -sTCP:LISTEN -P -n");
     Map<Integer, Long> result = new HashMap<>();
-    try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+    try (BufferedReader reader =
+        new BufferedReader(new InputStreamReader(process.getInputStream()))) {
       String line;
       while ((line = reader.readLine()) != null) {
         String[] split = line.trim().split("\\s+");
@@ -162,7 +170,6 @@ public class EnvUtils {
             break;
           }
         }
-
       }
     } catch (EOFException ignored) {
     }

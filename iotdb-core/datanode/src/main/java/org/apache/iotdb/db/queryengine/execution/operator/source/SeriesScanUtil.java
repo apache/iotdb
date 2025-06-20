@@ -188,17 +188,17 @@ public class SeriesScanUtil implements Accountable {
     if (context.isIgnoreAllNullRows() || scanOptions.isTableViewForTreeModel()) {
       if (deviceID != EMPTY_DEVICE_ID) {
         long ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
-        scanOptions.setTTL(ttl);
+        scanOptions.setTTLForTreeDevice(ttl);
       }
     } else {
-      if (scanOptions.timeFilterNeedUpdatedByTll()) {
+      if (scanOptions.timeFilterNeedUpdatedByTtl()) {
         String databaseName = dataSource.getDatabaseName();
         long ttl =
             databaseName == null
                 ? Long.MAX_VALUE
                 : DataNodeTTLCache.getInstance()
                     .getTTLForTable(databaseName, deviceID.getTableName());
-        scanOptions.setTTL(ttl);
+        scanOptions.setTTLForTableDevice(ttl);
       }
     }
 

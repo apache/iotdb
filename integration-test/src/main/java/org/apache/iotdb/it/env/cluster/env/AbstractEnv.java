@@ -476,7 +476,13 @@ public abstract class AbstractEnv implements BaseEnv {
           logger.info("The cluster is now ready for testing!");
           return;
         }
-        logger.info("Retry {}: showClusterPassed={}, nodeSizePassed={}, nodeStatusPassed={}, processStatusPassed={}", i, showClusterPassed, nodeSizePassed, nodeStatusPassed, processStatusPassed);
+        logger.info(
+            "Retry {}: showClusterPassed={}, nodeSizePassed={}, nodeStatusPassed={}, processStatusPassed={}",
+            i,
+            showClusterPassed,
+            nodeSizePassed,
+            nodeStatusPassed,
+            processStatusPassed);
       } catch (final Exception e) {
         lastException = e;
       }
@@ -521,39 +527,49 @@ public abstract class AbstractEnv implements BaseEnv {
     for (Map.Entry<AbstractNodeWrapper, Integer> entry : processStatusMap.entrySet()) {
       Integer statusCode = entry.getValue();
       AbstractNodeWrapper nodeWrapper = entry.getKey();
-      if(statusCode != 0) {
+      if (statusCode != 0) {
         logger.info("Node {} is not running due to {}", nodeWrapper.getId(), statusCode);
       }
       if (statusCode == TSStatusCode.PORT_OCCUPIED.getStatusCode()) {
-          try {
-            Map<Integer, Long> portOccupationMap = EnvUtils.
-                    listPortOccupation(Arrays.stream(nodeWrapper.getPortList()).boxed().collect(Collectors.toList()));
-            logger.info("Check port result: {}", portOccupationMap);
-            for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
-              if (portOccupationMap.containsValue(dataNodeWrapper.getPid())) {
-                logger.info("A port is occupied by another DataNode {}-{}, restart it", dataNodeWrapper.getIpAndPortString(), dataNodeWrapper.getPid());
-                dataNodeWrapper.stop();
-                dataNodeWrapper.start();
-              }
+        try {
+          Map<Integer, Long> portOccupationMap =
+              EnvUtils.listPortOccupation(
+                  Arrays.stream(nodeWrapper.getPortList()).boxed().collect(Collectors.toList()));
+          logger.info("Check port result: {}", portOccupationMap);
+          for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
+            if (portOccupationMap.containsValue(dataNodeWrapper.getPid())) {
+              logger.info(
+                  "A port is occupied by another DataNode {}-{}, restart it",
+                  dataNodeWrapper.getIpAndPortString(),
+                  dataNodeWrapper.getPid());
+              dataNodeWrapper.stop();
+              dataNodeWrapper.start();
             }
-            for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
-              if (portOccupationMap.containsValue(configNodeWrapper.getPid())) {
-                logger.info("A port is occupied by another ConfigNode {}-{}, restart it", configNodeWrapper.getIpAndPortString(), configNodeWrapper.getPid());
-                configNodeWrapper.stop();
-                configNodeWrapper.start();
-              }
-            }
-            for (AINodeWrapper aiNodeWrapper : aiNodeWrapperList) {
-              if (portOccupationMap.containsValue(aiNodeWrapper.getPid())) {
-                logger.info("A port is occupied by another datanode {}-{}, restart it", aiNodeWrapper.getIpAndPortString(), aiNodeWrapper.getPid());
-                aiNodeWrapper.stop();
-                aiNodeWrapper.start();
-              }
-            }
-          } catch (IOException e) {
-              logger.error("Cannot check port occupation", e);
           }
-          logger.info("Restarting it");
+          for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
+            if (portOccupationMap.containsValue(configNodeWrapper.getPid())) {
+              logger.info(
+                  "A port is occupied by another ConfigNode {}-{}, restart it",
+                  configNodeWrapper.getIpAndPortString(),
+                  configNodeWrapper.getPid());
+              configNodeWrapper.stop();
+              configNodeWrapper.start();
+            }
+          }
+          for (AINodeWrapper aiNodeWrapper : aiNodeWrapperList) {
+            if (portOccupationMap.containsValue(aiNodeWrapper.getPid())) {
+              logger.info(
+                  "A port is occupied by another datanode {}-{}, restart it",
+                  aiNodeWrapper.getIpAndPortString(),
+                  aiNodeWrapper.getPid());
+              aiNodeWrapper.stop();
+              aiNodeWrapper.start();
+            }
+          }
+        } catch (IOException e) {
+          logger.error("Cannot check port occupation", e);
+        }
+        logger.info("Restarting it");
         nodeWrapper.stop();
         nodeWrapper.start();
       }
