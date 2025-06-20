@@ -54,7 +54,8 @@ import java.util.Set;
 
 @SuppressWarnings("squid:S6548")
 public class SettleRequestHandler {
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   private SettleRequestHandler() {}
 

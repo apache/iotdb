@@ -53,7 +53,8 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   // all sub sensors' modifications
   private final List<List<Modification>> pathModifications;
 
-  private static final Logger QUERY_LOGGER = LoggerFactory.getLogger("QUERY");
+  private static final Logger QUERY_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 

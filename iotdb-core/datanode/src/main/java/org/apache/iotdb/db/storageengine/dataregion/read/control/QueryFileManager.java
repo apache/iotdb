@@ -34,7 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /** QueryFileManager records the paths of files that every read uses for QueryResourceManager. */
 public class QueryFileManager {
 
-  private static final Logger QUERY_LOGGER = LoggerFactory.getLogger("QUERY");
+  private static final Logger QUERY_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   /**
    * QueryId -> TsFileResource -> TsFileResource. Inner Map's key and value are actually the same

@@ -200,7 +200,8 @@ import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 public class DataRegion implements IDataRegionForQuery {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final Logger QUERY_LOGGER = LoggerFactory.getLogger("QUERY");
+  private static final Logger QUERY_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   /**
    * All newly generated chunks after merge have version number 0, so we set merged Modification

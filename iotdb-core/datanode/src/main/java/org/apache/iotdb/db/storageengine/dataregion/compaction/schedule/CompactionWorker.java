@@ -38,7 +38,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public class CompactionWorker implements Runnable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final int threadId;
   private final FixedPriorityBlockingQueue<AbstractCompactionTask> compactionTaskQueue;
 

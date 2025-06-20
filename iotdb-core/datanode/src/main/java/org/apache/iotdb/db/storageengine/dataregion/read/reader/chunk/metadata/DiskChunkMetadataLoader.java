@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -50,7 +51,8 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
   private final List<Modification> pathModifications;
 
-  private static final Logger QUERY_LOGGER = LoggerFactory.getLogger("QUERY");
+  private static final Logger QUERY_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 

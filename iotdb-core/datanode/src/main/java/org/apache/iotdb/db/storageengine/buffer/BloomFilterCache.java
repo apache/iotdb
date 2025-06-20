@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.buffer;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBIORuntimeException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -46,7 +47,8 @@ import java.util.function.LongConsumer;
 public class BloomFilterCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BloomFilterCache.class);
-  private static final Logger QUERY_LOGGER = LoggerFactory.getLogger("QUERY");
+  private static final Logger QUERY_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE =
       CONFIG.getAllocateMemoryForBloomFilterCache();

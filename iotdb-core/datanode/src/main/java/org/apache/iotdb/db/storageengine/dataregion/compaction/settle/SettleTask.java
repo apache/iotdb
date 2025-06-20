@@ -35,7 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SettleTask extends WrappedRunnable {
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final TsFileResource resourceToBeSettled;
 
   public SettleTask(TsFileResource resourceToBeSettled) {
