@@ -292,6 +292,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
@@ -617,24 +618,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       String libRoot,
       CreateFunctionStatement createFunctionStatement,
       SettableFuture<ConfigTaskResult> future) {
-    // try to create instance, this request will fail if creation is not successful
+    final AtomicReference<Exception> classLoaderException = new AtomicReference<>();
     try (final UDFClassLoader sandboxClassLoader =
         new UDFClassLoader(libRoot) {
           @Override
           public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-            LOGGER.info("Loading class [{}]", name);
             // Prevent UDF from accessing restricted classes
-            // Using Process or File in UDF is not allowed
             if (name.startsWith("java.lang.System")) {
-              LOGGER.warn(
-                  "SANDBOX: UDF {} class {} is trying to access restricted class, which is not allowed",
-                  createFunctionStatement.getUdfName(),
-                  name);
-              throw new ClassNotFoundException(
+              final String exceptionMessage =
                   String.format(
                       "UDF %s is trying to access restricted class %s, which is not allowed",
-                      createFunctionStatement.getUdfName(), name));
+                      createFunctionStatement.getUdfName(), name);
+              LOGGER.warn(exceptionMessage);
+              classLoaderException.set(new UDFException(exceptionMessage));
+              // Only way to terminate the class loading process
+              throw new ClassNotFoundException(exceptionMessage);
             }
+
             return super.loadClass(name, resolve);
           }
         }) {
@@ -663,16 +663,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return Optional.of(future);
       }
     } catch (Exception e) {
+      if (classLoaderException.get() != null) {
+        // If the class loader throws an exception, we use it instead of the original exception
+        e = classLoaderException.get();
+      }
+
       LOGGER.warn(
-          "Failed to create function when try to create UDF({}) instance first.",
+          "Failed to create UDF({}) instance, because {}",
           createFunctionStatement.getUdfName(),
+          e.getMessage(),
           e);
       future.setException(
           new IoTDBException(
-              "Failed to load class '"
+              "Failed to create or validate UDF class '"
                   + createFunctionStatement.getClassName()
-                  + "', because it's not found in jar file or is invalid: "
-                  + createFunctionStatement.getUriString(),
+                  + "', because: "
+                  + e.getMessage(),
               TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
       return Optional.of(future);
     }
