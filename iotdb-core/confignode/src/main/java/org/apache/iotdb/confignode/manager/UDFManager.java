@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.service.UDFClassLoader;
+import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -43,6 +45,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.udf.api.UDF;
 
 import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
@@ -89,6 +92,13 @@ public class UDFManager {
           new UDFInformation(udfName, req.getClassName(), false, isUsingURI, jarName, jarMD5);
       final boolean needToSaveJar = isUsingURI && udfInfo.needToSaveJar(jarName);
 
+      final TSStatus status = sandboxValidationBeforeCreateFunction(udfInformation);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Sandbox validation failed for UDF [{}], reason: {}", udfName, status.getMessage());
+        return status;
+      }
+
       LOGGER.info(
           "Start to create UDF [{}] on Data Nodes, needToSaveJar[{}]", udfName, needToSaveJar);
 
@@ -118,6 +128,34 @@ public class UDFManager {
           .setMessage(e.getMessage());
     } finally {
       udfInfo.releaseUDFTableLock();
+    }
+  }
+
+  private TSStatus sandboxValidationBeforeCreateFunction(final UDFInformation udfInformation) {
+    try (final UDFClassLoader classLoader =
+        new UDFClassLoader(UDFExecutableManager.getInstance().getLibRoot())) {
+      // ensure that jar file contains the class and the class is a UDF
+      final Class<?> clazz = Class.forName(udfInformation.getClassName(), true, classLoader);
+      final UDF udf = (UDF) clazz.getDeclaredConstructor().newInstance();
+      return udf.validate()
+          .map(
+              e ->
+                  RpcUtils.getStatus(
+                      TSStatusCode.UDF_LOAD_CLASS_ERROR,
+                      String.format(
+                          "Fail to validate UDF class [%s] for function [%s] in sandbox, reason: %s",
+                          udfInformation.getClassName(),
+                          udfInformation.getFunctionName(),
+                          e.getMessage())))
+          .orElse(RpcUtils.SUCCESS_STATUS);
+    } catch (final Throwable throwable) {
+      return RpcUtils.getStatus(
+          TSStatusCode.UDF_LOAD_CLASS_ERROR,
+          String.format(
+              "Fail to validate UDF class [%s] for function [%s] in sandbox, reason: %s",
+              udfInformation.getClassName(),
+              udfInformation.getFunctionName(),
+              throwable.getMessage()));
     }
   }
 

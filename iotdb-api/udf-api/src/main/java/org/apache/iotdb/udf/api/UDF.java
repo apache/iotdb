@@ -28,6 +28,17 @@ import java.util.Optional;
 public interface UDF {
 
   /**
+   * This method is mainly used to validate the UDF itself, such as checking if the UDF is properly
+   * configured or if it has all the required dependencies.
+   *
+   * @return an {@link Optional} containing an {@link Exception} if validation fails, otherwise
+   *     returns an empty {@link Optional}
+   */
+  default Optional<Exception> validate() {
+    return Optional.empty();
+  }
+
+  /**
    * This method is mainly used to validate {@link UDFParameters} and it is executed before {@link
    * UDTF#beforeStart(UDFParameters, UDTFConfigurations)} is called.
    *
@@ -37,10 +48,6 @@ public interface UDF {
   @SuppressWarnings("squid:S112")
   default void validate(UDFParameterValidator validator) throws Exception {
     // do nothing
-  }
-
-  default Optional<Exception> check() {
-    return Optional.empty();
   }
 
   /** This method is mainly used to release the resources used in the UDF. */
