@@ -86,7 +86,7 @@
     </appender>
     <!-- a log appender that collect all log records whose level is greater than debug-->
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEALL">
-        <file>${CONFIGNODE_HOME}/logs/log_confignode_all.log</file>
+        <file>${CONFIGNODE_HOME}/logs/other_confignode.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-all-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
