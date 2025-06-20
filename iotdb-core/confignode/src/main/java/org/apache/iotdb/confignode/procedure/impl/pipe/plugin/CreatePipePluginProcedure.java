@@ -59,7 +59,7 @@ import java.util.Objects;
  */
 public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipePluginState> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipePluginProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final int RETRY_THRESHOLD = 5;
 

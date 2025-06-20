@@ -38,8 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class AbstractOperateSubscriptionAndPipeProcedure
     extends AbstractOperateSubscriptionProcedure {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(AbstractOperateSubscriptionAndPipeProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
 

@@ -33,7 +33,7 @@ import java.util.Set;
 
 public class SubscriptionConsumerAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumerAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private final ConsumerGroupMetaKeeper consumerGroupMetaKeeper;
 

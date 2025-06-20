@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConnectorSubtask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private final String topicName;
   private final String consumerGroupId;

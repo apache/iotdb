@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
 
 public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndPipeProcedure {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(CreateSubscriptionProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private TSubscribeReq subscribeReq;
 

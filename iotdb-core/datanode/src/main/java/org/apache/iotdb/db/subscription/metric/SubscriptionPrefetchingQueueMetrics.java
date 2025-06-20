@@ -39,8 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SubscriptionPrefetchingQueueMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private volatile AbstractMetricService metricService;
 

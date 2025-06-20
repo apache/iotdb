@@ -46,7 +46,7 @@ import java.util.Objects;
 
 public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(CreateTopicProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private TCreateTopicReq createTopicReq;
   private TopicMeta topicMeta;

@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AlterTopicProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private TopicMeta updatedTopicMeta;
 

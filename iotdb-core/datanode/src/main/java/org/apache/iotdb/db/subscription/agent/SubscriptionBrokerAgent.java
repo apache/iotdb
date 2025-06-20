@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SubscriptionBrokerAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBrokerAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private final Map<String, SubscriptionBroker> consumerGroupIdToSubscriptionBroker =
       new ConcurrentHashMap<>();

@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 
 class SubscriptionAgentLauncher {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionAgentLauncher.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   // For fail-over
   public static final int MAX_RETRY_TIMES = 5;

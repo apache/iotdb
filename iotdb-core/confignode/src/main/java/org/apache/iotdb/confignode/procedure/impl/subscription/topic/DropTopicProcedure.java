@@ -42,7 +42,7 @@ import java.util.Objects;
 
 public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DropTopicProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private String topicName;
 

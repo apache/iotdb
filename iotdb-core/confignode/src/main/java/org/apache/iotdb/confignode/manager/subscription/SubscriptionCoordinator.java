@@ -50,7 +50,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionCoordinator {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionCoordinator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private final ConfigManager configManager;
 

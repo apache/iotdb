@@ -41,7 +41,7 @@ import java.util.Objects;
 
 public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(StartPipeProcedureV2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private String pipeName;
 

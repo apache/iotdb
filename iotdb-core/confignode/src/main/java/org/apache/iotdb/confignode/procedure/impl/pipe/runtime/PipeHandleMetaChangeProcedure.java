@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV2 {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeHandleMetaChangeProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private boolean needWriteConsensusOnConfigNodes = false;
   private boolean needPushPipeMetaToDataNodes = false;

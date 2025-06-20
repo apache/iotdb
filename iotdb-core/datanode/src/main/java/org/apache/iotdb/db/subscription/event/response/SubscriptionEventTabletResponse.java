@@ -54,8 +54,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class SubscriptionEventTabletResponse extends SubscriptionEventExtendableResponse {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SubscriptionEventTabletResponse.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private static final long READ_TABLET_BUFFER_SIZE =
       SubscriptionConfig.getInstance().getSubscriptionReadTabletBufferSize();

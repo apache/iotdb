@@ -54,7 +54,7 @@ import java.util.stream.Collectors;
 
 public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPipeProcedure {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DropSubscriptionProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private TUnsubscribeReq unsubscribeReq;
 

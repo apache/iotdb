@@ -37,7 +37,7 @@ import java.util.concurrent.TimeUnit;
 
 public class SubscriptionMetaSyncer {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionMetaSyncer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private static final ScheduledExecutorService SYNC_EXECUTOR =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(

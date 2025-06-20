@@ -57,7 +57,7 @@ import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitC
 
 public class SubscriptionBroker {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBroker.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private final String brokerId; // consumer group id
 

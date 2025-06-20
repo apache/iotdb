@@ -75,8 +75,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public abstract class AbstractOperatePipeProcedureV2
     extends AbstractNodeProcedure<OperatePipeTaskState> {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(AbstractOperatePipeProcedureV2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final int RETRY_THRESHOLD = 1;
 

@@ -36,8 +36,7 @@ import java.util.concurrent.TimeUnit;
 
 public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockingPendingQueue {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(TsFileDeduplicationBlockingPendingQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private final Cache<Integer, Boolean> hashCodeToIsGeneratedByHistoricalExtractor;
 

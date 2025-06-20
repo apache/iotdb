@@ -42,7 +42,7 @@ import java.util.Optional;
  */
 public class SubscriptionPollResponseCache {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPollResponseCache.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
 

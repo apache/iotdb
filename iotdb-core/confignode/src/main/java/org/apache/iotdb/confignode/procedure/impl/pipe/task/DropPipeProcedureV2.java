@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DropPipeProcedureV2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private String pipeName;
 

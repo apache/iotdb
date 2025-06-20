@@ -47,7 +47,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeMetaSyncProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final long MIN_EXECUTION_INTERVAL_MS =
       PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 / 2;

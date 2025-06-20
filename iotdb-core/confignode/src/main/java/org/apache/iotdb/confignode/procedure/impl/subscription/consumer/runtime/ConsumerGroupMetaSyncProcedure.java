@@ -47,8 +47,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionProcedure {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ConsumerGroupMetaSyncProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private static final long MIN_EXECUTION_INTERVAL_MS =
       PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 / 2;

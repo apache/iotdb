@@ -51,8 +51,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public abstract class AbstractOperateSubscriptionProcedure
     extends AbstractNodeProcedure<OperateSubscriptionState> {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(AbstractOperateSubscriptionProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private static final String SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE =
       "Skip subscription-related operations and do nothing";

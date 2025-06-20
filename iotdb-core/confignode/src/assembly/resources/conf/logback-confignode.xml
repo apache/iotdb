@@ -115,6 +115,21 @@
             <level>DEBUG</level>
         </filter>
     </appender>
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="SubscriptionLog">
+        <file>${IOTDB_HOME}/logs/subscription_confignode.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/subscription-confignode-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>DEBUG</level>
+        </filter>
+    </appender>
     <root level="info">
         <appender-ref ref="FILEDEBUG"/>
         <appender-ref ref="FILEWARN"/>
@@ -126,5 +141,8 @@
     <logger level="info" name="org.apache.ratis"/>
     <logger level="debug" name="PipeLog" additivity="false">
         <appender-ref ref="PipeLog"/>
+    </logger>
+    <logger level="debug" name="SubscriptionLog" additivity="false">
+        <appender-ref ref="SubscriptionLog"/>
     </logger>
 </configuration>

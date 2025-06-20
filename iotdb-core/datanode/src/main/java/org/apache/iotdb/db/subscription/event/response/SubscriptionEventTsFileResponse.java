@@ -54,8 +54,7 @@ import java.util.Optional;
  */
 public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendableResponse {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SubscriptionEventTsFileResponse.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private static final long READ_FILE_BUFFER_SIZE =
       SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();

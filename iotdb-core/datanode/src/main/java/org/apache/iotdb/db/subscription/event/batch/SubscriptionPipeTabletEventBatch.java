@@ -48,8 +48,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     implements Iterator<List<Tablet>> {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SubscriptionPipeTabletEventBatch.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private long firstEventProcessingTime = Long.MIN_VALUE;
   private long totalBufferSize = 0;

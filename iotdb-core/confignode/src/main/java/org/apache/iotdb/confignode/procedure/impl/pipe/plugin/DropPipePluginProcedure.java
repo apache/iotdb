@@ -58,7 +58,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePluginState> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DropPipePluginProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final int RETRY_THRESHOLD = 5;
 

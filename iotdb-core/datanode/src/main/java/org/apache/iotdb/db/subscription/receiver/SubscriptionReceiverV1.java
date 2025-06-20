@@ -87,7 +87,7 @@ import java.util.stream.Collectors;
 
 public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionReceiverV1.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("SubscriptionLog");
 
   private static final double POLL_PAYLOAD_SIZE_EXCEED_THRESHOLD = 0.9;
 
