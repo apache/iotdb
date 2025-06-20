@@ -29,8 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBlock {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
   private static final long MINIMUM_MEMORY_SIZE_IN_BYTES = 1024 * 1024L; // 1 MB
 
   private final AtomicLong limitedMemorySizeInBytes;

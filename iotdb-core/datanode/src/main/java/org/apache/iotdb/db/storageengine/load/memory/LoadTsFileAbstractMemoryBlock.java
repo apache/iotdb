@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.memory;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

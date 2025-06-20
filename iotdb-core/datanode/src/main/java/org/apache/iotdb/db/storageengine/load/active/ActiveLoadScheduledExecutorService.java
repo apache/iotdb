@@ -39,8 +39,7 @@ import java.util.concurrent.TimeUnit;
 
 public abstract class ActiveLoadScheduledExecutorService {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   protected static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 

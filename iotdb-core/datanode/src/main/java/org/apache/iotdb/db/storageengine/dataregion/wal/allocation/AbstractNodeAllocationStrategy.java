@@ -37,8 +37,7 @@ import java.io.IOException;
 import java.util.Arrays;
 
 public abstract class AbstractNodeAllocationStrategy implements NodeAllocationStrategy {
-  private static final Logger logger =
-      LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   // manage wal folders

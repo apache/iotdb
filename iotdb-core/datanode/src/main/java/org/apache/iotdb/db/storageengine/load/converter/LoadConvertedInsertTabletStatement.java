@@ -30,8 +30,7 @@ import org.slf4j.LoggerFactory;
 
 public class LoadConvertedInsertTabletStatement extends PipeConvertedInsertTabletStatement {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private final boolean shouldConvertOnTypeMismatch;
 

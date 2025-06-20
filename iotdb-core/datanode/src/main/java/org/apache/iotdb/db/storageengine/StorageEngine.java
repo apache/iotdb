@@ -113,10 +113,12 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
 public class StorageEngine implements IService {
   private static final Logger OTHER_LOGGER = LoggerFactory.getLogger(StorageEngine.class);
-  private static final Logger WRITE_LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
-  private static final Logger READ_LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
-  private static final Logger COMPACTION_LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-
+  private static final Logger WRITE_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
+  private static final Logger READ_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
+  private static final Logger COMPACTION_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();

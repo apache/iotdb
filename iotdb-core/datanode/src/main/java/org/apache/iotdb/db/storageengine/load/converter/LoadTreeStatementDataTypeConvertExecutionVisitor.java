@@ -52,8 +52,7 @@ import static org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil.calc
 
 public class LoadTreeStatementDataTypeConvertExecutionVisitor
     extends StatementVisitor<Optional<TSStatus>, Void> {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   private static final long TABLET_BATCH_MEMORY_SIZE_IN_BYTES =
       IoTDBDescriptor.getInstance()
