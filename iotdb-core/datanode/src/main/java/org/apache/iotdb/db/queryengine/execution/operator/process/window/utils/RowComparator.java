@@ -50,8 +50,12 @@ public class RowComparator {
   }
 
   private boolean equal(Column column, TSDataType dataType, int offset1, int offset2) {
+    if (offset1 == offset2) {
+      return true;
+    }
+
     if (column.isNull(offset1) || column.isNull(offset2)) {
-      return false;
+      return column.isNull(offset1) && column.isNull(offset2);
     }
 
     switch (dataType) {
@@ -125,6 +129,14 @@ public class RowComparator {
   }
 
   private boolean equal(ColumnList column, TSDataType dataType, int offset1, int offset2) {
+    if (offset1 == offset2) {
+      return true;
+    }
+
+    if (column.isNull(offset1) || column.isNull(offset2)) {
+      return column.isNull(offset1) && column.isNull(offset2);
+    }
+
     switch (dataType) {
       case BOOLEAN:
         boolean bool1 = column.getBoolean(offset1);
@@ -186,7 +198,7 @@ public class RowComparator {
       Column column2 = columns2.get(i);
 
       if (column1.isNull(offset1) || column2.isNull(offset2)) {
-        return false;
+        return column1.isNull(offset1) && column2.isNull(offset2);
       }
 
       switch (dataType) {

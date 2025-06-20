@@ -67,6 +67,8 @@ public class IoTDBWindowFunctionIT {
         "insert into demo2 values (2021-01-01T09:08:00, 'd2', 2)",
         "insert into demo2 values (2021-01-01T09:15:00, 'd2', 4)",
         "insert into demo2 values (2021-01-01T09:20:00, null, null)",
+        "insert into demo2 values (2021-01-01T09:21:00, null, 1)",
+        "insert into demo2 values (2021-01-01T09:22:00, null, 2)",
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };
@@ -147,7 +149,9 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:06:00.000Z,d2,null,2,",
           "2021-01-01T09:08:00.000Z,d2,2.0,2,",
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
-          "2021-01-01T09:20:00.000Z,null,null,0,",
+          "2021-01-01T09:20:00.000Z,null,null,2,",
+          "2021-01-01T09:21:00.000Z,null,1.0,2,",
+          "2021-01-01T09:22:00.000Z,null,2.0,2,",
         };
     tableResultSetEqualTest(
         "SELECT *, count(value) OVER (PARTITION BY device) AS cnt FROM demo2 ORDER BY device",
@@ -180,15 +184,17 @@ public class IoTDBWindowFunctionIT {
     String[] expectedHeader = new String[] {"time", "device", "value", "cnt"};
     String[] retArray =
         new String[] {
-          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
-          "2021-01-01T09:08:00.000Z,d2,2.0,2,",
-          "2021-01-01T09:05:00.000Z,d1,3.0,4,",
-          "2021-01-01T09:09:00.000Z,d1,3.0,4,",
-          "2021-01-01T09:15:00.000Z,d2,4.0,5,",
-          "2021-01-01T09:07:00.000Z,d1,5.0,6,",
-          "2021-01-01T09:04:00.000Z,d1,null,6,",
-          "2021-01-01T09:06:00.000Z,d2,null,6,",
-          "2021-01-01T09:20:00.000Z,null,null,6,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,2,",
+          "2021-01-01T09:21:00.000Z,null,1.0,2,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,4,",
+          "2021-01-01T09:22:00.000Z,null,2.0,4,",
+          "2021-01-01T09:05:00.000Z,d1,3.0,6,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,6,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,7,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,8,",
+          "2021-01-01T09:04:00.000Z,d1,null,8,",
+          "2021-01-01T09:06:00.000Z,d2,null,8,",
+          "2021-01-01T09:20:00.000Z,null,null,8,",
         };
     tableResultSetEqualTest(
         "SELECT *, count(value) OVER (ORDER BY value) AS cnt FROM demo2 ORDER BY value, device",
@@ -229,7 +235,9 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:08:00.000Z,d2,2.0,1,",
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
           "2021-01-01T09:06:00.000Z,d2,null,2,",
-          "2021-01-01T09:20:00.000Z,null,null,0,",
+          "2021-01-01T09:21:00.000Z,null,1.0,1,",
+          "2021-01-01T09:22:00.000Z,null,2.0,2,",
+            "2021-01-01T09:20:00.000Z,null,null,2,",
         };
     tableResultSetEqualTest(
         "SELECT *, count(value) OVER (PARTITION BY device ORDER BY value) AS cnt FROM demo2 ORDER BY device",
