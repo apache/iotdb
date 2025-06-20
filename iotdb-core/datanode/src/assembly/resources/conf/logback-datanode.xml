@@ -287,13 +287,13 @@
     <logger level="debug" name="QueryLog" additivity="false">
         <appender-ref ref="QueryLog"/>
     </logger>
-    <logger level="info" name="SLOW_SQL">
+    <logger level="info" name="SLOW_SQL" additivity="false">
         <appender-ref ref="SLOW_SQL"/>
     </logger>
-    <logger level="info" name="SAMPLED_QUERIES">
+    <logger level="info" name="SAMPLED_QUERIES" additivity="false">
         <appender-ref ref="SAMPLED_QUERIES"/>
     </logger>
-    <logger level="info" name="QUERY_FREQUENCY">
+    <logger level="info" name="QUERY_FREQUENCY" additivity="false">
         <appender-ref ref="QUERY_FREQUENCY"/>
     </logger>
     <logger level="info" name="DETAILED_FAILURE_QUERY_TRACE"/>
