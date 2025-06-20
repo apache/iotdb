@@ -630,7 +630,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   "SANDBOX: UDF {} class {} is trying to access restricted class, which is not allowed",
                   createFunctionStatement.getUdfName(),
                   name);
-              throw new SecurityException(
+              throw new ClassNotFoundException(
                   String.format(
                       "UDF %s is trying to access restricted class %s, which is not allowed",
                       createFunctionStatement.getUdfName(), name));
