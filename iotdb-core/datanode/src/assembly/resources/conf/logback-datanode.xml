@@ -24,9 +24,9 @@
     <!-- prevent logback from outputting its own status at the start of every log -->
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">
-        <file>${IOTDB_HOME}/logs/log_datanode_error.log</file>
+        <file>${IOTDB_HOME}/logs/log_datanode_${DATANODE_INSTANCE}_error.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-error-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-${DATANODE_INSTANCE}-error-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -41,9 +41,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEWARN">
-        <file>${IOTDB_HOME}/logs/log_datanode_warn.log</file>
+        <file>${IOTDB_HOME}/logs/log_datanode_${DATANODE_INSTANCE}_warn.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-warn-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-${DATANODE_INSTANCE}-warn-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -58,9 +58,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEDEBUG">
-        <file>${IOTDB_HOME}/logs/log_datanode_debug.log</file>
+        <file>${IOTDB_HOME}/logs/log_datanode_${DATANODE_INSTANCE}_debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-debug-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-${DATANODE_INSTANCE}-debug-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -75,9 +75,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILETRACE">
-        <file>${IOTDB_HOME}/logs/log_datanode_trace.log</file>
+        <file>${IOTDB_HOME}/logs/log_datanode_${DATANODE_INSTANCE}_trace.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-trace-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-${DATANODE_INSTANCE}-trace-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -103,9 +103,9 @@
     </appender>
     <!-- a log appender that collect all log records whose level is greater than debug-->
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEALL">
-        <file>${IOTDB_HOME}/logs/log_datanode_all.log</file>
+        <file>${IOTDB_HOME}/logs/log_datanode_${DATANODE_INSTANCE}_all.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-all-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-${DATANODE_INSTANCE}-all-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -118,9 +118,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_COST_MEASURE">
-        <file>${IOTDB_HOME}/logs/log_datanode_measure.log</file>
+        <file>${IOTDB_HOME}/logs/log_datanode_${DATANODE_INSTANCE}_measure.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-measure-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-${DATANODE_INSTANCE}-measure-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -133,9 +133,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="AUDIT">
-        <file>${IOTDB_HOME}/logs/log_datanode_audit.log</file>
+        <file>${IOTDB_HOME}/logs/log_datanode_${DATANODE_INSTANCE}_audit.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-audit-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-${DATANODE_INSTANCE}-audit-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -148,9 +148,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY_DEBUG">
-        <file>${IOTDB_HOME}/logs/log_datanode_query_debug.log</file>
+        <file>${IOTDB_HOME}/logs/log_datanode_${DATANODE_INSTANCE}_query_debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-query-debug-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-${DATANODE_INSTANCE}-query-debug-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -163,9 +163,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="SLOW_SQL">
-        <file>${IOTDB_HOME}/logs/log_datanode_slow_sql.log</file>
+        <file>${IOTDB_HOME}/logs/log_datanode_${DATANODE_INSTANCE}_slow_sql.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-slow-sql-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-${DATANODE_INSTANCE}-slow-sql-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -178,9 +178,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="SAMPLED_QUERIES">
-        <file>${IOTDB_HOME}/logs/log_datanode_sampled_queries.log</file>
+        <file>${IOTDB_HOME}/logs/log_datanode_${DATANODE_INSTANCE}_sampled_queries.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-sampled-queries-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-${DATANODE_INSTANCE}-sampled-queries-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -193,9 +193,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="COMPACTION">
-        <file>${IOTDB_HOME}/logs/log_datanode_compaction.log</file>
+        <file>${IOTDB_HOME}/logs/log_datanode_${DATANODE_INSTANCE}_compaction.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-compaction-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-${DATANODE_INSTANCE}-compaction-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -208,9 +208,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="PIPE">
-        <file>${IOTDB_HOME}/logs/log_datanode_pipe.log</file>
+        <file>${IOTDB_HOME}/logs/log_datanode_${DATANODE_INSTANCE}_pipe.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-pipe-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-${DATANODE_INSTANCE}-pipe-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -223,9 +223,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="EXPLAIN_ANALYZE">
-        <file>${IOTDB_HOME}/logs/log_explain_analyze.log</file>
+        <file>${IOTDB_HOME}/logs/log_datanode_${DATANODE_INSTANCE}_explain_analyze.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-explain-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-${DATANODE_INSTANCE}-explain-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>

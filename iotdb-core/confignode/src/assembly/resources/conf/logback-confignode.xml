@@ -24,9 +24,9 @@
     <!-- prevent logback from outputting its own status at the start of every log -->
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">
-        <file>${CONFIGNODE_HOME}/logs/log_confignode_error.log</file>
+        <file>${CONFIGNODE_HOME}/logs/log_confignode_${CONFIGNODE_INSTANCE}_error.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-error-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-${CONFIGNODE_INSTANCE}-error-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -41,9 +41,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEWARN">
-        <file>${CONFIGNODE_HOME}/logs/log_confignode_warn.log</file>
+        <file>${CONFIGNODE_HOME}/logs/log_confignode_${CONFIGNODE_INSTANCE}_warn.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-warn-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-${CONFIGNODE_INSTANCE}-warn-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -58,9 +58,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEDEBUG">
-        <file>${CONFIGNODE_HOME}/logs/log_confignode_debug.log</file>
+        <file>${CONFIGNODE_HOME}/logs/log_confignode_${CONFIGNODE_INSTANCE}_debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-debug-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-${CONFIGNODE_INSTANCE}-debug-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
@@ -86,9 +86,9 @@
     </appender>
     <!-- a log appender that collect all log records whose level is greater than debug-->
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEALL">
-        <file>${CONFIGNODE_HOME}/logs/log_confignode_all.log</file>
+        <file>${CONFIGNODE_HOME}/logs/log_confignode_${CONFIGNODE_INSTANCE}_all.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-all-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-${CONFIGNODE_INSTANCE}-all-%d{yyyyMMdd}.log.gz</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>

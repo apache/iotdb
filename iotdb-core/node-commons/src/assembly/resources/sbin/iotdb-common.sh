@@ -174,24 +174,28 @@ checkDataNodePortUsages () {
       dn_mpp_data_exchange_port=$(sed '/^dn_mpp_data_exchange_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-system.properties)
       dn_schema_region_consensus_port=$(sed '/^dn_schema_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-system.properties)
       dn_data_region_consensus_port=$(sed '/^dn_data_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-system.properties)
+      dn_internal_address=$(sed '/^dn_internal_address=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-system.properties)
   elif [ -f "$IOTDB_HOME/conf/iotdb-system.properties" ]; then
       dn_rpc_port=$(sed '/^dn_rpc_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-system.properties)
       dn_internal_port=$(sed '/^dn_internal_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-system.properties)
       dn_mpp_data_exchange_port=$(sed '/^dn_mpp_data_exchange_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-system.properties)
       dn_schema_region_consensus_port=$(sed '/^dn_schema_region_consensus_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-system.properties)
       dn_data_region_consensus_port=$(sed '/^dn_data_region_consensus_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-system.properties)
+      dn_internal_address=$(sed '/^dn_internal_address=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-system.properties)
   elif [ -f "$IOTDB_CONF/iotdb-datanode.properties" ]; then
     dn_rpc_port=$(sed '/^dn_rpc_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
     dn_internal_port=$(sed '/^dn_internal_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
     dn_mpp_data_exchange_port=$(sed '/^dn_mpp_data_exchange_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
     dn_schema_region_consensus_port=$(sed '/^dn_schema_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
     dn_data_region_consensus_port=$(sed '/^dn_data_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
+    dn_internal_address=$(sed '/^dn_internal_address=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
   elif [ -f "$IOTDB_HOME/conf/iotdb-datanode.properties" ]; then
     dn_rpc_port=$(sed '/^dn_rpc_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-datanode.properties)
     dn_internal_port=$(sed '/^dn_internal_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-datanode.properties)
     dn_mpp_data_exchange_port=$(sed '/^dn_mpp_data_exchange_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
     dn_schema_region_consensus_port=$(sed '/^dn_schema_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
     dn_data_region_consensus_port=$(sed '/^dn_data_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
+    dn_internal_address=$(sed '/^dn_internal_address=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-datanode.properties)
   else
     echo "Warning: cannot find iotdb-system.properties or iotdb-datanode.properties, check the default configuration"
   fi
@@ -207,6 +211,10 @@ checkDataNodePortUsages () {
   dn_mpp_data_exchange_port=${dn_mpp_data_exchange_port:-10740}
   dn_schema_region_consensus_port=${dn_schema_region_consensus_port:-10750}
   dn_data_region_consensus_port=${dn_data_region_consensus_port:-10760}
+  dn_internal_address=${dn_internal_address:-"127.0.0.1"}
+
+  export DATANODE_INSTANCE="${dn_internal_address}-${dn_internal_port}"
+
   if type lsof >/dev/null 2>&1; then
     PID=$(lsof -t -i:"${dn_rpc_port}" -sTCP:LISTEN)
     if [ -n "$PID" ]; then
@@ -278,15 +286,19 @@ checkConfigNodePortUsages () {
   if [ -f "$CONFIGNODE_CONF/iotdb-system.properties" ]; then
     cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-system.properties)
     cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-system.properties)
+    cn_internal_address=$(sed '/^cn_internal_address=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-system.properties)
   elif [ -f "$CONFIGNODE_HOME/conf/iotdb-system.properties" ]; then
     cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/iotdb-system.properties)
     cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/iotdb-system.properties)
+    cn_internal_address=$(sed '/^cn_internal_address=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/iotdb-system.properties)
   elif [ -f "$CONFIGNODE_CONF/iotdb-confignode.properties" ]; then
     cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
     cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
+    cn_internal_address=$(sed '/^cn_internal_address=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
   elif [ -f "$CONFIGNODE_HOME/conf/iotdb-confignode.properties" ]; then
     cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/iotdb-confignode.properties)
     cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/iotdb-confignode.properties)
+    cn_internal_address=$(sed '/^cn_internal_address=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/iotdb-confignode.properties)
   else
     echo "Cannot find iotdb-system.properties or iotdb-confignode.properties, check the default configuration"
   fi
@@ -296,6 +308,10 @@ checkConfigNodePortUsages () {
 
   cn_internal_port=${cn_internal_port:-10710}
   cn_consensus_port=${cn_consensus_port:-10720}
+  cn_internal_address=${cn_internal_address:-"127.0.0.1"}
+
+  export CONFIGNODE_INSTANCE="${cn_internal_address}-${cn_internal_port}"
+
   if type lsof >/dev/null 2>&1; then
     PID=$(lsof -t -i:"${cn_internal_port}" -sTCP:LISTEN)
     if [ -n "$PID" ]; then

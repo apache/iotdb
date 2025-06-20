@@ -137,7 +137,8 @@ launch_service() {
   	iotdb_parms="$iotdb_parms -DCONFIGNODE_CONF=${CONFIGNODE_CONF}"
   	iotdb_parms="$iotdb_parms -DTSFILE_CONF=${CONFIGNODE_CONF}"
   	iotdb_parms="$iotdb_parms -Dname=iotdb\.ConfigNode"
-  	iotdb_parms="$iotdb_parms -DCONFIGNODE_LOGS=${CONFIGNODE_LOGS}"
+  	iotdb_parms="$iotdb_parms -DCONFIGNODE_LOGS=${CONFIGNODE_LOG_DIR}"
+  	iotdb_parms="$iotdb_parms -DCONFIGNODE_INSTANCE=${CONFIGNODE_INSTANCE}"
 
   	  if [ "x$pidfile" != "x" ]; then
          iotdb_parms="$iotdb_parms -Diotdb-pidfile=$pidfile"

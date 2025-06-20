@@ -137,6 +137,10 @@ IF DEFINED CONFIG_FILE (
     "%CONFIG_FILE%"') do (
       set dn_data_region_consensus_port=%%i
   )
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_internal_address"
+      "%CONFIG_FILE%"') do (
+        set dn_internal_address=%%i
+    )
 ) ELSE (
   echo "Can't find iotdb-system.properties or iotdb-datanode.properties, check the default ports"
   set dn_rpc_port=6667
@@ -144,7 +148,10 @@ IF DEFINED CONFIG_FILE (
   set dn_mpp_data_exchange_port=10740
   set dn_schema_region_consensus_port=10750
   set dn_data_region_consensus_port=10760
+  set dn_internal_address="127.0.0.1"
 )
+
+set DATANODE_INSTANCE="%dn_internal_address%-%dn_internal_port%"
 
 echo Check whether the ports are occupied....
 set occupied=0
@@ -207,6 +214,7 @@ set JAVA_OPTS=-ea^
  -DTSFILE_HOME="%IOTDB_HOME%"^
  -DTSFILE_CONF="%IOTDB_CONF%"^
  -DIOTDB_CONF="%IOTDB_CONF%"^
+ -DDATANODE_INSTANCE="%DATANODE_INSTANCE%"^
  -DOFF_HEAP_MEMORY="%OFF_HEAP_MEMORY%"^
  -Dsun.jnu.encoding=UTF-8^
  -Dfile.encoding=UTF-8

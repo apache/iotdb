@@ -105,11 +105,18 @@ IF DEFINED CONFIG_FILE (
     "%CONFIG_FILE%"') do (
       set cn_consensus_port=%%i
   )
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_address"
+      "%CONFIG_FILE%"') do (
+        set cn_internal_address=%%i
+    )
 ) ELSE (
   echo "Can't find iotdb-system.properties or iotdb-confignode.properties, check the default ports"
   set cn_internal_port=10710
   set cn_consensus_port=10720
+  set cn_internal_address="127.0.0.1"
 )
+
+set CONFIGNODE_INSTANCE="%cn_internal_address%-%cn_internal_port%"
 
 echo Check whether the ports are occupied....
 set occupied=0
@@ -149,6 +156,7 @@ set JAVA_OPTS=-ea^
  -Dlogback.configurationFile="%CONFIGNODE_CONF%\logback-confignode.xml"^
  -DCONFIGNODE_HOME="%CONFIGNODE_HOME%"^
  -DCONFIGNODE_CONF="%CONFIGNODE_CONF%"^
+ -DCONFIGNODE_INSTANCE="%CONFIGNODE_INSTANCE%"^
  -Dsun.jnu.encoding=UTF-8^
  -Dfile.encoding=UTF-8
 
