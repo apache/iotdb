@@ -260,6 +260,7 @@ import org.apache.iotdb.udf.api.exception.UDFException;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -577,12 +578,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           TimeUnit.MILLISECONDS);
     } catch (final Exception e) {
       // If the validation fails, we set the exception to the future
+      Throwable t = ExceptionUtils.getRootCause(e);
       LOGGER.warn(
           "Failed to validate UDF class [{}] for function [{}] in sandbox, reason: {}",
           createFunctionStatement.getClassName(),
           createFunctionStatement.getUdfName(),
-          e.getMessage(),
-          e);
+          t.getMessage(),
+          t);
       future.setException(
           new IoTDBException(
               "Failed to validate UDF class '"
@@ -590,7 +592,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   + "' for function '"
                   + createFunctionStatement.getUdfName()
                   + "', reason: "
-                  + e.getMessage(),
+                  + t.getMessage(),
               TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
       return Optional.of(future);
     }

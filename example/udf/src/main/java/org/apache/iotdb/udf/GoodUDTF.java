@@ -43,7 +43,7 @@ public class GoodUDTF implements UDTF {
   @Override
   public Optional<Exception> validate() {
     // nothing to validate here, this UDTF is always valid
-    LOGGER.info("GoodUDTF: OS info test {}", System.getProperty("os.name"));
+    LOGGER.info("GoodUDTF validation passed.");
     return Optional.empty();
   }
 
