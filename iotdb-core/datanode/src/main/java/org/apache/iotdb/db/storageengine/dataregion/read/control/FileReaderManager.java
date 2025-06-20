@@ -42,10 +42,8 @@ import java.util.function.LongConsumer;
  */
 public class FileReaderManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
-  private static final Logger QUERY_LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   /** max number of file streams being cached, must be lower than 65535. */
   private static final int MAX_CACHED_FILE_SIZE = 30000;
