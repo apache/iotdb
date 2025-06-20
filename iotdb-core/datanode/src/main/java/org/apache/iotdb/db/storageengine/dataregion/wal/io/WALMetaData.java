@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.utils.SerializedSize;
@@ -42,7 +43,7 @@ import java.util.Set;
  */
 public class WALMetaData implements SerializedSize {
 
-  private static final Logger logger = LoggerFactory.getLogger(WALMetaData.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
   // search index 8 byte, wal entries' number 4 bytes
   private static final int FIXED_SERIALIZED_SIZE = Long.BYTES + Integer.BYTES;
 

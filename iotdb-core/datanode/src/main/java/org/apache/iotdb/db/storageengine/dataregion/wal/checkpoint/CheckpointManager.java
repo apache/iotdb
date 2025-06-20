@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -49,7 +50,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /** This class is used to manage checkpoints of one wal node. */
 public class CheckpointManager implements AutoCloseable {
-  private static final Logger logger = LoggerFactory.getLogger(CheckpointManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 

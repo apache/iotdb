@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.allocation;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALFakeNode;
@@ -37,7 +38,7 @@ import java.util.Arrays;
 
 public abstract class AbstractNodeAllocationStrategy implements NodeAllocationStrategy {
   private static final Logger logger =
-      LoggerFactory.getLogger(AbstractNodeAllocationStrategy.class);
+      LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   // manage wal folders

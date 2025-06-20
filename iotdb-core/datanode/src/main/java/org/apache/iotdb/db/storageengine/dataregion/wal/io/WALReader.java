@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
@@ -38,7 +39,7 @@ import java.util.NoSuchElementException;
  * This reader returns {@link WALEntry} directly, the usage of WALReader is like {@link Iterator}.
  */
 public class WALReader implements Closeable {
-  private static final Logger logger = LoggerFactory.getLogger(WALReader.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
   // use 1/10 of .wal file size as buffer size
   private static final int STREAM_BUFFER_SIZE =
       (int) IoTDBDescriptor.getInstance().getConfig().getWalFileSizeThresholdInByte() / 10;
