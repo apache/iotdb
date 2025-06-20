@@ -128,7 +128,8 @@ public class SortElimination implements PlanOptimizer {
       }
 
       // We can continue to eliminate sort when there is only PARTITION BY
-      if (node.getSpecification().getPartitionBy().isEmpty() || node.getSpecification().getOrderingScheme().isPresent()) {
+      if (node.getSpecification().getPartitionBy().isEmpty()
+          || node.getSpecification().getOrderingScheme().isPresent()) {
         context.setCannotEliminateSort(true);
       }
       return newNode;
