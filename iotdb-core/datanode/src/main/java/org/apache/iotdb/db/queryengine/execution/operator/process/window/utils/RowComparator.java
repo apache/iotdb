@@ -125,10 +125,6 @@ public class RowComparator {
   }
 
   private boolean equal(ColumnList column, TSDataType dataType, int offset1, int offset2) {
-    if (column.isNull(offset1) || column.isNull(offset2)) {
-      return false;
-    }
-
     switch (dataType) {
       case BOOLEAN:
         boolean bool1 = column.getBoolean(offset1);
