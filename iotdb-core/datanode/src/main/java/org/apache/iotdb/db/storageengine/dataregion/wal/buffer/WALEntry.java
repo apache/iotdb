@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
@@ -45,7 +47,7 @@ import java.util.Objects;
  * value(physical plan or memTable snapshot).
  */
 public abstract class WALEntry implements SerializedSize {
-  private static final Logger logger = LoggerFactory.getLogger(WALEntry.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   // type of value
   protected final WALEntryType type;

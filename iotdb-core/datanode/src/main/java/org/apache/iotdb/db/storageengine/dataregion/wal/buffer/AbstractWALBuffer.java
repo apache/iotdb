@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
@@ -35,7 +36,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 
 public abstract class AbstractWALBuffer implements IWALBuffer {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractWALBuffer.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   // WALNode identifier of this buffer
   protected final String identifier;

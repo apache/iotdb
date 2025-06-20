@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -72,7 +73,7 @@ import static org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode.DEFA
  * writes and avoid waiting for buffer syncing to disk.
  */
 public class WALBuffer extends AbstractWALBuffer {
-  private static final Logger logger = LoggerFactory.getLogger(WALBuffer.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   public static final int ONE_THIRD_WAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
   private static final double FSYNC_BUFFER_RATIO = 0.95;

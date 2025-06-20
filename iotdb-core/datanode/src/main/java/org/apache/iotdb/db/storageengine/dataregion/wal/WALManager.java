@@ -56,7 +56,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is used to manage and allocate wal nodes. */
 public class WALManager implements IService {
-  private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   // manage all wal nodes and decide how to allocate them

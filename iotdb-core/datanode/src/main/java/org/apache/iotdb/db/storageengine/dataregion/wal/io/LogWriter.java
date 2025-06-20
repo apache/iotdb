@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -41,7 +42,7 @@ import java.nio.channels.FileChannel;
  * and writing {@link Checkpoint} into .checkpoint file.
  */
 public abstract class LogWriter implements ILogWriter {
-  private static final Logger logger = LoggerFactory.getLogger(LogWriter.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.WRITE_LOGGER_NAME);
 
   protected final File logFile;
   protected final FileOutputStream logStream;
