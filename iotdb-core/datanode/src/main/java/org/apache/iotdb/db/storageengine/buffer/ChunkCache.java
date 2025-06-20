@@ -59,7 +59,8 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.REA
 public class ChunkCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ChunkCache.class);
-  private static final Logger QUERY_LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
+  private static final Logger QUERY_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_CHUNK_CACHE =
       CONFIG.getAllocateMemoryForChunkCache();
