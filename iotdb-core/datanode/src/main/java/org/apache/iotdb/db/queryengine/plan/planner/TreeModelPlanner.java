@@ -132,7 +132,7 @@ public class TreeModelPlanner implements IPlanner {
           new ClusterScheduler(
               context,
               stateMachine,
-              distributedPlan.getInstances(),
+              distributedPlan,
               context.getQueryType(),
               executor,
               writeOperationExecutor,
