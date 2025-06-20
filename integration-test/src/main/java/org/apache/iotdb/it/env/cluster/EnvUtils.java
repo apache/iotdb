@@ -24,9 +24,10 @@ import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.tsfile.utils.Pair;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -98,15 +99,74 @@ public class EnvUtils {
   }
 
   private static boolean checkPortsAvailable(final List<Integer> ports) {
-    final String cmd = getSearchAvailablePortCmd(ports);
-    try {
-      return Runtime.getRuntime().exec(cmd).waitFor() == 1;
-    } catch (final IOException ignore) {
-      // ignore
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
+      try {
+          return listPortOccupation(ports).isEmpty();
+      } catch (IOException e) {
+        IoTDBTestLogger.logger.error("Cannot check available ports", e);
+        return false;
+      }
+  }
+
+  public static Map<Integer, Long> listPortOccupation(final List<Integer> ports) throws IOException {
+    return SystemUtils.IS_OS_WINDOWS ? listPortOccupationWindows(ports) : listPortOccupationUnix(ports);
+  }
+
+  /**
+   * List occupied port and the associated pid on windows.
+   * @param ports ports to be checked
+   * @return (occupiedPort, pid) pairs
+   */
+  public static Map<Integer, Long> listPortOccupationWindows(final List<Integer> ports) throws IOException {
+    Process process = Runtime.getRuntime().exec("netstat -aon -p tcp");
+    Map<Integer, Long> result = new HashMap<>();
+    try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        String[] split = line.trim().split("\\s+");
+        if (split.length != 5) {
+          continue;
+        }
+        String localAddress = split[1];
+        for (Integer port : ports) {
+          if (localAddress.equals("127.0.0.1:" + port)) {
+            result.put(port, Long.parseLong(split[4]));
+            break;
+          }
+        }
+
+      }
+    } catch (EOFException ignored) {
     }
-    return false;
+    return result;
+  }
+
+  /**
+   * List occupied port and the associated pid on Unix.
+   * @param ports ports to be checked
+   * @return (occupiedPort, pid) pairs
+   */
+  public static Map<Integer, Long> listPortOccupationUnix(final List<Integer> ports) throws IOException {
+    Process process = Runtime.getRuntime().exec("lsof -iTCP -sTCP:LISTEN -P -n");
+    Map<Integer, Long> result = new HashMap<>();
+    try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        String[] split = line.trim().split("\\s+");
+        if (split.length != 10) {
+          continue;
+        }
+        String localAddress = split[9];
+        for (Integer port : ports) {
+          if (localAddress.equals("*:" + port)) {
+            result.put(port, Long.parseLong(split[1]));
+            break;
+          }
+        }
+
+      }
+    } catch (EOFException ignored) {
+    }
+    return result;
   }
 
   private static String getSearchAvailablePortCmd(final List<Integer> ports) {
@@ -115,7 +175,7 @@ public class EnvUtils {
 
   private static String getWindowsSearchPortCmd(final List<Integer> ports) {
     return "netstat -aon -p tcp | findStr "
-        + ports.stream().map(v -> "/C:'127.0.0.1:" + v + "'").collect(Collectors.joining(" "));
+        + ports.stream().map(v -> "/C:\"127.0.0.1:" + v + "\"").collect(Collectors.joining(" "));
   }
 
   private static String getUnixSearchPortCmd(final List<Integer> ports) {
