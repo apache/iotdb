@@ -104,11 +104,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -202,6 +204,10 @@ public class TsFileProcessor {
       QueryResourceMetricSet.getInstance();
 
   public static final int MEMTABLE_NOT_EXIST = -1;
+
+  public static Map<Integer, Deletion> flushingMemtableDeletionMap = new ConcurrentHashMap<>();
+
+  private static final AtomicInteger idGenerator = new AtomicInteger(0);
 
   @SuppressWarnings("squid:S107")
   public TsFileProcessor(
@@ -1041,6 +1047,8 @@ public class TsFileProcessor {
       // Flushing memTables are immutable, only record this deletion in these memTables for read
       if (!flushingMemTables.isEmpty()) {
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
+        deletion.setDeleteStatus(false);
+        flushingMemtableDeletionMap.put(idGenerator.getAndIncrement(), deletion);
       }
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -1427,6 +1435,11 @@ public class TsFileProcessor {
         }
       }
     }
+    try {
+      Thread.sleep(5000);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
 
     try {
       flushQueryLock.writeLock().lock();
@@ -1437,6 +1450,7 @@ public class TsFileProcessor {
           entry.left.setFileOffset(tsFileResource.getTsFileSize());
           this.tsFileResource.getModFile().write(entry.left);
           tsFileResource.getModFile().close();
+          ((Deletion) (entry.left)).setDeleteStatus(true);
           iterator.remove();
           logger.info(
               "[Deletion] Deletion with path: {}, time:{}-{} written when flush memtable",

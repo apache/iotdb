@@ -529,7 +529,13 @@ struct TSConnectionInfoResp {
   1: required list<TSConnectionInfo> connectionInfoList
 }
 
+struct TSDeletionStatusResp {
+  1: required map<string, string> deletionStatus
+}
+
 service IClientRPCService {
+
+  TSDeletionStatusResp checkDeletionStatus();
 
   TSExecuteStatementResp executeQueryStatementV2(1:TSExecuteStatementReq req);
 

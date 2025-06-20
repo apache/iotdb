@@ -41,6 +41,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeletionStatusResp;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
@@ -3848,6 +3849,14 @@ public class Session implements ISession {
   @Override
   public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
     return defaultSessionConnection.fetchAllConnections();
+  }
+
+  public void checkDeletionStatus() throws Exception {
+    TSDeletionStatusResp resp = defaultSessionConnection.getDeletionStatus();
+    Map<String, String> map = resp.getDeletionStatus();
+    for (Map.Entry<String, String> entry : map.entrySet()) {
+      System.out.println(entry.getKey() + " : " + entry.getValue());
+    }
   }
 
   public static class Builder {

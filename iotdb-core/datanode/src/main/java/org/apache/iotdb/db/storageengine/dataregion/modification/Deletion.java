@@ -30,12 +30,15 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Deletion is a delete operation on a timeseries. */
 public class Deletion extends Modification implements Cloneable {
 
   /** data within the interval [startTime, endTime] are to be deleted. */
   private TimeRange timeRange;
+
+  private AtomicBoolean deleteStatus = new AtomicBoolean(true);
 
   /**
    * constructor of Deletion, the start time is set to Long.MIN_VALUE
@@ -68,6 +71,10 @@ public class Deletion extends Modification implements Cloneable {
     if (endTime == Long.MAX_VALUE) {
       this.timeRange.setRightClose(false);
     }
+  }
+
+  public void setDeleteStatus(boolean deleteStatus) {
+    this.deleteStatus.set(deleteStatus);
   }
 
   public long getStartTime() {
@@ -157,6 +164,8 @@ public class Deletion extends Modification implements Cloneable {
         + path
         + ", fileOffset="
         + fileOffset
+        + ", status="
+        + (deleteStatus.get() ? "COMPLETED" : "PENDING")
         + '}';
   }
 

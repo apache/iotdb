@@ -41,6 +41,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeletionStatusResp;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
@@ -1029,6 +1030,11 @@ public class SessionConnection {
         callWithReconnect(() -> client.getBackupConfiguration()).getResult();
     RpcUtils.verifySuccess(execResp.getStatus());
     return execResp;
+  }
+
+  public TSDeletionStatusResp getDeletionStatus()
+      throws IoTDBConnectionException, StatementExecutionException, TException {
+    return client.checkDeletionStatus();
   }
 
   private <T> RetryResult<T> callWithReconnect(TFunction<T> supplier)
