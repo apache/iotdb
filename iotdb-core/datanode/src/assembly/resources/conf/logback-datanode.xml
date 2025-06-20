@@ -207,6 +207,21 @@
             <level>DEBUG</level>
         </filter>
     </appender>
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="WriteLog">
+        <file>${IOTDB_HOME}/logs/write.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/write-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>DEBUG</level>
+        </filter>
+    </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="PipeLog">
         <file>${IOTDB_HOME}/logs/pipe.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -272,6 +287,9 @@
     </logger>
     <logger level="debug" name="PipeLog" additivity="false">
         <appender-ref ref="PipeLog"/>
+    </logger>
+    <logger level="info" name="WriteLog" additivity="false">
+        <appender-ref ref="WriteLog"/>
     </logger>
     <logger level="info" name="EXPLAIN_ANALYZE">
         <appender-ref ref="EXPLAIN_ANALYZE"/>
