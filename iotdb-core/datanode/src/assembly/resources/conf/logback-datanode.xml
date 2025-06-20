@@ -267,7 +267,7 @@
         <appender-ref ref="QUERY_FREQUENCY"/>
     </logger>
     <logger level="info" name="DETAILED_FAILURE_QUERY_TRACE"/>
-    <logger level="debug" name="CompactionLog" additivity="false">
+    <logger level="info" name="CompactionLog" additivity="false">
         <appender-ref ref="CompactionLog"/>
     </logger>
     <logger level="info" name="org.apache.iotdb.pipe.api" addtivity="false">
