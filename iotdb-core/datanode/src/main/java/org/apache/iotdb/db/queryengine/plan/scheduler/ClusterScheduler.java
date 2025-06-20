@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
@@ -51,7 +52,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAI
  * this scheduler.
  */
 public class ClusterScheduler implements IScheduler {
-  private static final Logger logger = LoggerFactory.getLogger(ClusterScheduler.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   // The stateMachine of the QueryExecution owned by this QueryScheduler
   private final QueryStateMachine stateMachine;

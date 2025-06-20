@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -69,7 +70,7 @@ import static org.apache.iotdb.rpc.TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERRO
 @SuppressWarnings("squid:S6548")
 public class FragmentInstanceManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(FragmentInstanceManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   private final Map<FragmentInstanceId, FragmentInstanceContext> instanceContext;
   private final Map<FragmentInstanceId, FragmentInstanceExecution> instanceExecution;

@@ -72,7 +72,7 @@ import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.RE
 /** The manager of fragment instances scheduling. */
 public class DriverScheduler implements IDriverScheduler, IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(DriverScheduler.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private static final DriverSchedulerMetricSet DRIVER_SCHEDULER_METRIC_SET =
       DriverSchedulerMetricSet.getInstance();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
@@ -44,7 +45,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class AsyncPlanNodeSender {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncPlanNodeSender.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
   private final List<FragmentInstance> instances;

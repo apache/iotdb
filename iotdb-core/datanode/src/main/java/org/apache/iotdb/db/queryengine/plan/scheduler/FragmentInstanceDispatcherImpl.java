@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
@@ -69,8 +70,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.DIS
 
 public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(FragmentInstanceDispatcherImpl.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
