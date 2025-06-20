@@ -220,7 +220,7 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME_HEADER;
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
 
-  private static final Logger logger = LoggerFactory.getLogger(AnalyzeVisitor.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 

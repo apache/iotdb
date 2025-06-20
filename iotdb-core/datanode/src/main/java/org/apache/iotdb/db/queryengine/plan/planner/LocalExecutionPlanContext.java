@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
@@ -65,7 +66,7 @@ import static java.util.Objects.requireNonNull;
 // Attention: We should use thread-safe data structure for members that are shared by all pipelines
 public class LocalExecutionPlanContext {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanContext.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   // Save operators in this pipeline, a new one will be created when creating another pipeline
   private final DriverContext driverContext;
   private final AtomicInteger nextOperatorId;

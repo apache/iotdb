@@ -69,7 +69,7 @@ import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
  */
 public class Coordinator {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();

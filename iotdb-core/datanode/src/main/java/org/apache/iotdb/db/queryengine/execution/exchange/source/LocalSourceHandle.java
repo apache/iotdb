@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange.source;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue;
@@ -44,7 +45,7 @@ import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.S
 
 public class LocalSourceHandle implements ISourceHandle {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LocalSourceHandle.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   private TFragmentInstanceId localFragmentInstanceId;
   private String localPlanNodeId;

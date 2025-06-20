@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
@@ -83,7 +84,7 @@ import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.
 
 public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MPPDataExchangeManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   // region =========== MPPDataExchangeServiceImpl ===========
 

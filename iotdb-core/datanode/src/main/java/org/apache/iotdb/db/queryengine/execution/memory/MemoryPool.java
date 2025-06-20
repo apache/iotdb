@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.memory;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
 
@@ -44,7 +45,7 @@ import java.util.stream.Collectors;
 /** A thread-safe memory pool. */
 public class MemoryPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MemoryPool.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   public static class MemoryReservationFuture<V> extends AbstractFuture<V> {
 
