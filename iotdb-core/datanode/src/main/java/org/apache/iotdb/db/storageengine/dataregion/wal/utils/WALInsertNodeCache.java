@@ -231,15 +231,27 @@ public class WALInsertNodeCache {
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
-  public double getCacheHitRate() {
+  public double getInsertNodeCacheHitRate() {
+    return Objects.nonNull(bufferCache) ? insertNodeCache.stats().hitRate() : 0;
+  }
+
+  public double getInsertNodeCacheHitCount() {
+    return Objects.nonNull(bufferCache) ? insertNodeCache.stats().hitCount() : 0;
+  }
+
+  public double getInsertNodeCacheRequestCount() {
+    return Objects.nonNull(bufferCache) ? insertNodeCache.stats().requestCount() : 0;
+  }
+
+  public double getBufferCacheHitRate() {
     return Objects.nonNull(bufferCache) ? bufferCache.stats().hitRate() : 0;
   }
 
-  public double getCacheHitCount() {
+  public double getBufferCacheHitCount() {
     return Objects.nonNull(bufferCache) ? bufferCache.stats().hitCount() : 0;
   }
 
-  public double getCacheRequestCount() {
+  public double getBufferCacheRequestCount() {
     return Objects.nonNull(bufferCache) ? bufferCache.stats().requestCount() : 0;
   }
 
