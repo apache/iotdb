@@ -112,6 +112,7 @@ public class IoTDBConstant {
 
   public static final String COMPACTION_LOGGER_NAME = "CompactionLog";
   public static final String QUERY_LOGGER_NAME = "QueryLog";
+  public static final String WRITE_LOGGER_NAME = "WriteLog";
   public static final String EXPLAIN_ANALYZE_LOGGER_NAME = "EXPLAIN_ANALYZE";
 
   public static final String IOTDB_JMX_LOCAL = "iotdb.jmx.local";
