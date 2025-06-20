@@ -540,7 +540,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
 
       final Optional<SettableFuture<ConfigTaskResult>> maybeValidationFailed =
-          tryReflectAndValidateUDFInSandbox(libRoot, createFunctionStatement, future);
+          tryReflectAndValidateUDFInThreadSandbox(libRoot, createFunctionStatement, future);
       if (maybeValidationFailed.isPresent()) {
         return maybeValidationFailed.get();
       }
@@ -562,14 +562,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return future;
   }
 
-  private Optional<SettableFuture<ConfigTaskResult>> tryReflectAndValidateUDFInSandbox(
+  private Optional<SettableFuture<ConfigTaskResult>> tryReflectAndValidateUDFInThreadSandbox(
       String libRoot,
       CreateFunctionStatement createFunctionStatement,
       SettableFuture<ConfigTaskResult> future) {
     try {
       // Execute in a thread sandbox to prevent UDF from blocking the main thread
       return executeInThreadSandboxWithTimeout(
-          () -> tryReflectAndValidateUDF(libRoot, createFunctionStatement, future),
+          () ->
+              tryReflectAndValidateUDFWithSandboxClassloader(
+                  libRoot, createFunctionStatement, future),
           CommonDescriptor.getInstance().getConfig().getUdfValidationTimeoutMs(),
           TimeUnit.MILLISECONDS);
     } catch (final Exception e) {
@@ -611,14 +613,33 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
   }
 
-  private Optional<SettableFuture<ConfigTaskResult>> tryReflectAndValidateUDF(
+  private Optional<SettableFuture<ConfigTaskResult>> tryReflectAndValidateUDFWithSandboxClassloader(
       String libRoot,
       CreateFunctionStatement createFunctionStatement,
       SettableFuture<ConfigTaskResult> future) {
     // try to create instance, this request will fail if creation is not successful
-    try (UDFClassLoader classLoader = new UDFClassLoader(libRoot)) {
+    try (final UDFClassLoader sandboxClassLoader =
+        new UDFClassLoader(libRoot) {
+          @Override
+          public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+            // Prevent UDF from accessing restricted classes
+            // Using Process or File in UDF is not allowed
+            if (name.startsWith("java.lang.Process") || name.startsWith("java.io.File")) {
+              LOGGER.warn(
+                  "SANDBOX: UDF {} class {} is trying to access restricted class, which is not allowed",
+                  createFunctionStatement.getUdfName(),
+                  name);
+              throw new SecurityException(
+                  String.format(
+                      "UDF %s is trying to access restricted class %s, which is not allowed",
+                      createFunctionStatement.getUdfName(), name));
+            }
+            return super.loadClass(name, resolve);
+          }
+        }) {
       // ensure that jar file contains the class and the class is a UDF
-      Class<?> clazz = Class.forName(createFunctionStatement.getClassName(), true, classLoader);
+      Class<?> clazz =
+          Class.forName(createFunctionStatement.getClassName(), true, sandboxClassLoader);
       UDF udf = (UDF) clazz.getDeclaredConstructor().newInstance();
 
       final TSStatus maybeValidationFailed =
