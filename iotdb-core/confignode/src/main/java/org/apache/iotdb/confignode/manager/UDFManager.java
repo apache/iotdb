@@ -152,7 +152,7 @@ public class UDFManager {
       return RpcUtils.getStatus(
           TSStatusCode.UDF_LOAD_CLASS_ERROR,
           String.format(
-              "Fail to validate UDF class [%s] for function [%s] in sandbox, reason: %s",
+              "Fail to reflect or validate UDF class [%s] for function [%s] in sandbox, reason: %s",
               udfInformation.getClassName(),
               udfInformation.getFunctionName(),
               throwable.getMessage()));
