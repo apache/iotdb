@@ -256,6 +256,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.udf.api.UDF;
+import org.apache.iotdb.udf.api.exception.UDFException;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -285,6 +286,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
@@ -556,6 +563,55 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   private Optional<SettableFuture<ConfigTaskResult>> tryReflectAndValidateUDFInSandbox(
+      String libRoot,
+      CreateFunctionStatement createFunctionStatement,
+      SettableFuture<ConfigTaskResult> future) {
+    try {
+      // Execute in a thread sandbox to prevent UDF from blocking the main thread
+      return executeInThreadSandboxWithTimeout(
+          () -> tryReflectAndValidateUDF(libRoot, createFunctionStatement, future),
+          CommonDescriptor.getInstance().getConfig().getUdfValidationTimeoutMs(),
+          TimeUnit.MILLISECONDS);
+    } catch (final Exception e) {
+      // If the validation fails, we set the exception to the future
+      LOGGER.warn(
+          "Failed to validate UDF class [{}] for function [{}] in sandbox, reason: {}",
+          createFunctionStatement.getClassName(),
+          createFunctionStatement.getUdfName(),
+          e.getMessage(),
+          e);
+      future.setException(
+          new IoTDBException(
+              "Failed to validate UDF class '"
+                  + createFunctionStatement.getClassName()
+                  + "' for function '"
+                  + createFunctionStatement.getUdfName()
+                  + "', reason: "
+                  + e.getMessage(),
+              TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
+      return Optional.of(future);
+    }
+  }
+
+  private static Optional<SettableFuture<ConfigTaskResult>> executeInThreadSandboxWithTimeout(
+      Callable<Optional<SettableFuture<ConfigTaskResult>>> task, long timeout, TimeUnit unit) {
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    Future<Optional<SettableFuture<ConfigTaskResult>>> future = executor.submit(task);
+
+    try {
+      return future.get(timeout, unit);
+    } catch (TimeoutException e) {
+      future.cancel(true);
+      throw new UDFException(
+          "UDF validation timed out after " + timeout + " " + unit.toString().toLowerCase(), e);
+    } catch (Exception e) {
+      throw new UDFException("UDF validation failed", e);
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  private Optional<SettableFuture<ConfigTaskResult>> tryReflectAndValidateUDF(
       String libRoot,
       CreateFunctionStatement createFunctionStatement,
       SettableFuture<ConfigTaskResult> future) {

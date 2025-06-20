@@ -248,6 +248,11 @@ public class CommonDescriptor {
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
 
+    config.setUdfValidationTimeoutMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "udf_validation_timeout_ms", String.valueOf(config.getUdfValidationTimeoutMs()))));
+
     loadRetryProperties(properties);
     loadBinaryAllocatorProps(properties);
   }

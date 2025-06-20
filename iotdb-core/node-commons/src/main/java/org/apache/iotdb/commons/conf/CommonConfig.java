@@ -362,6 +362,8 @@ public class CommonConfig {
 
   private int log2SizeClassGroup = 3;
 
+  private int udfValidationTimeoutMs = 5000;
+
   // time in nanosecond precision when starting up
   private final long startUpNanosecond = System.nanoTime();
 
@@ -1782,6 +1784,14 @@ public class CommonConfig {
 
   public void setLog2SizeClassGroup(int log2SizeClassGroup) {
     this.log2SizeClassGroup = log2SizeClassGroup;
+  }
+
+  public long getUdfValidationTimeoutMs() {
+    return udfValidationTimeoutMs;
+  }
+
+  public void setUdfValidationTimeoutMs(int udfValidationTimeoutMs) {
+    this.udfValidationTimeoutMs = udfValidationTimeoutMs;
   }
 
   /**
