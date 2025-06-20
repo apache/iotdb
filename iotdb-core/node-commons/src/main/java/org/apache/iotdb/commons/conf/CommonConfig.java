@@ -221,6 +221,8 @@ public class CommonConfig {
   private double PipeDataStructureBatchMemoryProportion = 0.1;
   private double pipeTotalFloatingMemoryProportion = 0.2;
 
+  private boolean WALCacheBatchLoadEnabled = true;
+
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 50;
@@ -896,6 +898,18 @@ public class CommonConfig {
     this.pipeTotalFloatingMemoryProportion = pipeTotalFloatingMemoryProportion;
     logger.info(
         "pipeTotalFloatingMemoryProportion is set to {}.", pipeTotalFloatingMemoryProportion);
+  }
+
+  public boolean getWALCacheBatchLoadEnabled() {
+    return WALCacheBatchLoadEnabled;
+  }
+
+  public void setWALCacheBatchLoadEnabled(boolean WALCacheBatchLoadEnabled) {
+    if (this.WALCacheBatchLoadEnabled == WALCacheBatchLoadEnabled) {
+      return;
+    }
+    this.WALCacheBatchLoadEnabled = WALCacheBatchLoadEnabled;
+    logger.info("WALCacheBatchLoadEnabled is set to {}.", WALCacheBatchLoadEnabled);
   }
 
   public int getPipeExtractorAssignerDisruptorRingBufferSize() {
