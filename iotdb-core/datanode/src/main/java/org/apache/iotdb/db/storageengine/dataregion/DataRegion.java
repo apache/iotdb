@@ -200,7 +200,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 public class DataRegion implements IDataRegionForQuery {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+  private static final Logger QUERY_LOGGER = LoggerFactory.getLogger("QUERY");
 
   /**
    * All newly generated chunks after merge have version number 0, so we set merged Modification
@@ -2155,7 +2155,7 @@ public class DataRegion implements IDataRegionForQuery {
       throws MetadataException {
 
     if (context.isDebug()) {
-      DEBUG_LOGGER.info(
+      QUERY_LOGGER.info(
           "Path: {}, get tsfile list: {} isSeq: {} time filter: {}",
           pathList,
           tsFileResources,

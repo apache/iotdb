@@ -66,7 +66,7 @@ import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 public class TimeSeriesMetadataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(TimeSeriesMetadataCache.class);
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+  private static final Logger QUERY_LOGGER = LoggerFactory.getLogger("QUERY");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE =
       config.getAllocateMemoryForTimeSeriesMetaDataCache();
@@ -152,8 +152,8 @@ public class TimeSeriesMetadataCache {
 
       if (timeseriesMetadata == null) {
         if (debug) {
-          DEBUG_LOGGER.info("Cache miss: {}.{} in file: {}", key.device, key.measurement, filePath);
-          DEBUG_LOGGER.info("Device: {}, all sensors: {}", key.device, allSensors);
+          QUERY_LOGGER.info("Cache miss: {}.{} in file: {}", key.device, key.measurement, filePath);
+          QUERY_LOGGER.info("Device: {}, all sensors: {}", key.device, allSensors);
         }
         // allow for the parallelism of different devices
         synchronized (
@@ -183,7 +183,7 @@ public class TimeSeriesMetadataCache {
                         + TsFileConstant.PATH_SEPARATOR
                         + key.measurement)) {
               if (debug) {
-                DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
+                QUERY_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
               }
               loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
               return null;
@@ -217,12 +217,12 @@ public class TimeSeriesMetadataCache {
       }
       if (timeseriesMetadata == null) {
         if (debug) {
-          DEBUG_LOGGER.info("The file doesn't have this time series {}.", key);
+          QUERY_LOGGER.info("The file doesn't have this time series {}.", key);
         }
         return null;
       } else {
         if (debug) {
-          DEBUG_LOGGER.info(
+          QUERY_LOGGER.info(
               "Get timeseries: {}.{}  metadata in file: {}  from cache: {}.",
               key.device,
               key.measurement,

@@ -43,7 +43,7 @@ public class FileReaderManager {
 
   private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+  private static final Logger QUERY_LOGGER = LoggerFactory.getLogger("QUERY");
 
   /** max number of file streams being cached, must be lower than 65535. */
   private static final int MAX_CACHED_FILE_SIZE = 30000;

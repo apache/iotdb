@@ -87,7 +87,7 @@ public class TsFileResource {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResource.class);
 
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+  private static final Logger QUERY_LOGGER = LoggerFactory.getLogger("QUERY");
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -811,7 +811,7 @@ public class TsFileResource {
   public boolean isSatisfied(IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     if (deviceId != null && definitelyNotContains(deviceId)) {
       if (debug) {
-        DEBUG_LOGGER.info(
+        QUERY_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
       }
       return false;
@@ -834,7 +834,7 @@ public class TsFileResource {
       }
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
-        DEBUG_LOGGER.info(
+        QUERY_LOGGER.info(
             "Path: {} file {} is not satisfied because of time filter!",
             deviceId != null ? deviceId : "",
             fsFactory);

@@ -58,7 +58,7 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.REA
 public class ChunkCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ChunkCache.class);
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+  private static final Logger QUERY_LOGGER = LoggerFactory.getLogger("QUERY");
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_CHUNK_CACHE =
       CONFIG.getAllocateMemoryForChunkCache();
@@ -153,7 +153,7 @@ public class ChunkCache {
       Chunk chunk = lruCache.get(chunkCacheKey, chunkLoader);
 
       if (debug) {
-        DEBUG_LOGGER.info("get chunk from cache whose key is: {}", chunkCacheKey);
+        QUERY_LOGGER.info("get chunk from cache whose key is: {}", chunkCacheKey);
       }
 
       return constructChunk(chunk, timeRangeList, chunkStatistic);

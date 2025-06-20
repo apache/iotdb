@@ -46,7 +46,7 @@ import java.util.function.LongConsumer;
 public class BloomFilterCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BloomFilterCache.class);
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+  private static final Logger QUERY_LOGGER = LoggerFactory.getLogger("QUERY");
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE =
       CONFIG.getAllocateMemoryForBloomFilterCache();
@@ -96,7 +96,7 @@ public class BloomFilterCache {
       BloomFilter bloomFilter = lruCache.get(key, loader);
 
       if (debug) {
-        DEBUG_LOGGER.info("get bloomFilter from cache where filePath is: {}", key.filePath);
+        QUERY_LOGGER.info("get bloomFilter from cache where filePath is: {}", key.filePath);
       }
 
       return bloomFilter;
