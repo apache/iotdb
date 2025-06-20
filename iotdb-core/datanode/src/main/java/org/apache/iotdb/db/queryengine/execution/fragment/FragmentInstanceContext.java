@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -65,7 +66,7 @@ import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMP
 
 public class FragmentInstanceContext extends QueryContext {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private static final long END_TIME_INITIAL_VALUE = -1L;
   private final FragmentInstanceId id;
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SinkListener;
 import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
@@ -39,7 +40,7 @@ import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.S
 
 public class LocalSinkChannel implements ISinkChannel {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LocalSinkChannel.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   private TFragmentInstanceId localFragmentInstanceId;
   private final SinkListener sinkListener;

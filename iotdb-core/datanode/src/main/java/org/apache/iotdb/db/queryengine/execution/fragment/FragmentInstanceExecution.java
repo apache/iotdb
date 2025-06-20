@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -52,7 +53,7 @@ import static org.apache.iotdb.db.queryengine.statistics.StatisticsMergeUtil.mer
 
 public class FragmentInstanceExecution {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceExecution.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private final FragmentInstanceId instanceId;
   private final FragmentInstanceContext context;
 

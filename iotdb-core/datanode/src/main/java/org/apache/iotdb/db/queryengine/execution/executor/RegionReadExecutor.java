@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -50,7 +51,7 @@ public class RegionReadExecutor {
 
   public static final String ERROR_MSG_FORMAT = "Execute FragmentInstance failed: %s";
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(RegionReadExecutor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   private final IConsensus dataRegionConsensus;
 

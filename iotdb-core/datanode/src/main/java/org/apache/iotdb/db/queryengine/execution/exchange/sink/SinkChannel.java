@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -64,7 +65,7 @@ import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.
 
 public class SinkChannel implements ISinkChannel {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SinkChannel.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   public static final int MAX_ATTEMPT_TIMES = 3;
   private static final long DEFAULT_RETRY_INTERVAL_IN_MS = 1000L;

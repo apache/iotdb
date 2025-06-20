@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -51,7 +52,7 @@ import java.util.Map;
  */
 public class LocalExecutionPlanner {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanner.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
   private static final long ALLOCATE_MEMORY_FOR_OPERATORS;
   private static final long MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
 

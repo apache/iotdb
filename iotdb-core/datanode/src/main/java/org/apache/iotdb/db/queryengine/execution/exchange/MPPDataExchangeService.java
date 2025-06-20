@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceCl
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
@@ -46,7 +47,7 @@ import java.util.concurrent.TimeUnit;
 
 public class MPPDataExchangeService extends ThriftService implements MPPDataExchangeServiceMBean {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MPPDataExchangeService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.QUERY_LOGGER_NAME);
 
   private final MPPDataExchangeManager mppDataExchangeManager;
   private final ExecutorService executorService;
