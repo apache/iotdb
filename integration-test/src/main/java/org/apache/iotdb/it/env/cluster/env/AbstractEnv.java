@@ -559,7 +559,7 @@ public abstract class AbstractEnv implements BaseEnv {
           for (AINodeWrapper aiNodeWrapper : aiNodeWrapperList) {
             if (portOccupationMap.containsValue(aiNodeWrapper.getPid())) {
               logger.info(
-                  "A port is occupied by another datanode {}-{}, restart it",
+                  "A port is occupied by another AINode {}-{}, restart it",
                   aiNodeWrapper.getIpAndPortString(),
                   aiNodeWrapper.getPid());
               aiNodeWrapper.stop();

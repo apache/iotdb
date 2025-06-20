@@ -114,28 +114,27 @@ public class EnvUtils {
         : listPortOccupationUnix(ports);
   }
 
-  /**
-   * List occupied port and the associated pid on windows.
-   *
-   * @param ports ports to be checked
-   * @return (occupiedPort, pid) pairs
-   */
-  public static Map<Integer, Long> listPortOccupationWindows(final List<Integer> ports)
+  public static Map<Integer, Long> listPortOccupation(
+      final List<Integer> ports,
+      String cmd,
+      int targetColumnLength,
+      int addressColumnIndex,
+      int pidColumnIndex)
       throws IOException {
-    Process process = Runtime.getRuntime().exec("netstat -aon -p tcp");
+    Process process = Runtime.getRuntime().exec(cmd);
     Map<Integer, Long> result = new HashMap<>();
     try (BufferedReader reader =
         new BufferedReader(new InputStreamReader(process.getInputStream()))) {
       String line;
       while ((line = reader.readLine()) != null) {
         String[] split = line.trim().split("\\s+");
-        if (split.length != 5) {
+        if (split.length != targetColumnLength) {
           continue;
         }
-        String localAddress = split[1];
+        String localAddress = split[addressColumnIndex];
         for (Integer port : ports) {
-          if (localAddress.equals("127.0.0.1:" + port)) {
-            result.put(port, Long.parseLong(split[4]));
+          if (localAddress.endsWith(":" + port)) {
+            result.put(port, Long.parseLong(split[pidColumnIndex]));
             break;
           }
         }
@@ -146,6 +145,17 @@ public class EnvUtils {
   }
 
   /**
+   * List occupied port and the associated pid on windows.
+   *
+   * @param ports ports to be checked
+   * @return (occupiedPort, pid) pairs
+   */
+  public static Map<Integer, Long> listPortOccupationWindows(final List<Integer> ports)
+      throws IOException {
+    return listPortOccupation(ports, "netstat -aon -p tcp", 5, 1, 4);
+  }
+
+  /**
    * List occupied port and the associated pid on Unix.
    *
    * @param ports ports to be checked
@@ -153,27 +163,7 @@ public class EnvUtils {
    */
   public static Map<Integer, Long> listPortOccupationUnix(final List<Integer> ports)
       throws IOException {
-    Process process = Runtime.getRuntime().exec("lsof -iTCP -sTCP:LISTEN -P -n");
-    Map<Integer, Long> result = new HashMap<>();
-    try (BufferedReader reader =
-        new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-      String line;
-      while ((line = reader.readLine()) != null) {
-        String[] split = line.trim().split("\\s+");
-        if (split.length != 10) {
-          continue;
-        }
-        String localAddress = split[9];
-        for (Integer port : ports) {
-          if (localAddress.equals("*:" + port)) {
-            result.put(port, Long.parseLong(split[1]));
-            break;
-          }
-        }
-      }
-    } catch (EOFException ignored) {
-    }
-    return result;
+    return listPortOccupation(ports, "lsof -iTCP -sTCP:LISTEN -P -n", 10, 9, 1);
   }
 
   private static String getSearchAvailablePortCmd(final List<Integer> ports) {
