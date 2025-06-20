@@ -64,7 +64,7 @@ import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlug
 
 public class PipePluginInfo implements SnapshotProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginInfo.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private static final ConfigNodeConfig CONFIG_NODE_CONF =
       ConfigNodeDescriptor.getInstance().getConf();
   private static final String SNAPSHOT_FILE_NAME = "pipe_plugin_info.bin";

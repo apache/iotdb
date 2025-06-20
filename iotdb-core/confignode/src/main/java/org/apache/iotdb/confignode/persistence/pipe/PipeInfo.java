@@ -50,7 +50,7 @@ import java.util.Optional;
 
 public class PipeInfo implements SnapshotProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeInfo.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final PipePluginInfo pipePluginInfo;
   private final PipeTaskInfo pipeTaskInfo;
