@@ -78,7 +78,7 @@ public class WALInsertNodeCache {
 
     bufferCache =
         Caffeine.newBuilder()
-            .maximumWeight(requestedAllocateSize)
+            .maximumWeight(requestedAllocateSize / 2)
             .weigher(
                 (Weigher<WALEntryPosition, ByteBuffer>)
                     (position, buffer) -> {
@@ -89,7 +89,7 @@ public class WALInsertNodeCache {
 
     insertNodeCache =
         Caffeine.newBuilder()
-            .maximumWeight(requestedAllocateSize)
+            .maximumWeight(requestedAllocateSize / 2)
             .weigher(
                 (Weigher<WALEntryPosition, InsertNode>)
                     (position, insertNode) -> {
