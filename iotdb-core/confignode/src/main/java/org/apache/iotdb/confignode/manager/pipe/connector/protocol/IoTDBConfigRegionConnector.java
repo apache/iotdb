@@ -54,7 +54,7 @@ import java.util.Objects;
 
 public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @Override
   protected IoTDBSyncClientManager constructClient(

@@ -55,7 +55,7 @@ import java.util.Objects;
 public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
     implements SnapshotProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRegionListeningQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final String SNAPSHOT_FILE_NAME = "pipe_config_region_listening_queue.bin";
 

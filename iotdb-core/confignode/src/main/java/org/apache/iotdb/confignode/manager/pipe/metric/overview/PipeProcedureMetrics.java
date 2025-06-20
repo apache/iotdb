@@ -37,7 +37,7 @@ import java.util.Map;
 
 public class PipeProcedureMetrics implements IMetricSet {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcedureMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final Map<String, Timer> timerMap = new HashMap<>();
 

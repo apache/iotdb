@@ -43,7 +43,7 @@ import java.util.Collections;
 
 public class PipePluginCoordinator {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginCoordinator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final ConfigManager configManager;
   private final PipePluginInfo pipePluginInfo;

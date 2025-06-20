@@ -50,8 +50,7 @@ import java.util.Objects;
 
 public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBConfigRegionAirGapConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @Override
   protected byte[] generateHandShakeV1Payload() throws IOException {

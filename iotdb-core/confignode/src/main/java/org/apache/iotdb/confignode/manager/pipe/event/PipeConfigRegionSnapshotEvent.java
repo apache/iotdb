@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
 public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
     implements ReferenceTrackableEvent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigRegionSnapshotEvent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
   private String snapshotPath;
   // This will only be filled in when the snapshot is a schema info file.
   private String templateFilePath;

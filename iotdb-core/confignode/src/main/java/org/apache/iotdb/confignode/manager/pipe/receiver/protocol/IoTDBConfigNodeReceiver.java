@@ -96,7 +96,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigNodeReceiver.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 

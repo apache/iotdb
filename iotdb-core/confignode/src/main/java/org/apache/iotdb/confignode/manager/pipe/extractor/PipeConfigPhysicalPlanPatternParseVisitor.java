@@ -73,8 +73,7 @@ import java.util.stream.Stream;
  */
 public class PipeConfigPhysicalPlanPatternParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, IoTDBPipePattern> {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConfigPhysicalPlanPatternParseVisitor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPlan(

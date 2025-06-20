@@ -30,8 +30,7 @@ import java.io.File;
 
 public class PipeConfigNodeCopiedFileDirStartupCleaner {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConfigNodeCopiedFileDirStartupCleaner.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   /** Delete the snapshot directory of pipe. */
   public static void clean() {

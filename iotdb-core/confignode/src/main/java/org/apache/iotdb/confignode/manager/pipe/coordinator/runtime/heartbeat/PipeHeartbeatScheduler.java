@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit;
 
 public class PipeHeartbeatScheduler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatScheduler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private static final boolean IS_SEPERATED_PIPE_HEARTBEAT_ENABLED =
       PipeConfig.getInstance().isSeperatedPipeHeartbeatEnabled();

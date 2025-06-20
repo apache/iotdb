@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeHeartbeatParser {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatParser.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("PipeLog");
 
   private final ConfigManager configManager;
 
