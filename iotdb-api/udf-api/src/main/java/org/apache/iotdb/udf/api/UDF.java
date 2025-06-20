@@ -23,6 +23,8 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 
+import java.util.Optional;
+
 public interface UDF {
 
   /**
@@ -35,6 +37,10 @@ public interface UDF {
   @SuppressWarnings("squid:S112")
   default void validate(UDFParameterValidator validator) throws Exception {
     // do nothing
+  }
+
+  default Optional<Exception> check() {
+    return Optional.empty();
   }
 
   /** This method is mainly used to release the resources used in the UDF. */
