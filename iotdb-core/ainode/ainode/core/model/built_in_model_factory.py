@@ -96,9 +96,10 @@ def get_model_attributes(model_id: str):
         attribute_map = gaussian_hmm_attribute_map
     elif model_id == BuiltInModelType.STRAY.value:
         attribute_map = stray_attribute_map
-    elif model_id == BuiltInModelType.TIMER_XL.value:
+    # TODO: The model type should be judged before enter this file
+    elif "timerxl" in model_id:
         attribute_map = timerxl_attribute_map
-    elif model_id == BuiltInModelType.SUNDIAL.value:
+    elif "sundial" in model_id:
         attribute_map = sundial_attribute_map
     else:
         raise BuiltInModelNotSupportError(model_id)

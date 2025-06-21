@@ -27,6 +27,8 @@ from ainode.core.exception import (
     InvalidWindowArgumentError,
     runtime_error_extractor,
 )
+from ainode.core.model.timerxl.modeling_timer import TimerForPrediction
+from ainode.core.model.sundial.modeling_sundial import SundialForPrediction
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
 from ainode.core.util.serde import convert_to_binary
@@ -117,10 +119,9 @@ class RegisteredStrategy(InferenceStrategy):
 
 
 def _get_strategy(model_id, model):
-    # TODO: Refactor this ugly logic
-    if "timerxl" in model_id:
+    if isinstance(model, TimerForPrediction):
         return TimerXLStrategy(model)
-    if "sundial" in model_id:
+    if isinstance(model, SundialForPrediction):
         return SundialStrategy(model)
     if model_id.startswith("_"):
         return BuiltInStrategy(model)
