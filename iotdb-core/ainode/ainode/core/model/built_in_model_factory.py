@@ -17,9 +17,10 @@
 #
 import os
 from abc import abstractmethod
-from typing import Dict, List
+from typing import Callable, Dict, List
 
 import numpy as np
+from huggingface_hub import hf_hub_download
 from sklearn.preprocessing import MinMaxScaler
 from sktime.annotation.hmm_learn import GMMHMM, GaussianHMM
 from sktime.annotation.stray import STRAY
@@ -29,7 +30,7 @@ from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.trend import STLForecaster
 
 from ainode.core.config import AINodeDescriptor
-from ainode.core.constant import AttributeName, BuiltInModelType
+from ainode.core.constant import TIMER_REPO_ID, AttributeName, BuiltInModelType
 from ainode.core.exception import (
     BuiltInModelNotSupportError,
     InferenceModelInternalError,
@@ -40,11 +41,41 @@ from ainode.core.exception import (
 )
 from ainode.core.log import Logger
 from ainode.core.model.sundial import modeling_sundial
-from ainode.core.model.sundial.configuration_sundial import SundialConfig
 from ainode.core.model.timerxl import modeling_timer
-from ainode.core.model.timerxl.configuration_timer import TimerConfig
 
 logger = Logger()
+
+
+def download_built_in_model_if_necessary(model_id: str, local_dir):
+    """
+    Download the built-in model from HuggingFace repository when necessary.
+    """
+    if "_timer" == model_id or "_sundial" == model_id:
+        weights_path = os.path.join(local_dir, "model.safetensors")
+        if not os.path.exists(weights_path):
+            logger.info(
+                f"Weight not found at {weights_path}, downloading from HuggingFace..."
+            )
+            repo_id = TIMER_REPO_ID[model_id]
+            try:
+                hf_hub_download(
+                    repo_id=repo_id,
+                    filename="model.safetensors",
+                    local_dir=local_dir,
+                )
+                logger.info(f"Got weight to {weights_path}")
+                config_path = os.path.join(local_dir, "config.json")
+                hf_hub_download(
+                    repo_id=repo_id,
+                    filename="config.json",
+                    local_dir=local_dir,
+                )
+                logger.info(f"Got config to {config_path}")
+            except Exception as e:
+                logger.error(
+                    f"Failed to download huggingface model to {local_dir} due to {e}"
+                )
+                raise e
 
 
 def get_model_attributes(model_id: str):
@@ -65,34 +96,26 @@ def get_model_attributes(model_id: str):
         attribute_map = gaussian_hmm_attribute_map
     elif model_id == BuiltInModelType.STRAY.value:
         attribute_map = stray_attribute_map
-    elif model_id == BuiltInModelType.TIMER_XL.value:
+    # TODO: The model type should be judged before enter this file
+    elif "timerxl" in model_id:
         attribute_map = timerxl_attribute_map
-    elif model_id == BuiltInModelType.SUNDIAL.value:
+    elif "sundial" in model_id:
         attribute_map = sundial_attribute_map
     else:
         raise BuiltInModelNotSupportError(model_id)
     return attribute_map
 
 
-def fetch_built_in_model(model_id, inference_attributes):
+def fetch_built_in_model(model_id: str, model_dir) -> Callable:
     """
+    Fetch the built-in model according to its id and directory, not that this directory only contains model weights and config.
     Args:
         model_id: the unique id of the model
-        inference_attributes: a list of attributes to be inferred, in this function, the attributes will include some
-            parameters of the built-in model. Some parameters are optional, and if the parameters are not
-            specified, the default value will be used.
+        model_dir: for huggingface models only, the directory where the model is stored
     Returns:
         model: the built-in model
-        attributes: a dict of attributes, where the key is the attribute name, the value is the parsed value of the
-            attribute
-    Description:
-        the create_built_in_model function will create the built-in model, which does not require user
-        registration. This module will parse the inference attributes and create the built-in model.
     """
-    attribute_map = get_model_attributes(model_id)
-
-    # parse the inference attributes, attributes is a Dict[str, Any]
-    attributes = parse_attribute(inference_attributes, attribute_map)
+    attributes = get_model_attributes(model_id)
 
     # build the built-in model
     if model_id == BuiltInModelType.ARIMA.value:
@@ -113,11 +136,9 @@ def fetch_built_in_model(model_id, inference_attributes):
     elif model_id == BuiltInModelType.STRAY.value:
         model = STRAYModel(attributes)
     elif model_id == BuiltInModelType.TIMER_XL.value:
-        model = modeling_timer.TimerForPrediction(TimerConfig.from_dict(attributes))
+        model = modeling_timer.TimerForPrediction.from_pretrained(model_dir)
     elif model_id == BuiltInModelType.SUNDIAL.value:
-        model = modeling_sundial.SundialForPrediction(
-            SundialConfig.from_dict(attributes)
-        )
+        model = modeling_sundial.SundialForPrediction.from_pretrained(model_dir)
     else:
         raise BuiltInModelNotSupportError(model_id)
 
