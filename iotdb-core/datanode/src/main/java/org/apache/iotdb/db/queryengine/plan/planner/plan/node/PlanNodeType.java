@@ -96,11 +96,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQ
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
@@ -198,7 +197,9 @@ public enum PlanNodeType {
   NODE_MANAGEMENT_MEMORY_MERGE((short) 42),
   DELETE_DATA((short) 44),
   DELETE_TIME_SERIES((short) 45),
+  @Deprecated
   LAST_QUERY_SCAN((short) 46),
+  @Deprecated
   ALIGNED_LAST_QUERY_SCAN((short) 47),
   LAST_QUERY((short) 48),
   LAST_QUERY_MERGE((short) 49),
@@ -257,6 +258,8 @@ public enum PlanNodeType {
   DEVICE_SCHEMA_FETCH_SCAN((short) 96),
 
   CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR((short) 97),
+
+  DEVICE_LAST_QUERY_SCAN((short) 98),
 
   CREATE_OR_UPDATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_QUERY_SCAN((short) 903),
@@ -475,9 +478,8 @@ public enum PlanNodeType {
       case 45:
         return DeleteTimeSeriesNode.deserialize(buffer);
       case 46:
-        return LastQueryScanNode.deserialize(buffer);
       case 47:
-        return AlignedLastQueryScanNode.deserialize(buffer);
+        throw new UnsupportedOperationException("LastQueryScanNode is deprecated");
       case 48:
         return LastQueryNode.deserialize(buffer);
       case 49:
@@ -580,6 +582,8 @@ public enum PlanNodeType {
       case 97:
         throw new UnsupportedOperationException(
             "You should never see ContinuousSameSearchIndexSeparatorNode in this function, because ContinuousSameSearchIndexSeparatorNode should never be used in network transmission.");
+      case 98:
+        return DeviceLastQueryScanNode.deserialize(buffer);
       case 902:
         return CreateOrUpdateTableDeviceNode.deserialize(buffer);
       case 903:
