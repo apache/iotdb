@@ -56,18 +56,19 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
     def __init__(
         self,
         model_id: str,
-        input_len: int,
-        out_len: int,
+        seq_len: int,
+        input_token_len: int,
+        output_token_len: int,
         data_schema_list: list,
         ip: str = "127.0.0.1",
         port: int = 6667,
         username: str = "root",
         password: str = "root",
         time_zone: str = "UTC+8",
-        start_split: float = 0,
-        end_split: float = 1,
+        # start_split: float = 0,
+        # end_split: float = 1.0,
     ):
-        super().__init__(ip, port, input_len, out_len)
+        super().__init__(ip, port, seq_len, input_token_len, output_token_len)
 
         self.SHOW_TIMESERIES = "show timeseries %s%s"
         self.COUNT_SERIES_SQL = "select count(%s) from %s%s"
@@ -83,11 +84,9 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
             zone_id=time_zone,
         )
         self.session.open(False)
-        self.context_length = self.input_len + self.output_len
-        self.token_num = self.context_length // self.input_len
         self._fetch_schema(data_schema_list)
-        self.start_idx = int(self.total_count * start_split)
-        self.end_idx = int(self.total_count * end_split)
+        # self.start_idx = int(self.total_count * start_split)
+        # self.end_idx = int(self.total_count * end_split)
         self.cache_enable = _cache_enable()
         self.cache_key_prefix = model_id + "_"
 
@@ -105,6 +104,7 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
                 self.SHOW_TIMESERIES % (path_pattern, time_condition)
             ) as show_timeseries_result:
                 while show_timeseries_result.has_next():
+                    # parse the name of time series according to data_schema_list
                     series_list.append(
                         get_field_value(show_timeseries_result.next().get_fields()[0])
                     )
@@ -119,6 +119,8 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
                         length = get_field_value(
                             count_series_result.next().get_fields()[0]
                         )
+                        # count the number (length) of time series data points
+                        # structure: {series_name: (split_series_name, length, time_condition)}
                         series_to_length[series] = (
                             split_series,
                             length,
@@ -126,10 +128,13 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
                         )
 
         sorted_series = sorted(series_to_length.items(), key=lambda x: x[1][1])
+        # TODO: we should define a data structure for this field
+        # structure: [(split_series_name, the number of windows of this series, prefix sum of window number, time_condition of this series), ...]
         sorted_series_with_prefix_sum = []
         window_sum = 0
         for seq_name, seq_value in sorted_series:
-            window_count = seq_value[1] - self.context_length + 1
+            # calculate and sum the number of training data windows for each time series
+            window_count = seq_value[1] - self.seq_len - self.output_token_len + 1
             if window_count <= 0:
                 continue
             window_sum += window_count
@@ -142,13 +147,14 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
 
     def __getitem__(self, index):
         window_index = index
+        # locate the series to be queried
         series_index = 0
         while self.sorted_series[series_index][2] < window_index:
             series_index += 1
-
+        # locate the window of this series to be queried
         if series_index != 0:
             window_index -= self.sorted_series[series_index - 1][2]
-
+        # TODO: why should we minus 1 here? maybe it is some bug
         if window_index != 0:
             window_index -= 1
         series = self.sorted_series[series_index][0]
@@ -157,28 +163,31 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
             cache_key = self.cache_key_prefix + ".".join(series) + time_condition
             series_data = self.cache.get(cache_key)
             if series_data is not None:
+                # try to get the training data window from cache first
                 series_data = torch.tensor(series_data)
-                result = series_data[window_index : window_index + self.context_length]
+                result = series_data[window_index : window_index + self.seq_len + self.output_token_len]
                 return (
-                    result[0 : self.input_len],
-                    result[-self.output_len :],
+                    result[0 : self.seq_len],
+                    result[self.input_token_len : self.seq_len + self.output_token_len],
                     np.ones(self.token_num, dtype=np.int32),
                 )
         result = []
         sql = ""
         try:
             if self.cache_enable:
+                # fetch all data points of the specific series when cache is enabled
                 sql = self.FETCH_SERIES_SQL % (
                     series[-1],
                     ".".join(series[0:-1]),
                     time_condition,
                 )
             else:
+                # TODO: fetch only the specific data window, current logic is wrong
                 sql = self.FETCH_SERIES_RANGE_SQL % (
                     series[-1],
                     ".".join(series[0:-1]),
                     window_index,
-                    self.context_length,
+                    self.seq_len,
                     time_condition,
                 )
             with self.session.execute_query_statement(sql) as query_result:
@@ -190,13 +199,13 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
             self.cache.put(cache_key, result)
         result = torch.tensor(result)
         return (
-            result[0 : self.input_len],
-            result[-self.output_len :],
+            result[0: self.seq_len],
+            result[self.input_token_len: self.seq_len + self.output_token_len],
             np.ones(self.token_num, dtype=np.int32),
         )
 
     def __len__(self):
-        return self.end_idx - self.start_idx
+        return self.total_count
 
 
 class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
