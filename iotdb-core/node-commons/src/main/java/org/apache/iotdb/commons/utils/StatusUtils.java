@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.util.ExitUtils;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -247,5 +249,17 @@ public class StatusUtils {
 
   public static boolean isUnknownError(int statusCode) {
     return UNKNOWN_ERRORS.contains(statusCode);
+  }
+
+  public static int retrieveExitStatusCode(Throwable e) {
+    if (e instanceof ExitUtils.ExitException && e.getCause() != null) {
+      e = e.getCause();
+    }
+    if (e.getMessage().contains("because Could not create ServerSocket")
+        || e.getMessage().contains("Failed to bind to address")
+        || e.getMessage().contains("Address already in use: bind")) {
+      return TSStatusCode.PORT_OCCUPIED.getStatusCode();
+    }
+    return -1;
   }
 }

@@ -89,6 +89,11 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
   }
 
   @Override
+  public void clearAll() {
+    pool.clear();
+  }
+
+  @Override
   public void close() {
     pool.close();
     // we need to release tManagers for AsyncThriftClientFactory
