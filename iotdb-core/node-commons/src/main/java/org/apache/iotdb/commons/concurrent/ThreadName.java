@@ -33,6 +33,7 @@ public enum ThreadName {
   TIMED_QUERY_SQL_COUNT("Timed-Query-SQL-Count"),
   FRAGMENT_INSTANCE_MANAGEMENT("Fragment-Instance-Management"),
   FRAGMENT_INSTANCE_NOTIFICATION("Fragment-Instance-Notification"),
+  FRAGMENT_INSTANCE_DISPATCH("Fragment-Instance-Dispatch"),
   DRIVER_TASK_SCHEDULER_NOTIFICATION("Driver-Task-Scheduler-Notification"),
   // -------------------------- MPP --------------------------
   MPP_COORDINATOR_SCHEDULED_EXECUTOR("MPP-Coordinator-Scheduled-Executor"),

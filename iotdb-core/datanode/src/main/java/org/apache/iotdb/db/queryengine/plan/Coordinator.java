@@ -127,6 +127,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.BiFunction;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
@@ -165,6 +166,7 @@ public class Coordinator {
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
+  private final ExecutorService dispatchExecutor;
 
   private final QueryIdGenerator queryIdGenerator =
       new QueryIdGenerator(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
@@ -184,6 +186,13 @@ public class Coordinator {
     this.executor = getQueryExecutor();
     this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
+    int dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
+    this.dispatchExecutor =
+        IoTDBThreadPoolFactory.newCachedThreadPool(
+            ThreadName.FRAGMENT_INSTANCE_DISPATCH.getName(),
+            dispatchThreadNum,
+            dispatchThreadNum,
+            new ThreadPoolExecutor.CallerRunsPolicy());
     this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
     this.statementRewrite = new StatementRewriteFactory().getStatementRewrite();
     this.logicalPlanOptimizers =
@@ -585,5 +594,9 @@ public class Coordinator {
 
   public DataNodeLocationSupplierFactory.DataNodeLocationSupplier getDataNodeLocationSupplier() {
     return dataNodeLocationSupplier;
+  }
+
+  public ExecutorService getDispatchExecutor() {
+    return dispatchExecutor;
   }
 }

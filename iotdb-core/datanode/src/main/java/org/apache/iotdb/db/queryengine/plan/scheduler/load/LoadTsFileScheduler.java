@@ -350,7 +350,7 @@ public class LoadTsFileScheduler implements IScheduler {
             queryContext.getSession());
     instance.setExecutorAndHost(new StorageExecutor(replicaSet));
     Future<FragInstanceDispatchResult> dispatchResultFuture =
-        dispatcher.dispatch(Collections.singletonList(instance));
+        dispatcher.dispatch(null, Collections.singletonList(instance));
 
     try {
       FragInstanceDispatchResult result =
