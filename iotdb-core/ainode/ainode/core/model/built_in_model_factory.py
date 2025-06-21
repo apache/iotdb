@@ -30,7 +30,7 @@ from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.trend import STLForecaster
 
 from ainode.core.config import AINodeDescriptor
-from ainode.core.constant import AttributeName, BuiltInModelType, TIMER_REPO_ID
+from ainode.core.constant import TIMER_REPO_ID, AttributeName, BuiltInModelType
 from ainode.core.exception import (
     BuiltInModelNotSupportError,
     InferenceModelInternalError,

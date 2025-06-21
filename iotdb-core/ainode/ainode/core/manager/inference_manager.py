@@ -27,10 +27,10 @@ from ainode.core.exception import (
     InvalidWindowArgumentError,
     runtime_error_extractor,
 )
-from ainode.core.model.timerxl.modeling_timer import TimerForPrediction
-from ainode.core.model.sundial.modeling_sundial import SundialForPrediction
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
+from ainode.core.model.sundial.modeling_sundial import SundialForPrediction
+from ainode.core.model.timerxl.modeling_timer import TimerForPrediction
 from ainode.core.util.serde import convert_to_binary
 from ainode.core.util.status import get_status
 from ainode.thrift.ainode.ttypes import (
