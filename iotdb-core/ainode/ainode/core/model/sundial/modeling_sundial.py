@@ -471,27 +471,7 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
             self.config.hidden_size,
             self.config.num_sampling_steps,
         )
-        # TODO: Unify data loader
-        if not os.path.exists(config.ckpt_path):
-            os.mkdir(config.ckpt_path)
-        weights_path = os.path.join(config.ckpt_path, "model.safetensors")
-        if not os.path.exists(weights_path):
-            logger.info(
-                f"Weight not found at {weights_path}, downloading from HuggingFace..."
-            )
-            repo_id = "thuml/sundial-base-128m"
-            try:
-                hf_hub_download(
-                    repo_id=repo_id,
-                    filename="model.safetensors",
-                    local_dir=config.ckpt_path,
-                )
-                logger.info(f"Got weight to {weights_path}")
-            except Exception as e:
-                logger.error(f"Failed to download weight to {weights_path} due to {e}")
-                raise e
-        state_dict = load_safetensors(weights_path)
-        self.load_state_dict(state_dict, strict=True)
+        self.post_init()
 
     def set_decoder(self, decoder):
         self.model = decoder

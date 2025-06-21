@@ -31,6 +31,7 @@ AINODE_SYSTEM_FILE_NAME = "system.properties"
 AINODE_INFERENCE_RPC_ADDRESS = "127.0.0.1"
 AINODE_INFERENCE_RPC_PORT = 10810
 AINODE_MODELS_DIR = "data/ainode/models"
+AINODE_BUILTIN_MODELS_DIR = "data/ainode/models/weights"  # For built-in models, we only need to store their weights and config.
 AINODE_SYSTEM_DIR = "data/ainode/system"
 AINODE_LOG_DIR = "logs/ainode"
 AINODE_THRIFT_COMPRESSION_ENABLED = False
@@ -53,14 +54,21 @@ AINODE_LOG_FILE_LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING, logging.
 
 TRIAL_ID_PREFIX = "__trial_"
 DEFAULT_TRIAL_ID = TRIAL_ID_PREFIX + "0"
-DEFAULT_MODEL_FILE_NAME = "model.safetensors"
-DEFAULT_CONFIG_FILE_NAME = "config.json"
+
+DEFAULT_MODEL_FILE_NAME = "model.pt"
+DEFAULT_CONFIG_FILE_NAME = "config.yaml"
 DEFAULT_CHUNK_SIZE = 8192
 
 DEFAULT_RECONNECT_TIMEOUT = 20
 DEFAULT_RECONNECT_TIMES = 3
 
 STD_LEVEL = logging.INFO
+
+
+TIMER_REPO_ID = {
+    "_timerxl": "thuml/timer-base-84m",
+    "_sundial": "thuml/sundial-base-128m",
+}
 
 
 class TSStatusCode(Enum):
@@ -161,6 +169,16 @@ class BuiltInModelType(Enum):
         for item in list(cls):
             values.append(item.value)
         return values
+
+    @staticmethod
+    def is_built_in_model(model_id: str) -> bool:
+        """
+        Check if the model ID corresponds to a built-in model.
+        """
+        # TODO: Unify this ugly hard code
+        if "timerxl" in model_id or "sundial" in model_id:
+            return True
+        return model_id in BuiltInModelType.values()
 
 
 class AttributeName(Enum):
