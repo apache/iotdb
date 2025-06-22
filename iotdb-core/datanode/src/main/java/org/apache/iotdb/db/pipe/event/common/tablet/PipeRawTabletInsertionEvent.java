@@ -43,6 +43,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.record.Tablet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -467,24 +469,31 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public PipeEventResource eventResourceBuilder() {
     return new PipeRawTabletInsertionEventResource(
-        this.isReleased, this.referenceCount, this.allocatedMemoryBlock);
+        this.isReleased, this.referenceCount, this.allocatedMemoryBlock, this.hashCode());
   }
 
   private static class PipeRawTabletInsertionEventResource extends PipeEventResource {
 
+    private static final Logger LOGGER =
+        LoggerFactory.getLogger(PipeRawTabletInsertionEventResource.class);
+
     private final PipeTabletMemoryBlock allocatedMemoryBlock;
+    private final int hashcode;
 
     private PipeRawTabletInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
-        final PipeTabletMemoryBlock allocatedMemoryBlock) {
+        final PipeTabletMemoryBlock allocatedMemoryBlock,
+        final int hashcode) {
       super(isReleased, referenceCount);
       this.allocatedMemoryBlock = allocatedMemoryBlock;
+      this.hashcode = hashcode;
     }
 
     @Override
     protected void finalizeResource() {
       allocatedMemoryBlock.close();
+      LOGGER.warn("[DEBUG] {}", hashcode);
     }
   }
 
