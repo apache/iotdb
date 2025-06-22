@@ -67,7 +67,7 @@ public class NotifyRegionMigrationProcedure
       return Flow.NO_MORE_STATE;
     }
     LOGGER.info("[pid{}][NotifyRegionMigration] state {} complete", getProcId(), state);
-    return Flow.HAS_MORE_STATE;
+    return Flow.NO_MORE_STATE;
   }
 
   @Override
