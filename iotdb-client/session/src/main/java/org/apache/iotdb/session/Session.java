@@ -627,10 +627,10 @@ public class Session implements ISession {
 
   @Override
   public synchronized void close() throws IoTDBConnectionException {
-    if (isClosed) {
-      return;
-    }
     try {
+      if (isClosed) {
+        return;
+      }
       if (enableRedirection) {
         for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
           sessionConnection.close();
@@ -1103,6 +1103,12 @@ public class Session implements ISession {
       throws StatementExecutionException, IoTDBConnectionException {
     long time = 0L;
     return executeLastDataQuery(paths, time, queryTimeoutInMs);
+  }
+
+  @Override
+  public SessionDataSet executeFastLastDataQueryForOnePrefixPath(final List<String> prefixes)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    return defaultSessionConnection.executeLastDataQueryForOnePrefixPath(prefixes);
   }
 
   @Override

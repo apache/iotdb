@@ -285,8 +285,8 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             testTable.addColumnSchema(
                 new TagColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
     testTable.addColumnSchema(new AttributeColumnSchema(attributeName, TSDataType.STRING));
-    DataNodeTableCache.getInstance().preUpdateTable(database, testTable);
-    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName);
+    DataNodeTableCache.getInstance().preUpdateTable(database, testTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName, null);
 
     schemaRegion.updateTableDeviceAttribute(
         new TableDeviceAttributeUpdateNode(

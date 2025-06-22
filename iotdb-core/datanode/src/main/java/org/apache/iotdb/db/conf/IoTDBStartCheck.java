@@ -29,10 +29,10 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
 
-import com.google.common.base.Objects;
 import org.apache.commons.io.FileUtils;
-import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptUtils;
+import org.apache.tsfile.exception.encrypt.EncryptException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.function.Supplier;
 
@@ -306,11 +307,19 @@ public class IoTDBStartCheck {
   }
 
   public void serializeEncryptMagicString() throws IOException {
+    if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+        && !Objects.equals(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            "org.apache.tsfile.encrypt.UNENCRYPTED")) {
+      String token = System.getenv("user_encrypt_token");
+      if (token == null || token.trim().isEmpty()) {
+        throw new EncryptException(
+            "encryptType is not UNENCRYPTED, but user_encrypt_token is not set. Please set it in the environment variable.");
+      }
+    }
     String encryptMagicString =
         EncryptUtils.byteArrayToHexString(
-            EncryptUtils.getEncrypt()
-                .getEncryptor()
-                .encrypt(magicString.getBytes(TSFileConfig.STRING_CHARSET)));
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
     systemProperties.put(ENCRYPT_MAGIC_STRING, () -> encryptMagicString);
     generateOrOverwriteSystemPropertiesFile();
   }
@@ -354,15 +363,7 @@ public class IoTDBStartCheck {
     String encryptMagicString = properties.getProperty("encrypt_magic_string");
     if (encryptMagicString != null) {
       byte[] magicBytes = EncryptUtils.hexStringToByteArray(encryptMagicString);
-      String newMagicString =
-          new String(
-              EncryptUtils.getEncrypt().getDecryptor().decrypt(magicBytes),
-              TSFileConfig.STRING_CHARSET);
-      if (!Objects.equal(magicString, newMagicString)) {
-        logger.error("encrypt_magic_string is not matched");
-        throw new ConfigurationException(
-            "Changing encrypt key for tsfile encryption after first start is not permitted");
-      }
+      TSFileDescriptor.getInstance().getConfig().setEncryptKey(magicBytes);
     }
   }
 }

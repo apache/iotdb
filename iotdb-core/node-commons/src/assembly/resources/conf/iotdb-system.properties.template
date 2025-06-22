@@ -257,7 +257,7 @@ load_disk_select_strategy=MIN_IO_FIRST
 # The info of the three strategies are as follows:
 # 1. MIN_IO_FIRST: the system will try to choose the same disk as tsFileToLoad for loading.
 # 2. INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY: the system will choose one disk according to dn_multi_dir_strategy.
-$ 3. INHERIT_LOAD: the system will use the same strategy as load_disk_select_strategy.
+# 3. INHERIT_LOAD: the system will use the same strategy as load_disk_select_strategy.
 # If this property is unset, system will use INHERIT_LOAD as default strategy.
 # effectiveMode: restart
 # Datatype: String

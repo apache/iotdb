@@ -1009,7 +1009,7 @@ public class ExpressionAnalyzer {
             case "NEXT":
               return setExpressionType(node, analyzePhysicalNavigation(node, context, name));
             default:
-              throw new IllegalStateException("unexpected pattern recognition function " + name);
+              throw new SemanticException("unexpected pattern recognition function " + name);
           }
 
         } else if (isAggregation) {
@@ -1778,8 +1778,9 @@ public class ExpressionAnalyzer {
                           "Window frame of type RANGE PRECEDING or FOLLOWING requires ORDER BY"));
       if (orderBy.getSortItems().size() != 1) {
         throw new SemanticException(
-            "Window frame of type RANGE PRECEDING or FOLLOWING requires single sort item in ORDER BY (actual: %s)",
-            orderBy.getSortItems().size());
+            String.format(
+                "Window frame of type RANGE PRECEDING or FOLLOWING requires single sort item in ORDER BY (actual: %s)",
+                orderBy.getSortItems().size()));
       }
       Expression sortKey = Iterables.getOnlyElement(orderBy.getSortItems()).getSortKey();
       Type sortKeyType;
@@ -2193,19 +2194,28 @@ public class ExpressionAnalyzer {
   public static boolean isPatternRecognitionFunction(FunctionCall node) {
     QualifiedName qualifiedName = node.getName();
     if (qualifiedName.getParts().size() > 1) {
-      return false;
+      throw new SemanticException(
+          "Pattern recognition function name must not be qualified: " + qualifiedName);
     }
     Identifier identifier = qualifiedName.getOriginalParts().get(0);
     if (identifier.isDelimited()) {
-      return false;
+      throw new SemanticException(
+          "Pattern recognition function name must not be delimited: " + identifier.getValue());
     }
     String name = identifier.getValue().toUpperCase(ENGLISH);
-    return name.equals("RPR_FIRST")
+    if (name.equals("LAST") || name.equals("FIRST")) {
+      throw new SemanticException(
+          "Pattern recognition function names cannot be LAST or FIRST, use RPR_LAST or RPR_FIRST instead.");
+    } else if (!(name.equals("RPR_FIRST")
         || name.equals("RPR_LAST")
         || name.equals("PREV")
         || name.equals("NEXT")
         || name.equals("CLASSIFIER")
-        || name.equals("MATCH_NUMBER");
+        || name.equals("MATCH_NUMBER"))) {
+      throw new SemanticException("Unknown pattern recognition function: " + name);
+    } else {
+      return true;
+    }
   }
 
   public static ExpressionAnalysis analyzePatternRecognitionExpression(

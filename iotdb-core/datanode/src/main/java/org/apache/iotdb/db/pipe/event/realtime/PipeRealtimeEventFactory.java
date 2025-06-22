@@ -61,7 +61,7 @@ public class PipeRealtimeEventFactory {
         && PipeConsensusProcessor.isShouldReplicate(tsFileInsertionEvent)) {
       tsFileInsertionEvent.setReplicateIndexForIoTV2(
           ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(dataRegionId));
-      LOGGER.debug(
+      LOGGER.info(
           "[Region{}]Set {} for event {}",
           dataRegionId,
           tsFileInsertionEvent.getReplicateIndexForIoTV2(),
@@ -103,7 +103,7 @@ public class PipeRealtimeEventFactory {
         && PipeConsensusProcessor.isShouldReplicate(insertionEvent)) {
       insertionEvent.setReplicateIndexForIoTV2(
           ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(dataRegionId));
-      LOGGER.debug(
+      LOGGER.info(
           "[Region{}]Set {} for event {}",
           dataRegionId,
           insertionEvent.getReplicateIndexForIoTV2(),
@@ -130,7 +130,7 @@ public class PipeRealtimeEventFactory {
         && PipeConsensusProcessor.isShouldReplicate(deleteDataNodeEvent)) {
       deleteDataNodeEvent.setReplicateIndexForIoTV2(
           ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(dataRegionId));
-      LOGGER.debug(
+      LOGGER.info(
           "[Region{}]Set {} for event {}",
           dataRegionId,
           deleteDataNodeEvent.getReplicateIndexForIoTV2(),

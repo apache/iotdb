@@ -66,7 +66,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -318,18 +317,6 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
     AlignedWritableMemChunk alignedMemChunk =
         ((AlignedWritableMemChunkGroup) memTableMap.get(deviceID)).getAlignedMemChunk();
-
-    // check If data type matches
-    Map<String, TSDataType> dataTypeMap = new HashMap<>(alignedMemChunk.getSchemaList().size());
-    for (IMeasurementSchema schema : alignedMemChunk.getSchemaList()) {
-      dataTypeMap.put(schema.getMeasurementName(), schema.getType());
-    }
-    for (IMeasurementSchema schema : alignedFullPath.getSchemaList()) {
-      TSDataType dataTypeInMemChunk = dataTypeMap.get(schema.getMeasurementName());
-      if (dataTypeInMemChunk != null && dataTypeInMemChunk != schema.getType()) {
-        return null;
-      }
-    }
     // only need to do this check for tree model
     if (context.isIgnoreAllNullRows()) {
       boolean containsMeasurement = false;
@@ -350,6 +337,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
             context, alignedMemChunk, modsToMemtable == null, globalTimeFilter);
 
     // column index list for the query
+    // Columns with inconsistent types will be ignored and set -1
     List<Integer> columnIndexList =
         alignedMemChunk.buildColumnIndexList(alignedFullPath.getSchemaList());
 
