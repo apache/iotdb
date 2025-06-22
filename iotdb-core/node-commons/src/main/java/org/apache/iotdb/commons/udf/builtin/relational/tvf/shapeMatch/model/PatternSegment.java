@@ -81,18 +81,30 @@ public class PatternSegment {
             sections.add(concatResult.get(2));
           }
         } else if (concatResult.size() == 2) {
-          if (!sections.isEmpty()
-              && concatResult.get(0).getSign() == 0
-              && concatResult.get(0).getPoints().size() <= lineSectionTolerance) {
-            sections.get(sections.size() - 1).combine(concatResult.get(0));
-            if (sections.get(sections.size() - 1).getSign() == concatResult.get(1).getSign()) {
-              sections.get(sections.size() - 1).combine(concatResult.get(1));
-            } else {
-              sections.add(concatResult.get(1));
-            }
-          } else {
+          if (sections.isEmpty()) {
             sections.add(concatResult.get(0));
             sections.add(concatResult.get(1));
+          } else {
+            if (concatResult.get(0).getSign() == 0) {
+              if (concatResult.get(0).getPoints().size() <= lineSectionTolerance) {
+                sections.get(sections.size() - 1).combine(concatResult.get(0));
+                if (sections.get(sections.size() - 1).getSign() == concatResult.get(1).getSign()) {
+                  sections.get(sections.size() - 1).combine(concatResult.get(1));
+                } else {
+                  sections.add(concatResult.get(1));
+                }
+              } else {
+                sections.add(concatResult.get(0));
+                sections.add(concatResult.get(1));
+              }
+            } else {
+              if (sections.get(sections.size() - 1).getSign() == concatResult.get(0).getSign()) {
+                sections.get(sections.size() - 1).combine(concatResult.get(0));
+              } else {
+                sections.add(concatResult.get(0));
+              }
+              sections.add(concatResult.get(1));
+            }
           }
         } else {
           sections.add(concatResult.get(0));
@@ -100,15 +112,12 @@ public class PatternSegment {
       } else {
         if (sections.size() >= 3
             && sections.get(sections.size() - 2).getPoints().size() <= lineSectionTolerance) {
-          if (sections.get(sections.size() - 3).getSign()
+          sections.get(sections.size() - 3).combine(sections.get(sections.size() - 2));
+          sections.remove(sections.size() - 2);
+          if (sections.get(sections.size() - 2).getSign()
               == sections.get(sections.size() - 1).getSign()) {
-            sections.get(sections.size() - 3).combine(sections.get(sections.size() - 2));
-            sections.get(sections.size() - 3).combine(sections.get(sections.size() - 1));
+            sections.get(sections.size() - 2).combine(sections.get(sections.size() - 1));
             sections.remove(sections.size() - 1);
-            sections.remove(sections.size() - 1);
-          } else {
-            sections.get(sections.size() - 3).combine(sections.get(sections.size() - 2));
-            sections.remove(sections.size() - 2);
           }
         }
       }

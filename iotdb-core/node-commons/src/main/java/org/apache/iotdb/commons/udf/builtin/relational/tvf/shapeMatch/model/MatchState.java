@@ -11,8 +11,6 @@ public class MatchState {
 
   private List<Section> dataSectionList = new ArrayList<>();
 
-  private List<Section> sections = new ArrayList<>();
-
   private Section patternSectionNow = null;
 
   private int startSectionId = -1;
@@ -38,6 +36,10 @@ public class MatchState {
   public MatchState(Section patternSectionNow) {
     this.patternSectionNow = patternSectionNow;
     updatePatternBounds(patternSectionNow);
+  }
+
+  public List<Section> getDataSectionList() {
+    return dataSectionList;
   }
 
   public Section getPatternSectionNow() {
@@ -133,6 +135,7 @@ public class MatchState {
   }
 
   public Boolean calcOneSectionMatchValue(Section section, double smoothValue, double threshold) {
+
     // calc the LED
     // this is the Rx and Ry in the paper
     double localWidthRadio =
@@ -158,7 +161,7 @@ public class MatchState {
     int dataPointNum = section.getPoints().size() - 1;
     int patternPointNum = patternSectionNow.getPoints().size() - 1;
 
-    double numRadio = ((double) dataPointNum) / ((double) patternPointNum);
+    double numRadio = ((double) patternPointNum) / ((double) dataPointNum);
 
     double shapeError = 0.0;
 
@@ -171,18 +174,19 @@ public class MatchState {
               - section.getPoints().get(i).y;
     }
 
-    shapeError = shapeError / ((dataMaxHeight - dataMinHeight) * section.getPoints().size());
+    shapeError = shapeError / ((dataMaxHeight - dataMinHeight) * (section.getPoints().size() - 1));
 
     // calc the match value for a section
-    matchValue = LED + shapeError;
+    matchValue = matchValue + LED + shapeError;
 
     dataSectionList.add(section);
 
     if (patternSectionNow.isFinal()) {
       isFinish = true;
+      patternSectionNow = null;
     }
 
-    if (isFinish || matchValue > threshold || (patternSectionNow.getNextSectionList() == null)) {
+    if (isFinish || matchValue > threshold) {
       return true;
     } else {
       patternSectionNow = patternSectionNow.getNextSectionList().get(0);
@@ -192,7 +196,7 @@ public class MatchState {
 
   private double getPointHeight(int i, double numRadio, int patternPointNum) {
     double patternIndex = i * numRadio;
-    int leftIndex = (int) patternIndex;
+    int leftIndex = (int) Math.floor(patternIndex);
     double leftRadio = patternIndex - leftIndex;
     int rightIndex = leftIndex >= patternPointNum ? patternPointNum : leftIndex + 1;
     double rightRadio = 1 - leftRadio;

@@ -29,6 +29,10 @@ public class RegexMatchState {
     return matchResult;
   }
 
+  public List<Section> getDataSectionList() {
+    return dataSectionList;
+  }
+
   private void calcMatchValue(PathState pathState, double smoothValue, double threshold) {
     // calc the matchValue between sectionStack and dataSectionList, meta info is in pathState
     int index = 0;
@@ -42,7 +46,7 @@ public class RegexMatchState {
       }
       index++;
     }
-    if (index == dataSectionList.size()) {
+    if (index == dataSectionList.size()) { // 如果是因为超过阈值跳出来，至少会少一次index++，就不会等于size
       matchResult.add(pathState);
     }
   }
@@ -73,28 +77,25 @@ public class RegexMatchState {
     if (pathState.checkSign(section) && checkBoundLimit(pathState, heightLimit, widthLimit)) {
       if (pathState.getPatternSection().isFinal()) {
         calcMatchValue(pathState, smoothValue, threshold);
-      } else {
-        // trans to next state
-        if (!pathState.getPatternSection().getNextSectionList().isEmpty()) {
-          if (pathState.getPatternSection().getNextSectionList().size() == 1) {
-            pathState.nextState(patternSectionNow.getNextSectionList().get(0));
-            matchStateStack.push(pathState);
-          } else {
-            // copy the old pathState info and new dataSectionIndex, patternSection
-            // loop from the last one, the first one can be the top of the stack
-            for (int i = pathState.getPatternSection().getNextSectionList().size() - 1;
-                i >= 0;
-                i--) {
-              PathState newPathState =
-                  new PathState(
-                      pathState.getDataSectionIndex() + 1,
-                      pathState.getPatternSection().getNextSectionList().get(i),
-                      pathState);
-              matchStateStack.push(newPathState);
-            }
+      }
+      // trans to next state
+      if (!pathState.getPatternSection().getNextSectionList().isEmpty()) {
+        if (pathState.getPatternSection().getNextSectionList().size() == 1) {
+          pathState.nextState(patternSectionNow.getNextSectionList().get(0));
+          matchStateStack.push(pathState);
+        } else {
+          // copy the old pathState info and new dataSectionIndex, patternSection
+          // loop from the last one, the first one can be the top of the stack
+          for (int i = pathState.getPatternSection().getNextSectionList().size() - 1; i >= 0; i--) {
+            PathState newPathState =
+                new PathState(
+                    pathState.getDataSectionIndex() + 1,
+                    pathState.getPatternSection().getNextSectionList().get(i),
+                    pathState);
+            matchStateStack.push(newPathState);
           }
-          return false;
         }
+        return false;
       }
     }
     return true;
@@ -147,7 +148,7 @@ public class RegexMatchState {
         && (pathState.getDataWidthBound() <= widthLimit);
   }
 
-  private class PathState {
+  public class PathState {
     private double matchValue = 0.0;
 
     private int dataSectionIndex = 0;
@@ -304,7 +305,7 @@ public class RegexMatchState {
         int dataPointNum = dataSection.getPoints().size() - 1;
         int patternPointNum = patternSection.getPoints().size() - 1;
 
-        double numRadio = ((double) dataPointNum) / ((double) patternPointNum);
+        double numRadio = ((double) patternPointNum) / ((double) dataPointNum);
 
         for (int i = 1; i < dataPointNum; i++) {
           double patternIndex = i * numRadio;
@@ -324,7 +325,7 @@ public class RegexMatchState {
         }
 
         shapeError =
-            shapeError / ((dataMaxHeight - dataMinHeight) * dataSection.getPoints().size());
+            shapeError / ((dataMaxHeight - dataMinHeight) * (dataSection.getPoints().size() - 1));
 
         if (calcSEusingMoreMemory) {
           dataSection
@@ -333,8 +334,12 @@ public class RegexMatchState {
         }
       }
 
-      matchValue = LED + shapeError;
+      matchValue = matchValue + LED + shapeError;
       return matchValue > threshold;
+    }
+
+    public double getMatchValue() {
+      return matchValue;
     }
   }
 }

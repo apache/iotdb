@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.QetchAlgorthm;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.MatchState;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.Point;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.RegexMatchState;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.Section;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -129,7 +131,7 @@ public class ShapeMatchTableFunction implements TableFunction {
             .addField("time", Type.TIMESTAMP)
             .addField(expectedFieldName, tableArgument.getFieldTypes().get(requiredIndex))
             .addField("matchID", Type.INT32)
-            .addField("matchValue", Type.FLOAT)
+            .addField("matchValue", Type.DOUBLE)
             .build();
 
     // this is for transferring the parameters to the processor
@@ -207,15 +209,28 @@ public class ShapeMatchTableFunction implements TableFunction {
       double value = input.getDouble(1);
 
       if (qetchAlgorthm.addPoint(new Point(time, value))) {
-        outputWindow(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
+        if (qetchAlgorthm.isRegex()) {
+          outputWindowRegex(
+              properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
+        } else {
+          outputWindow(
+              properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
+        }
       }
     }
 
     @Override
     public void finish(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      qetchAlgorthm.closeNowDataSegment();
-      outputWindow(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
+      if (qetchAlgorthm.closeNowDataSegment()) {
+        if (qetchAlgorthm.isRegex()) {
+          outputWindowRegex(
+              properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
+        } else {
+          outputWindow(
+              properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
+        }
+      }
     }
 
     private void outputWindow(
@@ -223,9 +238,43 @@ public class ShapeMatchTableFunction implements TableFunction {
         ColumnBuilder passThroughIndexBuilder,
         List<MatchState> matchResult) {
       // TODO fill the result to the output column
+      for (MatchState matchState : matchResult) {
+        int matchResultID = qetchAlgorthm.getMatchResultID();
+        for (Section section : matchState.getDataSectionList()) {
+          for (Point point : section.getPoints()) {
+            properColumnBuilders.get(0).writeLong((long) point.x);
+            properColumnBuilders.get(1).writeDouble(point.y);
+            properColumnBuilders.get(2).writeInt(matchResultID);
+            properColumnBuilders.get(3).writeDouble(matchState.getMatchValue());
+          }
+        }
+      }
+      // after the process, the result of qetchAlgorthm will be empty
+      qetchAlgorthm.matchResultClear();
+    }
 
-      // after the process, the qetchAlgorthm will be empty
-      qetchAlgorthm.environmentClear();
+    private void outputWindowRegex(
+        List<ColumnBuilder> properColumnBuilders,
+        ColumnBuilder passThroughIndexBuilder,
+        List<RegexMatchState> matchResult) {
+      // TODO fill the result to the output column
+      for (RegexMatchState matchState : matchResult) {
+        for (RegexMatchState.PathState pathState : matchState.getMatchResult()) {
+          int matchResultID = qetchAlgorthm.getMatchResultID();
+          int dataSectionIndex = pathState.getDataSectionIndex();
+          List<Section> dataSectionList = matchState.getDataSectionList();
+          for (int i = 0; i <= dataSectionIndex; i++) {
+            for (Point point : dataSectionList.get(i).getPoints()) {
+              properColumnBuilders.get(0).writeLong((long) point.x);
+              properColumnBuilders.get(1).writeDouble(point.y);
+              properColumnBuilders.get(2).writeInt(matchResultID);
+              properColumnBuilders.get(3).writeDouble(pathState.getMatchValue());
+            }
+          }
+        }
+      }
+      // after the process, the result of qetchAlgorthm will be empty
+      qetchAlgorthm.matchResultClear();
     }
   }
 }
