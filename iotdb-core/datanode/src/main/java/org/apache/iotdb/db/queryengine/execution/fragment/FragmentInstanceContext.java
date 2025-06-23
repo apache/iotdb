@@ -417,7 +417,7 @@ public class FragmentInstanceContext extends QueryContext {
 
     for (Throwable t : failures) {
       Throwable failure = getRootCause(t);
-      if (failureCause.isEmpty()) {
+      if (failureCause.isEmpty() && failure.getMessage() != null) {
         failureCause = failure.getMessage();
       }
       failureInfoList.add(FragmentInstanceFailureInfo.toFragmentInstanceFailureInfo(failure));
