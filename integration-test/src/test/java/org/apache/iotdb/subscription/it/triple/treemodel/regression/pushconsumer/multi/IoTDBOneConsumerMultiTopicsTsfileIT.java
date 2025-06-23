@@ -110,6 +110,7 @@ public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionTre
     subs.dropTopic(topicName2);
     dropDB(database);
     dropDB(database2);
+    schemaList.clear();
     super.tearDown();
   }
 

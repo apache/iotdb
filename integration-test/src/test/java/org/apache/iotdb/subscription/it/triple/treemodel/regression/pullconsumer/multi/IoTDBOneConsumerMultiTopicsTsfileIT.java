@@ -42,8 +42,9 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /***
  * 1 consumer subscribes to 2 topics: historical data
@@ -148,23 +149,6 @@ public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionTre
     subs.getSubscriptions().forEach((System.out::println));
     assertEquals(subs.getSubscriptions().size(), 2, "subscribe then show subscriptions");
 
-    final AtomicInteger rowCount = new AtomicInteger();
-    Thread thread1 =
-        new Thread(
-            () -> {
-              List<String> devices = new ArrayList<>(2);
-              devices.add(device);
-              devices.add(device2);
-              try {
-                List<Integer> results = consume_tsfile(consumer, devices);
-                System.out.println(results);
-                rowCount.addAndGet(results.get(0));
-                rowCount.addAndGet(results.get(1));
-              } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-              }
-            });
-    thread1.start();
     // Subscribe and then write data
     Thread thread =
         new Thread(
@@ -182,7 +166,6 @@ public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionTre
             });
     thread.start();
     thread.join();
-    thread1.join();
 
     System.out.println(
         "src insert " + device + " :" + getCount(session_src, "select count(s_0) from " + device));
@@ -191,7 +174,11 @@ public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionTre
             + device2
             + " :"
             + getCount(session_src, "select count(s_0) from " + device2));
-    assertEquals(rowCount.get(), 200, "After first consumption");
+    // After first consumption
+    List<String> devices = new ArrayList<>(2);
+    devices.add(device);
+    devices.add(device2);
+    consume_tsfile_await(consumer, devices, Arrays.asList(100, 100));
     // Unsubscribe
     consumer.unsubscribe(topicName);
     System.out.println("###### After cancellation query:");
@@ -201,12 +188,12 @@ public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionTre
 
     // Unsubscribe and then write data
     insert_data(System.currentTimeMillis(), device2);
-    int result = consume_tsfile(consumer, device2);
     session_src.executeNonQueryStatement(
         "insert into "
             + device
             + "(time,s_0,s_1)values(1703980800000,3.45,'2023-12-31 08:00:00+08:00');"); // 2023-12-31 08:00:00+08:00
-    assertEquals(result, 5, "After the second consumption");
+    consume_tsfile_await(
+        consumer, Collections.singletonList(device2), Collections.singletonList(5));
 
     // close
     consumer.close();
