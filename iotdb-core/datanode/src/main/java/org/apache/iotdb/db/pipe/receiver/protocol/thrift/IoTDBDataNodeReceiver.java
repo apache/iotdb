@@ -230,7 +230,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               try {
                 return handleTransferTabletInsertNode(
                     PipeTransferTabletInsertNodeReq.fromTPipeTransferReq(req));
-
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletInsertNodeTimer(System.nanoTime() - startTime);
