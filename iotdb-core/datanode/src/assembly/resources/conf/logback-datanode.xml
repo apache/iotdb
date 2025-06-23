@@ -257,7 +257,7 @@
     <logger level="info" name="QUERY_DEBUG">
         <appender-ref ref="QUERY_DEBUG"/>
     </logger>
-    <logger level="info" name="SLOW_SQL">
+    <logger level="info" name="SLOW_SQL" additivity="false">
         <appender-ref ref="SLOW_SQL"/>
     </logger>
     <logger level="info" name="SAMPLED_QUERIES" additivity="false">
