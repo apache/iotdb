@@ -595,19 +595,15 @@ public class StatementAnalyzer {
       throw new SemanticException("USE statement is not supported yet.");
     }
 
-    private boolean checkTagColumnsForInsert(
+    private boolean containsAnyFieldColumn(
         List<String> insertColumns, Map<String, ColumnSchema> columnSchemaMap) {
-      List<String> tagColumns =
-          columnSchemaMap.entrySet().stream()
-              .filter(entry -> entry.getValue().getColumnCategory() == TsTableColumnCategory.TAG)
-              .map(Map.Entry::getKey)
-              .collect(Collectors.toList());
-      for (String column : tagColumns) {
-        if (!insertColumns.contains(column)) {
-          return false;
+      for (String column : insertColumns) {
+        if (columnSchemaMap.containsKey(column)
+            && columnSchemaMap.get(column).getColumnCategory() == TsTableColumnCategory.FIELD) {
+          return true;
         }
       }
-      return true;
+      return false;
     }
 
     // Do not consider type coercion at the moment
@@ -678,13 +674,14 @@ public class StatementAnalyzer {
         insertColumns = tableColumns;
       }
 
-      // insert columns should contain time and tag columns
+      // insert columns should contain time
       if (!insertColumns.contains(TIME_COLUMN_NAME)) {
         throw new SemanticException("time column can not be null");
       }
+      // insert columns should contain at least one field column
       Map<String, ColumnSchema> columnSchemaMap = tableSchema.get().getColumnSchemaMap();
-      if (!checkTagColumnsForInsert(insertColumns, columnSchemaMap)) {
-        throw new SemanticException("Insert must write all tag columns from query");
+      if (!containsAnyFieldColumn(insertColumns, columnSchemaMap)) {
+        throw new SemanticException("No Field column present");
       }
 
       // set Insert in analysis
