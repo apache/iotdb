@@ -319,9 +319,10 @@ public class RegexMatchState {
                   + patternSection.getPoints().get(rightIndex).y * leftRadio;
 
           shapeError +=
-              pointHeight * globalHeightRadio * localHeightRadio
-                  - alignHeightDiff
-                  - dataSection.getPoints().get(i).y;
+              Math.abs(
+                  pointHeight * globalHeightRadio * localHeightRadio
+                      - alignHeightDiff
+                      - dataSection.getPoints().get(i).y);
         }
 
         shapeError =

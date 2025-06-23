@@ -95,7 +95,8 @@ public class QetchAlgorthm {
         }
       }
     }
-    if (patternSegment != null && patternSegment.getPoints().size() >= 2) patternSegments.add(patternSegment);
+    if (patternSegment != null && patternSegment.getPoints().size() >= 2)
+      patternSegments.add(patternSegment);
 
     // move the minX and minY to the (0,0)
     for (PatternSegment segment : patternSegments) {

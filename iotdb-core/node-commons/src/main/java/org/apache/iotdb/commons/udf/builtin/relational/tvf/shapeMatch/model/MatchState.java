@@ -169,9 +169,10 @@ public class MatchState {
       double pointHeight = getPointHeight(i, numRadio, patternPointNum);
 
       shapeError +=
-          pointHeight * globalHeightRadio * localHeightRadio
-              - alignHeightDiff
-              - section.getPoints().get(i).y;
+          Math.abs(
+              pointHeight * globalHeightRadio * localHeightRadio
+                  - alignHeightDiff
+                  - section.getPoints().get(i).y);
     }
 
     shapeError = shapeError / ((dataMaxHeight - dataMinHeight) * (section.getPoints().size() - 1));

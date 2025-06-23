@@ -143,6 +143,7 @@ public class ShapeMatchTableFunction implements TableFunction {
                 THRESHOLD_PARAM, ((ScalarArgument) arguments.get(THRESHOLD_PARAM)).getValue())
             .addProperty(WIDTH_PARAM, ((ScalarArgument) arguments.get(WIDTH_PARAM)).getValue())
             .addProperty(HEIGHT_PARAM, ((ScalarArgument) arguments.get(HEIGHT_PARAM)).getValue())
+            .addProperty(TYPE_PARAM, ((ScalarArgument) arguments.get(TYPE_PARAM)).getValue())
             .build();
 
     // TODO: 这里的requireRecordSnapshot 是要false还是true
