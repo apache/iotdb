@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Locale;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
@@ -190,7 +191,7 @@ public class IoTDBInsertQueryIT {
         Statement statement = connection.createStatement()) {
       statement.execute("USE test");
       statement.execute(
-          "CREATE TABLE IF NOT EXISTS vehicle1(deviceId STRING TAG, manufacturer STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD)");
+          "CREATE TABLE IF NOT EXISTS vehicle1(deviceId STRING TAG, manufacturer STRING TAG, s1 INT64 FIELD, s2 FLOAT FIELD)");
 
       // without time column
       try {
@@ -202,24 +203,36 @@ public class IoTDBInsertQueryIT {
             e.getMessage(), e.getMessage().contains("701: time column can not be null"));
       }
 
-      // partial tag columns
+      // without field column
       try {
         statement.execute(
-            "INSERT INTO vehicle1(time, deviceId, s1, s2) SELECT time, deviceId, s1, s2 FROM vehicle0");
+            "INSERT INTO vehicle1(time, deviceId, manufacturer) SELECT time, deviceId, manufacturer FROM vehicle0");
         fail("No exception!");
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage().contains("701: Insert must write all tag columns from query"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains("701: No Field column present"));
       }
 
-      // It is allowed to insert without field columns
-      statement.execute(
-          "INSERT INTO vehicle1(time, deviceId, manufacturer) SELECT time, deviceId, manufacturer FROM vehicle0");
-      ResultSet resultSet = statement.executeQuery("SELECT s1,s2 FROM vehicle1");
+      // It is allowed to insert without tags
+      statement.execute("INSERT INTO vehicle1(time, s1, s2) SELECT time, s1, s2 FROM vehicle0");
+      ResultSet resultSet = statement.executeQuery("SELECT deviceId, manufacturer FROM vehicle1");
       while (resultSet.next()) {
         for (int i = 1; i <= 2; i++) {
           assertNull(resultSet.getString(i));
+        }
+      }
+
+      // insert partial tag & fields
+      statement.execute("DELETE FROM vehicle1");
+      statement.execute(
+          "INSERT INTO vehicle1(time, s2, manufacturer) SELECT time, s2, manufacturer FROM vehicle0");
+      resultSet = statement.executeQuery("SELECT deviceId, manufacturer, s1, s2 FROM vehicle1");
+      while (resultSet.next()) {
+        for (int i = 1; i <= 4; i++) {
+          if (i % 2 == 1) {
+            assertNull(resultSet.getString(i));
+          } else {
+            assertNotNull(resultSet.getString(i));
+          }
         }
       }
 
