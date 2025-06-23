@@ -147,7 +147,11 @@ public final class PartitionExecutor {
     for (int i = 0; i < outputChannels.size(); i++) {
       Column column = tsBlock.getColumn(outputChannels.get(i));
       ColumnBuilder columnBuilder = builder.getColumnBuilder(i);
-      columnBuilder.write(column, offsetInTsBlock);
+      if (column.isNull(offsetInTsBlock)) {
+        columnBuilder.appendNull();
+      } else {
+        columnBuilder.write(column, offsetInTsBlock);
+      }
       channel++;
     }
 
