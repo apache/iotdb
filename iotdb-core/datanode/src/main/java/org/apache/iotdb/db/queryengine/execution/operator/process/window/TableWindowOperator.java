@@ -294,7 +294,6 @@ public class TableWindowOperator implements ProcessOperator {
         partitionExecutors.addLast(partitionExecutor);
 
         partitionStartInCurrentBlock = partitionEndInCurrentBlock;
-        partitionEndInCurrentBlock = partitionStartInCurrentBlock + 1;
       } else {
         // Last partition of TsBlock
         // The beginning of next TsBlock may have rows in this partition
