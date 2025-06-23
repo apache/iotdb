@@ -38,7 +38,6 @@ import java.util.Objects;
 /** A procedure that notifies all DNs of the ongoing region migration procedure. */
 public class NotifyRegionMigrationProcedure
     extends RegionOperationProcedure<NotifyRegionMigrationState> {
-
   private static final Logger LOGGER =
       LoggerFactory.getLogger(NotifyRegionMigrationProcedure.class);
 
