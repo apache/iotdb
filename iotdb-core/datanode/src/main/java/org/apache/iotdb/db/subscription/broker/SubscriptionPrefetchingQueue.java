@@ -111,6 +111,7 @@ public abstract class SubscriptionPrefetchingQueue {
   private volatile boolean isClosed = false;
 
   // for prefetch v2
+  // TODO: make it thread-local for higher throughput
   private volatile TsFileInsertionEvent currentTsFileInsertionEvent;
   private volatile RetryableEvent<TabletInsertionEvent> currentTabletInsertionEvent;
   private volatile SubscriptionTsFileToTabletIterator currentToTabletIterator;
@@ -160,7 +161,7 @@ public abstract class SubscriptionPrefetchingQueue {
     // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close
 
     if (Objects.nonNull(currentToTabletIterator)) {
-      currentToTabletIterator.close();
+      currentToTabletIterator.cleanUp();
       currentToTabletIterator = null;
     }
     if (Objects.nonNull(currentTsFileInsertionEvent)) {
@@ -582,7 +583,7 @@ public abstract class SubscriptionPrefetchingQueue {
             continue;
         }
       }
-      currentToTabletIterator.close();
+      currentToTabletIterator.ack();
       currentToTabletIterator = null;
     }
 
@@ -1051,7 +1052,7 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// tsfile to tablet iteration ///////////////////////////////
 
   private static class SubscriptionTsFileToTabletIterator
-      implements Iterator<TabletInsertionEvent>, AutoCloseable {
+      implements Iterator<TabletInsertionEvent> {
 
     private final PipeTsFileInsertionEvent tsFileInsertionEvent;
     private final Iterator<TabletInsertionEvent> tabletInsertionEventsIterator;
@@ -1073,8 +1074,16 @@ public abstract class SubscriptionPrefetchingQueue {
       return tabletInsertionEventsIterator.next();
     }
 
-    @Override
-    public void close() {
+    public void ack() {
+      try {
+        tsFileInsertionEvent.close();
+      } catch (final Exception ignored) {
+      }
+      // should not report here
+      tsFileInsertionEvent.decreaseReferenceCount(this.getClass().getName(), false);
+    }
+
+    public void cleanUp() {
       try {
         tsFileInsertionEvent.close();
       } catch (final Exception ignored) {
