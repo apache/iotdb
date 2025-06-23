@@ -629,7 +629,7 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     if (event instanceof TsFileInsertionEvent) {
-      if (!PipeEventCollector.canSkipParsing4TsFileEvent((PipeTsFileInsertionEvent) event)) {
+      if (PipeEventCollector.canSkipParsing4TsFileEvent((PipeTsFileInsertionEvent) event)) {
         onEvent((TsFileInsertionEvent) event);
         return;
       }
