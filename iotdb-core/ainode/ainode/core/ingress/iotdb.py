@@ -154,9 +154,6 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
         # locate the window of this series to be queried
         if series_index != 0:
             window_index -= self.sorted_series[series_index - 1][2]
-        # TODO: why should we minus 1 here? maybe it is some bug
-        if window_index != 0:
-            window_index -= 1
         series = self.sorted_series[series_index][0]
         time_condition = self.sorted_series[series_index][3]
         if self.cache_enable:
