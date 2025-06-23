@@ -51,6 +51,7 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -615,7 +616,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                           // If the tsFile is not already marked closing, it is not captured by the
                           // pipe realtime module. Thus, we can wait for the realtime sync module to
                           // handle this, to avoid blocking the pipe sync process.
-                          resource.getProcessor().alreadyMarkedClosing()
+                          Optional.ofNullable(resource.getProcessor())
+                                  .map(TsFileProcessor::alreadyMarkedClosing)
+                                  .orElse(true)
                               && mayTsFileContainUnprocessedData(resource)
                               && isTsFileResourceOverlappedWithTimeRange(resource)
                               && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
@@ -633,7 +636,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                           // If the tsFile is not already marked closing, it is not captured by the
                           // pipe realtime module. Thus, we can wait for the realtime sync module to
                           // handle this, to avoid blocking the pipe sync process.
-                          resource.getProcessor().alreadyMarkedClosing()
+                          Optional.ofNullable(resource.getProcessor())
+                                  .map(TsFileProcessor::alreadyMarkedClosing)
+                                  .orElse(true)
                               && mayTsFileContainUnprocessedData(resource)
                               && isTsFileResourceOverlappedWithTimeRange(resource)
                               && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
