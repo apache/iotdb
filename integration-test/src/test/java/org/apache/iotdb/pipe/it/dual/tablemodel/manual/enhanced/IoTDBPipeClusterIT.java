@@ -208,7 +208,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.user", "root");
-      connectorAttributes.put("connector.password", "root");
+      connectorAttributes.put("connector.password", "IoTDB@2017");
 
       final TSStatus status =
           client.createPipe(

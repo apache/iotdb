@@ -64,7 +64,7 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testLogin() throws AuthException {
-    Assert.assertTrue(authorizer.login("root", "root"));
+    Assert.assertTrue(authorizer.login("root", "IoTDB@2017"));
     Assert.assertFalse(authorizer.login("root", "error"));
   }
 

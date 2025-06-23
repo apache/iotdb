@@ -209,9 +209,9 @@ git checkout rel/x.x
 
 IoTDB提供了与服务器交互的不同方式，这里我们将介绍使用 Cli 工具插入和查询数据的基本步骤。
 
-安装 IoTDB 后，有一个默认的用户`root`，它的默认密码也是`root`。用户可以使用这个
+安装 IoTDB 后，有一个默认的用户`root`，它的默认密码是`IoTDB@2017`。用户可以使用这个
 默认用户登录 Cli 并使用 IoTDB。Cli 的启动脚本是 sbin 文件夹中的 start-cli 脚本。
-在执行脚本时，用户应该指定 IP，端口，USER_NAME 和 密码。默认参数为`-h 127.0.0.1 -p 6667 -u root -pw root`。
+在执行脚本时，用户应该指定 IP，端口，USER_NAME 和 密码。默认参数为`-h 127.0.0.1 -p 6667 -u root -pw IoTDB@2017`。
 
 
 下面是启动 Cli 的命令:

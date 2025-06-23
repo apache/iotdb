@@ -74,7 +74,7 @@ public class SubscriptionSessionExample {
             .host(HOST)
             .port(PORT)
             .username("root")
-            .password("root")
+            .password("IoTDB@2017")
             .version(Version.V_1_0)
             .build();
     session.open(false);
@@ -103,7 +103,7 @@ public class SubscriptionSessionExample {
             .host(HOST)
             .port(PORT)
             .username("root")
-            .password("root")
+            .password("IoTDB@2017")
             .version(Version.V_1_0)
             .build();
     session.open(false);

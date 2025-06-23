@@ -68,7 +68,7 @@ public class RemoteServerEnv implements BaseEnv {
 
   private final String dataNodeMetricPort = System.getProperty("RemoteDataNodeMetricPort", "9093");
   private final String user = System.getProperty("RemoteUser", "root");
-  private final String password = System.getProperty("RemotePassword", "root");
+  private final String password = System.getProperty("RemotePassword", "IoTDB@2017");
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
   private RemoteClusterConfig clusterConfig = new RemoteClusterConfig();
 

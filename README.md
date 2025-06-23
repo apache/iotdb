@@ -334,9 +334,9 @@ Users can start 1C1D IoTDB by the start-standalone script under the sbin folder.
 
 IoTDB offers different ways to interact with server, here we introduce the basic steps of using Cli tool to insert and query data.
 
-After installing IoTDB, there is a default user 'root', its default password is also 'root'. Users can use this
+After installing IoTDB, there is a default user 'root', its default password is 'IoTDB@2017'. Users can use this
 default user to login Cli to use IoTDB. The start-up script of Cli is the start-cli script in the folder sbin. When executing the script, user should assign
-IP, PORT, USER_NAME and PASSWORD. The default parameters are "-h 127.0.0.1 -p 6667 -u root -pw -root".
+IP, PORT, USER_NAME and PASSWORD. The default parameters are "-h 127.0.0.1 -p 6667 -u root -pw IoTDB@2017".
 
 Here is the command for starting the Cli:
 
