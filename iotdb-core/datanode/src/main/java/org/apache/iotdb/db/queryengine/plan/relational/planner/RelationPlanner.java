@@ -82,7 +82,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ValueP
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
@@ -167,7 +166,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.Position.PAST_LAST;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
@@ -1185,7 +1183,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       Type tableType = column.getType();
       int index = insertColumns.indexOf(columnSchemaMap.get(column.getName()));
       if (index < 0) {
-        expression = new Cast(new NullLiteral(), toSqlType(column.getType()));
+        expression = new NullLiteral();
       } else {
         Symbol input = visibleFieldMappings.get(index);
         Type queryType = symbolAllocator.getTypes().getTableModelType(input);
