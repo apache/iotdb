@@ -376,7 +376,6 @@ public abstract class SubscriptionPrefetchingQueue {
       }
       reportStateIfNeeded();
       tryPrefetchV2();
-      peekOnce();
       remapInFlightEventsSnapshot(committedCleaner, pollableNacker);
       // always return false
       return false;
