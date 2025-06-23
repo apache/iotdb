@@ -616,13 +616,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                           // If the tsFile is not already marked closing, it is not captured by the
                           // pipe realtime module. Thus, we can wait for the realtime sync module to
                           // handle this, to avoid blocking the pipe sync process.
-                          Optional.ofNullable(resource.getProcessor())
-                                  .map(TsFileProcessor::alreadyMarkedClosing)
-                                  .orElse(true)
-                              && mayTsFileContainUnprocessedData(resource)
-                              && isTsFileResourceOverlappedWithTimeRange(resource)
-                              && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
-                              && mayTsFileResourceOverlappedWithPattern(resource)))
+                          !resource.isClosed()
+                                  && Optional.ofNullable(resource.getProcessor())
+                                      .map(TsFileProcessor::alreadyMarkedClosing)
+                                      .orElse(true)
+                              || mayTsFileContainUnprocessedData(resource)
+                                  && isTsFileResourceOverlappedWithTimeRange(resource)
+                                  && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                                  && mayTsFileResourceOverlappedWithPattern(resource)))
               .collect(Collectors.toList());
       resourceList.addAll(sequenceTsFileResources);
 
@@ -636,13 +637,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                           // If the tsFile is not already marked closing, it is not captured by the
                           // pipe realtime module. Thus, we can wait for the realtime sync module to
                           // handle this, to avoid blocking the pipe sync process.
-                          Optional.ofNullable(resource.getProcessor())
-                                  .map(TsFileProcessor::alreadyMarkedClosing)
-                                  .orElse(true)
-                              && mayTsFileContainUnprocessedData(resource)
-                              && isTsFileResourceOverlappedWithTimeRange(resource)
-                              && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
-                              && mayTsFileResourceOverlappedWithPattern(resource)))
+                          !resource.isClosed()
+                                  && Optional.ofNullable(resource.getProcessor())
+                                      .map(TsFileProcessor::alreadyMarkedClosing)
+                                      .orElse(true)
+                              || mayTsFileContainUnprocessedData(resource)
+                                  && isTsFileResourceOverlappedWithTimeRange(resource)
+                                  && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                                  && mayTsFileResourceOverlappedWithPattern(resource)))
               .collect(Collectors.toList());
       resourceList.addAll(unsequenceTsFileResources);
 
