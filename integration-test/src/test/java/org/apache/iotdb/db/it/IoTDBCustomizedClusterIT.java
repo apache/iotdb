@@ -24,7 +24,6 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.DailyIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -48,7 +47,6 @@ import static org.junit.Assert.fail;
 
 /** Tests that may not be satisfied with the default cluster settings. */
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class})
 public class IoTDBCustomizedClusterIT {
 
   private final Logger logger = LoggerFactory.getLogger(IoTDBCustomizedClusterIT.class);
