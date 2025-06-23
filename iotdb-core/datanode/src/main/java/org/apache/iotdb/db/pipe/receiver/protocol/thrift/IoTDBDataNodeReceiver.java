@@ -375,7 +375,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               try {
                 return handleTransferFileSealV2(
                     PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req));
-
               } finally {
                 metrics.recordTransferSchemaSnapshotSealTimer(System.nanoTime() - startTime);
                 metrics.markTransferSchemaSnapshotSealSize(req.body.limit());

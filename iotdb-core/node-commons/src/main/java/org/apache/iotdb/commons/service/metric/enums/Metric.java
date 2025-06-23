@@ -153,6 +153,7 @@ public enum Metric {
   PIPE_DATANODE_RECEIVER("pipe_datanode_receiver"),
   PIPE_DATANODE_RECEIVER_REQ_SIZE("pipe_datanode_receiver_req_size"),
   PIPE_CONFIGNODE_RECEIVER("pipe_confignode_receiver"),
+  PIPE_CONFIGNODE_RECEIVER_REQ_SIZE("pipe_confignode_receiver_req_size"),
   PIPE_EXTRACTOR_TABLET_SUPPLY("pipe_extractor_tablet_supply"),
   PIPE_EXTRACTOR_TSFILE_SUPPLY("pipe_extractor_tsfile_supply"),
   PIPE_EXTRACTOR_HEARTBEAT_SUPPLY("pipe_extractor_heartbeat_supply"),
