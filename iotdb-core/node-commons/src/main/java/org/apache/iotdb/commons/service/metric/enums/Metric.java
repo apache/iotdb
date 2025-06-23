@@ -151,6 +151,7 @@ public enum Metric {
   PIPE_TOTAL_COMPRESSED_SIZE("pipe_total_compressed_size"),
   PIPE_COMPRESSION_TIME("pipe_compression_time"),
   PIPE_DATANODE_RECEIVER("pipe_datanode_receiver"),
+  PIPE_DATANODE_RECEIVER_REQ_SIZE("pipe_datanode_receiver_req_size"),
   PIPE_CONFIGNODE_RECEIVER("pipe_confignode_receiver"),
   PIPE_EXTRACTOR_TABLET_SUPPLY("pipe_extractor_tablet_supply"),
   PIPE_EXTRACTOR_TSFILE_SUPPLY("pipe_extractor_tsfile_supply"),
