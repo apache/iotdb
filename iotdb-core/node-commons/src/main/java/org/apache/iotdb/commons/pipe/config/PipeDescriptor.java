@@ -435,6 +435,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_receiver_actual_to_estimated_memory_ratio",
                 Double.toString(config.getPipeReceiverActualToEstimatedMemoryRatio()))));
+    config.setPipeReceiverReqDecompressedMaxLengthInBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_receiver_req_decompressed_max_length_in_bytes",
+                String.valueOf(config.getPipeReceiverReqDecompressedMaxLengthInBytes()))));
 
     config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
         Integer.parseInt(
