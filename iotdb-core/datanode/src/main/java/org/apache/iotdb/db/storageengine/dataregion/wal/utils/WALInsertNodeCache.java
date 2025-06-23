@@ -68,6 +68,7 @@ public class WALInsertNodeCache {
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
 
   private volatile boolean hasPipeRunning = false;
+  private long batchLoadSize = 1 << 12;
 
   private WALInsertNodeCache() {
     if (walModelFixedMemory == null) {
@@ -301,7 +302,7 @@ public class WALInsertNodeCache {
         }
 
         // batch load when wal file is sealed
-        long position = walEntryPosition.getPosition();
+        long position = 0;
         try (final WALByteBufReader walByteBufReader = new WALByteBufReader(walEntryPosition)) {
           while (walByteBufReader.hasNext()) {
             // see WALInfoEntry#serialize, entry type + memtable id + plan node type

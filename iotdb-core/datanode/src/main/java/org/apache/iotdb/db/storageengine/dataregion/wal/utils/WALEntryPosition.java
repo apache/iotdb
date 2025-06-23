@@ -51,8 +51,6 @@ public class WALEntryPosition {
   private WALNode walNode = null;
   // wal file is not null when openReadFileChannel method has been called
   private File walFile = null;
-  // cache for wal entry
-  private WALInsertNodeCache cache = null;
 
   private static final String ENTRY_NOT_READY_MESSAGE = "This entry isn't ready for read.";
 
@@ -70,7 +68,7 @@ public class WALEntryPosition {
    * for read.
    */
   public Pair<ByteBuffer, InsertNode> getByteBufferOrInsertNodeIfPossible() {
-    return cache.getByteBufferOrInsertNodeIfPossible(this);
+    return WALInsertNodeCache.getInstance().getByteBufferOrInsertNodeIfPossible(this);
   }
 
   /**
@@ -82,7 +80,7 @@ public class WALEntryPosition {
     if (!canRead()) {
       throw new IOException(ENTRY_NOT_READY_MESSAGE);
     }
-    return cache.getInsertNode(this);
+    return WALInsertNodeCache.getInstance().getInsertNode(this);
   }
 
   /**
@@ -94,7 +92,7 @@ public class WALEntryPosition {
     if (!canRead()) {
       throw new IOException(ENTRY_NOT_READY_MESSAGE);
     }
-    return cache.getByteBuffer(this);
+    return WALInsertNodeCache.getInstance().getByteBuffer(this);
   }
 
   /**
@@ -190,7 +188,6 @@ public class WALEntryPosition {
   public void setWalNode(WALNode walNode, long memTableId) {
     this.walNode = walNode;
     identifier = walNode.getIdentifier();
-    cache = WALInsertNodeCache.getInstance();
   }
 
   public String getIdentifier() {
@@ -200,6 +197,7 @@ public class WALEntryPosition {
   public void setEntryPosition(long walFileVersionId, long position, WALEntryValue value) {
     this.position = position;
     this.walFileVersionId = walFileVersionId;
+    final WALInsertNodeCache cache = WALInsertNodeCache.getInstance();
     if (cache != null && value instanceof InsertNode) {
       cache.cacheInsertNodeIfNeeded(this, (InsertNode) value);
     }
