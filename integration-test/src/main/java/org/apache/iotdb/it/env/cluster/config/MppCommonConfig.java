@@ -527,6 +527,24 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    setProperty(
+        "subscription_prefetch_ts_file_batch_max_delay_in_ms",
+        String.valueOf(subscriptionPrefetchTsFileBatchMaxDelayInMs));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      int subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    setProperty(
+        "subscription_prefetch_ts_file_batch_max_size_in_bytes",
+        String.valueOf(subscriptionPrefetchTsFileBatchMaxSizeInBytes));
+    return this;
+  }
+
+  @Override
   public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     setProperty("default_storage_group_level", String.valueOf(defaultStorageGroupLevel));
     return this;

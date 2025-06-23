@@ -380,4 +380,16 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     return this;
   }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      int subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    return this;
+  }
 }

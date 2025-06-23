@@ -168,6 +168,12 @@ public interface CommonConfig {
 
   CommonConfig setQueryMemoryProportion(String queryMemoryProportion);
 
+  CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs);
+
+  CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      int subscriptionPrefetchTsFileBatchMaxSizeInBytes);
+
   default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     return this;
   }
