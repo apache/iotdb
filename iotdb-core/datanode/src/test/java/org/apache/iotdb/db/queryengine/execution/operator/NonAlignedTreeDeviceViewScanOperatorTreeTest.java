@@ -182,11 +182,6 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
     node.setPushDownOffset(500);
     node.setPushDownLimit(500);
-    node.setTimePredicate(
-        new ComparisonExpression(
-            ComparisonExpression.Operator.GREATER_THAN,
-            new Symbol("time").toSymbolReference(),
-            new LongLiteral("1000")));
     node.setPushDownPredicate(
         new ComparisonExpression(
             ComparisonExpression.Operator.GREATER_THAN,
