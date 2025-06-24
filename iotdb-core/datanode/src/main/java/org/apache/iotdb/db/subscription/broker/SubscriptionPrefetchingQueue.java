@@ -42,6 +42,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.session.subscription.util.PollTimer;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.utils.Pair;
@@ -284,13 +285,24 @@ public abstract class SubscriptionPrefetchingQueue {
     return null;
   }
 
-  protected SubscriptionEvent pollInternalV2(final String consumerId) {
+  public SubscriptionEvent pollV2(final String consumerId, final PollTimer timer) {
+    acquireReadLock();
+    try {
+      return isClosed() ? null : pollInternalV2(consumerId, timer);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  protected SubscriptionEvent pollInternalV2(final String consumerId, final PollTimer timer) {
     states.markPollRequest();
 
-    while (SubscriptionAgent.receiver().remainingMs() != 0) {
+    // do-while ensures at least one poll
+    do {
       SubscriptionEvent event;
       try {
         if (prefetchingQueue.isEmpty()) {
+          // TODO: concurrent polling of multiple prefetching queues
           Thread.sleep(100);
           onEvent();
         }
@@ -338,7 +350,8 @@ public abstract class SubscriptionPrefetchingQueue {
             this,
             e);
       }
-    }
+      timer.update();
+    } while (!timer.isExpired());
 
     return null;
   }

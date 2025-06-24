@@ -62,16 +62,6 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
   /////////////////////////////// poll ///////////////////////////////
 
-  @Override
-  public SubscriptionEvent poll(final String consumerId) {
-    acquireReadLock();
-    try {
-      return isClosed() ? null : pollInternalV2(consumerId);
-    } finally {
-      releaseReadLock();
-    }
-  }
-
   public SubscriptionEvent pollTsFile(
       final String consumerId,
       final SubscriptionCommitContext commitContext,

@@ -32,6 +32,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
+import org.apache.iotdb.session.subscription.util.PollTimer;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -109,16 +110,29 @@ public class SubscriptionBroker {
     final Map<String, Long> topicNameToIncrements = new HashMap<>();
 
     // Iterate over each sorted topic name and poll the corresponding events
+    int remainingTopicSize = sortedTopicNames.size();
     for (final String topicName : sortedTopicNames) {
       final SubscriptionPrefetchingQueue prefetchingQueue =
           topicNameToPrefetchingQueue.get(topicName);
+      remainingTopicSize -= 1;
+
       // Recheck
       if (Objects.isNull(prefetchingQueue) || prefetchingQueue.isClosed()) {
         continue;
       }
 
       // Poll the event from the prefetching queue
-      final SubscriptionEvent event = prefetchingQueue.poll(consumerId);
+      final SubscriptionEvent event;
+      if (prefetchingQueue instanceof SubscriptionPrefetchingTsFileQueue) {
+        // TODO: current poll timeout is uniform for all candidate topics
+        final PollTimer timer =
+            new PollTimer(
+                System.currentTimeMillis(),
+                SubscriptionAgent.receiver().remainingMs() / Math.max(1, remainingTopicSize));
+        event = prefetchingQueue.pollV2(consumerId, timer);
+      } else {
+        event = prefetchingQueue.poll(consumerId);
+      }
       if (Objects.isNull(event)) {
         continue;
       }
