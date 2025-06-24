@@ -880,10 +880,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
           ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(
               resource.getDataRegionId()));
       LOGGER.info(
-          "[Region{}]Set {} for event {}",
-          resource.getDataRegionId(),
-          event.getReplicateIndexForIoTV2(),
-          event);
+          "[{}]Set {} for historical event {}", pipeName, event.getReplicateIndexForIoTV2(), event);
     }
 
     if (sloppyPattern || isDbNameCoveredByPattern) {
