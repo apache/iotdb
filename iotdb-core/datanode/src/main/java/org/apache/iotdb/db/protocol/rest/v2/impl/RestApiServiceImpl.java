@@ -62,8 +62,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.Pair;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
@@ -165,11 +163,9 @@ public class RestApiServiceImpl extends RestApiService {
       List<Object> timeseries = new ArrayList<>();
       List<Object> valueList = new ArrayList<>();
       List<Object> dataTypeList = new ArrayList<>();
-      for (Map.Entry<PartialPath, Map<String, Pair<Binary, TimeValuePair>>> entry :
-          resultMap.entrySet()) {
-        for (Map.Entry<String, Pair<Binary, TimeValuePair>> measurementEntry :
-            entry.getValue().entrySet()) {
-          TimeValuePair tvPair = measurementEntry.getValue().getRight();
+      for (Map.Entry<PartialPath, Map<String, TimeValuePair>> entry : resultMap.entrySet()) {
+        for (Map.Entry<String, TimeValuePair> measurementEntry : entry.getValue().entrySet()) {
+          final TimeValuePair tvPair = measurementEntry.getValue();
           valueList.add(tvPair.getValue().getStringValue());
           dataTypeList.add(tvPair.getValue().getDataType().name());
           targetDataSet.addTimestampsItem(tvPair.getTimestamp());
