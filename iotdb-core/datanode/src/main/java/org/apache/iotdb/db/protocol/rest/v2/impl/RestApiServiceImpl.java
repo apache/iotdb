@@ -111,7 +111,12 @@ public class RestApiServiceImpl extends RestApiService {
           new PartialPath(prefixPathList.getPrefixPaths().toArray(new String[0]));
       Map<PartialPath, Map<String, TimeValuePair>> resultMap = new HashMap<>();
 
+      final String prefixString = prefixPath.toString();
       for (ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
+        if (!prefixString.startsWith(region.getDatabaseFullPath())
+            && !region.getDatabaseFullPath().startsWith(prefixString)) {
+          continue;
+        }
         region.fillLastQueryMap(prefixPath, resultMap);
       }
       // Check cache first
