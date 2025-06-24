@@ -809,7 +809,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // 1. Map<Device, String[] measurements> ISchemaFetcher.getAllSensors(prefix) ~= 50ms
 
       final PartialPath prefixPath = new PartialPath(req.getPrefixes().toArray(new String[0]));
-      final Map<PartialPath, Map<String, Pair<Binary, TimeValuePair>>> resultMap = new HashMap<>();
+      final Map<PartialPath, Map<String, TimeValuePair>> resultMap = new HashMap<>();
       int sensorNum = 0;
 
       for (final ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
@@ -826,11 +826,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // 2.2 all sensors hit cache, return response ~= 20ms
       final TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
 
-      for (final Map.Entry<PartialPath, Map<String, Pair<Binary, TimeValuePair>>> result :
-          resultMap.entrySet()) {
-        for (final Map.Entry<String, Pair<Binary, TimeValuePair>> measurementLastEntry :
+      for (final Map.Entry<PartialPath, Map<String, TimeValuePair>> result : resultMap.entrySet()) {
+        for (final Map.Entry<String, TimeValuePair> measurementLastEntry :
             result.getValue().entrySet()) {
-          final TimeValuePair tvPair = measurementLastEntry.getValue().getRight();
+          final TimeValuePair tvPair = measurementLastEntry.getValue();
           LastQueryUtil.appendLastValue(
               builder,
               tvPair.getTimestamp(),

@@ -76,7 +76,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -1077,8 +1076,7 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public int fillLastQueryMap(
-      final PartialPath prefixPath,
-      final Map<PartialPath, Map<String, Pair<Binary, TimeValuePair>>> mapToFill)
+      final PartialPath prefixPath, final Map<PartialPath, Map<String, TimeValuePair>> mapToFill)
       throws MetadataException {
     final int[] sensorNum = {0};
     try (final EntityUpdater<IMemMNode> updater =
@@ -1087,7 +1085,7 @@ public class MTreeBelowSGMemoryImpl {
 
           @Override
           protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
-            final Map<String, Pair<Binary, TimeValuePair>> measurementMap = new HashMap<>();
+            final Map<String, TimeValuePair> measurementMap = new HashMap<>();
             for (final IMemMNode child : node.getChildren().values()) {
               if (child instanceof IMeasurementMNode) {
                 measurementMap.put(child.getName(), null);

@@ -94,7 +94,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1431,7 +1430,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public int fillLastQueryMap(
-      PartialPath pattern, Map<PartialPath, Map<String, Pair<Binary, TimeValuePair>>> mapToFill) {
+      PartialPath pattern, Map<PartialPath, Map<String, TimeValuePair>> mapToFill) {
     throw new UnsupportedOperationException("Not implemented");
   }
 

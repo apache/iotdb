@@ -35,9 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.im
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.DataNodeLastCacheManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -235,8 +233,7 @@ public class TimeSeriesSchemaCache {
             storageGroup,
             measurementPath.getMeasurementSchema(),
             measurementPath.getTagMap(),
-            measurementPath.isUnderAlignedEntity(),
-            measurementPath.getFullPath());
+            measurementPath.isUnderAlignedEntity());
     dualKeyCache.put(
         measurementPath.getDevicePath(), measurementPath.getMeasurement(), schemaCacheEntry);
   }
@@ -251,11 +248,8 @@ public class TimeSeriesSchemaCache {
     return DataNodeLastCacheManager.getLastCache(entry);
   }
 
-  public boolean getLastCache(
-      final Map<PartialPath, Map<String, Pair<Binary, TimeValuePair>>> inputMap) {
-    return dualKeyCache.batchGet(
-        inputMap,
-        value -> new Pair<>(value.getFullPath(), DataNodeLastCacheManager.getLastCache(value)));
+  public boolean getLastCache(final Map<PartialPath, Map<String, TimeValuePair>> inputMap) {
+    return dualKeyCache.batchGet(inputMap, DataNodeLastCacheManager::getLastCache);
   }
 
   /** get SchemaCacheEntry and update last cache */
@@ -321,13 +315,7 @@ public class TimeSeriesSchemaCache {
         synchronized (dualKeyCache) {
           entry = dualKeyCache.get(devicePath, measurements[index]);
           if (null == entry && measurementSchemas != null) {
-            entry =
-                new SchemaCacheEntry(
-                    database,
-                    measurementSchemas[index],
-                    null,
-                    isAligned,
-                    devicePath + TsFileConstant.PATH_SEPARATOR + measurements[index]);
+            entry = new SchemaCacheEntry(database, measurementSchemas[index], null, isAligned);
             dualKeyCache.put(devicePath, measurements[index], entry);
           }
         }
@@ -378,8 +366,7 @@ public class TimeSeriesSchemaCache {
                   storageGroup,
                   measurementPath.getMeasurementSchema(),
                   measurementPath.getTagMap(),
-                  measurementPath.isUnderAlignedEntity(),
-                  measurementPath.getFullPath());
+                  measurementPath.isUnderAlignedEntity());
           dualKeyCache.put(seriesPath.getDevicePath(), seriesPath.getMeasurement(), entry);
         }
       }

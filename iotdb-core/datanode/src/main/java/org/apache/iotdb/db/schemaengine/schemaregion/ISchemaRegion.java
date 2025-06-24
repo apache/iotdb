@@ -47,7 +47,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogic
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.File;
@@ -315,8 +314,7 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   int fillLastQueryMap(
-      final PartialPath pattern,
-      final Map<PartialPath, Map<String, Pair<Binary, TimeValuePair>>> mapToFill)
+      final PartialPath pattern, final Map<PartialPath, Map<String, TimeValuePair>> mapToFill)
       throws MetadataException;
 
   // endregion

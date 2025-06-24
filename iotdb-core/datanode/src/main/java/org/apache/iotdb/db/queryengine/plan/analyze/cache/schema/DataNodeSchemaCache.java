@@ -33,7 +33,6 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
 
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -199,8 +198,7 @@ public class DataNodeSchemaCache {
     return timeSeriesSchemaCache.getLastCache(seriesPath);
   }
 
-  public boolean getLastCache(
-      final Map<PartialPath, Map<String, Pair<Binary, TimeValuePair>>> inputMap) {
+  public boolean getLastCache(final Map<PartialPath, Map<String, TimeValuePair>> inputMap) {
     return timeSeriesSchemaCache.getLastCache(inputMap);
   }
 

@@ -24,10 +24,8 @@ import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.ILastCacheContainer;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.LastCacheContainer;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -38,7 +36,6 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   private final String storageGroup;
 
   private final IMeasurementSchema iMeasurementSchema;
-  private Binary fullPath;
   private final Map<String, String> tagMap;
   private final boolean isAligned;
 
@@ -56,19 +53,6 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
     this.tagMap = tagMap;
   }
 
-  public SchemaCacheEntry(
-      String storageGroup,
-      IMeasurementSchema iMeasurementSchema,
-      Map<String, String> tagMap,
-      boolean isAligned,
-      String fullPath) {
-    this.storageGroup = storageGroup.intern();
-    this.iMeasurementSchema = iMeasurementSchema;
-    this.isAligned = isAligned;
-    this.tagMap = tagMap;
-    this.fullPath = new Binary(fullPath, TSFileConfig.STRING_CHARSET);
-  }
-
   public String getSchemaEntryId() {
     return iMeasurementSchema.getMeasurementId();
   }
@@ -79,10 +63,6 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
 
   public IMeasurementSchema getIMeasurementSchema() {
     return iMeasurementSchema;
-  }
-
-  public Binary getFullPath() {
-    return fullPath;
   }
 
   @Override
@@ -151,7 +131,6 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
             : schemaCacheEntry.getLastCacheContainer().estimateSize();
     return 100
         + 2 * schemaCacheEntry.getIMeasurementSchema().getMeasurementId().length()
-        + (int) schemaCacheEntry.getFullPath().ramBytesUsed()
         + lastCacheContainerSize;
   }
 
