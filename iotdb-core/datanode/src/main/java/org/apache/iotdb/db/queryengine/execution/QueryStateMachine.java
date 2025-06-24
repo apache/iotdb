@@ -28,7 +28,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -51,19 +50,13 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 public class QueryStateMachine {
   private final StateMachine<QueryState> queryState;
 
-  // The executor will be used in all the state machines belonged to this query.
-  private Executor stateMachineExecutor;
   private Throwable failureException;
   private TSStatus failureStatus;
 
   public QueryStateMachine(QueryId queryId, ExecutorService executor) {
-    this.stateMachineExecutor = executor;
     this.queryState =
         new StateMachine<>(
-            queryId.toString(),
-            this.stateMachineExecutor,
-            QUEUED,
-            QueryState.TERMINAL_INSTANCE_STATES);
+            queryId.toString(), executor, QUEUED, QueryState.TERMINAL_INSTANCE_STATES);
   }
 
   public void addStateChangeListener(
@@ -112,9 +105,10 @@ public class QueryStateMachine {
   }
 
   public void transitionToCanceled(Throwable throwable, TSStatus failureStatus) {
-    this.failureException = throwable;
-    this.failureStatus = failureStatus;
-    transitionToDoneState(CANCELED);
+    if (transitionToDoneState(CANCELED)) {
+      this.failureException = throwable;
+      this.failureStatus = failureStatus;
+    }
   }
 
   public void transitionToAborted() {
@@ -126,20 +120,22 @@ public class QueryStateMachine {
   }
 
   public void transitionToFailed(Throwable throwable) {
-    this.failureException = throwable;
-    transitionToDoneState(FAILED);
+    if (transitionToDoneState(FAILED)) {
+      this.failureException = throwable;
+    }
   }
 
   public void transitionToFailed(TSStatus failureStatus) {
-    this.failureStatus = failureStatus;
-    transitionToDoneState(FAILED);
+    if (transitionToDoneState(FAILED)) {
+      this.failureStatus = failureStatus;
+    }
   }
 
-  private void transitionToDoneState(QueryState doneState) {
+  private boolean transitionToDoneState(QueryState doneState) {
     requireNonNull(doneState, "doneState is null");
     checkArgument(doneState.isDone(), "doneState %s is not a done state", doneState);
 
-    queryState.setIf(doneState, currentState -> !currentState.isDone());
+    return queryState.setIf(doneState, currentState -> !currentState.isDone());
   }
 
   public String getFailureMessage() {
