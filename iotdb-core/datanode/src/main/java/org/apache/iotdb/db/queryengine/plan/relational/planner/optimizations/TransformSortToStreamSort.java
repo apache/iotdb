@@ -174,12 +174,15 @@ public class TransformSortToStreamSort implements PlanOptimizer {
     }
 
     for (Symbol orderBy : orderingScheme.getOrderBy()) {
-      if (nodeColumnSchema.get(orderBy).getColumnCategory() == TsTableColumnCategory.TAG) {
+      ColumnSchema columnSchema = nodeColumnSchema.get(orderBy);
+      if (columnSchema != null && columnSchema.getColumnCategory() == TsTableColumnCategory.TAG) {
         tagCount--;
       }
     }
-    return tagCount == 0 && orderingScheme.getOrderings().size() == streamSortIndex + 1
-        || isTimeColumn(orderingScheme.getOrderBy().get(streamSortIndex + 1), tableColumnSchema);
+    return tagCount == 0
+        && (orderingScheme.getOrderings().size() == streamSortIndex + 1
+            || isTimeColumn(
+                orderingScheme.getOrderBy().get(streamSortIndex + 1), tableColumnSchema));
   }
 
   private static class Context {
