@@ -405,19 +405,19 @@ public class CommonConfig {
   private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
   /** Enable the thrift Service ssl. */
-  private boolean enableSSL = false;
+  private boolean enableSSL = true;
 
   /** ssl key Store Path. */
-  private String keyStorePath = "";
+  private String keyStorePath = "/Users/ht/.keystore";
 
   /** ssl key Store password. */
-  private String keyStorePwd = "";
+  private String keyStorePwd = "123456";
 
   /** ssl trust Store Path. */
-  private String trustStorePath = "";
+  private String trustStorePath = "/Users/ht/.truststore";
 
   /** ssl trust Store password. */
-  private String trustStorePwd = "";
+  private String trustStorePwd = "123456";
 
   CommonConfig() {
     // Empty constructor
@@ -2602,7 +2602,7 @@ public class CommonConfig {
   }
 
   public String getTrustStorePath() {
-    return trustStorePwd;
+    return trustStorePath;
   }
 
   public void setTrustStorePath(String trustStorePath) {

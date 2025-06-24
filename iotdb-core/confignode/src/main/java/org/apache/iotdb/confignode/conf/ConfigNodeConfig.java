@@ -61,10 +61,10 @@ public class ConfigNodeConfig {
   private int configRegionId = 0;
 
   /** ConfigNodeGroup consensus protocol. */
-  private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
+  private String configNodeConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
 
   /** Schema region consensus protocol. */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
 
   /** Default number of SchemaRegion replicas. */
   private int schemaReplicationFactor = 1;
