@@ -441,19 +441,20 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getQualifiedObjectName().getDatabaseName(),
                 node.getQualifiedObjectName().getObjectName());
     if (!containsFieldColumn) {
+      Map<Symbol, ColumnSchema> newAssignments = new LinkedHashMap<>(node.getAssignments());
       for (TsTableColumnSchema columnSchema : tsTable.getColumnList()) {
         if (columnSchema.getColumnCategory() == FIELD) {
-          node.getAssignments()
-              .put(
-                  new Symbol(columnSchema.getColumnName()),
-                  new ColumnSchema(
-                      columnSchema.getColumnName(),
-                      TypeFactory.getType(columnSchema.getDataType()),
-                      false,
-                      columnSchema.getColumnCategory()));
+          newAssignments.put(
+              new Symbol(columnSchema.getColumnName()),
+              new ColumnSchema(
+                  columnSchema.getColumnName(),
+                  TypeFactory.getType(columnSchema.getDataType()),
+                  false,
+                  columnSchema.getColumnCategory()));
           containsFieldColumn = true;
         }
       }
+      node.setAssignments(newAssignments);
     }
     // For non-aligned series, scan cannot be performed when no field columns
     // can be obtained, so an empty result set is returned.
