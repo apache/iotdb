@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
@@ -36,18 +34,16 @@ import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
-import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.apache.tsfile.write.schema.VectorMeasurementSchema;
 import org.eclipse.jetty.util.StringUtil;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
 
@@ -62,7 +58,8 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
 
   private final PartialPath devicePath;
   private final boolean aligned;
-  private final List<IMeasurementSchema> measurementSchemas;
+  private final List<Integer> indexOfMeasurementSchemas;
+  private List<IMeasurementSchema> globalMeasurementSchemaList;
 
   private final String outputViewPath;
 
@@ -73,60 +70,66 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
       PlanNodeId id,
       PartialPath devicePath,
       boolean aligned,
-      List<IMeasurementSchema> measurementSchemas,
-      String outputViewPath) {
+      List<Integer> indexOfMeasurementSchemas,
+      String outputViewPath,
+      List<IMeasurementSchema> globalMeasurementSchemaList) {
     super(id, new AtomicInteger(1));
     this.aligned = aligned;
     this.devicePath = devicePath;
-    this.measurementSchemas = measurementSchemas;
+    this.indexOfMeasurementSchemas = indexOfMeasurementSchemas;
     this.outputViewPath = outputViewPath;
-  }
-
-  public DeviceLastQueryScanNode(
-      PlanNodeId id, MeasurementPath measurementPath, String outputViewPath) {
-    super(id, new AtomicInteger(1));
-    this.aligned = measurementPath.isUnderAlignedEntity();
-    this.devicePath = measurementPath.getDevicePath();
-    this.measurementSchemas = Collections.singletonList(measurementPath.getMeasurementSchema());
-    this.outputViewPath = outputViewPath;
-  }
-
-  public DeviceLastQueryScanNode(PlanNodeId id, AlignedPath alignedPath, String outputViewPath) {
-    super(id, new AtomicInteger(1));
-    this.aligned = true;
-    this.devicePath = alignedPath.getDevicePath();
-    this.measurementSchemas = alignedPath.getSchemaList();
-    this.outputViewPath = outputViewPath;
+    this.globalMeasurementSchemaList = globalMeasurementSchemaList;
   }
 
   public DeviceLastQueryScanNode(
       PlanNodeId id,
       PartialPath devicePath,
       boolean aligned,
-      List<IMeasurementSchema> measurementSchemas,
+      List<Integer> indexOfMeasurementSchemas,
       AtomicInteger dataNodeSeriesScanNum,
       String outputViewPath) {
-    super(id, dataNodeSeriesScanNum);
-    this.aligned = aligned;
-    this.devicePath = devicePath;
-    this.measurementSchemas = measurementSchemas;
-    this.outputViewPath = outputViewPath;
+    this(
+        id,
+        devicePath,
+        aligned,
+        indexOfMeasurementSchemas,
+        dataNodeSeriesScanNum,
+        outputViewPath,
+        null);
   }
 
   public DeviceLastQueryScanNode(
       PlanNodeId id,
       PartialPath devicePath,
       boolean aligned,
-      List<IMeasurementSchema> measurementSchemas,
+      List<Integer> indexOfMeasurementSchemas,
       AtomicInteger dataNodeSeriesScanNum,
       String outputViewPath,
-      TRegionReplicaSet regionReplicaSet) {
+      List<IMeasurementSchema> globalMeasurementSchemaList) {
+    super(id, dataNodeSeriesScanNum);
+    this.aligned = aligned;
+    this.devicePath = devicePath;
+    this.indexOfMeasurementSchemas = indexOfMeasurementSchemas;
+    this.outputViewPath = outputViewPath;
+    this.globalMeasurementSchemaList = globalMeasurementSchemaList;
+  }
+
+  public DeviceLastQueryScanNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean aligned,
+      List<Integer> indexOfMeasurementSchemas,
+      AtomicInteger dataNodeSeriesScanNum,
+      String outputViewPath,
+      TRegionReplicaSet regionReplicaSet,
+      List<IMeasurementSchema> globalMeasurementSchemaList) {
     super(id, dataNodeSeriesScanNum);
     this.devicePath = devicePath;
     this.aligned = aligned;
-    this.measurementSchemas = measurementSchemas;
+    this.indexOfMeasurementSchemas = indexOfMeasurementSchemas;
     this.outputViewPath = outputViewPath;
     this.regionReplicaSet = regionReplicaSet;
+    this.globalMeasurementSchemaList = globalMeasurementSchemaList;
   }
 
   @Override
@@ -185,10 +188,11 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
         getPlanNodeId(),
         devicePath,
         aligned,
-        measurementSchemas,
+        indexOfMeasurementSchemas,
         getDataNodeSeriesScanNum(),
         outputViewPath,
-        regionReplicaSet);
+        regionReplicaSet,
+        globalMeasurementSchemaList);
   }
 
   @Override
@@ -214,7 +218,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
     DeviceLastQueryScanNode that = (DeviceLastQueryScanNode) o;
     return Objects.equals(devicePath, that.devicePath)
         && Objects.equals(aligned, that.aligned)
-        && Objects.equals(measurementSchemas, that.measurementSchemas)
+        && Objects.equals(indexOfMeasurementSchemas, that.indexOfMeasurementSchemas)
         && Objects.equals(outputViewPath, that.outputViewPath)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
@@ -225,7 +229,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
         super.hashCode(),
         devicePath,
         aligned,
-        measurementSchemas,
+        indexOfMeasurementSchemas,
         outputViewPath,
         regionReplicaSet);
   }
@@ -257,14 +261,9 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
     PlanNodeType.DEVICE_LAST_QUERY_SCAN.serialize(byteBuffer);
     devicePath.serialize(byteBuffer);
     ReadWriteIOUtils.write(aligned, byteBuffer);
-    ReadWriteIOUtils.write(measurementSchemas.size(), byteBuffer);
-    for (IMeasurementSchema measurementSchema : measurementSchemas) {
-      if (measurementSchema instanceof MeasurementSchema) {
-        ReadWriteIOUtils.write((byte) 0, byteBuffer);
-      } else if (measurementSchema instanceof VectorMeasurementSchema) {
-        ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      }
-      measurementSchema.serializeTo(byteBuffer);
+    ReadWriteIOUtils.write(indexOfMeasurementSchemas.size(), byteBuffer);
+    for (Integer measurementSchema : indexOfMeasurementSchemas) {
+      ReadWriteIOUtils.write(measurementSchema, byteBuffer);
     }
     ReadWriteIOUtils.write(getDataNodeSeriesScanNum().get(), byteBuffer);
     ReadWriteIOUtils.write(outputViewPath == null, byteBuffer);
@@ -278,14 +277,9 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
     PlanNodeType.DEVICE_LAST_QUERY_SCAN.serialize(stream);
     devicePath.serialize(stream);
     ReadWriteIOUtils.write(aligned, stream);
-    ReadWriteIOUtils.write(measurementSchemas.size(), stream);
-    for (IMeasurementSchema measurementSchema : measurementSchemas) {
-      if (measurementSchema instanceof MeasurementSchema) {
-        ReadWriteIOUtils.write((byte) 0, stream);
-      } else if (measurementSchema instanceof VectorMeasurementSchema) {
-        ReadWriteIOUtils.write((byte) 1, stream);
-      }
-      measurementSchema.serializeTo(stream);
+    ReadWriteIOUtils.write(indexOfMeasurementSchemas.size(), stream);
+    for (Integer measurementSchema : indexOfMeasurementSchemas) {
+      ReadWriteIOUtils.write(measurementSchema, stream);
     }
     ReadWriteIOUtils.write(getDataNodeSeriesScanNum().get(), stream);
     ReadWriteIOUtils.write(outputViewPath == null, stream);
@@ -298,14 +292,9 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
     PartialPath devicePath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     boolean aligned = ReadWriteIOUtils.readBool(byteBuffer);
     int measurementSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>(measurementSize);
+    List<Integer> measurementSchemas = new ArrayList<>(measurementSize);
     for (int i = 0; i < measurementSize; i++) {
-      byte type = ReadWriteIOUtils.readByte(byteBuffer);
-      if (type == 0) {
-        measurementSchemas.add(MeasurementSchema.deserializeFrom(byteBuffer));
-      } else if (type == 1) {
-        measurementSchemas.add(VectorMeasurementSchema.deserializeFrom(byteBuffer));
-      }
+      measurementSchemas.add(ReadWriteIOUtils.readInt(byteBuffer));
     }
 
     int dataNodeSeriesScanNum = ReadWriteIOUtils.readInt(byteBuffer);
@@ -321,12 +310,27 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
         outputPathSymbol);
   }
 
+  public void setGlobalMeasurementSchemaList(List<IMeasurementSchema> globalMeasurementSchemaList) {
+    this.globalMeasurementSchemaList = globalMeasurementSchemaList;
+  }
+
+  public IMeasurementSchema getMeasurementSchema(int idx) {
+    int globalIdx = indexOfMeasurementSchemas.get(idx);
+    return globalMeasurementSchemaList.get(globalIdx);
+  }
+
   public PartialPath getDevicePath() {
     return this.devicePath;
   }
 
+  public List<Integer> getIdxOfMeasurementSchemas() {
+    return indexOfMeasurementSchemas;
+  }
+
   public List<IMeasurementSchema> getMeasurementSchemas() {
-    return measurementSchemas;
+    return indexOfMeasurementSchemas.stream()
+        .map(globalMeasurementSchemaList::get)
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -339,9 +343,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(id)
         + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(devicePath)
-        + measurementSchemas.stream()
-            .mapToLong(schema -> RamUsageEstimator.sizeOf(schema.getMeasurementName()))
-            .sum()
+        + RamUsageEstimator.shallowSizeOfInstance(Integer.class) * indexOfMeasurementSchemas.size()
         + RamUsageEstimator.sizeOf(outputViewPath);
   }
 }

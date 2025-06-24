@@ -2815,7 +2815,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   private UpdateLastCacheOperator createUpdateLastCacheOperator(
       final DeviceLastQueryScanNode node, final LocalExecutionPlanContext context, final int idx) {
-    IMeasurementSchema measurementSchema = node.getMeasurementSchemas().get(idx);
+    IMeasurementSchema measurementSchema = node.getMeasurementSchema(idx);
     final SeriesAggregationScanOperator lastQueryScan =
         createLastQueryScanOperator(node, context, measurementSchema);
     MeasurementPath fullPath =
@@ -3008,10 +3008,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitDeviceLastQueryScan(
       DeviceLastQueryScanNode node, LocalExecutionPlanContext context) {
     final PartialPath devicePath = node.getDevicePath();
-    List<IMeasurementSchema> measurementSchemas = node.getMeasurementSchemas();
+    List<Integer> idxOfMeasurementSchemas = node.getIdxOfMeasurementSchemas();
     List<Integer> unCachedMeasurementIndexes = new ArrayList<>();
-    for (int i = 0; i < measurementSchemas.size(); i++) {
-      IMeasurementSchema measurementSchema = measurementSchemas.get(i);
+    for (int i = 0; i < idxOfMeasurementSchemas.size(); i++) {
+      IMeasurementSchema measurementSchema = node.getMeasurementSchema(i);
       final MeasurementPath measurementPath =
           devicePath.concatAsMeasurementPath(measurementSchema.getMeasurementName());
       TimeValuePair timeValuePair = null;
@@ -3056,7 +3056,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     if (node.isAligned()) {
       AlignedPath unCachedPath = new AlignedPath(node.getDevicePath());
       for (int i : unCachedMeasurementIndexes) {
-        IMeasurementSchema measurementSchema = measurementSchemas.get(i);
+        IMeasurementSchema measurementSchema = node.getMeasurementSchema(i);
         unCachedPath.addMeasurement(measurementSchema.getMeasurementName(), measurementSchema);
       }
       return createAlignedUpdateLastCacheOperator(

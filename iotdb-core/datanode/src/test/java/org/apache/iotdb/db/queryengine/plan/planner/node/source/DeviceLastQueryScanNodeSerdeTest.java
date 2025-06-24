@@ -42,10 +42,11 @@ public class DeviceLastQueryScanNodeSerdeTest {
             new PlanNodeId("test"),
             new PartialPath("root.test.d1"),
             true,
+            Arrays.asList(0, 1),
+            null,
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32),
-                new MeasurementSchema("s0", TSDataType.BOOLEAN)),
-            null);
+                new MeasurementSchema("s0", TSDataType.BOOLEAN)));
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     node.serialize(byteBuffer);
     byteBuffer.flip();
@@ -56,10 +57,11 @@ public class DeviceLastQueryScanNodeSerdeTest {
             new PlanNodeId("test"),
             new PartialPath("root.test.d1"),
             false,
+            Arrays.asList(0, 1),
+            null,
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32),
-                new MeasurementSchema("s0", TSDataType.BOOLEAN)),
-            null);
+                new MeasurementSchema("s0", TSDataType.BOOLEAN)));
     byteBuffer = ByteBuffer.allocate(2048);
     node.serialize(byteBuffer);
     byteBuffer.flip();

@@ -82,7 +82,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullO
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
@@ -115,7 +114,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -258,7 +256,12 @@ public class LogicalPlanBuilder {
       }
     }
 
-    List<PlanNode> sourceNodeList = new ArrayList<>();
+    LastQueryNode lastQueryNode =
+        new LastQueryNode(
+            context.getQueryId().genPlanNodeId(),
+            timeseriesOrdering,
+            analysis.getLastQueryNonWritableViewSourceExpressionMap() != null);
+    long memoryWithoutTransformNode = 0;
     for (Map.Entry<IDeviceID, Map<String, Expression>> deviceMeasurementExpressionEntry :
         outputPathToSourceExpressionMap.entrySet()) {
       IDeviceID outputDevice = deviceMeasurementExpressionEntry.getKey();
@@ -274,14 +277,13 @@ public class LogicalPlanBuilder {
                   ? sourceExpression.getViewPath().getFullPath()
                   : null;
 
-          sourceNodeList.add(
-              reserveMemoryForSeriesSourceNode(
-                  new DeviceLastQueryScanNode(
-                      context.getQueryId().genPlanNodeId(),
-                      selectedPath.getDevicePath(),
-                      selectedPath.isUnderAlignedEntity(),
-                      Collections.singletonList(selectedPath.getMeasurementSchema()),
-                      outputViewPath)));
+          memoryWithoutTransformNode +=
+              lastQueryNode.addDeviceLastQueryScanNode(
+                  context.getQueryId().genPlanNodeId(),
+                  selectedPath.getDevicePath(),
+                  selectedPath.isUnderAlignedEntity(),
+                  Collections.singletonList(selectedPath.getMeasurementSchema()),
+                  outputViewPath);
         }
       } else {
         boolean aligned = false;
@@ -295,41 +297,22 @@ public class LogicalPlanBuilder {
           devicePath = devicePath == null ? selectedPath.getDevicePath() : devicePath;
           measurementSchemas.add(selectedPath.getMeasurementSchema());
         }
-        sourceNodeList.add(
-            new DeviceLastQueryScanNode(
+        memoryWithoutTransformNode +=
+            lastQueryNode.addDeviceLastQueryScanNode(
                 context.getQueryId().genPlanNodeId(),
                 devicePath,
                 aligned,
                 measurementSchemas,
-                null));
+                null);
       }
     }
+    memoryWithoutTransformNode += lastQueryNode.getMemorySizeOfSharedStructures();
+    this.context.reserveMemoryForFrontEnd(memoryWithoutTransformNode);
 
-    processLastQueryTransformNode(analysis, sourceNodeList);
+    processLastQueryTransformNode(analysis, lastQueryNode);
 
-    if (timeseriesOrdering != null) {
-      sourceNodeList.sort(
-          Comparator.comparing(
-              child -> {
-                String sortKey = "";
-                if (child instanceof DeviceLastQueryScanNode) {
-                  sortKey = ((DeviceLastQueryScanNode) child).getOutputSymbolForSort();
-                } else if (child instanceof LastQueryTransformNode) {
-                  sortKey = ((LastQueryTransformNode) child).getOutputSymbolForSort();
-                }
-                return sortKey;
-              }));
-      if (timeseriesOrdering.equals(Ordering.DESC)) {
-        Collections.reverse(sourceNodeList);
-      }
-    }
-
-    this.root =
-        new LastQueryNode(
-            context.getQueryId().genPlanNodeId(),
-            sourceNodeList,
-            timeseriesOrdering,
-            analysis.getLastQueryNonWritableViewSourceExpressionMap() != null);
+    lastQueryNode.sort();
+    this.root = lastQueryNode;
 
     ColumnHeaderConstant.lastQueryColumnHeaders.forEach(
         columnHeader ->
@@ -340,7 +323,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  private void processLastQueryTransformNode(Analysis analysis, List<PlanNode> sourceNodeList) {
+  private void processLastQueryTransformNode(Analysis analysis, LastQueryNode lastQueryNode) {
     if (analysis.getLastQueryNonWritableViewSourceExpressionMap() == null) {
       return;
     }
@@ -381,7 +364,7 @@ public class LogicalPlanBuilder {
               planBuilder.getRoot(),
               expression.getViewPath().getFullPath(),
               analysis.getType(expression).toString());
-      sourceNodeList.add(transformNode);
+      lastQueryNode.addChild(transformNode);
     }
   }
 

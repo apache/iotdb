@@ -18,21 +18,32 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.VectorMeasurementSchema;
 
 import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
@@ -46,31 +57,93 @@ public class LastQueryNode extends MultiChildProcessNode {
   // if children contains LastTransformNode, this variable is only used in distribute plan
   private boolean containsLastTransformNode;
 
+  private Map<IMeasurementSchema, Integer> measurementSchema2IdxMap;
+  private List<IMeasurementSchema> measurementSchemaList;
+
   public LastQueryNode(
       PlanNodeId id, @Nullable Ordering timeseriesOrdering, boolean containsLastTransformNode) {
     super(id);
     this.timeseriesOrdering = timeseriesOrdering;
     this.containsLastTransformNode = containsLastTransformNode;
+    this.measurementSchema2IdxMap = new HashMap<>();
+    this.measurementSchemaList = new ArrayList<>();
   }
 
   public LastQueryNode(
       PlanNodeId id,
-      List<PlanNode> children,
       @Nullable Ordering timeseriesOrdering,
-      boolean containsLastTransformNode) {
-    super(id, children);
+      boolean containsLastTransformNode,
+      List<IMeasurementSchema> measurementSchemaList) {
+    super(id);
     this.timeseriesOrdering = timeseriesOrdering;
     this.containsLastTransformNode = containsLastTransformNode;
+    this.measurementSchemaList = measurementSchemaList;
+  }
+
+  public long addDeviceLastQueryScanNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean aligned,
+      List<IMeasurementSchema> measurementSchemas,
+      String outputViewPath) {
+    List<Integer> idxList = new ArrayList<>(measurementSchemas.size());
+    for (IMeasurementSchema measurementSchema : measurementSchemas) {
+      int idx =
+          measurementSchema2IdxMap.computeIfAbsent(
+              measurementSchema,
+              key -> {
+                this.measurementSchemaList.add(key);
+                return measurementSchemaList.size() - 1;
+              });
+      idxList.add(idx);
+    }
+    DeviceLastQueryScanNode scanNode =
+        new DeviceLastQueryScanNode(
+            id, devicePath, aligned, idxList, outputViewPath, measurementSchemaList);
+    children.add(scanNode);
+    return scanNode.getMemorySize();
+  }
+
+  public void sort() {
+    if (timeseriesOrdering == null) {
+      return;
+    }
+    children.sort(
+        Comparator.comparing(
+            child -> {
+              String sortKey = "";
+              if (child instanceof DeviceLastQueryScanNode) {
+                sortKey = ((DeviceLastQueryScanNode) child).getOutputSymbolForSort();
+              } else if (child instanceof LastQueryTransformNode) {
+                sortKey = ((LastQueryTransformNode) child).getOutputSymbolForSort();
+              }
+              return sortKey;
+            }));
+    if (timeseriesOrdering.equals(Ordering.DESC)) {
+      Collections.reverse(children);
+    }
+  }
+
+  public void setMeasurementSchemaList(List<IMeasurementSchema> measurementSchemaList) {
+    this.measurementSchemaList = measurementSchemaList;
+  }
+
+  public List<IMeasurementSchema> getMeasurementSchemaList() {
+    return measurementSchemaList;
+  }
+
+  public long getMemorySizeOfSharedStructures() {
+    return RamUsageEstimator.sizeOfMap(measurementSchema2IdxMap);
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return children;
+  public void serialize(DataOutputStream stream) throws IOException {
+    super.serialize(stream);
   }
 
   @Override
-  public void addChild(PlanNode child) {
-    children.add(child);
+  public void serialize(ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
   }
 
   @Override
@@ -80,12 +153,8 @@ public class LastQueryNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryNode(getPlanNodeId(), timeseriesOrdering, containsLastTransformNode);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
+    return new LastQueryNode(
+        getPlanNodeId(), timeseriesOrdering, containsLastTransformNode, measurementSchemaList);
   }
 
   @Override
@@ -135,6 +204,15 @@ public class LastQueryNode extends MultiChildProcessNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       ReadWriteIOUtils.write(timeseriesOrdering.ordinal(), byteBuffer);
     }
+    ReadWriteIOUtils.write(measurementSchemaList.size(), byteBuffer);
+    for (IMeasurementSchema measurementSchema : measurementSchemaList) {
+      if (measurementSchema instanceof MeasurementSchema) {
+        ReadWriteIOUtils.write((byte) 0, byteBuffer);
+      } else if (measurementSchema instanceof VectorMeasurementSchema) {
+        ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      }
+      measurementSchema.serializeTo(byteBuffer);
+    }
   }
 
   @Override
@@ -146,6 +224,15 @@ public class LastQueryNode extends MultiChildProcessNode {
       ReadWriteIOUtils.write((byte) 1, stream);
       ReadWriteIOUtils.write(timeseriesOrdering.ordinal(), stream);
     }
+    ReadWriteIOUtils.write(measurementSchemaList.size(), stream);
+    for (IMeasurementSchema measurementSchema : measurementSchemaList) {
+      if (measurementSchema instanceof MeasurementSchema) {
+        ReadWriteIOUtils.write((byte) 0, stream);
+      } else if (measurementSchema instanceof VectorMeasurementSchema) {
+        ReadWriteIOUtils.write((byte) 1, stream);
+      }
+      measurementSchema.serializeTo(stream);
+    }
   }
 
   public static LastQueryNode deserialize(ByteBuffer byteBuffer) {
@@ -154,13 +241,32 @@ public class LastQueryNode extends MultiChildProcessNode {
     if (needOrderByTimeseries == 1) {
       timeseriesOrdering = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     }
+    int measurementSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>(measurementSize);
+    for (int i = 0; i < measurementSize; i++) {
+      byte type = ReadWriteIOUtils.readByte(byteBuffer);
+      if (type == 0) {
+        measurementSchemas.add(MeasurementSchema.deserializeFrom(byteBuffer));
+      } else if (type == 1) {
+        measurementSchemas.add(VectorMeasurementSchema.deserializeFrom(byteBuffer));
+      }
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryNode(planNodeId, timeseriesOrdering, false);
+    return new LastQueryNode(planNodeId, timeseriesOrdering, false, measurementSchemas);
   }
 
   @Override
   public void setChildren(List<PlanNode> children) {
     this.children = children;
+  }
+
+  @Override
+  public void addChild(PlanNode child) {
+    if (child instanceof DeviceLastQueryScanNode) {
+      DeviceLastQueryScanNode childNode = (DeviceLastQueryScanNode) child;
+      childNode.setGlobalMeasurementSchemaList(measurementSchemaList);
+    }
+    super.addChild(child);
   }
 
   public Ordering getTimeseriesOrdering() {

@@ -31,12 +31,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -192,15 +190,17 @@ public class LastQueryTest {
 
   private LogicalQueryPlan constructLastQuery(List<String> paths, MPPQueryContext context)
       throws IllegalPathException {
-    List<PlanNode> sourceNodeList = new ArrayList<>();
+    LastQueryNode root = new LastQueryNode(context.getQueryId().genPlanNodeId(), null, false);
     for (String path : paths) {
       MeasurementPath selectPath = new MeasurementPath(path);
-      sourceNodeList.add(
-          new DeviceLastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath, null));
+      root.addDeviceLastQueryScanNode(
+          context.getQueryId().genPlanNodeId(),
+          selectPath.getDevicePath(),
+          selectPath.isUnderAlignedEntity(),
+          Collections.singletonList(selectPath.getMeasurementSchema()),
+          null);
     }
 
-    PlanNode root =
-        new LastQueryNode(context.getQueryId().genPlanNodeId(), sourceNodeList, null, false);
     return new LogicalQueryPlan(context, root);
   }
 }
