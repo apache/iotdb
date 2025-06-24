@@ -441,19 +441,20 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getQualifiedObjectName().getDatabaseName(),
                 node.getQualifiedObjectName().getObjectName());
     if (!containsFieldColumn) {
+      Map<Symbol, ColumnSchema> newAssignments = new LinkedHashMap<>(node.getAssignments());
       for (TsTableColumnSchema columnSchema : tsTable.getColumnList()) {
         if (columnSchema.getColumnCategory() == FIELD) {
-          node.getAssignments()
-              .put(
-                  new Symbol(columnSchema.getColumnName()),
-                  new ColumnSchema(
-                      columnSchema.getColumnName(),
-                      TypeFactory.getType(columnSchema.getDataType()),
-                      false,
-                      columnSchema.getColumnCategory()));
+          newAssignments.put(
+              new Symbol(columnSchema.getColumnName()),
+              new ColumnSchema(
+                  columnSchema.getColumnName(),
+                  TypeFactory.getType(columnSchema.getDataType()),
+                  false,
+                  columnSchema.getColumnCategory()));
           containsFieldColumn = true;
         }
       }
+      node.setAssignments(newAssignments);
     }
     // For non-aligned series, scan cannot be performed when no field columns
     // can be obtained, so an empty result set is returned.
@@ -597,6 +598,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               }
             }
 
+            // Using getSeriesScanOptionsBuilder to create SeriesScanBuilder will cause multiple
+            // calls to setTimeFilterForTableModel and generate a deeply nested Or filter.
+            // Therefore, a separate setting is made here
+            Filter timeFilter = null;
+            if (node.getTimePredicate().isPresent()) {
+              Expression timePredicate = node.getTimePredicate().get();
+              timeFilter = timePredicate.accept(new ConvertPredicateToTimeFilterVisitor(), null);
+              context
+                  .getDriverContext()
+                  .getFragmentInstanceContext()
+                  .setTimeFilterForTableModel(timeFilter);
+            }
+
             boolean canPushDownLimit = cannotPushDownConjuncts.isEmpty();
             // only use full outer time join
             boolean canPushDownLimitToAllSeriesScanOptions =
@@ -621,10 +635,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                       : (pushDownPredicatesForCurrentMeasurement == null
                           ? null
                           : IrUtils.combineConjuncts(pushDownPredicatesForCurrentMeasurement));
-              SeriesScanOptions.Builder builder =
-                  node.getTimePredicate()
-                      .map(expression -> getSeriesScanOptionsBuilder(context, expression))
-                      .orElseGet(SeriesScanOptions.Builder::new);
+              SeriesScanOptions.Builder builder = new SeriesScanOptions.Builder();
+              // time filter may be stateful, so we need to copy it
+              builder.withGlobalTimeFilter(timeFilter == null ? null : timeFilter.copy());
               builder
                   .withIsTableViewForTreeModel(true)
                   .withAllSensors(new HashSet<>(measurementColumnNames));
