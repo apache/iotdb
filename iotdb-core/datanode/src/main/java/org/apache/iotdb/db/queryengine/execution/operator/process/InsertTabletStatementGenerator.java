@@ -95,8 +95,9 @@ public abstract class InsertTabletStatementGenerator {
     InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
     insertTabletStatement.setDevicePath(devicePath);
     insertTabletStatement.setAligned(isAligned);
-    insertTabletStatement.setMeasurements(measurements);
-    insertTabletStatement.setDataTypes(dataTypes);
+    // measurements and dataTypes should be cloned due to adjustIdColumns
+    insertTabletStatement.setMeasurements(measurements.clone());
+    insertTabletStatement.setDataTypes(dataTypes.clone());
     insertTabletStatement.setRowCount(rowCount);
 
     if (rowCount != rowLimit) {
