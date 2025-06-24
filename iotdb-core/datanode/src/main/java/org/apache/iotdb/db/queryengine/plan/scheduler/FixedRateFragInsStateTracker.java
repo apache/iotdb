@@ -180,8 +180,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
                   instanceId, instanceInfo.getMessage()),
               TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode(),
               true));
-    }
-    if (instanceInfo.getState().isFailed()) {
+    } else if (instanceInfo.getState().isFailed()) {
       if (instanceInfo.getErrorCode().isPresent()) {
         stateMachine.transitionToFailed(
             new IoTDBException(
@@ -196,22 +195,23 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
       } else {
         stateMachine.transitionToFailed(instanceInfo.getFailureInfoList().get(0).toException());
       }
-    }
-    boolean queryFinished = false;
-    List<InstanceStateMetrics> rootInstanceStateMetricsList =
-        instanceStateMap.values().stream()
-            .filter(instanceStateMetrics -> instanceStateMetrics.isRootInstance)
-            .collect(Collectors.toList());
-    if (!rootInstanceStateMetricsList.isEmpty()) {
-      queryFinished =
-          rootInstanceStateMetricsList.stream()
-              .allMatch(
-                  instanceStateMetrics ->
-                      instanceStateMetrics.lastState == FragmentInstanceState.FINISHED);
-    }
+    } else {
+      boolean queryFinished = false;
+      List<InstanceStateMetrics> rootInstanceStateMetricsList =
+          instanceStateMap.values().stream()
+              .filter(instanceStateMetrics -> instanceStateMetrics.isRootInstance)
+              .collect(Collectors.toList());
+      if (!rootInstanceStateMetricsList.isEmpty()) {
+        queryFinished =
+            rootInstanceStateMetricsList.stream()
+                .allMatch(
+                    instanceStateMetrics ->
+                        instanceStateMetrics.lastState == FragmentInstanceState.FINISHED);
+      }
 
-    if (queryFinished) {
-      stateMachine.transitionToFinished();
+      if (queryFinished) {
+        stateMachine.transitionToFinished();
+      }
     }
   }
 
