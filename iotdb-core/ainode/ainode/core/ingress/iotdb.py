@@ -218,30 +218,17 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
 
     def __init__(
         self,
-        input_len: int,
-        out_len: int,
+        seq_len: int,
+        input_token_len: int,
+        output_token_len: int,
         data_schema_list: list,
         ip: str = "127.0.0.1",
         port: int = 6667,
         username: str = "root",
         password: str = "root",
         time_zone: str = "UTC+8",
-        start_split: float = 0,
-        end_split: float = 1,
     ):
-        super().__init__(ip, port, input_len, out_len)
-        if end_split < start_split:
-            raise ValueError("end_split must be greater than start_split")
-
-        # database , table
-        self.SELECT_SERIES_FORMAT_SQL = "select distinct item_id from %s"
-        self.COUNT_SERIES_LENGTH_SQL = (
-            "select count(value) from %s where item_id = '%s'"
-        )
-        self.FETCH_SERIES_SQL = (
-            "select value from %s where item_id = '%s' offset %s limit %s"
-        )
-        self.SERIES_NAME = "%s.%s"
+        super().__init__(ip, port, input_token_len, output_token_len)
 
         table_session_config = TableSessionConfig(
             node_urls=[f"{ip}:{port}"],
@@ -251,39 +238,29 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
         )
 
         self.session = TableSession(table_session_config)
-        self.context_length = self.input_len + self.output_len
-        self.token_num = self.context_length // self.input_len
         self._fetch_schema(data_schema_list)
 
-        self.start_index = int(self.total_count * start_split)
-        self.end_index = self.total_count * end_split
+        # used for caching data
+        self.series_map = {}
 
     def _fetch_schema(self, data_schema_list: list):
         series_to_length = {}
-        for data_schema in data_schema_list:
-            series_list = []
-            with self.session.execute_query_statement(
-                self.SELECT_SERIES_FORMAT_SQL % data_schema
-            ) as show_devices_result:
-                while show_devices_result.has_next():
-                    series_list.append(
-                        get_field_value(show_devices_result.next().get_fields()[0])
-                    )
+        for target_sql in data_schema_list:
+            with self.session.execute_query_statement(target_sql) as target_data:
+                while target_data.has_next():
+                    cur_data = target_data.next()
+                    tag = cur_data.get_fields()[2].get_string_value()
+                    series_list = self.series_map[tag]
+                    series_list.append(get_field_value(cur_data.get_fields()[1]))
 
-            for series in series_list:
-                with self.session.execute_query_statement(
-                    self.COUNT_SERIES_LENGTH_SQL % (data_schema.schemaName, series)
-                ) as count_series_result:
-                    length = get_field_value(count_series_result.next().get_fields()[0])
-                    series_to_length[
-                        self.SERIES_NAME % (data_schema.schemaName, series)
-                    ] = length
+        for tag in self.series_map.values():
+            series_to_length[tag] = (tag, len(self.series_map[tag]))
 
-        sorted_series = sorted(series_to_length.items(), key=lambda x: x[1])
+        sorted_series = sorted(series_to_length.items(), key=lambda x: x[1][1])
         sorted_series_with_prefix_sum = []
         window_sum = 0
-        for seq_name, seq_length in sorted_series:
-            window_count = seq_length - self.context_length + 1
+        for seq_name, seq_value in sorted_series:
+            window_count = seq_value[1] - self.seq_len - self.output_token_len + 1
             if window_count < 0:
                 continue
             window_sum += window_count
@@ -297,34 +274,20 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
 
         series_index = 0
 
-        while self.sorted_series[series_index][2] < window_index:
+        while self.sorted_series[series_index][1] < window_index:
             series_index += 1
 
         if series_index != 0:
-            window_index -= self.sorted_series[series_index - 1][2]
+            window_index -= self.sorted_series[series_index - 1][1]
 
-        if window_index != 0:
-            window_index -= 1
-        series = self.sorted_series[series_index][0]
-        schema = series.split(".")
+        tag = self.sorted_series[series_index][0]
+        result = self.series_map[tag][
+            window_index : window_index + self.seq_len + self.output_token_len
+        ]
 
-        result = []
-        sql = self.FETCH_SERIES_SQL % (
-            schema[0:1],
-            schema[2],
-            window_index,
-            self.context_length,
-        )
-        try:
-            with self.session.execute_query_statement(sql) as query_result:
-                while query_result.has_next():
-                    result.append(get_field_value(query_result.next().get_fields()[0]))
-        except Exception as e:
-            logger.error("Executing sql: {} with exception: {}".format(sql, e))
-        result = torch.tensor(result)
         return (
-            result[0 : self.input_len],
-            result[-self.output_len :],
+            result[0 : self.seq_len],
+            result[self.input_token_len : self.seq_len + self.output_token_len],
             np.ones(self.token_num, dtype=np.int32),
         )
 

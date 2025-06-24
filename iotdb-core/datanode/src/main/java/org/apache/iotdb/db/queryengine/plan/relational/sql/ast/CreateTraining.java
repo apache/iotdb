@@ -27,20 +27,16 @@ public class CreateTraining extends Statement {
 
   private final String modelId;
   private final String modelType;
+  private final String targetSql;
 
   private Map<String, String> parameters;
   private String existingModelId = null;
 
-  private List<QualifiedName> targetTables;
-  private List<String> targetDbs;
-
-  private List<List<Long>> targetTimeRanges;
-  private boolean useAllData = false;
-
-  public CreateTraining(String modelId, String modelType) {
+  public CreateTraining(String modelId, String modelType, String targetSql) {
     super(null);
     this.modelId = modelId;
     this.modelType = modelType;
+    this.targetSql = targetSql;
   }
 
   @Override
@@ -54,26 +50,6 @@ public class CreateTraining extends Statement {
 
   public void setExistingModelId(String existingModelId) {
     this.existingModelId = existingModelId;
-  }
-
-  public void setTargetDbs(List<String> targetDbs) {
-    this.targetDbs = targetDbs;
-  }
-
-  public void setTargetTables(List<QualifiedName> targetTables) {
-    this.targetTables = targetTables;
-  }
-
-  public void setUseAllData(boolean useAllData) {
-    this.useAllData = useAllData;
-  }
-
-  public List<String> getTargetDbs() {
-    return targetDbs;
-  }
-
-  public List<QualifiedName> getTargetTables() {
-    return targetTables;
   }
 
   public String getModelId() {
@@ -92,16 +68,8 @@ public class CreateTraining extends Statement {
     return existingModelId;
   }
 
-  public boolean isUseAllData() {
-    return useAllData;
-  }
-
-  public void setTargetTimeRanges(List<List<Long>> targetTimeRanges) {
-    this.targetTimeRanges = targetTimeRanges;
-  }
-
-  public List<List<Long>> getTargetTimeRanges() {
-    return targetTimeRanges;
+  public String getTargetSql() {
+    return targetSql;
   }
 
   @Override
@@ -111,8 +79,7 @@ public class CreateTraining extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        modelId, modelType, existingModelId, parameters, targetTimeRanges, useAllData);
+    return Objects.hash(modelId, modelType, targetSql, existingModelId, parameters);
   }
 
   @Override
@@ -125,8 +92,7 @@ public class CreateTraining extends Statement {
         && modelType.equals(createTraining.modelType)
         && Objects.equals(existingModelId, createTraining.existingModelId)
         && Objects.equals(parameters, createTraining.parameters)
-        && Objects.equals(targetTimeRanges, createTraining.targetTimeRanges)
-        && useAllData == createTraining.useAllData;
+        && Objects.equals(targetSql, createTraining.targetSql);
   }
 
   @Override
@@ -143,14 +109,8 @@ public class CreateTraining extends Statement {
         + ", existingModelId='"
         + existingModelId
         + '\''
-        + ", targetTables="
-        + targetTables
-        + ", targetDbs="
-        + targetDbs
-        + ", targetTimeRanges="
-        + targetTimeRanges
-        + ", useAllData="
-        + useAllData
+        + ", targetSql='"
+        + targetSql
         + '}';
   }
 }

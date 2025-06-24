@@ -3334,11 +3334,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       String modelType,
       boolean isTableModel,
       Map<String, String> parameters,
-      boolean useAllData,
       List<List<Long>> timeRanges,
       String existingModelId,
-      @Nullable List<String> tableList,
-      @Nullable List<String> databaseList,
+      @Nullable String targetSql,
       @Nullable List<String> pathList) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
@@ -3347,8 +3345,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (isTableModel) {
         TDataSchemaForTable dataSchemaForTable = new TDataSchemaForTable();
-        dataSchemaForTable.setTableList(tableList);
-        dataSchemaForTable.setDatabaseList(databaseList);
+        dataSchemaForTable.setTargetSql(targetSql);
         req.setDataSchemaForTable(dataSchemaForTable);
       } else {
         TDataSchemaForTree dataSchemaForTree = new TDataSchemaForTree();
@@ -3356,7 +3353,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         req.setDataSchemaForTree(dataSchemaForTree);
       }
       req.setParameters(parameters);
-      req.setUseAllData(useAllData);
       req.setTimeRanges(timeRanges);
       req.setExistingModelId(existingModelId);
       final TSStatus executionStatus = client.createTraining(req);
