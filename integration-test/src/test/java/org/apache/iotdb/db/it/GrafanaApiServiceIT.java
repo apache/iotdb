@@ -95,7 +95,7 @@ public class GrafanaApiServiceIT {
     HttpGet httpGet = new HttpGet("http://127.0.0.1:" + port + "/grafana/v1/login");
     CloseableHttpResponse response = null;
     try {
-      String authorization = getAuthorization("root", "root");
+      String authorization = getAuthorization("root", "IoTDB@2017");
       httpGet.setHeader("Authorization", authorization);
       for (int i = 0; i < 30; i++) {
         try {
