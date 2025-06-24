@@ -175,7 +175,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.1.0-250521-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.1.0-250616-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -1676,7 +1676,7 @@
                                 </goals>
                                 <phase>generate-sources</phase>
                                 <configuration>
-                                    <generator>go:package_prefix=github.com/apache/iotdb-client-go/</generator>
+                                    <generator>go:package_prefix=github.com/apache/iotdb-client-go/v2/</generator>
                                     <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>

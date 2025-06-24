@@ -49,15 +49,43 @@ public class DataNodeShutdownHook extends Thread {
   private static final Logger logger = LoggerFactory.getLogger(DataNodeShutdownHook.class);
 
   private final TDataNodeLocation nodeLocation;
+  private Thread watcherThread;
 
   public DataNodeShutdownHook(TDataNodeLocation nodeLocation) {
     super(ThreadName.DATANODE_SHUTDOWN_HOOK.getName());
     this.nodeLocation = nodeLocation;
   }
 
+  private void startWatcher() {
+    Thread hookThread = Thread.currentThread();
+    watcherThread =
+        new Thread(
+            () -> {
+              while (!Thread.interrupted()) {
+                try {
+                  Thread.sleep(10000);
+                  StackTraceElement[] stackTrace = hookThread.getStackTrace();
+                  StringBuilder stackTraceBuilder =
+                      new StringBuilder("Stack trace of shutdown hook:\n");
+                  for (StackTraceElement traceElement : stackTrace) {
+                    stackTraceBuilder.append(traceElement.toString()).append("\n");
+                  }
+                  logger.info(stackTraceBuilder.toString());
+                } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                  return;
+                }
+              }
+            },
+            "ShutdownHookWatcher");
+    watcherThread.setDaemon(true);
+    watcherThread.start();
+  }
+
   @Override
   public void run() {
     logger.info("DataNode exiting...");
+    startWatcher();
     // Stop external rpc service firstly.
     ExternalRPCService.getInstance().stop();
 
@@ -77,7 +105,6 @@ public class DataNodeShutdownHook extends Thread {
         .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     }
-    WALManager.getInstance().syncDeleteOutdatedFilesInWALNodes();
 
     // We did this work because the RatisConsensus recovery mechanism is different from other
     // consensus algorithms, which will replace the underlying storage engine based on its
@@ -91,6 +118,8 @@ public class DataNodeShutdownHook extends Thread {
       triggerSnapshotForAllDataRegion();
     }
 
+    // Persist progress index before shutdown to accurate recovery after restart
+    PipeDataNodeAgent.task().persistAllProgressIndexLocally();
     // Shutdown all consensus pipe's receiver
     PipeDataNodeAgent.receiver().pipeConsensus().closeReceiverExecutor();
     // Shutdown pipe progressIndex background service
@@ -114,6 +143,8 @@ public class DataNodeShutdownHook extends Thread {
         "DataNode exits. Jvm memory usage: {}",
         MemUtils.bytesCntToStr(
             Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
+
+    watcherThread.interrupt();
   }
 
   private void triggerSnapshotForAllDataRegion() {

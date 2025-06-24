@@ -41,7 +41,7 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBWindowFunctionIT {
   private static final String DATABASE_NAME = "test";
-  private static final String[] sqls =
+  private static final String[] sqlsWithoutNulls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
@@ -55,11 +55,31 @@ public class IoTDBWindowFunctionIT {
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };
+  private static final String[] sqlsWithNulls =
+      new String[] {
+        "create table demo2 (device string tag, value double field)",
+        "insert into demo2 values (2021-01-01T09:04:00, 'd1', null)",
+        "insert into demo2 values (2021-01-01T09:05:00, 'd1', 3)",
+        "insert into demo2 values (2021-01-01T09:07:00, 'd1', 5)",
+        "insert into demo2 values (2021-01-01T09:09:00, 'd1', 3)",
+        "insert into demo2 values (2021-01-01T09:10:00, 'd1', 1)",
+        "insert into demo2 values (2021-01-01T09:06:00, 'd2', null)",
+        "insert into demo2 values (2021-01-01T09:08:00, 'd2', 2)",
+        "insert into demo2 values (2021-01-01T09:15:00, 'd2', 4)",
+        "insert into demo2 values (2021-01-01T09:20:00, null, null)",
+        "insert into demo2 values (2021-01-01T09:21:00, null, 1)",
+        "insert into demo2 values (2021-01-01T09:22:00, null, 2)",
+        "FLUSH",
+        "CLEAR ATTRIBUTE CACHE",
+      };
 
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
-      for (String sql : sqls) {
+      for (String sql : sqlsWithoutNulls) {
+        statement.execute(sql);
+      }
+      for (String sql : sqlsWithNulls) {
         statement.execute(sql);
       }
     } catch (Exception e) {
@@ -76,6 +96,25 @@ public class IoTDBWindowFunctionIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testEmptyOver() {
+    String[] expectedHeader = new String[] {"time", "device", "value", "cnt"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,6,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,6,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,6,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,6,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,6,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,6,",
+        };
+    tableResultSetEqualTest(
+        "SELECT *, count(value) OVER () AS cnt FROM demo ORDER BY device",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
@@ -98,7 +137,74 @@ public class IoTDBWindowFunctionIT {
   }
 
   @Test
+  public void testPartitionByWithNulls() {
+    String[] expectedHeader = new String[] {"time", "device", "value", "cnt"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:04:00.000Z,d1,null,4,",
+          "2021-01-01T09:05:00.000Z,d1,3.0,4,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,4,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,4,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,4,",
+          "2021-01-01T09:06:00.000Z,d2,null,2,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,2,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2,",
+          "2021-01-01T09:20:00.000Z,null,null,2,",
+          "2021-01-01T09:21:00.000Z,null,1.0,2,",
+          "2021-01-01T09:22:00.000Z,null,2.0,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT *, count(value) OVER (PARTITION BY device) AS cnt FROM demo2 ORDER BY device",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testOrderBy() {
+    String[] expectedHeader = new String[] {"time", "device", "value", "cnt"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,2,",
+          "2021-01-01T09:05:00.000Z,d1,3.0,4,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,4,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,5,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,6,",
+        };
+    tableResultSetEqualTest(
+        "SELECT *, count(value) OVER (ORDER BY value) AS cnt FROM demo",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testOrderByWithNulls() {
+    String[] expectedHeader = new String[] {"time", "device", "value", "cnt"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:10:00.000Z,d1,1.0,2,",
+          "2021-01-01T09:21:00.000Z,null,1.0,2,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,4,",
+          "2021-01-01T09:22:00.000Z,null,2.0,4,",
+          "2021-01-01T09:05:00.000Z,d1,3.0,6,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,6,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,7,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,8,",
+          "2021-01-01T09:04:00.000Z,d1,null,8,",
+          "2021-01-01T09:06:00.000Z,d2,null,8,",
+          "2021-01-01T09:20:00.000Z,null,null,8,",
+        };
+    tableResultSetEqualTest(
+        "SELECT *, count(value) OVER (ORDER BY value) AS cnt FROM demo2 ORDER BY value, device",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testPartitionByAndOrderBy() {
     String[] expectedHeader = new String[] {"time", "device", "value", "rnk"};
     String[] retArray =
         new String[] {
@@ -111,6 +217,30 @@ public class IoTDBWindowFunctionIT {
         };
     tableResultSetEqualTest(
         "SELECT *, rank() OVER (PARTITION BY device ORDER BY value) AS rnk FROM demo ORDER BY device",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testPartitionByAndOrderByWithNulls() {
+    String[] expectedHeader = new String[] {"time", "device", "value", "cnt"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
+          "2021-01-01T09:05:00.000Z,d1,3.0,3,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,3,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,4,",
+          "2021-01-01T09:04:00.000Z,d1,null,4,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,1,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2,",
+          "2021-01-01T09:06:00.000Z,d2,null,2,",
+          "2021-01-01T09:21:00.000Z,null,1.0,1,",
+          "2021-01-01T09:22:00.000Z,null,2.0,2,",
+          "2021-01-01T09:20:00.000Z,null,null,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY value) AS cnt FROM demo2 ORDER BY device",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -408,6 +538,42 @@ public class IoTDBWindowFunctionIT {
         "SELECT *, ntile(2) OVER (PARTITION BY device ORDER BY value) AS nt FROM demo ORDER BY device",
         expectedHeader,
         retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testNegativeRowsFrameOffset() {
+    tableAssertTestFail(
+        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY time ROWS -1 PRECEDING) AS cnt FROM demo",
+        "Window frame offset value must not be negative or null",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY time ROWS BETWEEN -2 PRECEDING AND -1 FOLLOWING) AS cnt FROM demo",
+        "Window frame offset value must not be negative or null",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY time ROWS BETWEEN 1 PRECEDING AND -1 FOLLOWING) AS cnt FROM demo",
+        "Window frame offset value must not be negative or null",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testNegativeGroupsFrameOffset() {
+    tableAssertTestFail(
+        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY time GROUPS -1 PRECEDING) AS cnt FROM demo",
+        "Window frame offset value must not be negative or null",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY time GROUPS BETWEEN -2 PRECEDING AND -1 FOLLOWING) AS cnt FROM demo",
+        "Window frame offset value must not be negative or null",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY time GROUPS BETWEEN 1 PRECEDING AND -1 FOLLOWING) AS cnt FROM demo",
+        "Window frame offset value must not be negative or null",
         DATABASE_NAME);
   }
 }

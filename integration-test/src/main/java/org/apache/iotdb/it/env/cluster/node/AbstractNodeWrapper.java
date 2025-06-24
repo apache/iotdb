@@ -818,4 +818,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       return -1;
     }
   }
+
+  public Process getInstance() {
+    return instance;
+  }
 }

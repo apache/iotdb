@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -126,7 +127,7 @@ public abstract class Computation {
         BooleanLiteral constExpr = (BooleanLiteral) expression;
         return new ConstantComputation(constExpr.getValue());
       } else {
-        throw new IllegalArgumentException(
+        throw new SemanticException(
             "Unsupported expression type: " + expression.getClass().getName());
       }
     }
@@ -145,7 +146,7 @@ public abstract class Computation {
         case MODULUS:
           return ArithmeticOperator.MODULUS;
         default:
-          throw new IllegalArgumentException("Unsupported arithmetic operator: " + operator);
+          throw new SemanticException("Unsupported arithmetic operator: " + operator);
       }
     }
 
@@ -167,7 +168,7 @@ public abstract class Computation {
         case IS_DISTINCT_FROM:
           return ComparisonOperator.IS_DISTINCT_FROM;
         default:
-          throw new IllegalArgumentException("Unsupported comparison operator: " + operator);
+          throw new SemanticException("Unsupported comparison operator: " + operator);
       }
     }
 
@@ -178,7 +179,7 @@ public abstract class Computation {
         case OR:
           return LogicalOperator.OR;
         default:
-          throw new IllegalArgumentException("Unsupported logical operator: " + operator);
+          throw new SemanticException("Unsupported logical operator: " + operator);
       }
     }
   }

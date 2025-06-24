@@ -77,6 +77,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     }
   }
 
+  @Override
   public <R> boolean batchApply(
       final Map<FK, Map<SK, R>> inputMap, final BiFunction<V, R, Boolean> mappingFunction) {
     for (final Map.Entry<FK, Map<SK, R>> fkMapEntry : inputMap.entrySet()) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValueAccessor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.ArrayView;
@@ -147,7 +148,7 @@ public class PatternExpressionComputation {
     } else if (type instanceof StringType) {
       return partition.getBinary(channel, position);
     } else {
-      throw new IllegalArgumentException("Unsupported type: " + type.getClass().getSimpleName());
+      throw new SemanticException("Unsupported type: " + type.getClass().getSimpleName());
     }
   }
 }

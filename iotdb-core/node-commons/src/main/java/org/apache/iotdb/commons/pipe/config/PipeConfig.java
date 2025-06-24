@@ -251,8 +251,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRemainingTimeCommitRateAverageTime();
   }
 
-  public PipeRateAverage getPipeRemainingInsertNodeCountAverage() {
-    return COMMON_CONFIG.getPipeRemainingInsertNodeCountAverage();
+  public double getPipeRemainingInsertNodeCountEMAAlpha() {
+    return COMMON_CONFIG.getPipeRemainingInsertNodeCountEMAAlpha();
   }
 
   public double getPipeTsFileScanParsingThreshold() {
@@ -329,6 +329,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
   }
 
+  public int getPipeReceiverReqDecompressedMaxLengthInBytes() {
+    return COMMON_CONFIG.getPipeReceiverReqDecompressedMaxLengthInBytes();
+  }
+
   /////////////////////////////// Hybrid Mode ///////////////////////////////
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
@@ -381,10 +385,6 @@ public class PipeConfig {
 
   public int getPipeMaxAllowedTotalRemainingInsertEventCount() {
     return COMMON_CONFIG.getPipeMaxAllowedTotalRemainingInsertEventCount();
-  }
-
-  public int getPipeRemainingInsertEventCountSmoothingIntervalSeconds() {
-    return COMMON_CONFIG.getPipeRemainingInsertEventCountSmoothingIntervalSeconds();
   }
 
   /////////////////////////////// Logger ///////////////////////////////
@@ -551,7 +551,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
     LOGGER.info(
-        "PipePipeRemainingInsertEventCountAverage: {}", getPipeRemainingInsertNodeCountAverage());
+        "PipePipeRemainingInsertEventCountAverage: {}", getPipeRemainingInsertNodeCountEMAAlpha());
     LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
     LOGGER.info("PipeTransferTsFileSync: {}", isTransferTsFileSync());
 
@@ -617,6 +617,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeReceiverActualToEstimatedMemoryRatio: {}",
         getPipeReceiverActualToEstimatedMemoryRatio());
+    LOGGER.info(
+        "PipeReceiverReqDecompressedMaxLengthInBytes: {}",
+        getPipeReceiverReqDecompressedMaxLengthInBytes());
 
     LOGGER.info(
         "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",
@@ -644,9 +647,6 @@ public class PipeConfig {
     LOGGER.info(
         "PipeMaxAllowedTotalRemainingInsertEventCount: {}",
         getPipeMaxAllowedTotalRemainingInsertEventCount());
-    LOGGER.info(
-        "PipeRemainingInsertEventCountSmoothingIntervalSeconds: {}",
-        getPipeRemainingInsertEventCountSmoothingIntervalSeconds());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());
