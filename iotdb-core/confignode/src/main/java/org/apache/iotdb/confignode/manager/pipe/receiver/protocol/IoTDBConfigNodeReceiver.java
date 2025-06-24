@@ -176,6 +176,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PipeTransferConfigNodeHandshakeV1Req.fromTPipeTransferReq(req));
               } finally {
                 metrics.recordHandshakeConfigNodeV1Timer(System.nanoTime() - startTime);
+                metrics.markHandshakeConfigNodeV1Size(req.body.limit());
               }
             }
           case HANDSHAKE_CONFIGNODE_V2:
@@ -185,6 +186,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req));
               } finally {
                 metrics.recordHandshakeConfigNodeV2Timer(System.nanoTime() - startTime);
+                metrics.markHandshakeConfigNodeV2Size(req.body.limit());
               }
             }
           case TRANSFER_CONFIG_PLAN:
@@ -194,6 +196,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PipeTransferConfigPlanReq.fromTPipeTransferReq(req));
               } finally {
                 metrics.recordTransferConfigPlanTimer(System.nanoTime() - startTime);
+                metrics.markTransferConfigPlanSize(req.body.limit());
               }
             }
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
@@ -205,6 +208,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     false);
               } finally {
                 metrics.recordTransferConfigSnapshotPieceTimer(System.nanoTime() - startTime);
+                metrics.markTransferConfigSnapshotPieceSize(req.body.limit());
               }
             }
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
@@ -214,12 +218,18 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
               } finally {
                 metrics.recordTransferConfigSnapshotSealTimer(System.nanoTime() - startTime);
+                metrics.markTransferConfigSnapshotSealSize(req.body.limit());
               }
             }
           case TRANSFER_COMPRESSED:
             {
+              try {
+                return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+              } finally {
+                metrics.recordTransferCompressedTimer(System.nanoTime() - startTime);
+                metrics.markTransferCompressedSize(req.body.limit());
+              }
             }
-            return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
           default:
             break;
         }

@@ -38,12 +38,14 @@ public class PipeConfigNodeReceiverMetrics implements IMetricSet {
   private Timer transferConfigPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferConfigSnapshotPieceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferConfigSnapshotSealTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer transferCompressedTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private Rate handshakeConfigNodeV1Rate = DoNothingMetricManager.DO_NOTHING_RATE;
   private Rate handshakeConfigNodeV2Rate = DoNothingMetricManager.DO_NOTHING_RATE;
   private Rate transferConfigPlanRate = DoNothingMetricManager.DO_NOTHING_RATE;
   private Rate transferConfigSnapshotPieceRate = DoNothingMetricManager.DO_NOTHING_RATE;
   private Rate transferConfigSnapshotSealRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferCompressedRate = DoNothingMetricManager.DO_NOTHING_RATE;
 
   private static final String RECEIVER = "pipeConfigNodeReceiver";
 
@@ -69,6 +71,10 @@ public class PipeConfigNodeReceiverMetrics implements IMetricSet {
     transferConfigSnapshotSealTimer.updateNanos(costTimeInNanos);
   }
 
+  public void recordTransferCompressedTimer(long costTimeInNanos) {
+    transferCompressedTimer.updateNanos(costTimeInNanos);
+  }
+
   public void markHandshakeConfigNodeV1Size(final long reqBytes) {
     handshakeConfigNodeV1Rate.mark(reqBytes);
   }
@@ -87,6 +93,10 @@ public class PipeConfigNodeReceiverMetrics implements IMetricSet {
 
   public void markTransferConfigSnapshotSealSize(final long reqBytes) {
     transferConfigSnapshotSealRate.mark(reqBytes);
+  }
+
+  public void markTransferCompressedSize(final long reqBytes) {
+    transferCompressedRate.mark(reqBytes);
   }
 
   @Override
@@ -140,6 +150,15 @@ public class PipeConfigNodeReceiverMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             "transferConfigSnapshotSeal");
 
+    transferCompressedTimer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_CONFIGNODE_RECEIVER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferCompressed");
+
     // Rate
     handshakeConfigNodeV1Rate =
         metricService.getOrCreateRate(
@@ -185,6 +204,15 @@ public class PipeConfigNodeReceiverMetrics implements IMetricSet {
             RECEIVER,
             Tag.TYPE.toString(),
             "transferConfigSnapshotSeal");
+
+    transferCompressedRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_CONFIGNODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferCompressed");
   }
 
   @Override
@@ -198,12 +226,14 @@ public class PipeConfigNodeReceiverMetrics implements IMetricSet {
     transferConfigPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferConfigSnapshotPieceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferConfigSnapshotSealTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    transferCompressedTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
     handshakeConfigNodeV1Rate = DoNothingMetricManager.DO_NOTHING_RATE;
     handshakeConfigNodeV2Rate = DoNothingMetricManager.DO_NOTHING_RATE;
     transferConfigPlanRate = DoNothingMetricManager.DO_NOTHING_RATE;
     transferConfigSnapshotPieceRate = DoNothingMetricManager.DO_NOTHING_RATE;
     transferConfigSnapshotSealRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferCompressedRate = DoNothingMetricManager.DO_NOTHING_RATE;
 
     metricService.remove(
         MetricType.TIMER,
@@ -240,6 +270,13 @@ public class PipeConfigNodeReceiverMetrics implements IMetricSet {
         RECEIVER,
         Tag.TYPE.toString(),
         "transferConfigSnapshotSeal");
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_CONFIGNODE_RECEIVER.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferCompressed");
 
     metricService.remove(
         MetricType.RATE,
@@ -276,6 +313,13 @@ public class PipeConfigNodeReceiverMetrics implements IMetricSet {
         RECEIVER,
         Tag.TYPE.toString(),
         "transferConfigSnapshotSeal");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_CONFIGNODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferCompressed");
   }
 
   public static PipeConfigNodeReceiverMetrics getInstance() {
