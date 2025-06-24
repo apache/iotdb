@@ -23,6 +23,7 @@ from sqlalchemy.dialects import registry
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 from tests.integration.iotdb_container import IoTDBContainer
+from urllib.parse import quote_plus as urlquote
 
 final_flag = True
 failed_count = 0
@@ -43,10 +44,11 @@ def print_message(message):
 
 
 def test_dialect():
+    password = urlquote("IoTDB@2017")
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
         url = (
-            "iotdb://root:root@"
+            "iotdb://root:" + password + "@"
             + db.get_container_host_ip()
             + ":"
             + db.get_exposed_port(6667)
