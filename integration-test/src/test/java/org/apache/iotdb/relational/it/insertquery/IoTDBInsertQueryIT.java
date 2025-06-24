@@ -390,6 +390,34 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  @Test
+  public void testExplain() throws SQLException {
+    Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+    Statement statement = connection.createStatement();
+    try {
+      statement.execute("USE test");
+      statement.execute("EXPLAIN " + String.format(insertIntoQuery, 1));
+      fail("No exception!");
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage(),
+          e.getMessage()
+              .contains("700: line 1:9: mismatched input 'INSERT'. Expecting: 'ANALYZE', <query>"));
+    }
+
+    try {
+      statement.execute("USE test");
+      statement.execute("EXPLAIN ANALYZE " + String.format(insertIntoQuery, 1));
+      fail("No exception!");
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage(),
+          e.getMessage()
+              .contains(
+                  "700: line 1:17: mismatched input 'INSERT'. Expecting: 'VERBOSE', <query>"));
+    }
+  }
+
   private void buildExpectedResult(
       ResultSet resultSet, List<String> expectedHeader, List<String> expectedRetArray)
       throws SQLException {
