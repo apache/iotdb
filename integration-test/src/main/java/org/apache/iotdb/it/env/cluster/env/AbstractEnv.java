@@ -359,12 +359,14 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   public void checkNodeInStatus(int nodeId, NodeStatus expectation) {
-    checkClusterStatus(nodeStatusMap -> expectation.getStatus().equals(nodeStatusMap.get(nodeId)));
+    checkClusterStatus(
+        nodeStatusMap -> expectation.getStatus().equals(nodeStatusMap.get(nodeId)), m -> true);
   }
 
   public void checkClusterStatusWithoutUnknown() {
     checkClusterStatus(
-        nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));
+        nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals),
+        processStatus -> processStatus.values().stream().noneMatch(i -> i != 0));
     testJDBCConnection();
   }
 
@@ -374,6 +376,10 @@ public abstract class AbstractEnv implements BaseEnv {
           Map<String, Integer> count = countNodeStatus(nodeStatus);
           return count.getOrDefault("Unknown", 0) == 1
               && count.getOrDefault("Running", 0) == nodeStatus.size() - 1;
+        },
+        processStatus -> {
+          long aliveProcessCount = processStatus.values().stream().filter(i -> i == 0).count();
+          return aliveProcessCount == processStatus.size() - 1;
         });
     testJDBCConnection();
   }
@@ -382,9 +388,11 @@ public abstract class AbstractEnv implements BaseEnv {
    * check whether all nodes' status match the provided predicate with RPC. after retryCount times,
    * if the status of all nodes still not match the predicate, throw AssertionError.
    *
-   * @param statusCheck the predicate to test the status of nodes
+   * @param nodeStatusCheck the predicate to test the status of nodes
    */
-  public void checkClusterStatus(final Predicate<Map<Integer, String>> statusCheck) {
+  public void checkClusterStatus(
+      final Predicate<Map<Integer, String>> nodeStatusCheck,
+      final Predicate<Map<AbstractNodeWrapper, Integer>> processStatusCheck) {
     logger.info("Testing cluster environment...");
     TShowClusterResp showClusterResp;
     Exception lastException = null;
@@ -429,7 +437,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
         // Check the status of nodes
         if (passed) {
-          passed = statusCheck.test(showClusterResp.getNodeStatus());
+          passed = nodeStatusCheck.test(showClusterResp.getNodeStatus());
           if (!passed) {
             nodeStatusPassed = false;
             lastNodeStatus = showClusterResp.getNodeStatus();
@@ -440,8 +448,6 @@ public abstract class AbstractEnv implements BaseEnv {
         for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
           boolean alive = dataNodeWrapper.getInstance().isAlive();
           if (!alive) {
-            passed = false;
-            processStatusPassed = false;
             processStatusMap.put(dataNodeWrapper, dataNodeWrapper.getInstance().waitFor());
           } else {
             processStatusMap.put(dataNodeWrapper, 0);
@@ -450,8 +456,6 @@ public abstract class AbstractEnv implements BaseEnv {
         for (ConfigNodeWrapper nodeWrapper : configNodeWrapperList) {
           boolean alive = nodeWrapper.getInstance().isAlive();
           if (!alive) {
-            passed = false;
-            processStatusPassed = false;
             processStatusMap.put(nodeWrapper, nodeWrapper.getInstance().waitFor());
           } else {
             processStatusMap.put(nodeWrapper, 0);
@@ -460,12 +464,15 @@ public abstract class AbstractEnv implements BaseEnv {
         for (AINodeWrapper nodeWrapper : aiNodeWrapperList) {
           boolean alive = nodeWrapper.getInstance().isAlive();
           if (!alive) {
-            passed = false;
-            processStatusPassed = false;
             processStatusMap.put(nodeWrapper, nodeWrapper.getInstance().waitFor());
           } else {
             processStatusMap.put(nodeWrapper, 0);
           }
+        }
+
+        processStatusPassed = processStatusCheck.test(processStatusMap);
+        if (!processStatusPassed) {
+          passed = false;
         }
 
         if (!processStatusPassed) {
