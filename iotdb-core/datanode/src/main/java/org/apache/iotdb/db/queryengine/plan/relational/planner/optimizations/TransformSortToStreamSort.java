@@ -173,8 +173,8 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       }
     }
 
-    for (ColumnSchema columnSchema : nodeColumnSchema.values()) {
-      if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG) {
+    for (Symbol orderBy : orderingScheme.getOrderBy()) {
+      if (nodeColumnSchema.get(orderBy).getColumnCategory() == TsTableColumnCategory.TAG) {
         tagCount--;
       }
     }
