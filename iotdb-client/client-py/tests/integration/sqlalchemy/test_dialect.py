@@ -48,7 +48,9 @@ def test_dialect():
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
         url = (
-            "iotdb://root:" + password + "@"
+            "iotdb://root:"
+            + password
+            + "@"
             + db.get_container_host_ip()
             + ":"
             + db.get_exposed_port(6667)
