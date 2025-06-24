@@ -705,10 +705,6 @@ public abstract class SubscriptionPrefetchingQueue {
               event,
               currentToTabletIterator.getCreationTime(),
               currentToTabletIterator.getRegionId());
-      LOGGER.warn(
-          "[DEBUG] {} with {}",
-          event.hashCode(),
-          event.getCommitterKey().toString() + "-" + event.getCommitId());
       retryableEvent.shouldEnrichWithCommitterKeyAndCommitId = false;
     }
     try {

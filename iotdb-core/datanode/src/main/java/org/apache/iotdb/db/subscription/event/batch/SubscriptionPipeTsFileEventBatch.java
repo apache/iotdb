@@ -71,11 +71,6 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   protected void onTabletInsertionEvent(final TabletInsertionEvent event) {
     try {
       batch.onEvent(event);
-      EnrichedEvent enrichedEvent = (EnrichedEvent) event;
-      LOGGER.warn(
-          "[DEBUG] {} <- {}",
-          this.hashCode(),
-          enrichedEvent.getCommitterKey().toString() + "-" + enrichedEvent.getCommitId());
     } catch (final Exception ignored) {
       // no exceptions will be thrown
     }

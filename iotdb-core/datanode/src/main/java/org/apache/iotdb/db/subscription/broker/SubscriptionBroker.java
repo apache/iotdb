@@ -131,6 +131,7 @@ public class SubscriptionBroker {
                 SubscriptionAgent.receiver().remainingMs() / Math.max(1, remainingTopicSize));
         event = prefetchingQueue.pollV2(consumerId, timer);
       } else {
+        // TODO: migrate poll to pollV2
         event = prefetchingQueue.poll(consumerId);
       }
       if (Objects.isNull(event)) {
@@ -213,10 +214,14 @@ public class SubscriptionBroker {
 
       // Check if the prefetching queue is closed
       if (prefetchingQueue.isClosed()) {
-        LOGGER.warn(
-            "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
-            topicName,
-            brokerId);
+        SubscriptionDataNodeResourceManager.log()
+            .schedule(SubscriptionBroker.class, brokerId, topicName)
+            .ifPresent(
+                l ->
+                    l.warn(
+                        "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+                        topicName,
+                        brokerId));
         continue;
       }
 
@@ -494,6 +499,7 @@ public class SubscriptionBroker {
       return false;
     }
 
+    // TODO: migrate executePrefetch to executePrefetchV2
     return prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue
         ? prefetchingQueue.executePrefetch()
         : prefetchingQueue.executePrefetchV2();

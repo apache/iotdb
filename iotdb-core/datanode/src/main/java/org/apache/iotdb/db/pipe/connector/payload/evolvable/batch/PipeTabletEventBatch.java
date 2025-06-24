@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public abstract class PipeTabletEventBatch implements AutoCloseable {
 
@@ -174,12 +173,6 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   public synchronized void decreaseEventsReferenceCount(
       final String holderMessage, final boolean shouldReport) {
     events.forEach(event -> event.decreaseReferenceCount(holderMessage, shouldReport));
-    LOGGER.warn(
-        "[DEBUG] {} clear {}",
-        this.hashCode(),
-        events.stream()
-            .map(event -> event.getCommitterKey().toString() + "-" + event.getCommitId())
-            .collect(Collectors.toList()));
   }
 
   private void clearEventsReferenceCount(final String holderMessage) {
