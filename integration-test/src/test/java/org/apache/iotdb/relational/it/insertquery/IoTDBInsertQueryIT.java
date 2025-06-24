@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.relational.it.insertquery;
 
+import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.read.common.RowRecord;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -415,6 +420,53 @@ public class IoTDBInsertQueryIT {
           e.getMessage()
               .contains(
                   "700: line 1:17: mismatched input 'INSERT'. Expecting: 'VERBOSE', <query>"));
+    }
+  }
+
+  @Test
+  public void testNonQueryStatement() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("use test");
+      session.executeNonQueryStatement(String.format(createTableTemplate, 1));
+
+      // insert into vehicle1 select * from vehicle0
+      session.executeNonQueryStatement(String.format(insertIntoQuery, 1));
+      SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "SELECT * FROM vehicle1 order by time, deviceId, manufacturer");
+      assertEquals(dataSet.getColumnNames().size(), 8);
+      assertEquals(dataSet.getColumnNames().get(0), "time");
+      assertEquals(dataSet.getColumnNames().get(3), "s0");
+      assertEquals(dataSet.getColumnNames().get(4), "s1");
+      int cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        long time = rowRecord.getFields().get(0).getLongV();
+        assertEquals(time, rowRecord.getFields().get(3).getIntV());
+        assertEquals(time, rowRecord.getFields().get(4).getLongV());
+        cnt++;
+      }
+      Assert.assertEquals(1200, cnt);
+      session.executeNonQueryStatement(String.format(dropTableTemplate, 1));
+    }
+  }
+
+  @Test
+  public void testQueryStatement() throws IoTDBConnectionException, StatementExecutionException {
+    ITableSession session = EnvFactory.getEnv().getTableSessionConnection();
+    try {
+      session.executeNonQueryStatement("use test");
+      session.executeNonQueryStatement(String.format(createTableTemplate, 1));
+      SessionDataSet dataSet = session.executeQueryStatement(String.format(insertIntoQuery, 1));
+      fail("No exception!");
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage(),
+          e.getMessage()
+              .contains(
+                  "Cannot invoke \"java.util.List.size()\" because \"columnNameList\" is null"));
+    } finally {
+      session.executeNonQueryStatement(String.format(dropTableTemplate, 1));
     }
   }
 
