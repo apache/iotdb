@@ -275,6 +275,10 @@ public class SessionConnection {
   }
 
   public void close() throws IoTDBConnectionException {
+    if (!transport.isOpen()) {
+      return;
+    }
+
     TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
     try {
       client.closeSession(req);
@@ -1090,7 +1094,7 @@ public class SessionConnection {
         // remove the broken end point
         session.removeBrokenSessionConnection(this);
         session.defaultEndPoint = this.endPoint;
-        session.defaultSessionConnection = this;
+        session.setDefaultSessionConnection(this);
         if (session.endPointToSessionConnection == null) {
           session.endPointToSessionConnection = new ConcurrentHashMap<>();
         }
