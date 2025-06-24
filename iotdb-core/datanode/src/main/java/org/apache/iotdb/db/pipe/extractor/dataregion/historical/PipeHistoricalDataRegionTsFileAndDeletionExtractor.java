@@ -877,8 +877,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
         && PipeConsensusProcessor.isShouldReplicate(event)) {
       event.setReplicateIndexForIoTV2(
-          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(
-              resource.getDataRegionId()));
+          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(pipeName));
       LOGGER.info(
           "[{}]Set {} for historical event {}", pipeName, event.getReplicateIndexForIoTV2(), event);
     }
