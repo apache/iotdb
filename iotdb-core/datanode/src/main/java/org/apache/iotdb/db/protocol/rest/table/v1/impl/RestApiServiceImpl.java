@@ -35,10 +35,12 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -69,6 +71,12 @@ public class RestApiServiceImpl extends RestApiService {
 
   public Response executeQueryStatement(SQL sql, SecurityContext securityContext)
       throws NotFoundException {
+    return executeQueryStatement(sql, securityContext, false);
+  }
+
+  public Response executeQueryStatement(
+      SQL sql, SecurityContext securityContext, boolean skipValidateStatement)
+      throws NotFoundException {
     SqlParser relationSqlParser = new SqlParser();
     Long queryId = null;
     Statement statement = null;
@@ -91,7 +99,7 @@ public class RestApiServiceImpl extends RestApiService {
             .build();
       }
 
-      if (ExecuteStatementHandler.validateStatement(statement)) {
+      if (!skipValidateStatement && ExecuteStatementHandler.validateStatement(statement)) {
         return Response.ok()
             .entity(
                 new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
@@ -125,10 +133,15 @@ public class RestApiServiceImpl extends RestApiService {
       }
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
-        return QueryDataSetHandler.fillQueryDataSet(
-            queryExecution,
-            statement,
-            sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
+        Response res =
+            QueryDataSetHandler.fillQueryDataSet(
+                queryExecution,
+                statement,
+                sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
+        if (queryExecution.getQueryType() == QueryType.READ_WRITE) {
+          return responseGenerateHelper(result);
+        }
+        return res;
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
@@ -224,6 +237,11 @@ public class RestApiServiceImpl extends RestApiService {
                     .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
             .build();
       }
+
+      if (statement instanceof Insert) {
+        return executeQueryStatement(sql, securityContext, true);
+      }
+
       queryId = SESSION_MANAGER.requestQueryId();
       Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
       ExecutionResult result =
