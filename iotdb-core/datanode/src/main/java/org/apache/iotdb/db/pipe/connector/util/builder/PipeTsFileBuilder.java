@@ -81,40 +81,35 @@ public abstract class PipeTsFileBuilder {
         }
       }
     }
-    File baseDir = null;
-    for (int retryTimes = 0; retryTimes <= 1; retryTimes++) {
-      String folder = FOLDER_MANAGER.get().getNextFolder();
-      try {
-        baseDir = new File(folder, Long.toString(currentBatchId.get()));
-        FileUtils.deleteQuietly(baseDir);
-        if (baseDir.mkdirs()) {
-          LOGGER.info(
-              "Batch id = {}: Create batch dir successfully, batch file dir = {}.",
-              currentBatchId.get(),
-              baseDir.getPath());
-          return baseDir;
-        }
-
-        LOGGER.warn(
-            "Batch id = {}: Failed to create batch file dir {} after {} attempts.",
-            currentBatchId.get(),
-            baseDir.getPath(),
-            retryTimes);
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Batch id = {}: Failed to create batch file dir {} after {} attempts. Cause: {}",
-            currentBatchId.get(),
-            baseDir.getPath(),
-            retryTimes,
-            e.toString());
+    synchronized (FOLDER_MANAGER) {
+      File baseDir =
+          FOLDER_MANAGER
+              .get()
+              .getNextWithRetry(
+                  folder -> {
+                    File dir = new File(folder, Long.toString(currentBatchId.get()));
+                    FileUtils.deleteQuietly(dir);
+                    if (dir.mkdirs()) {
+                      LOGGER.info(
+                          "Batch id = {}: Create batch dir successfully, batch file dir = {}.",
+                          currentBatchId.get(),
+                          dir.getPath());
+                      return dir;
+                    }
+                    LOGGER.warn(
+                        "Batch id = {}: Failed to create batch file dir {}.",
+                        currentBatchId.get(),
+                        dir.getPath());
+                    return null;
+                  });
+      if (baseDir != null) {
+        return baseDir;
       }
-      FOLDER_MANAGER.get().updateFolderState(folder, FolderManager.FolderState.ABNORMAL);
+      throw new PipeException(
+          String.format(
+              "Failed to create batch file dir %s. (Batch id = %s)",
+              baseDir.getPath(), currentBatchId.get()));
     }
-
-    throw new PipeException(
-        String.format(
-            "Failed to create batch file dir %s. (Batch id = %s)",
-            baseDir.getPath(), currentBatchId.get()));
   }
 
   public abstract void bufferTableModelTablet(String dataBase, Tablet tablet);

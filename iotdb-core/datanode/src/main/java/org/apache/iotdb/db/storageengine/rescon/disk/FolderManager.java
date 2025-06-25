@@ -104,6 +104,43 @@ public class FolderManager {
     }
   }
 
+  boolean hasHealthyFolder() {
+    return folders.stream()
+        .anyMatch(
+            folder ->
+                foldersStates.getOrDefault(folder, FolderState.ABNORMAL) == FolderState.HEALTHY);
+  }
+
+  @FunctionalInterface
+  public interface ThrowingFunction<T, R, E extends Exception> {
+    R apply(T t) throws E;
+  }
+
+  /*
+   * Encapsulates the retry logic for folder operations
+   * @param folderConsumer The operation to perform on the folder (e.g., creating TsFileWriterManager)
+   * @return The result of the operation
+   */
+  public <T, E extends Exception> T getNextWithRetry(ThrowingFunction<String, T, E> folderConsumer)
+      throws DiskSpaceInsufficientException {
+    String folder = null;
+    while (hasHealthyFolder()) {
+      try {
+        folder = getNextFolder();
+        return folderConsumer.apply(folder);
+      } catch (DiskSpaceInsufficientException e) {
+        logger.error("All folders are full, change system mode to read-only.", e);
+        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+        CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
+        throw e;
+      } catch (Exception e) {
+        updateFolderState(folder, FolderState.ABNORMAL);
+        logger.warn("Failed to process folder '" + folder);
+      }
+    }
+    throw new DiskSpaceInsufficientException(folders);
+  }
+
   public List<String> getFolders() {
     return folders;
   }

@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -96,39 +95,40 @@ public class TsFileNameGenerator {
       String customSuffix)
       throws DiskSpaceInsufficientException, IOException {
     TierManager tierManager = TierManager.getInstance();
-    String tsFileDir = null;
-    for (int retryTimes = 0; retryTimes <= 1; ++retryTimes) {
-      String baseDir = tierManager.getNextFolderForTsFile(tierLevel, sequence);
-      tsFileDir =
-          baseDir
-              + File.separator
-              + logicalStorageGroup
-              + File.separator
-              + virtualStorageGroup
-              + File.separator
-              + timePartitionId;
-      try {
-        if (fsFactory.getFile(tsFileDir).exists() || fsFactory.getFile(tsFileDir).mkdirs()) {
-          return tsFileDir
-              + File.separator
-              + generateNewTsFileName(
-                  time,
-                  version,
-                  innerSpaceCompactionCount,
-                  crossSpaceCompactionCount,
-                  customSuffix);
-        }
-      } catch (Exception ignored) {
-      }
-      FolderManager folderManager = tierManager.getFolderManager(tierLevel, sequence);
-      folderManager.updateFolderState(baseDir, FolderManager.FolderState.ABNORMAL);
-      LOGGER.warn(
-          "Failed to process folder [tierLevel={}, sequence={}, baseDir={}], state set to ABNORMAL",
-          tierLevel,
-          sequence,
-          baseDir);
+    try {
+      return tierManager
+          .getFolderManager(tierLevel, sequence)
+          .getNextWithRetry(
+              baseDir -> {
+                String tsFileDir =
+                    baseDir
+                        + File.separator
+                        + logicalStorageGroup
+                        + File.separator
+                        + virtualStorageGroup
+                        + File.separator
+                        + timePartitionId;
+
+                if (fsFactory.getFile(tsFileDir).exists()
+                    || fsFactory.getFile(tsFileDir).mkdirs()) {
+                  return tsFileDir
+                      + File.separator
+                      + generateNewTsFileName(
+                          time,
+                          version,
+                          innerSpaceCompactionCount,
+                          crossSpaceCompactionCount,
+                          customSuffix);
+                }
+                throw new IOException("Failed to create directory: " + tsFileDir);
+              });
+    } catch (DiskSpaceInsufficientException e) {
+      LOGGER.error("All disks are full, cannot create tsfile directory", e);
+      throw new IOException("Disk space insufficient", e);
+    } catch (Exception e) {
+      LOGGER.warn("Failed to create tsfile directory after retries", e);
+      throw new IOException("Failed to create directory after retries", e);
     }
-    throw new IOException("Failed to create directory after retries: " + tsFileDir);
   }
 
   public static String generateNewTsFileName(
