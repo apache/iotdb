@@ -354,6 +354,10 @@ public class MPPQueryContext {
     return userQuery;
   }
 
+  public boolean isQuery() {
+    return queryType != QueryType.WRITE;
+  }
+
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
   }

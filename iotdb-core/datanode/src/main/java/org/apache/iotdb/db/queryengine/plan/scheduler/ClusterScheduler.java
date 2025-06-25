@@ -83,7 +83,7 @@ public class ClusterScheduler implements IScheduler {
             queryContext,
             syncInternalServiceClientManager,
             asyncInternalServiceClientManager);
-    if (queryType == QueryType.READ) {
+    if (isQuery()) {
       this.stateTracker =
           new FixedRateFragInsStateTracker(
               stateMachine, scheduledExecutor, instances, syncInternalServiceClientManager);
@@ -99,7 +99,7 @@ public class ClusterScheduler implements IScheduler {
 
   private boolean needRetry(TSStatus failureStatus) {
     return failureStatus != null
-        && queryType == QueryType.READ
+        && isQuery()
         && (failureStatus.getCode() == TSStatusCode.DISPATCH_ERROR.getStatusCode()
             || failureStatus.getCode()
                 == TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode());
@@ -167,5 +167,9 @@ public class ClusterScheduler implements IScheduler {
   @Override
   public FragmentInfo getFragmentInfo() {
     return null;
+  }
+
+  private boolean isQuery() {
+    return queryType != QueryType.WRITE;
   }
 }

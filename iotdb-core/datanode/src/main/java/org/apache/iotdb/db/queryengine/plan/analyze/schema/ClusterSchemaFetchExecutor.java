@@ -33,7 +33,6 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.DeviceSchemaFetchStatement;
@@ -85,7 +84,7 @@ class ClusterSchemaFetchExecutor {
             ? config.getQueryTimeoutThreshold()
             : context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime());
     String sql = context == null ? "" : "Fetch Schema for " + context.getQueryType();
-    if (context != null && context.getQueryType() == QueryType.READ) {
+    if (context != null && context.isQuery()) {
       sql += ", " + context.getQueryId() + " : " + context.getSql();
     }
     return coordinator.executeForTreeModel(

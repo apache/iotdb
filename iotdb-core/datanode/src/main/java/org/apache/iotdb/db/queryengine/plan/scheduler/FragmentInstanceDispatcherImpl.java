@@ -119,7 +119,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   @Override
   public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
-    if (type == QueryType.READ) {
+    if (isQuery()) {
       return dispatchRead(instances);
     } else {
       return dispatchWrite(instances);
@@ -575,4 +575,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   @Override
   public void abort() {}
+
+  private boolean isQuery() {
+    return type != QueryType.WRITE;
+  }
 }
