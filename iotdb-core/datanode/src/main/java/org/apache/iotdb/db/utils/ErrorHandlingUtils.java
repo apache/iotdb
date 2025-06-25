@@ -104,8 +104,15 @@ public class ErrorHandlingUtils {
         if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()
-            || status.getCode() == TSStatusCode.ILLEGAL_PATH.getStatusCode()) {
-          LOGGER.warn(message);
+            || status.getCode() == TSStatusCode.ILLEGAL_PATH.getStatusCode()
+            || status.getCode() == TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode()
+            || status.getCode() == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()
+            || status.getCode() == TSStatusCode.DATE_OUT_OF_RANGE.getStatusCode()
+            || status.getCode() == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
+            || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()) {
+          LOGGER.info(message);
         } else {
           LOGGER.warn(message, e);
         }
