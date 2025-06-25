@@ -148,12 +148,6 @@ public abstract class PipeTaskAgent {
       return null;
     }
 
-    // Do nothing with the subscription pipe if disable subscription
-    if (PipeStaticMeta.isSubscriptionPipe(pipeMetaFromCoordinator.getStaticMeta().getPipeName())
-        && !SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
-      return null;
-    }
-
     try {
       executeSinglePipeMetaChanges(pipeMetaFromCoordinator);
       return null;
@@ -174,6 +168,13 @@ public abstract class PipeTaskAgent {
   private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
       throws IllegalPathException {
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
+
+    // Do nothing with the subscription pipe if disable subscription
+    if (PipeStaticMeta.isSubscriptionPipe(pipeName)
+        && !SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return;
+    }
+
     final PipeMeta metaInAgent = pipeMetaKeeper.getPipeMeta(pipeName);
 
     // If pipe meta does not exist on local agent, create a new pipe
@@ -327,12 +328,6 @@ public abstract class PipeTaskAgent {
   protected TPushPipeMetaRespExceptionMessage handleDropPipeInternal(final String pipeName) {
     // Do nothing if node is removing or removed
     if (isShutdown()) {
-      return null;
-    }
-
-    // Do nothing with the subscription pipe if disable subscription
-    if (PipeStaticMeta.isSubscriptionPipe(pipeName)
-        && !SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       return null;
     }
 
