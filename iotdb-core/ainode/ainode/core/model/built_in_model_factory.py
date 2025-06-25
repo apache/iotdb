@@ -135,9 +135,10 @@ def fetch_built_in_model(model_id: str, model_dir) -> Callable:
         model = GaussianHmmModel(attributes)
     elif model_id == BuiltInModelType.STRAY.value:
         model = STRAYModel(attributes)
-    elif model_id == BuiltInModelType.TIMER_XL.value:
+    # TODO: The model type should be judged before enter this file
+    elif "timerxl" in model_id:
         model = modeling_timer.TimerForPrediction.from_pretrained(model_dir)
-    elif model_id == BuiltInModelType.SUNDIAL.value:
+    elif "sundial" in model_id:
         model = modeling_sundial.SundialForPrediction.from_pretrained(model_dir)
     else:
         raise BuiltInModelNotSupportError(model_id)
