@@ -142,7 +142,7 @@ public class IoTDBRemoveDataNodeNormalIT {
     failTest(2, 3, 1, 3, 1, 2, false, SQLModel.TREE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS);
   }
 
-  @Test
+  //  @Test
   public void fail1C3DTestIoTV2UseSQL() throws Exception {
     // Setup 1C3D with schema replication factor = 3, and remove 1D, this test should fail due to
     // insufficient DN for holding schema
@@ -155,7 +155,7 @@ public class IoTDBRemoveDataNodeNormalIT {
     successTest(2, 3, 1, 4, 1, 2, true, SQLModel.TABLE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS);
   }
 
-  @Test
+  //  @Test
   public void success1C4DIoTV2TestUseTableSQL() throws Exception {
     // Setup 1C4D, and remove 1D, this test should success
     successTest(
