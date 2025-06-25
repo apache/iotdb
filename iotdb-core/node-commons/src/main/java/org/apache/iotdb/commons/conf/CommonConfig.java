@@ -329,8 +329,8 @@ public class CommonConfig {
 
   private int subscriptionPrefetchTabletBatchMaxDelayInMs = 20;
   private long subscriptionPrefetchTabletBatchMaxSizeInBytes = MB;
-  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 5000;
-  private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 16 * MB;
+  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 1000;
+  private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 2 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionDefaultTimeoutInMs = 10_000; // 10s
   private long subscriptionLaunchRetryIntervalMs = 1000;

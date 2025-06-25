@@ -294,7 +294,7 @@ public abstract class SubscriptionPrefetchingQueue {
     }
   }
 
-  protected SubscriptionEvent pollInternalV2(final String consumerId, final PollTimer timer) {
+  private SubscriptionEvent pollInternalV2(final String consumerId, final PollTimer timer) {
     states.markPollRequest();
 
     // do-while ensures at least one poll
