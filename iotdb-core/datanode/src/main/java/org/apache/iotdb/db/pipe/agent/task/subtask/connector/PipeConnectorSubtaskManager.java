@@ -202,8 +202,8 @@ public class PipeConnectorSubtaskManager {
     }
 
     PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, regionId);
-    // Reset IoTV2 replicate index to prevent index jumps. Do this when consensus pipe no longer
-    // replicates data, since extractor and processor is already dropped now.
+    // Reset IoTV2 replicate index to prevent index jumps. Do this when a consensus pipe no longer
+    // replicates data, since extractor and processor are already dropped now.
     ReplicateProgressDataNodeManager.resetReplicateIndexForIoTV2(pipeName);
   }
 
