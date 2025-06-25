@@ -514,6 +514,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    dnConfig.setSubscriptionEnabled(subscriptionEnabled);
+    cnConfig.setSubscriptionEnabled(subscriptionEnabled);
+    return this;
+  }
+
+  @Override
   public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     dnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
     cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
