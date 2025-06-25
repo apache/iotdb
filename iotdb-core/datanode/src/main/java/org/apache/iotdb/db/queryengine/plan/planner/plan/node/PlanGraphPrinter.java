@@ -813,6 +813,16 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitInto(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Into-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitOutput(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode node,
       GraphContext context) {
