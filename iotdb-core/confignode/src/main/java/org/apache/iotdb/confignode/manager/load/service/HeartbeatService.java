@@ -278,15 +278,15 @@ public class HeartbeatService {
               configManager.getPipeManager().getPipeRuntimeCoordinator());
       configManager.getClusterQuotaManager().updateSpaceQuotaUsage();
       addConfigNodeLocationsToReq(dataNodeId, heartbeatReq);
-            if (CommonDescriptor.getInstance().getConfig().isEnableSSL()) {
-              SyncDataNodeHeartbeatClientPool.getInstance()
-                  .getDataNodeHeartBeat(
-                      dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
-            } else {
-      AsyncDataNodeHeartbeatClientPool.getInstance()
-          .getDataNodeHeartBeat(
-              dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
-            }
+//      if (CommonDescriptor.getInstance().getConfig().isEnableSSL()) {
+//        SyncDataNodeHeartbeatClientPool.getInstance()
+//            .getDataNodeHeartBeat(
+//                dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
+//      } else {
+        AsyncDataNodeHeartbeatClientPool.getInstance()
+            .getDataNodeHeartBeat(
+                dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
+//      }
     }
   }
 

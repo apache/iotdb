@@ -33,8 +33,6 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.ByteToMessageDecoder;
-import io.netty.handler.codec.MessageToByteEncoder;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
@@ -57,7 +55,6 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.security.KeyStore;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -198,10 +195,10 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
 
     try {
       ByteBuf byteBuf = readQueue.take();
-//      if (byteBuf == null) {
-//        logger.info("No data available for ByteBuffer read (non-blocking)");
-//        return 0; // 非阻塞读取，没有数据时返回 0
-//      }
+      //      if (byteBuf == null) {
+      //        logger.info("No data available for ByteBuffer read (non-blocking)");
+      //        return 0; // 非阻塞读取，没有数据时返回 0
+      //      }
 
       int available = Math.min(buffer.remaining(), byteBuf.readableBytes());
       if (available > 0) {
@@ -350,7 +347,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
       return false; // 异步连接，立即返回 false
     } catch (Exception e) {
       connecting.set(false);
-//      throw new IOException("Failed to start connection", e);
+      //      throw new IOException("Failed to start connection", e);
       return false;
     }
   }

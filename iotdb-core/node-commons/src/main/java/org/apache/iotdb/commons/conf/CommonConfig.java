@@ -406,7 +406,7 @@ public class CommonConfig {
   private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
   /** Enable the thrift Service ssl. */
-  private boolean enableSSL = true;
+  private boolean enableSSL = false;
 
   /** ssl key Store Path. */
   private String keyStorePath = "/Users/ht/.keystore";
