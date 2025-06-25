@@ -479,8 +479,7 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean canSkipExecute(final MPPQueryContext context) {
-    return isFinishQueryAfterAnalyze()
-        || (context.getQueryType() == QueryType.READ && !hasDataSource());
+    return isFinishQueryAfterAnalyze() || (context.isQuery() && !hasDataSource());
   }
 
   private boolean hasDataSource() {

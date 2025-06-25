@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.Sin
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ShowQueriesOperator;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -1898,6 +1899,11 @@ public class MergeTreeSortOperatorTest {
     @Override
     public boolean isQuery() {
       return false;
+    }
+
+    @Override
+    public QueryType getQueryType() {
+      return null;
     }
 
     @Override

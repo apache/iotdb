@@ -625,6 +625,7 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitInsert(Insert insert, Optional<Scope> scope) {
+      queryContext.setQueryType(QueryType.READ_WRITE);
       // analyze the query that creates the data
       Scope queryScope = analyze(insert.getQuery(), Optional.empty(), false);
 
