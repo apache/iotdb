@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -226,6 +227,7 @@ public class RestApiServiceImpl extends RestApiService {
       }
       queryId = SESSION_MANAGER.requestQueryId();
       Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
+      boolean insertQuery = statement instanceof Insert;
       ExecutionResult result =
           COORDINATOR.executeForTableModel(
               statement,
@@ -236,7 +238,7 @@ public class RestApiServiceImpl extends RestApiService {
               sql.getSql(),
               metadata,
               config.getQueryTimeoutThreshold(),
-              false);
+              insertQuery);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return Response.ok()
@@ -245,6 +247,15 @@ public class RestApiServiceImpl extends RestApiService {
                     .code(result.status.getCode())
                     .message(result.status.getMessage()))
             .build();
+      }
+      if (insertQuery) {
+        IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+        try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+          QueryDataSetHandler.fillQueryDataSet(
+              queryExecution,
+              statement,
+              sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
+        }
       }
       return responseGenerateHelper(result);
     } catch (Exception e) {
