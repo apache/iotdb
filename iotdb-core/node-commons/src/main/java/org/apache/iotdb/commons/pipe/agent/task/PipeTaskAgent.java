@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
@@ -144,6 +145,12 @@ public abstract class PipeTaskAgent {
       final PipeMeta pipeMetaFromCoordinator) {
     // Do nothing if node is removing or removed
     if (isShutdown()) {
+      return null;
+    }
+
+    // Do nothing with the subscription pipe if disable subscription
+    if (PipeStaticMeta.isSubscriptionPipe(pipeMetaFromCoordinator.getStaticMeta().getPipeName())
+        && !SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       return null;
     }
 
@@ -320,6 +327,12 @@ public abstract class PipeTaskAgent {
   protected TPushPipeMetaRespExceptionMessage handleDropPipeInternal(final String pipeName) {
     // Do nothing if node is removing or removed
     if (isShutdown()) {
+      return null;
+    }
+
+    // Do nothing with the subscription pipe if disable subscription
+    if (PipeStaticMeta.isSubscriptionPipe(pipeName)
+        && !SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       return null;
     }
 

@@ -432,6 +432,7 @@ public abstract class AbstractSubscriptionProvider {
       case 1900: // SUBSCRIPTION_VERSION_ERROR
       case 1901: // SUBSCRIPTION_TYPE_ERROR
       case 1909: // SUBSCRIPTION_MISSING_CUSTOMER
+      case 1912: // SUBSCRIPTION_NOT_ENABLED_ERROR
       default:
         {
           final String errorMessage =
