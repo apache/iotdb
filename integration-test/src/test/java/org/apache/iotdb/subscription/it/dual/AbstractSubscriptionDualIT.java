@@ -47,6 +47,10 @@ public abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT 
   }
 
   protected void setUpConfig() {
+    // enable subscription
+    senderEnv.getConfig().getCommonConfig().setSubscriptionEnabled(true);
+    receiverEnv.getConfig().getCommonConfig().setSubscriptionEnabled(true);
+
     // enable auto create schema
     senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
