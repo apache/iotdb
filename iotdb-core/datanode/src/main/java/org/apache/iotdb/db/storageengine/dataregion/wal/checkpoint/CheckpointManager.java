@@ -38,6 +38,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -255,6 +256,13 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   // endregion
+
+  public MemTableInfo getOldestMemTableInfo() {
+    // find oldest memTable
+    return activeOrPinnedMemTables().stream()
+        .min(Comparator.comparingLong(MemTableInfo::getMemTableId))
+        .orElse(null);
+  }
 
   /**
    * Get version id of first valid .wal file
