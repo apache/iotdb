@@ -147,6 +147,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSubtaskExecutorForcedRestartIntervalMs();
   }
 
+  public long getPipeMaxWaitFinishTime() {
+    return COMMON_CONFIG.getPipeMaxWaitFinishTime();
+  }
+
   /////////////////////////////// Extractor ///////////////////////////////
 
   public int getPipeExtractorAssignerDisruptorRingBufferSize() {

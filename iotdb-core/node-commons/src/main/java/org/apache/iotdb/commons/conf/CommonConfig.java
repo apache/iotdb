@@ -228,6 +228,8 @@ public class CommonConfig {
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
   private long pipeSubtaskExecutorForcedRestartIntervalMs = Long.MAX_VALUE;
 
+  private long pipeMaxWaitFinishTime = 2 * 60 * 1000;
+
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
   private int pipeExtractorMatcherCacheSize = 1024;
@@ -1366,6 +1368,18 @@ public class CommonConfig {
     logger.info(
         "pipeSubtaskExecutorForcedRestartIntervalMs is set to {}",
         pipeSubtaskExecutorForcedRestartIntervalMs);
+  }
+
+  public long getPipeMaxWaitFinishTime() {
+    return pipeMaxWaitFinishTime;
+  }
+
+  public void setPipeMaxWaitFinishTime(long pipeMaxWaitFinishTime) {
+    if (this.pipeMaxWaitFinishTime == pipeMaxWaitFinishTime) {
+      return;
+    }
+    this.pipeMaxWaitFinishTime = pipeMaxWaitFinishTime;
+    logger.info("pipeMaxWaitFinishTime is set to {}.", pipeMaxWaitFinishTime);
   }
 
   public int getPipeRealTimeQueuePollTsFileThreshold() {
