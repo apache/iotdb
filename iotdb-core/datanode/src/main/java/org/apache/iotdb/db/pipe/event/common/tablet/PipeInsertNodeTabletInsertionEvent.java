@@ -151,10 +151,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeAgent.task().decreaseFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
-        insertNode = null;
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
             .decreaseInsertNodeEventCount(pipeName, creationTime, System.nanoTime() - extractTime);
       }
+      insertNode = null;
     }
   }
 
