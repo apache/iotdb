@@ -78,8 +78,8 @@ public final class AggregationValuePointer implements ValuePointer {
         .flatMap(Collection::stream)
         .filter(
             symbol ->
-                (classifierSymbol.isEmpty() || !classifierSymbol.get().equals(symbol))
-                    && (matchNumberSymbol.isEmpty() || !matchNumberSymbol.get().equals(symbol)))
+                (!classifierSymbol.isPresent() || !classifierSymbol.get().equals(symbol))
+                    && (!matchNumberSymbol.isPresent() || !matchNumberSymbol.get().equals(symbol)))
         .collect(toImmutableList());
   }
 
