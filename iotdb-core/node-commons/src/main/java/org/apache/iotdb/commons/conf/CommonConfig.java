@@ -218,7 +218,7 @@ public class CommonConfig {
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.2;
   private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.2;
   private double PipeDataStructureBatchMemoryProportion = 0.1;
-  private double pipeTotalFloatingMemoryProportion = 0.5;
+  private volatile double pipeTotalFloatingMemoryProportion = 0.5;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
