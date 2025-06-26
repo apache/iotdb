@@ -17,24 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.udf.api.relational.table.argument;
+package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
-import java.util.function.Function;
+public class FakedMemoryReservationManager implements MemoryReservationManager {
 
-public class ScalarArgumentChecker {
-  public static Function<Object, String> POSITIVE_LONG_CHECKER =
-      (value) -> {
-        if (value instanceof Long && (Long) value > 0) {
-          return null;
-        }
-        return "should be a positive value";
-      };
+  @Override
+  public void reserveMemoryCumulatively(long size) {}
 
-  public static Function<Object, String> NON_NEGATIVE_DOUBLE_CHECKER =
-      (value) -> {
-        if (value instanceof Double && (Double) value >= 0) {
-          return null;
-        }
-        return "should be a non-negative value";
-      };
+  @Override
+  public void reserveMemoryImmediately() {}
+
+  @Override
+  public void releaseMemoryCumulatively(long size) {}
+
+  @Override
+  public void releaseAllReservedMemory() {}
 }

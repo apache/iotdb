@@ -44,8 +44,9 @@ public class SyncStatus {
    * @throws InterruptedException
    */
   public synchronized void addNextBatch(Batch batch) throws InterruptedException {
-    while (pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()
-        || !iotConsensusMemoryManager.reserve(batch.getMemorySize(), false)) {
+    while ((pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()
+            || !iotConsensusMemoryManager.reserve(batch.getMemorySize(), false))
+        && !Thread.interrupted()) {
       wait();
     }
     pendingBatches.add(batch);

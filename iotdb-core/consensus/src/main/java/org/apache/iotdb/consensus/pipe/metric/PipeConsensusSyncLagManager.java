@@ -48,9 +48,7 @@ public class PipeConsensusSyncLagManager {
     return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
         .map(
             consensusPipeConnector ->
-                Math.max(
-                    pinnedCommitIndex - consensusPipeConnector.getConsensusPipeReplicateProgress(),
-                    0L))
+                Math.max(pinnedCommitIndex - consensusPipeConnector.getFollowerApplyProgress(), 0L))
         .orElse(0L);
   }
 
@@ -62,16 +60,16 @@ public class PipeConsensusSyncLagManager {
     return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
         .map(
             consensusPipeConnector -> {
-              long userWriteProgress = consensusPipeConnector.getConsensusPipeCommitProgress();
-              long replicateProgress = consensusPipeConnector.getConsensusPipeReplicateProgress();
+              long userWriteProgress = consensusPipeConnector.getLeaderReplicateProgress();
+              long replicateProgress = consensusPipeConnector.getFollowerApplyProgress();
               return Math.max(userWriteProgress - replicateProgress, 0L);
             })
         .orElse(0L);
   }
 
-  public long getCurrentCommitIndex(ConsensusPipeName consensusPipeName) {
+  public long getCurrentLeaderReplicateIndex(ConsensusPipeName consensusPipeName) {
     return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
-        .map(ConsensusPipeConnector::getConsensusPipeCommitProgress)
+        .map(ConsensusPipeConnector::getLeaderReplicateProgress)
         .orElse(0L);
   }
 
