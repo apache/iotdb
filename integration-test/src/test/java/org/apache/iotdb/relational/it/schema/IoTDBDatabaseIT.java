@@ -810,7 +810,7 @@ public class IoTDBDatabaseIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 1);
+      TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 2);
     }
   }
 

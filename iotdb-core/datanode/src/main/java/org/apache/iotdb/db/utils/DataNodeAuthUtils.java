@@ -69,7 +69,7 @@ public class DataNodeAuthUtils {
           StatementGenerator.createStatement(
               "SELECT password from "
                   + SystemConstant.PREFIX_PASSWORD_HISTORY
-                  + ".`"
+                  + ".`_"
                   + username
                   + "` where oldPassword='"
                   + AuthUtils.encryptPassword(password)
@@ -142,7 +142,7 @@ public class DataNodeAuthUtils {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     try {
       insertRowStatement.setDevicePath(
-          new PartialPath(SystemConstant.PREFIX_PASSWORD_HISTORY + ".`" + username + "`"));
+          new PartialPath(SystemConstant.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`"));
       insertRowStatement.setTime(CommonDateTimeUtils.currentTime());
       insertRowStatement.setMeasurements(new String[] {"password", "oldPassword"});
       insertRowStatement.setValues(

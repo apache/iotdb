@@ -152,7 +152,7 @@ public class SessionManager implements SessionManagerMBean {
     lastDataQueryReq.setSessionId(0);
     lastDataQueryReq.setPaths(
         Collections.singletonList(
-            SystemConstant.PREFIX_PASSWORD_HISTORY + ".`" + username + "`.password"));
+            SystemConstant.PREFIX_PASSWORD_HISTORY + ".`_" + username + "`.password"));
     try {
       Statement statement = StatementGenerator.createStatement(lastDataQueryReq);
       SessionInfo sessionInfo =
