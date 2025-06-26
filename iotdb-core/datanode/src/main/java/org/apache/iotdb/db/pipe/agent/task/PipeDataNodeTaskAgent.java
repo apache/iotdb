@@ -707,22 +707,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             "Pipe {} needs to restart because too many TsFiles are out-of-date.",
             pipeMeta.getStaticMeta());
         stuckPipes.add(pipeMeta);
-        continue;
-      }
-
-      // Try to restart the stream mode pipes for releasing memTables.
-      if (extractors.get(0).isStreamMode()) {
-        if (extractors.stream().anyMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)
-            && (mayMemTablePinnedCountReachDangerousThreshold()
-                || mayWalSizeReachThrottleThreshold())) {
-          // Extractors of this pipe may be stuck and is pinning too many MemTables.
-          LOGGER.warn(
-              "Pipe {} needs to restart because too many memTables are pinned or the WAL size is too large. mayMemTablePinnedCountReachDangerousThreshold: {}, mayWalSizeReachThrottleThreshold: {}",
-              pipeMeta.getStaticMeta(),
-              mayMemTablePinnedCountReachDangerousThreshold(),
-              mayWalSizeReachThrottleThreshold());
-          stuckPipes.add(pipeMeta);
-        }
       }
     }
 
@@ -752,18 +736,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       LOGGER.warn("Failed to judge if deleted TsFile size reaches dangerous threshold.", e);
       return false;
     }
-  }
-
-  private boolean mayMemTablePinnedCountReachDangerousThreshold() {
-    return PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount() != Integer.MAX_VALUE
-        && PipeDataNodeResourceManager.wal().getPinnedWalCount()
-            >= 5
-                * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount()
-                * StorageEngine.getInstance().getDataRegionNumber();
-  }
-
-  private boolean mayWalSizeReachThrottleThreshold() {
-    return 3 * WALManager.getInstance().getTotalDiskUsage() > 2 * CONFIG.getThrottleThreshold();
   }
 
   private void restartStuckPipe(final PipeMeta pipeMeta) {
