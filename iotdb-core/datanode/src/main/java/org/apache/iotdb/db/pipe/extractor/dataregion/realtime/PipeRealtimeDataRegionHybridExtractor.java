@@ -260,7 +260,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       logByLogManager(
           l ->
               l.info(
-                  "Pipe task {}@{} canNotUseTabletAnyMore(2): The shallow memory usage of the insert node {} has reached the dangerous threshold {}",
+                  "Pipe task {}@{} canNotUseTabletAnyMore(2): The memory usage of the insert node {} has reached the dangerous threshold {}",
                   pipeName,
                   dataRegionId,
                   floatingMemoryUsageInByte * pipeCount,
