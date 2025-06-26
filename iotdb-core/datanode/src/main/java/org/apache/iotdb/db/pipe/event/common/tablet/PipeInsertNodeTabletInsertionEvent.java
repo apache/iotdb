@@ -75,7 +75,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   private List<TabletInsertionDataContainer> dataContainers;
 
-  private final InsertNode insertNode;
+  private InsertNode insertNode;
 
   private ProgressIndex progressIndex;
 
@@ -142,6 +142,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         dataContainers.clear();
         dataContainers = null;
       }
+      insertNode = null;
       close();
       return true;
     } catch (final Exception e) {
