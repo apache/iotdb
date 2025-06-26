@@ -30,6 +30,7 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -97,7 +98,6 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     // Record device path here so there's no need to get it from InsertNode cache later.
     this.progressIndex = insertNode.getProgressIndex();
     this.insertNode = insertNode;
-
     this.allocatedMemoryBlock = new AtomicReference<>();
   }
 
@@ -408,7 +408,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + (Objects.nonNull(devicePath) ? PartialPath.estimateSize(devicePath) : 0)
+        + (Objects.nonNull(insertNode) ? InsertNodeMemoryEstimator.sizeOf(insertNode) : 0)
         + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
   }
 
