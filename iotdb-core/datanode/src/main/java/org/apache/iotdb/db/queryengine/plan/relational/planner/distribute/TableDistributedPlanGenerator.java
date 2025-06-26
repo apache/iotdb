@@ -350,11 +350,14 @@ public class TableDistributedPlanGenerator
     // DeviceTableScanNode
     if (child instanceof DeviceTableScanNode) {
       DeviceTableScanNode tableScanNode = (DeviceTableScanNode) child;
-      return k >= tableScanNode.getPushDownLimit()
-          && (!tableScanNode.isPushLimitToEachDevice()
-              || (tableScanNode.isPushLimitToEachDevice()
-                  && tableScanNode.getDeviceEntries().size() == 1))
-          && canSortEliminated(orderingScheme, nodeOrderingMap.get(child.getPlanNodeId()));
+      if (canSortEliminated(orderingScheme, nodeOrderingMap.get(child.getPlanNodeId()))) {
+        if (tableScanNode.getPushDownLimit() <= 0) {
+          tableScanNode.setPushDownLimit(k);
+        } else {
+          tableScanNode.setPushDownLimit(Math.min(k, tableScanNode.getPushDownLimit()));
+        }
+        return true;
+      }
     }
     return false;
   }
