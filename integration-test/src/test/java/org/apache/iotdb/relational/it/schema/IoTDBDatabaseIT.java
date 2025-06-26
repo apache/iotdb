@@ -578,7 +578,6 @@ public class IoTDBDatabaseIT {
                   "_STLForecaster,",
                   "_NaiveForecaster,",
                   "_sundial,",
-                  "_timerxl",
                   "_HoltWinters,",
                   "_ExponentialSmoothing,",
                   "_ARIMA,")));
@@ -701,13 +700,12 @@ public class IoTDBDatabaseIT {
           "model_id,",
           new HashSet<>(
               Arrays.asList(
+                  "_sundial,",
                   "_STLForecaster,",
                   "_NaiveForecaster,",
-                  "_sundial,",
-                  "_timerxl",
                   "_HoltWinters,",
-                  "_ExponentialSmoothing,",
-                  "_ARIMA,")));
+                  "_ARIMA,",
+                  "_ExponentialSmoothing,")));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
