@@ -98,7 +98,7 @@ public class DataNodeShutdownHook extends Thread {
           PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
               .remainingEventAndTimeOperatorMap
               .entrySet()) {
-        while (entry.getValue().getRemainingEvents() > 0) {
+        while (entry.getValue().getRemainingNonHeartbeatEvents() > 0) {
           if (System.currentTimeMillis() - startTime
               > PipeConfig.getInstance().getPipeMaxWaitFinishTime()) {
             break;

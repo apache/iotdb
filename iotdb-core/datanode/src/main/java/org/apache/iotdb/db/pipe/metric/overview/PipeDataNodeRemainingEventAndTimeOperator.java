@@ -107,6 +107,22 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
     return insertNodeEventCountEMA.insertNodeEMAValue;
   }
 
+  public long getRemainingNonHeartbeatEvents() {
+    final long remainingEvents =
+        tsfileEventCount.get()
+            + rawTabletEventCount.get()
+            + insertNodeEventCount.get()
+            + schemaRegionExtractors.stream()
+                .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
+                .reduce(Long::sum)
+                .orElse(0L);
+
+    // There are cases where the indicator is negative. For example, after the Pipe is restarted,
+    // the Processor SubTask is still collecting Events, resulting in a negative count. This
+    // situation cannot be avoided because the Pipe may be restarted internally.
+    return remainingEvents >= 0 ? remainingEvents : 0;
+  }
+
   public long getRemainingEvents() {
     final long remainingEvents =
         tsfileEventCount.get()
