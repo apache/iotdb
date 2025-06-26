@@ -57,7 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
@@ -543,9 +543,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
-  public List<String> visitDeviceLastQueryScan(DeviceLastQueryScanNode node, GraphContext context) {
+  public List<String> visitLastQueryScan(LastQueryScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("DeviceLastQueryScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("LastQueryScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Aligned: %s", node.isAligned()));
     boxValue.add(
         String.format(

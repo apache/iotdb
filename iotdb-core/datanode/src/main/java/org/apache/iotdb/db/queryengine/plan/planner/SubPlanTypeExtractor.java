@@ -35,7 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQ
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 
@@ -129,7 +129,7 @@ public class SubPlanTypeExtractor {
     // region PlanNode of last read
     // No need to deal with type of last read
     @Override
-    public Void visitDeviceLastQueryScan(DeviceLastQueryScanNode node, Void context) {
+    public Void visitLastQueryScan(LastQueryScanNode node, Void context) {
       return null;
     }
 

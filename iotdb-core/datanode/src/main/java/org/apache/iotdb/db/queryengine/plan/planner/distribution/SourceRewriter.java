@@ -63,8 +63,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQ
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.RegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
@@ -769,8 +769,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   }
 
   @Override
-  public List<PlanNode> visitDeviceLastQueryScan(
-      DeviceLastQueryScanNode node, DistributionPlanContext context) {
+  public List<PlanNode> visitLastQueryScan(
+      LastQueryScanNode node, DistributionPlanContext context) {
     LastQueryNode mergeNode =
         new LastQueryNode(context.queryContext.getQueryId().genPlanNodeId(), null, false);
     return processRawSeriesScan(node, context, mergeNode);
@@ -985,8 +985,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   }
 
   private void addSortForEachLastQueryNode(PlanNode root, Ordering timeseriesOrdering) {
-    if (root instanceof LastQueryNode
-        && (root.getChildren().get(0) instanceof DeviceLastQueryScanNode)) {
+    if (root instanceof LastQueryNode && (root.getChildren().get(0) instanceof LastQueryScanNode)) {
       LastQueryNode lastQueryNode = (LastQueryNode) root;
       lastQueryNode.setTimeseriesOrdering(timeseriesOrdering);
       // sort children node
@@ -996,8 +995,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   Comparator.comparing(
                       child -> {
                         String sortKey = "";
-                        if (child instanceof DeviceLastQueryScanNode) {
-                          sortKey = ((DeviceLastQueryScanNode) child).getOutputSymbolForSort();
+                        if (child instanceof LastQueryScanNode) {
+                          sortKey = ((LastQueryScanNode) child).getOutputSymbolForSort();
                         }
                         return sortKey;
                       }))
@@ -1006,10 +1005,10 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           .getChildren()
           .forEach(
               child -> {
-                if (child instanceof DeviceLastQueryScanNode) {
+                if (child instanceof LastQueryScanNode) {
                   // sort the measurements for LastQueryMergeOperator
-                  DeviceLastQueryScanNode node = (DeviceLastQueryScanNode) child;
-                  ((DeviceLastQueryScanNode) child)
+                  LastQueryScanNode node = (LastQueryScanNode) child;
+                  ((LastQueryScanNode) child)
                       .getIdxOfMeasurementSchemas()
                       .sort(
                           Comparator.comparing(

@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -34,11 +34,11 @@ import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 
-public class DeviceLastQueryScanNodeSerdeTest {
+public class LastQueryScanNodeSerdeTest {
   @Test
   public void test() throws IllegalPathException {
-    DeviceLastQueryScanNode node =
-        new DeviceLastQueryScanNode(
+    LastQueryScanNode node =
+        new LastQueryScanNode(
             new PlanNodeId("test"),
             new PartialPath("root.test.d1"),
             true,
@@ -53,7 +53,7 @@ public class DeviceLastQueryScanNodeSerdeTest {
     assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), node);
 
     node =
-        new DeviceLastQueryScanNode(
+        new LastQueryScanNode(
             new PlanNodeId("test"),
             new PartialPath("root.test.d1"),
             false,

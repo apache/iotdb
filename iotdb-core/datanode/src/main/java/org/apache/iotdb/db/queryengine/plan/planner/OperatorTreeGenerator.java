@@ -231,8 +231,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
@@ -2814,7 +2814,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private UpdateLastCacheOperator createUpdateLastCacheOperator(
-      final DeviceLastQueryScanNode node, final LocalExecutionPlanContext context, final int idx) {
+      final LastQueryScanNode node, final LocalExecutionPlanContext context, final int idx) {
     IMeasurementSchema measurementSchema = node.getMeasurementSchema(idx);
     final SeriesAggregationScanOperator lastQueryScan =
         createLastQueryScanOperator(node, context, measurementSchema);
@@ -2917,7 +2917,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private SeriesAggregationScanOperator createLastQueryScanOperator(
-      DeviceLastQueryScanNode node,
+      LastQueryScanNode node,
       LocalExecutionPlanContext context,
       IMeasurementSchema measurementSchema) {
     NonAlignedFullPath seriesPath =
@@ -3005,8 +3005,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   @Override
-  public Operator visitDeviceLastQueryScan(
-      DeviceLastQueryScanNode node, LocalExecutionPlanContext context) {
+  public Operator visitLastQueryScan(LastQueryScanNode node, LocalExecutionPlanContext context) {
     final PartialPath devicePath = node.getDevicePath();
     List<Integer> idxOfMeasurementSchemas = node.getIdxOfMeasurementSchemas();
     List<Integer> unCachedMeasurementIndexes = new ArrayList<>();

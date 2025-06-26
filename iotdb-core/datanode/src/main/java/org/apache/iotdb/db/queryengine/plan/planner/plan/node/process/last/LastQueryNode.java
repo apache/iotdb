@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -48,7 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
 
 public class LastQueryNode extends MultiChildProcessNode {
 
@@ -99,8 +99,8 @@ public class LastQueryNode extends MultiChildProcessNode {
               });
       idxList.add(idx);
     }
-    DeviceLastQueryScanNode scanNode =
-        new DeviceLastQueryScanNode(
+    LastQueryScanNode scanNode =
+        new LastQueryScanNode(
             id, devicePath, aligned, idxList, outputViewPath, measurementSchemaList);
     children.add(scanNode);
     return scanNode.getMemorySize();
@@ -114,8 +114,8 @@ public class LastQueryNode extends MultiChildProcessNode {
         Comparator.comparing(
             child -> {
               String sortKey = "";
-              if (child instanceof DeviceLastQueryScanNode) {
-                sortKey = ((DeviceLastQueryScanNode) child).getOutputSymbolForSort();
+              if (child instanceof LastQueryScanNode) {
+                sortKey = ((LastQueryScanNode) child).getOutputSymbolForSort();
               } else if (child instanceof LastQueryTransformNode) {
                 sortKey = ((LastQueryTransformNode) child).getOutputSymbolForSort();
               }
@@ -265,8 +265,8 @@ public class LastQueryNode extends MultiChildProcessNode {
 
   @Override
   public void addChild(PlanNode child) {
-    if (child instanceof DeviceLastQueryScanNode) {
-      DeviceLastQueryScanNode childNode = (DeviceLastQueryScanNode) child;
+    if (child instanceof LastQueryScanNode) {
+      LastQueryScanNode childNode = (LastQueryScanNode) child;
       childNode.setGlobalMeasurementSchemaList(measurementSchemaList);
     }
     super.addChild(child);

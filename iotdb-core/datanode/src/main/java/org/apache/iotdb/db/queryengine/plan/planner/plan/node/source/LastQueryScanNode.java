@@ -45,11 +45,10 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-// rename
-public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
+public class LastQueryScanNode extends LastSeriesSourceNode {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(DeviceLastQueryScanNode.class);
+      RamUsageEstimator.shallowSizeOfInstance(LastQueryScanNode.class);
 
   public static final List<String> LAST_QUERY_HEADER_COLUMNS =
       ImmutableList.of(
@@ -67,7 +66,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
-  public DeviceLastQueryScanNode(
+  public LastQueryScanNode(
       PlanNodeId id,
       PartialPath devicePath,
       boolean aligned,
@@ -82,7 +81,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
     this.globalMeasurementSchemaList = globalMeasurementSchemaList;
   }
 
-  public DeviceLastQueryScanNode(
+  public LastQueryScanNode(
       PlanNodeId id,
       PartialPath devicePath,
       boolean aligned,
@@ -99,7 +98,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
         null);
   }
 
-  public DeviceLastQueryScanNode(
+  public LastQueryScanNode(
       PlanNodeId id,
       PartialPath devicePath,
       boolean aligned,
@@ -115,7 +114,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
     this.globalMeasurementSchemaList = globalMeasurementSchemaList;
   }
 
-  public DeviceLastQueryScanNode(
+  public LastQueryScanNode(
       PlanNodeId id,
       PartialPath devicePath,
       boolean aligned,
@@ -185,7 +184,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
 
   @Override
   public PlanNode clone() {
-    return new DeviceLastQueryScanNode(
+    return new LastQueryScanNode(
         getPlanNodeId(),
         devicePath,
         aligned,
@@ -208,7 +207,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitDeviceLastQueryScan(this, context);
+    return visitor.visitLastQueryScan(this, context);
   }
 
   @Override
@@ -216,7 +215,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
-    DeviceLastQueryScanNode that = (DeviceLastQueryScanNode) o;
+    LastQueryScanNode that = (LastQueryScanNode) o;
     return Objects.equals(devicePath, that.devicePath)
         && Objects.equals(aligned, that.aligned)
         && Objects.equals(indexOfMeasurementSchemas, that.indexOfMeasurementSchemas)
@@ -239,7 +238,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
   public String toString() {
     if (StringUtil.isNotBlank(outputViewPath)) {
       return String.format(
-          "DeviceLastQueryScanNode-%s:[Device: %s, Aligned: %s, Measurements: %s, ViewPath: %s, DataRegion: %s]",
+          "LastQueryScanNode-%s:[Device: %s, Aligned: %s, Measurements: %s, ViewPath: %s, DataRegion: %s]",
           this.getPlanNodeId(),
           this.getDevicePath(),
           this.aligned,
@@ -248,7 +247,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
           PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
     } else {
       return String.format(
-          "DeviceLastQueryScanNode-%s:[Device: %s, Aligned: %s, Measurements: %s, DataRegion: %s]",
+          "LastQueryScanNode-%s:[Device: %s, Aligned: %s, Measurements: %s, DataRegion: %s]",
           this.getPlanNodeId(),
           this.getDevicePath(),
           this.aligned,
@@ -289,7 +288,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
     }
   }
 
-  public static DeviceLastQueryScanNode deserialize(ByteBuffer byteBuffer) {
+  public static LastQueryScanNode deserialize(ByteBuffer byteBuffer) {
     PartialPath devicePath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     boolean aligned = ReadWriteIOUtils.readBool(byteBuffer);
     int measurementSize = ReadWriteIOUtils.readInt(byteBuffer);
@@ -302,7 +301,7 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
     boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
     String outputPathSymbol = isNull ? null : ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new DeviceLastQueryScanNode(
+    return new LastQueryScanNode(
         planNodeId,
         devicePath,
         aligned,
@@ -340,7 +339,6 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
   }
 
   @Override
-  // TODO: device path use string array
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(id)
