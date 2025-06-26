@@ -45,6 +45,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+// rename
 public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
 
   private static final long INSTANCE_SIZE =
@@ -339,10 +340,11 @@ public class DeviceLastQueryScanNode extends LastSeriesSourceNode {
   }
 
   @Override
+  // TODO: device path use string array
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(id)
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(devicePath)
+        + RamUsageEstimator.shallowSizeOf(devicePath.getNodes())
         + RamUsageEstimator.shallowSizeOfInstance(Integer.class) * indexOfMeasurementSchemas.size()
         + RamUsageEstimator.sizeOf(outputViewPath);
   }

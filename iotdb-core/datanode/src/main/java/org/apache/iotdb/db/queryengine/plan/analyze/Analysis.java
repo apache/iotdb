@@ -114,6 +114,8 @@ public class Analysis implements IAnalysis {
   // map from device name to series/aggregation under this device
   private Set<Expression> sourceExpressions;
 
+  private boolean hasSourceExpressions;
+
   // input expressions of aggregations to be calculated
   private Set<Expression> sourceTransformExpressions = new HashSet<>();
 
@@ -235,6 +237,8 @@ public class Analysis implements IAnalysis {
   private Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap;
 
   private Set<Expression> lastQueryBaseExpressions;
+
+  private Map<IDeviceID, Map<String, Expression>> lastQueryOutputPathToSourceExpressionMap;
 
   // header of result dataset
   private DatasetHeader respDatasetHeader;
@@ -619,6 +623,14 @@ public class Analysis implements IAnalysis {
     this.sourceExpressions = sourceExpressions;
   }
 
+  public void setHasSourceExpressions(boolean hasSourceExpressions) {
+    this.hasSourceExpressions = hasSourceExpressions;
+  }
+
+  public boolean hasSourceExpressions() {
+    return hasSourceExpressions;
+  }
+
   public Set<Expression> getSourceTransformExpressions() {
     return sourceTransformExpressions;
   }
@@ -892,6 +904,15 @@ public class Analysis implements IAnalysis {
 
   public void setLastQueryBaseExpressions(Set<Expression> lastQueryBaseExpressions) {
     this.lastQueryBaseExpressions = lastQueryBaseExpressions;
+  }
+
+  public Map<IDeviceID, Map<String, Expression>> getLastQueryOutputPathToSourceExpressionMap() {
+    return lastQueryOutputPathToSourceExpressionMap;
+  }
+
+  public void setLastQueryOutputPathToSourceExpressionMap(
+      Map<IDeviceID, Map<String, Expression>> lastQueryOutputPathToSourceExpressionMap) {
+    this.lastQueryOutputPathToSourceExpressionMap = lastQueryOutputPathToSourceExpressionMap;
   }
 
   public Map<Expression, List<Expression>> getLastQueryNonWritableViewSourceExpressionMap() {

@@ -42,6 +42,7 @@ import javax.annotation.Nullable;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator {
   protected static final TsBlock LAST_QUERY_EMPTY_TSBLOCK =
@@ -99,6 +100,8 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
     }
     return databaseName;
   }
+
+  private static AtomicLong updateNum = new AtomicLong(0);
 
   protected void mayUpdateLastCache(
       final long time, final @Nullable TsPrimitiveType value, final MeasurementPath fullPath) {

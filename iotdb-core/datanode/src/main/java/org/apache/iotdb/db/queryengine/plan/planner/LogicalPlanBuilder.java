@@ -121,7 +121,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -232,29 +231,9 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLast(Analysis analysis, Ordering timeseriesOrdering) {
-    Set<IDeviceID> deviceExistViewSet = new HashSet<>();
     // <Device, <Measurement, Expression>>
-    Map<IDeviceID, Map<String, Expression>> outputPathToSourceExpressionMap = new LinkedHashMap<>();
-
-    for (Expression sourceExpression : analysis.getLastQueryBaseExpressions()) {
-      MeasurementPath outputPath =
-          (MeasurementPath)
-              (sourceExpression.isViewExpression()
-                  ? sourceExpression.getViewPath()
-                  : ((TimeSeriesOperand) sourceExpression).getPath());
-      IDeviceID outputDevice = outputPath.getIDeviceID();
-      outputPathToSourceExpressionMap
-          .computeIfAbsent(
-              outputDevice,
-              k ->
-                  timeseriesOrdering != null
-                      ? new TreeMap<>(timeseriesOrdering.getStringComparator())
-                      : new LinkedHashMap<>())
-          .put(outputPath.getMeasurement(), sourceExpression);
-      if (sourceExpression.isViewExpression()) {
-        deviceExistViewSet.add(outputDevice);
-      }
-    }
+    Map<IDeviceID, Map<String, Expression>> outputPathToSourceExpressionMap =
+        analysis.getLastQueryOutputPathToSourceExpressionMap();
 
     LastQueryNode lastQueryNode =
         new LastQueryNode(
@@ -264,10 +243,13 @@ public class LogicalPlanBuilder {
     long memoryWithoutTransformNode = 0;
     for (Map.Entry<IDeviceID, Map<String, Expression>> deviceMeasurementExpressionEntry :
         outputPathToSourceExpressionMap.entrySet()) {
-      IDeviceID outputDevice = deviceMeasurementExpressionEntry.getKey();
+      IDeviceID deviceId = deviceMeasurementExpressionEntry.getKey();
       Map<String, Expression> measurementToExpressionsOfDevice =
           deviceMeasurementExpressionEntry.getValue();
-      if (deviceExistViewSet.contains(outputDevice)) {
+
+      boolean deviceExistView =
+          measurementToExpressionsOfDevice.values().iterator().next().isViewExpression();
+      if (deviceExistView) {
         // exist view
         for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
           MeasurementPath selectedPath =
@@ -277,10 +259,12 @@ public class LogicalPlanBuilder {
                   ? sourceExpression.getViewPath().getFullPath()
                   : null;
 
+          PartialPath devicePath = selectedPath.getDevicePath();
+          devicePath.setIDeviceID(deviceId);
           memoryWithoutTransformNode +=
               lastQueryNode.addDeviceLastQueryScanNode(
                   context.getQueryId().genPlanNodeId(),
-                  selectedPath.getDevicePath(),
+                  devicePath,
                   selectedPath.isUnderAlignedEntity(),
                   Collections.singletonList(selectedPath.getMeasurementSchema()),
                   outputViewPath);
@@ -297,6 +281,7 @@ public class LogicalPlanBuilder {
           devicePath = devicePath == null ? selectedPath.getDevicePath() : devicePath;
           measurementSchemas.add(selectedPath.getMeasurementSchema());
         }
+        devicePath.setIDeviceID(deviceId);
         memoryWithoutTransformNode +=
             lastQueryNode.addDeviceLastQueryScanNode(
                 context.getQueryId().genPlanNodeId(),

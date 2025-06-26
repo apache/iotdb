@@ -1254,14 +1254,14 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         // And we set region as MainFragmentLocatedRegion, the others Region should transfer data to
         // this region
         context.queryContext.setMainFragmentLocatedRegion(region);
-        seriesScanNodes.forEach(root::addChild);
+        root.addChildren(seriesScanNodes);
         addParent = true;
       } else {
         // We clone a TimeJoinNode from root to make the params to be consistent.
         // But we need to assign a new ID to it
         MultiChildProcessNode parentOfGroup = (MultiChildProcessNode) root.clone();
         parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-        seriesScanNodes.forEach(parentOfGroup::addChild);
+        parentOfGroup.addChildren(seriesScanNodes);
         root.addChild(parentOfGroup);
       }
     }
@@ -1273,7 +1273,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         // SeriesScanNode or SeriesAggregateScanNode
         // So this branch should not be touched.
         List<PlanNode> children = visit(child, context);
-        children.forEach(root::addChild);
+        root.addChildren(children);
       }
     }
     return root;
@@ -1303,6 +1303,10 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
           split.setRegionReplicaSet(dataRegion);
           sources.add(split);
+        }
+
+        if (dataDistribution.size() > 1) {
+          context.getQueryContext().setNeedUpdateScanNumForLastQuery(dataDistribution.size() > 1);
         }
       }
     }

@@ -256,7 +256,11 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   @Override
   public PlanNode visitLastQuery(LastQueryNode node, NodeGroupContext context) {
-    return processMultiChildNode(node, context);
+    context.putNodeDistribution(
+        node.getPlanNodeId(),
+        new NodeDistribution(
+            NodeDistributionType.SAME_WITH_ALL_CHILDREN, node.getRegionReplicaSetByFirstChild()));
+    return node;
   }
 
   @Override

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -25,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceLastQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -133,7 +135,8 @@ public class LastQueryNode extends MultiChildProcessNode {
   }
 
   public long getMemorySizeOfSharedStructures() {
-    return RamUsageEstimator.sizeOfMap(measurementSchema2IdxMap);
+    return RamUsageEstimator.shallowSizeOf(this.measurementSchemaList)
+        + RamUsageEstimator.sizeOfObjectArray(measurementSchemaList.size());
   }
 
   @Override
@@ -287,5 +290,12 @@ public class LastQueryNode extends MultiChildProcessNode {
 
   public boolean needOrderByTimeseries() {
     return timeseriesOrdering != null;
+  }
+
+  // Before calling this method, you need to ensure that the current LastQueryNode
+  // has been divided according to RegionReplicaSet.
+  public TRegionReplicaSet getRegionReplicaSetByFirstChild() {
+    SourceNode planNode = (SourceNode) children.get(0);
+    return planNode.getRegionReplicaSet();
   }
 }

@@ -142,11 +142,14 @@ public class DataPartition extends Partition {
       final IDeviceID deviceId, final Filter timeFilter) {
     final String storageGroup = getDatabaseNameByDevice(deviceId);
     final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceId);
-    if (!dataPartitionMap.containsKey(storageGroup)
-        || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetMap =
+        dataPartitionMap
+            .getOrDefault(storageGroup, Collections.emptyMap())
+            .getOrDefault(seriesPartitionSlot, Collections.emptyMap());
+    if (regionReplicaSetMap.isEmpty()) {
       return Collections.singletonList(NOT_ASSIGNED);
     }
-    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
+    return regionReplicaSetMap.entrySet().stream()
         .filter(
             entry ->
                 TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime))

@@ -100,7 +100,8 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
 
     // compute dataNodeSeriesScanNum in LastQueryScanNode
     if (analysis.getTreeStatement() instanceof QueryStatement
-        && ((QueryStatement) analysis.getTreeStatement()).isLastQuery()) {
+        && ((QueryStatement) analysis.getTreeStatement()).isLastQuery()
+        && queryContext.needUpdateScanNumForLastQuery()) {
       final Map<Path, AtomicInteger> pathSumMap = new HashMap<>();
       dataNodeFIMap
           .values()

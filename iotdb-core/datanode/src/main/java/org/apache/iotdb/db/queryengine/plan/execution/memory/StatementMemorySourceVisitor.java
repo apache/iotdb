@@ -69,7 +69,8 @@ public class StatementMemorySourceVisitor
   }
 
   private boolean sourceNotExist(StatementMemorySourceContext context) {
-    return (context.getAnalysis().getSourceExpressions() == null
+    return !context.getAnalysis().hasSourceExpressions()
+        && (context.getAnalysis().getSourceExpressions() == null
             || context.getAnalysis().getSourceExpressions().isEmpty())
         && (context.getAnalysis().getDeviceToSourceExpressions() == null
             || context.getAnalysis().getDeviceToSourceExpressions().isEmpty())

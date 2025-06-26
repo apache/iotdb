@@ -179,6 +179,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
@@ -597,13 +598,61 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       selectExpressions.add(resultColumn.getExpression());
     }
-    analyzeLastSource(analysis, selectExpressions, schemaTree, context);
-
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
 
-    // fetch partition information
-    analyzeDataPartition(analysis, queryStatement, schemaTree, context);
+    Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap = null;
+    Set<IDeviceID> allDeviceSet = new HashSet<>();
+    Map<IDeviceID, Map<String, Expression>> outputPathToSourceExpressionMap = new LinkedHashMap<>();
+    Ordering timeseriesOrdering = analysis.getTimeseriesOrderingForLastQuery();
 
+    for (Expression selectExpression : selectExpressions) {
+      // TODO: calculate memory
+      for (Expression lastQuerySourceExpression :
+          bindSchemaForExpression(selectExpression, schemaTree, context)) {
+        if (lastQuerySourceExpression instanceof TimeSeriesOperand) {
+          TimeSeriesOperand timeSeriesOperand = (TimeSeriesOperand) lastQuerySourceExpression;
+          MeasurementPath outputPath =
+              (MeasurementPath)
+                  (timeSeriesOperand.isViewExpression()
+                      ? timeSeriesOperand.getViewPath()
+                      : timeSeriesOperand.getPath());
+          IDeviceID outputDevice = outputPath.getIDeviceID();
+          outputPathToSourceExpressionMap
+              .computeIfAbsent(
+                  outputDevice,
+                  k ->
+                      timeseriesOrdering != null
+                          ? new TreeMap<>(timeseriesOrdering.getStringComparator())
+                          : new LinkedHashMap<>())
+              .put(outputPath.getMeasurement(), timeSeriesOperand);
+        } else {
+          lastQueryNonWritableViewSourceExpressionMap =
+              lastQueryNonWritableViewSourceExpressionMap == null
+                  ? new HashMap<>()
+                  : lastQueryNonWritableViewSourceExpressionMap;
+          List<Expression> sourceExpressionsOfNonWritableView =
+              searchSourceExpressions(lastQuerySourceExpression);
+          lastQueryNonWritableViewSourceExpressionMap.putIfAbsent(
+              lastQuerySourceExpression, sourceExpressionsOfNonWritableView);
+          for (Expression expression : sourceExpressionsOfNonWritableView) {
+            allDeviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
+          }
+        }
+      }
+    }
+    if (allDeviceSet.isEmpty()) {
+      allDeviceSet = outputPathToSourceExpressionMap.keySet();
+    } else {
+      allDeviceSet.addAll(outputPathToSourceExpressionMap.keySet());
+    }
+
+    analysis.setHasSourceExpressions(!allDeviceSet.isEmpty());
+    analysis.setLastQueryOutputPathToSourceExpressionMap(outputPathToSourceExpressionMap);
+    analysis.setLastQueryNonWritableViewSourceExpressionMap(
+        lastQueryNonWritableViewSourceExpressionMap);
+
+    DataPartition dataPartition = fetchDataPartitionByDevices(allDeviceSet, schemaTree, context);
+    analysis.setDataPartitionInfo(dataPartition);
     return analysis;
   }
 
