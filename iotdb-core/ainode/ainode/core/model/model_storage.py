@@ -29,9 +29,7 @@ from ainode.core.constant import (
     DEFAULT_MODEL_FILE_NAME,
     BuiltInModelType,
 )
-from ainode.core.exception import (
-    BuiltInModelNotSupportError,
-)
+from ainode.core.exception import BuiltInModelNotSupportError
 from ainode.core.log import Logger
 from ainode.core.model.built_in_model_factory import (
     download_built_in_model_if_necessary,
@@ -115,8 +113,6 @@ class ModelStorage(object):
         """
         with self._lock_pool.get_lock(model_id).read_lock():
             if is_built_in:
-                if model_id not in BuiltInModelType.values():
-                    raise BuiltInModelNotSupportError(model_id)
                 # For built-in models, we support auto download
                 model_dir = os.path.join(self._builtin_model_dir, f"{model_id}")
                 download_built_in_model_if_necessary(model_id, model_dir)
@@ -135,8 +131,6 @@ class ModelStorage(object):
         """
         with self._lock_pool.get_lock(model_id).write_lock():
             if is_built_in:
-                if model_id not in BuiltInModelType.values():
-                    raise BuiltInModelNotSupportError(model_id)
                 model_dir = os.path.join(self._builtin_model_dir, f"{model_id}")
                 model.save_pretrained(model_dir)
             else:

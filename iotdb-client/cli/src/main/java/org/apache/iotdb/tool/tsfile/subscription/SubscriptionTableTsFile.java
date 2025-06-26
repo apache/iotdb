@@ -106,7 +106,6 @@ public class SubscriptionTableTsFile extends AbstractSubscriptionTsFile {
                   .consumerId(Constants.CONSUMER_NAME_PREFIX + i)
                   .consumerGroupId(groupId)
                   .autoCommit(Constants.AUTO_COMMIT)
-                  .autoCommitIntervalMs(Constants.AUTO_COMMIT_INTERVAL)
                   .fileSaveDir(commonParam.getTargetDir())
                   .build());
     }
@@ -163,6 +162,7 @@ public class SubscriptionTableTsFile extends AbstractSubscriptionTsFile {
                       throw new RuntimeException(e);
                     }
                     commonParam.getCountFile().incrementAndGet();
+                    consumer.commitSync(message);
                   }
                 } catch (Exception e) {
                   e.printStackTrace(System.out);

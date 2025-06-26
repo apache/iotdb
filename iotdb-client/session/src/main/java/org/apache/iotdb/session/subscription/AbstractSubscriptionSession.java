@@ -46,7 +46,7 @@ abstract class AbstractSubscriptionSession {
     this.session = session;
   }
 
-  public SubscriptionSessionConnection getSessionConnection() {
+  public SubscriptionSessionConnection getSessionConnection() throws IoTDBConnectionException {
     return session.getSessionConnection();
   }
 

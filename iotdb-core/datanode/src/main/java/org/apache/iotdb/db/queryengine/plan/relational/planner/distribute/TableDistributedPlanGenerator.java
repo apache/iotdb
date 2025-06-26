@@ -1457,6 +1457,7 @@ public class TableDistributedPlanGenerator
     final Optional<OrderingScheme> newOrderingScheme =
         tableScanOrderingSchema(
             analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName()),
+            deviceTableScanNode.getAssignments(),
             newOrderingSymbols,
             newSortOrders,
             lastIsTimeRelated,
@@ -1489,6 +1490,7 @@ public class TableDistributedPlanGenerator
 
   private Optional<OrderingScheme> tableScanOrderingSchema(
       Map<Symbol, ColumnSchema> tableColumnSchema,
+      Map<Symbol, ColumnSchema> nodeColumnSchema,
       List<Symbol> newOrderingSymbols,
       List<SortOrder> newSortOrders,
       boolean lastIsTimeRelated,
@@ -1513,7 +1515,10 @@ public class TableDistributedPlanGenerator
                   .boxed()
                   .collect(Collectors.toMap(newOrderingSymbols::get, newSortOrders::get)));
       if (isOrderByAllIdsAndTime(
-          tableColumnSchema, orderingScheme, size - 2)) { // all id columns included
+          tableColumnSchema,
+          nodeColumnSchema,
+          orderingScheme,
+          size - 2)) { // all id columns included
         return Optional.of(
             new OrderingScheme(
                 newOrderingSymbols,

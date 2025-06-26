@@ -26,7 +26,19 @@ class BasicDatabaseDataset(Dataset):
 
 
 class BasicDatabaseForecastDataset(BasicDatabaseDataset):
-    def __init__(self, ip: str, port: int, input_len: int, output_len: int):
+    def __init__(
+        self,
+        ip: str,
+        port: int,
+        seq_len: int,
+        input_token_len: int,
+        output_token_len: int,
+    ):
         super().__init__(ip, port)
-        self.input_len = input_len
-        self.output_len = output_len
+        # The number of the time series data points of the model input
+        self.seq_len = seq_len
+        # The number of the time series data points of each model token
+        self.input_token_len = input_token_len
+        # The number of the time series data points of the model output
+        self.output_token_len = output_token_len
+        self.token_num = self.seq_len // self.input_token_len

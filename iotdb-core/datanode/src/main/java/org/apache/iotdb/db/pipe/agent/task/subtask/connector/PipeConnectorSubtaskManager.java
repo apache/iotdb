@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeE
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -201,6 +202,9 @@ public class PipeConnectorSubtaskManager {
     }
 
     PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, regionId);
+    // Reset IoTV2 replicate index to prevent index jumps. Do this when a consensus pipe no longer
+    // replicates data, since extractor and processor are already dropped now.
+    ReplicateProgressDataNodeManager.resetReplicateIndexForIoTV2(pipeName);
   }
 
   public synchronized void start(final String attributeSortedString) {

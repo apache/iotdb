@@ -21,11 +21,13 @@ package org.apache.iotdb.it.env.cluster.env;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.exception.PortOccupiedException;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
@@ -78,13 +80,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -223,25 +219,9 @@ public abstract class AbstractEnv implements BaseEnv {
     final RequestDelegate<Void> configNodesDelegate =
         new SerialRequestDelegate<>(configNodeEndpoints);
     for (int i = 1; i < configNodesNum; i++) {
-      final ConfigNodeWrapper configNodeWrapper =
-          new ConfigNodeWrapper(
-              false,
-              seedConfigNode,
-              testClassName,
-              testMethodName,
-              EnvUtils.searchAvailablePorts(),
-              index,
-              this instanceof MultiClusterEnv,
-              startTime);
+      ConfigNodeWrapper configNodeWrapper = newConfigNode();
       this.configNodeWrapperList.add(configNodeWrapper);
       configNodeEndpoints.add(configNodeWrapper.getIpAndPortString());
-      configNodeWrapper.createNodeDir();
-      configNodeWrapper.changeConfig(
-          (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
-          (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
-          (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
-      configNodeWrapper.createLogDir();
-      configNodeWrapper.setKillPoints(configNodeKillPoints);
       configNodesDelegate.addRequest(
           () -> {
             configNodeWrapper.start();
@@ -259,24 +239,9 @@ public abstract class AbstractEnv implements BaseEnv {
     final RequestDelegate<Void> dataNodesDelegate =
         new ParallelRequestDelegate<>(dataNodeEndpoints, NODE_START_TIMEOUT);
     for (int i = 0; i < dataNodesNum; i++) {
-      final DataNodeWrapper dataNodeWrapper =
-          new DataNodeWrapper(
-              seedConfigNode,
-              testClassName,
-              testMethodName,
-              EnvUtils.searchAvailablePorts(),
-              index,
-              this instanceof MultiClusterEnv,
-              startTime);
-      this.dataNodeWrapperList.add(dataNodeWrapper);
+      DataNodeWrapper dataNodeWrapper = newDataNode();
       dataNodeEndpoints.add(dataNodeWrapper.getIpAndPortString());
-      dataNodeWrapper.createNodeDir();
-      dataNodeWrapper.changeConfig(
-          (MppDataNodeConfig) clusterConfig.getDataNodeConfig(),
-          (MppCommonConfig) clusterConfig.getDataNodeCommonConfig(),
-          (MppJVMConfig) clusterConfig.getDataNodeJVMConfig());
-      dataNodeWrapper.createLogDir();
-      dataNodeWrapper.setKillPoints(dataNodeKillPoints);
+      this.dataNodeWrapperList.add(dataNodeWrapper);
       dataNodesDelegate.addRequest(
           () -> {
             dataNodeWrapper.start();
@@ -297,6 +262,49 @@ public abstract class AbstractEnv implements BaseEnv {
     }
 
     checkClusterStatusWithoutUnknown();
+  }
+
+  private ConfigNodeWrapper newConfigNode() {
+    final ConfigNodeWrapper configNodeWrapper =
+        new ConfigNodeWrapper(
+            false,
+            configNodeWrapperList.get(0).getIpAndPortString(),
+            getTestClassName(),
+            testMethodName,
+            EnvUtils.searchAvailablePorts(),
+            index,
+            this instanceof MultiClusterEnv,
+            startTime);
+
+    configNodeWrapper.createNodeDir();
+    configNodeWrapper.changeConfig(
+        (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
+        (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
+        (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
+    configNodeWrapper.createLogDir();
+    configNodeWrapper.setKillPoints(configNodeKillPoints);
+    return configNodeWrapper;
+  }
+
+  private DataNodeWrapper newDataNode() {
+    final DataNodeWrapper dataNodeWrapper =
+        new DataNodeWrapper(
+            configNodeWrapperList.get(0).getIpAndPortString(),
+            getTestClassName(),
+            testMethodName,
+            EnvUtils.searchAvailablePorts(),
+            index,
+            this instanceof MultiClusterEnv,
+            startTime);
+
+    dataNodeWrapper.createNodeDir();
+    dataNodeWrapper.changeConfig(
+        (MppDataNodeConfig) clusterConfig.getDataNodeConfig(),
+        (MppCommonConfig) clusterConfig.getDataNodeCommonConfig(),
+        (MppJVMConfig) clusterConfig.getDataNodeJVMConfig());
+    dataNodeWrapper.createLogDir();
+    dataNodeWrapper.setKillPoints(dataNodeKillPoints);
+    return dataNodeWrapper;
   }
 
   private void startAINode(final String seedConfigNode, final String testClassName) {
@@ -351,12 +359,14 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   public void checkNodeInStatus(int nodeId, NodeStatus expectation) {
-    checkClusterStatus(nodeStatusMap -> expectation.getStatus().equals(nodeStatusMap.get(nodeId)));
+    checkClusterStatus(
+        nodeStatusMap -> expectation.getStatus().equals(nodeStatusMap.get(nodeId)), m -> true);
   }
 
   public void checkClusterStatusWithoutUnknown() {
     checkClusterStatus(
-        nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));
+        nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals),
+        processStatus -> processStatus.values().stream().noneMatch(i -> i != 0));
     testJDBCConnection();
   }
 
@@ -366,6 +376,10 @@ public abstract class AbstractEnv implements BaseEnv {
           Map<String, Integer> count = countNodeStatus(nodeStatus);
           return count.getOrDefault("Unknown", 0) == 1
               && count.getOrDefault("Running", 0) == nodeStatus.size() - 1;
+        },
+        processStatus -> {
+          long aliveProcessCount = processStatus.values().stream().filter(i -> i == 0).count();
+          return aliveProcessCount == processStatus.size() - 1;
         });
     testJDBCConnection();
   }
@@ -374,22 +388,41 @@ public abstract class AbstractEnv implements BaseEnv {
    * check whether all nodes' status match the provided predicate with RPC. after retryCount times,
    * if the status of all nodes still not match the predicate, throw AssertionError.
    *
-   * @param statusCheck the predicate to test the status of nodes
+   * @param nodeStatusCheck the predicate to test the status of nodes
    */
-  public void checkClusterStatus(final Predicate<Map<Integer, String>> statusCheck) {
+  public void checkClusterStatus(
+      final Predicate<Map<Integer, String>> nodeStatusCheck,
+      final Predicate<Map<AbstractNodeWrapper, Integer>> processStatusCheck) {
     logger.info("Testing cluster environment...");
     TShowClusterResp showClusterResp;
     Exception lastException = null;
-    boolean flag;
+    boolean passed;
+    boolean showClusterPassed = true;
+    boolean nodeSizePassed = true;
+    boolean nodeStatusPassed = true;
+    boolean processStatusPassed = true;
+    TSStatus showClusterStatus = null;
+    int actualNodeSize = 0;
+    Map<Integer, String> lastNodeStatus = null;
+    Map<AbstractNodeWrapper, Integer> processStatusMap = new HashMap<>();
+
     for (int i = 0; i < retryCount; i++) {
       try (final SyncConfigNodeIServiceClient client =
           (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
-        flag = true;
+        passed = true;
+        showClusterPassed = true;
+        nodeSizePassed = true;
+        nodeStatusPassed = true;
+        processStatusPassed = true;
+        processStatusMap.clear();
+
         showClusterResp = client.showCluster();
 
         // Check resp status
         if (showClusterResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          flag = false;
+          passed = false;
+          showClusterPassed = false;
+          showClusterStatus = showClusterResp.getStatus();
         }
 
         // Check the number of nodes
@@ -397,18 +430,66 @@ public abstract class AbstractEnv implements BaseEnv {
             != configNodeWrapperList.size()
                 + dataNodeWrapperList.size()
                 + aiNodeWrapperList.size()) {
-          flag = false;
+          passed = false;
+          nodeSizePassed = false;
+          actualNodeSize = showClusterResp.getNodeStatusSize();
         }
 
         // Check the status of nodes
-        if (flag) {
-          flag = statusCheck.test(showClusterResp.getNodeStatus());
+        if (passed) {
+          passed = nodeStatusCheck.test(showClusterResp.getNodeStatus());
+          if (!passed) {
+            nodeStatusPassed = false;
+            lastNodeStatus = showClusterResp.getNodeStatus();
+          }
         }
 
-        if (flag) {
+        // check the status of processes
+        for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
+          boolean alive = dataNodeWrapper.getInstance().isAlive();
+          if (!alive) {
+            processStatusMap.put(dataNodeWrapper, dataNodeWrapper.getInstance().waitFor());
+          } else {
+            processStatusMap.put(dataNodeWrapper, 0);
+          }
+        }
+        for (ConfigNodeWrapper nodeWrapper : configNodeWrapperList) {
+          boolean alive = nodeWrapper.getInstance().isAlive();
+          if (!alive) {
+            processStatusMap.put(nodeWrapper, nodeWrapper.getInstance().waitFor());
+          } else {
+            processStatusMap.put(nodeWrapper, 0);
+          }
+        }
+        for (AINodeWrapper nodeWrapper : aiNodeWrapperList) {
+          boolean alive = nodeWrapper.getInstance().isAlive();
+          if (!alive) {
+            processStatusMap.put(nodeWrapper, nodeWrapper.getInstance().waitFor());
+          } else {
+            processStatusMap.put(nodeWrapper, 0);
+          }
+        }
+
+        processStatusPassed = processStatusCheck.test(processStatusMap);
+        if (!processStatusPassed) {
+          passed = false;
+        }
+
+        if (!processStatusPassed) {
+          handleProcessStatus(processStatusMap);
+        }
+
+        if (passed) {
           logger.info("The cluster is now ready for testing!");
           return;
         }
+        logger.info(
+            "Retry {}: showClusterPassed={}, nodeSizePassed={}, nodeStatusPassed={}, processStatusPassed={}",
+            i,
+            showClusterPassed,
+            nodeSizePassed,
+            nodeStatusPassed,
+            processStatusPassed);
       } catch (final Exception e) {
         lastException = e;
       }
@@ -425,8 +506,81 @@ public abstract class AbstractEnv implements BaseEnv {
           lastException.getMessage(),
           lastException);
     }
+    if (!showClusterPassed) {
+      logger.error("Show cluster failed: {}", showClusterStatus);
+    }
+    if (!nodeSizePassed) {
+      logger.error("Only {} nodes detected", actualNodeSize);
+    }
+    if (!nodeStatusPassed) {
+      logger.error("Some node status incorrect: {}", lastNodeStatus);
+    }
+    if (!processStatusPassed) {
+      logger.error(
+          "Some process status incorrect: {}",
+          processStatusMap.entrySet().stream()
+              .collect(Collectors.toMap(e -> e.getKey().getId(), Map.Entry::getValue)));
+
+      if (processStatusMap.containsValue(TSStatusCode.PORT_OCCUPIED.getStatusCode())) {
+        throw new PortOccupiedException();
+      }
+    }
+
     throw new AssertionError(
         String.format("After %d times retry, the cluster can't work!", retryCount));
+  }
+
+  private void handleProcessStatus(Map<AbstractNodeWrapper, Integer> processStatusMap) {
+    for (Map.Entry<AbstractNodeWrapper, Integer> entry : processStatusMap.entrySet()) {
+      Integer statusCode = entry.getValue();
+      AbstractNodeWrapper nodeWrapper = entry.getKey();
+      if (statusCode != 0) {
+        logger.info("Node {} is not running due to {}", nodeWrapper.getId(), statusCode);
+      }
+      if (statusCode == TSStatusCode.PORT_OCCUPIED.getStatusCode()) {
+        try {
+          Map<Integer, Long> portOccupationMap =
+              EnvUtils.listPortOccupation(
+                  Arrays.stream(nodeWrapper.getPortList()).boxed().collect(Collectors.toList()));
+          logger.info("Check port result: {}", portOccupationMap);
+          for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
+            if (portOccupationMap.containsValue(dataNodeWrapper.getPid())) {
+              logger.info(
+                  "A port is occupied by another DataNode {}-{}, restart it",
+                  dataNodeWrapper.getIpAndPortString(),
+                  dataNodeWrapper.getPid());
+              dataNodeWrapper.stop();
+              dataNodeWrapper.start();
+            }
+          }
+          for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
+            if (portOccupationMap.containsValue(configNodeWrapper.getPid())) {
+              logger.info(
+                  "A port is occupied by another ConfigNode {}-{}, restart it",
+                  configNodeWrapper.getIpAndPortString(),
+                  configNodeWrapper.getPid());
+              configNodeWrapper.stop();
+              configNodeWrapper.start();
+            }
+          }
+          for (AINodeWrapper aiNodeWrapper : aiNodeWrapperList) {
+            if (portOccupationMap.containsValue(aiNodeWrapper.getPid())) {
+              logger.info(
+                  "A port is occupied by another AINode {}-{}, restart it",
+                  aiNodeWrapper.getIpAndPortString(),
+                  aiNodeWrapper.getPid());
+              aiNodeWrapper.stop();
+              aiNodeWrapper.start();
+            }
+          }
+        } catch (IOException e) {
+          logger.error("Cannot check port occupation", e);
+        }
+        logger.info("Restarting it");
+        nodeWrapper.stop();
+        nodeWrapper.start();
+      }
+    }
   }
 
   @Override
@@ -890,6 +1044,10 @@ public abstract class AbstractEnv implements BaseEnv {
     for (int i = 0; i < retryCount; i++) {
       for (final ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
         try {
+          if (!configNodeWrapper.getInstance().isAlive()) {
+            throw new IOException("ConfigNode " + configNodeWrapper.getId() + " is not alive");
+          }
+
           lastErrorNode = configNodeWrapper;
           final SyncConfigNodeIServiceClient client =
               clientManager.borrowClient(
@@ -1334,5 +1492,9 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void registerDataNodeKillPoints(final List<String> killPoints) {
     this.dataNodeKillPoints = killPoints;
+  }
+
+  public void clearClientManager() {
+    clientManager.clearAll();
   }
 }
