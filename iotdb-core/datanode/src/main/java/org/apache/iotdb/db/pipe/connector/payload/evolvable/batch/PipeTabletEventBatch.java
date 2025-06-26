@@ -205,6 +205,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
                   .forceAllocateForModelFixedMemoryBlock(i, PipeMemoryBlockType.BATCH);
 
           LOGGER.info("pipe model fixed memory block initialized with size: {} bytes", i);
+          return;
         } catch (Exception ignore) {
           // ignore the exception and try to allocate a smaller size
           LOGGER.info(
