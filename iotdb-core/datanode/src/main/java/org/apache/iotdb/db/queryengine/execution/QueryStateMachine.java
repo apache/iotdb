@@ -29,6 +29,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -50,8 +51,8 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 public class QueryStateMachine {
   private final StateMachine<QueryState> queryState;
 
-  private Throwable failureException;
-  private TSStatus failureStatus;
+  private final AtomicReference<Throwable> failureException = new AtomicReference<>();
+  private final AtomicReference<TSStatus> failureStatus = new AtomicReference<>();
 
   public QueryStateMachine(QueryId queryId, ExecutorService executor) {
     this.queryState =
@@ -74,6 +75,8 @@ public class QueryStateMachine {
 
   public void transitionToQueued() {
     queryState.set(QUEUED);
+    failureException.set(null);
+    failureStatus.set(null);
   }
 
   public void transitionToPlanned() {
@@ -85,7 +88,7 @@ public class QueryStateMachine {
   }
 
   public void transitionToPendingRetry(TSStatus failureStatus) {
-    this.failureStatus = failureStatus;
+    this.failureStatus.compareAndSet(null, failureStatus);
     queryState.setIf(PENDING_RETRY, currentState -> currentState == DISPATCHING);
   }
 
@@ -105,10 +108,9 @@ public class QueryStateMachine {
   }
 
   public void transitionToCanceled(Throwable throwable, TSStatus failureStatus) {
-    if (transitionToDoneState(CANCELED)) {
-      this.failureException = throwable;
-      this.failureStatus = failureStatus;
-    }
+    this.failureStatus.compareAndSet(null, failureStatus);
+    this.failureException.compareAndSet(null, throwable);
+    transitionToDoneState(CANCELED);
   }
 
   public void transitionToAborted() {
@@ -120,15 +122,13 @@ public class QueryStateMachine {
   }
 
   public void transitionToFailed(Throwable throwable) {
-    if (transitionToDoneState(FAILED)) {
-      this.failureException = throwable;
-    }
+    this.failureException.compareAndSet(null, throwable);
+    transitionToDoneState(FAILED);
   }
 
   public void transitionToFailed(TSStatus failureStatus) {
-    if (transitionToDoneState(FAILED)) {
-      this.failureStatus = failureStatus;
-    }
+    this.failureStatus.compareAndSet(null, failureStatus);
+    transitionToDoneState(FAILED);
   }
 
   private boolean transitionToDoneState(QueryState doneState) {
@@ -139,31 +139,37 @@ public class QueryStateMachine {
   }
 
   public String getFailureMessage() {
-    if (failureException != null) {
-      return failureException.getMessage();
+    Throwable throwable = failureException.get();
+    if (throwable != null) {
+      return throwable.getMessage();
     }
     return "no detailed failure reason in QueryStateMachine";
   }
 
   public Throwable getFailureException() {
-    if (failureException == null) {
+    Throwable throwable = failureException.get();
+    if (throwable == null) {
       return new IoTDBException(getFailureStatus().getMessage(), getFailureStatus().code);
     } else {
-      return failureException;
+      return throwable;
     }
   }
 
   public TSStatus getFailureStatus() {
-    if (failureStatus != null) {
-      return failureStatus;
-    } else if (failureException != null) {
-      Throwable t = getRootCause(failureException);
-      if (t instanceof IoTDBRuntimeException) {
-        return RpcUtils.getStatus(((IoTDBRuntimeException) t).getErrorCode(), t.getMessage());
-      } else if (t instanceof IoTDBException) {
-        return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), t.getMessage());
+    TSStatus status = failureStatus.get();
+    if (status != null) {
+      return status;
+    } else {
+      Throwable throwable = failureException.get();
+      if (throwable != null) {
+        Throwable t = getRootCause(throwable);
+        if (t instanceof IoTDBRuntimeException) {
+          return RpcUtils.getStatus(((IoTDBRuntimeException) t).getErrorCode(), t.getMessage());
+        } else if (t instanceof IoTDBException) {
+          return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), t.getMessage());
+        }
       }
+      return failureStatus.get();
     }
-    return failureStatus;
   }
 }
