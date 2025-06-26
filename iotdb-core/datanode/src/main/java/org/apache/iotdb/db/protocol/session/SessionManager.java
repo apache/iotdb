@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -47,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
+import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -64,6 +66,7 @@ import org.slf4j.LoggerFactory;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -130,13 +133,19 @@ public class SessionManager implements SessionManagerMBean {
         IClientSession.SqlDialect.TREE);
   }
 
-  private TSStatus checkPasswordExpiration(String username, String password) {
+  /**
+   * Check if the password for the give user has expired.
+   *
+   * @return the timestamp when the password will expire. Long.MAX if the password never expires.
+   *     Null if the password history cannot be found.
+   */
+  private Long checkPasswordExpiration(String username, String password) {
     // check password expiration
     long passwordExpirationDays =
         CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays();
-    if (passwordExpirationDays < 0
+    if (passwordExpirationDays <= 0
         || username.equals(CommonDescriptor.getInstance().getConfig().getAdminName())) {
-      return null;
+      return Long.MAX_VALUE;
     }
 
     TSLastDataQueryReq lastDataQueryReq = new TSLastDataQueryReq();
@@ -161,7 +170,11 @@ public class SessionManager implements SessionManagerMBean {
                   ClusterSchemaFetcher.getInstance());
       if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn("Fail to check password expiration: {}", result.status);
-        return null;
+        throw new IoTDBRuntimeException(
+            "Cannot query password history because: "
+                + result
+                + ", please log in later or disable password expiration.",
+            result.status.getCode());
       }
 
       IQueryExecution queryExecution = Coordinator.getInstance().getQueryExecution(queryId);
@@ -176,17 +189,26 @@ public class SessionManager implements SessionManagerMBean {
             CommonDateTimeUtils.convertIoTDBTimeToMillis(tsBlock.getTimeByIndex(0));
         // columns of last query: [timeseriesName, value, dataType]
         String oldPassword = tsBlock.getColumn(1).getBinary(0).toString();
-        if (oldPassword.equals(AuthUtils.encryptPassword(password))
-            && System.currentTimeMillis() - lastPasswordTime
-                > passwordExpirationDays * 1000 * 86400) {
-          return new TSStatus(TSStatusCode.ILLEGAL_PASSWORD.getStatusCode())
-              .setMessage("Password has expired, please use \"ALTER USER\" to change to a new one");
+        if (oldPassword.equals(AuthUtils.encryptPassword(password))) {
+          if (lastPasswordTime + passwordExpirationDays * 1000 * 86400 < lastPasswordTime) {
+            return Long.MAX_VALUE;
+          } else {
+            return lastPasswordTime + passwordExpirationDays * 1000 * 86400;
+          }
+        } else {
+          // the password is incorrect, later logIn will fail
+          return Long.MAX_VALUE;
         }
+      } else {
+        return null;
       }
     } catch (IoTDBException e) {
-      LOGGER.warn("Cannot generate query for checking password expiration", e);
+      throw new IoTDBRuntimeException(
+          "Cannot query password history because: "
+              + e.getMessage()
+              + ", please log in later or disable password expiration.",
+          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-    return null;
   }
 
   public BasicOpenSessionResp login(
@@ -197,19 +219,18 @@ public class SessionManager implements SessionManagerMBean {
       TSProtocolVersion tsProtocolVersion,
       IoTDBConstant.ClientVersion clientVersion,
       IClientSession.SqlDialect sqlDialect) {
-    TSStatus loginStatus;
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
-    loginStatus = checkPasswordExpiration(username, password);
-    if (loginStatus != null) {
+    Long timeToExpire = checkPasswordExpiration(username, password);
+    if (timeToExpire != null && timeToExpire <= System.currentTimeMillis()) {
       openSessionResp
           .sessionId(-1)
-          .setCode(loginStatus.getCode())
-          .setMessage(loginStatus.getMessage());
+          .setCode(TSStatusCode.ILLEGAL_PASSWORD.getStatusCode())
+          .setMessage("Password has expired, please use \"ALTER USER\" to change to a new one");
       return openSessionResp;
     }
 
-    loginStatus = AuthorityChecker.checkUser(username, password);
+    TSStatus loginStatus = AuthorityChecker.checkUser(username, password);
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // check the version compatibility
       if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {
@@ -220,10 +241,24 @@ public class SessionManager implements SessionManagerMBean {
       } else {
         session.setSqlDialect(sqlDialect);
         supplySession(session, username, ZoneId.of(zoneId), clientVersion);
+        String logInMessage = "Login successfully";
+        if (timeToExpire != null && timeToExpire != Long.MAX_VALUE) {
+          logInMessage += ". Your password will expire at " + new Date(timeToExpire);
+        } else {
+          DataNodeAuthUtils.recordPassword(username, password, null);
+          timeToExpire =
+              System.currentTimeMillis()
+                  + CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays()
+                      * 1000
+                      * 86400;
+          if (timeToExpire > System.currentTimeMillis()) {
+            logInMessage += ". Your password will expire at " + new Date(timeToExpire);
+          }
+        }
         openSessionResp
             .sessionId(session.getId())
             .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-            .setMessage("Login successfully");
+            .setMessage(logInMessage);
 
         LOGGER.info(
             "{}: Login status: {}. User : {}, opens Session-{}",
