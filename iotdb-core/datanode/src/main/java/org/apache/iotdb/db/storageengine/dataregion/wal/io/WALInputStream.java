@@ -293,8 +293,9 @@ public class WALInputStream extends InputStream implements AutoCloseable {
    *
    * @param pos The logical offset to skip to
    * @throws IOException If the file is broken or the given position is invalid
+   * @return The number of bytes skipped, which should be equal to the given position
    */
-  public void skipToGivenLogicalPosition(long pos) throws IOException {
+  public int skipToGivenLogicalPosition(long pos) throws IOException {
     if (version == WALFileVersion.V2) {
       channel.position(version.getVersionBytes().length);
       long posRemain = pos;
@@ -326,9 +327,11 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       }
 
       dataBuffer.position((int) posRemain);
+      return (int) posRemain;
     } else {
       dataBuffer = null;
       channel.position(pos);
+      return (int)pos;
     }
   }
 

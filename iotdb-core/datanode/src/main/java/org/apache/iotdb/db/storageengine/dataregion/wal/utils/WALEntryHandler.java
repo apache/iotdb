@@ -195,7 +195,7 @@ public class WALEntryHandler {
   }
 
   public void setEntryPosition(final long walFileVersionId, final long position) {
-    this.walEntryPosition.setEntryPosition(walFileVersionId, position, value);
+    this.walEntryPosition.setEntryPosition(walFileVersionId, position, value, memTableId);
     this.value = null;
     synchronized (this) {
       this.notifyAll();

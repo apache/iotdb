@@ -47,6 +47,7 @@ public class WALEntryPosition {
   private volatile long walFileVersionId = -1;
   private volatile long position;
   private volatile int size;
+  private volatile long memTableId;
   // wal node, null when wal is disabled
   private WALNode walNode = null;
   // wal file is not null when openReadFileChannel method has been called
@@ -188,15 +189,18 @@ public class WALEntryPosition {
   public void setWalNode(WALNode walNode, long memTableId) {
     this.walNode = walNode;
     identifier = walNode.getIdentifier();
+    this.memTableId = memTableId;
   }
 
   public String getIdentifier() {
     return identifier;
   }
 
-  public void setEntryPosition(long walFileVersionId, long position, WALEntryValue value) {
+  public void setEntryPosition(
+      long walFileVersionId, long position, WALEntryValue value, long memTableId) {
     this.position = position;
     this.walFileVersionId = walFileVersionId;
+    this.memTableId = memTableId;
     final WALInsertNodeCache cache = WALInsertNodeCache.getInstance();
     if (cache != null && value instanceof InsertNode) {
       cache.cacheInsertNodeIfNeeded(this, (InsertNode) value);
@@ -219,9 +223,13 @@ public class WALEntryPosition {
     return size;
   }
 
+  public long getMemTableId() {
+    return memTableId;
+  }
+
   @Override
   public int hashCode() {
-    return Objects.hash(identifier, walFileVersionId, position);
+    return Objects.hash(identifier, walFileVersionId, position, memTableId);
   }
 
   @Override
@@ -235,6 +243,7 @@ public class WALEntryPosition {
     WALEntryPosition that = (WALEntryPosition) o;
     return identifier.equals(that.identifier)
         && walFileVersionId == that.walFileVersionId
-        && position == that.position;
+        && position == that.position
+        && memTableId == that.memTableId;
   }
 }
