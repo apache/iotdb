@@ -71,6 +71,8 @@ public class FragmentInstanceContext extends QueryContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
   private static final long END_TIME_INITIAL_VALUE = -1L;
+  // wait over 5s for driver to close is abnormal
+  private static final long LONG_WAIT_DURATION = 5_000_000_000L;
   private final FragmentInstanceId id;
 
   private final FragmentInstanceStateMachine stateMachine;
@@ -675,6 +677,7 @@ public class FragmentInstanceContext extends QueryContext {
 
   @SuppressWarnings("squid:S2142")
   public void releaseResourceWhenAllDriversAreClosed() {
+    long startTime = System.nanoTime();
     while (true) {
       try {
         allDriversClosed.await();
@@ -684,6 +687,10 @@ public class FragmentInstanceContext extends QueryContext {
         LOGGER.warn(
             "Interrupted when await on allDriversClosed, FragmentInstance Id is {}", this.getId());
       }
+    }
+    long duration = System.nanoTime() - startTime;
+    if (duration >= LONG_WAIT_DURATION) {
+      LOGGER.warn("Wait {}ms for all Drivers closed", duration / 1_000_000);
     }
     releaseResource();
   }
