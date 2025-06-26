@@ -562,21 +562,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Restart Logic /////////////////////////
 
   public void restartAllStuckPipes() {
-    final List<String> removedPipeName = removeOutdatedPipeInfoFromLastRestartTimeMap();
-    if (!removedPipeName.isEmpty()) {
-      final long currentTime = System.currentTimeMillis();
-      LOGGER.info(
-          "Pipes {} now can dynamically adjust their extraction strategies. "
-              + "Start to flush storage engine to trigger the adjustment.",
-          removedPipeName);
-      StorageEngine.getInstance().syncCloseAllProcessor();
-      WALManager.getInstance().syncDeleteOutdatedFilesInWALNodes();
-      LOGGER.info(
-          "Finished flushing storage engine, time cost: {} ms.",
-          System.currentTimeMillis() - currentTime);
-      LOGGER.info("Skipping restarting pipes this round because of the dynamic flushing.");
-      return;
-    }
+    removeOutdatedPipeInfoFromLastRestartTimeMap();
 
     if (!tryWriteLockWithTimeOut(5)) {
       return;
