@@ -68,6 +68,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   private volatile ProgressIndex overridingProgressIndex;
 
+  private long extractedTime = Long.MIN_VALUE;
+
   private PipeRawTabletInsertionEvent(
       final Boolean isTableModelEvent,
       final String databaseName,
@@ -237,6 +239,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
           .increaseRawTabletEventCount(pipeName, creationTime);
+      extractedTime = System.nanoTime();
     }
     return true;
   }
@@ -245,7 +248,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .decreaseRawTabletEventCount(pipeName, creationTime);
+          .decreaseRawTabletEventCount(pipeName, creationTime, System.nanoTime() - extractedTime);
     }
     allocatedMemoryBlock.close();
 
