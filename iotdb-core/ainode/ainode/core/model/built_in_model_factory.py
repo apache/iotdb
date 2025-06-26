@@ -50,7 +50,7 @@ def download_built_in_model_if_necessary(model_id: str, local_dir):
     """
     Download the built-in model from HuggingFace repository when necessary.
     """
-    if "_timer" == model_id or "_sundial" == model_id:
+    if "timer" in model_id or "sundial" in model_id:
         weights_path = os.path.join(local_dir, "model.safetensors")
         if not os.path.exists(weights_path):
             logger.info(
