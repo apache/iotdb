@@ -142,7 +142,6 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         dataContainers.clear();
         dataContainers = null;
       }
-      insertNode = null;
       close();
       return true;
     } catch (final Exception e) {
@@ -152,6 +151,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeAgent.task().decreaseFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
+        insertNode = null;
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
             .decreaseInsertNodeEventCount(pipeName, creationTime, System.nanoTime() - extractTime);
       }
