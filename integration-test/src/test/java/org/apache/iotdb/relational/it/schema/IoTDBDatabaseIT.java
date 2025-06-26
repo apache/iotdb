@@ -56,6 +56,8 @@ public class IoTDBDatabaseIT {
 
   @Before
   public void setUp() throws Exception {
+    // enable subscription
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSubscriptionEnabled(true);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
