@@ -577,8 +577,8 @@ public class IoTDBDatabaseIT {
               Arrays.asList(
                   "_STLForecaster,",
                   "_NaiveForecaster,",
-                  "_timerxl",
                   "_sundial,",
+                  "_timerxl",
                   "_HoltWinters,",
                   "_ExponentialSmoothing,",
                   "_ARIMA,")));
