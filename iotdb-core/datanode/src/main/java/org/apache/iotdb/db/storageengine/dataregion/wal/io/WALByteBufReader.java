@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryPosition;
 
 import java.io.Closeable;
 import java.io.DataInputStream;

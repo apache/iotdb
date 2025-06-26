@@ -34,9 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegionTest;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinException;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALInsertNodeCache;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -88,7 +86,6 @@ public class WalDeleteOutdatedNewTest {
     config.setDataRegionConsensusProtocolClass(prevConsensus);
     EnvironmentUtils.cleanDir(logDirectory1);
     StorageEngine.getInstance().reset();
-    WALInsertNodeCache.getInstance().clear();
   }
 
   /**
@@ -308,8 +305,6 @@ public class WalDeleteOutdatedNewTest {
     walNode1.rollWALFile();
 
     // pin memTable
-    WALEntryHandler handler = listener.getWalEntryHandler();
-    handler.pinMemTable();
     walNode1.log(
         memTable0.getMemTableId(),
         generateInsertRowNode(devicePath, System.currentTimeMillis(), 2));

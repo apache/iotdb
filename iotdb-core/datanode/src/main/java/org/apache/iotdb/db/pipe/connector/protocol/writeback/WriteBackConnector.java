@@ -129,8 +129,7 @@ public class WriteBackConnector implements PipeConnector {
       throws PipeException, WALPipeException {
     final TSStatus status;
 
-    final InsertNode insertNode =
-        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+    final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     if (Objects.isNull(insertNode)) {
       status =
           PipeDataNodeAgent.receiver()

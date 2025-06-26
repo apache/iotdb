@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.resource;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.pipe.resource.wal.hardlink.PipeWALHardlinkResourceManager;
 
 import org.junit.After;
 import org.junit.Assert;

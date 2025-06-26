@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
-import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -76,11 +75,6 @@ public class PipeResourceMetrics implements IMetricSet {
         PIPE_TOTAL_MEMORY);
     // resource reference count
     metricService.createAutoGauge(
-        Metric.PIPE_PINNED_MEMTABLE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        PipeDataNodeResourceManager.wal(),
-        PipeWALResourceManager::getPinnedWalCount);
-    metricService.createAutoGauge(
         Metric.PIPE_LINKED_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.tsfile(),
@@ -116,7 +110,6 @@ public class PipeResourceMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.PIPE_MEM.toString(), Tag.NAME.toString(), PIPE_TOTAL_MEMORY);
     // resource reference count
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PINNED_MEMTABLE_COUNT.toString());
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_COUNT.toString());
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_SIZE.toString());
     // phantom reference count

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.resource.wal.selfhost;
 
 import org.apache.iotdb.db.pipe.resource.wal.PipeWALResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinException;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 public class PipeWALSelfHostResource extends PipeWALResource {
 
