@@ -314,6 +314,8 @@ public class IoTDBConfig {
   private String extPipeDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
 
+  private int pipeTaskThreadCount = 5;
+
   /** External lib directory for MQTT, stores user-uploaded JAR files */
   private String mqttDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
@@ -1046,6 +1048,8 @@ public class IoTDBConfig {
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
 
+  private int schemaThreadCount = 5;
+
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
@@ -1146,8 +1150,6 @@ public class IoTDBConfig {
       0L; // 0 means that the decision will be adaptive based on the number of sequences
 
   private long loadTsFileTabletConversionBatchMemorySizeInBytes = 4096 * 1024;
-
-  private int loadTsFileTabletConversionThreadCount = 5;
 
   private long loadChunkMetadataMemorySizeInBytes = 33554432; // 32MB
 
@@ -3345,6 +3347,14 @@ public class IoTDBConfig {
     this.extPipeDir = extPipeDir;
   }
 
+  public int getPipeTaskThreadCount() {
+    return pipeTaskThreadCount;
+  }
+
+  public void setPipeTaskThreadCount(int pipeTaskThreadCount) {
+    this.pipeTaskThreadCount = pipeTaskThreadCount;
+  }
+
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
   }
@@ -3479,6 +3489,14 @@ public class IoTDBConfig {
 
   public void setDataNodeSchemaCacheEvictionPolicy(String dataNodeSchemaCacheEvictionPolicy) {
     this.dataNodeSchemaCacheEvictionPolicy = dataNodeSchemaCacheEvictionPolicy;
+  }
+
+  public int getSchemaThreadCount() {
+    return schemaThreadCount;
+  }
+
+  public void setSchemaThreadCount(int schemaThreadCount) {
+    this.schemaThreadCount = schemaThreadCount;
   }
 
   public String getReadConsistencyLevel() {
@@ -4024,14 +4042,6 @@ public class IoTDBConfig {
       long loadTsFileTabletConversionBatchMemorySizeInBytes) {
     this.loadTsFileTabletConversionBatchMemorySizeInBytes =
         loadTsFileTabletConversionBatchMemorySizeInBytes;
-  }
-
-  public int getLoadTsFileTabletConversionThreadCount() {
-    return loadTsFileTabletConversionThreadCount;
-  }
-
-  public void setLoadTsFileTabletConversionThreadCount(int loadTsFileTabletConversionThreadCount) {
-    this.loadTsFileTabletConversionThreadCount = loadTsFileTabletConversionThreadCount;
   }
 
   public long getLoadChunkMetadataMemorySizeInBytes() {
