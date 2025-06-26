@@ -132,9 +132,7 @@ public class PipeConfig {
   }
 
   public long getPipeMaxWaitFinishTime() {
-    {
-      return COMMON_CONFIG.getPipeMaxWaitFinishTime();
-    }
+    return COMMON_CONFIG.getPipeMaxWaitFinishTime();
   }
 
   /////////////////////////////// Extractor ///////////////////////////////
