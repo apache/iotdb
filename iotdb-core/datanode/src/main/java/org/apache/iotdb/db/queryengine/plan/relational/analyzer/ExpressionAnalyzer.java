@@ -1003,7 +1003,12 @@ public class ExpressionAnalyzer {
       }
 
       if (context.getContext().isPatternRecognition()) {
-        if (isPatternRecognitionFunction(node)) {
+        if (isAggregation) {
+          if (node.isDistinct()) {
+            throw new SemanticException(
+                "Cannot use DISTINCT with aggregate function in pattern recognition context");
+          }
+        } else if (isPatternRecognitionFunction(node)) {
           validatePatternRecognitionFunction(node);
 
           String name = node.getName().getSuffix().toUpperCase(ENGLISH);
@@ -1020,12 +1025,6 @@ public class ExpressionAnalyzer {
               return setExpressionType(node, analyzePhysicalNavigation(node, context, name));
             default:
               throw new SemanticException("unexpected pattern recognition function " + name);
-          }
-
-        } else if (isAggregation) {
-          if (node.isDistinct()) {
-            throw new SemanticException(
-                "Cannot use DISTINCT with aggregate function in pattern recognition context");
           }
         }
       }
@@ -2296,6 +2295,10 @@ public class ExpressionAnalyzer {
     }
   }
 
+  /**
+   * Checks if the given function call is a specific function for pattern recognition, excluding
+   * aggregation functions.
+   */
   public static boolean isPatternRecognitionFunction(FunctionCall node) {
     QualifiedName qualifiedName = node.getName();
     if (qualifiedName.getParts().size() > 1) {
