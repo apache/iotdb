@@ -126,13 +126,15 @@ public class FolderManager {
     String folder = null;
     while (hasHealthyFolder()) {
       try {
-        folder = getNextFolder();
-        return folderConsumer.apply(folder);
+        folder = folders.get(selectStrategy.nextFolderIndex());
       } catch (DiskSpaceInsufficientException e) {
         logger.error("All folders are full, change system mode to read-only.", e);
         CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
         CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
         throw e;
+      }
+      try {
+        return folderConsumer.apply(folder);
       } catch (Exception e) {
         updateFolderState(folder, FolderState.ABNORMAL);
         logger.warn("Failed to process folder '" + folder);
