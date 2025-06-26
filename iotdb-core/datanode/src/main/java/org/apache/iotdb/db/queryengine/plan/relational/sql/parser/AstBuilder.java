@@ -3554,20 +3554,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
   }
 
-  private List<Long> parseTimePair(RelationalSqlParser.TimeRangeContext timeRangeContext) {
-    long currentTime = CommonDateTimeUtils.currentTime();
-    List<Long> timeRange = new ArrayList<>();
-    timeRange.add(parseTimeValue(timeRangeContext.timeValue(0), currentTime));
-    timeRange.add(parseTimeValue(timeRangeContext.timeValue(1), currentTime));
-    return timeRange;
-  }
-
   @Override
   public Node visitCreateModelStatement(RelationalSqlParser.CreateModelStatementContext ctx) {
     String modelId = ctx.modelId.getText();
     validateModelName(modelId);
     String modelType = ctx.modelType.getText();
-    CreateTraining createTraining = new CreateTraining(modelId, modelType);
+
+    if (ctx.targetData == null) {
+      throw new SemanticException("Target data in sql should be set in CREATE MODEL");
+    }
+    String targetData = ((StringLiteral) visit(ctx.targetData)).getValue();
+    CreateTraining createTraining = new CreateTraining(modelId, modelType, targetData);
     if (ctx.HYPERPARAMETERS() != null) {
       Map<String, String> parameters = new HashMap<>();
       for (RelationalSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {
@@ -3581,39 +3578,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       createTraining.setExistingModelId(ctx.existingModelId.getText());
     }
 
-    List<List<Long>> dbTimeRange = new ArrayList<>();
-    List<List<Long>> tableTimeRange = new ArrayList<>();
-    if (ctx.trainingData().ALL() != null) {
-      createTraining.setUseAllData(true);
-    } else {
-      List<QualifiedName> targetTables = new ArrayList<>();
-      List<String> targetDbs = new ArrayList<>();
-      for (RelationalSqlParser.DataElementContext dataElementContext :
-          ctx.trainingData().dataElement()) {
-        if (dataElementContext.databaseElement() != null) {
-          targetDbs.add(
-              ((Identifier) visit(dataElementContext.databaseElement().database)).getValue());
-          if (dataElementContext.databaseElement().timeRange() != null) {
-            dbTimeRange.add(parseTimePair(dataElementContext.databaseElement().timeRange()));
-          }
-        } else {
-          targetTables.add(getQualifiedName(dataElementContext.tableElement().qualifiedName()));
-          if (dataElementContext.tableElement().timeRange() != null) {
-            tableTimeRange.add(parseTimePair(dataElementContext.tableElement().timeRange()));
-          }
-        }
-      }
-
-      if (targetDbs.isEmpty() && targetTables.isEmpty()) {
-        throw new IllegalArgumentException(
-            "No training data is supported for model, please indicate database or table");
-      }
-      createTraining.setTargetDbs(targetDbs);
-      createTraining.setTargetTables(targetTables);
-
-      dbTimeRange.addAll(tableTimeRange);
-      createTraining.setTargetTimeRanges(dbTimeRange);
-    }
     return createTraining;
   }
 

@@ -1086,8 +1086,7 @@ struct TUpdateModelInfoReq {
 }
 
 struct TDataSchemaForTable{
-    1: required list<string> databaseList
-    2: required list<string> tableList
+    1: required string targetSql
 }
 
 struct TDataSchemaForTree{
@@ -1100,10 +1099,9 @@ struct TCreateTrainingReq {
     3: required bool isTableModel
     4: optional TDataSchemaForTable dataSchemaForTable
     5: optional TDataSchemaForTree dataSchemaForTree
-    6: optional bool useAllData
-    7: optional map<string, string> parameters
-    8: optional string existingModelId
-    9: optional list<list<i64>> timeRanges
+    6: optional map<string, string> parameters
+    7: optional string existingModelId
+    8: optional list<list<i64>> timeRanges
 }
 
 // ====================================================
