@@ -49,13 +49,6 @@ public class PipeDescriptor {
     config.setPipeProgressIndexPersistDirName(
         properties.getProperty(
             "pipe_progress_index_persist_dir_name", config.getPipeProgressIndexPersistDirName()));
-    config.setPipeHardlinkWALDirName(
-        properties.getProperty("pipe_hardlink_wal_dir_name", config.getPipeHardlinkWALDirName()));
-    config.setPipeHardLinkWALEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "pipe_hardlink_wal_enabled",
-                Boolean.toString(config.getPipeHardLinkWALEnabled()))));
     int pipeSubtaskExecutorMaxThreadNum =
         Integer.parseInt(
             properties.getProperty(
@@ -147,17 +140,6 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_tsfile_pin_max_log_interval_rounds",
                 String.valueOf(config.getPipeTsFilePinMaxLogIntervalRounds()))));
-    config.setPipeWalPinMaxLogNumPerRound(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_wal_pin_max_log_num_per_round",
-                String.valueOf(config.getPipeWalPinMaxLogNumPerRound()))));
-    config.setPipeWalPinMaxLogIntervalRounds(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_wal_pin_max_log_interval_rounds",
-                String.valueOf(config.getPipeWalPinMaxLogIntervalRounds()))));
-
     config.setPipeMemoryManagementEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -253,11 +235,6 @@ public class PipeDescriptor {
                 "pipe_data_structure_ts_file_memory_block_allocation_reject_threshold",
                 String.valueOf(
                     config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()))));
-    config.setPipeDataStructureWalMemoryProportion(
-        Double.parseDouble(
-            properties.getProperty(
-                "pipe_data_structure_wal_memory_proportion",
-                String.valueOf(config.getPipeDataStructureWalMemoryProportion()))));
     config.setPipeDataStructureBatchMemoryProportion(
         Double.parseDouble(
             properties.getProperty(
@@ -446,11 +423,6 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
                 String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
-    config.setPipeMaxAllowedPinnedMemTableCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_max_allowed_pinned_memtable_count",
-                String.valueOf(config.getPipeMaxAllowedPinnedMemTableCount()))));
     config.setPipeMaxAllowedLinkedTsFileCount(
         Long.parseLong(
             properties.getProperty(
@@ -591,6 +563,11 @@ public class PipeDescriptor {
                 "pipe_threshold_allocation_strategy_high_usage_threshold",
                 String.valueOf(
                     config.getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold()))));
+
+    config.setPipeMaxWaitFinishTime(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_max_wait_finish_time", String.valueOf(config.getPipeMaxWaitFinishTime()))));
   }
 
   public static void loadPipeExternalConfig(

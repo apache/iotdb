@@ -102,8 +102,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
           (PipeInsertNodeTabletInsertionEvent) event;
       // Read the bytebuffer from the wal file and transfer it directly without serializing or
       // deserializing if possible
-      final InsertNode insertNode =
-          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       if (Objects.isNull(insertNode)) {
         buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
         binaryBuffers.add(buffer);

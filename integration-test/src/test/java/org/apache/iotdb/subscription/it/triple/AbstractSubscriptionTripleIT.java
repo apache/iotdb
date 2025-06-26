@@ -55,6 +55,11 @@ public abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionI
   }
 
   protected void setUpConfig() {
+    // enable subscription
+    sender.getConfig().getCommonConfig().setSubscriptionEnabled(true);
+    receiver1.getConfig().getCommonConfig().setSubscriptionEnabled(true);
+    receiver2.getConfig().getCommonConfig().setSubscriptionEnabled(true);
+
     // enable auto create schema
     sender.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     receiver1.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);

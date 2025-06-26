@@ -321,10 +321,7 @@ public class TsFileProcessor {
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
-            walFlushListener.getWalEntryHandler(),
-            insertRowNode,
-            tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionId(), insertRowNode, tsFileResource);
 
     int pointInserted;
     if (insertRowNode.isAligned()) {
@@ -422,10 +419,7 @@ public class TsFileProcessor {
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
-            walFlushListener.getWalEntryHandler(),
-            insertRowsNode,
-            tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionId(), insertRowsNode, tsFileResource);
 
     int pointInserted = 0;
     for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
@@ -540,10 +534,7 @@ public class TsFileProcessor {
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
-            walFlushListener.getWalEntryHandler(),
-            insertTabletNode,
-            tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionId(), insertTabletNode, tsFileResource);
 
     int pointInserted;
     try {

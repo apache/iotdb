@@ -28,7 +28,6 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpochM
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 public class PipeRealtimeEventFactory {
 
@@ -41,18 +40,9 @@ public class PipeRealtimeEventFactory {
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      final WALEntryHandler walEntryHandler,
-      final InsertNode insertNode,
-      final TsFileResource resource) {
+      final InsertNode insertNode, final TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
-        new PipeInsertNodeTabletInsertionEvent(
-            walEntryHandler,
-            insertNode.getDevicePath(),
-            insertNode.getProgressIndex(),
-            insertNode.isAligned(),
-            insertNode.isGeneratedByPipe()),
-        insertNode,
-        resource);
+        new PipeInsertNodeTabletInsertionEvent(insertNode), insertNode, resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(

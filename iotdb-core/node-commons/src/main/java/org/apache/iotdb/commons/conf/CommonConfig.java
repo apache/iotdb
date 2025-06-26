@@ -201,10 +201,6 @@ public class CommonConfig {
 
   private String pipeProgressIndexPersistDirName = "progress";
 
-  private String pipeHardlinkWALDirName = "wal";
-
-  private boolean pipeHardLinkWALEnabled = false;
-
   private boolean pipeFileReceiverFsyncEnabled = true;
 
   private int pipeRealTimeQueuePollTsFileThreshold = 10;
@@ -221,9 +217,8 @@ public class CommonConfig {
   private int pipeDataStructureTabletSizeInBytes = 2097152;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.2;
   private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.2;
-  private double pipeDataStructureWalMemoryProportion = 0.3;
   private double PipeDataStructureBatchMemoryProportion = 0.1;
-  private double pipeTotalFloatingMemoryProportion = 0.2;
+  private volatile double pipeTotalFloatingMemoryProportion = 0.5;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
@@ -231,6 +226,8 @@ public class CommonConfig {
 
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
   private long pipeSubtaskExecutorForcedRestartIntervalMs = Long.MAX_VALUE;
+
+  private long pipeMaxWaitFinishTime = 2 * 60 * 1000;
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
@@ -261,7 +258,7 @@ public class CommonConfig {
       (int) (RpcUtils.THRIFT_FRAME_MAX_SIZE * 0.8);
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
-  private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 30;
+  private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 3;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
   private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 1;
@@ -278,11 +275,10 @@ public class CommonConfig {
 
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = Integer.MAX_VALUE; // Deprecated
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = Integer.MAX_VALUE; // Deprecated
-  private int pipeMaxAllowedPinnedMemTableCount = Integer.MAX_VALUE; // per data region
   private long pipeMaxAllowedLinkedTsFileCount = Long.MAX_VALUE; // Deprecated
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
-  private long pipeStuckRestartMinIntervalMs = 5 * 60 * 1000L; // 5 minutes
+  private long pipeStuckRestartMinIntervalMs = 10 * 60 * 1000L; // 5 minutes
   private boolean pipeEpochKeepTsFileAfterStuckRestartEnabled = false;
   private long pipeFlushAfterLastTerminateSeconds = 30;
   private long pipeFlushAfterTerminateCount = 30;
@@ -294,8 +290,6 @@ public class CommonConfig {
   private int pipeMetaReportMaxLogIntervalRounds = 36;
   private int pipeTsFilePinMaxLogNumPerRound = 10;
   private int pipeTsFilePinMaxLogIntervalRounds = 90;
-  private int pipeWalPinMaxLogNumPerRound = 10;
-  private int pipeWalPinMaxLogIntervalRounds = 90;
 
   private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 50;
@@ -325,6 +319,8 @@ public class CommonConfig {
 
   private boolean pipeEventReferenceTrackingEnabled = true;
   private long pipeEventReferenceEliminateIntervalSeconds = 10;
+
+  private boolean subscriptionEnabled = false;
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
   private int subscriptionSubtaskExecutorMaxThreadNum = 2;
@@ -774,30 +770,6 @@ public class CommonConfig {
     logger.info("pipeProgressIndexPersistDir is set to {}.", pipeProgressIndexPersistDirName);
   }
 
-  public String getPipeHardlinkWALDirName() {
-    return pipeHardlinkWALDirName;
-  }
-
-  public void setPipeHardlinkWALDirName(String pipeWALDirName) {
-    if (Objects.equals(pipeWALDirName, this.pipeHardlinkWALDirName)) {
-      return;
-    }
-    this.pipeHardlinkWALDirName = pipeWALDirName;
-    logger.info("pipeHardlinkWALDirName is set to {}.", pipeWALDirName);
-  }
-
-  public boolean getPipeHardLinkWALEnabled() {
-    return pipeHardLinkWALEnabled;
-  }
-
-  public void setPipeHardLinkWALEnabled(boolean pipeHardLinkWALEnabled) {
-    if (this.pipeHardLinkWALEnabled == pipeHardLinkWALEnabled) {
-      return;
-    }
-    this.pipeHardLinkWALEnabled = pipeHardLinkWALEnabled;
-    logger.info("pipeHardLinkWALEnabled is set to {}.", pipeHardLinkWALEnabled);
-  }
-
   public boolean getPipeFileReceiverFsyncEnabled() {
     return pipeFileReceiverFsyncEnabled;
   }
@@ -867,19 +839,6 @@ public class CommonConfig {
     logger.info(
         "pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold is set to {}.",
         pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold);
-  }
-
-  public double getPipeDataStructureWalMemoryProportion() {
-    return pipeDataStructureWalMemoryProportion;
-  }
-
-  public void setPipeDataStructureWalMemoryProportion(double pipeDataStructureWalMemoryProportion) {
-    if (this.pipeDataStructureWalMemoryProportion == pipeDataStructureWalMemoryProportion) {
-      return;
-    }
-    this.pipeDataStructureWalMemoryProportion = pipeDataStructureWalMemoryProportion;
-    logger.info(
-        "pipeDataStructureWalMemoryProportion is set to {}.", pipeDataStructureWalMemoryProportion);
   }
 
   public double getPipeDataStructureBatchMemoryProportion() {
@@ -1378,6 +1337,18 @@ public class CommonConfig {
         pipeSubtaskExecutorForcedRestartIntervalMs);
   }
 
+  public long getPipeMaxWaitFinishTime() {
+    return pipeMaxWaitFinishTime;
+  }
+
+  public void setPipeMaxWaitFinishTime(long pipeMaxWaitFinishTime) {
+    if (this.pipeMaxWaitFinishTime == pipeMaxWaitFinishTime) {
+      return;
+    }
+    this.pipeMaxWaitFinishTime = pipeMaxWaitFinishTime;
+    logger.info("pipeMaxWaitFinishTime is set to {}.", pipeMaxWaitFinishTime);
+  }
+
   public int getPipeRealTimeQueuePollTsFileThreshold() {
     return pipeRealTimeQueuePollTsFileThreshold;
   }
@@ -1508,19 +1479,6 @@ public class CommonConfig {
     logger.info(
         "pipeMaxAllowedPendingTsFileEpochPerDataRegion is set to {}.",
         pipeMaxAllowedPendingTsFileEpochPerDataRegion);
-  }
-
-  public int getPipeMaxAllowedPinnedMemTableCount() {
-    return pipeMaxAllowedPinnedMemTableCount;
-  }
-
-  public void setPipeMaxAllowedPinnedMemTableCount(int pipeMaxAllowedPinnedMemTableCount) {
-    if (this.pipeMaxAllowedPinnedMemTableCount == pipeMaxAllowedPinnedMemTableCount) {
-      return;
-    }
-    this.pipeMaxAllowedPinnedMemTableCount = pipeMaxAllowedPinnedMemTableCount;
-    logger.info(
-        "pipeMaxAllowedPinnedMemTableCount is set to {}", pipeMaxAllowedPinnedMemTableCount);
   }
 
   public long getPipeMaxAllowedLinkedTsFileCount() {
@@ -1712,30 +1670,6 @@ public class CommonConfig {
     this.pipeTsFilePinMaxLogIntervalRounds = pipeTsFilePinMaxLogIntervalRounds;
     logger.info(
         "pipeTsFilePinMaxLogIntervalRounds is set to {}", pipeTsFilePinMaxLogIntervalRounds);
-  }
-
-  public int getPipeWalPinMaxLogNumPerRound() {
-    return pipeWalPinMaxLogNumPerRound;
-  }
-
-  public void setPipeWalPinMaxLogNumPerRound(int pipeWalPinMaxLogNumPerRound) {
-    if (this.pipeWalPinMaxLogNumPerRound == pipeWalPinMaxLogNumPerRound) {
-      return;
-    }
-    this.pipeWalPinMaxLogNumPerRound = pipeWalPinMaxLogNumPerRound;
-    logger.info("pipeWalPinMaxLogNumPerRound is set to {}", pipeWalPinMaxLogNumPerRound);
-  }
-
-  public int getPipeWalPinMaxLogIntervalRounds() {
-    return pipeWalPinMaxLogIntervalRounds;
-  }
-
-  public void setPipeWalPinMaxLogIntervalRounds(int pipeWalPinMaxLogIntervalRounds) {
-    if (this.pipeWalPinMaxLogIntervalRounds == pipeWalPinMaxLogIntervalRounds) {
-      return;
-    }
-    this.pipeWalPinMaxLogIntervalRounds = pipeWalPinMaxLogIntervalRounds;
-    logger.info("pipeWalPinMaxLogIntervalRounds is set to {}", pipeWalPinMaxLogIntervalRounds);
   }
 
   public boolean getPipeMemoryManagementEnabled() {
@@ -2148,6 +2082,14 @@ public class CommonConfig {
     logger.info(
         "pipeEventReferenceEliminateIntervalSeconds is set to {}",
         pipeEventReferenceEliminateIntervalSeconds);
+  }
+
+  public boolean getSubscriptionEnabled() {
+    return subscriptionEnabled;
+  }
+
+  public void setSubscriptionEnabled(boolean subscriptionEnabled) {
+    this.subscriptionEnabled = subscriptionEnabled;
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {

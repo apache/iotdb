@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.pipe.agent.task;
 
+import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -78,6 +82,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -86,8 +91,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -101,6 +113,18 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       new AtomicLong(System.currentTimeMillis());
   private static final Map<String, AtomicLong> PIPE_NAME_TO_LAST_RESTART_TIME_MAP =
       new ConcurrentHashMap<>();
+
+  private final ExecutorService pipeExecutor =
+      new WrappedThreadPoolExecutor(
+          0,
+          IoTDBDescriptor.getInstance().getConfig().getPipeTaskThreadCount(),
+          0L,
+          TimeUnit.SECONDS,
+          new ArrayBlockingQueue<>(
+              IoTDBDescriptor.getInstance().getConfig().getSchemaThreadCount()),
+          new IoTThreadFactory(ThreadName.PIPE_PARALLEL_EXECUTION_POOL.getName()),
+          ThreadName.PIPE_PARALLEL_EXECUTION_POOL.getName(),
+          new ThreadPoolExecutor.CallerRunsPolicy());
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
@@ -379,9 +403,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Heartbeat /////////////////////////
 
   public void collectPipeMetaList(final TDataNodeHeartbeatResp resp) throws TException {
-    // Try the lock instead of directly acquire it to prevent the block of the cluster heartbeat
-    // 10s is the half of the HEARTBEAT_TIMEOUT_TIME defined in class BaseNodeCache in ConfigNode
-    if (!tryReadLockWithTimeOut(10)) {
+    if (!tryReadLockWithTimeOut(
+        CommonDescriptor.getInstance().getConfig().getCnConnectionTimeoutInMS())) {
       return;
     }
     try {
@@ -684,22 +707,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             "Pipe {} needs to restart because too many TsFiles are out-of-date.",
             pipeMeta.getStaticMeta());
         stuckPipes.add(pipeMeta);
-        continue;
-      }
-
-      // Try to restart the stream mode pipes for releasing memTables.
-      if (extractors.get(0).isStreamMode()) {
-        if (extractors.stream().anyMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)
-            && (mayMemTablePinnedCountReachDangerousThreshold()
-                || mayWalSizeReachThrottleThreshold())) {
-          // Extractors of this pipe may be stuck and is pinning too many MemTables.
-          LOGGER.warn(
-              "Pipe {} needs to restart because too many memTables are pinned or the WAL size is too large. mayMemTablePinnedCountReachDangerousThreshold: {}, mayWalSizeReachThrottleThreshold: {}",
-              pipeMeta.getStaticMeta(),
-              mayMemTablePinnedCountReachDangerousThreshold(),
-              mayWalSizeReachThrottleThreshold());
-          stuckPipes.add(pipeMeta);
-        }
       }
     }
 
@@ -729,18 +736,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       LOGGER.warn("Failed to judge if deleted TsFile size reaches dangerous threshold.", e);
       return false;
     }
-  }
-
-  private boolean mayMemTablePinnedCountReachDangerousThreshold() {
-    return PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount() != Integer.MAX_VALUE
-        && PipeDataNodeResourceManager.wal().getPinnedWalCount()
-            >= 5
-                * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount()
-                * StorageEngine.getInstance().getDataRegionNumber();
-  }
-
-  private boolean mayWalSizeReachThrottleThreshold() {
-    return 3 * WALManager.getInstance().getTotalDiskUsage() > 2 * CONFIG.getThrottleThreshold();
   }
 
   private void restartStuckPipe(final PipeMeta pipeMeta) {
@@ -812,6 +807,48 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     try {
       return !pipeTaskManager.hasPipeTaskInConsensusGroup(consensusGroupId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  @Override
+  public void runPipeTasks(
+      final Collection<PipeTask> pipeTasks, final Consumer<PipeTask> runSingle) {
+    final Set<Future<?>> pipeFuture = new HashSet<>();
+
+    pipeTasks.forEach(
+        pipeTask -> pipeFuture.add(pipeExecutor.submit(() -> runSingle.accept(pipeTask))));
+
+    for (final Future<?> future : pipeFuture) {
+      try {
+        future.get();
+      } catch (final ExecutionException | InterruptedException e) {
+        LOGGER.warn("Exception occurs when executing pipe task: ", e);
+        throw new PipeException(e.toString());
+      }
+    }
+  }
+
+  ///////////////////////// Shutdown Logic /////////////////////////
+
+  public void persistAllProgressIndexLocally() {
+    if (!PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()) {
+      LOGGER.info(
+          "Pipe progress index persist disabled. Skipping persist all progress index locally.");
+      return;
+    }
+    if (!tryReadLockWithTimeOut(10)) {
+      LOGGER.info("Failed to persist all progress index locally because of timeout.");
+      return;
+    }
+    try {
+      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        pipeMeta.getRuntimeMeta().persistProgressIndex();
+      }
+      LOGGER.info("Persist all progress index locally successfully.");
+    } catch (final Exception e) {
+      LOGGER.warn("Failed to record all progress index locally, because {}.", e.getMessage(), e);
     } finally {
       releaseReadLock();
     }

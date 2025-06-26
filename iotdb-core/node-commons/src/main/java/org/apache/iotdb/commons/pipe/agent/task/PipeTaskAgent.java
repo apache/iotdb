@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -33,6 +34,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
@@ -43,6 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -54,6 +57,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -165,6 +169,13 @@ public abstract class PipeTaskAgent {
   private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
       throws IllegalPathException {
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
+
+    // Do nothing with the subscription pipe if disable subscription
+    if (PipeStaticMeta.isSubscriptionPipe(pipeName)
+        && !SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return;
+    }
+
     final PipeMeta metaInAgent = pipeMetaKeeper.getPipeMeta(pipeName);
 
     // If pipe meta does not exist on local agent, create a new pipe
@@ -335,7 +346,10 @@ public abstract class PipeTaskAgent {
 
   public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
       final List<PipeMeta> pipeMetaListFromCoordinator) {
-    acquireWriteLock();
+    if (tryWriteLockWithTimeOut(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return null;
+    }
     try {
       return handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
     } finally {
@@ -473,7 +487,7 @@ public abstract class PipeTaskAgent {
 
     // Trigger create() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::create);
+    runPipeTasks(pipeTasks.values(), PipeTask::create);
     LOGGER.info(
         "Create all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -528,7 +542,7 @@ public abstract class PipeTaskAgent {
 
     // Trigger drop() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::drop);
+    runPipeTasks(pipeTasks.values(), PipeTask::drop);
     LOGGER.info(
         "Drop all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -567,7 +581,7 @@ public abstract class PipeTaskAgent {
 
     // Trigger drop() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::drop);
+    runPipeTasks(pipeTasks.values(), PipeTask::drop);
     LOGGER.info(
         "Drop all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -600,7 +614,7 @@ public abstract class PipeTaskAgent {
 
     // Trigger start() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::start);
+    runPipeTasks(pipeTasks.values(), PipeTask::start);
     LOGGER.info(
         "Start all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -639,7 +653,7 @@ public abstract class PipeTaskAgent {
 
     // Trigger stop() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::stop);
+    runPipeTasks(pipeTasks.values(), PipeTask::stop);
     LOGGER.info(
         "Stop all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -1039,7 +1053,10 @@ public abstract class PipeTaskAgent {
 
   public void collectPipeMetaList(final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp)
       throws TException {
-    acquireReadLock();
+    if (!tryReadLockWithTimeOut(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return;
+    }
     try {
       collectPipeMetaListInternal(req, resp);
     } finally {
@@ -1049,6 +1066,9 @@ public abstract class PipeTaskAgent {
 
   protected abstract void collectPipeMetaListInternal(
       final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException;
+
+  public abstract void runPipeTasks(
+      final Collection<PipeTask> pipeTasks, final Consumer<PipeTask> runSingle);
 
   ///////////////////////// Maintain meta info /////////////////////////
 
