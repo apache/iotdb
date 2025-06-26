@@ -1063,7 +1063,10 @@ struct TShowModelReq {
 
 struct TShowModelResp {
   1: required common.TSStatus status
-  2: required list<binary> modelInfoList
+  2: optional list<string> modelIdList
+  3: optional map<string, string> modelTypeMap
+  4: optional map<string, string> categoryMap
+  5: optional map<string, string> stateMap
 }
 
 struct TGetModelInfoReq {

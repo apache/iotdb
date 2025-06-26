@@ -2720,7 +2720,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? modelManager.showModel(req)
-        : new TShowModelResp(status, Collections.emptyList());
+        : new TShowModelResp(status);
   }
 
   @Override
