@@ -2648,7 +2648,7 @@ public class ConfigManager implements IManager {
   }
 
   private List<IDataSchema> fetchSchemaForTableModel(TCreateTrainingReq req) {
-    return Collections.singletonList(new IDataSchema(req.getDataSchemaForTable().targetSql));
+    return Collections.singletonList(new IDataSchema(req.getDataSchemaForTable().getTargetSql()));
   }
 
   public TSStatus createTraining(TCreateTrainingReq req) {
@@ -2660,11 +2660,11 @@ public class ConfigManager implements IManager {
 
     TTrainingReq trainingReq = new TTrainingReq();
     trainingReq.setModelId(req.getModelId());
-    trainingReq.setModelType("sundial");
-    if (req.existingModelId != null) {
+    trainingReq.setModelType(req.getModelType());
+    if (req.isSetExistingModelId()) {
       trainingReq.setExistingModelId(req.getExistingModelId());
     }
-    if (!req.parameters.isEmpty()) {
+    if (req.isSetParameters() && !req.getParameters().isEmpty()) {
       trainingReq.setParameters(req.getParameters());
     }
 

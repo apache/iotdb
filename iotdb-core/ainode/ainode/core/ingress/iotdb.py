@@ -216,8 +216,11 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
 
 class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
 
+    DEFAULT_TAG = "__DEFAULT_TAG__"
+
     def __init__(
         self,
+        model_id: str,
         seq_len: int,
         input_token_len: int,
         output_token_len: int,
@@ -227,8 +230,10 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
         username: str = "root",
         password: str = "root",
         time_zone: str = "UTC+8",
+        use_rate: float = 1.0,
+        offset_rate: float = 0.0,
     ):
-        super().__init__(ip, port, input_token_len, output_token_len)
+        super().__init__(ip, port, seq_len, input_token_len, output_token_len)
 
         table_session_config = TableSessionConfig(
             node_urls=[f"{ip}:{port}"],
@@ -236,55 +241,87 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
             password=password,
             time_zone=time_zone,
         )
-
         self.session = TableSession(table_session_config)
-        self._fetch_schema(data_schema_list)
+        self.use_rate = use_rate
+        self.offset_rate = offset_rate
 
         # used for caching data
-        self.series_map = {}
+        self._fetch_schema(data_schema_list)
 
     def _fetch_schema(self, data_schema_list: list):
-        series_to_length = {}
+        series_map = {}
         for target_sql in data_schema_list:
+            target_sql = target_sql.schemaName
             with self.session.execute_query_statement(target_sql) as target_data:
                 while target_data.has_next():
                     cur_data = target_data.next()
-                    tag = cur_data.get_fields()[2].get_string_value()
-                    series_list = self.series_map[tag]
-                    series_list.append(get_field_value(cur_data.get_fields()[1]))
+                    # TODO: currently, we only support the following simple table form
+                    time_col, value_col, tag_col = -1, -1, -1
+                    for i, field in enumerate(cur_data.get_fields()):
+                        if field.get_data_type() == TSDataType.TIMESTAMP:
+                            time_col = i
+                        elif field.get_data_type() in (
+                            TSDataType.INT32,
+                            TSDataType.INT64,
+                            TSDataType.FLOAT,
+                            TSDataType.DOUBLE,
+                        ):
+                            value_col = i
+                        elif field.get_data_type() == TSDataType.TEXT:
+                            tag_col = i
+                    if time_col == -1 or value_col == -1:
+                        raise ValueError(
+                            "The training cannot start due to invalid data schema"
+                        )
+                    if tag_col == -1:
+                        tag = self.DEFAULT_TAG
+                    else:
+                        tag = cur_data.get_fields()[tag_col].get_string_value()
+                    if tag not in series_map:
+                        series_map[tag] = []
+                    series_list = series_map[tag]
+                    series_list.append(
+                        get_field_value(cur_data.get_fields()[value_col])
+                    )
 
-        for tag in self.series_map.values():
-            series_to_length[tag] = (tag, len(self.series_map[tag]))
-
-        sorted_series = sorted(series_to_length.items(), key=lambda x: x[1][1])
-        sorted_series_with_prefix_sum = []
+        # TODO: Unify the following implementation
+        # structure: [(series_name, the number of windows of this series, prefix sum of window number, window start offset, series_data), ...]
+        series_with_prefix_sum = []
         window_sum = 0
-        for seq_name, seq_value in sorted_series:
-            window_count = seq_value[1] - self.seq_len - self.output_token_len + 1
-            if window_count < 0:
+        for seq_name, seq_values in series_map.items():
+            # calculate and sum the number of training data windows for each time series
+            window_count = len(seq_values) - self.seq_len - self.output_token_len + 1
+            if window_count <= 1:
                 continue
-            window_sum += window_count
-            sorted_series_with_prefix_sum.append((seq_name, window_count, window_sum))
+            use_window_count = int(window_count * self.use_rate)
+            window_sum += use_window_count
+            series_with_prefix_sum.append(
+                (
+                    seq_name,
+                    use_window_count,
+                    window_sum,
+                    int(window_count * self.offset_rate),
+                    seq_values,
+                )
+            )
 
-        self.total_count = window_sum
-        self.sorted_series = sorted_series_with_prefix_sum
+        self.total_window_count = window_sum
+        self.series_with_prefix_sum = series_with_prefix_sum
 
     def __getitem__(self, index):
         window_index = index
-
+        # locate the series to be queried
         series_index = 0
-
-        while self.sorted_series[series_index][1] < window_index:
+        while self.series_with_prefix_sum[series_index][1] < window_index:
             series_index += 1
-
+        # locate the window of this series to be queried
         if series_index != 0:
-            window_index -= self.sorted_series[series_index - 1][1]
-
-        tag = self.sorted_series[series_index][0]
-        result = self.series_map[tag][
+            window_index -= self.series_with_prefix_sum[series_index - 1][2]
+        window_index += self.series_with_prefix_sum[series_index][3]
+        result = self.series_with_prefix_sum[series_index][4][
             window_index : window_index + self.seq_len + self.output_token_len
         ]
-
+        result = torch.tensor(result)
         return (
             result[0 : self.seq_len],
             result[self.input_token_len : self.seq_len + self.output_token_len],
@@ -292,7 +329,7 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
         )
 
     def __len__(self):
-        return self.end_index - self.start_index
+        return self.total_window_count
 
 
 def register_dataset(key: str, dataset: Dataset):

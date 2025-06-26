@@ -3563,7 +3563,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (ctx.targetData == null) {
       throw new SemanticException("Target data in sql should be set in CREATE MODEL");
     }
-    String targetData = ctx.targetData.getText();
+    String targetData = ((StringLiteral) visit(ctx.targetData)).getValue();
     CreateTraining createTraining = new CreateTraining(modelId, modelType, targetData);
     if (ctx.HYPERPARAMETERS() != null) {
       Map<String, String> parameters = new HashMap<>();
