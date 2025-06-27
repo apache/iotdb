@@ -67,13 +67,15 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         // of the tested idempotent sql.
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setEnforceStrongPassword(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setEnforceStrongPassword(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
@@ -305,11 +307,11 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   public void testCreateUserIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
-        "create user `ln_write_user` 'write_pwd'",
+        "create user `ln_write_user` 'write_pwd123456'",
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -326,25 +328,25 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   @Test
   public void testGrantRoleToUserIdempotent() throws Exception {
     testIdempotent(
-        Arrays.asList("create user `ln_write_user` 'write_pwd'", "create role `test`"),
+        Arrays.asList("create user `ln_write_user` 'write_pwd123456'", "create role `test`"),
         "grant role test to ln_write_user",
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
   public void testRevokeUserIdempotent() throws Exception {
     testIdempotent(
         Arrays.asList(
-            "create user `ln_write_user` 'write_pwd'",
+            "create user `ln_write_user` 'write_pwd123456'",
             "GRANT READ_DATA, WRITE_DATA ON root.t1.** TO USER ln_write_user;"),
         "REVOKE READ_DATA, WRITE_DATA ON root.t1.** FROM USER ln_write_user;",
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -362,25 +364,25 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   public void testRevokeRoleFromUserIdempotent() throws Exception {
     testIdempotent(
         Arrays.asList(
-            "create user `ln_write_user` 'write_pwd'",
+            "create user `ln_write_user` 'write_pwd123456'",
             "create role `test`",
             "grant role test to ln_write_user"),
         "revoke role test from ln_write_user",
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
   public void testDropUserIdempotent() throws Exception {
     testIdempotent(
-        Collections.singletonList("create user `ln_write_user` 'write_pwd'"),
+        Collections.singletonList("create user `ln_write_user` 'write_pwd123456'"),
         "drop user `ln_write_user`",
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
