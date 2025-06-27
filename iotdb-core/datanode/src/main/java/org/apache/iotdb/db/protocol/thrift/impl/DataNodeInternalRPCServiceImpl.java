@@ -1151,6 +1151,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       .map(PipeMeta::deserialize4TaskAgent)
                       .collect(Collectors.toList()));
 
+      if (Objects.isNull(exceptionMessages)) {
+        return new TPushPipeMetaResp()
+            .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_TIMEOUT.getStatusCode()));
+      }
       return exceptionMessages.isEmpty()
           ? new TPushPipeMetaResp()
               .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))

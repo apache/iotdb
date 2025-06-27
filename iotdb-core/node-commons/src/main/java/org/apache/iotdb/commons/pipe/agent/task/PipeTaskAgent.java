@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -337,7 +338,10 @@ public abstract class PipeTaskAgent {
 
   public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
       final List<PipeMeta> pipeMetaListFromCoordinator) {
-    acquireWriteLock();
+    if (!tryWriteLockWithTimeOut(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return null;
+    }
     try {
       return handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
     } finally {
@@ -1052,7 +1056,10 @@ public abstract class PipeTaskAgent {
 
   public void collectPipeMetaList(final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp)
       throws TException {
-    acquireReadLock();
+    if (!tryReadLockWithTimeOut(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return;
+    }
     try {
       collectPipeMetaListInternal(req, resp);
     } finally {
