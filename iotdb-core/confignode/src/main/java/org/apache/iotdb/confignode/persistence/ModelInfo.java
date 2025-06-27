@@ -121,13 +121,8 @@ public class ModelInfo implements SnapshotProcessor {
     try {
       acquireModelTableWriteLock();
       String modelName = plan.getModelName();
-      if (modelTable.containsModel(modelName)) {
-        return new TSStatus(TSStatusCode.MODEL_EXIST_ERROR.getStatusCode())
-            .setMessage(String.format("model [%s] has already been created.", modelName));
-      } else {
-        modelTable.addModel(new ModelInformation(modelName, ModelStatus.LOADING));
-        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      }
+      modelTable.addModel(new ModelInformation(modelName, ModelStatus.LOADING));
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       final String errorMessage =
           String.format(
