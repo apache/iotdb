@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.function;
 
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.udf.api.exception.CloseFailedInExternalDB;
+import org.apache.iotdb.udf.api.exception.ExecutionFailedInExternalDB;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionLeafProcessor;
 
@@ -61,7 +65,12 @@ public class TableFunctionLeafOperator implements ProcessOperator {
   @Override
   public TsBlock next() throws Exception {
     List<ColumnBuilder> columnBuilders = getOutputColumnBuilders();
-    processor.process(columnBuilders);
+    try {
+      processor.process(columnBuilders);
+    } catch (ExecutionFailedInExternalDB e) {
+      throw new IoTDBRuntimeException(
+          e.getMessage(), TSStatusCode.EXECUTION_FAILED_IN_EXTERNAL_DB.getStatusCode(), true);
+    }
     return buildTsBlock(columnBuilders);
   }
 
@@ -83,7 +92,12 @@ public class TableFunctionLeafOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    processor.beforeDestroy();
+    try {
+      processor.beforeDestroy();
+    } catch (CloseFailedInExternalDB e) {
+      throw new IoTDBRuntimeException(
+          e.getMessage(), TSStatusCode.CLOSE_FAILED_IN_EXTERNAL_DB.getStatusCode(), true);
+    }
   }
 
   @Override

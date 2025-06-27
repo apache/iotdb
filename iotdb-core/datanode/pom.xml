@@ -314,11 +314,6 @@
             <artifactId>Java-WebSocket</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <version>${mysql.jdbc.version}</version>
-        </dependency>
-        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>

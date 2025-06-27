@@ -1,18 +1,18 @@
-package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector;
+package org.apache.iotdb.library.relational.tablefunction.connector;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter.BinaryConverter;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter.BlobConverter;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter.BooleanConverter;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter.DateConverter;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter.DoubleConverter;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter.FloatConverter;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter.Int32Converter;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter.Int64Converter;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter.ResultSetConverter;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter.StringConverter;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter.TimeConverter;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter.TimestampConverter;
+import org.apache.iotdb.library.relational.tablefunction.connector.converter.BinaryConverter;
+import org.apache.iotdb.library.relational.tablefunction.connector.converter.BlobConverter;
+import org.apache.iotdb.library.relational.tablefunction.connector.converter.BooleanConverter;
+import org.apache.iotdb.library.relational.tablefunction.connector.converter.DateConverter;
+import org.apache.iotdb.library.relational.tablefunction.connector.converter.DoubleConverter;
+import org.apache.iotdb.library.relational.tablefunction.connector.converter.FloatConverter;
+import org.apache.iotdb.library.relational.tablefunction.connector.converter.Int32Converter;
+import org.apache.iotdb.library.relational.tablefunction.connector.converter.Int64Converter;
+import org.apache.iotdb.library.relational.tablefunction.connector.converter.ResultSetConverter;
+import org.apache.iotdb.library.relational.tablefunction.connector.converter.StringConverter;
+import org.apache.iotdb.library.relational.tablefunction.connector.converter.TimeConverter;
+import org.apache.iotdb.library.relational.tablefunction.connector.converter.TimestampConverter;
+import org.apache.iotdb.udf.api.exception.UDFTypeMismatchException;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.slf4j.Logger;
@@ -78,7 +78,7 @@ public class JDBCConnectionPool {
       case java.sql.Types.BOOLEAN:
         return Type.BOOLEAN;
       default:
-        throw new SemanticException("Unsupported JDBC type: " + type);
+        throw new UDFTypeMismatchException("Unsupported JDBC type: " + type);
     }
   }
 
@@ -119,7 +119,7 @@ public class JDBCConnectionPool {
       case java.sql.Types.BOOLEAN:
         return new BooleanConverter();
       default:
-        throw new SemanticException("Unsupported JDBC type: " + type);
+        throw new UDFTypeMismatchException("Unsupported JDBC type: " + type);
     }
   }
 }

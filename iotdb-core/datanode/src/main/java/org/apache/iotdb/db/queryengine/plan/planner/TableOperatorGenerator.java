@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -227,6 +228,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchem
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.udf.api.exception.ExecutionFailedInExternalDB;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 
@@ -3140,7 +3143,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
                   TableFunctionLeafOperator.class.getSimpleName());
-      return new TableFunctionLeafOperator(operatorContext, processorProvider, outputDataTypes);
+      try {
+        return new TableFunctionLeafOperator(operatorContext, processorProvider, outputDataTypes);
+      } catch (ExecutionFailedInExternalDB e) {
+        throw new IoTDBRuntimeException(
+            e.getMessage(), TSStatusCode.EXECUTION_FAILED_IN_EXTERNAL_DB.getStatusCode(), true);
+      }
     } else {
       Operator operator = node.getChild().accept(this, context);
       OperatorContext operatorContext =

@@ -1,19 +1,19 @@
-package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter;
+package org.apache.iotdb.library.relational.tablefunction.connector.converter;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class BooleanConverter implements ResultSetConverter {
+public class Int64Converter implements ResultSetConverter {
   @Override
   public void append(ResultSet row, int columnIndex, ColumnBuilder properColumnBuilder)
       throws SQLException {
-    boolean value = row.getBoolean(columnIndex);
+    long value = row.getLong(columnIndex);
     if (row.wasNull()) {
       properColumnBuilder.appendNull();
     } else {
-      properColumnBuilder.writeBoolean(value);
+      properColumnBuilder.writeLong(value);
     }
   }
 }

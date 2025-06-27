@@ -1,9 +1,8 @@
-package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector;
+package org.apache.iotdb.library.relational.tablefunction.connector;
 
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.converter.ResultSetConverter;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.library.relational.tablefunction.connector.converter.ResultSetConverter;
+import org.apache.iotdb.udf.api.exception.CloseFailedInExternalDB;
+import org.apache.iotdb.udf.api.exception.ExecutionFailedInExternalDB;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
@@ -36,9 +35,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.connector.JDBCConnectionPool.translateJDBCTypeToUDFType;
-import static org.apache.iotdb.rpc.TSStatusCode.CLOSE_FAILED_IN_EXTERNAL_DB;
-import static org.apache.iotdb.rpc.TSStatusCode.EXECUTION_FAILED_IN_EXTERNAL_DB;
+import static org.apache.iotdb.library.relational.tablefunction.connector.JDBCConnectionPool.translateJDBCTypeToUDFType;
 
 public class MySqlConnectorTableFunction implements TableFunction {
 
@@ -83,11 +80,10 @@ public class MySqlConnectorTableFunction implements TableFunction {
         outputStream.flush();
         return publicBAOS.toByteArray();
       } catch (IOException e) {
-        throw new IoTDBRuntimeException(
+        throw new UDFException(
             String.format(
                 "Error occurred while serializing MySqlConnectorTableFunctionHandle: %s",
-                e.getMessage()),
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+                e.getMessage()));
       }
     }
 
@@ -107,11 +103,13 @@ public class MySqlConnectorTableFunction implements TableFunction {
 
   private static final String SQL = "SQL";
   private static final String URL = "URL";
-  private static final String DEFAULT_URL = "jdbc:mysql://localhost:3306";
+  private static final String DEFAULT_URL =
+      "jdbc:mysql://localhost:3306?allowPublicKeyRetrieval=true";
   private static final String USERNAME = "USERNAME";
   private static final String DEFAULT_USERNAME = "root";
   private static final String PASSWORD = "PASSWORD";
-  private static final String DEFAULT_PASSWORD = "root";
+  private static final String DEFAULT_PASSWORD = "iotdb2025";
+  private static final String MYSQL = "MYSQL";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -154,7 +152,7 @@ public class MySqlConnectorTableFunction implements TableFunction {
         types[i - 1] = type;
       }
     } catch (SQLException e) {
-      throw new SemanticException(e);
+      throw new UDFException("Get ResultSetMetaData failed.", e);
     }
     MySqlConnectorTableFunctionHandle handle =
         new MySqlConnectorTableFunctionHandle(sql, url, userName, password, types);
@@ -205,7 +203,7 @@ public class MySqlConnectorTableFunction implements TableFunction {
         this.statement = connection.createStatement();
         this.resultSet = statement.executeQuery(handle.sql);
       } catch (SQLException e) {
-        throw new IoTDBRuntimeException(e, EXECUTION_FAILED_IN_EXTERNAL_DB.getStatusCode(), true);
+        throw new ExecutionFailedInExternalDB(MYSQL, e);
       }
     }
 
@@ -227,7 +225,7 @@ public class MySqlConnectorTableFunction implements TableFunction {
           }
         }
       } catch (SQLException e) {
-        throw new IoTDBRuntimeException(e, EXECUTION_FAILED_IN_EXTERNAL_DB.getStatusCode(), true);
+        throw new ExecutionFailedInExternalDB(MYSQL, e);
       }
     }
 
@@ -249,7 +247,7 @@ public class MySqlConnectorTableFunction implements TableFunction {
           connection.close();
         }
       } catch (SQLException e) {
-        throw new IoTDBRuntimeException(e, CLOSE_FAILED_IN_EXTERNAL_DB.getStatusCode(), true);
+        throw new CloseFailedInExternalDB(MYSQL, e);
       }
     }
   }
