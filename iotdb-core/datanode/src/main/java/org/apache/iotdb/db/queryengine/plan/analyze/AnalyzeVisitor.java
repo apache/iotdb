@@ -602,11 +602,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap = null;
     Set<IDeviceID> allDeviceSet = new HashSet<>();
+    Set<IDeviceID> deviceExistViewSet = new HashSet<>();
     Map<IDeviceID, Map<String, Expression>> outputPathToSourceExpressionMap = new LinkedHashMap<>();
     Ordering timeseriesOrdering = analysis.getTimeseriesOrderingForLastQuery();
 
     for (Expression selectExpression : selectExpressions) {
-      // TODO: calculate memory
       for (Expression lastQuerySourceExpression :
           bindSchemaForExpression(selectExpression, schemaTree, context)) {
         if (lastQuerySourceExpression instanceof TimeSeriesOperand) {
@@ -625,6 +625,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                           ? new TreeMap<>(timeseriesOrdering.getStringComparator())
                           : new LinkedHashMap<>())
               .put(outputPath.getMeasurement(), timeSeriesOperand);
+
+          if (timeSeriesOperand.isViewExpression()) {
+            deviceExistViewSet.add(outputDevice);
+          }
         } else {
           lastQueryNonWritableViewSourceExpressionMap =
               lastQueryNonWritableViewSourceExpressionMap == null
@@ -648,6 +652,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     analysis.setHasSourceExpressions(!allDeviceSet.isEmpty());
     analysis.setLastQueryOutputPathToSourceExpressionMap(outputPathToSourceExpressionMap);
+    analysis.setDeviceExistViewSet(deviceExistViewSet);
     analysis.setLastQueryNonWritableViewSourceExpressionMap(
         lastQueryNonWritableViewSourceExpressionMap);
 

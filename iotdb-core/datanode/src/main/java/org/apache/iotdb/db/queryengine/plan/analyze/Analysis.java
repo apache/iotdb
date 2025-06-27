@@ -240,6 +240,8 @@ public class Analysis implements IAnalysis {
 
   private Map<IDeviceID, Map<String, Expression>> lastQueryOutputPathToSourceExpressionMap;
 
+  private Set<IDeviceID> deviceExistViewSet;
+
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
@@ -913,6 +915,14 @@ public class Analysis implements IAnalysis {
   public void setLastQueryOutputPathToSourceExpressionMap(
       Map<IDeviceID, Map<String, Expression>> lastQueryOutputPathToSourceExpressionMap) {
     this.lastQueryOutputPathToSourceExpressionMap = lastQueryOutputPathToSourceExpressionMap;
+  }
+
+  public Set<IDeviceID> getDeviceExistViewSet() {
+    return deviceExistViewSet;
+  }
+
+  public void setDeviceExistViewSet(Set<IDeviceID> deviceExistViewSet) {
+    this.deviceExistViewSet = deviceExistViewSet;
   }
 
   public Map<Expression, List<Expression>> getLastQueryNonWritableViewSourceExpressionMap() {

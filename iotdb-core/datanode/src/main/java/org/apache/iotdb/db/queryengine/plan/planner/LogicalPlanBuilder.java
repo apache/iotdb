@@ -234,21 +234,20 @@ public class LogicalPlanBuilder {
     // <Device, <Measurement, Expression>>
     Map<IDeviceID, Map<String, Expression>> outputPathToSourceExpressionMap =
         analysis.getLastQueryOutputPathToSourceExpressionMap();
+    Set<IDeviceID> deviceExistViewSet = analysis.getDeviceExistViewSet();
 
     LastQueryNode lastQueryNode =
         new LastQueryNode(
             context.getQueryId().genPlanNodeId(),
             timeseriesOrdering,
             analysis.getLastQueryNonWritableViewSourceExpressionMap() != null);
-    long memoryWithoutTransformNode = 0;
     for (Map.Entry<IDeviceID, Map<String, Expression>> deviceMeasurementExpressionEntry :
         outputPathToSourceExpressionMap.entrySet()) {
       IDeviceID deviceId = deviceMeasurementExpressionEntry.getKey();
       Map<String, Expression> measurementToExpressionsOfDevice =
           deviceMeasurementExpressionEntry.getValue();
 
-      boolean deviceExistView =
-          measurementToExpressionsOfDevice.values().iterator().next().isViewExpression();
+      boolean deviceExistView = deviceExistViewSet.contains(deviceId);
       if (deviceExistView) {
         // exist view
         for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
@@ -261,13 +260,15 @@ public class LogicalPlanBuilder {
 
           PartialPath devicePath = selectedPath.getDevicePath();
           devicePath.setIDeviceID(deviceId);
-          memoryWithoutTransformNode +=
+          long memCost =
               lastQueryNode.addDeviceLastQueryScanNode(
                   context.getQueryId().genPlanNodeId(),
                   devicePath,
                   selectedPath.isUnderAlignedEntity(),
                   Collections.singletonList(selectedPath.getMeasurementSchema()),
                   outputViewPath);
+          this.context.reserveMemoryForFrontEnd(memCost);
+          context.setNeedUpdateScanNumForLastQuery(true);
         }
       } else {
         boolean aligned = false;
@@ -282,17 +283,17 @@ public class LogicalPlanBuilder {
           measurementSchemas.add(selectedPath.getMeasurementSchema());
         }
         devicePath.setIDeviceID(deviceId);
-        memoryWithoutTransformNode +=
+        long memCost =
             lastQueryNode.addDeviceLastQueryScanNode(
                 context.getQueryId().genPlanNodeId(),
                 devicePath,
                 aligned,
                 measurementSchemas,
                 null);
+        this.context.reserveMemoryForFrontEnd(memCost);
       }
     }
-    memoryWithoutTransformNode += lastQueryNode.getMemorySizeOfSharedStructures();
-    this.context.reserveMemoryForFrontEnd(memoryWithoutTransformNode);
+    this.context.reserveMemoryForFrontEnd(lastQueryNode.getMemorySizeOfSharedStructures());
 
     processLastQueryTransformNode(analysis, lastQueryNode);
 
@@ -312,6 +313,7 @@ public class LogicalPlanBuilder {
     if (analysis.getLastQueryNonWritableViewSourceExpressionMap() == null) {
       return;
     }
+    context.setNeedUpdateScanNumForLastQuery(true);
 
     for (Map.Entry<Expression, List<Expression>> entry :
         analysis.getLastQueryNonWritableViewSourceExpressionMap().entrySet()) {

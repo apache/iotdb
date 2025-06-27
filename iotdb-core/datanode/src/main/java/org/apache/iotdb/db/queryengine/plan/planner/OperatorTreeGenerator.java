@@ -2864,7 +2864,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       final String outputViewPath,
       final PlanNodeId planNodeId,
       final AlignedPath unCachedPath,
-      final LocalExecutionPlanContext context) {
+      final LocalExecutionPlanContext context,
+      final boolean deviceInMultiRegion) {
     final AlignedSeriesAggregationScanOperator lastQueryScan =
         createLastQueryScanOperator(
             planNodeId, (AlignedFullPath) IFullPath.convertToIFullPath(unCachedPath), context);
@@ -2905,7 +2906,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             unCachedPath,
             DATA_NODE_SCHEMA_CACHE,
             isNeedUpdateLastCache,
-            context.isNeedUpdateNullEntry())
+            context.isNeedUpdateNullEntry(),
+            deviceInMultiRegion)
         : new AlignedUpdateViewPathLastCacheOperator(
             operatorContext,
             lastQueryScan,
@@ -2913,7 +2915,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             DATA_NODE_SCHEMA_CACHE,
             isNeedUpdateLastCache,
             context.isNeedUpdateNullEntry(),
-            outputViewPath);
+            outputViewPath,
+            deviceInMultiRegion);
   }
 
   private SeriesAggregationScanOperator createLastQueryScanOperator(
@@ -3014,7 +3017,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       final MeasurementPath measurementPath =
           devicePath.concatAsMeasurementPath(measurementSchema.getMeasurementName());
       TimeValuePair timeValuePair = null;
-      context.dataNodeQueryContext.lock();
+      context.dataNodeQueryContext.lock(node.isDeviceInMultiRegion());
       try {
         if (!context.dataNodeQueryContext.unCached(measurementPath)) {
           timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
@@ -3024,7 +3027,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           }
         }
       } finally {
-        context.dataNodeQueryContext.unLock();
+        context.dataNodeQueryContext.unLock(node.isDeviceInMultiRegion());
       }
 
       if (timeValuePair == null) { // last value is not cached
@@ -3059,7 +3062,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         unCachedPath.addMeasurement(measurementSchema.getMeasurementName(), measurementSchema);
       }
       return createAlignedUpdateLastCacheOperator(
-          node.getOutputViewPath(), node.getPlanNodeId(), unCachedPath, context);
+          node.getOutputViewPath(),
+          node.getPlanNodeId(),
+          unCachedPath,
+          context,
+          node.isDeviceInMultiRegion());
     } else {
       List<Operator> operators = new ArrayList<>(unCachedMeasurementIndexes.size());
       for (int i : unCachedMeasurementIndexes) {

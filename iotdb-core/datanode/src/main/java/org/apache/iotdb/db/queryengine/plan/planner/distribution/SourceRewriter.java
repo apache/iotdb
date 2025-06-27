@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -85,6 +87,7 @@ import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
@@ -1283,14 +1286,17 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     // Step 1: Get all source nodes. For the node which is not source, add it as the child of
     // current TimeJoinNode
     List<SourceNode> sources = new ArrayList<>();
+    Map<String, Map<Integer, List<TRegionReplicaSet>>> cachedRegionReplicas = new HashMap<>();
     for (PlanNode child : node.getChildren()) {
       if (child instanceof SeriesSourceNode) {
         // If the child is SeriesScanNode, we need to check whether this node should be seperated
         // into several splits.
         SeriesSourceNode sourceNode = (SeriesSourceNode) child;
         List<TRegionReplicaSet> dataDistribution =
-            analysis.getPartitionInfo(
-                sourceNode.getPartitionPath(), context.getPartitionTimeFilter());
+            getDeviceReplicaSets(
+                sourceNode.getPartitionPath().getIDeviceID(),
+                context.getPartitionTimeFilter(),
+                cachedRegionReplicas);
         if (dataDistribution.size() > 1) {
           // If there is some series which is distributed in multi DataRegions
           context.setOneSeriesInMultiRegion(true);
@@ -1301,11 +1307,14 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           SeriesSourceNode split = (SeriesSourceNode) sourceNode.clone();
           split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
           split.setRegionReplicaSet(dataRegion);
+          if (split instanceof LastQueryScanNode) {
+            ((LastQueryScanNode) split).setDeviceInMultiRegion(dataDistribution.size() > 1);
+          }
           sources.add(split);
         }
 
         if (dataDistribution.size() > 1) {
-          context.getQueryContext().setNeedUpdateScanNumForLastQuery(dataDistribution.size() > 1);
+          context.getQueryContext().setNeedUpdateScanNumForLastQuery(true);
         }
       }
     }
@@ -1318,6 +1327,22 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     }
 
     return sourceGroup;
+  }
+
+  private List<TRegionReplicaSet> getDeviceReplicaSets(
+      IDeviceID deviceID,
+      Filter timeFilter,
+      Map<String, Map<Integer, List<TRegionReplicaSet>>> cache) {
+    DataPartition dataPartition = analysis.getDataPartitionInfo();
+    String db = dataPartition.getDatabaseNameByDevice(deviceID);
+    TSeriesPartitionSlot tSeriesPartitionSlot = dataPartition.calculateDeviceGroupId(deviceID);
+    Map<Integer, List<TRegionReplicaSet>> slot2ReplicasMap =
+        cache.computeIfAbsent(db, k -> new HashMap<>());
+    return slot2ReplicasMap.computeIfAbsent(
+        tSeriesPartitionSlot.slotId,
+        k ->
+            dataPartition.getDataRegionReplicaSetWithTimeFilter(
+                db, tSeriesPartitionSlot, timeFilter));
   }
 
   private boolean containsAggregationSource(FullOuterTimeJoinNode node) {

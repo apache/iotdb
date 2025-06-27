@@ -42,7 +42,6 @@ import javax.annotation.Nullable;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator {
   protected static final TsBlock LAST_QUERY_EMPTY_TSBLOCK =
@@ -65,12 +64,15 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected String databaseName;
 
+  protected boolean deviceInMultiRegion;
+
   protected AbstractUpdateLastCacheOperator(
       final OperatorContext operatorContext,
       final Operator child,
       final TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       final boolean needUpdateCache,
-      final boolean needUpdateNullEntry) {
+      final boolean needUpdateNullEntry,
+      final boolean deviceInMultiRegion) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.lastCache = treeDeviceSchemaCacheManager;
@@ -79,6 +81,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
     this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);
     this.dataNodeQueryContext =
         operatorContext.getDriverContext().getFragmentInstanceContext().getDataNodeQueryContext();
+    this.deviceInMultiRegion = deviceInMultiRegion;
   }
 
   @Override
@@ -101,15 +104,13 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
     return databaseName;
   }
 
-  private static AtomicLong updateNum = new AtomicLong(0);
-
   protected void mayUpdateLastCache(
       final long time, final @Nullable TsPrimitiveType value, final MeasurementPath fullPath) {
     if (!needUpdateCache) {
       return;
     }
     try {
-      dataNodeQueryContext.lock();
+      dataNodeQueryContext.lock(deviceInMultiRegion);
       final Pair<AtomicInteger, TimeValuePair> seriesScanInfo =
           dataNodeQueryContext.getSeriesScanInfo(fullPath);
 
@@ -138,7 +139,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
             new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
       }
     } finally {
-      dataNodeQueryContext.unLock();
+      dataNodeQueryContext.unLock(deviceInMultiRegion);
     }
   }
 

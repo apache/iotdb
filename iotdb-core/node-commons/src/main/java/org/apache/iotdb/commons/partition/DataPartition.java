@@ -158,6 +158,31 @@ public class DataPartition extends Partition {
         .collect(toList());
   }
 
+  public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
+      String db, TSeriesPartitionSlot tSeriesPartitionSlot, Filter timeFilter) {
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetMap =
+        dataPartitionMap
+            .getOrDefault(db, Collections.emptyMap())
+            .getOrDefault(tSeriesPartitionSlot, Collections.emptyMap());
+    if (regionReplicaSetMap.isEmpty()) {
+      return Collections.singletonList(NOT_ASSIGNED);
+    }
+    List<TRegionReplicaSet> replicaSets = new ArrayList<>();
+    Set<TRegionReplicaSet> uniqueValues = new HashSet<>();
+    for (Entry<TTimePartitionSlot, List<TRegionReplicaSet>> entry :
+        regionReplicaSetMap.entrySet()) {
+      if (!TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime)) {
+        continue;
+      }
+      for (TRegionReplicaSet tRegionReplicaSet : entry.getValue()) {
+        if (uniqueValues.add(tRegionReplicaSet)) {
+          replicaSets.add(tRegionReplicaSet);
+        }
+      }
+    }
+    return replicaSets;
+  }
+
   /**
    * For table model usage.
    *
@@ -267,7 +292,7 @@ public class DataPartition extends Partition {
         deviceID, timePartitionSlot, getDatabaseNameByDevice(deviceID));
   }
 
-  private String getDatabaseNameByDevice(IDeviceID deviceID) {
+  public String getDatabaseNameByDevice(IDeviceID deviceID) {
     for (String storageGroup : dataPartitionMap.keySet()) {
       if (PathUtils.isStartWith(deviceID, storageGroup)) {
         return storageGroup;

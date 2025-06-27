@@ -91,4 +91,11 @@ public class MemoryEstimationHelper {
     }
     return totalSize;
   }
+
+  public static long getEstimatedSizeOfCopiedPartialPath(@Nullable final PartialPath partialPath) {
+    if (partialPath == null) {
+      return 0;
+    }
+    return PARTIAL_PATH_INSTANCE_SIZE + RamUsageEstimator.shallowSizeOf(partialPath.getNodes());
+  }
 }

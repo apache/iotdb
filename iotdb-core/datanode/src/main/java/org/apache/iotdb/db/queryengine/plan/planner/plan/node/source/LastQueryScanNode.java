@@ -65,6 +65,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
+  private boolean deviceInMultiRegion = false;
 
   public LastQueryScanNode(
       PlanNodeId id,
@@ -122,6 +123,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
       AtomicInteger dataNodeSeriesScanNum,
       String outputViewPath,
       TRegionReplicaSet regionReplicaSet,
+      boolean deviceInMultiRegion,
       List<IMeasurementSchema> globalMeasurementSchemaList) {
     super(id, dataNodeSeriesScanNum);
     this.devicePath = devicePath;
@@ -129,6 +131,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
     this.indexOfMeasurementSchemas = indexOfMeasurementSchemas;
     this.outputViewPath = outputViewPath;
     this.regionReplicaSet = regionReplicaSet;
+    this.deviceInMultiRegion = deviceInMultiRegion;
     this.globalMeasurementSchemaList = globalMeasurementSchemaList;
   }
 
@@ -192,6 +195,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
         getDataNodeSeriesScanNum(),
         outputViewPath,
         regionReplicaSet,
+        deviceInMultiRegion,
         globalMeasurementSchemaList);
   }
 
@@ -270,6 +274,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
     if (outputViewPath != null) {
       ReadWriteIOUtils.write(outputViewPath, byteBuffer);
     }
+    ReadWriteIOUtils.write(deviceInMultiRegion, byteBuffer);
   }
 
   @Override
@@ -286,6 +291,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
     if (outputViewPath != null) {
       ReadWriteIOUtils.write(outputViewPath, stream);
     }
+    ReadWriteIOUtils.write(deviceInMultiRegion, stream);
   }
 
   public static LastQueryScanNode deserialize(ByteBuffer byteBuffer) {
@@ -300,6 +306,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
     int dataNodeSeriesScanNum = ReadWriteIOUtils.readInt(byteBuffer);
     boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
     String outputPathSymbol = isNull ? null : ReadWriteIOUtils.readString(byteBuffer);
+    boolean deviceInMultiRegion = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new LastQueryScanNode(
         planNodeId,
@@ -307,7 +314,10 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
         aligned,
         measurementSchemas,
         new AtomicInteger(dataNodeSeriesScanNum),
-        outputPathSymbol);
+        outputPathSymbol,
+        null,
+        deviceInMultiRegion,
+        null);
   }
 
   public void setGlobalMeasurementSchemaList(List<IMeasurementSchema> globalMeasurementSchemaList) {
@@ -321,6 +331,14 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
 
   public PartialPath getDevicePath() {
     return this.devicePath;
+  }
+
+  public boolean isDeviceInMultiRegion() {
+    return deviceInMultiRegion;
+  }
+
+  public void setDeviceInMultiRegion(boolean deviceInMultiRegion) {
+    this.deviceInMultiRegion = deviceInMultiRegion;
   }
 
   public List<Integer> getIdxOfMeasurementSchemas() {
@@ -342,7 +360,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(id)
-        + RamUsageEstimator.shallowSizeOf(devicePath.getNodes())
+        + MemoryEstimationHelper.getEstimatedSizeOfCopiedPartialPath(devicePath)
         + RamUsageEstimator.shallowSizeOfInstance(Integer.class) * indexOfMeasurementSchemas.size()
         + RamUsageEstimator.sizeOf(outputViewPath);
   }
