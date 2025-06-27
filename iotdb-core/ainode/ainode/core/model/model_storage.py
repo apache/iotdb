@@ -207,6 +207,9 @@ class ModelStorage(object):
         with self._lock_pool.get_lock(model_id).write_lock():
             if os.path.exists(storage_path):
                 shutil.rmtree(storage_path)
+            if model_id in self._model_info_map:
+                del self._model_info_map[model_id]
+                logger.info(f"Model {model_id} deleted successfully.")
 
     def _is_built_in(self, model_id: str) -> bool:
         """
@@ -218,9 +221,9 @@ class ModelStorage(object):
         Returns:
             bool: True if the model is built-in, False otherwise.
         """
-        return (
-            model_id in self._model_info_map
-            and self._model_info_map[model_id].category == ModelCategory.BUILT_IN
+        return model_id in self._model_info_map and (
+            self._model_info_map[model_id].category == ModelCategory.BUILT_IN
+            or self._model_info_map[model_id].category == ModelCategory.FINE_TUNED
         )
 
     def load_model(self, model_id: str, acceleration: bool) -> Callable:
@@ -291,3 +294,32 @@ class ModelStorage(object):
                 for model_id, model_info in self._model_info_map.items()
             ),
         )
+
+    def register_built_in_model(self, model_info: ModelInfo):
+        with self._lock_pool.get_lock(model_info.model_id).write_lock():
+            self._model_info_map[model_info.model_id] = model_info
+
+    def update_model_state(self, model_id: str, state: ModelStates):
+        with self._lock_pool.get_lock(model_id).write_lock():
+            if model_id in self._model_info_map:
+                self._model_info_map[model_id].state = state
+            else:
+                raise ValueError(f"Model {model_id} does not exist.")
+
+    def get_built_in_model_type(self, model_id: str) -> BuiltInModelType:
+        """
+        Get the type of the model with the given model_id.
+
+        Args:
+            model_id (str): The ID of the model.
+
+        Returns:
+            str: The type of the model.
+        """
+        with self._lock_pool.get_lock(model_id).read_lock():
+            if model_id in self._model_info_map:
+                return get_built_in_model_type(
+                    self._model_info_map[model_id].model_type
+                )
+            else:
+                raise ValueError(f"Model {model_id} does not exist.")

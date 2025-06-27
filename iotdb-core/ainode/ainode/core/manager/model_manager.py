@@ -26,6 +26,7 @@ from ainode.core.exception import (
     InvalidUriError,
 )
 from ainode.core.log import Logger
+from ainode.core.model.model_info import BuiltInModelType, ModelInfo, ModelStates
 from ainode.core.model.model_storage import ModelStorage
 from ainode.core.util.status import get_status
 from ainode.thrift.ainode.ttypes import (
@@ -140,3 +141,15 @@ class ModelManager:
 
     def show_models(self) -> TShowModelsResp:
         return self.model_storage.show_models()
+
+    def register_built_in_model(self, model_info: ModelInfo):
+        self.model_storage.register_built_in_model(model_info)
+
+    def update_model_state(self, model_id: str, state: ModelStates):
+        self.model_storage.update_model_state(model_id, state)
+
+    def get_built_in_model_type(self, model_id: str) -> BuiltInModelType:
+        """
+        Get the type of the model with the given model_id.
+        """
+        return self.model_storage.get_built_in_model_type(model_id.lower())
