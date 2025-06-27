@@ -27,7 +27,9 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -40,6 +42,8 @@ public class PipeResourceMetrics implements IMetricSet {
   private static final String PIPE_TS_FILE_USED_MEMORY = "PipeTsFileUsedMemory";
 
   private static final String PIPE_TOTAL_MEMORY = "PipeTotalMemory";
+
+  private Counter diskIOCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -96,6 +100,10 @@ public class PipeResourceMetrics implements IMetricSet {
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.ref(),
         PipePhantomReferenceManager::getPhantomReferenceCount);
+    // tsFile send rate
+    diskIOCounter =
+        metricService.getOrCreateCounter(
+            Metric.PIPE_TSFILE_SEND_DISK_IO.toString(), MetricLevel.IMPORTANT);
   }
 
   @Override
@@ -121,6 +129,12 @@ public class PipeResourceMetrics implements IMetricSet {
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_SIZE.toString());
     // phantom reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString());
+
+    metricService.remove(MetricType.RATE, Metric.PIPE_TSFILE_SEND_DISK_IO.toString());
+  }
+
+  public void recordDiskIO(final long bytes) {
+    diskIOCounter.inc(bytes);
   }
 
   //////////////////////////// singleton ////////////////////////////
