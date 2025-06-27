@@ -35,13 +35,9 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.tsfile</groupId>
-            <artifactId>common</artifactId>
+            <artifactId>tsfile</artifactId>
             <version>${tsfile.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.tsfile</groupId>
-            <artifactId>tsfile-java</artifactId>
-            <version>${tsfile.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.mysql</groupId>
@@ -91,12 +87,6 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.tsfile</groupId>
-            <artifactId>tsfile</artifactId>
-            <version>2.1.0-250622-SNAPSHOT</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
     <profiles>
