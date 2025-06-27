@@ -59,11 +59,16 @@ public class DataNodeQueryContext {
     return uncachedPathToSeriesScanInfo.get(path);
   }
 
+  public Map<PartialPath, Pair<AtomicInteger, TimeValuePair>> getUncachedPathToSeriesScanInfo() {
+    return uncachedPathToSeriesScanInfo;
+  }
+
   public int decreaseDataNodeFINum() {
     return dataNodeFINum.decrementAndGet();
   }
 
   public void lock(boolean isDeviceInMultiRegion) {
+    // When a device exists in only one region, there will be no intermediate state.
     if (isDeviceInMultiRegion) {
       lock.lock();
     }

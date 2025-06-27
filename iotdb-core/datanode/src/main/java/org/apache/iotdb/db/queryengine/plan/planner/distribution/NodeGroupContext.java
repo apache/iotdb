@@ -65,6 +65,8 @@ public class NodeGroupContext {
 
   private void countRegionOfSourceNodes(PlanNode root, Map<TRegionReplicaSet, Long> result) {
     if (root instanceof LastQueryNode) {
+      // At this point, there should only be LastSeriesSourceNode in LastQueryNode, and all of them
+      // have been grouped in the rewriteSource stage by region.
       TRegionReplicaSet regionReplicaSet = ((LastQueryNode) root).getRegionReplicaSetByFirstChild();
       if (regionReplicaSet != DataPartition.NOT_ASSIGNED) {
         result.compute(

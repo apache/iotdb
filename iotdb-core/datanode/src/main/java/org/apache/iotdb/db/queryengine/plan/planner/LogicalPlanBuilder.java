@@ -268,7 +268,6 @@ public class LogicalPlanBuilder {
                   Collections.singletonList(selectedPath.getMeasurementSchema()),
                   outputViewPath);
           this.context.reserveMemoryForFrontEnd(memCost);
-          context.setNeedUpdateScanNumForLastQuery(true);
         }
       } else {
         boolean aligned = false;
@@ -282,6 +281,7 @@ public class LogicalPlanBuilder {
           devicePath = devicePath == null ? selectedPath.getDevicePath() : devicePath;
           measurementSchemas.add(selectedPath.getMeasurementSchema());
         }
+        // DeviceId is needed in the distribution plan stage
         devicePath.setIDeviceID(deviceId);
         long memCost =
             lastQueryNode.addDeviceLastQueryScanNode(
@@ -305,6 +305,8 @@ public class LogicalPlanBuilder {
             context
                 .getTypeProvider()
                 .setTreeModelType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+    // After planning is completed, this map is no longer needed
+    lastQueryNode.setMeasurementSchema2IdxMap(null);
 
     return this;
   }

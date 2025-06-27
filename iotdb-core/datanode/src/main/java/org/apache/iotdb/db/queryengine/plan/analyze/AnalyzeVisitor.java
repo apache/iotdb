@@ -608,10 +608,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<Expression> selectExpressions,
       ISchemaTree schemaTree,
       MPPQueryContext context) {
-    Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap = null;
+
+    // For fetch data partition
     Set<IDeviceID> allDeviceSet = new HashSet<>();
+
+    // For LogicalPlan
     Set<IDeviceID> deviceExistViewSet = new HashSet<>();
     Map<IDeviceID, Map<String, Expression>> outputPathToSourceExpressionMap = new LinkedHashMap<>();
+    Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap = null;
+
     Ordering timeseriesOrdering = analysis.getTimeseriesOrderingForLastQuery();
 
     for (Expression selectExpression : selectExpressions) {
@@ -624,7 +629,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                   (timeSeriesOperand.isViewExpression()
                       ? timeSeriesOperand.getViewPath()
                       : timeSeriesOperand.getPath());
-          IDeviceID outputDevice = outputPath.getIDeviceID();
+          IDeviceID outputDevice =
+              ExpressionAnalyzer.getDeviceNameInSourceExpression(timeSeriesOperand);
           outputPathToSourceExpressionMap
               .computeIfAbsent(
                   outputDevice,
@@ -658,7 +664,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       allDeviceSet.addAll(outputPathToSourceExpressionMap.keySet());
     }
 
-    analysis.setHasSourceExpressions(!allDeviceSet.isEmpty());
+    analysis.setShouldHaveSourceExpression(!allDeviceSet.isEmpty());
     analysis.setLastQueryOutputPathToSourceExpressionMap(outputPathToSourceExpressionMap);
     analysis.setDeviceExistViewSet(deviceExistViewSet);
     analysis.setLastQueryNonWritableViewSourceExpressionMap(
@@ -667,40 +673,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     DataPartition dataPartition = fetchDataPartitionByDevices(allDeviceSet, schemaTree, context);
     analysis.setDataPartitionInfo(dataPartition);
     return analysis;
-  }
-
-  private void analyzeLastSource(
-      Analysis analysis,
-      List<Expression> selectExpressions,
-      ISchemaTree schemaTree,
-      MPPQueryContext context) {
-    Set<Expression> sourceExpressions = new LinkedHashSet<>();
-    Set<Expression> lastQueryBaseExpressions = new LinkedHashSet<>();
-    Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap = null;
-
-    for (Expression selectExpression : selectExpressions) {
-      for (Expression lastQuerySourceExpression :
-          bindSchemaForExpression(selectExpression, schemaTree, context)) {
-        if (lastQuerySourceExpression instanceof TimeSeriesOperand) {
-          lastQueryBaseExpressions.add(lastQuerySourceExpression);
-          sourceExpressions.add(lastQuerySourceExpression);
-        } else {
-          if (lastQueryNonWritableViewSourceExpressionMap == null) {
-            lastQueryNonWritableViewSourceExpressionMap = new HashMap<>();
-          }
-          List<Expression> sourceExpressionsOfNonWritableView =
-              searchSourceExpressions(lastQuerySourceExpression);
-          lastQueryNonWritableViewSourceExpressionMap.putIfAbsent(
-              lastQuerySourceExpression, sourceExpressionsOfNonWritableView);
-          sourceExpressions.addAll(sourceExpressionsOfNonWritableView);
-        }
-      }
-    }
-
-    analysis.setSourceExpressions(sourceExpressions);
-    analysis.setLastQueryBaseExpressions(lastQueryBaseExpressions);
-    analysis.setLastQueryNonWritableViewSourceExpressionMap(
-        lastQueryNonWritableViewSourceExpressionMap);
   }
 
   private void updateSchemaTreeByViews(

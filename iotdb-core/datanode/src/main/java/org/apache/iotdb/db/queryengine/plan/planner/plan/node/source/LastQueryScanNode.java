@@ -59,6 +59,8 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
   private final PartialPath devicePath;
   private final boolean aligned;
   private final List<Integer> indexOfMeasurementSchemas;
+  // This structure does not need to be serialized or deserialized.
+  // It will be set when the current Node is added to the child by the upper LastQueryNode.
   private List<IMeasurementSchema> globalMeasurementSchemaList;
 
   private final String outputViewPath;
@@ -360,6 +362,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(id)
+        // The memory of each String has been calculated before
         + MemoryEstimationHelper.getEstimatedSizeOfCopiedPartialPath(devicePath)
         + RamUsageEstimator.shallowSizeOfInstance(Integer.class) * indexOfMeasurementSchemas.size()
         + RamUsageEstimator.sizeOf(outputViewPath);

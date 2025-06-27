@@ -256,6 +256,8 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   @Override
   public PlanNode visitLastQuery(LastQueryNode node, NodeGroupContext context) {
+    // At this point, there should only be LastSeriesSourceNode in LastQueryNode, and all of them
+    // have been grouped in the rewriteSource stage by region.
     context.putNodeDistribution(
         node.getPlanNodeId(),
         new NodeDistribution(

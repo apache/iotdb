@@ -974,8 +974,11 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     // For last query, we need to keep every FI's root node is LastQueryMergeNode. So we
     // force every region group have a parent node even if there is only 1 child for it.
     context.setForceAddParent();
-    PlanNode root = processRawMultiChildNode(node, context, false);
-    if (context.queryMultiRegion) {
+    boolean isLastQueryWithTransformNode = node.isContainsLastTransformNode();
+    PlanNode root = processRawMultiChildNode(node, context, false, isLastQueryWithTransformNode);
+    // For some optimizations later, we should ensure that the LastQueryNode
+    // does not contain any Transform Node
+    if (context.queryMultiRegion || isLastQueryWithTransformNode) {
       PlanNode newRoot = genLastQueryRootNode(node, context);
       // add sort op for each if we add LastQueryMergeNode as root
       if (newRoot instanceof LastQueryMergeNode && !node.needOrderByTimeseries()) {
@@ -1225,12 +1228,15 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     if (containsAggregationSource(node)) {
       return planAggregationWithTimeJoin(node, context);
     }
-    return Collections.singletonList(processRawMultiChildNode(node, context, true));
+    return Collections.singletonList(processRawMultiChildNode(node, context, true, false));
   }
 
   // Only `visitFullOuterTimeJoin` and `visitLastQuery` invoke this method
   private PlanNode processRawMultiChildNode(
-      MultiChildProcessNode node, DistributionPlanContext context, boolean isTimeJoin) {
+      MultiChildProcessNode node,
+      DistributionPlanContext context,
+      boolean isTimeJoin,
+      boolean isLastQueryWithTransformNode) {
     MultiChildProcessNode root = (MultiChildProcessNode) node.clone();
     Map<TRegionReplicaSet, List<SourceNode>> sourceGroup = groupBySourceNodes(node, context);
 
@@ -1251,7 +1257,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       // At last, we can use the parameter `addParent` to judge whether to create new
       // MultiChildNode.
       boolean appendToRootDirectly =
-          sourceGroup.size() == 1 || (!addParent && !context.isForceAddParent());
+          !isLastQueryWithTransformNode
+              && (sourceGroup.size() == 1 || (!addParent && !context.isForceAddParent()));
       if (appendToRootDirectly) {
         // In non-last query, this code can be reached at most once
         // And we set region as MainFragmentLocatedRegion, the others Region should transfer data to
@@ -1316,7 +1323,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           sources.add(split);
         }
 
-        if (dataDistribution.size() > 1) {
+        if (deviceInMultiRegion) {
           context.getQueryContext().setNeedUpdateScanNumForLastQuery(true);
         }
       }

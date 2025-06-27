@@ -60,7 +60,8 @@ public class LastQueryNode extends MultiChildProcessNode {
   private boolean containsLastTransformNode;
 
   private Map<IMeasurementSchema, Integer> measurementSchema2IdxMap;
-  private List<IMeasurementSchema> measurementSchemaList;
+  // All LastSeriesSourceNode share this structure
+  private List<IMeasurementSchema> globalMeasurementSchemaList;
 
   public LastQueryNode(
       PlanNodeId id, @Nullable Ordering timeseriesOrdering, boolean containsLastTransformNode) {
@@ -68,18 +69,18 @@ public class LastQueryNode extends MultiChildProcessNode {
     this.timeseriesOrdering = timeseriesOrdering;
     this.containsLastTransformNode = containsLastTransformNode;
     this.measurementSchema2IdxMap = new HashMap<>();
-    this.measurementSchemaList = new ArrayList<>();
+    this.globalMeasurementSchemaList = new ArrayList<>();
   }
 
   public LastQueryNode(
       PlanNodeId id,
       @Nullable Ordering timeseriesOrdering,
       boolean containsLastTransformNode,
-      List<IMeasurementSchema> measurementSchemaList) {
+      List<IMeasurementSchema> globalMeasurementSchemaList) {
     super(id);
     this.timeseriesOrdering = timeseriesOrdering;
     this.containsLastTransformNode = containsLastTransformNode;
-    this.measurementSchemaList = measurementSchemaList;
+    this.globalMeasurementSchemaList = globalMeasurementSchemaList;
   }
 
   public long addDeviceLastQueryScanNode(
@@ -94,14 +95,14 @@ public class LastQueryNode extends MultiChildProcessNode {
           measurementSchema2IdxMap.computeIfAbsent(
               measurementSchema,
               key -> {
-                this.measurementSchemaList.add(key);
-                return measurementSchemaList.size() - 1;
+                this.globalMeasurementSchemaList.add(key);
+                return globalMeasurementSchemaList.size() - 1;
               });
       idxList.add(idx);
     }
     LastQueryScanNode scanNode =
         new LastQueryScanNode(
-            id, devicePath, aligned, idxList, outputViewPath, measurementSchemaList);
+            id, devicePath, aligned, idxList, outputViewPath, globalMeasurementSchemaList);
     children.add(scanNode);
     return scanNode.getMemorySize();
   }
@@ -126,17 +127,22 @@ public class LastQueryNode extends MultiChildProcessNode {
     }
   }
 
-  public void setMeasurementSchemaList(List<IMeasurementSchema> measurementSchemaList) {
-    this.measurementSchemaList = measurementSchemaList;
+  public void setGlobalMeasurementSchemaList(List<IMeasurementSchema> globalMeasurementSchemaList) {
+    this.globalMeasurementSchemaList = globalMeasurementSchemaList;
   }
 
-  public List<IMeasurementSchema> getMeasurementSchemaList() {
-    return measurementSchemaList;
+  public List<IMeasurementSchema> getGlobalMeasurementSchemaList() {
+    return globalMeasurementSchemaList;
+  }
+
+  public void setMeasurementSchema2IdxMap(
+      Map<IMeasurementSchema, Integer> measurementSchema2IdxMap) {
+    this.measurementSchema2IdxMap = measurementSchema2IdxMap;
   }
 
   public long getMemorySizeOfSharedStructures() {
-    return RamUsageEstimator.shallowSizeOf(this.measurementSchemaList)
-        + RamUsageEstimator.sizeOfObjectArray(measurementSchemaList.size());
+    return RamUsageEstimator.shallowSizeOf(this.globalMeasurementSchemaList)
+        + RamUsageEstimator.sizeOfObjectArray(globalMeasurementSchemaList.size());
   }
 
   @Override
@@ -157,7 +163,10 @@ public class LastQueryNode extends MultiChildProcessNode {
   @Override
   public PlanNode clone() {
     return new LastQueryNode(
-        getPlanNodeId(), timeseriesOrdering, containsLastTransformNode, measurementSchemaList);
+        getPlanNodeId(),
+        timeseriesOrdering,
+        containsLastTransformNode,
+        globalMeasurementSchemaList);
   }
 
   @Override
@@ -207,8 +216,8 @@ public class LastQueryNode extends MultiChildProcessNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       ReadWriteIOUtils.write(timeseriesOrdering.ordinal(), byteBuffer);
     }
-    ReadWriteIOUtils.write(measurementSchemaList.size(), byteBuffer);
-    for (IMeasurementSchema measurementSchema : measurementSchemaList) {
+    ReadWriteIOUtils.write(globalMeasurementSchemaList.size(), byteBuffer);
+    for (IMeasurementSchema measurementSchema : globalMeasurementSchemaList) {
       if (measurementSchema instanceof MeasurementSchema) {
         ReadWriteIOUtils.write((byte) 0, byteBuffer);
       } else if (measurementSchema instanceof VectorMeasurementSchema) {
@@ -227,8 +236,8 @@ public class LastQueryNode extends MultiChildProcessNode {
       ReadWriteIOUtils.write((byte) 1, stream);
       ReadWriteIOUtils.write(timeseriesOrdering.ordinal(), stream);
     }
-    ReadWriteIOUtils.write(measurementSchemaList.size(), stream);
-    for (IMeasurementSchema measurementSchema : measurementSchemaList) {
+    ReadWriteIOUtils.write(globalMeasurementSchemaList.size(), stream);
+    for (IMeasurementSchema measurementSchema : globalMeasurementSchemaList) {
       if (measurementSchema instanceof MeasurementSchema) {
         ReadWriteIOUtils.write((byte) 0, stream);
       } else if (measurementSchema instanceof VectorMeasurementSchema) {
@@ -267,7 +276,7 @@ public class LastQueryNode extends MultiChildProcessNode {
   public void addChild(PlanNode child) {
     if (child instanceof LastQueryScanNode) {
       LastQueryScanNode childNode = (LastQueryScanNode) child;
-      childNode.setGlobalMeasurementSchemaList(measurementSchemaList);
+      childNode.setGlobalMeasurementSchemaList(globalMeasurementSchemaList);
     }
     super.addChild(child);
   }

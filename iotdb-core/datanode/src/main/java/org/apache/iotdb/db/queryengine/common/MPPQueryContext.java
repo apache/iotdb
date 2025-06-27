@@ -85,6 +85,8 @@ public class MPPQueryContext {
   private static final int minSizeToUseSampledTimeseriesOperandMemCost = 100;
   private double avgTimeseriesOperandMemCost = 0;
   private int numsOfSampledTimeseriesOperand = 0;
+  // When there is no view in a last query and no device exists in multiple regions,
+  // the updateScanNum process in distributed planning can be skipped.
   private boolean needUpdateScanNumForLastQuery = false;
 
   private boolean userQuery = false;
