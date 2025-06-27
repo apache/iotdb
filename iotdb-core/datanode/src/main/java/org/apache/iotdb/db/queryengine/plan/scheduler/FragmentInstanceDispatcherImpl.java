@@ -334,8 +334,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               } else if (sendFragmentInstanceResp.status.getCode()
                   == TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()) {
                 throw new ConsensusGroupNotExistException(sendFragmentInstanceResp.message);
-              } else if (sendFragmentInstanceResp.status.getCode()
-                  == TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()) {
+              } else {
                 throw new FragmentInstanceDispatchException(sendFragmentInstanceResp.status);
               }
             }
@@ -456,9 +455,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         if (!readResult.isAccepted()) {
           LOGGER.warn(readResult.getMessage());
           if (readResult.isReadNeedRetry()) {
-            if (readResult.getStatus() != null
-                && readResult.getStatus().getCode()
-                    == TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()) {
+            if (readResult.getStatus() != null) {
               throw new FragmentInstanceDispatchException(readResult.getStatus());
             }
             throw new FragmentInstanceDispatchException(
