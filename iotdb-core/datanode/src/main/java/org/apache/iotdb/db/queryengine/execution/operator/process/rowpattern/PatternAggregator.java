@@ -28,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.enums.TSDataType;
 
 import java.util.List;
 
@@ -66,22 +65,16 @@ public class PatternAggregator {
   // one expression corresponds to one instance of `PatternAggregator`, and `argumentChannels`
   // stores all the columns that need to be aggregated in this expression.
   private List<Integer> argumentChannels;
-  private final TSDataType outputType;
   private PatternAggregationTracker patternAggregationTracker;
 
   public PatternAggregator(
       BoundSignature boundSignature,
       TableAccumulator accumulator,
       List<Integer> argumentChannels,
-      TSDataType outputType,
       PatternAggregationTracker patternAggregationTracker) {
     this.boundSignature = requireNonNull(boundSignature, "boundSignature is null");
     this.accumulator = requireNonNull(accumulator, "accumulato is null");
-    // this.mappedWindowIndex = new MappedWindowIndex(argumentChannels);
-    //    this.patternAggregator = patternAggregator;
-
     this.argumentChannels = argumentChannels;
-    this.outputType = requireNonNull(outputType, "outputType is null");
     this.patternAggregationTracker =
         requireNonNull(patternAggregationTracker, "patternAggregationTracker is null");
     accumulator.reset();
@@ -119,9 +112,7 @@ public class PatternAggregator {
   public Object aggregate(
       int currentRow,
       ArrayView matchedLabels,
-      // long matchNumber,
       Partition partition,
-      // ProjectingPagesWindowIndex windowIndex,
       int partitionStart,
       int patternStart) {
 
@@ -189,10 +180,6 @@ public class PatternAggregator {
     }
 
     return new PatternAggregator(
-        boundSignature,
-        accumulatorCopy,
-        argumentChannels,
-        outputType,
-        patternAggregationTracker.copy());
+        boundSignature, accumulatorCopy, argumentChannels, patternAggregationTracker.copy());
   }
 }

@@ -224,7 +224,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
@@ -288,12 +287,10 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
@@ -3219,7 +3216,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   private PatternAggregator buildPatternAggregator(
       ResolvedFunction resolvedFunction,
       List<Map.Entry<Expression, Type>> arguments,
-      TSDataType outputType,
       List<Integer> argumentChannels,
       PatternAggregationTracker patternAggregationTracker) {
     String functionName = resolvedFunction.getSignature().getName();
@@ -3239,7 +3235,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     BoundSignature signature = resolvedFunction.getSignature();
 
     return new PatternAggregator(
-        signature, accumulator, argumentChannels, outputType, patternAggregationTracker);
+        signature, accumulator, argumentChannels, patternAggregationTracker);
   }
 
   @Override
@@ -3326,6 +3322,18 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     // 3. DEFINE: prepare patternVariableComputation (PatternVariableRecognizer is to be
     // instantiated once per partition)
+
+    // during pattern matching, each thread will have a list of aggregations necessary for label
+    // evaluations.
+    // the list of aggregations for a thread will be produced at thread creation time from this
+    // supplier list, respecting the order.
+    // pointers in LabelEvaluator and ThreadEquivalence will access aggregations by position in
+    // list.
+    int matchAggregationIndex = 0;
+    ImmutableList.Builder<PatternAggregator> variableRecognizerAggregatorBuilder =
+        ImmutableList.builder();
+    List<PatternAggregator> variableRecognizerAggregators = ImmutableList.of();
+
     ImmutableList.Builder<PatternVariableRecognizer.PatternVariableComputation> evaluationsBuilder =
         ImmutableList.builder();
 
@@ -3358,8 +3366,46 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                           ImmutableList.of(scalarPointer.getInputSymbol()), childLayout)),
                   context.getTypeProvider().getTableModelType(scalarPointer.getInputSymbol()),
                   scalarPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+        } else if (pointer instanceof AggregationValuePointer) {
+          AggregationValuePointer aggregationPointer = (AggregationValuePointer) pointer;
+
+          ResolvedFunction resolvedFunction = aggregationPointer.getFunction();
+
+          ImmutableList.Builder<Map.Entry<Expression, Type>> builder = ImmutableList.builder();
+          List<Type> signatureTypes = resolvedFunction.getSignature().getArgumentTypes();
+          for (int i = 0; i < aggregationPointer.getArguments().size(); i++) {
+            builder.add(
+                new AbstractMap.SimpleEntry<>(
+                    aggregationPointer.getArguments().get(i), signatureTypes.get(i)));
+          }
+          List<Map.Entry<Expression, Type>> arguments = builder.build();
+
+          List<Integer> valueChannels = new ArrayList<>();
+
+          for (Map.Entry<Expression, Type> argumentWithType : arguments) {
+            Expression argument = argumentWithType.getKey();
+            valueChannels.add(childLayout.get(Symbol.from(argument)));
+          }
+
+          AggregationLabelSet labelSet = aggregationPointer.getSetDescriptor();
+          Set<Integer> labels =
+              labelSet.getLabels().stream().map(mapping::get).collect(Collectors.toSet());
+          PatternAggregationTracker patternAggregationTracker =
+              new PatternAggregationTracker(
+                  labels, aggregationPointer.getSetDescriptor().isRunning());
+
+          PatternAggregator variableRecognizerAggregator =
+              buildPatternAggregator(
+                  resolvedFunction, arguments, valueChannels, patternAggregationTracker);
+
+          variableRecognizerAggregatorBuilder.add(variableRecognizerAggregator);
+
+          valueAccessors.add(new PhysicalAggregationPointer(matchAggregationIndex));
+          matchAggregationIndex++;
         }
       }
+
+      variableRecognizerAggregators = variableRecognizerAggregatorBuilder.build();
 
       // transform the symbolic expression tree in the logical planning stage into a parametric
       // expression tree
@@ -3378,9 +3424,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     ImmutableList.Builder<PatternExpressionComputation> measureComputationsBuilder =
         ImmutableList.builder();
 
-    int matchAggregationIndex = 0;
-    ImmutableList.Builder<PatternAggregator> patternAggregatorBuilder = ImmutableList.builder();
-    List<PatternAggregator> patternAggregators = ImmutableList.of();
+    matchAggregationIndex = 0;
+    ImmutableList.Builder<PatternAggregator> measurePatternAggregatorBuilder =
+        ImmutableList.builder();
+    List<PatternAggregator> measurePatternAggregators = ImmutableList.of();
 
     for (Measure measure : node.getMeasures().values()) {
       ExpressionAndValuePointers expressionAndValuePointers =
@@ -3413,13 +3460,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         } else if (pointer instanceof AggregationValuePointer) {
           AggregationValuePointer aggregationPointer = (AggregationValuePointer) pointer;
 
-          Boolean classifierInvolved = false;
-
-          // MEASURES RUNNING sum(id) AS running_sum
-          // system.builtin.sum
           ResolvedFunction resolvedFunction = aggregationPointer.getFunction();
 
-          // {SymbolReference@19739} ""expr"" -> {BigintType@19702} "bigint"
           ImmutableList.Builder<Map.Entry<Expression, Type>> builder = ImmutableList.builder();
           List<Type> signatureTypes = resolvedFunction.getSignature().getArgumentTypes();
           for (int i = 0; i < aggregationPointer.getArguments().size(); i++) {
@@ -3431,63 +3473,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
           List<Integer> valueChannels = new ArrayList<>();
 
-          Optional<Symbol> classifierArgumentSymbol =
-              aggregationPointer.getClassifierSymbol(); // Optional.empty
-          Optional<Symbol> matchNumberArgumentSymbol =
-              aggregationPointer.getMatchNumberSymbol(); // Optional.empty
-          Set<Symbol> runtimeEvaluatedSymbols =
-              Stream.of(classifierArgumentSymbol, matchNumberArgumentSymbol)
-                  .filter(Optional::isPresent)
-                  .map(Optional::get)
-                  .collect(toImmutableSet()); // 这又是啥？
-
           for (Map.Entry<Expression, Type> argumentWithType : arguments) {
-            Expression argument = argumentWithType.getKey(); // ""expr"" -> "bigint"
-            boolean isRuntimeEvaluated =
-                !(argument instanceof SymbolReference)
-                    || runtimeEvaluatedSymbols.contains(Symbol.from(argument));
-            if (isRuntimeEvaluated) { // 是在运行时计算出来的？
-              List<Symbol> argumentInputSymbols =
-                  ImmutableList.copyOf(SymbolsExtractor.extractUnique(argument));
-              //              Supplier<PageProjection> argumentProjectionSupplier =
-              //                  prepareArgumentProjection(
-              //                      argument,
-              //                      argumentInputSymbols,
-              //                      classifierArgumentSymbol,
-              //                      matchNumberArgumentSymbol,
-              //                      context);
-
-              List<Integer> argumentInputChannels = new ArrayList<>();
-              for (Symbol symbol : argumentInputSymbols) {
-                if (classifierArgumentSymbol.isPresent()
-                    && symbol.equals(classifierArgumentSymbol.get())) {
-                  classifierInvolved = true;
-                  argumentInputChannels.add(CLASSIFIER);
-                } else if (matchNumberArgumentSymbol.isPresent()
-                    && symbol.equals(matchNumberArgumentSymbol.get())) {
-                  argumentInputChannels.add(MATCH_NUMBER);
-                } else {
-                  argumentInputChannels.add(childLayout.get(symbol));
-                }
-              }
-
-              Type argumentType = argumentWithType.getValue();
-              //              ArgumentComputationSupplier argumentComputationSupplier =
-              //                  new ArgumentComputationSupplier(
-              //                      argumentProjectionSupplier,
-              //                      argumentType,
-              //                      argumentInputChannels,
-              //                      connectorSession);
-              //              aggregationArguments.add(argumentComputationSupplier);
-
-              // the runtime-evaluated argument will appear in an extra channel after all input
-              // channels
-              //              valueChannels.add(firstUnusedChannel);
-              //              firstUnusedChannel++;
-            } else { // RUNNING SUM(id) 为什么走的也是这个啊？？？
-              // valueChannel 就是 WindowNode 里面的 argumentChannels
-              valueChannels.add(childLayout.get(Symbol.from(argument)));
-            }
+            Expression argument = argumentWithType.getKey();
+            valueChannels.add(childLayout.get(Symbol.from(argument)));
           }
 
           AggregationLabelSet labelSet = aggregationPointer.getSetDescriptor();
@@ -3497,33 +3485,27 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               new PatternAggregationTracker(
                   labels, aggregationPointer.getSetDescriptor().isRunning());
 
-          PatternAggregator patternAggregator =
+          PatternAggregator measurePatternAggregator =
               buildPatternAggregator(
-                  resolvedFunction,
-                  arguments,
-                  getTSDataType(measure.getType()),
-                  valueChannels,
-                  patternAggregationTracker);
+                  resolvedFunction, arguments, valueChannels, patternAggregationTracker);
 
-          patternAggregatorBuilder.add(patternAggregator);
+          measurePatternAggregatorBuilder.add(measurePatternAggregator);
 
           valueAccessors.add(new PhysicalAggregationPointer(matchAggregationIndex));
           matchAggregationIndex++;
         }
       }
 
-      // TODO: which is only support in MEASURES, not including DEFINE
-      patternAggregators = patternAggregatorBuilder.build();
+      measurePatternAggregators = measurePatternAggregatorBuilder.build();
 
       // transform the symbolic expression tree in the logical planning stage into a parametric
       // expression tree
       Computation computation = Computation.ComputationParser.parse(expressionAndValuePointers);
 
       // construct a `PatternExpressionComputation` object, where valueAccessors is a parameter
-      // list
-      // and computation is a parametric expression tree, encapsulating the computation logic
+      // list and computation is a parametric expression tree, encapsulating the computation logic.
       PatternExpressionComputation measureComputation =
-          new PatternExpressionComputation(valueAccessors, computation, patternAggregators);
+          new PatternExpressionComputation(valueAccessors, computation, measurePatternAggregators);
 
       measureComputationsBuilder.add(measureComputation);
     }
@@ -3549,9 +3531,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         node.getRowsPerMatch(),
         node.getSkipToPosition(),
         skipToNavigation,
-        new Matcher(program, patternAggregators),
+        new Matcher(program, variableRecognizerAggregators),
         evaluationsBuilder.build(),
-        patternAggregators,
+        measurePatternAggregators,
         measureComputationsBuilder.build(),
         labelNames);
   }
