@@ -26,11 +26,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import javax.annotation.Nonnull;
+
 import java.util.List;
 import java.util.Map;
 
 public class SeriesSchemaFetchStatement extends Statement {
-
   private final PathPatternTree patternTree;
   private final Map<Integer, Template> templateMap;
   private final boolean withTags;
@@ -40,7 +41,7 @@ public class SeriesSchemaFetchStatement extends Statement {
 
   public SeriesSchemaFetchStatement(
       PathPatternTree patternTree,
-      Map<Integer, Template> templateMap,
+      @Nonnull Map<Integer, Template> templateMap,
       boolean withTags,
       boolean withAttributes,
       boolean withTemplate,

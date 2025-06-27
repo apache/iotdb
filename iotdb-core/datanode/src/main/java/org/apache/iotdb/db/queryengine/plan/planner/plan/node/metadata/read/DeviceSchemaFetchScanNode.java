@@ -22,18 +22,22 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class DeviceSchemaFetchScanNode extends SchemaFetchScanNode {
-
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DeviceSchemaFetchScanNode.class);
   private final PathPatternTree authorityScope;
 
   public DeviceSchemaFetchScanNode(
@@ -57,23 +61,20 @@ public class DeviceSchemaFetchScanNode extends SchemaFetchScanNode {
 
   @Override
   public PlanNode clone() {
-    return new DeviceSchemaFetchScanNode(
-        getPlanNodeId(), storageGroup, patternTree, authorityScope);
+    return new DeviceSchemaFetchScanNode(getPlanNodeId(), database, patternTree, authorityScope);
   }
 
   @Override
   public String toString() {
     return String.format(
         "DeviceSchemaFetchScanNode-%s:[StorageGroup: %s, DataRegion: %s]",
-        this.getPlanNodeId(),
-        storageGroup,
-        PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
+        this.getPlanNodeId(), database, PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.DEVICE_SCHEMA_FETCH_SCAN.serialize(byteBuffer);
-    storageGroup.serialize(byteBuffer);
+    database.serialize(byteBuffer);
     patternTree.serialize(byteBuffer);
     authorityScope.serialize(byteBuffer);
   }
@@ -81,7 +82,7 @@ public class DeviceSchemaFetchScanNode extends SchemaFetchScanNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.DEVICE_SCHEMA_FETCH_SCAN.serialize(stream);
-    storageGroup.serialize(stream);
+    database.serialize(stream);
     patternTree.serialize(stream);
     authorityScope.serialize(stream);
   }
@@ -92,6 +93,13 @@ public class DeviceSchemaFetchScanNode extends SchemaFetchScanNode {
     PathPatternTree authorityScope = PathPatternTree.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new DeviceSchemaFetchScanNode(planNodeId, storageGroup, patternTree, authorityScope);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + (authorityScope != SchemaConstant.ALL_MATCH_SCOPE ? authorityScope.ramBytesUsed() : 0L)
+        + super.ramBytesUsed();
   }
 
   @Override

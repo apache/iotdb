@@ -20,11 +20,14 @@
 package org.apache.iotdb.db.schemaengine.template;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -39,8 +42,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Template implements Serializable {
+public class Template implements Serializable, Accountable {
 
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Template.class);
   private int id;
   private String name;
   private boolean isDirectAligned;
@@ -225,5 +229,14 @@ public class Template implements Serializable {
   @Override
   public int hashCode() {
     return new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + UpdateDetailContainer.CONCURRENT_MAP_SIZE
+        + RamUsageEstimator.sizeOf(name)
+        + schemaMap.size() * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+        + schemaMap.values().stream().map(IMeasurementSchema::ramBytesUsed).reduce(0L, Long::sum);
   }
 }
