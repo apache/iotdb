@@ -222,8 +222,8 @@ class ModelStorage(object):
             bool: True if the model is built-in, False otherwise.
         """
         return model_id in self._model_info_map and (
-                self._model_info_map[model_id].category == ModelCategory.BUILT_IN
-                or self._model_info_map[model_id].category == ModelCategory.FINE_TUNED
+            self._model_info_map[model_id].category == ModelCategory.BUILT_IN
+            or self._model_info_map[model_id].category == ModelCategory.FINE_TUNED
         )
 
     def load_model(self, model_id: str, acceleration: bool) -> Callable:
