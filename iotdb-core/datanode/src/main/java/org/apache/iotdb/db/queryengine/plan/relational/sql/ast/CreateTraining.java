@@ -26,16 +26,14 @@ import java.util.Objects;
 public class CreateTraining extends Statement {
 
   private final String modelId;
-  private final String modelType;
   private final String targetSql;
 
   private Map<String, String> parameters;
   private String existingModelId = null;
 
-  public CreateTraining(String modelId, String modelType, String targetSql) {
+  public CreateTraining(String modelId, String targetSql) {
     super(null);
     this.modelId = modelId;
-    this.modelType = modelType;
     this.targetSql = targetSql;
   }
 
@@ -54,10 +52,6 @@ public class CreateTraining extends Statement {
 
   public String getModelId() {
     return modelId;
-  }
-
-  public String getModelType() {
-    return modelType;
   }
 
   public Map<String, String> getParameters() {
@@ -79,7 +73,7 @@ public class CreateTraining extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(modelId, modelType, targetSql, existingModelId, parameters);
+    return Objects.hash(modelId, targetSql, existingModelId, parameters);
   }
 
   @Override
@@ -89,7 +83,6 @@ public class CreateTraining extends Statement {
     }
     CreateTraining createTraining = (CreateTraining) obj;
     return modelId.equals(createTraining.modelId)
-        && modelType.equals(createTraining.modelType)
         && Objects.equals(existingModelId, createTraining.existingModelId)
         && Objects.equals(parameters, createTraining.parameters)
         && Objects.equals(targetSql, createTraining.targetSql);
@@ -100,9 +93,6 @@ public class CreateTraining extends Statement {
     return "CreateTraining{"
         + "modelId='"
         + modelId
-        + '\''
-        + ", modelType='"
-        + modelType
         + '\''
         + ", parameters="
         + parameters

@@ -80,10 +80,9 @@ struct IDataSchema {
 struct TTrainingReq {
   1: required string dbType
   2: required string modelId
-  3: required string modelType
+  3: required string existingModelId
   4: optional list<IDataSchema> targetDataSchema;
   5: optional map<string, string> parameters;
-  6: optional string existingModelId
 }
 
 struct TForecastReq {

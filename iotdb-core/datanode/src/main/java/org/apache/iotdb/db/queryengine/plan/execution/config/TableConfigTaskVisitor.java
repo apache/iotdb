@@ -1359,11 +1359,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.WRITE);
 
     return new CreateTrainingTask(
-        node.getModelId(),
-        node.getModelType(),
-        node.getParameters(),
-        node.getExistingModelId(),
-        node.getTargetSql());
+        node.getModelId(), node.getParameters(), node.getExistingModelId(), node.getTargetSql());
   }
 
   @Override
