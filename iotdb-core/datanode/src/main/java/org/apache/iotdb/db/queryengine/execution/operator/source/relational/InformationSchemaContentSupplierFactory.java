@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
-import org.apache.iotdb.commons.model.ModelType;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
@@ -51,6 +50,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -83,9 +83,7 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -116,10 +114,6 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.Sho
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask.getFunctionType;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_BUILTIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_EXTERNAL;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask.INPUT_DATA_TYPE;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask.INPUT_SHAPE;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask.OUTPUT_DATA_TYPE;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask.OUTPUT_SHAPE;
 
 public class InformationSchemaContentSupplierFactory {
   private InformationSchemaContentSupplierFactory() {}
@@ -778,49 +772,104 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class ModelsSupplier extends TsBlockSupplier {
-    private Iterator<ByteBuffer> iterator;
+    private ModelIterator iterator;
 
     private ModelsSupplier(final List<TSDataType> dataTypes) {
       super(dataTypes);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        iterator = client.showModel(new TShowModelReq()).getModelInfoList().iterator();
+        iterator = new ModelIterator(client.showModel(new TShowModelReq()));
       } catch (final Exception e) {
         lastException = e;
       }
     }
 
-    @Override
-    protected void constructLine() {
-      final ByteBuffer modelInfo = iterator.next();
-      columnBuilders[0].writeBinary(
-          new Binary(ReadWriteIOUtils.readString(modelInfo), TSFileConfig.STRING_CHARSET));
+    private static class ModelIterator implements Iterator<ModelInfoInString> {
 
-      final String modelType = ReadWriteIOUtils.readString(modelInfo);
-      columnBuilders[1].writeBinary(new Binary(modelType, TSFileConfig.STRING_CHARSET));
-      columnBuilders[2].writeBinary(
-          new Binary(ReadWriteIOUtils.readString(modelInfo), TSFileConfig.STRING_CHARSET));
+      private int index = 0;
+      private final TShowModelResp resp;
 
-      if (Objects.equals(modelType, ModelType.USER_DEFINED.toString())) {
-        columnBuilders[3].writeBinary(
-            new Binary(
-                INPUT_SHAPE
-                    + ReadWriteIOUtils.readString(modelInfo)
-                    + OUTPUT_SHAPE
-                    + ReadWriteIOUtils.readString(modelInfo)
-                    + INPUT_DATA_TYPE
-                    + ReadWriteIOUtils.readString(modelInfo)
-                    + OUTPUT_DATA_TYPE
-                    + ReadWriteIOUtils.readString(modelInfo),
-                TSFileConfig.STRING_CHARSET));
-        columnBuilders[4].writeBinary(
-            new Binary(ReadWriteIOUtils.readString(modelInfo), TSFileConfig.STRING_CHARSET));
-      } else {
-        columnBuilders[3].appendNull();
-        columnBuilders[4].writeBinary(
-            new Binary("Built-in model in IoTDB", TSFileConfig.STRING_CHARSET));
+      private ModelIterator(TShowModelResp resp) {
+        this.resp = resp;
       }
 
+      @Override
+      public boolean hasNext() {
+        return index < resp.getModelIdListSize();
+      }
+
+      @Override
+      public ModelInfoInString next() {
+        String modelId = resp.getModelIdList().get(index++);
+        return new ModelInfoInString(
+            modelId,
+            resp.getModelTypeMap().get(modelId),
+            resp.getCategoryMap().get(modelId),
+            resp.getStateMap().get(modelId));
+      }
+    }
+
+    private static class ModelInfoInString {
+
+      private final String modelId;
+      private final String modelType;
+      private final String category;
+      private final String state;
+
+      public ModelInfoInString(String modelId, String modelType, String category, String state) {
+        this.modelId = modelId;
+        this.modelType = modelType;
+        this.category = category;
+        this.state = state;
+      }
+
+      public String getModelId() {
+        return modelId;
+      }
+
+      public String getModelType() {
+        return modelType;
+      }
+
+      public String getCategory() {
+        return category;
+      }
+
+      public String getState() {
+        return state;
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      final ModelInfoInString modelInfo = iterator.next();
+      columnBuilders[0].writeBinary(
+          new Binary(modelInfo.getModelId(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(
+          new Binary(modelInfo.getModelType(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(
+          new Binary(modelInfo.getCategory(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[3].writeBinary(new Binary(modelInfo.getState(), TSFileConfig.STRING_CHARSET));
+      //      if (Objects.equals(modelType, ModelType.USER_DEFINED.toString())) {
+      //        columnBuilders[3].writeBinary(
+      //            new Binary(
+      //                INPUT_SHAPE
+      //                    + ReadWriteIOUtils.readString(modelInfo)
+      //                    + OUTPUT_SHAPE
+      //                    + ReadWriteIOUtils.readString(modelInfo)
+      //                    + INPUT_DATA_TYPE
+      //                    + ReadWriteIOUtils.readString(modelInfo)
+      //                    + OUTPUT_DATA_TYPE
+      //                    + ReadWriteIOUtils.readString(modelInfo),
+      //                TSFileConfig.STRING_CHARSET));
+      //        columnBuilders[4].writeBinary(
+      //            new Binary(ReadWriteIOUtils.readString(modelInfo),
+      // TSFileConfig.STRING_CHARSET));
+      //      } else {
+      //        columnBuilders[3].appendNull();
+      //        columnBuilders[4].writeBinary(
+      //            new Binary("Built-in model in IoTDB", TSFileConfig.STRING_CHARSET));
+      //      }
       resultBuilder.declarePosition();
     }
 

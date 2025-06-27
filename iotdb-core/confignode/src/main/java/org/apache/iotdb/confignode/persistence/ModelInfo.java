@@ -75,16 +75,16 @@ public class ModelInfo implements SnapshotProcessor {
   private static final Set<String> builtInAnomalyDetectionModel = new HashSet<>();
 
   static {
-    builtInForecastModel.add("_ARIMA");
-    builtInForecastModel.add("_NaiveForecaster");
-    builtInForecastModel.add("_STLForecaster");
-    builtInForecastModel.add("_HoltWinters");
-    builtInForecastModel.add("_ExponentialSmoothing");
-    builtInForecastModel.add("_timerxl");
-    builtInForecastModel.add("_sundial");
-    builtInAnomalyDetectionModel.add("_GaussianHMM");
-    builtInAnomalyDetectionModel.add("_GMMHMM");
-    builtInAnomalyDetectionModel.add("_Stray");
+    builtInForecastModel.add("arima");
+    builtInForecastModel.add("naive_forecaster");
+    builtInForecastModel.add("stl_forecaster");
+    builtInForecastModel.add("holtwinters");
+    builtInForecastModel.add("exponential_smoothing");
+    builtInForecastModel.add("timer_xl");
+    builtInForecastModel.add("sundial");
+    builtInAnomalyDetectionModel.add("gaussian_hmm");
+    builtInAnomalyDetectionModel.add("gmm_hmm");
+    builtInAnomalyDetectionModel.add("stray");
   }
 
   public ModelInfo() {

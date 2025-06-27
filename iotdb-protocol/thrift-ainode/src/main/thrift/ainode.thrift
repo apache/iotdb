@@ -98,9 +98,18 @@ struct TForecastResp {
   2: required binary forecastResult
 }
 
+struct TShowModelsResp {
+  1: required common.TSStatus status
+  2: optional list<string> modelIdList
+  3: optional map<string, string> modelTypeMap
+  4: optional map<string, string> categoryMap
+  5: optional map<string, string> stateMap
+}
+
 service IAINodeRPCService {
 
   // -------------- For Config Node --------------
+  TShowModelsResp showModels()
 
   common.TSStatus deleteModel(TDeleteModelReq req)
 
