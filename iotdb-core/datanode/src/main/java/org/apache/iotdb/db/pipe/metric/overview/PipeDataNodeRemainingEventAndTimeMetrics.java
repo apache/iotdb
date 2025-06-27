@@ -171,7 +171,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         String.valueOf(operator.getCreationTime()));
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
+        Metric.PIPE_FLOATING_MEMORY_USAGE.toString(),
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
