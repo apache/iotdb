@@ -15,33 +15,18 @@ import org.apache.iotdb.library.relational.tablefunction.connector.converter.Tim
 import org.apache.iotdb.udf.api.exception.UDFTypeMismatchException;
 import org.apache.iotdb.udf.api.type.Type;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class JDBCConnectionPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(JDBCConnectionPool.class);
-
   private JDBCConnectionPool() {}
-
-  static {
-    try {
-      Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
-    } catch (Exception e) {
-      LOGGER.warn("Failed to initialize mysql JDBC driver", e);
-    }
-  }
 
   public static Connection getConnection(String url, String userName, String password)
       throws SQLException {
     return DriverManager.getConnection(url, userName, password);
   }
-
-  private static class ConnectionWrapper {}
 
   public static Type translateJDBCTypeToUDFType(int type) {
     switch (type) {

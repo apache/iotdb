@@ -122,12 +122,8 @@ abstract class BaseJDBCConnectorTableFunction implements TableFunction {
 
   private static final String SQL = "SQL";
   private static final String URL = "URL";
-  private static final String DEFAULT_URL =
-      "jdbc:mysql://localhost:3306?allowPublicKeyRetrieval=true";
   private static final String USERNAME = "USERNAME";
-  private static final String DEFAULT_USERNAME = "root";
   private static final String PASSWORD = "PASSWORD";
-  private static final String DEFAULT_PASSWORD = "iotdb2025";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -152,13 +148,9 @@ abstract class BaseJDBCConnectorTableFunction implements TableFunction {
 
   abstract String getDefaultUrl();
 
-  String getDefaultUser() {
-    return DEFAULT_USERNAME;
-  }
+  abstract String getDefaultUser();
 
-  String getDefaultPassword() {
-    return DEFAULT_PASSWORD;
-  }
+  abstract String getDefaultPassword();
 
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
@@ -180,7 +172,7 @@ abstract class BaseJDBCConnectorTableFunction implements TableFunction {
         types[i - 1] = type;
       }
     } catch (SQLException e) {
-      throw new UDFException("Get ResultSetMetaData failed.", e);
+      throw new UDFException(String.format("Get ResultSetMetaData failed. %s", e.getMessage()), e);
     }
     BaseJDBCConnectorTableFunctionHandle handle =
         new BaseJDBCConnectorTableFunctionHandle(sql, url, userName, password, types);

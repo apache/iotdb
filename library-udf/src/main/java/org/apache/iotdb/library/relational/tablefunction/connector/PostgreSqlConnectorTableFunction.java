@@ -19,9 +19,23 @@
 
 package org.apache.iotdb.library.relational.tablefunction.connector;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PostgreSqlConnectorTableFunction extends BaseJDBCConnectorTableFunction {
 
-  private static final String DEFAULT_URL = "jdbc:postgresql://localhost:5432";
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PostgreSqlConnectorTableFunction.class);
+
+  static {
+    try {
+      Class.forName("org.postgresql.Driver").newInstance();
+    } catch (Exception e) {
+      LOGGER.warn("Failed to initialize mysql JDBC driver", e);
+    }
+  }
+
+  private static final String DEFAULT_URL = "jdbc:postgresql://localhost:5432/";
   private static final String DEFAULT_USERNAME = "postgres";
   private static final String DEFAULT_PASSWORD = "";
   private static final String PG = "PostgreSQL";
@@ -33,12 +47,12 @@ public class PostgreSqlConnectorTableFunction extends BaseJDBCConnectorTableFunc
 
   @Override
   String getDefaultUser() {
-    return DEFAULT_PASSWORD;
+    return DEFAULT_USERNAME;
   }
 
   @Override
   String getDefaultPassword() {
-    return DEFAULT_USERNAME;
+    return DEFAULT_PASSWORD;
   }
 
   @Override

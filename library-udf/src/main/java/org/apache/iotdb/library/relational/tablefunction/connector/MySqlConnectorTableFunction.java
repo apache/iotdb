@@ -1,6 +1,19 @@
 package org.apache.iotdb.library.relational.tablefunction.connector;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class MySqlConnectorTableFunction extends BaseJDBCConnectorTableFunction {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnectorTableFunction.class);
+
+  static {
+    try {
+      Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
+    } catch (Exception e) {
+      LOGGER.warn("Failed to initialize mysql JDBC driver", e);
+    }
+  }
 
   private static final String DEFAULT_URL =
       "jdbc:mysql://localhost:3306?allowPublicKeyRetrieval=true";
@@ -15,12 +28,12 @@ public class MySqlConnectorTableFunction extends BaseJDBCConnectorTableFunction 
 
   @Override
   String getDefaultUser() {
-    return DEFAULT_PASSWORD;
+    return DEFAULT_USERNAME;
   }
 
   @Override
   String getDefaultPassword() {
-    return DEFAULT_USERNAME;
+    return DEFAULT_PASSWORD;
   }
 
   @Override
