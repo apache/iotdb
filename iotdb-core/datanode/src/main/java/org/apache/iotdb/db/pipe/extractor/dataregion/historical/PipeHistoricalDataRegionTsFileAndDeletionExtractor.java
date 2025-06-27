@@ -51,6 +51,7 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -612,9 +613,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                       // Some resource is marked as deleted but not removed from the list.
                       !resource.isDeleted()
                           && (
-                          // Some resource may not be closed due to the control of
-                          // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                          // If the tsFile is not already marked closing, it is not captured by the
+                          // pipe realtime module. Thus, we can wait for the realtime sync module to
+                          // handle this, to avoid blocking the pipe sync process.
                           !resource.isClosed()
+                                  && Optional.ofNullable(resource.getProcessor())
+                                      .map(TsFileProcessor::alreadyMarkedClosing)
+                                      .orElse(true)
                               || mayTsFileContainUnprocessedData(resource)
                                   && isTsFileResourceOverlappedWithTimeRange(resource)
                                   && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
@@ -629,9 +634,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                       // Some resource is marked as deleted but not removed from the list.
                       !resource.isDeleted()
                           && (
-                          // Some resource may not be closed due to the control of
-                          // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                          // If the tsFile is not already marked closing, it is not captured by the
+                          // pipe realtime module. Thus, we can wait for the realtime sync module to
+                          // handle this, to avoid blocking the pipe sync process.
                           !resource.isClosed()
+                                  && Optional.ofNullable(resource.getProcessor())
+                                      .map(TsFileProcessor::alreadyMarkedClosing)
+                                      .orElse(true)
                               || mayTsFileContainUnprocessedData(resource)
                                   && isTsFileResourceOverlappedWithTimeRange(resource)
                                   && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
@@ -687,10 +696,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       // For consensus pipe, we only focus on the progressIndex that is generated from local write
       // instead of replication or something else.
       ProgressIndex dedicatedProgressIndex =
-          tryToExtractLocalProgressIndexForIoTV2(resource.getMaxProgressIndexAfterClose());
+          tryToExtractLocalProgressIndexForIoTV2(resource.getMaxProgressIndex());
       return greaterThanStartIndex(dedicatedProgressIndex);
     }
-    return greaterThanStartIndex(resource.getMaxProgressIndexAfterClose());
+    return greaterThanStartIndex(resource.getMaxProgressIndex());
   }
 
   private boolean greaterThanStartIndex(ProgressIndex progressIndex) {
