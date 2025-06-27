@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.pipe.metric.overview;
 
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -50,7 +50,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
-  private final Map<String, PipeDataNodeRemainingEventAndTimeOperator>
+  public final Map<String, PipeDataNodeRemainingEventAndTimeOperator>
       remainingEventAndTimeOperatorMap = new ConcurrentHashMap<>();
 
   private static Histogram PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM =
@@ -103,6 +103,15 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
+    metricService.createAutoGauge(
+        Metric.PIPE_FLOATING_MEMORY_USAGE.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeAgent.task(),
+        a -> a.getFloatingMemoryUsageInByte(operator.getPipeName()),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
 
     operator.setInsertNodeTransferTimer(
         metricService.getOrCreateTimer(
@@ -117,31 +126,6 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             operator.getPipeName()));
-  }
-
-  public boolean mayRemainingInsertEventExceedLimit(final String pipeID) {
-    if (Objects.isNull(metricService)) {
-      return true;
-    }
-
-    if (remainingEventAndTimeOperatorMap.values().stream()
-            .map(PipeDataNodeRemainingEventAndTimeOperator::getRemainingInsertEventSmoothingCount)
-            .reduce(0d, Double::sum)
-        > PipeConfig.getInstance().getPipeMaxAllowedTotalRemainingInsertEventCount()) {
-      return true;
-    }
-
-    final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.get(pipeID);
-    if (Objects.isNull(operator)) {
-      LOGGER.warn(
-          "Failed to get remaining insert event, RemainingEventAndTimeOperator({}) does not exist, will degrade anyway",
-          pipeID);
-      return true;
-    }
-
-    return operator.getRemainingInsertEventSmoothingCount()
-        > PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCountPerPipe();
   }
 
   @Override
@@ -181,6 +165,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_FLOATING_MEMORY_USAGE.toString(),
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),

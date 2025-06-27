@@ -113,34 +113,31 @@ public class PipeTaskMeta {
   public ProgressIndex updateProgressIndex(final ProgressIndex updateIndex) {
     // only pipeTaskMeta that need to updateProgressIndex will persist progress index
     // isRegisterPersistTask is used to avoid multiple threads registering persist task concurrently
-    if (Objects.nonNull(progressIndexPersistFile)
-        && !isRegisterPersistTask.getAndSet(true)
+    if (PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()
         && this.persistProgressIndexFuture == null
-        && PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()) {
+        && !isRegisterPersistTask.getAndSet(true)) {
       this.persistProgressIndexFuture =
           PipePeriodicalJobExecutor.submitBackgroundJob(
-              () -> {
-                if (PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()) {
-                  persistProgressIndex();
-                }
-              },
+              this::persistProgressIndex,
               0,
               PipeConfig.getInstance().getPipeProgressIndexFlushIntervalMs());
     }
 
     progressIndex.updateAndGet(
         index -> index.updateToMinimumEqualOrIsAfterProgressIndex(updateIndex));
-    if (Objects.nonNull(progressIndexPersistFile)
-        && updateCount.incrementAndGet() - lastPersistCount.get() > checkPointGap
-        && PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()) {
+
+    if (PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()
+        && updateCount.incrementAndGet() - lastPersistCount.get() > checkPointGap) {
       persistProgressIndex();
     }
+
     return progressIndex.get();
   }
 
-  private synchronized void persistProgressIndex() {
-    if (lastPersistCount.get() == updateCount.get()) {
-      // in case of multiple threads calling updateProgressIndex at the same time
+  public synchronized void persistProgressIndex() {
+    if (Objects.isNull(progressIndexPersistFile)
+        // in case of multiple threads calling updateProgressIndex at the same time
+        || lastPersistCount.get() == updateCount.get()) {
       return;
     }
 
