@@ -19,15 +19,11 @@
 
 package org.apache.iotdb.relational.it.query.view.recent;
 
-import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
 
 import org.apache.tsfile.read.common.RowRecord;
 import org.junit.After;
@@ -157,16 +153,6 @@ public class IoTDBTableViewQueryIT {
       prepareData(new String[] {"flush"});
     }
     prepareTableData(createTableSqls);
-  }
-
-  public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException {
-    try (ISession session = new Session.Builder().build()) {
-      session.open();
-      for (String sql : createTreeNonAlignedDataSqls) {
-        session.executeNonQueryStatement(sql);
-      }
-    }
   }
 
   @After
