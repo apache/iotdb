@@ -41,14 +41,16 @@ public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCac
       TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       boolean needUpdateCache,
       boolean needUpdateNullEntry,
-      String outputViewPath) {
+      String outputViewPath,
+      boolean deviceInMultiRegion) {
     super(
         operatorContext,
         child,
         seriesPath,
         treeDeviceSchemaCacheManager,
         needUpdateCache,
-        needUpdateNullEntry);
+        needUpdateNullEntry,
+        deviceInMultiRegion);
     checkArgument(seriesPath.getMeasurementList().size() == 1);
     this.outputViewPath = outputViewPath;
   }

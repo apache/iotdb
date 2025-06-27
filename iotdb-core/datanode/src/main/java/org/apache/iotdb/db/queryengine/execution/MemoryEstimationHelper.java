@@ -91,4 +91,13 @@ public class MemoryEstimationHelper {
     }
     return totalSize;
   }
+
+  // This method should only be called if the content in the current PartialPath comes from other
+  // structures whose memory cost have already been calculated.
+  public static long getEstimatedSizeOfCopiedPartialPath(@Nullable final PartialPath partialPath) {
+    if (partialPath == null) {
+      return 0;
+    }
+    return PARTIAL_PATH_INSTANCE_SIZE + RamUsageEstimator.shallowSizeOf(partialPath.getNodes());
+  }
 }

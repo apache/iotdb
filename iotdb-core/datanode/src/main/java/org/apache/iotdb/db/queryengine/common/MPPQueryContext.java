@@ -82,6 +82,13 @@ public class MPPQueryContext {
   // constructing some Expression and PlanNode.
   private final MemoryReservationManager memoryReservationManager;
 
+  private static final int minSizeToUseSampledTimeseriesOperandMemCost = 100;
+  private double avgTimeseriesOperandMemCost = 0;
+  private int numsOfSampledTimeseriesOperand = 0;
+  // When there is no view in a last query and no device exists in multiple regions,
+  // the updateScanNum process in distributed planning can be skipped.
+  private boolean needUpdateScanNumForLastQuery = false;
+
   private boolean userQuery = false;
 
   public MPPQueryContext(QueryId queryId) {
@@ -344,7 +351,29 @@ public class MPPQueryContext {
     this.memoryReservationManager.releaseMemoryCumulatively(bytes);
   }
 
+  public boolean useSampledAvgTimeseriesOperandMemCost() {
+    return numsOfSampledTimeseriesOperand >= minSizeToUseSampledTimeseriesOperandMemCost;
+  }
+
+  public long getAvgTimeseriesOperandMemCost() {
+    return (long) avgTimeseriesOperandMemCost;
+  }
+
+  public void calculateAvgTimeseriesOperandMemCost(long current) {
+    numsOfSampledTimeseriesOperand++;
+    avgTimeseriesOperandMemCost +=
+        (current - avgTimeseriesOperandMemCost) / numsOfSampledTimeseriesOperand;
+  }
+
   // endregion
+
+  public boolean needUpdateScanNumForLastQuery() {
+    return needUpdateScanNumForLastQuery;
+  }
+
+  public void setNeedUpdateScanNumForLastQuery(boolean needUpdateScanNumForLastQuery) {
+    this.needUpdateScanNumForLastQuery = needUpdateScanNumForLastQuery;
+  }
 
   public Optional<String> getDatabaseName() {
     return session.getDatabaseName();

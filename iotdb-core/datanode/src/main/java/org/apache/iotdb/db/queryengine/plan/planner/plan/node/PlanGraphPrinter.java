@@ -55,7 +55,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQ
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
@@ -547,23 +546,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitLastQueryScan(LastQueryScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("LastQueryScan-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Series: %s", node.getSeriesPath()));
-    if (StringUtil.isNotBlank(node.getOutputViewPath())) {
-      boxValue.add(String.format("ViewPath: %s", node.getOutputViewPath()));
-    }
-    boxValue.add(printRegion(node.getRegionReplicaSet()));
-    return render(node, boxValue, context);
-  }
-
-  @Override
-  public List<String> visitAlignedLastQueryScan(
-      AlignedLastQueryScanNode node, GraphContext context) {
-    List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("AlignedLastQueryScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Aligned: %s", node.isAligned()));
     boxValue.add(
         String.format(
-            "Series: %s%s",
-            node.getSeriesPath().getIDeviceID(), node.getSeriesPath().getMeasurementList()));
+            "Series: %s%s", node.getDevicePath().getIDeviceID(), node.getMeasurementSchemas()));
     if (StringUtil.isNotBlank(node.getOutputViewPath())) {
       boxValue.add(String.format("ViewPath: %s", node.getOutputViewPath()));
     }
