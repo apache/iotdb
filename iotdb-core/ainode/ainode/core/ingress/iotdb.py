@@ -60,11 +60,17 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
         input_token_len: int,
         output_token_len: int,
         data_schema_list: list,
-        ip: str = "127.0.0.1",
-        port: int = 6667,
-        username: str = "root",
-        password: str = "root",
-        time_zone: str = "UTC+8",
+        ip: str = AINodeDescriptor().get_config().get_ain_cluster_ingress_address(),
+        port: int = AINodeDescriptor().get_config().get_ain_cluster_ingress_port(),
+        username: str = AINodeDescriptor()
+        .get_config()
+        .get_ain_cluster_ingress_username(),
+        password: str = AINodeDescriptor()
+        .get_config()
+        .get_ain_cluster_ingress_password(),
+        time_zone: str = AINodeDescriptor()
+        .get_config()
+        .get_ain_cluster_ingress_time_zone(),
         use_rate: float = 1.0,
         offset_rate: float = 0.0,
     ):
@@ -225,11 +231,17 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
         input_token_len: int,
         output_token_len: int,
         data_schema_list: list,
-        ip: str = "127.0.0.1",
-        port: int = 6667,
-        username: str = "root",
-        password: str = "root",
-        time_zone: str = "UTC+8",
+        ip: str = AINodeDescriptor().get_config().get_ain_cluster_ingress_address(),
+        port: int = AINodeDescriptor().get_config().get_ain_cluster_ingress_port(),
+        username: str = AINodeDescriptor()
+        .get_config()
+        .get_ain_cluster_ingress_username(),
+        password: str = AINodeDescriptor()
+        .get_config()
+        .get_ain_cluster_ingress_password(),
+        time_zone: str = AINodeDescriptor()
+        .get_config()
+        .get_ain_cluster_ingress_time_zone(),
         use_rate: float = 1.0,
         offset_rate: float = 0.0,
     ):
