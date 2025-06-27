@@ -110,7 +110,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.eq;
 
 public class AnalyzerTest {
@@ -1245,10 +1244,8 @@ public class AnalyzerTest {
               NOOP);
       return analyzer.analyze(statement);
     } catch (final Exception e) {
-      e.printStackTrace();
-      fail(statement + ", " + e.getMessage());
+      throw e;
     }
-    return null;
   }
 
   public static Analysis analyzeStatementWithException(

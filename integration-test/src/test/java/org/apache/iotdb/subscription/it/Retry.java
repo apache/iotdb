@@ -17,13 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.ainode;
+package org.apache.iotdb.subscription.it;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-public class AINodeInfo {
-  // currently, we only support one AINode
-  public static final TEndPoint endPoint =
-      CommonDescriptor.getInstance().getConfig().getTargetAINodeEndPoint();
+/** Marks a test method to specify how many times it should be retried (first run + retries). */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface Retry {
+  /** Total execution count = 1 (initial run) + number of retries */
+  int times() default 3;
 }

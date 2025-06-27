@@ -22,6 +22,9 @@
 #include <stdexcept>
 
 #include "IoTDBRpcDataSet.h"
+
+#include <boost/optional/optional.hpp>
+
 #include "Column.h"
 
 const int32_t IoTDBRpcDataSet::startIndex = 2;
@@ -257,17 +260,17 @@ bool IoTDBRpcDataSet::isNull(int32_t index, int32_t rowNum) {
     return index >= 0 && curTsBlock_->getColumn(index)->isNull(rowNum);
 }
 
-bool IoTDBRpcDataSet::getBooleanByIndex(int32_t columnIndex) {
+boost::optional<bool> IoTDBRpcDataSet::getBooleanByIndex(int32_t columnIndex) {
     int32_t index = getTsBlockColumnIndexForColumnIndex(columnIndex);
     return getBooleanByTsBlockColumnIndex(index);
 }
 
-bool IoTDBRpcDataSet::getBoolean(const std::string& columnName) {
+boost::optional<bool> IoTDBRpcDataSet::getBoolean(const std::string& columnName) {
     int32_t index = getTsBlockColumnIndexForColumnName(columnName);
     return getBooleanByTsBlockColumnIndex(index);
 }
 
-bool IoTDBRpcDataSet::getBooleanByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
+boost::optional<bool> IoTDBRpcDataSet::getBooleanByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
     checkRecord();
     if (!isNull(tsBlockColumnIndex, tsBlockIndex_)) {
         lastReadWasNull_ = false;
@@ -275,21 +278,21 @@ bool IoTDBRpcDataSet::getBooleanByTsBlockColumnIndex(int32_t tsBlockColumnIndex)
     }
     else {
         lastReadWasNull_ = true;
-        return false;
+        return boost::none;
     }
 }
 
-double IoTDBRpcDataSet::getDoubleByIndex(int32_t columnIndex) {
+boost::optional<double> IoTDBRpcDataSet::getDoubleByIndex(int32_t columnIndex) {
     int32_t index = getTsBlockColumnIndexForColumnIndex(columnIndex);
     return getDoubleByTsBlockColumnIndex(index);
 }
 
-double IoTDBRpcDataSet::getDouble(const std::string& columnName) {
+boost::optional<double> IoTDBRpcDataSet::getDouble(const std::string& columnName) {
     int32_t index = getTsBlockColumnIndexForColumnName(columnName);
     return getDoubleByTsBlockColumnIndex(index);
 }
 
-double IoTDBRpcDataSet::getDoubleByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
+boost::optional<double> IoTDBRpcDataSet::getDoubleByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
     checkRecord();
     if (!isNull(tsBlockColumnIndex, tsBlockIndex_)) {
         lastReadWasNull_ = false;
@@ -297,21 +300,21 @@ double IoTDBRpcDataSet::getDoubleByTsBlockColumnIndex(int32_t tsBlockColumnIndex
     }
     else {
         lastReadWasNull_ = true;
-        return 0.0;
+        return boost::none;
     }
 }
 
-float IoTDBRpcDataSet::getFloatByIndex(int32_t columnIndex) {
+boost::optional<float> IoTDBRpcDataSet::getFloatByIndex(int32_t columnIndex) {
     int32_t index = getTsBlockColumnIndexForColumnIndex(columnIndex);
     return getFloatByTsBlockColumnIndex(index);
 }
 
-float IoTDBRpcDataSet::getFloat(const std::string& columnName) {
+boost::optional<float> IoTDBRpcDataSet::getFloat(const std::string& columnName) {
     int32_t index = getTsBlockColumnIndexForColumnName(columnName);
     return getFloatByTsBlockColumnIndex(index);
 }
 
-float IoTDBRpcDataSet::getFloatByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
+boost::optional<float> IoTDBRpcDataSet::getFloatByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
     checkRecord();
     if (!isNull(tsBlockColumnIndex, tsBlockIndex_)) {
         lastReadWasNull_ = false;
@@ -319,21 +322,21 @@ float IoTDBRpcDataSet::getFloatByTsBlockColumnIndex(int32_t tsBlockColumnIndex) 
     }
     else {
         lastReadWasNull_ = true;
-        return 0.0f;
+        return boost::none;
     }
 }
 
-int32_t IoTDBRpcDataSet::getIntByIndex(int32_t columnIndex) {
+boost::optional<int32_t> IoTDBRpcDataSet::getIntByIndex(int32_t columnIndex) {
     int32_t index = getTsBlockColumnIndexForColumnIndex(columnIndex);
     return getIntByTsBlockColumnIndex(index);
 }
 
-int32_t IoTDBRpcDataSet::getInt(const std::string& columnName) {
+boost::optional<int32_t> IoTDBRpcDataSet::getInt(const std::string& columnName) {
     int32_t index = getTsBlockColumnIndexForColumnName(columnName);
     return getIntByTsBlockColumnIndex(index);
 }
 
-int32_t IoTDBRpcDataSet::getIntByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
+boost::optional<int32_t> IoTDBRpcDataSet::getIntByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
     checkRecord();
     if (!isNull(tsBlockColumnIndex, tsBlockIndex_)) {
         lastReadWasNull_ = false;
@@ -345,21 +348,21 @@ int32_t IoTDBRpcDataSet::getIntByTsBlockColumnIndex(int32_t tsBlockColumnIndex) 
     }
     else {
         lastReadWasNull_ = true;
-        return 0;
+        return boost::none;
     }
 }
 
-int64_t IoTDBRpcDataSet::getLongByIndex(int32_t columnIndex) {
+boost::optional<int64_t> IoTDBRpcDataSet::getLongByIndex(int32_t columnIndex) {
     int32_t index = getTsBlockColumnIndexForColumnIndex(columnIndex);
     return getLongByTsBlockColumnIndex(index);
 }
 
-int64_t IoTDBRpcDataSet::getLong(const std::string& columnName) {
+boost::optional<int64_t> IoTDBRpcDataSet::getLong(const std::string& columnName) {
     int32_t index = getTsBlockColumnIndexForColumnName(columnName);
     return getLongByTsBlockColumnIndex(index);
 }
 
-int64_t IoTDBRpcDataSet::getLongByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
+boost::optional<int64_t> IoTDBRpcDataSet::getLongByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
     checkRecord();
     if (tsBlockColumnIndex < 0) {
         lastReadWasNull_ = false;
@@ -375,7 +378,7 @@ int64_t IoTDBRpcDataSet::getLongByTsBlockColumnIndex(int32_t tsBlockColumnIndex)
     }
     else {
         lastReadWasNull_ = true;
-        return 0;
+        return boost::none;
     }
 }
 
@@ -401,25 +404,25 @@ std::shared_ptr<Binary> IoTDBRpcDataSet::getBinaryByTsBlockColumnIndex(int32_t t
     }
 }
 
-std::string IoTDBRpcDataSet::getStringByIndex(int32_t columnIndex) {
+boost::optional<std::string> IoTDBRpcDataSet::getStringByIndex(int32_t columnIndex) {
     int32_t index = getTsBlockColumnIndexForColumnIndex(columnIndex);
     return getStringByTsBlockColumnIndex(index);
 }
 
-std::string IoTDBRpcDataSet::getString(const std::string& columnName) {
+boost::optional<std::string> IoTDBRpcDataSet::getString(const std::string& columnName) {
     int32_t index = getTsBlockColumnIndexForColumnName(columnName);
     return getStringByTsBlockColumnIndex(index);
 }
 
-std::string IoTDBRpcDataSet::getStringByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
+boost::optional<std::string> IoTDBRpcDataSet::getStringByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
     checkRecord();
-    if (tsBlockColumnIndex == -1) {
+    if (tsBlockColumnIndex < 0) {
         int64_t timestamp = curTsBlock_->getTimeByIndex(tsBlockIndex_);
         return std::to_string(timestamp);
     }
     if (isNull(tsBlockColumnIndex, tsBlockIndex_)) {
         lastReadWasNull_ = true;
-        return "";
+        return boost::none;
     }
     lastReadWasNull_ = false;
     return getStringByTsBlockColumnIndexAndDataType(tsBlockColumnIndex,
@@ -470,22 +473,25 @@ int64_t IoTDBRpcDataSet::getTimestamp(const std::string& columnName) {
 }
 
 int64_t IoTDBRpcDataSet::getTimestampByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
-    return getLongByTsBlockColumnIndex(tsBlockColumnIndex);
+    return getLongByTsBlockColumnIndex(tsBlockColumnIndex).value();
 }
 
-boost::gregorian::date IoTDBRpcDataSet::getDateByIndex(int32_t columnIndex) {
+boost::optional<boost::gregorian::date> IoTDBRpcDataSet::getDateByIndex(int32_t columnIndex) {
     int32_t index = getTsBlockColumnIndexForColumnIndex(columnIndex);
     return getDateByTsBlockColumnIndex(index);
 }
 
-boost::gregorian::date IoTDBRpcDataSet::getDate(const std::string& columnName) {
+boost::optional<boost::gregorian::date> IoTDBRpcDataSet::getDate(const std::string& columnName) {
     int32_t index = getTsBlockColumnIndexForColumnName(columnName);
     return getDateByTsBlockColumnIndex(index);
 }
 
-boost::gregorian::date IoTDBRpcDataSet::getDateByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
-    int32_t value = getIntByTsBlockColumnIndex(tsBlockColumnIndex);
-    return parseIntToDate(value);
+boost::optional<boost::gregorian::date> IoTDBRpcDataSet::getDateByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
+    auto value = getIntByTsBlockColumnIndex(tsBlockColumnIndex);
+    if (!value.is_initialized()) {
+        return boost::none;
+    }
+    return parseIntToDate(value.value());
 }
 
 TSDataType::TSDataType IoTDBRpcDataSet::getDataTypeByIndex(int32_t columnIndex) {

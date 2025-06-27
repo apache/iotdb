@@ -46,6 +46,22 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeHardlinkTsFileDirName();
   }
 
+  public String getPipeProgressIndexPersistDirName() {
+    return COMMON_CONFIG.getPipeProgressIndexPersistDirName();
+  }
+
+  public boolean isPipeProgressIndexPersistEnabled() {
+    return COMMON_CONFIG.isPipeProgressIndexPersistEnabled();
+  }
+
+  public long getPipeProgressIndexPersistCheckPointGap() {
+    return COMMON_CONFIG.getPipeProgressIndexPersistCheckPointGap();
+  }
+
+  public long getPipeProgressIndexFlushIntervalMs() {
+    return COMMON_CONFIG.getPipeProgressIndexFlushIntervalMs();
+  }
+
   public String getPipeHardlinkWALDirName() {
     return COMMON_CONFIG.getPipeHardlinkWALDirName();
   }
@@ -99,6 +115,10 @@ public class PipeConfig {
 
   public int getPipeRealTimeQueuePollHistoricalTsFileThreshold() {
     return Math.max(COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold(), 1);
+  }
+
+  public int getPipeRealTimeQueueMaxWaitingTsFileSize() {
+    return COMMON_CONFIG.getPipeRealTimeQueueMaxWaitingTsFileSize();
   }
 
   /////////////////////////////// Subtask Executor ///////////////////////////////
@@ -191,6 +211,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAsyncConnectorMaxClientNumber();
   }
 
+  public int getPipeAsyncConnectorMaxTsFileClientNumber() {
+    return COMMON_CONFIG.getPipeAsyncConnectorMaxTsFileClientNumber();
+  }
+
   public double getPipeAllConnectorsRateLimitBytesPerSecond() {
     return COMMON_CONFIG.getPipeAllSinksRateLimitBytesPerSecond();
   }
@@ -227,8 +251,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRemainingTimeCommitRateAverageTime();
   }
 
-  public PipeRateAverage getPipeRemainingInsertNodeCountAverage() {
-    return COMMON_CONFIG.getPipeRemainingInsertNodeCountAverage();
+  public double getPipeRemainingInsertNodeCountEMAAlpha() {
+    return COMMON_CONFIG.getPipeRemainingInsertNodeCountEMAAlpha();
   }
 
   public double getPipeTsFileScanParsingThreshold() {
@@ -253,6 +277,10 @@ public class PipeConfig {
 
   public double getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold() {
     return COMMON_CONFIG.getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold();
+  }
+
+  public boolean isTransferTsFileSync() {
+    return COMMON_CONFIG.getPipeTransferTsFileSync();
   }
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
@@ -299,6 +327,10 @@ public class PipeConfig {
 
   public double getPipeReceiverActualToEstimatedMemoryRatio() {
     return COMMON_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
+  }
+
+  public int getPipeReceiverReqDecompressedMaxLengthInBytes() {
+    return COMMON_CONFIG.getPipeReceiverReqDecompressedMaxLengthInBytes();
   }
 
   /////////////////////////////// Hybrid Mode ///////////////////////////////
@@ -353,10 +385,6 @@ public class PipeConfig {
 
   public int getPipeMaxAllowedTotalRemainingInsertEventCount() {
     return COMMON_CONFIG.getPipeMaxAllowedTotalRemainingInsertEventCount();
-  }
-
-  public int getPipeRemainingInsertEventCountSmoothingIntervalSeconds() {
-    return COMMON_CONFIG.getPipeRemainingInsertEventCountSmoothingIntervalSeconds();
   }
 
   /////////////////////////////// Logger ///////////////////////////////
@@ -450,6 +478,11 @@ public class PipeConfig {
 
     LOGGER.info("PipeHardlinkBaseDirName: {}", getPipeHardlinkBaseDirName());
     LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());
+    LOGGER.info("PipeProgressIndexPersistDirName: {}", getPipeProgressIndexPersistDirName());
+    LOGGER.info("PipeProgressIndexPersistEnabled: {}", isPipeProgressIndexPersistEnabled());
+    LOGGER.info(
+        "PipeProgressIndexPersistCheckPointGap: {}", getPipeProgressIndexPersistCheckPointGap());
+    LOGGER.info("PipeProgressIndexFlushIntervalMs: {}", getPipeProgressIndexFlushIntervalMs());
     LOGGER.info("PipeHardlinkWALDirName: {}", getPipeHardlinkWALDirName());
     LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
     LOGGER.info("PipeFileReceiverFsyncEnabled: {}", getPipeFileReceiverFsyncEnabled());
@@ -518,8 +551,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
     LOGGER.info(
-        "PipePipeRemainingInsertEventCountAverage: {}", getPipeRemainingInsertNodeCountAverage());
+        "PipePipeRemainingInsertEventCountAverage: {}", getPipeRemainingInsertNodeCountEMAAlpha());
     LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
+    LOGGER.info("PipeTransferTsFileSync: {}", isTransferTsFileSync());
 
     LOGGER.info("PipeDynamicMemoryHistoryWeight: {}", getPipeDynamicMemoryHistoryWeight());
     LOGGER.info(
@@ -548,6 +582,9 @@ public class PipeConfig {
         getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall());
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());
+    LOGGER.info(
+        "PipeAsyncConnectorMaxTsFileClientNumber: {}",
+        getPipeAsyncConnectorMaxTsFileClientNumber());
 
     LOGGER.info(
         "PipeAllConnectorsRateLimitBytesPerSecond: {}",
@@ -580,6 +617,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeReceiverActualToEstimatedMemoryRatio: {}",
         getPipeReceiverActualToEstimatedMemoryRatio());
+    LOGGER.info(
+        "PipeReceiverReqDecompressedMaxLengthInBytes: {}",
+        getPipeReceiverReqDecompressedMaxLengthInBytes());
 
     LOGGER.info(
         "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",
@@ -607,9 +647,6 @@ public class PipeConfig {
     LOGGER.info(
         "PipeMaxAllowedTotalRemainingInsertEventCount: {}",
         getPipeMaxAllowedTotalRemainingInsertEventCount());
-    LOGGER.info(
-        "PipeRemainingInsertEventCountSmoothingIntervalSeconds: {}",
-        getPipeRemainingInsertEventCountSmoothingIntervalSeconds());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());

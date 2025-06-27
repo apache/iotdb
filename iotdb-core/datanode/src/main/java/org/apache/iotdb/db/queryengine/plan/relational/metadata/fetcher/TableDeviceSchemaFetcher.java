@@ -118,8 +118,10 @@ public class TableDeviceSchemaFetcher {
               relationSqlParser,
               SessionManager.getInstance().getCurrSession(),
               queryId,
-              SessionManager.getInstance()
-                  .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
+              context == null
+                  ? SessionManager.getInstance()
+                      .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession())
+                  : context.getSession(),
               "Fetch Device for insert",
               LocalExecutionPlanner.getInstance().metadata,
               // Never timeout for insert
@@ -145,7 +147,10 @@ public class TableDeviceSchemaFetcher {
           throw AsyncSendPlanNodeHandler.needRetry(e)
               ? new IoTDBRuntimeException(
                   e.getCause(), TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode())
-              : new RuntimeException("Fetch Table Device Schema failed. ", e);
+              : new IoTDBRuntimeException(
+                  String.format("Fetch Table Device Schema failed because %s", e.getMessage()),
+                  e.getErrorCode(),
+                  e.isUserException());
         }
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           break;
@@ -468,20 +473,22 @@ public class TableDeviceSchemaFetcher {
               relationSqlParser,
               SessionManager.getInstance().getCurrSession(),
               queryId,
-              SessionManager.getInstance()
-                  .getSessionInfo(SessionManager.getInstance().getCurrSession()),
+              mppQueryContext == null
+                  ? SessionManager.getInstance()
+                      .getSessionInfo(SessionManager.getInstance().getCurrSession())
+                  : mppQueryContext.getSession(),
               String.format(
                   "fetch device for query %s : %s",
-                  mppQueryContext.getQueryId(), mppQueryContext.getSql()),
+                  mppQueryContext == null ? "unknown" : mppQueryContext.getQueryId(),
+                  mppQueryContext == null ? "unknown" : mppQueryContext.getSql()),
               LocalExecutionPlanner.getInstance().metadata,
               mppQueryContext.getTimeOut()
                   - (System.currentTimeMillis() - mppQueryContext.getStartTime()),
               false);
 
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException(
-            new IoTDBException(
-                executionResult.status.getMessage(), executionResult.status.getCode()));
+        throw new IoTDBRuntimeException(
+            executionResult.status.getMessage(), executionResult.status.getCode());
       }
 
       final List<ColumnHeader> columnHeaderList =
@@ -493,7 +500,10 @@ public class TableDeviceSchemaFetcher {
           tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
         } catch (final IoTDBException e) {
           t = e;
-          throw new RuntimeException("Fetch Table Device Schema failed. ", e);
+          throw new IoTDBRuntimeException(
+              String.format("Fetch Table Device Schema failed because %s", e.getMessage()),
+              e.getErrorCode(),
+              e.isUserException());
         }
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           break;

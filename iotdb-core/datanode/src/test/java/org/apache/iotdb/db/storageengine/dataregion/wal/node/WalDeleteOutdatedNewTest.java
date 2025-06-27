@@ -88,7 +88,7 @@ public class WalDeleteOutdatedNewTest {
     config.setDataRegionConsensusProtocolClass(prevConsensus);
     EnvironmentUtils.cleanDir(logDirectory1);
     StorageEngine.getInstance().reset();
-    WALInsertNodeCache.getInstance(1).clear();
+    WALInsertNodeCache.getInstance().clear();
   }
 
   /**

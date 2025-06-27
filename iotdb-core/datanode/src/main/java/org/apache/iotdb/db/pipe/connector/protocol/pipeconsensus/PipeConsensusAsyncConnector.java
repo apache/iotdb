@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.client.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
-import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -39,7 +38,6 @@ import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusDeleteEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletInsertNodeEventHandler;
@@ -48,6 +46,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusDeleteNodeReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.metric.PipeConsensusConnectorMetrics;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -72,10 +71,10 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Objects;
-import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -101,7 +100,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
   private static final long PIPE_CONSENSUS_EVENT_ENQUEUE_TIMEOUT_IN_MS =
       IOTDB_CONFIG.getConnectionTimeoutInMS() / 6;
   private final Queue<EnrichedEvent> retryEventQueue =
-      new PriorityQueue<>(
+      new PriorityBlockingQueue<>(
           IOTDB_CONFIG.getIotConsensusV2PipelineSize(),
           Comparator.comparingLong(EnrichedEvent::getReplicateIndexForIoTV2));
   // We use enrichedEvent here to make use of EnrichedEvent.equalsInPipeConsensus
@@ -535,9 +534,10 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
                 ? peekedEvent.getRetryInterval()
                 : 0L;
         LOGGER.info(
-            "PipeConsensus-ConsensusGroup-{}: retry with interval {} for {}",
+            "PipeConsensus-ConsensusGroup-{}: retry with interval {} for index {} {}",
             consensusGroupId,
             retryInterval,
+            peekedEvent.getReplicateIndexForIoTV2(),
             peekedEvent);
         // need to retry in background service, otherwise the retryInterval will block the sender
         // procedure.
@@ -616,7 +616,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
    * @param event event to retry
    */
   @SuppressWarnings("java:S899")
-  public void addFailureEventToRetryQueue(final EnrichedEvent event) {
+  public synchronized void addFailureEventToRetryQueue(final EnrichedEvent event) {
     if (event.isReleased()) {
       return;
     }
@@ -630,11 +630,20 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       return;
     }
 
-    retryEventQueue.offer(event);
-    LOGGER.info(
-        "PipeConsensus-ConsensusGroup-{}: Event {} transfer failed, will be added to retry queue.",
-        consensusGroupId,
-        event);
+    boolean res = retryEventQueue.offer(event);
+    if (res) {
+      LOGGER.info(
+          "PipeConsensus-ConsensusGroup-{}: Event {} replicate index {} transfer failed, will be added to retry queue.",
+          consensusGroupId,
+          event,
+          event.getReplicateIndexForIoTV2());
+    } else {
+      LOGGER.warn(
+          "PipeConsensus-ConsensusGroup-{}: Event {} replicate index {} transfer failed, added to retry queue failed, this event will be ignored.",
+          consensusGroupId,
+          event,
+          event.getReplicateIndexForIoTV2());
+    }
 
     if (isClosed.get()) {
       event.clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
@@ -716,16 +725,12 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
   }
 
   @Override
-  public long getConsensusPipeCommitProgress() {
-    return PipeEventCommitManager.getInstance()
-        .getGivenConsensusPipeCommitId(
-            consensusPipeName,
-            PipeDataNodeAgent.task().getPipeCreationTime(consensusPipeName),
-            consensusGroupId);
+  public long getLeaderReplicateProgress() {
+    return ReplicateProgressDataNodeManager.getReplicateIndexForIoTV2(consensusPipeName);
   }
 
   @Override
-  public long getConsensusPipeReplicateProgress() {
+  public long getFollowerApplyProgress() {
     return currentReplicateProgress;
   }
 

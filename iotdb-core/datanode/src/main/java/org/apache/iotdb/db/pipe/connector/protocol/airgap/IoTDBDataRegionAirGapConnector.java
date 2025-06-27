@@ -370,7 +370,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
 
   @Override
   protected byte[] compressIfNeeded(final byte[] reqInBytes) throws IOException {
-    if (Objects.isNull(compressionTimer)) {
+    if (Objects.isNull(compressionTimer) && Objects.nonNull(attributeSortedString)) {
       compressionTimer =
           PipeDataRegionConnectorMetrics.getInstance().getCompressionTimer(attributeSortedString);
     }

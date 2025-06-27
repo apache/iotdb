@@ -15,27 +15,30 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 from typing import List
 
+from transformers import PretrainedConfig
 
-class TimerxlConfig:
-    model_type = "timerxl"
+
+class TimerConfig(PretrainedConfig):
+    model_type = "timer"
+    keys_to_ignore_at_inference = ["past_key_values"]
 
     def __init__(
         self,
-        input_token_len: int = 96,  # how many points as a token, don't change
-        hidden_size: int = 1024,  # model hidden size
-        intermediate_size: int = 2048,  # ffn middle size
-        output_token_lens: List[int] = [96],  # how many points as a token, don't change
+        input_token_len: int = 1,
+        hidden_size: int = 1024,
+        intermediate_size: int = 2048,
+        output_token_lens: List[int] = [1, 8, 32, 64],
         num_hidden_layers: int = 8,
         num_attention_heads: int = 8,
-        hidden_act: str = "silu",  # activation function
-        use_cache: bool = True,  # kv cache
-        rope_theta: int = 10000,  # ROBE parameter
+        hidden_act: str = "silu",
+        use_cache: bool = True,
+        rope_theta: int = 10000,
         attention_dropout: float = 0.0,
-        initializer_range: float = 0.02,  # be of no use, because we already have weights
+        initializer_range: float = 0.02,
         max_position_embeddings: int = 10000,
-        ckpt_path: str = None,  # weight path
         **kwargs,
     ):
         self.input_token_len = input_token_len
@@ -50,12 +53,7 @@ class TimerxlConfig:
         self.attention_dropout = attention_dropout
         self.initializer_range = initializer_range
         self.max_position_embeddings = max_position_embeddings
-        self.ckpt_path = ckpt_path
 
         super().__init__(
             **kwargs,
         )
-
-    @classmethod
-    def from_dict(cls, config_dict: dict) -> "TimerxlConfig":
-        return cls(**config_dict)

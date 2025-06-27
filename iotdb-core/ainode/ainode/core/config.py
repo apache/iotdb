@@ -19,6 +19,7 @@ import os
 
 from ainode.core.constant import (
     AINODE_BUILD_INFO,
+    AINODE_BUILTIN_MODELS_DIR,
     AINODE_CLUSTER_NAME,
     AINODE_CONF_DIRECTORY_NAME,
     AINODE_CONF_FILE_NAME,
@@ -52,9 +53,12 @@ class AINodeConfig(object):
         # log directory
         self._ain_logs_dir: str = AINODE_LOG_DIR
 
+        # cache size for ingress dataloader (MB)
+        self._ain_data_cache_size = 50
+
         # Directory to save models
         self._ain_models_dir = AINODE_MODELS_DIR
-
+        self._ain_builtin_models_dir = AINODE_BUILTIN_MODELS_DIR
         self._ain_system_dir = AINODE_SYSTEM_DIR
 
         # Whether to enable compression for thrift
@@ -94,6 +98,12 @@ class AINodeConfig(object):
     def set_build_info(self, build_info: str) -> None:
         self._build_info = build_info
 
+    def get_ain_data_storage_cache_size(self) -> int:
+        return self._ain_data_cache_size
+
+    def set_ain_data_cache_size(self, ain_data_cache_size: int) -> None:
+        self._ain_data_cache_size = ain_data_cache_size
+
     def set_version_info(self, version_info: str) -> None:
         self._version_info = version_info
 
@@ -120,6 +130,12 @@ class AINodeConfig(object):
 
     def set_ain_models_dir(self, ain_models_dir: str) -> None:
         self._ain_models_dir = ain_models_dir
+
+    def get_ain_builtin_models_dir(self) -> str:
+        return self._ain_builtin_models_dir
+
+    def set_ain_builtin_models_dir(self, ain_builtin_models_dir: str) -> None:
+        self._ain_builtin_models_dir = ain_builtin_models_dir
 
     def get_ain_system_dir(self) -> str:
         return self._ain_system_dir
@@ -149,7 +165,6 @@ class AINodeConfig(object):
 
 @singleton
 class AINodeDescriptor(object):
-
     def __init__(self):
         self._config = AINodeConfig()
         self._load_config_from_file()

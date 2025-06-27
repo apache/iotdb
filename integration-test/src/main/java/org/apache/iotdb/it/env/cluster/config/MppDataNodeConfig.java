@@ -119,4 +119,16 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     setProperty("cache_last_values_for_load", String.valueOf(cacheLastValuesForLoad));
     return this;
   }
+
+  @Override
+  public DataNodeConfig setWalThrottleSize(long walThrottleSize) {
+    setProperty("wal_throttle_threshold_in_byte", String.valueOf(walThrottleSize));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
+    setProperty("delete_wal_files_period_in_ms", String.valueOf(deleteWalFilesPeriodInMs));
+    return this;
+  }
 }

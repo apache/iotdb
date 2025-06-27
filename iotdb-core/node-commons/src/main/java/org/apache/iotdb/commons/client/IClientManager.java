@@ -44,6 +44,9 @@ public interface IClientManager<K, V> {
    */
   void clear(K node);
 
+  /** clear all clients; */
+  void clearAll();
+
   /** close IClientManager, which means closing all clients for all nodes. */
   void close();
 

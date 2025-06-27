@@ -25,6 +25,7 @@ import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
@@ -66,7 +67,7 @@ public class SessionExample {
   private static Random random = new Random();
 
   public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     session =
         new Session.Builder()
             .host(LOCAL_HOST)
@@ -119,6 +120,7 @@ public class SessionExample {
     sessionEnableRedirect.setFetchSize(10000);
 
     fastLastDataQueryForOneDevice();
+    fastLastDataQueryForOnePrefix();
     insertRecord4Redirect();
     query4Redirect();
     sessionEnableRedirect.close();
@@ -707,6 +709,20 @@ public class SessionExample {
     try (SessionDataSet sessionDataSet =
         sessionEnableRedirect.executeLastDataQueryForOneDevice(
             ROOT_SG1, ROOT_SG1_D1, paths, true)) {
+      System.out.println(sessionDataSet.getColumnNames());
+      sessionDataSet.setFetchSize(1024);
+      while (sessionDataSet.hasNext()) {
+        System.out.println(sessionDataSet.next());
+      }
+    }
+  }
+
+  private static void fastLastDataQueryForOnePrefix()
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    System.out.println("-------fastLastQueryForOnePrefix------");
+    try (SessionDataSet sessionDataSet =
+        sessionEnableRedirect.executeFastLastDataQueryForOnePrefixPath(
+            Arrays.asList("root", "sg1"))) {
       System.out.println(sessionDataSet.getColumnNames());
       sessionDataSet.setFetchSize(1024);
       while (sessionDataSet.hasNext()) {
