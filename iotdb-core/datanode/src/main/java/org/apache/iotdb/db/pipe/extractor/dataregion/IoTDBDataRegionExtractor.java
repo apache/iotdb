@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor;
@@ -239,8 +238,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     historicalExtractor = new PipeHistoricalDataRegionTsFileExtractor();
   }
 
-  private void constructRealtimeExtractor(final PipeParameters parameters)
-      throws IllegalPathException {
+  private void constructRealtimeExtractor(final PipeParameters parameters) {
     // Use heartbeat only extractor if disable realtime extractor
     if (!parameters.getBooleanOrDefault(
         Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
