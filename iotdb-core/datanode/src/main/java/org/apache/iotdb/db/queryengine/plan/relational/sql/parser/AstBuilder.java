@@ -3558,13 +3558,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitCreateModelStatement(RelationalSqlParser.CreateModelStatementContext ctx) {
     String modelId = ctx.modelId.getText();
     validateModelName(modelId);
-    String modelType = ctx.modelType.getText();
 
     if (ctx.targetData == null) {
       throw new SemanticException("Target data in sql should be set in CREATE MODEL");
     }
     String targetData = ((StringLiteral) visit(ctx.targetData)).getValue();
-    CreateTraining createTraining = new CreateTraining(modelId, modelType, targetData);
+    CreateTraining createTraining = new CreateTraining(modelId, targetData);
     if (ctx.HYPERPARAMETERS() != null) {
       Map<String, String> parameters = new HashMap<>();
       for (RelationalSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {

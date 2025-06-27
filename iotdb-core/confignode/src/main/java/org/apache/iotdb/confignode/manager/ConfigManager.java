@@ -2660,7 +2660,6 @@ public class ConfigManager implements IManager {
 
     TTrainingReq trainingReq = new TTrainingReq();
     trainingReq.setModelId(req.getModelId());
-    trainingReq.setModelType(req.getModelType());
     if (req.isSetExistingModelId()) {
       trainingReq.setExistingModelId(req.getExistingModelId());
     }

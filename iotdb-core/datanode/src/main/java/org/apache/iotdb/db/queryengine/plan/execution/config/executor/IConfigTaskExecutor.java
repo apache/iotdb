@@ -424,7 +424,6 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> createTraining(
       String modelId,
-      String modelType,
       boolean isTableModel,
       Map<String, String> parameters,
       List<List<Long>> timeRanges,

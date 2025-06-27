@@ -1098,13 +1098,12 @@ struct TDataSchemaForTree{
 
 struct TCreateTrainingReq {
     1: required string modelId
-    2: required string modelType
-    3: required bool isTableModel
+    2: required bool isTableModel
+    3: required string existingModelId
     4: optional TDataSchemaForTable dataSchemaForTable
     5: optional TDataSchemaForTree dataSchemaForTree
     6: optional map<string, string> parameters
-    7: optional string existingModelId
-    8: optional list<list<i64>> timeRanges
+    7: optional list<list<i64>> timeRanges
 }
 
 // ====================================================

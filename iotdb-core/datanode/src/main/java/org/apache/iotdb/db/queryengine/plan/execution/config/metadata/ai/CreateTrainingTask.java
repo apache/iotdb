@@ -31,7 +31,6 @@ import java.util.Map;
 public class CreateTrainingTask implements IConfigTask {
 
   private final String modelId;
-  private final String modelType;
   private final boolean isTableModel;
   private final Map<String, String> parameters;
 
@@ -45,13 +44,8 @@ public class CreateTrainingTask implements IConfigTask {
 
   // For table model
   public CreateTrainingTask(
-      String modelId,
-      String modelType,
-      Map<String, String> parameters,
-      String existingModelId,
-      String targetSql) {
+      String modelId, Map<String, String> parameters, String existingModelId, String targetSql) {
     this.modelId = modelId;
-    this.modelType = modelType;
     this.parameters = parameters;
     this.existingModelId = existingModelId;
     this.targetSql = targetSql;
@@ -61,13 +55,11 @@ public class CreateTrainingTask implements IConfigTask {
   // For tree model
   public CreateTrainingTask(
       String modelId,
-      String modelType,
       Map<String, String> parameters,
       List<List<Long>> timeRanges,
       String existingModelId,
       List<String> targetPaths) {
     this.modelId = modelId;
-    this.modelType = modelType;
     this.parameters = parameters;
     this.timeRanges = timeRanges;
     this.existingModelId = existingModelId;
@@ -80,13 +72,6 @@ public class CreateTrainingTask implements IConfigTask {
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.createTraining(
-        modelId,
-        modelType,
-        isTableModel,
-        parameters,
-        timeRanges,
-        existingModelId,
-        targetSql,
-        targetPaths);
+        modelId, isTableModel, parameters, timeRanges, existingModelId, targetSql, targetPaths);
   }
 }

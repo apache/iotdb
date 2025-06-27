@@ -1368,9 +1368,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitCreateModel(IoTDBSqlParser.CreateModelContext ctx) {
     if (ctx.modelName == null) {
       String modelId = ctx.modelId.getText();
-      String modelType = ctx.modelType.getText();
-      CreateTrainingStatement createTrainingStatement =
-          new CreateTrainingStatement(modelId, modelType);
+      CreateTrainingStatement createTrainingStatement = new CreateTrainingStatement(modelId);
       if (ctx.hparamPair() != null) {
         Map<String, String> parameterList = new HashMap<>();
         for (IoTDBSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {

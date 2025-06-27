@@ -3331,7 +3331,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createTraining(
       String modelId,
-      String modelType,
       boolean isTableModel,
       Map<String, String> parameters,
       List<List<Long>> timeRanges,
@@ -3341,7 +3340,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TCreateTrainingReq req = new TCreateTrainingReq(modelId, modelType, isTableModel);
+      final TCreateTrainingReq req = new TCreateTrainingReq(modelId, isTableModel, existingModelId);
 
       if (isTableModel) {
         TDataSchemaForTable dataSchemaForTable = new TDataSchemaForTable();
@@ -3354,7 +3353,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
       req.setParameters(parameters);
       req.setTimeRanges(timeRanges);
-      req.setExistingModelId(existingModelId);
       final TSStatus executionStatus = client.createTraining(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
