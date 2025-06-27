@@ -161,6 +161,21 @@ abstract class BaseJDBCConnectorTableFunction implements TableFunction {
     String password = (String) ((ScalarArgument) arguments.get(PASSWORD)).getValue();
 
     DescribedSchema.Builder schemaBuilder = DescribedSchema.builder();
+    int[] types = buildResultHeaders(schemaBuilder, sql, url, userName, password);
+    BaseJDBCConnectorTableFunctionHandle handle =
+        new BaseJDBCConnectorTableFunctionHandle(sql, url, userName, password, types);
+    return TableFunctionAnalysis.builder()
+        .properColumnSchema(schemaBuilder.build())
+        .handle(handle)
+        .build();
+  }
+
+  int[] buildResultHeaders(
+      DescribedSchema.Builder schemaBuilder,
+      String sql,
+      String url,
+      String userName,
+      String password) {
     int[] types;
     try (Connection connection = JDBCConnectionPool.getConnection(url, userName, password);
         PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -171,15 +186,10 @@ abstract class BaseJDBCConnectorTableFunction implements TableFunction {
         schemaBuilder.addField(metaData.getColumnName(i), translateJDBCTypeToUDFType(type));
         types[i - 1] = type;
       }
+      return types;
     } catch (SQLException e) {
       throw new UDFException(String.format("Get ResultSetMetaData failed. %s", e.getMessage()), e);
     }
-    BaseJDBCConnectorTableFunctionHandle handle =
-        new BaseJDBCConnectorTableFunctionHandle(sql, url, userName, password, types);
-    return TableFunctionAnalysis.builder()
-        .properColumnSchema(schemaBuilder.build())
-        .handle(handle)
-        .build();
   }
 
   @Override

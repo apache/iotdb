@@ -210,7 +210,7 @@ public class ConfigNodeConfig {
   /** RatisConsensus protocol, Max size for a single log append request from leader. */
   private long dataRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
 
-  private long configNodeRatisConsensusLogAppenderBufferSize = 32 * 1024 * 1024L;
+  private long configNodeRatisConsensusLogAppenderBufferSize = 64 * 1024 * 1024L;
   private long schemaRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
 
   /**

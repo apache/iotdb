@@ -31,7 +31,7 @@ public class PostgreSqlConnectorTableFunction extends BaseJDBCConnectorTableFunc
     try {
       Class.forName("org.postgresql.Driver").newInstance();
     } catch (Exception e) {
-      LOGGER.warn("Failed to initialize mysql JDBC driver", e);
+      LOGGER.warn("Failed to initialize PostgreSQL JDBC driver", e);
     }
   }
 
