@@ -3012,6 +3012,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     final PartialPath devicePath = node.getDevicePath();
     List<Integer> idxOfMeasurementSchemas = node.getIdxOfMeasurementSchemas();
     List<Integer> unCachedMeasurementIndexes = new ArrayList<>();
+    Filter filter =
+        updateFilterUsingTTL(
+            context.getGlobalTimeFilter(),
+            DataNodeTTLCache.getInstance().getTTLForTree(devicePath.getNodes()));
     for (int i = 0; i < idxOfMeasurementSchemas.size(); i++) {
       IMeasurementSchema measurementSchema = node.getMeasurementSchema(i);
       final MeasurementPath measurementPath =
@@ -3034,11 +3038,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         unCachedMeasurementIndexes.add(i);
       } else if (timeValuePair.getValue() == TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE) {
         // there is no data for this time series, just ignore
-      } else if (!LastQueryUtil.satisfyFilter(
-          updateFilterUsingTTL(
-              context.getGlobalTimeFilter(),
-              DataNodeTTLCache.getInstance().getTTLForTree(devicePath.getNodes())),
-          timeValuePair)) { // cached last value is not satisfied
+      } else if (!LastQueryUtil.satisfyFilter(filter, timeValuePair)) {
+        // cached last value is not satisfied
 
         if (!isFilterGtOrGe(context.getGlobalTimeFilter())) {
           // time filter is not > or >=, we still need to read from disk

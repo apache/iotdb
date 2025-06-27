@@ -600,6 +600,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
 
+    return analyzeLastSourceAndDataPartition(analysis, selectExpressions, schemaTree, context);
+  }
+
+  private Analysis analyzeLastSourceAndDataPartition(
+      Analysis analysis,
+      List<Expression> selectExpressions,
+      ISchemaTree schemaTree,
+      MPPQueryContext context) {
     Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap = null;
     Set<IDeviceID> allDeviceSet = new HashSet<>();
     Set<IDeviceID> deviceExistViewSet = new HashSet<>();
@@ -3171,13 +3179,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       updateSchemaTreeByViews(analysis, schemaTree, context);
       logger.debug("[EndFetchSchema]]");
 
-      analyzeLastSource(
+      analyzeLastSourceAndDataPartition(
           analysis,
           Collections.singletonList(
               new TimeSeriesOperand(showTimeSeriesStatement.getPathPattern())),
           schemaTree,
           context);
-      analyzeDataPartition(analysis, new QueryStatement(), schemaTree, context);
     }
 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
@@ -1297,18 +1298,20 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                 sourceNode.getPartitionPath().getIDeviceID(),
                 context.getPartitionTimeFilter(),
                 cachedRegionReplicas);
-        if (dataDistribution.size() > 1) {
+        boolean deviceInMultiRegion = dataDistribution.size() > 1;
+        if (deviceInMultiRegion) {
           // If there is some series which is distributed in multi DataRegions
           context.setOneSeriesInMultiRegion(true);
         }
         // If the size of dataDistribution is N, this SeriesScanNode should be seperated into N
         // SeriesScanNode.
         for (TRegionReplicaSet dataRegion : dataDistribution) {
-          SeriesSourceNode split = (SeriesSourceNode) sourceNode.clone();
+          SeriesSourceNode split =
+              (SeriesSourceNode) (deviceInMultiRegion ? sourceNode.clone() : sourceNode);
           split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
           split.setRegionReplicaSet(dataRegion);
           if (split instanceof LastQueryScanNode) {
-            ((LastQueryScanNode) split).setDeviceInMultiRegion(dataDistribution.size() > 1);
+            ((LastQueryScanNode) split).setDeviceInMultiRegion(deviceInMultiRegion);
           }
           sources.add(split);
         }
@@ -1334,15 +1337,62 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       Filter timeFilter,
       Map<String, Map<Integer, List<TRegionReplicaSet>>> cache) {
     DataPartition dataPartition = analysis.getDataPartitionInfo();
-    String db = dataPartition.getDatabaseNameByDevice(deviceID);
-    TSeriesPartitionSlot tSeriesPartitionSlot = dataPartition.calculateDeviceGroupId(deviceID);
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        dataPartitionMap = dataPartition.getDataPartitionMap();
+
+    String db = null;
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesPartitionMap =
+        null;
+    for (Map.Entry<
+            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        entry : dataPartitionMap.entrySet()) {
+      if (PathUtils.isStartWith(deviceID, entry.getKey())) {
+        db = entry.getKey();
+        seriesPartitionMap = entry.getValue();
+        break;
+      }
+    }
+    if (seriesPartitionMap == null) {
+      return Collections.singletonList(NOT_ASSIGNED);
+    }
+
     Map<Integer, List<TRegionReplicaSet>> slot2ReplicasMap =
         cache.computeIfAbsent(db, k -> new HashMap<>());
+    TSeriesPartitionSlot tSeriesPartitionSlot = dataPartition.calculateDeviceGroupId(deviceID);
+
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+        finalSeriesPartitionMap = seriesPartitionMap;
     return slot2ReplicasMap.computeIfAbsent(
         tSeriesPartitionSlot.slotId,
         k ->
-            dataPartition.getDataRegionReplicaSetWithTimeFilter(
-                db, tSeriesPartitionSlot, timeFilter));
+            getDataRegionReplicaSetWithTimeFilter(
+                finalSeriesPartitionMap, tSeriesPartitionSlot, timeFilter));
+  }
+
+  public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+          seriesPartitionMap,
+      TSeriesPartitionSlot tSeriesPartitionSlot,
+      Filter timeFilter) {
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetMap =
+        seriesPartitionMap.getOrDefault(tSeriesPartitionSlot, Collections.emptyMap());
+    if (regionReplicaSetMap.isEmpty()) {
+      return Collections.singletonList(NOT_ASSIGNED);
+    }
+    List<TRegionReplicaSet> replicaSets = new ArrayList<>();
+    Set<TRegionReplicaSet> uniqueValues = new HashSet<>();
+    for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> entry :
+        regionReplicaSetMap.entrySet()) {
+      if (!TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime)) {
+        continue;
+      }
+      for (TRegionReplicaSet tRegionReplicaSet : entry.getValue()) {
+        if (uniqueValues.add(tRegionReplicaSet)) {
+          replicaSets.add(tRegionReplicaSet);
+        }
+      }
+    }
+    return replicaSets;
   }
 
   private boolean containsAggregationSource(FullOuterTimeJoinNode node) {
