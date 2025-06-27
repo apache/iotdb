@@ -84,7 +84,7 @@ public class PatternAggregator {
     this.outputType = requireNonNull(outputType, "outputType is null");
     this.patternAggregationTracker =
         requireNonNull(patternAggregationTracker, "patternAggregationTracker is null");
-    // resetAccumulator();
+    accumulator.reset();
   }
 
   // for copying when forking threads during pattern matching phase
@@ -102,8 +102,8 @@ public class PatternAggregator {
 
   // reset for a new match during measure computations phase
   public void reset() {
-    // resetAccumulator();
-    // patternAggregator.reset();
+    accumulator.reset();
+    patternAggregationTracker.reset();
   }
 
   //  private void resetAccumulator() {
@@ -178,11 +178,6 @@ public class PatternAggregator {
   //    return resultOnEmpty;
   //  }
 
-  // for ThreadEquivalence
-  //  public ArrayView getAllPositions(ArrayView labels) {
-  //    return patternAggregator.getAllPositions(labels);
-  //  }
-
   public PatternAggregator copy() {
     TableAccumulator accumulatorCopy;
     try {
@@ -199,28 +194,5 @@ public class PatternAggregator {
         argumentChannels,
         outputType,
         patternAggregationTracker.copy());
-  }
-
-  public static class PatternAggregatorInstantiator {
-    private final BoundSignature boundSignature;
-    private final TableAccumulator tableAccumulator;
-    private final List<Integer> argumentChannels;
-
-    //    private final PatternAggregatorSupplier patternAggregatorSupplier;
-
-    public PatternAggregatorInstantiator(
-        BoundSignature boundSignature,
-        TableAccumulator tableAccumulator,
-        List<Integer> argumentChannels,
-        PatternAggregationTracker patternAggregationTracker) {
-      this.boundSignature = boundSignature;
-      this.tableAccumulator = tableAccumulator;
-      this.argumentChannels = requireNonNull(argumentChannels, "argumentChannels is null");
-      //      this.patternAggregatorSupplier =
-      //          requireNonNull(patternAggregatorSupplier, "patternAggregatorSupplier is null");
-      //
-      //      this.accumulatorFactory =
-      //          () -> aggregationWindowFunctionSupplier.createTableAccumulator(lambdaProviders);
-    }
   }
 }
