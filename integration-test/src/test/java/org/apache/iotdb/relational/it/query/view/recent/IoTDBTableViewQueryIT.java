@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.relational.it.query.view.recent;
 
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
 
 import org.apache.tsfile.read.common.RowRecord;
 import org.junit.After;
@@ -107,6 +111,7 @@ public class IoTDBTableViewQueryIT {
     "CREATE VIEW view1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD) as root.db.battery.**",
     "CREATE VIEW view2 (battery TAG, voltage INT32 FIELD FROM voltage, current_rename FLOAT FIELD FROM current) as root.db.battery.**",
     "CREATE VIEW view3 (battery TAG, voltage INT32 FIELD FROM voltage, current_rename FLOAT FIELD FROM current) with (ttl=1) as root.db.battery.**",
+    "CREATE VIEW view4 (battery TAG, voltage INT32 FIELD FROM voltage) as root.db.battery.**",
     "CREATE TABLE table1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD)",
     "INSERT INTO table1 (time, battery, voltage, current) values (1, 'b1', 1, 1)",
     "INSERT INTO table1 (time, battery, voltage, current) values (2, 'b1', 1, 1)",
@@ -152,6 +157,16 @@ public class IoTDBTableViewQueryIT {
       prepareData(new String[] {"flush"});
     }
     prepareTableData(createTableSqls);
+  }
+
+  public static void main(String[] args)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = new Session.Builder().build()) {
+      session.open();
+      for (String sql : createTreeNonAlignedDataSqls) {
+        session.executeNonQueryStatement(sql);
+      }
+    }
   }
 
   @After
@@ -355,6 +370,12 @@ public class IoTDBTableViewQueryIT {
           session,
           "select * from (select * from view1 where battery = 'b1') join (select * from view1 where battery = 'b1' and (voltage > 0 or current > 0)) using(time)",
           "select * from (select * from table1 where battery = 'b1') join (select * from table1 where battery = 'b1' and (voltage > 0 or current > 0)) using(time)",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(distinct battery) from view4 where battery = 'b1'",
+          "select count(distinct battery) from table1 where battery = 'b1'",
           true);
     }
   }
