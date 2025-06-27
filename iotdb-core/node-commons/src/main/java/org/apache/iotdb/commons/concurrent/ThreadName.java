@@ -243,7 +243,8 @@ public enum ThreadName {
               PBTREE_RELEASE_MONITOR,
               SCHEMA_FORCE_MLOG,
               PBTREE_FLUSH_MONITOR,
-              PBTREE_WORKER_POOL));
+              PBTREE_WORKER_POOL,
+              SCHEMA_PARALLEL_POOL));
 
   private static final Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));
@@ -300,6 +301,7 @@ public enum ThreadName {
               PIPE_RECEIVER_AIR_GAP_AGENT,
               PIPE_AIR_GAP_RECEIVER,
               PIPE_PROGRESS_INDEX_BACKGROUND_SERVICE,
+              PIPE_PARALLEL_EXECUTION_POOL,
               SUBSCRIPTION_EXECUTOR_POOL,
               SUBSCRIPTION_RUNTIME_META_SYNCER,
               WINDOW_EVALUATION_SERVICE,
