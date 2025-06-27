@@ -438,11 +438,6 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_stuck_restart_interval_seconds",
                 String.valueOf(config.getPipeStuckRestartIntervalSeconds()))));
-    config.setPipeMaxAllowedTotalRemainingInsertEventCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_max_allowed_total_remaining_insert_event_count",
-                String.valueOf(config.getPipeMaxAllowedTotalRemainingInsertEventCount()))));
     config.setPipeStuckRestartMinIntervalMs(
         Long.parseLong(
             properties.getProperty(
