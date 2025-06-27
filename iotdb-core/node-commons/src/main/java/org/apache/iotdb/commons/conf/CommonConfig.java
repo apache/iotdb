@@ -1525,7 +1525,6 @@ public class CommonConfig {
     return pipeStorageEngineFlushTimeIntervalMs;
   }
 
-
   public int getPipeMaxAllowedTotalRemainingInsertEventCount() {
     return pipeMaxAllowedTotalRemainingInsertEventCount;
   }
