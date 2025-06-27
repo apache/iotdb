@@ -173,6 +173,7 @@ public enum Metric {
   PIPE_INSERT_NODE_EVENT_TRANSFER_TIME("pipe_insert_node_event_transfer_time"),
   PIPE_TSFILE_EVENT_TRANSFER_TIME("pipe_tsfile_event_transfer_time"),
   PIPE_DATANODE_EVENT_TRANSFER("pipe_datanode_event_transfer"),
+  PIPE_FLOATING_MEMORY_USAGE("pipe_floating_memory_usage"),
   PIPE_CONFIG_LINKED_QUEUE_SIZE("pipe_config_linked_queue_size"),
   UNTRANSFERRED_CONFIG_COUNT("untransferred_config_count"),
   PIPE_CONNECTOR_CONFIG_TRANSFER("pipe_connector_config_transfer"),
