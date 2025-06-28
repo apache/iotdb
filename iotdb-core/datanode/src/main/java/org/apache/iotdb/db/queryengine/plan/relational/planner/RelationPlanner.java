@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ClassifierDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.MatchNumberDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.Navigation;
@@ -65,6 +66,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SkipToPositi
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationLabelSet;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers.Assignment;
@@ -81,6 +84,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
@@ -158,6 +162,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.Position.PAST_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.StringType.STRING;
 
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
@@ -875,7 +881,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       case ALL_WITH_UNMATCHED:
         return RowsPerMatch.ALL_WITH_UNMATCHED;
       default:
-        throw new IllegalArgumentException("Unexpected value: " + rowsPerMatch);
+        throw new SemanticException("Unexpected rows per match: " + rowsPerMatch);
     }
   }
 
@@ -992,8 +998,53 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             new ScalarValuePointer(
                 planValuePointer(descriptor.getLabel(), descriptor.getNavigation(), subsets),
                 Symbol.from(translations.rewrite(accessor.getExpression())));
+      } else if (accessor.getDescriptor() instanceof AggregationDescriptor) {
+        AggregationDescriptor descriptor = (AggregationDescriptor) accessor.getDescriptor();
+
+        Map<NodeRef<Expression>, Symbol> mappings = new HashMap<>();
+
+        Optional<Symbol> matchNumberSymbol = Optional.empty();
+        if (!descriptor.getMatchNumberCalls().isEmpty()) {
+          Symbol symbol = symbolAllocator.newSymbol("match_number", INT64);
+          for (Expression call : descriptor.getMatchNumberCalls()) {
+            mappings.put(NodeRef.of(call), symbol);
+          }
+          matchNumberSymbol = Optional.of(symbol);
+        }
+
+        Optional<Symbol> classifierSymbol = Optional.empty();
+        if (!descriptor.getClassifierCalls().isEmpty()) {
+          Symbol symbol = symbolAllocator.newSymbol("classifier", STRING);
+
+          for (Expression call : descriptor.getClassifierCalls()) {
+            mappings.put(NodeRef.of(call), symbol);
+          }
+          classifierSymbol = Optional.of(symbol);
+        }
+
+        TranslationMap argumentTranslation = translations.withAdditionalIdentityMappings(mappings);
+
+        Set<IrLabel> labels =
+            descriptor.getLabels().stream()
+                .flatMap(label -> planLabels(Optional.of(label), subsets).stream())
+                .collect(Collectors.toSet());
+
+        pointer =
+            new AggregationValuePointer(
+                descriptor.getFunction(),
+                new AggregationLabelSet(labels, descriptor.getMode() == RUNNING),
+                descriptor.getArguments().stream()
+                    .filter(
+                        argument -> !DereferenceExpression.isQualifiedAllFieldsReference(argument))
+                    .map(
+                        argument ->
+                            coerceIfNecessary(
+                                analysis, argument, argumentTranslation.rewrite(argument)))
+                    .collect(Collectors.toList()),
+                classifierSymbol,
+                matchNumberSymbol);
       } else {
-        throw new IllegalArgumentException(
+        throw new SemanticException(
             "Unexpected descriptor type: " + accessor.getDescriptor().getClass().getName());
       }
 
@@ -1039,7 +1090,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       case LAST:
         return SkipToPosition.LAST;
       default:
-        throw new IllegalArgumentException("Unexpected value: " + position);
+        throw new SemanticException("Unexpected skip to position: " + position);
     }
   }
 

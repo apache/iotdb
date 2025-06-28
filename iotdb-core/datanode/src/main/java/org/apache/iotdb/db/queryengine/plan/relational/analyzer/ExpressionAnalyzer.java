@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.Range;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ClassifierDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.MatchNumberDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.Navigation;
@@ -100,6 +101,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
@@ -111,20 +113,24 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.collect.Iterators.getOnlyElement;
 import static java.util.Collections.unmodifiableMap;
@@ -968,13 +974,17 @@ public class ExpressionAnalyzer {
         FunctionCall node, StackableAstVisitorContext<Context> context) {
       String functionName = node.getName().getSuffix();
       boolean isAggregation = metadata.isAggregationFunction(session, functionName, accessControl);
+      boolean isRowPatternCount =
+          context.getContext().isPatternRecognition()
+              && isAggregation
+              && node.getName().getSuffix().equalsIgnoreCase("count");
       // argument of the form `label.*` is only allowed for row pattern count function
       node.getArguments().stream()
           .filter(DereferenceExpression::isQualifiedAllFieldsReference)
           .findAny()
           .ifPresent(
               allRowsReference -> {
-                if (node.getArguments().size() > 1) {
+                if (!isRowPatternCount || node.getArguments().size() > 1) {
                   throw new SemanticException(
                       "label.* syntax is only supported as the only argument of row pattern count function");
                 }
@@ -993,7 +1003,12 @@ public class ExpressionAnalyzer {
       }
 
       if (context.getContext().isPatternRecognition()) {
-        if (isPatternRecognitionFunction(node)) {
+        if (isAggregation) {
+          if (node.isDistinct()) {
+            throw new SemanticException(
+                "Cannot use DISTINCT with aggregate function in pattern recognition context");
+          }
+        } else if (isPatternRecognitionFunction(node)) {
           validatePatternRecognitionFunction(node);
 
           String name = node.getName().getSuffix().toUpperCase(ENGLISH);
@@ -1010,12 +1025,6 @@ public class ExpressionAnalyzer {
               return setExpressionType(node, analyzePhysicalNavigation(node, context, name));
             default:
               throw new SemanticException("unexpected pattern recognition function " + name);
-          }
-
-        } else if (isAggregation) {
-          if (node.isDistinct()) {
-            throw new SemanticException(
-                "Cannot use DISTINCT with aggregate function in pattern recognition context");
           }
         }
       }
@@ -1090,6 +1099,12 @@ public class ExpressionAnalyzer {
               true,
               functionNullability);
       resolvedFunctions.put(NodeRef.of(node), resolvedFunction);
+
+      // must run after arguments are processed and labels are recorded
+      if (context.getContext().isPatternRecognition() && isAggregation) {
+        analyzePatternAggregation(node, resolvedFunction);
+      }
+
       return setExpressionType(node, type);
     }
 
@@ -1373,6 +1388,95 @@ public class ExpressionAnalyzer {
 
     private String label(Identifier identifier) {
       return identifier.getCanonicalValue();
+    }
+
+    private ArgumentLabel validateLabelConsistency(FunctionCall node, int argumentIndex) {
+      Set<Optional<String>> referenceLabels =
+          extractExpressions(node.getArguments(), Expression.class).stream()
+              .map(child -> labels.get(NodeRef.of(child)))
+              .filter(Objects::nonNull)
+              .collect(toImmutableSet());
+
+      Set<Optional<String>> classifierLabels =
+          extractExpressions(
+                  ImmutableList.of(node.getArguments().get(argumentIndex)), FunctionCall.class)
+              .stream()
+              .filter(this::isClassifierFunction)
+              .map(
+                  functionCall ->
+                      functionCall.getArguments().stream()
+                          .findFirst()
+                          .map(argument -> label((Identifier) argument)))
+              .collect(toImmutableSet());
+
+      Set<Optional<String>> allLabels =
+          ImmutableSet.<Optional<String>>builder()
+              .addAll(referenceLabels)
+              .addAll(classifierLabels)
+              .build();
+
+      if (allLabels.isEmpty()) {
+        return ArgumentLabel.noLabel();
+      }
+
+      if (allLabels.size() > 1) {
+        String name = node.getName().getSuffix();
+        throw new SemanticException(
+            String.format("All labels and classifiers inside the call to '%s' must match", name));
+      }
+
+      Optional<String> label = Iterables.getOnlyElement(allLabels);
+      return label.map(ArgumentLabel::explicitLabel).orElseGet(ArgumentLabel::universalLabel);
+    }
+
+    private Set<String> analyzeAggregationLabels(FunctionCall node) {
+      if (node.getArguments().isEmpty()) {
+        return ImmutableSet.of();
+      }
+
+      Set<Optional<String>> argumentLabels = new HashSet<>();
+      for (int i = 0; i < node.getArguments().size(); i++) {
+        ArgumentLabel argumentLabel = validateLabelConsistency(node, i);
+        if (argumentLabel.hasLabel()) {
+          argumentLabels.add(argumentLabel.getLabel());
+        }
+      }
+      if (argumentLabels.size() > 1) {
+        throw new SemanticException(
+            "All aggregate function arguments must apply to rows matched with the same label");
+      }
+
+      return argumentLabels.stream()
+          .filter(Optional::isPresent)
+          .map(Optional::get)
+          .collect(Collectors.toSet());
+    }
+
+    private void analyzePatternAggregation(FunctionCall node, ResolvedFunction function) {
+      checkNoNestedAggregations(node);
+      checkNoNestedNavigations(node);
+      Set<String> labels = analyzeAggregationLabels(node);
+
+      List<FunctionCall> matchNumberCalls =
+          extractExpressions(node.getArguments(), FunctionCall.class).stream()
+              .filter(this::isMatchNumberFunction)
+              .collect(toImmutableList());
+
+      List<FunctionCall> classifierCalls =
+          extractExpressions(node.getArguments(), FunctionCall.class).stream()
+              .filter(this::isClassifierFunction)
+              .collect(toImmutableList());
+
+      patternRecognitionInputs.add(
+          new PatternFunctionAnalysis(
+              node,
+              new AggregationDescriptor(
+                  function,
+                  node.getArguments(),
+                  mapProcessingMode(node.getProcessingMode()),
+                  labels,
+                  matchNumberCalls,
+                  classifierCalls)));
     }
 
     private void checkNoNestedAggregations(FunctionCall node) {
@@ -2191,6 +2295,10 @@ public class ExpressionAnalyzer {
     }
   }
 
+  /**
+   * Checks if the given function call is a specific function for pattern recognition, excluding
+   * aggregation functions.
+   */
   public static boolean isPatternRecognitionFunction(FunctionCall node) {
     QualifiedName qualifiedName = node.getName();
     if (qualifiedName.getParts().size() > 1) {
@@ -2474,6 +2582,37 @@ public class ExpressionAnalyzer {
 
     public Optional<Identifier> getColumn() {
       return column;
+    }
+  }
+
+  private static class ArgumentLabel {
+    private final boolean hasLabel; // whether the parameter is bound with a label
+    private final Optional<String> label;
+
+    private ArgumentLabel(boolean hasLabel, Optional<String> label) {
+      this.hasLabel = hasLabel;
+      this.label = label;
+    }
+
+    public static ArgumentLabel noLabel() {
+      return new ArgumentLabel(false, Optional.empty());
+    }
+
+    public static ArgumentLabel universalLabel() {
+      return new ArgumentLabel(true, Optional.empty());
+    }
+
+    public static ArgumentLabel explicitLabel(String label) {
+      return new ArgumentLabel(true, Optional.of(label));
+    }
+
+    public boolean hasLabel() {
+      return hasLabel;
+    }
+
+    public Optional<String> getLabel() {
+      checkState(hasLabel, "no label available");
+      return label;
     }
   }
 }

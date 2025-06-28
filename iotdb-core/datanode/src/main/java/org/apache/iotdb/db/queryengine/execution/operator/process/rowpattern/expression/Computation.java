@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers.Assignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -64,9 +66,14 @@ public abstract class Computation {
    */
   public static class ComputationParser {
 
-    public static Computation parse(Expression expression) {
+    public static Computation parse(ExpressionAndValuePointers expressionAndValuePointers) {
+      Expression expression = expressionAndValuePointers.getExpression();
+      List<Assignment> assignments = expressionAndValuePointers.getAssignments();
       AtomicInteger counter = new AtomicInteger(0);
       Map<String, Integer> symbolToIndex = new HashMap<>();
+      for (int i = 0; i < assignments.size(); i++) {
+        symbolToIndex.put(assignments.get(i).getSymbol().getName(), i);
+      }
       return parse(expression, counter, symbolToIndex);
     }
 
@@ -102,15 +109,11 @@ public abstract class Computation {
         NaryOperator op = mapLogicalOperator(logicalExpr.getOperator());
         return new NaryComputation(computations, op);
       } else if (expression instanceof SymbolReference) {
-        // Upon encountering a SymbolReference type, it is converted into a ReferenceComputation.
+        // upon encountering a SymbolReference type, it is converted into a ReferenceComputation.
         // B.value < LAST(B.value) -> b_0 < b_1
         // LAST(B.value, 1) < LAST(B.value, 2) -> b_0 < b_1 + 1
         SymbolReference symRef = (SymbolReference) expression;
         String name = symRef.getName();
-        // If an index has not been previously assigned to the symbol, a new index is allocated.
-        if (!symbolToIndex.containsKey(name)) {
-          symbolToIndex.put(name, counter.getAndIncrement());
-        }
         int index = symbolToIndex.get(name);
         return new ReferenceComputation(index);
       } else if (expression instanceof LongLiteral) {
