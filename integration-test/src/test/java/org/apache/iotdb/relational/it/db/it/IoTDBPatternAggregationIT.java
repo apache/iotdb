@@ -71,35 +71,20 @@ public class IoTDBPatternAggregationIT {
 
         // TABLE: t1
         "CREATE TABLE t1(totalprice DOUBLE FIELD)",
-        "INSERT INTO t1 VALUES (2025-01-01T00:01:00, 90)",
-        "INSERT INTO t1 VALUES (2025-01-01T00:02:00, 80)",
-        "INSERT INTO t1 VALUES (2025-01-01T00:03:00, 70)",
-        "INSERT INTO t1 VALUES (2025-01-01T00:04:00, 70)",
+        "INSERT INTO t1 VALUES (2025-01-01T00:01:00, 10)",
+        "INSERT INTO t1 VALUES (2025-01-01T00:02:00, 20)",
+        "INSERT INTO t1 VALUES (2025-01-01T00:03:00, 30)",
+        "INSERT INTO t1 VALUES (2025-01-01T00:04:00, 40)",
+        "INSERT INTO t1 VALUES (2025-01-01T00:05:00, 10)",
+        "INSERT INTO t1 VALUES (2025-01-01T00:06:00, 20)",
+        "INSERT INTO t1 VALUES (2025-01-01T00:07:00, 30)",
 
         // TABLE: t2
         "CREATE TABLE t2(totalprice DOUBLE FIELD)",
-        "INSERT INTO t2 VALUES (2025-01-01T00:01:00, 10)",
-        "INSERT INTO t2 VALUES (2025-01-01T00:02:00, 20)",
-        "INSERT INTO t2 VALUES (2025-01-01T00:03:00, 30)",
-
-        // TABLE: t3
-        "CREATE TABLE t3(totalprice DOUBLE FIELD)",
-        "INSERT INTO t3 VALUES (2025-01-01T00:01:00, 10)",
-        "INSERT INTO t3 VALUES (2025-01-01T00:02:00, 20)",
-        "INSERT INTO t3 VALUES (2025-01-01T00:03:00, 30)",
-        "INSERT INTO t3 VALUES (2025-01-01T00:04:00, 30)",
-        "INSERT INTO t3 VALUES (2025-01-01T00:05:00, 40)",
-
-        // TABLE: t4
-        "CREATE TABLE t4(totalprice DOUBLE FIELD)",
-        "INSERT INTO t4 VALUES (2025-01-01T00:01:00, 90)",
-        "INSERT INTO t4 VALUES (2025-01-01T00:02:00, 80)",
-        "INSERT INTO t4 VALUES (2025-01-01T00:03:00, 70)",
-        "INSERT INTO t4 VALUES (2025-01-01T00:04:00, 80)",
-
-        // TABLE: t5
-        "CREATE TABLE t5(part STRING TAG, num INT32 FIELD, totalprice DOUBLE FIELD)",
-        "INSERT INTO t5 VALUES (2025-01-01T00:01:00, 'p1', 1, 10.0)",
+        "INSERT INTO t2 VALUES (2025-01-01T00:01:00, 4)",
+        "INSERT INTO t2 VALUES (2025-01-01T00:02:00, 6)",
+        "INSERT INTO t2 VALUES (2025-01-01T00:03:00, 5)",
+        "INSERT INTO t2 VALUES (2025-01-01T00:04:00, 13)",
       };
 
   private static void insertData() {
@@ -165,6 +150,239 @@ public class IoTDBPatternAggregationIT {
             + "        A AS A.altitude > 500 "
             + ") AS m "
             + "ORDER BY device_id, match ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void test1() {
+    String[] expectedHeader =
+        new String[] {
+          "time",
+          "match",
+          "count1",
+          "count2",
+          "max",
+          "min",
+          "sum1",
+          "sum2",
+          "avg1",
+          "avg2",
+          "totalprice"
+        };
+    String[] retArray =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,1,1,4,10.0,10.0,10.0,100.0,10.0,25.0,10.0,",
+          "2025-01-01T00:02:00.000Z,1,2,4,20.0,10.0,30.0,100.0,15.0,25.0,20.0,",
+          "2025-01-01T00:03:00.000Z,1,3,4,30.0,10.0,60.0,100.0,20.0,25.0,30.0,",
+          "2025-01-01T00:04:00.000Z,1,4,4,40.0,10.0,100.0,100.0,25.0,25.0,40.0,",
+          "2025-01-01T00:05:00.000Z,2,1,3,10.0,10.0,10.0,60.0,10.0,20.0,10.0,",
+          "2025-01-01T00:06:00.000Z,2,2,3,20.0,10.0,30.0,60.0,15.0,20.0,20.0,",
+          "2025-01-01T00:07:00.000Z,2,3,3,30.0,10.0,60.0,60.0,20.0,20.0,30.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT m.time, m.match, m.count1, m.count2, m.max, m.min, m.sum1, m.sum2, m.avg1, m.avg2, m.totalprice "
+            + "FROM t1 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        COUNT(totalprice) AS count1, "
+            + "        FINAL COUNT(totalprice) AS count2, "
+            + "        MAX(totalprice) AS max, "
+            + "        MIN(totalprice) AS min, "
+            + "        SUM(totalprice) AS sum1, "
+            + "        FINAL SUM(totalprice) AS sum2, "
+            + "        AVG(totalprice) AS avg1, "
+            + "        FINAL AVG(totalprice) AS avg2 "
+            + "    ALL ROWS PER MATCH "
+            + "    PATTERN (A B C D?) "
+            + "    DEFINE "
+            + "        A AS A.totalprice = 10, "
+            + "        B AS B.totalprice = 20, "
+            + "        C AS C.totalprice = 30, "
+            + "        D AS D.totalprice = 40 "
+            + ") AS m ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void test2() {
+    String[] expectedHeader =
+        new String[] {
+          "time",
+          "match",
+          "label",
+          "count",
+          "count_c",
+          "final_count_c",
+          "count_u",
+          "final_count_u",
+          "totalprice"
+        };
+    String[] retArray =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,1,A,1,0,1,0,2,10.0,",
+          "2025-01-01T00:02:00.000Z,1,B,2,0,1,1,2,20.0,",
+          "2025-01-01T00:03:00.000Z,1,C,3,1,1,1,2,30.0,",
+          "2025-01-01T00:04:00.000Z,1,D,4,1,1,2,2,40.0,",
+          "2025-01-01T00:05:00.000Z,2,A,1,0,1,0,1,10.0,",
+          "2025-01-01T00:06:00.000Z,2,B,2,0,1,1,1,20.0,",
+          "2025-01-01T00:07:00.000Z,2,C,3,1,1,1,1,30.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT m.time, m.match, m.label, m.count, m.count_c, m.final_count_c, m.count_u, m.final_count_u, m.totalprice "
+            + "FROM t1 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        CLASSIFIER() AS label, "
+            + "        COUNT(totalprice) AS count, "
+            + "        COUNT(C.totalprice) AS count_c, "
+            + "        FINAL COUNT(C.totalprice) AS final_count_c, "
+            + "        COUNT(U.totalprice) AS count_u, "
+            + "        FINAL COUNT(U.totalprice) AS final_count_u "
+            + "    ALL ROWS PER MATCH "
+            + "    PATTERN (A B C D?) "
+            + "    SUBSET U = (B, D) "
+            + "    DEFINE "
+            + "        A AS A.totalprice = 10, "
+            + "        B AS B.totalprice = 20, "
+            + "        C AS C.totalprice = 30, "
+            + "        D AS D.totalprice = 40 "
+            + ") AS m ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void test3() {
+    String[] expectedHeader =
+        new String[] {
+          "time",
+          "match",
+          "label",
+          "sum",
+          "sum_c",
+          "final_sum_c",
+          "sum_u",
+          "final_sum_u",
+          "totalprice"
+        };
+    String[] retArray =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,1,A,10.0,0.0,30.0,0.0,60.0,10.0,",
+          "2025-01-01T00:02:00.000Z,1,B,30.0,0.0,30.0,20.0,60.0,20.0,",
+          "2025-01-01T00:03:00.000Z,1,C,60.0,30.0,30.0,20.0,60.0,30.0,",
+          "2025-01-01T00:04:00.000Z,1,D,100.0,30.0,30.0,60.0,60.0,40.0,",
+          "2025-01-01T00:05:00.000Z,2,A,10.0,0.0,30.0,0.0,20.0,10.0,",
+          "2025-01-01T00:06:00.000Z,2,B,30.0,0.0,30.0,20.0,20.0,20.0,",
+          "2025-01-01T00:07:00.000Z,2,C,60.0,30.0,30.0,20.0,20.0,30.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT m.time, m.match, m.label, m.sum, m.sum_c, m.final_sum_c, m.sum_u, m.final_sum_u, m.totalprice "
+            + "FROM t1 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        CLASSIFIER() AS label, "
+            + "        SUM(totalprice) AS sum, "
+            + "        SUM(C.totalprice) AS sum_c, "
+            + "        FINAL SUM(C.totalprice) AS final_sum_c, "
+            + "        SUM(U.totalprice) AS sum_u, "
+            + "        FINAL SUM(U.totalprice) AS final_sum_u "
+            + "    ALL ROWS PER MATCH "
+            + "    PATTERN (A B C D?) "
+            + "    SUBSET U = (B, D) "
+            + "    DEFINE "
+            + "        A AS A.totalprice = 10, "
+            + "        B AS B.totalprice = 20, "
+            + "        C AS C.totalprice = 30, "
+            + "        D AS D.totalprice = 40 "
+            + ") AS m ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void test4() {
+    String[] expectedHeader =
+        new String[] {
+          "time",
+          "match",
+          "label",
+          "avg",
+          "avg_c",
+          "final_avg_c",
+          "avg_u",
+          "final_avg_u",
+          "totalprice"
+        };
+    String[] retArray =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,1,A,10.0,0.0,30.0,0.0,30.0,10.0,",
+          "2025-01-01T00:02:00.000Z,1,B,15.0,0.0,30.0,20.0,30.0,20.0,",
+          "2025-01-01T00:03:00.000Z,1,C,20.0,30.0,30.0,20.0,30.0,30.0,",
+          "2025-01-01T00:04:00.000Z,1,D,25.0,30.0,30.0,30.0,30.0,40.0,",
+          "2025-01-01T00:05:00.000Z,2,A,10.0,0.0,30.0,0.0,20.0,10.0,",
+          "2025-01-01T00:06:00.000Z,2,B,15.0,0.0,30.0,20.0,20.0,20.0,",
+          "2025-01-01T00:07:00.000Z,2,C,20.0,30.0,30.0,20.0,20.0,30.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT m.time, m.match, m.label, m.avg, m.avg_c, m.final_avg_c, m.avg_u, m.final_avg_u, m.totalprice "
+            + "FROM t1 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        CLASSIFIER() AS label, "
+            + "        AVG(totalprice) AS avg, "
+            + "        AVG(C.totalprice) AS avg_c, "
+            + "        FINAL AVG(C.totalprice) AS final_avg_c, "
+            + "        AVG(U.totalprice) AS avg_u, "
+            + "        FINAL AVG(U.totalprice) AS final_avg_u "
+            + "    ALL ROWS PER MATCH "
+            + "    PATTERN (A B C D?) "
+            + "    SUBSET U = (B, D) "
+            + "    DEFINE "
+            + "        A AS A.totalprice = 10, "
+            + "        B AS B.totalprice = 20, "
+            + "        C AS C.totalprice = 30, "
+            + "        D AS D.totalprice = 40 "
+            + ") AS m ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testAggregationsInDefineClause() {
+    String[] expectedHeader =
+        new String[] {"time", "match", "label", "avg", "running_avg_b", "totalprice"};
+    String[] retArray =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,1,B,4.0,4.0,4.0,",
+          "2025-01-01T00:02:00.000Z,1,A,5.0,4.0,6.0,",
+          "2025-01-01T00:03:00.000Z,1,A,5.0,4.0,5.0,",
+          "2025-01-01T00:04:00.000Z,1,B,7.0,8.5,13.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT m.time, m.match, m.label, m.avg, m.running_avg_b, m.totalprice "
+            + "FROM t2 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "        MATCH_NUMBER() AS match, "
+            + "        CLASSIFIER() AS label, "
+            + "        RUNNING AVG(totalprice) AS avg, "
+            + "        RUNNING AVG(B.totalprice) AS running_avg_b "
+            + "    ALL ROWS PER MATCH "
+            + "    PATTERN ((A | B)*) "
+            + "    DEFINE "
+            + "        A AS AVG(totalprice) = 5 "
+            + ") AS m ",
         expectedHeader,
         retArray,
         DATABASE_NAME);

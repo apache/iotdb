@@ -80,28 +80,11 @@ public class PatternAggregator {
     accumulator.reset();
   }
 
-  // for copying when forking threads during pattern matching phase
-  //  private PatternAggregator(
-  //      BoundSignature boundSignature,
-  //      //      MappedWindowIndex mappedWindowIndex,
-  //      Supplier<TableAccumulator> accumulatorFactory,
-  //      PatternAggregator patternAggregator,
-  //      TableAccumulator accumulator) {
-  //    this.boundSignature = boundSignature;
-  //    this.accumulatorFactory = accumulatorFactory;
-  //    this.patternAggregator = patternAggregator;
-  //    this.accumulator = accumulator;
-  //  }
-
   // reset for a new match during measure computations phase
   public void reset() {
     accumulator.reset();
     patternAggregationTracker.reset();
   }
-
-  //  private void resetAccumulator() {
-  //    accumulator = accumulatorFactory.get();
-  //  }
 
   /**
    * Identify the new positions for aggregation since the last time this aggregation was run, and
