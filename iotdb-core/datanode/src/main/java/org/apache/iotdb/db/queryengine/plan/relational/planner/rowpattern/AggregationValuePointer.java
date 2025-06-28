@@ -24,6 +24,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -102,5 +106,56 @@ public final class AggregationValuePointer implements ValuePointer {
   @Override
   public int hashCode() {
     return Objects.hash(function, setDescriptor, arguments, classifierSymbol, matchNumberSymbol);
+  }
+
+  public static void serialize(AggregationValuePointer pointer, ByteBuffer byteBuffer) {
+    pointer.function.serialize(byteBuffer);
+    AggregationLabelSet.serialize(pointer.setDescriptor, byteBuffer);
+    byteBuffer.putInt(pointer.arguments.size());
+    for (Expression arg : pointer.arguments) {
+      Expression.serialize(arg, byteBuffer);
+    }
+    byteBuffer.put(pointer.classifierSymbol.isPresent() ? (byte) 1 : (byte) 0);
+    if (pointer.classifierSymbol.isPresent()) {
+      Symbol.serialize(pointer.classifierSymbol.get(), byteBuffer);
+    }
+    byteBuffer.put(pointer.matchNumberSymbol.isPresent() ? (byte) 1 : (byte) 0);
+    if (pointer.matchNumberSymbol.isPresent()) {
+      Symbol.serialize(pointer.matchNumberSymbol.get(), byteBuffer);
+    }
+  }
+
+  public static void serialize(AggregationValuePointer pointer, DataOutputStream stream)
+      throws IOException {
+    pointer.function.serialize(stream);
+    AggregationLabelSet.serialize(pointer.setDescriptor, stream);
+    stream.writeInt(pointer.arguments.size());
+    for (Expression arg : pointer.arguments) {
+      Expression.serialize(arg, stream);
+    }
+    stream.writeBoolean(pointer.classifierSymbol.isPresent());
+    if (pointer.classifierSymbol.isPresent()) {
+      Symbol.serialize(pointer.classifierSymbol.get(), stream);
+    }
+    stream.writeBoolean(pointer.matchNumberSymbol.isPresent());
+    if (pointer.matchNumberSymbol.isPresent()) {
+      Symbol.serialize(pointer.matchNumberSymbol.get(), stream);
+    }
+  }
+
+  public static AggregationValuePointer deserialize(ByteBuffer byteBuffer) {
+    ResolvedFunction function = ResolvedFunction.deserialize(byteBuffer);
+    AggregationLabelSet setDescriptor = AggregationLabelSet.deserialize(byteBuffer);
+    int argCount = byteBuffer.getInt();
+    List<Expression> arguments = new ArrayList<>(argCount);
+    for (int i = 0; i < argCount; i++) {
+      arguments.add(Expression.deserialize(byteBuffer));
+    }
+    Optional<Symbol> classifierSymbol =
+        byteBuffer.get() == 1 ? Optional.of(Symbol.deserialize(byteBuffer)) : Optional.empty();
+    Optional<Symbol> matchNumberSymbol =
+        byteBuffer.get() == 1 ? Optional.of(Symbol.deserialize(byteBuffer)) : Optional.empty();
+    return new AggregationValuePointer(
+        function, setDescriptor, arguments, classifierSymbol, matchNumberSymbol);
   }
 }

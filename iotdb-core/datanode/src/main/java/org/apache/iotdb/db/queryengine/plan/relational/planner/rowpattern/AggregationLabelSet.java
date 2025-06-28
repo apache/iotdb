@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -65,5 +69,32 @@ public class AggregationLabelSet {
   @Override
   public int hashCode() {
     return Objects.hash(labels, running);
+  }
+
+  public static void serialize(AggregationLabelSet set, ByteBuffer byteBuffer) {
+    byteBuffer.putInt(set.labels.size());
+    for (IrLabel label : set.labels) {
+      IrLabel.serialize(label, byteBuffer);
+    }
+    byteBuffer.put((byte) (set.running ? 1 : 0));
+  }
+
+  public static void serialize(AggregationLabelSet set, DataOutputStream stream)
+      throws IOException {
+    stream.writeInt(set.labels.size());
+    for (IrLabel label : set.labels) {
+      IrLabel.serialize(label, stream);
+    }
+    stream.writeBoolean(set.running);
+  }
+
+  public static AggregationLabelSet deserialize(ByteBuffer byteBuffer) {
+    int size = byteBuffer.getInt();
+    Set<IrLabel> labels = new HashSet<>(size);
+    for (int i = 0; i < size; i++) {
+      labels.add(IrLabel.deserialize(byteBuffer));
+    }
+    boolean running = byteBuffer.get() == 1;
+    return new AggregationLabelSet(labels, running);
   }
 }
