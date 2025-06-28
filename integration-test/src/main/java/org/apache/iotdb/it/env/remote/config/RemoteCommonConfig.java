@@ -380,4 +380,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     return this;
   }
+
+  @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    return this;
+  }
 }
