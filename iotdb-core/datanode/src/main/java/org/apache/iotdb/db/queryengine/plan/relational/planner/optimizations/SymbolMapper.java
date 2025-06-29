@@ -264,9 +264,12 @@ public class SymbolMapper {
                       function.isIgnoreNulls()));
             });
 
-    ImmutableList<Symbol> newPartitionBy = node.getSpecification().getPartitionBy().stream().map(this::map).collect(toImmutableList());
-    Optional<OrderingScheme> newOrderingScheme = node.getSpecification().getOrderingScheme().map(this::map);
-    DataOrganizationSpecification specification = new DataOrganizationSpecification(newPartitionBy, newOrderingScheme);
+    ImmutableList<Symbol> newPartitionBy =
+        node.getSpecification().getPartitionBy().stream().map(this::map).collect(toImmutableList());
+    Optional<OrderingScheme> newOrderingScheme =
+        node.getSpecification().getOrderingScheme().map(this::map);
+    DataOrganizationSpecification specification =
+        new DataOrganizationSpecification(newPartitionBy, newOrderingScheme);
 
     return new WindowNode(
         node.getPlanNodeId(),
