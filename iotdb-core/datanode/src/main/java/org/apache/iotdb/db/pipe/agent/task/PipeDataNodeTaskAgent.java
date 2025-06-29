@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -397,7 +398,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   public void collectPipeMetaList(final TDataNodeHeartbeatResp resp) throws TException {
     // Try the lock instead of directly acquire it to prevent the block of the cluster heartbeat
     // 10s is the half of the HEARTBEAT_TIMEOUT_TIME defined in class BaseNodeCache in ConfigNode
-    if (!tryReadLockWithTimeOut(10)) {
+    if (!tryReadLockWithTimeOut(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
       return;
     }
     try {
