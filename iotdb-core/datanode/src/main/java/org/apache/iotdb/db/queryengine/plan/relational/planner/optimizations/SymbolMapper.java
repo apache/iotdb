@@ -268,13 +268,13 @@ public class SymbolMapper {
         node.getSpecification().getPartitionBy().stream().map(this::map).collect(toImmutableList());
     Optional<OrderingScheme> newOrderingScheme =
         node.getSpecification().getOrderingScheme().map(this::map);
-    DataOrganizationSpecification specification =
+    DataOrganizationSpecification newSpecification =
         new DataOrganizationSpecification(newPartitionBy, newOrderingScheme);
 
     return new WindowNode(
         node.getPlanNodeId(),
         source,
-        specification,
+        newSpecification,
         newFunctions.buildOrThrow(),
         node.getHashSymbol().map(this::map),
         node.getPrePartitionedInputs().stream().map(this::map).collect(toImmutableSet()),
