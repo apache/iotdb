@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
@@ -151,31 +150,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                 case USING_TSFILE:
                   return TsFileEpoch.State.USING_TSFILE;
                 case USING_TABLET:
-                  if (((PipeTsFileInsertionEvent) event.getEvent()).getFileStartTime()
-                      < event.getTsFileEpoch().getInsertNodeMinTime()) {
-                    // Some insert nodes in the tsfile epoch are not captured by pipe, so we should
-                    // capture the tsfile event to make sure all data in the tsfile epoch can be
-                    // extracted.
-                    //
-                    // The situation can be caused by the following operations:
-                    //  1. PipeA: start historical data extraction with flush
-                    //  2. Data insertion
-                    //  3. PipeB: start realtime data extraction
-                    //  4. PipeB: start historical data extraction without flush
-                    //  5. Data inserted in the step2 is not captured by PipeB, and if its tsfile
-                    //     epoch's state is USING_TABLET, the tsfile event will be ignored, which
-                    //     will cause the data loss in the tsfile epoch.
-                    LOGGER.info(
-                        "The tsFile {}'s epoch's start time {} is smaller than the captured insertNodes' min time {}, will regard it as data loss or un-sequential, will extract the tsFile",
-                        ((PipeTsFileInsertionEvent) event.getEvent()).getTsFile(),
-                        ((PipeTsFileInsertionEvent) event.getEvent()).getFileStartTime(),
-                        event.getTsFileEpoch().getInsertNodeMinTime());
-                    return TsFileEpoch.State.USING_BOTH;
-                  } else {
-                    // All data in the tsfile epoch has been extracted in tablet mode, so we should
-                    // simply keep the state of the tsfile epoch and discard the tsfile event.
-                    return TsFileEpoch.State.USING_TABLET;
-                  }
+                  return TsFileEpoch.State.USING_TABLET;
                 case USING_BOTH:
                 default:
                   return canNotUseTabletAnyMore(event)
