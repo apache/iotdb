@@ -445,32 +445,30 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         // Some resource is marked as deleted but not removed from the list.
                         !resource.isDeleted()
                             && (
-                            // Some resource may not be closed due to the control of
-                            // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                            !resource.isClosed()
-                                || mayTsFileContainUnprocessedData(resource)
-                                    && isTsFileResourceOverlappedWithTimeRange(resource)
-                                    && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
-                                    && mayTsFileResourceOverlappedWithPattern(resource)))
+                            // Some resource may not be closed because the flush may be incomplete.
+                            resource.isClosed()
+                                && mayTsFileContainUnprocessedData(resource)
+                                && isTsFileResourceOverlappedWithTimeRange(resource)
+                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                                && mayTsFileResourceOverlappedWithPattern(resource)))
                 .collect(Collectors.toList());
         resourceList.addAll(sequenceTsFileResources);
 
-        final Collection<TsFileResource> unsequenceTsFileResources =
+        final Collection<TsFileResource> unSequenceTsFileResources =
             tsFileManager.getTsFileList(false).stream()
                 .filter(
                     resource ->
                         // Some resource is marked as deleted but not removed from the list.
                         !resource.isDeleted()
                             && (
-                            // Some resource may not be closed due to the control of
-                            // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                            !resource.isClosed()
-                                || mayTsFileContainUnprocessedData(resource)
-                                    && isTsFileResourceOverlappedWithTimeRange(resource)
-                                    && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
-                                    && mayTsFileResourceOverlappedWithPattern(resource)))
+                            // Some resource may not be closed because the flush may be incomplete.
+                            resource.isClosed()
+                                && mayTsFileContainUnprocessedData(resource)
+                                && isTsFileResourceOverlappedWithTimeRange(resource)
+                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                                && mayTsFileResourceOverlappedWithPattern(resource)))
                 .collect(Collectors.toList());
-        resourceList.addAll(unsequenceTsFileResources);
+        resourceList.addAll(unSequenceTsFileResources);
 
         resourceList.removeIf(
             resource -> {
@@ -500,7 +498,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             dataRegionId,
             sequenceTsFileResources.size(),
             originalSequenceTsFileCount,
-            unsequenceTsFileResources.size(),
+            unSequenceTsFileResources.size(),
             originalUnsequenceTsFileCount,
             resourceList.size(),
             originalSequenceTsFileCount + originalUnsequenceTsFileCount,
