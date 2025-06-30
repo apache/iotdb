@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor;
@@ -48,6 +49,8 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -92,13 +95,12 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionExtractor.class);
 
-  private PipeHistoricalDataRegionExtractor historicalExtractor;
+  private @Nullable PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
   private DataRegionWatermarkInjector watermarkInjector;
 
   private boolean hasNoExtractionNeed = true;
-  private boolean shouldExtractInsertion = false;
   private boolean shouldExtractDeletion = false;
 
   @Override
@@ -113,7 +115,6 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       return;
     }
     hasNoExtractionNeed = false;
-    shouldExtractInsertion = insertionDeletionListeningOptionPair.getLeft();
     shouldExtractDeletion = insertionDeletionListeningOptionPair.getRight();
 
     if (insertionDeletionListeningOptionPair.getLeft().equals(true)
@@ -210,7 +211,17 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
           EXTRACTOR_HISTORY_END_TIME_KEY);
     }
 
-    constructHistoricalExtractor();
+    if (validator
+            .getParameters()
+            .getBooleanOrDefault(SystemConstant.RESTART_KEY, SystemConstant.RESTART_DEFAULT_VALUE)
+        || validator
+            .getParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE)) {
+      // Do not flush or open historical extractor when historical tsFile is disabled
+      constructHistoricalExtractor();
+    }
     constructRealtimeExtractor(validator.getParameters());
 
     historicalExtractor.validate(validator);
@@ -234,7 +245,6 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   }
 
   private void constructHistoricalExtractor() {
-    // Enable historical extractor by default
     historicalExtractor = new PipeHistoricalDataRegionTsFileExtractor();
   }
 
@@ -305,7 +315,9 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
     super.customize(parameters, configuration);
 
-    historicalExtractor.customize(parameters, configuration);
+    if (Objects.nonNull(historicalExtractor)) {
+      historicalExtractor.customize(parameters, configuration);
+    }
     realtimeExtractor.customize(parameters, configuration);
 
     // Set watermark injector
@@ -342,7 +354,9 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
         "Pipe {}@{}: Starting historical extractor {} and realtime extractor {}.",
         pipeName,
         regionId,
-        historicalExtractor.getClass().getSimpleName(),
+        Objects.nonNull(historicalExtractor)
+            ? historicalExtractor.getClass().getSimpleName()
+            : null,
         realtimeExtractor.getClass().getSimpleName());
 
     super.start();
@@ -395,14 +409,18 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       // There can still be writing when tsFile events are added. If we start
       // realtimeExtractor after the process, then this part of data will be lost.
       realtimeExtractor.start();
-      historicalExtractor.start();
+      if (Objects.nonNull(historicalExtractor)) {
+        historicalExtractor.start();
+      }
     } catch (final Exception e) {
       exceptionHolder.set(e);
       LOGGER.warn(
           "Pipe {}@{}: Start historical extractor {} and realtime extractor {} error.",
           pipeName,
           regionId,
-          historicalExtractor.getClass().getSimpleName(),
+          Objects.nonNull(historicalExtractor)
+              ? historicalExtractor.getClass().getSimpleName()
+              : null,
           realtimeExtractor.getClass().getSimpleName(),
           e);
     }
@@ -421,7 +439,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     }
 
     Event event = null;
-    if (!historicalExtractor.hasConsumedAll()) {
+    if (Objects.nonNull(historicalExtractor) && !historicalExtractor.hasConsumedAll()) {
       event = historicalExtractor.supply();
     } else {
       if (Objects.nonNull(watermarkInjector)) {
@@ -451,32 +469,21 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       return;
     }
 
-    historicalExtractor.close();
+    if (Objects.nonNull(historicalExtractor)) {
+      historicalExtractor.close();
+    }
     realtimeExtractor.close();
     if (Objects.nonNull(taskID)) {
       PipeDataRegionExtractorMetrics.getInstance().deregister(taskID);
     }
   }
 
-  //////////////////////////// APIs provided for detecting stuck ////////////////////////////
-
-  public boolean shouldExtractInsertion() {
-    return shouldExtractInsertion;
-  }
-
-  public boolean isStreamMode() {
-    return realtimeExtractor instanceof PipeRealtimeDataRegionHybridExtractor
-        || realtimeExtractor instanceof PipeRealtimeDataRegionLogExtractor;
-  }
-
-  public boolean hasConsumedAllHistoricalTsFiles() {
-    return historicalExtractor.hasConsumedAll();
-  }
-
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public int getHistoricalTsFileInsertionEventCount() {
-    return hasBeenStarted.get() ? historicalExtractor.getPendingQueueSize() : 0;
+    return hasBeenStarted.get() && Objects.nonNull(historicalExtractor)
+        ? historicalExtractor.getPendingQueueSize()
+        : 0;
   }
 
   public int getTabletInsertionEventCount() {
@@ -489,11 +496,5 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   public int getPipeHeartbeatEventCount() {
     return hasBeenStarted.get() ? realtimeExtractor.getPipeHeartbeatEventCount() : 0;
-  }
-
-  public int getEventCount() {
-    return hasBeenStarted.get()
-        ? (historicalExtractor.getPendingQueueSize() + realtimeExtractor.getEventCount())
-        : 0;
   }
 }
