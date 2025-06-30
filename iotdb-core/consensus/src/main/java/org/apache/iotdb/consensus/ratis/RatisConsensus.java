@@ -722,7 +722,7 @@ class RatisConsensus implements IConsensus {
       return client
           .getRaftClient()
           .admin()
-          .transferLeadership(newLeader != null ? newLeader.getId() : null, 10000);
+          .transferLeadership(newLeader != null ? newLeader.getId() : null, 30000);
     }
   }
 
