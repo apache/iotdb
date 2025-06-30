@@ -36,6 +36,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeTsFileResourceManager {
@@ -86,7 +87,7 @@ public class PipeTsFileResourceManager {
 
     // If the file is not a hardlink or copied file, check if there is a related hardlink or
     // copied file in pipe dir. if so, increase reference count and return it
-    final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file);
+    final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file, pipeName);
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
       if (increaseReferenceIfExists(hardlinkOrCopiedFile)) {
@@ -123,9 +124,10 @@ public class PipeTsFileResourceManager {
     return false;
   }
 
-  public static File getHardlinkOrCopiedFileInPipeDir(final File file) throws IOException {
+  public static File getHardlinkOrCopiedFileInPipeDir(final File file, final String pipeName)
+      throws IOException {
     try {
-      return new File(getPipeTsFileDirPath(file), getRelativeFilePath(file));
+      return new File(getPipeTsFileDirPath(file, pipeName), getRelativeFilePath(file));
     } catch (final Exception e) {
       throw new IOException(
           String.format(
@@ -136,7 +138,7 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  private static String getPipeTsFileDirPath(File file) throws IOException {
+  private static String getPipeTsFileDirPath(File file, final String pipeName) throws IOException {
     while (!file.getName().equals(IoTDBConstant.SEQUENCE_FOLDER_NAME)
         && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FOLDER_NAME)) {
       file = file.getParentFile();
@@ -145,7 +147,8 @@ public class PipeTsFileResourceManager {
         + File.separator
         + PipeConfig.getInstance().getPipeHardlinkBaseDirName()
         + File.separator
-        + PipeConfig.getInstance().getPipeHardlinkTsFileDirName();
+        + PipeConfig.getInstance().getPipeHardlinkTsFileDirName()
+        + (Objects.nonNull(pipeName) ? File.separator + pipeName : "");
   }
 
   private static String getRelativeFilePath(File file) {
@@ -262,7 +265,7 @@ public class PipeTsFileResourceManager {
 
   public void unpinTsFileResource(final TsFileResource resource, final String pipeName)
       throws IOException {
-    final File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile());
+    final File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName);
     decreaseFileReference(pinnedFile, pipeName);
 
     final File modFile = new File(pinnedFile + ModificationFile.FILE_SUFFIX);

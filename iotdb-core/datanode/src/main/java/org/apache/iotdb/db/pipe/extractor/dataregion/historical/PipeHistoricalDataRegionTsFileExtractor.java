@@ -532,7 +532,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
           PipeDataNodeResourceManager.tsfile()
               .getDeviceIsAlignedMapFromCache(
-                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
+                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                      resource.getTsFile(), pipeName),
                   false);
       deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
