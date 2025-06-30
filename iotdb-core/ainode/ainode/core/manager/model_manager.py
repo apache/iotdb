@@ -101,7 +101,6 @@ class ModelManager:
         """
         Load the model with the given model_id.
         """
-        model_id = model_id.lower()
         logger.info(f"Load model {model_id}")
         try:
             model = self.model_storage.load_model(model_id, acceleration)
@@ -115,7 +114,6 @@ class ModelManager:
         """
         Save the model using save_pretrained
         """
-        model_id = model_id.lower()
         logger.info(f"Saving model {model_id}")
         try:
             self.model_storage.save_model(model_id, model)
@@ -152,4 +150,4 @@ class ModelManager:
         """
         Get the type of the model with the given model_id.
         """
-        return self.model_storage.get_built_in_model_type(model_id.lower())
+        return self.model_storage.get_built_in_model_type(model_id)
