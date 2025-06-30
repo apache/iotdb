@@ -1096,10 +1096,13 @@ public class RatisConfig {
 
     private final int sleepDeviationThresholdMs;
     private final int closeThresholdMs;
+    private final int transferLeaderTimeoutMs;
 
-    private Utils(int sleepDeviationThresholdMs, int closeThresholdMs) {
+    private Utils(
+        int sleepDeviationThresholdMs, int closeThresholdMs, int transferLeaderTimeoutMs) {
       this.sleepDeviationThresholdMs = sleepDeviationThresholdMs;
       this.closeThresholdMs = closeThresholdMs;
+      this.transferLeaderTimeoutMs = transferLeaderTimeoutMs;
     }
 
     public int getSleepDeviationThresholdMs() {
@@ -1108,6 +1111,10 @@ public class RatisConfig {
 
     public int getCloseThresholdMs() {
       return closeThresholdMs;
+    }
+
+    public int getTransferLeaderTimeoutMs() {
+      return transferLeaderTimeoutMs;
     }
 
     public static Utils.Builder newBuilder() {
@@ -1119,8 +1126,10 @@ public class RatisConfig {
       private int sleepDeviationThresholdMs = 4 * 1000;
       private int closeThresholdMs = Integer.MAX_VALUE;
 
+      private int transferLeaderTimeoutMs = 30 * 1000;
+
       public Utils build() {
-        return new Utils(sleepDeviationThresholdMs, closeThresholdMs);
+        return new Utils(sleepDeviationThresholdMs, closeThresholdMs, transferLeaderTimeoutMs);
       }
 
       public void setSleepDeviationThresholdMs(int sleepDeviationThresholdMs) {
@@ -1129,6 +1138,10 @@ public class RatisConfig {
 
       public void setCloseThresholdMs(int closeThresholdMs) {
         this.closeThresholdMs = closeThresholdMs;
+      }
+
+      public void setTransferLeaderTimeoutMs(int transferLeaderTimeoutMs) {
+        this.transferLeaderTimeoutMs = transferLeaderTimeoutMs;
       }
     }
   }
