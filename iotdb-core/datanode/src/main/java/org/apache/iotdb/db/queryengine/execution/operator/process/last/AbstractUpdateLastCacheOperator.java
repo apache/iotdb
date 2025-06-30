@@ -124,7 +124,11 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
             getDatabaseName(),
             fullPath.getIDeviceID(),
             new String[] {fullPath.getMeasurement()},
-            new TimeValuePair[] {new TimeValuePair(time, value)},
+            new TimeValuePair[] {
+              Objects.nonNull(value)
+                  ? new TimeValuePair(time, value)
+                  : needUpdateNullEntry ? TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR : null
+            },
             fullPath.isUnderAlignedEntity(),
             new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
         return;
