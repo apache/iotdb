@@ -21,9 +21,9 @@ package org.apache.iotdb.db.pipe.resource;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +52,10 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
         LOGGER.info(
             "Pipe hardlink dir found, deleting it: {}, result: {}",
             pipeHardLinkDir,
-            FileUtils.deleteQuietly(pipeHardLinkDir));
+            // For child directories, we need them to recover each pipe's progress
+            // Hence we do not delete them here, only delete the child files (from older version ||
+            // assigner pinned tsFiles)
+            FileUtils.deleteFileChildrenQuietly(pipeHardLinkDir));
       }
     }
   }
@@ -65,7 +68,7 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
                 + PipeSnapshotResourceManager.PIPE_SNAPSHOT_DIR_NAME);
     if (pipeConsensusDir.isDirectory()) {
       LOGGER.info("Pipe snapshot dir found, deleting it: {},", pipeConsensusDir);
-      org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(pipeConsensusDir);
+      FileUtils.deleteFileOrDirectory(pipeConsensusDir);
     }
   }
 
