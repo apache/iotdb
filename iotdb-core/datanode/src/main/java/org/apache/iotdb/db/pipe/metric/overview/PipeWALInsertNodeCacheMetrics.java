@@ -41,17 +41,32 @@ public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
         Metric.PIPE_WAL_INSERT_NODE_CACHE_HIT_RATE.toString(),
         MetricLevel.IMPORTANT,
         WALInsertNodeCache.getInstance(),
-        WALInsertNodeCache::getCacheHitRate);
+        WALInsertNodeCache::getInsertNodeCacheHitRate);
     metricService.createAutoGauge(
         Metric.PIPE_WAL_INSERT_NODE_CACHE_HIT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         WALInsertNodeCache.getInstance(),
-        WALInsertNodeCache::getCacheHitCount);
+        WALInsertNodeCache::getInsertNodeCacheHitCount);
     metricService.createAutoGauge(
         Metric.PIPE_WAL_INSERT_NODE_CACHE_REQUEST_COUNT.toString(),
         MetricLevel.IMPORTANT,
         WALInsertNodeCache.getInstance(),
-        WALInsertNodeCache::getCacheRequestCount);
+        WALInsertNodeCache::getInsertNodeCacheRequestCount);
+    metricService.createAutoGauge(
+        Metric.PIPE_WAL_BUFFER_CACHE_HIT_RATE.toString(),
+        MetricLevel.IMPORTANT,
+        WALInsertNodeCache.getInstance(),
+        WALInsertNodeCache::getBufferCacheHitRate);
+    metricService.createAutoGauge(
+        Metric.PIPE_WAL_BUFFER_CACHE_HIT_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        WALInsertNodeCache.getInstance(),
+        WALInsertNodeCache::getBufferCacheHitCount);
+    metricService.createAutoGauge(
+        Metric.PIPE_WAL_BUFFER_CACHE_REQUEST_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        WALInsertNodeCache.getInstance(),
+        WALInsertNodeCache::getBufferCacheRequestCount);
   }
 
   @Override
@@ -62,6 +77,10 @@ public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE, Metric.PIPE_WAL_INSERT_NODE_CACHE_HIT_COUNT.toString());
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.PIPE_WAL_INSERT_NODE_CACHE_REQUEST_COUNT.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_WAL_BUFFER_CACHE_HIT_RATE.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_WAL_BUFFER_CACHE_HIT_COUNT.toString());
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.PIPE_WAL_BUFFER_CACHE_REQUEST_COUNT.toString());
   }
 
   //////////////////////////// singleton ////////////////////////////
