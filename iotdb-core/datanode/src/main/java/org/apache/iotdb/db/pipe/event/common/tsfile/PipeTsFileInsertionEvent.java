@@ -241,24 +241,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   @Override
   public ProgressIndex getProgressIndex() {
-    try {
-      if (isEmpty()) {
-        LOGGER.warn(
-            "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex",
-            tsFile);
-        return MinimumProgressIndex.INSTANCE;
-      }
-      if (Objects.nonNull(overridingProgressIndex)) {
-        return overridingProgressIndex;
-      }
-      return resource.getMaxProgressIndexAfterClose();
-    } catch (final InterruptedException e) {
+    if (isEmpty()) {
       LOGGER.warn(
-          String.format(
-              "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
-      Thread.currentThread().interrupt();
+          "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex", tsFile);
       return MinimumProgressIndex.INSTANCE;
     }
+    if (Objects.nonNull(overridingProgressIndex)) {
+      return overridingProgressIndex;
+    }
+    return resource.getMaxProgressIndexAfterClose();
   }
 
   /**
@@ -320,9 +311,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   public boolean mayEventTimeOverlappedWithTimeRange() {
     // If the tsFile is not closed the resource.getFileEndTime() will be Long.MIN_VALUE
     // In that case we only judge the resource.getFileStartTime() to avoid losing data
-    return isClosed.get()
-        ? startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime
-        : resource.getFileStartTime() <= endTime;
+    return startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime;
   }
 
   @Override
@@ -555,8 +544,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   @Override
   public String toString() {
     return String.format(
-            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, dataContainer=%s}",
-            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get(), dataContainer)
+            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, dataContainer=%s}",
+            resource, tsFile, isLoaded, isGeneratedByPipe, dataContainer)
         + " - "
         + super.toString();
   }
@@ -564,8 +553,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   @Override
   public String coreReportMessage() {
     return String.format(
-            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s}",
-            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get())
+            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s}",
+            resource, tsFile, isLoaded, isGeneratedByPipe)
         + " - "
         + super.coreReportMessage();
   }

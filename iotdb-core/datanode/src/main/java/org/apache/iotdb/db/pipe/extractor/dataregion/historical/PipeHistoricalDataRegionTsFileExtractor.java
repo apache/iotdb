@@ -404,7 +404,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
           final long lastFlushedByPipeTime =
               DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
           if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
-            dataRegion.syncCloseAllWorkingTsFileProcessors();
+            dataRegion.asyncCloseAllWorkingTsFileProcessors();
             DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(
                 dataRegionId, System.currentTimeMillis());
             LOGGER.info(
