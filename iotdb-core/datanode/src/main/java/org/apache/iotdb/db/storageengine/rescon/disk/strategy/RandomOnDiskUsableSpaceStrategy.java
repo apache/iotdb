@@ -58,6 +58,10 @@ public class RandomOnDiskUsableSpaceStrategy extends DirectoryStrategy {
     List<Long> spaceList = new ArrayList<>();
     for (int i = 0; i < folders.size(); i++) {
       String folder = folders.get(i);
+      if (isUnavailableFolder(folder)) {
+        spaceList.add(0L);
+        continue;
+      }
       spaceList.add(JVMCommonUtils.getUsableSpace(folder));
     }
     return spaceList;

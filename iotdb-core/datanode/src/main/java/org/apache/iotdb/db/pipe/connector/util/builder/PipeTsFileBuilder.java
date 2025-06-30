@@ -81,27 +81,35 @@ public abstract class PipeTsFileBuilder {
         }
       }
     }
-
-    final File baseDir =
-        new File(FOLDER_MANAGER.get().getNextFolder(), Long.toString(currentBatchId.get()));
-    if (baseDir.exists()) {
-      FileUtils.deleteQuietly(baseDir);
-    }
-    if (!baseDir.exists() && !baseDir.mkdirs()) {
-      LOGGER.warn(
-          "Batch id = {}: Failed to create batch file dir {}.",
-          currentBatchId.get(),
-          baseDir.getPath());
+    synchronized (FOLDER_MANAGER) {
+      File baseDir =
+          FOLDER_MANAGER
+              .get()
+              .getNextWithRetry(
+                  folder -> {
+                    File dir = new File(folder, Long.toString(currentBatchId.get()));
+                    FileUtils.deleteQuietly(dir);
+                    if (dir.mkdirs()) {
+                      LOGGER.info(
+                          "Batch id = {}: Create batch dir successfully, batch file dir = {}.",
+                          currentBatchId.get(),
+                          dir.getPath());
+                      return dir;
+                    }
+                    LOGGER.warn(
+                        "Batch id = {}: Failed to create batch file dir {}.",
+                        currentBatchId.get(),
+                        dir.getPath());
+                    return null;
+                  });
+      if (baseDir != null) {
+        return baseDir;
+      }
       throw new PipeException(
           String.format(
               "Failed to create batch file dir %s. (Batch id = %s)",
               baseDir.getPath(), currentBatchId.get()));
     }
-    LOGGER.info(
-        "Batch id = {}: Create batch dir successfully, batch file dir = {}.",
-        currentBatchId.get(),
-        baseDir.getPath());
-    return baseDir;
   }
 
   public abstract void bufferTableModelTablet(String dataBase, Tablet tablet);
