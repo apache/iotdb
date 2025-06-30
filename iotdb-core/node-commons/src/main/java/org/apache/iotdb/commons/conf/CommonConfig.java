@@ -276,14 +276,6 @@ public class CommonConfig {
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = Integer.MAX_VALUE; // Deprecated
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = Integer.MAX_VALUE; // Deprecated
   private long pipeMaxAllowedLinkedTsFileCount = Long.MAX_VALUE; // Deprecated
-  private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
-  private long pipeStuckRestartIntervalSeconds = 120;
-  private long pipeStuckRestartMinIntervalMs = 10 * 60 * 1000L; // 5 minutes
-  private boolean pipeEpochKeepTsFileAfterStuckRestartEnabled = false;
-  private long pipeFlushAfterLastTerminateSeconds = 30;
-  private long pipeFlushAfterTerminateCount = 30;
-  private long pipeStorageEngineFlushTimeIntervalMs = Long.MAX_VALUE;
-  private int pipeMaxAllowedTotalRemainingInsertEventCount = 50000;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
   private int pipeMetaReportMaxLogIntervalRounds = 36;
@@ -1490,105 +1482,6 @@ public class CommonConfig {
     }
     this.pipeMaxAllowedLinkedTsFileCount = pipeMaxAllowedLinkedTsFileCount;
     logger.info("pipeMaxAllowedLinkedTsFileCount is set to {}", pipeMaxAllowedLinkedTsFileCount);
-  }
-
-  public float getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage() {
-    return pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage;
-  }
-
-  public void setPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage(
-      float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage) {
-    if (this.pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage
-        == pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage) {
-      return;
-    }
-    this.pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage =
-        pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage;
-    logger.info(
-        "pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage is set to {}",
-        pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage);
-  }
-
-  public long getPipeStuckRestartIntervalSeconds() {
-    return pipeStuckRestartIntervalSeconds;
-  }
-
-  public long getPipeStuckRestartMinIntervalMs() {
-    return pipeStuckRestartMinIntervalMs;
-  }
-
-  public boolean isPipeEpochKeepTsFileAfterStuckRestartEnabled() {
-    return pipeEpochKeepTsFileAfterStuckRestartEnabled;
-  }
-
-  public long getPipeStorageEngineFlushTimeIntervalMs() {
-    return pipeStorageEngineFlushTimeIntervalMs;
-  }
-
-  public int getPipeMaxAllowedTotalRemainingInsertEventCount() {
-    return pipeMaxAllowedTotalRemainingInsertEventCount;
-  }
-
-  public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
-    if (this.pipeStuckRestartIntervalSeconds == pipeStuckRestartIntervalSeconds) {
-      return;
-    }
-    this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
-    logger.info("pipeStuckRestartIntervalSeconds is set to {}", pipeStuckRestartIntervalSeconds);
-  }
-
-  public void setPipeStuckRestartMinIntervalMs(long pipeStuckRestartMinIntervalMs) {
-    if (this.pipeStuckRestartMinIntervalMs == pipeStuckRestartMinIntervalMs) {
-      return;
-    }
-    this.pipeStuckRestartMinIntervalMs = pipeStuckRestartMinIntervalMs;
-    logger.info("pipeStuckRestartMinIntervalMs is set to {}", pipeStuckRestartMinIntervalMs);
-  }
-
-  public void setPipeEpochKeepTsFileAfterStuckRestartEnabled(
-      boolean pipeEpochKeepTsFileAfterStuckRestartEnabled) {
-    if (this.pipeEpochKeepTsFileAfterStuckRestartEnabled
-        == pipeEpochKeepTsFileAfterStuckRestartEnabled) {
-      return;
-    }
-    this.pipeEpochKeepTsFileAfterStuckRestartEnabled = pipeEpochKeepTsFileAfterStuckRestartEnabled;
-    logger.info(
-        "pipeEpochKeepTsFileAfterStuckRestartEnabled is set to {}",
-        pipeEpochKeepTsFileAfterStuckRestartEnabled);
-  }
-
-  public void setPipeStorageEngineFlushTimeIntervalMs(long pipeStorageEngineFlushTimeIntervalMs) {
-    if (this.pipeStorageEngineFlushTimeIntervalMs == pipeStorageEngineFlushTimeIntervalMs) {
-      return;
-    }
-    this.pipeStorageEngineFlushTimeIntervalMs = pipeStorageEngineFlushTimeIntervalMs;
-    logger.info(
-        "pipeStorageEngineFlushTimeIntervalMs is set to {}", pipeStorageEngineFlushTimeIntervalMs);
-  }
-
-  public long getPipeFlushAfterLastTerminateSeconds() {
-    return pipeFlushAfterLastTerminateSeconds;
-  }
-
-  public void setPipeFlushAfterLastTerminateSeconds(long pipeFlushAfterLastTerminateSeconds) {
-    if (this.pipeFlushAfterLastTerminateSeconds == pipeFlushAfterLastTerminateSeconds) {
-      return;
-    }
-    this.pipeFlushAfterLastTerminateSeconds = pipeFlushAfterLastTerminateSeconds;
-    logger.info(
-        "pipeFlushAfterLastTerminateSeconds is set to {}", pipeFlushAfterLastTerminateSeconds);
-  }
-
-  public long getPipeFlushAfterTerminateCount() {
-    return pipeFlushAfterTerminateCount;
-  }
-
-  public void setPipeFlushAfterTerminateCount(long pipeFlushAfterTerminateCount) {
-    if (this.pipeFlushAfterTerminateCount == pipeFlushAfterTerminateCount) {
-      return;
-    }
-    this.pipeFlushAfterTerminateCount = pipeFlushAfterTerminateCount;
-    logger.info("pipeFlushAfterTerminateCount is set to {}", pipeFlushAfterTerminateCount);
   }
 
   public int getPipeMetaReportMaxLogNumPerRound() {

@@ -263,30 +263,12 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private boolean canNotUseTabletAnymoreDeprecated(final PipeRealtimeEvent event) {
     // In the following 5 cases, we should not extract any more tablet events. all the data
     // represented by the tablet events should be carried by the following tsfile event:
-    //  0. If the pipe task is currently restarted.
     //  1. The number of historical tsFile events to transfer has exceeded the limit.
     //  2. The number of realtime tsfile events to transfer has exceeded the limit.
     //  3. The number of linked tsFiles has reached the dangerous threshold.
-    return isPipeTaskCurrentlyRestarted(event)
-        || isHistoricalTsFileEventCountExceededLimit(event)
+    return isHistoricalTsFileEventCountExceededLimit(event)
         || isRealtimeTsFileEventCountExceededLimit(event)
         || mayTsFileLinkedCountReachDangerousThreshold(event);
-  }
-
-  private boolean isPipeTaskCurrentlyRestarted(final PipeRealtimeEvent event) {
-    if (!PipeConfig.getInstance().isPipeEpochKeepTsFileAfterStuckRestartEnabled()) {
-      return false;
-    }
-
-    final boolean isPipeTaskCurrentlyRestarted =
-        PipeDataNodeAgent.task().isPipeTaskCurrentlyRestarted(pipeName);
-    if (isPipeTaskCurrentlyRestarted && event.mayExtractorUseTablets(this)) {
-      LOGGER.info(
-          "Pipe task {}@{} canNotUseTabletAnymoreDeprecated(0): Pipe task is currently restarted",
-          pipeName,
-          dataRegionId);
-    }
-    return isPipeTaskCurrentlyRestarted;
   }
 
   private boolean isHistoricalTsFileEventCountExceededLimit(final PipeRealtimeEvent event) {

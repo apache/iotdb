@@ -428,41 +428,6 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_linked_tsfile_count",
                 String.valueOf(config.getPipeMaxAllowedLinkedTsFileCount()))));
-    config.setPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage(
-        Float.parseFloat(
-            properties.getProperty(
-                "pipe_max_allowed_linked_deleted_tsfile_disk_usage_percentage",
-                String.valueOf(config.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage()))));
-    config.setPipeStuckRestartIntervalSeconds(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_stuck_restart_interval_seconds",
-                String.valueOf(config.getPipeStuckRestartIntervalSeconds()))));
-    config.setPipeStuckRestartMinIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_stuck_restart_min_interval_ms",
-                String.valueOf(config.getPipeStuckRestartMinIntervalMs()))));
-    config.setPipeFlushAfterLastTerminateSeconds(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_flush_after_last_terminate_seconds",
-                String.valueOf(config.getPipeFlushAfterLastTerminateSeconds()))));
-    config.setPipeFlushAfterTerminateCount(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_flush_after_terminate_count",
-                String.valueOf(config.getPipeFlushAfterTerminateCount()))));
-    config.setPipeEpochKeepTsFileAfterStuckRestartEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "pipe_epoch_keep_tsfile_after_stuck_restart_enabled",
-                String.valueOf(config.isPipeEpochKeepTsFileAfterStuckRestartEnabled()))));
-    config.setPipeStorageEngineFlushTimeIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_storage_engine_flush_time_interval_ms",
-                String.valueOf(config.getPipeStorageEngineFlushTimeIntervalMs()))));
 
     config.setPipeMemoryAllocateMaxRetries(
         Integer.parseInt(

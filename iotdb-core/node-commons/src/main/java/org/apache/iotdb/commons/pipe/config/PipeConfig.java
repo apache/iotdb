@@ -335,34 +335,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMaxAllowedLinkedTsFileCount();
   }
 
-  public float getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage() {
-    return COMMON_CONFIG.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage();
-  }
-
-  public long getPipeStuckRestartIntervalSeconds() {
-    return COMMON_CONFIG.getPipeStuckRestartIntervalSeconds();
-  }
-
-  public long getPipeStuckRestartMinIntervalMs() {
-    return COMMON_CONFIG.getPipeStuckRestartMinIntervalMs();
-  }
-
-  public boolean isPipeEpochKeepTsFileAfterStuckRestartEnabled() {
-    return COMMON_CONFIG.isPipeEpochKeepTsFileAfterStuckRestartEnabled();
-  }
-
-  public long getPipeFlushAfterTerminateCount() {
-    return COMMON_CONFIG.getPipeFlushAfterTerminateCount();
-  }
-
-  public long getPipeFlushAfterLastTerminateSeconds() {
-    return COMMON_CONFIG.getPipeFlushAfterLastTerminateSeconds();
-  }
-
-  public long getPipeStorageEngineFlushTimeIntervalMs() {
-    return COMMON_CONFIG.getPipeStorageEngineFlushTimeIntervalMs();
-  }
-
   /////////////////////////////// Logger ///////////////////////////////
 
   public int getPipeMetaReportMaxLogNumPerRound() {
@@ -592,18 +564,6 @@ public class PipeConfig {
         "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
         getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
     LOGGER.info("PipeMaxAllowedLinkedTsFileCount: {}", getPipeMaxAllowedLinkedTsFileCount());
-    LOGGER.info(
-        "PipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage: {}",
-        getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());
-    LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
-    LOGGER.info("PipeStuckRestartMinIntervalMs: {}", getPipeStuckRestartMinIntervalMs());
-    LOGGER.info(
-        "PipeEpochKeepTsFileAfterStuckRestartEnabled: {}",
-        isPipeEpochKeepTsFileAfterStuckRestartEnabled());
-    LOGGER.info("PipeFlushAfterTerminateCount: {}", getPipeFlushAfterTerminateCount());
-    LOGGER.info("PipeFlushAfterLastTerminateSeconds: {}", getPipeFlushAfterLastTerminateSeconds());
-    LOGGER.info(
-        "PipeStorageEngineFlushTimeIntervalMs: {}", getPipeStorageEngineFlushTimeIntervalMs());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());
