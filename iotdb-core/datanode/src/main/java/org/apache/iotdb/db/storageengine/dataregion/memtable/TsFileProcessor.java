@@ -1139,13 +1139,6 @@ public class TsFileProcessor {
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
 
       try {
-        PipeInsertionDataNodeListener.getInstance()
-            .listenToTsFile(
-                dataRegionInfo.getDataRegion().getDataRegionId(),
-                tsFileResource,
-                false,
-                tmpMemTable.isTotallyGeneratedByPipe());
-
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
