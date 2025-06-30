@@ -26,6 +26,9 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
+import org.apache.iotdb.subscription.it.Retry;
+import org.apache.iotdb.subscription.it.RetryRule;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
@@ -42,6 +45,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -53,6 +57,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
@@ -63,6 +68,9 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionTreeRegressionConsumer.class})
 public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRegressionIT {
+
+  @Rule public RetryRule retryRule = new RetryRule();
+
   private static final String database = "root.test.OneConsumerMultiTopicsMix";
   private static final String device = database + ".d_0";
   private String pattern = device + ".s_0";
@@ -90,6 +98,15 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
   }
 
   @Override
+  protected void setUpConfig() {
+    super.setUpConfig();
+
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(sender);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver1);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver2);
+  }
+
+  @Override
   @After
   public void tearDown() throws Exception {
     try {
@@ -99,6 +116,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
     subs.dropTopic(topicName);
     subs.dropTopic(topicName2);
     dropDB(database);
+    schemaList.clear();
     super.tearDown();
   }
 
@@ -117,6 +135,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
     session_src.executeNonQueryStatement("flush");
   }
 
+  @Retry
   @Test
   public void do_test()
       throws InterruptedException,
@@ -157,16 +176,13 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
             });
     thread.start();
 
+    AtomicBoolean isClosed = new AtomicBoolean(false);
     AtomicInteger rowCount = new AtomicInteger(0);
     Thread thread2 =
         new Thread(
             () -> {
-              while (true) {
+              while (!isClosed.get()) {
                 List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
-                if (messages.isEmpty()) {
-                  break;
-                }
-
                 for (final SubscriptionMessage message : messages) {
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
@@ -214,12 +230,8 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
     Thread thread3 =
         new Thread(
             () -> {
-              while (true) {
+              while (!isClosed.get()) {
                 List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
-                if (messages.isEmpty()) {
-                  break;
-                }
-
                 for (final SubscriptionMessage message : messages) {
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
@@ -309,6 +321,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
         });
     // close
     consumer.close();
+    isClosed.set(true);
     try {
       consumer.subscribe(topicName, topicName2);
     } catch (Exception e) {

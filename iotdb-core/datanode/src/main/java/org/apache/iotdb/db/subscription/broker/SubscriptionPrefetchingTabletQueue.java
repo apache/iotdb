@@ -193,7 +193,12 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
 
   @Override
   protected boolean onEvent(final TsFileInsertionEvent event) {
-    return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
+    try {
+      return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
+    } catch (final Exception e) {
+      LOGGER.error("Subscription: unexpected exception (broken invariant) {}", e, e);
+    }
+    return false;
   }
 
   /////////////////////////////// stringify ///////////////////////////////

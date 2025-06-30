@@ -42,6 +42,7 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -172,11 +173,8 @@ public class IoTDBAllTsfilePullConsumerSnapshotIT extends AbstractSubscriptionTr
     paths.add(device);
     paths.add(device2);
     paths.add(database2 + ".d_2");
-    List<Integer> rowCountList = consume_tsfile(consumer, paths);
     // Subscribe and write without consuming
-    assertEquals(rowCountList.get(0), 5, "Write without consume after subscription");
-    assertEquals(rowCountList.get(1), 0);
-    assertEquals(rowCountList.get(2), 0);
+    consume_tsfile_await(consumer, paths, Arrays.asList(5, 0, 0));
 
     // Unsubscribe
     consumer.unsubscribe(topicName);
@@ -190,12 +188,6 @@ public class IoTDBAllTsfilePullConsumerSnapshotIT extends AbstractSubscriptionTr
 
     // Consumption data: Progress is not retained after unsubscribing and re-subscribing. Full
     // synchronization.
-    rowCountList = consume_tsfile(consumer, paths);
-    assertEquals(
-        rowCountList.get(0),
-        10,
-        "Unsubscribe and then resubscribe, progress is not retained. Full synchronization.");
-    assertEquals(rowCountList.get(1), 0, "Unsubscribe and then resubscribe," + device2);
-    assertEquals(rowCountList.get(2), 0, "Unsubscribe and then resubscribe," + database2 + ".d_2");
+    consume_tsfile_await(consumer, paths, Arrays.asList(10, 0, 0));
   }
 }

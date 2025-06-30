@@ -69,6 +69,13 @@ public abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionI
     sender.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiver1.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiver2.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+
+    // reduce tsfile batch memory usage
+    sender.getConfig().getCommonConfig().setSubscriptionPrefetchTsFileBatchMaxDelayInMs(500);
+    sender
+        .getConfig()
+        .getCommonConfig()
+        .setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(32 * 1024);
   }
 
   @Override
