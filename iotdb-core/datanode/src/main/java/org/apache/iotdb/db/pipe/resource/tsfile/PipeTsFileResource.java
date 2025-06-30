@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeTsFileResource implements AutoCloseable {
 
@@ -60,7 +59,6 @@ public class PipeTsFileResource implements AutoCloseable {
   private volatile long fileSize = -1L;
 
   private final AtomicInteger referenceCount;
-  private final AtomicLong lastUnpinToZeroTime;
   private PipeMemoryBlock allocatedMemoryBlock;
   private Map<IDeviceID, List<String>> deviceMeasurementsMap = null;
   private Map<IDeviceID, Boolean> deviceIsAlignedMap = null;
@@ -75,7 +73,6 @@ public class PipeTsFileResource implements AutoCloseable {
     this.tsFileResource = tsFileResource;
 
     referenceCount = new AtomicInteger(1);
-    lastUnpinToZeroTime = new AtomicLong(Long.MAX_VALUE);
   }
 
   public File getFile() {
@@ -107,31 +104,20 @@ public class PipeTsFileResource implements AutoCloseable {
     return referenceCount.get();
   }
 
-  public int increaseAndGetReference() {
-    return referenceCount.addAndGet(1);
+  public void increaseReferenceCount() {
+    referenceCount.addAndGet(1);
   }
 
-  public int decreaseAndGetReference() {
+  public boolean decreaseReferenceCount() {
     final int finalReferenceCount = referenceCount.addAndGet(-1);
     if (finalReferenceCount == 0) {
-      lastUnpinToZeroTime.set(System.currentTimeMillis());
+      close();
+      return true;
     }
     if (finalReferenceCount < 0) {
       LOGGER.warn("PipeTsFileResource's reference count is decreased to below 0.");
     }
-    return finalReferenceCount;
-  }
-
-  public synchronized boolean closeIfOutOfTimeToLive() {
-    if (referenceCount.get() <= 0
-        && (deviceMeasurementsMap == null // Not cached yet.
-            || System.currentTimeMillis() - lastUnpinToZeroTime.get()
-                > TSFILE_MIN_TIME_TO_LIVE_IN_MS)) {
-      close();
-      return true;
-    } else {
-      return false;
-    }
+    return false;
   }
 
   @Override

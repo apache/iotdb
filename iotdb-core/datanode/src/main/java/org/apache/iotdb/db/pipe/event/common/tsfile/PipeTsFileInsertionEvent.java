@@ -190,9 +190,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     extractTime = System.nanoTime();
     try {
-      tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
+      tsFile =
+          PipeDataNodeResourceManager.tsfile()
+              .increaseFileReference(tsFile, true, resource, pipeName);
       if (isWithMod) {
-        modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, null);
+        modFile =
+            PipeDataNodeResourceManager.tsfile()
+                .increaseFileReference(modFile, false, null, pipeName);
       }
       return true;
     } catch (final Exception e) {
@@ -213,9 +217,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
-      PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
+      PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
       if (isWithMod) {
-        PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
       }
       close();
       return true;
@@ -571,6 +575,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     return new PipeTsFileInsertionEventResource(
         this.isReleased,
         this.referenceCount,
+        this.pipeName,
         this.tsFile,
         this.isWithMod,
         this.modFile,
@@ -583,15 +588,18 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     private final boolean isWithMod;
     private final File modFile;
     private final AtomicReference<TsFileInsertionDataContainer> dataContainer;
+    private final String pipeName;
 
     private PipeTsFileInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
+        final String pipeName,
         final File tsFile,
         final boolean isWithMod,
         final File modFile,
         final AtomicReference<TsFileInsertionDataContainer> dataContainer) {
       super(isReleased, referenceCount);
+      this.pipeName = pipeName;
       this.tsFile = tsFile;
       this.isWithMod = isWithMod;
       this.modFile = modFile;
@@ -602,9 +610,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     protected void finalizeResource() {
       try {
         // decrease reference count
-        PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
         if (isWithMod) {
-          PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
+          PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
         }
 
         // close data container

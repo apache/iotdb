@@ -478,7 +478,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
               // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
               try {
                 PipeDataNodeResourceManager.tsfile()
-                    .pinTsFileResource(resource, shouldTransferModFile);
+                    .pinTsFileResource(resource, shouldTransferModFile, pipeName);
                 return false;
               } catch (final IOException e) {
                 LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
@@ -639,7 +639,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       return isReferenceCountIncreased ? event : null;
     } finally {
       try {
-        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
+        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
       } catch (final IOException e) {
         LOGGER.warn(
             "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
@@ -669,7 +669,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       pendingQueue.forEach(
           resource -> {
             try {
-              PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
+              PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
             } catch (final IOException e) {
               LOGGER.warn(
                   "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",
