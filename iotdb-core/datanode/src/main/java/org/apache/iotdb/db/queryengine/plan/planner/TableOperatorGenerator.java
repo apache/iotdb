@@ -560,11 +560,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           public void generateCurrentDeviceOperatorTree(DeviceEntry deviceEntry) {
             calculateSeriesScanOptionsList();
             operator = constructTreeToTableViewAdaptorOperator(deviceEntry);
+            boolean needToPruneColumn =
+                node.getAssignments().size() != node.getOutputSymbols().size();
             if (isSingleColumn) {
+              operator = needToPruneColumn ? getFilterAndProjectOperator(operator) : operator;
               return;
             }
-            if (!cannotPushDownConjuncts.isEmpty()
-                || node.getAssignments().size() != node.getOutputSymbols().size()) {
+            if (!cannotPushDownConjuncts.isEmpty() || needToPruneColumn) {
               operator = getFilterAndProjectOperator(operator);
             }
             if (!node.isPushLimitToEachDevice() || removeUpperOffsetAndLimitOperator) {

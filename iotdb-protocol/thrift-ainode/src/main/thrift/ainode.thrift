@@ -80,10 +80,9 @@ struct IDataSchema {
 struct TTrainingReq {
   1: required string dbType
   2: required string modelId
-  3: required string modelType
+  3: required string existingModelId
   4: optional list<IDataSchema> targetDataSchema;
   5: optional map<string, string> parameters;
-  6: optional string existingModelId
 }
 
 struct TForecastReq {
@@ -98,9 +97,18 @@ struct TForecastResp {
   2: required binary forecastResult
 }
 
+struct TShowModelsResp {
+  1: required common.TSStatus status
+  2: optional list<string> modelIdList
+  3: optional map<string, string> modelTypeMap
+  4: optional map<string, string> categoryMap
+  5: optional map<string, string> stateMap
+}
+
 service IAINodeRPCService {
 
   // -------------- For Config Node --------------
+  TShowModelsResp showModels()
 
   common.TSStatus deleteModel(TDeleteModelReq req)
 

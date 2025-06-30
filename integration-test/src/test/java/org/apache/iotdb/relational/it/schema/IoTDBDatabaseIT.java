@@ -56,6 +56,8 @@ public class IoTDBDatabaseIT {
 
   @Before
   public void setUp() throws Exception {
+    // enable subscription
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSubscriptionEnabled(true);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -571,19 +573,6 @@ public class IoTDBDatabaseIT {
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "select model_id from information_schema.models where model_type = 'BUILT_IN_FORECAST'"),
-          "model_id,",
-          new HashSet<>(
-              Arrays.asList(
-                  "_STLForecaster,",
-                  "_NaiveForecaster,",
-                  "_sundial,",
-                  "_HoltWinters,",
-                  "_ExponentialSmoothing,",
-                  "_ARIMA,")));
-
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery(
               "select distinct(function_type) from information_schema.functions"),
           "function_type,",
           new HashSet<>(
@@ -693,19 +682,6 @@ public class IoTDBDatabaseIT {
           "database,table_name,view_definition,",
           Collections.singleton(
               "test,view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"a\".**,"));
-
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery(
-              "select model_id from information_schema.models where model_type = 'BUILT_IN_FORECAST'"),
-          "model_id,",
-          new HashSet<>(
-              Arrays.asList(
-                  "_sundial,",
-                  "_STLForecaster,",
-                  "_NaiveForecaster,",
-                  "_HoltWinters,",
-                  "_ARIMA,",
-                  "_ExponentialSmoothing,")));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(

@@ -392,4 +392,8 @@ public class RemoteCommonConfig implements CommonConfig {
       int subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
     return this;
   }
+
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    return this;
+  }
 }

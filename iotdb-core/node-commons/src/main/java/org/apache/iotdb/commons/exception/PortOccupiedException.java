@@ -16,32 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.exception;
 
-package org.apache.iotdb.subscription.it.local;
+import java.util.Arrays;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
-
-import org.junit.After;
-import org.junit.Before;
-
-public abstract class AbstractSubscriptionLocalIT extends AbstractSubscriptionIT {
-
-  @Override
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
-
-    // enable subscription
-    EnvFactory.getEnv().getConfig().getCommonConfig().setSubscriptionEnabled(true);
-    EnvFactory.getEnv().initClusterEnvironment();
+public class PortOccupiedException extends RuntimeException {
+  public PortOccupiedException() {
+    super("Some ports are occupied");
   }
 
-  @Override
-  @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-
-    super.tearDown();
+  public PortOccupiedException(int... ports) {
+    super(String.format("Ports %s are occupied", Arrays.toString(ports)));
   }
 }

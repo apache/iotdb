@@ -21,8 +21,6 @@ package org.apache.iotdb.ainode.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
@@ -68,14 +66,14 @@ public class AINodeBasicIT {
         "insert into root.AI.data(timestamp,s0,s1,s2,s3) values(7,7.0,8.0,9.0,10.0)",
       };
 
-  @BeforeClass
+  //  @BeforeClass
   public static void setUp() throws Exception {
     // Init 1C1D1M cluster environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
     prepareData(sqls);
   }
 
-  @AfterClass
+  //  @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }

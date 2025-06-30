@@ -174,6 +174,8 @@ public interface CommonConfig {
   CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
       int subscriptionPrefetchTsFileBatchMaxSizeInBytes);
 
+  CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled);
+
   default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     return this;
   }

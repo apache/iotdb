@@ -51,6 +51,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -263,10 +264,17 @@ public class SymbolMapper {
                       function.isIgnoreNulls()));
             });
 
+    ImmutableList<Symbol> newPartitionBy =
+        node.getSpecification().getPartitionBy().stream().map(this::map).collect(toImmutableList());
+    Optional<OrderingScheme> newOrderingScheme =
+        node.getSpecification().getOrderingScheme().map(this::map);
+    DataOrganizationSpecification newSpecification =
+        new DataOrganizationSpecification(newPartitionBy, newOrderingScheme);
+
     return new WindowNode(
         node.getPlanNodeId(),
         source,
-        node.getSpecification(),
+        newSpecification,
         newFunctions.buildOrThrow(),
         node.getHashSymbol().map(this::map),
         node.getPrePartitionedInputs().stream().map(this::map).collect(toImmutableSet()),
