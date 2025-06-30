@@ -189,7 +189,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
     final PipeTsFileInsertionEvent event = (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     event.skipReportOnCommit();
 
-    if (!event.waitForTsFileClose()) {
+    if (event.isEmpty()) {
       LOGGER.warn("Ignored TsFileInsertionEvent is empty: {}", event);
       return;
     }

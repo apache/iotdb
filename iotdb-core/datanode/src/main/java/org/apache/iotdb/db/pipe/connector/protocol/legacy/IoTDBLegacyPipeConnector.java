@@ -290,7 +290,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
           "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.");
     }
 
-    if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
+    if (((PipeTsFileInsertionEvent) tsFileInsertionEvent).isEmpty()) {
       LOGGER.warn(
           "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
           ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile());
