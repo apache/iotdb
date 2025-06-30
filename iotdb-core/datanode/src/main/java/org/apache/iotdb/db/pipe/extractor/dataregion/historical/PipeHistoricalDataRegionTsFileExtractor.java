@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -56,7 +57,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -89,9 +89,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileExtractor.class);
-
-  private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
-  private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
   private String pipeName;
   private long creationTime;
@@ -264,10 +261,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     startIndex = environment.getPipeTaskMeta().restoreProgressIndex();
 
     dataRegionId = environment.getRegionId();
-    synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
-      DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.putIfAbsent(dataRegionId, 0L);
-    }
-
     pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
 
     final DataRegion dataRegion =
@@ -338,6 +331,24 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     dataRegion.writeLock("Pipe: start to extract historical TsFile");
     final long startHistoricalExtractionTime = System.currentTimeMillis();
     try {
+      LOGGER.info("Pipe {}@{}: start to flush data region", pipeName, dataRegionId);
+
+      // Consider the scenario: a consensus pipe comes to the same region, followed by another pipe
+      // **immediately**, the latter pipe will skip the flush operation.
+      // Since a large number of consensus pipes are not created at the same time, resulting in no
+      // serious waiting for locks. Therefore, the flush operation is always performed for the
+      // consensus pipe, and the lastFlushed timestamp is not updated here.
+      if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+        dataRegion.syncCloseAllWorkingTsFileProcessors();
+      } else {
+        dataRegion.asyncCloseAllWorkingTsFileProcessors();
+      }
+      LOGGER.info(
+          "Pipe {}@{}: finish to flush data region, took {} ms",
+          pipeName,
+          dataRegionId,
+          System.currentTimeMillis() - startHistoricalExtractionTime);
+
       final TsFileManager tsFileManager = dataRegion.getTsFileManager();
       tsFileManager.readLock();
       try {
