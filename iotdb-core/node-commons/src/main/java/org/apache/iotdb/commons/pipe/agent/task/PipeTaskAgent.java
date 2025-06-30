@@ -1112,17 +1112,21 @@ public abstract class PipeTaskAgent {
         : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getFloatingMemoryUsageInByte();
   }
 
-  public void addFloatingMemoryUsageInByte(final String pipeName, final long sizeInByte) {
+  public void addFloatingMemoryUsageInByte(
+      final String pipeName, final long creationTime, final long sizeInByte) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    if (Objects.nonNull(pipeMeta)) {
+    // To avoid stale pipe before alter
+    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
       ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
           .addFloatingMemoryUsageInByte(sizeInByte);
     }
   }
 
-  public void decreaseFloatingMemoryUsageInByte(final String pipeName, final long sizeInByte) {
+  public void decreaseFloatingMemoryUsageInByte(
+      final String pipeName, final long creationTime, final long sizeInByte) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    if (Objects.nonNull(pipeMeta)) {
+    // To avoid stale pipe before alter
+    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
       ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
           .decreaseFloatingMemoryUsageInByte(sizeInByte);
     }
