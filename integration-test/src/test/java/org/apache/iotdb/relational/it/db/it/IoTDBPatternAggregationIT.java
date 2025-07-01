@@ -363,6 +363,44 @@ public class IoTDBPatternAggregationIT {
   }
 
   @Test
+  public void test5() {
+    String[] expectedHeader =
+        new String[] {"time", "match", "firstTime", "lastTime", "maxTime", "minTime"};
+    String[] retArray =
+        new String[] {
+          "2025-01-01T00:01:00.000Z,1,2025-01-01T00:01:00.000Z,2025-01-01T00:01:00.000Z,2025-01-01T00:01:00.000Z,2025-01-01T00:01:00.000Z,",
+          "2025-01-01T00:02:00.000Z,1,2025-01-01T00:01:00.000Z,2025-01-01T00:02:00.000Z,2025-01-01T00:02:00.000Z,2025-01-01T00:01:00.000Z,",
+          "2025-01-01T00:03:00.000Z,1,2025-01-01T00:01:00.000Z,2025-01-01T00:03:00.000Z,2025-01-01T00:03:00.000Z,2025-01-01T00:01:00.000Z,",
+          "2025-01-01T00:04:00.000Z,1,2025-01-01T00:01:00.000Z,2025-01-01T00:04:00.000Z,2025-01-01T00:04:00.000Z,2025-01-01T00:01:00.000Z,",
+          "2025-01-01T00:05:00.000Z,2,2025-01-01T00:05:00.000Z,2025-01-01T00:05:00.000Z,2025-01-01T00:05:00.000Z,2025-01-01T00:05:00.000Z,",
+          "2025-01-01T00:06:00.000Z,2,2025-01-01T00:05:00.000Z,2025-01-01T00:06:00.000Z,2025-01-01T00:06:00.000Z,2025-01-01T00:05:00.000Z,",
+          "2025-01-01T00:07:00.000Z,2,2025-01-01T00:05:00.000Z,2025-01-01T00:07:00.000Z,2025-01-01T00:07:00.000Z,2025-01-01T00:05:00.000Z,",
+        };
+    tableResultSetEqualTest(
+        "SELECT m.time, m.match, m.firstTime, m.lastTime, m.maxTime, m.minTime "
+            + "FROM t1 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "      MATCH_NUMBER() AS match, "
+            + "      FIRST_BY(time, totalprice) AS firstTime, "
+            + "      LAST_BY(time, totalprice) AS lastTime, "
+            + "      MAX_BY(time, totalprice) AS maxTime, "
+            + "      MIN_BY(time, totalprice) AS minTime "
+            + "    ALL ROWS PER MATCH "
+            + "    PATTERN (A B C D?) "
+            + "    DEFINE "
+            + "      A AS totalprice = 10, "
+            + "      B AS totalprice = 20, "
+            + "      C AS totalprice = 30, "
+            + "      D AS totalprice = 40 "
+            + ") AS m "
+            + "ORDER BY m.match, m.time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testAggregationsInDefineClause() {
     String[] expectedHeader =
         new String[] {"time", "match", "label", "avg", "running_avg_b", "totalprice"};

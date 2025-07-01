@@ -112,7 +112,7 @@ public class PatternAggregator {
             partition.getPositionCount(), positions.toArray(), positions.length());
 
     // process COUNT()/COUNT(*)
-    if (argumentChannels.isEmpty()) {
+    if (argumentChannels.isEmpty()) { // function with no arguments
       Column[] arguments =
           new Column[] {
             new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, partition.getPositionCount())
@@ -125,11 +125,9 @@ public class PatternAggregator {
 
       for (int i = 0; i < argCount; i++) {
         int channel = argumentChannels.get(i);
-        // FIX: The type of the first argument of the aggregate function is used temporarily here,
-        // so
-        // only one-argument aggregate functions are supported
+        // Create a `ColumnBuilder` instance using the type of the i-th parameter
         ColumnBuilder builder =
-            boundSignature.getArgumentType(0).createColumnBuilder(partition.getPositionCount());
+            boundSignature.getArgumentType(i).createColumnBuilder(partition.getPositionCount());
 
         for (int row = 0; row < partition.getPositionCount(); row++) {
           partition.writeTo(builder, channel, row);
