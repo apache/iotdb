@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtaskLifeCycle;
+import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeRealtimePriorityBlockingQueue;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -61,8 +62,11 @@ public class PipeCompactionManager {
 
     for (final PipeConnectorSubtaskLifeCycle lifeCycle : pipeConnectorSubtaskLifeCycles) {
       final UnboundedBlockingPendingQueue<Event> pendingQueue = lifeCycle.getPendingQueue();
-      if (pendingQueue != null) {
-        pendingQueue.replace(sourceFiles, targetFiles);
+      // TODO: support non realtime priority blocking queue
+      if (pendingQueue instanceof PipeRealtimePriorityBlockingQueue) {
+        final PipeRealtimePriorityBlockingQueue realtimePriorityBlockingQueue =
+            (PipeRealtimePriorityBlockingQueue) pendingQueue;
+        realtimePriorityBlockingQueue.replace(dataRegionId, sourceFiles, targetFiles);
       }
     }
   }

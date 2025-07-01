@@ -211,6 +211,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     return !resource.isEmpty();
   }
 
+  @Override
   public File getTsFile() {
     return tsFile;
   }

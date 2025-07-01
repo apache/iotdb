@@ -21,22 +21,36 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.connector;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.BlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQueue<Event> {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeRealtimePriorityBlockingQueue.class);
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
@@ -55,7 +69,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public boolean directOffer(final Event event) {
+  public synchronized boolean directOffer(final Event event) {
     checkBeforeOffer(event);
 
     if (event instanceof TsFileInsertionEvent) {
@@ -73,18 +87,18 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public boolean waitedOffer(final Event event) {
+  public synchronized boolean waitedOffer(final Event event) {
     return directOffer(event);
   }
 
   @Override
-  public boolean put(final Event event) {
+  public synchronized boolean put(final Event event) {
     directOffer(event);
     return true;
   }
 
   @Override
-  public Event directPoll() {
+  public synchronized Event directPoll() {
     Event event = null;
     final int pollHistoricalTsFileThreshold =
         PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
@@ -129,7 +143,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
    *     available.
    */
   @Override
-  public Event waitedPoll() {
+  public synchronized Event waitedPoll() {
     Event event = null;
     final int pollHistoricalTsFileThreshold =
         PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
@@ -176,7 +190,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public Event peek() {
+  public synchronized Event peek() {
     final Event event = pendingQueue.peek();
     if (Objects.nonNull(event)) {
       return event;
@@ -184,20 +198,46 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     return tsfileInsertEventDeque.peek();
   }
 
+  public synchronized void replace(
+      String dataRegionId, Set<File> sourceFiles, Set<File> targetFiles) {
+    final Map<CommitterKey, Set<PipeTsFileInsertionEvent>> eventsToBeRemovedGroupByCommitterKey =
+        tsfileInsertEventDeque.stream()
+            .filter(event -> event instanceof PipeTsFileInsertionEvent)
+            .map(event -> (PipeTsFileInsertionEvent) event)
+            .collect(
+                Collectors.groupingBy(
+                    PipeTsFileInsertionEvent::getCommitterKey, Collectors.toSet()))
+            .entrySet()
+            .stream()
+            .filter(entry -> entry.getValue().size() == sourceFiles.size())
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    final Map<CommitterKey, PipeTsFileInsertionEvent> eventToBeAddedGroupByCommitterKey =
+        new HashMap<>();
+    // TBD
+
+    final Set<PipeTsFileInsertionEvent> eventsToRemove = new HashSet<>();
+    for (Set<PipeTsFileInsertionEvent> pipeTsFileInsertionEvents :
+        eventsToBeRemovedGroupByCommitterKey.values()) {
+      eventsToRemove.addAll(pipeTsFileInsertionEvents);
+    }
+    tsfileInsertEventDeque.removeIf(eventsToRemove::contains);
+  }
+
   @Override
-  public void clear() {
+  public synchronized void clear() {
     super.clear();
     tsfileInsertEventDeque.clear();
   }
 
   @Override
-  public void forEach(final Consumer<? super Event> action) {
+  public synchronized void forEach(final Consumer<? super Event> action) {
     super.forEach(action);
     tsfileInsertEventDeque.forEach(action);
   }
 
   @Override
-  public void discardAllEvents() {
+  public synchronized void discardAllEvents() {
     super.discardAllEvents();
     tsfileInsertEventDeque.removeIf(
         event -> {
@@ -212,7 +252,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
+  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
     super.discardEventsOfPipe(pipeNameToDrop, regionId);
     tsfileInsertEventDeque.removeIf(
         event -> {
@@ -244,7 +284,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     return tsfileInsertEventDeque.size();
   }
 
-  public void setOfferTsFileCounter(AtomicInteger offerTsFileCounter) {
+  public synchronized void setOfferTsFileCounter(AtomicInteger offerTsFileCounter) {
     this.offerTsFileCounter = offerTsFileCounter;
   }
 }
