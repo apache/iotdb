@@ -224,7 +224,9 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     }
     constructRealtimeExtractor(validator.getParameters());
 
-    historicalExtractor.validate(validator);
+    if (Objects.nonNull(historicalExtractor)) {
+      historicalExtractor.validate(validator);
+    }
     realtimeExtractor.validate(validator);
   }
 
