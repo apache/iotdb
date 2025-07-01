@@ -671,10 +671,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
+    calculateInsertNodeQueueMemory(extractorParameters, processorParameters, connectorParameters);
+
     long needMemory = 0;
-    needMemory +=
-        calculateInsertNodeQueueMemory(
-            extractorParameters, processorParameters, connectorParameters);
+
     needMemory +=
         calculateTsFileParserMemory(extractorParameters, processorParameters, connectorParameters);
     needMemory +=
@@ -697,11 +697,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                   (PipeMemoryManager.getTotalMemorySizeInBytes()
                       * PipeConfig.getInstance().getReservedMemoryPercentage()),
               PipeMemoryManager.getTotalMemorySizeInBytes());
+      LOGGER.warn(e);
       throw new PipeException(e);
     }
   }
 
-  private long calculateInsertNodeQueueMemory(
+  private void calculateInsertNodeQueueMemory(
       final PipeParameters extractorParameters,
       final PipeParameters processorParameters,
       final PipeParameters connectorParameters) {
@@ -710,7 +711,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     if (!extractorParameters.getBooleanOrDefault(
         Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
         EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
-      return 0;
+      return;
     }
 
     // If the realtime mode is batch or file, we do not need to allocate memory
@@ -720,10 +721,21 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             PipeExtractorConstant.SOURCE_REALTIME_MODE_KEY);
     if (PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE.equals(realtimeMode)
         || PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_FILE_VALUE.equals(realtimeMode)) {
-      return 0;
+      return;
     }
 
-    return PipeConfig.getInstance().getPipeInodeMemory();
+    if (PipeMemoryManager.getTotalFloatingMemorySizeInBytes()
+            - this.getAllFloatingMemoryUsageInByte()
+        < PipeConfig.getInstance().getPipeInodeMemory()) {
+      final String m =
+          String.format(
+              "Not enough memory for pipe. Need Floating memory: %d  bytes, free Floating memory: %d bytes",
+              PipeConfig.getInstance().getPipeInodeMemory(),
+              (PipeMemoryManager.getTotalFloatingMemorySizeInBytes()
+                  - this.getAllFloatingMemoryUsageInByte()));
+      LOGGER.warn(m);
+      throw new PipeException(m);
+    }
   }
 
   private long calculateTsFileParserMemory(
