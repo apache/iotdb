@@ -17,9 +17,10 @@
 #
 import os
 from abc import abstractmethod
-from typing import Dict, List
+from typing import Callable, Dict, List
 
 import numpy as np
+from huggingface_hub import hf_hub_download
 from sklearn.preprocessing import MinMaxScaler
 from sktime.annotation.hmm_learn import GMMHMM, GaussianHMM
 from sktime.annotation.stray import STRAY
@@ -29,7 +30,11 @@ from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.trend import STLForecaster
 
 from ainode.core.config import AINodeDescriptor
-from ainode.core.constant import AttributeName, BuiltInModelType
+from ainode.core.constant import (
+    MODEL_CONFIG_FILE_IN_JSON,
+    MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+    AttributeName,
+)
 from ainode.core.exception import (
     BuiltInModelNotSupportError,
     InferenceModelInternalError,
@@ -39,87 +44,120 @@ from ainode.core.exception import (
     WrongAttributeTypeError,
 )
 from ainode.core.log import Logger
+from ainode.core.model.model_info import TIMER_REPO_ID, BuiltInModelType
 from ainode.core.model.sundial import modeling_sundial
-from ainode.core.model.sundial.configuration_sundial import SundialConfig
 from ainode.core.model.timerxl import modeling_timer
-from ainode.core.model.timerxl.configuration_timer import TimerConfig
 
 logger = Logger()
 
 
-def get_model_attributes(model_id: str):
-    if model_id == BuiltInModelType.ARIMA.value:
+def download_ltsm_if_necessary(model_type: BuiltInModelType, local_dir) -> bool:
+    """
+    Download the built-in ltsm from HuggingFace repository when necessary.
+
+    Return:
+        bool: True if the model is existed or downloaded successfully, False otherwise.
+    """
+    repo_id = TIMER_REPO_ID[model_type]
+    weights_path = os.path.join(local_dir, MODEL_WEIGHTS_FILE_IN_SAFETENSORS)
+    if not os.path.exists(weights_path):
+        logger.info(
+            f"Weight not found at {weights_path}, downloading from HuggingFace..."
+        )
+        try:
+            hf_hub_download(
+                repo_id=repo_id,
+                filename=MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+                local_dir=local_dir,
+            )
+            logger.info(f"Got weight to {weights_path}")
+        except Exception as e:
+            logger.error(
+                f"Failed to download huggingface model weights to {local_dir} due to {e}"
+            )
+            return False
+    config_path = os.path.join(local_dir, MODEL_CONFIG_FILE_IN_JSON)
+    if not os.path.exists(config_path):
+        logger.info(
+            f"Config not found at {config_path}, downloading from HuggingFace..."
+        )
+        try:
+            hf_hub_download(
+                repo_id=repo_id,
+                filename=MODEL_CONFIG_FILE_IN_JSON,
+                local_dir=local_dir,
+            )
+            logger.info(f"Got config to {config_path}")
+        except Exception as e:
+            logger.error(
+                f"Failed to download huggingface model config to {local_dir} due to {e}"
+            )
+            return False
+    return True
+
+
+def get_model_attributes(model_type: BuiltInModelType):
+    if model_type == BuiltInModelType.ARIMA:
         attribute_map = arima_attribute_map
-    elif model_id == BuiltInModelType.NAIVE_FORECASTER.value:
+    elif model_type == BuiltInModelType.NAIVE_FORECASTER:
         attribute_map = naive_forecaster_attribute_map
     elif (
-        model_id == BuiltInModelType.EXPONENTIAL_SMOOTHING.value
-        or model_id == BuiltInModelType.HOLTWINTERS.value
+        model_type == BuiltInModelType.EXPONENTIAL_SMOOTHING
+        or model_type == BuiltInModelType.HOLTWINTERS.value
     ):
         attribute_map = exponential_smoothing_attribute_map
-    elif model_id == BuiltInModelType.STL_FORECASTER.value:
+    elif model_type == BuiltInModelType.STL_FORECASTER:
         attribute_map = stl_forecaster_attribute_map
-    elif model_id == BuiltInModelType.GMM_HMM.value:
+    elif model_type == BuiltInModelType.GMM_HMM:
         attribute_map = gmmhmm_attribute_map
-    elif model_id == BuiltInModelType.GAUSSIAN_HMM.value:
+    elif model_type == BuiltInModelType.GAUSSIAN_HMM:
         attribute_map = gaussian_hmm_attribute_map
-    elif model_id == BuiltInModelType.STRAY.value:
+    elif model_type == BuiltInModelType.STRAY:
         attribute_map = stray_attribute_map
-    elif model_id == BuiltInModelType.TIMER_XL.value:
+    elif model_type == BuiltInModelType.TIMER_XL:
         attribute_map = timerxl_attribute_map
-    elif model_id == BuiltInModelType.SUNDIAL.value:
+    elif model_type == BuiltInModelType.SUNDIAL:
         attribute_map = sundial_attribute_map
     else:
-        raise BuiltInModelNotSupportError(model_id)
+        raise BuiltInModelNotSupportError(model_type.value)
     return attribute_map
 
 
-def fetch_built_in_model(model_id, inference_attributes):
+def fetch_built_in_model(model_type: BuiltInModelType, model_dir) -> Callable:
     """
+    Fetch the built-in model according to its id and directory, not that this directory only contains model weights and config.
     Args:
-        model_id: the unique id of the model
-        inference_attributes: a list of attributes to be inferred, in this function, the attributes will include some
-            parameters of the built-in model. Some parameters are optional, and if the parameters are not
-            specified, the default value will be used.
+        model_type: the type of the built-in model
+        model_dir: for huggingface models only, the directory where the model is stored
     Returns:
         model: the built-in model
-        attributes: a dict of attributes, where the key is the attribute name, the value is the parsed value of the
-            attribute
-    Description:
-        the create_built_in_model function will create the built-in model, which does not require user
-        registration. This module will parse the inference attributes and create the built-in model.
     """
-    attribute_map = get_model_attributes(model_id)
-
-    # parse the inference attributes, attributes is a Dict[str, Any]
-    attributes = parse_attribute(inference_attributes, attribute_map)
+    attributes = get_model_attributes(model_type)
 
     # build the built-in model
-    if model_id == BuiltInModelType.ARIMA.value:
+    if model_type == BuiltInModelType.ARIMA:
         model = ArimaModel(attributes)
     elif (
-        model_id == BuiltInModelType.EXPONENTIAL_SMOOTHING.value
-        or model_id == BuiltInModelType.HOLTWINTERS.value
+        model_type == BuiltInModelType.EXPONENTIAL_SMOOTHING
+        or model_type == BuiltInModelType.HOLTWINTERS
     ):
         model = ExponentialSmoothingModel(attributes)
-    elif model_id == BuiltInModelType.NAIVE_FORECASTER.value:
+    elif model_type == BuiltInModelType.NAIVE_FORECASTER:
         model = NaiveForecasterModel(attributes)
-    elif model_id == BuiltInModelType.STL_FORECASTER.value:
+    elif model_type == BuiltInModelType.STL_FORECASTER:
         model = STLForecasterModel(attributes)
-    elif model_id == BuiltInModelType.GMM_HMM.value:
+    elif model_type == BuiltInModelType.GMM_HMM:
         model = GMMHMMModel(attributes)
-    elif model_id == BuiltInModelType.GAUSSIAN_HMM.value:
+    elif model_type == BuiltInModelType.GAUSSIAN_HMM:
         model = GaussianHmmModel(attributes)
-    elif model_id == BuiltInModelType.STRAY.value:
+    elif model_type == BuiltInModelType.STRAY:
         model = STRAYModel(attributes)
-    elif model_id == BuiltInModelType.TIMER_XL.value:
-        model = modeling_timer.TimerForPrediction(TimerConfig.from_dict(attributes))
-    elif model_id == BuiltInModelType.SUNDIAL.value:
-        model = modeling_sundial.SundialForPrediction(
-            SundialConfig.from_dict(attributes)
-        )
+    elif model_type == BuiltInModelType.TIMER_XL:
+        model = modeling_timer.TimerForPrediction.from_pretrained(model_dir)
+    elif model_type == BuiltInModelType.SUNDIAL:
+        model = modeling_sundial.SundialForPrediction.from_pretrained(model_dir)
     else:
-        raise BuiltInModelNotSupportError(model_id)
+        raise BuiltInModelNotSupportError(model_type.value)
 
     return model
 

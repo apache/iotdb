@@ -29,6 +29,8 @@ from ainode.core.exception import (
 )
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
+from ainode.core.model.sundial.modeling_sundial import SundialForPrediction
+from ainode.core.model.timerxl.modeling_timer import TimerForPrediction
 from ainode.core.util.serde import convert_to_binary
 from ainode.core.util.status import get_status
 from ainode.thrift.ainode.ttypes import (
@@ -117,9 +119,9 @@ class RegisteredStrategy(InferenceStrategy):
 
 
 def _get_strategy(model_id, model):
-    if model_id == "_timerxl":
+    if isinstance(model, TimerForPrediction):
         return TimerXLStrategy(model)
-    if model_id == "_sundial":
+    if isinstance(model, SundialForPrediction):
         return SundialStrategy(model)
     if model_id.startswith("_"):
         return BuiltInStrategy(model)
@@ -127,7 +129,6 @@ def _get_strategy(model_id, model):
 
 
 class InferenceManager:
-
     def __init__(self, model_manager: ModelManager):
         self.model_manager = model_manager
 
@@ -145,18 +146,15 @@ class InferenceManager:
         try:
             raw = data_getter(req)
             full_data = deserializer(raw)
-            attrs = extract_attrs(req)
+            inference_attrs = extract_attrs(req)
 
             # load model
-            if model_id.startswith("_"):
-                model = self.model_manager.load_built_in_model(model_id, attrs)
-            else:
-                accel = str(attrs.get("acceleration", "")).lower() == "true"
-                model = self.model_manager.load_model(model_id, accel)
+            accel = str(inference_attrs.get("acceleration", "")).lower() == "true"
+            model = self.model_manager.load_model(model_id, accel)
 
             # inference by strategy
             strategy = _get_strategy(model_id, model)
-            outputs = strategy.infer(full_data, **attrs)
+            outputs = strategy.infer(full_data, **inference_attrs)
 
             # construct response
             status = get_status(TSStatusCode.SUCCESS_STATUS)

@@ -1063,7 +1063,10 @@ struct TShowModelReq {
 
 struct TShowModelResp {
   1: required common.TSStatus status
-  2: required list<binary> modelInfoList
+  2: optional list<string> modelIdList
+  3: optional map<string, string> modelTypeMap
+  4: optional map<string, string> categoryMap
+  5: optional map<string, string> stateMap
 }
 
 struct TGetModelInfoReq {
@@ -1086,8 +1089,7 @@ struct TUpdateModelInfoReq {
 }
 
 struct TDataSchemaForTable{
-    1: required list<string> databaseList
-    2: required list<string> tableList
+    1: required string targetSql
 }
 
 struct TDataSchemaForTree{
@@ -1096,14 +1098,12 @@ struct TDataSchemaForTree{
 
 struct TCreateTrainingReq {
     1: required string modelId
-    2: required string modelType
-    3: required bool isTableModel
+    2: required bool isTableModel
+    3: required string existingModelId
     4: optional TDataSchemaForTable dataSchemaForTable
     5: optional TDataSchemaForTree dataSchemaForTree
-    6: optional bool useAllData
-    7: optional map<string, string> parameters
-    8: optional string existingModelId
-    9: optional list<list<i64>> timeRanges
+    6: optional map<string, string> parameters
+    7: optional list<list<i64>> timeRanges
 }
 
 // ====================================================

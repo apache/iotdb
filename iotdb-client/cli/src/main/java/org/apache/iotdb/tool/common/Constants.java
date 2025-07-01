@@ -285,9 +285,8 @@ public class Constants {
   public static final String LOOSE_RANGE = "";
   public static final boolean STRICT = false;
   public static final String MODE = "snapshot";
-  public static final boolean AUTO_COMMIT = true;
+  public static final boolean AUTO_COMMIT = false;
   public static final String TABLE_MODEL = "table";
-  public static final long AUTO_COMMIT_INTERVAL = 5000;
   public static final long POLL_MESSAGE_TIMEOUT = 10000;
   public static final String TOPIC_NAME_PREFIX = "topic_";
   public static final String GROUP_NAME_PREFIX = "group_";

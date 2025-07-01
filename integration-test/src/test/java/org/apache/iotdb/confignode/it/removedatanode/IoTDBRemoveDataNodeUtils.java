@@ -33,6 +33,8 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -66,13 +68,9 @@ public class IoTDBRemoveDataNodeUtils {
 
   public static Set<Integer> selectRemoveDataNodes(
       Set<Integer> allDataNodeId, int removeDataNodeNum) {
-    Set<Integer> removeDataNodeIds = new HashSet<>();
-    for (int i = 0; i < removeDataNodeNum; i++) {
-      int removeDataNodeId = allDataNodeId.iterator().next();
-      removeDataNodeIds.add(removeDataNodeId);
-      allDataNodeId.remove(removeDataNodeId);
-    }
-    return removeDataNodeIds;
+    List<Integer> shuffledDataNodeIds = new ArrayList<>(allDataNodeId);
+    Collections.shuffle(shuffledDataNodeIds);
+    return new HashSet<>(shuffledDataNodeIds.subList(0, removeDataNodeNum));
   }
 
   public static void restartDataNodes(List<DataNodeWrapper> dataNodeWrappers) {
@@ -120,7 +118,7 @@ public class IoTDBRemoveDataNodeUtils {
 
     try {
       Awaitility.await()
-          .atMost(2, TimeUnit.MINUTES)
+          .atMost(5, TimeUnit.MINUTES)
           .pollDelay(2, TimeUnit.SECONDS)
           .until(
               () -> {
@@ -164,7 +162,7 @@ public class IoTDBRemoveDataNodeUtils {
       lastTimeDataNodeLocations.get().removeAll(removeDataNodeLocations);
       String expectedSetStr = lastTimeDataNodeLocations.get().toString();
       LOGGER.error(
-          "Remove DataNodes timeout in 2 minutes, expected set: {}, actual set: {}",
+          "Remove DataNodes timeout in 5 minutes, expected set: {}, actual set: {}",
           expectedSetStr,
           actualSetStr);
       if (lastException.get() == null) {

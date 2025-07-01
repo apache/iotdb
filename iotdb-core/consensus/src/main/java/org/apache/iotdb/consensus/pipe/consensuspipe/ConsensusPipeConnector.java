@@ -19,7 +19,7 @@
 package org.apache.iotdb.consensus.pipe.consensuspipe;
 
 public interface ConsensusPipeConnector {
-  long getConsensusPipeCommitProgress();
+  long getLeaderReplicateProgress();
 
-  long getConsensusPipeReplicateProgress();
+  long getFollowerApplyProgress();
 }

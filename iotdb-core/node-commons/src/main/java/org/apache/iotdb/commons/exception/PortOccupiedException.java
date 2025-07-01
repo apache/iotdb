@@ -16,25 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.exception;
 
-package org.apache.iotdb.udf.api.relational.table.argument;
+import java.util.Arrays;
 
-import java.util.function.Function;
+public class PortOccupiedException extends RuntimeException {
+  public PortOccupiedException() {
+    super("Some ports are occupied");
+  }
 
-public class ScalarArgumentChecker {
-  public static Function<Object, String> POSITIVE_LONG_CHECKER =
-      (value) -> {
-        if (value instanceof Long && (Long) value > 0) {
-          return null;
-        }
-        return "should be a positive value";
-      };
-
-  public static Function<Object, String> NON_NEGATIVE_DOUBLE_CHECKER =
-      (value) -> {
-        if (value instanceof Double && (Double) value >= 0) {
-          return null;
-        }
-        return "should be a non-negative value";
-      };
+  public PortOccupiedException(int... ports) {
+    super(String.format("Ports %s are occupied", Arrays.toString(ports)));
+  }
 }

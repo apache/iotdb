@@ -782,29 +782,7 @@ revokeGrantOpt
 // ------------------------------------------- AI ---------------------------------------------------------
 
 createModelStatement
-    : CREATE MODEL modelType=identifier modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? (FROM MODEL existingModelId=identifier)? ON DATASET '(' trainingData ')'
-    ;
-
-trainingData
-    : ALL
-    | dataElement(',' dataElement)*
-    ;
-
-dataElement
-    : databaseElement
-    | tableElement
-    ;
-
-databaseElement
-    : DATABASE database=identifier ('(' timeRange ')')?
-    ;
-
-tableElement
-    : TABLE tableName=qualifiedName ('(' timeRange ')')?
-    ;
-
-timeRange
-    : '[' startTime=timeValue ',' endTime=timeValue ']'
+    : CREATE MODEL modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? FROM MODEL existingModelId=identifier ON DATASET '(' targetData=string ')'
     ;
 
 hparamPair

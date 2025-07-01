@@ -385,4 +385,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword) {
     return this;
   }
+
+  @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    return this;
+  }
 }

@@ -394,12 +394,12 @@ public class QueryPlanner {
             window.getFrame().get().getEnd().flatMap(FrameBound::getValue);
 
         // process frame start
-        FrameOffsetPlanAndSymbol plan = planFrameOffset(subPlan, startValue.map(coercions::get));
+        FrameOffsetPlanAndSymbol plan = planFrameOffset(subPlan, startValue, coercions);
         subPlan = plan.getSubPlan();
         frameStart = plan.getFrameOffsetSymbol();
 
         // process frame end
-        plan = planFrameOffset(subPlan, endValue.map(coercions::get));
+        plan = planFrameOffset(subPlan, endValue, coercions);
         subPlan = plan.getSubPlan();
         frameEnd = plan.getFrameOffsetSymbol();
       } else if (window.getFrame().isPresent()) {
@@ -509,22 +509,26 @@ public class QueryPlanner {
                 }
               }
             });
-    GroupNode groupNode =
-        new GroupNode(
-            queryIdAllocator.genPlanNodeId(),
-            subPlan.getRoot(),
-            new OrderingScheme(sortSymbols, sortOrderings),
-            sortKeyOffset);
-    PlanBuilder planBuilder =
-        new PlanBuilder(
-            subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()), groupNode);
+
+    PlanBuilder planBuilder = null;
+    if (!sortSymbols.isEmpty()) {
+      GroupNode groupNode =
+          new GroupNode(
+              queryIdAllocator.genPlanNodeId(),
+              subPlan.getRoot(),
+              new OrderingScheme(sortSymbols, sortOrderings),
+              sortKeyOffset);
+      planBuilder =
+          new PlanBuilder(
+              subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()), groupNode);
+    }
 
     // create window node
     return new PlanBuilder(
         subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()),
         new WindowNode(
             queryIdAllocator.genPlanNodeId(),
-            planBuilder.getRoot(),
+            planBuilder != null ? planBuilder.getRoot() : subPlan.getRoot(),
             specification,
             functions.buildOrThrow(),
             Optional.empty(),
@@ -570,7 +574,7 @@ public class QueryPlanner {
       return new FrameBoundPlanAndSymbols(subPlan, Optional.empty(), Optional.empty());
     }
 
-    // First, append filter to validate offset values. They mustn't be negative or null.
+    // Append filter to validate offset values. They mustn't be negative or null.
     Symbol offsetSymbol = coercions.get(frameOffset.get());
     Expression zeroOffset = zeroOfType(symbolAllocator.getTypes().getTableModelType(offsetSymbol));
     Expression predicate =
@@ -655,12 +659,20 @@ public class QueryPlanner {
   }
 
   private FrameOffsetPlanAndSymbol planFrameOffset(
-      PlanBuilder subPlan, Optional<Symbol> frameOffset) {
+      PlanBuilder subPlan, Optional<Expression> frameOffset, PlanAndMappings coercions) {
     if (!frameOffset.isPresent()) {
       return new FrameOffsetPlanAndSymbol(subPlan, Optional.empty());
     }
 
-    Symbol offsetSymbol = frameOffset.get();
+    // Report error if frame offsets are literals and they are negative or null
+    if (frameOffset.get() instanceof LongLiteral) {
+      long frameOffsetValue = ((LongLiteral) frameOffset.get()).getParsedValue();
+      if (frameOffsetValue < 0) {
+        throw new SemanticException("Window frame offset value must not be negative or null");
+      }
+    }
+
+    Symbol offsetSymbol = frameOffset.map(coercions::get).get();
     Type offsetType = symbolAllocator.getTypes().getTableModelType(offsetSymbol);
 
     // Append filter to validate offset values. They mustn't be negative or null.

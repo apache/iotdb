@@ -67,6 +67,8 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.operator.Or;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
@@ -86,6 +88,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.Operator.NOT_BLOCKED;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -179,6 +182,37 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
     node.setPushDownOffset(500);
     node.setPushDownLimit(500);
+    node.setPushDownPredicate(
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN,
+            new Symbol("sensor1").toSymbolReference(),
+            new LongLiteral("1000")));
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    assertTrue(operator instanceof DeviceIteratorScanOperator);
+    try {
+      checkResult(operator, outputColumnList, 500);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      operator.close();
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void testScanWithPushDownPredicateAndLimitAndOffsetAndTimePredicate() throws Exception {
+    List<String> outputColumnList = Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1");
+    TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
+    node.setPushDownOffset(500);
+    node.setPushDownLimit(500);
+    node.setTimePredicate(
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN,
+            new Symbol("time").toSymbolReference(),
+            new LongLiteral("0")));
     node.setPushDownPredicate(
         new ComparisonExpression(
             ComparisonExpression.Operator.GREATER_THAN,
@@ -632,6 +666,11 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
             TypeFactory.getType(tsBlock.getColumn(i).getDataType()));
       }
       count += tsBlock.getPositionCount();
+    }
+    FragmentInstanceContext fragmentInstance = operator.getOperatorContext().getInstanceContext();
+    Filter globalTimeFilter = fragmentInstance.getGlobalTimeFilter();
+    if (globalTimeFilter != null) {
+      assertFalse(globalTimeFilter instanceof Or);
     }
     assertEquals(expectedCount, count);
   }

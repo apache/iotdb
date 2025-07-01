@@ -167,7 +167,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataSchemaForTable;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -248,7 +247,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
@@ -2658,10 +2656,6 @@ public class ConfigManager implements IManager {
 
   private List<IDataSchema> fetchSchemaForTreeModel(TCreateTrainingReq req) {
     List<IDataSchema> dataSchemaList = new ArrayList<>();
-    if (req.useAllData) {
-      dataSchemaList.add(new IDataSchema("root.**"));
-      return dataSchemaList;
-    }
     for (int i = 0; i < req.getDataSchemaForTree().getPathSize(); i++) {
       IDataSchema dataSchema = new IDataSchema(req.getDataSchemaForTree().getPath().get(i));
       dataSchema.setTimeRange(req.getTimeRanges().get(i));
@@ -2671,28 +2665,7 @@ public class ConfigManager implements IManager {
   }
 
   private List<IDataSchema> fetchSchemaForTableModel(TCreateTrainingReq req) {
-    List<IDataSchema> dataSchemaList = new ArrayList<>();
-    TDataSchemaForTable dataSchemaForTable = req.getDataSchemaForTable();
-    if (req.useAllData || !dataSchemaForTable.getDatabaseList().isEmpty()) {
-      List<String> databaseNameList = new ArrayList<>();
-      if (req.useAllData) {
-        TShowDatabaseResp resp = showDatabase(new TGetDatabaseReq());
-        databaseNameList.addAll(resp.getDatabaseInfoMap().keySet());
-      } else {
-        databaseNameList.addAll(dataSchemaForTable.getDatabaseList());
-      }
-
-      for (String database : databaseNameList) {
-        TShowTableResp resp = showTables(database, false);
-        for (TTableInfo tableInfo : resp.getTableInfoList()) {
-          dataSchemaList.add(new IDataSchema(database + DOT + tableInfo.tableName));
-        }
-      }
-    }
-    for (String tableName : dataSchemaForTable.getTableList()) {
-      dataSchemaList.add(new IDataSchema(tableName));
-    }
-    return dataSchemaList;
+    return Collections.singletonList(new IDataSchema(req.getDataSchemaForTable().getTargetSql()));
   }
 
   public TSStatus createTraining(TCreateTrainingReq req) {
@@ -2704,11 +2677,10 @@ public class ConfigManager implements IManager {
 
     TTrainingReq trainingReq = new TTrainingReq();
     trainingReq.setModelId(req.getModelId());
-    trainingReq.setModelType("sundial");
-    if (req.existingModelId != null) {
+    if (req.isSetExistingModelId()) {
       trainingReq.setExistingModelId(req.getExistingModelId());
     }
-    if (!req.parameters.isEmpty()) {
+    if (req.isSetParameters() && !req.getParameters().isEmpty()) {
       trainingReq.setParameters(req.getParameters());
     }
 
@@ -2764,7 +2736,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? modelManager.showModel(req)
-        : new TShowModelResp(status, Collections.emptyList());
+        : new TShowModelResp(status);
   }
 
   @Override

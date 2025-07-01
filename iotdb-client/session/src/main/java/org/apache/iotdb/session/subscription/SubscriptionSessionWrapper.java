@@ -62,8 +62,8 @@ public final class SubscriptionSessionWrapper extends Session {
         database);
   }
 
-  public SubscriptionSessionConnection getSessionConnection() {
-    return (SubscriptionSessionConnection) defaultSessionConnection;
+  public SubscriptionSessionConnection getSessionConnection() throws IoTDBConnectionException {
+    return (SubscriptionSessionConnection) getDefaultSessionConnection();
   }
 
   public int getThriftMaxFrameSize() {

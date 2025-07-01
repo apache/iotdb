@@ -20,6 +20,7 @@ package org.apache.iotdb.db.protocol.rest.v2.handler;
 import org.apache.iotdb.db.protocol.rest.v2.model.ExpressionRequest;
 import org.apache.iotdb.db.protocol.rest.v2.model.InsertRecordsRequest;
 import org.apache.iotdb.db.protocol.rest.v2.model.InsertTabletRequest;
+import org.apache.iotdb.db.protocol.rest.v2.model.PrefixPathList;
 import org.apache.iotdb.db.protocol.rest.v2.model.SQL;
 
 import org.apache.commons.lang3.Validate;
@@ -37,6 +38,13 @@ public class RequestValidationHandler {
     Objects.requireNonNull(sql.getSql(), "sql should not be null");
     if (sql.getRowLimit() != null) {
       Validate.isTrue(sql.getRowLimit() > 0, "row_limit should be positive");
+    }
+  }
+
+  public static void validatePrefixPaths(PrefixPathList prefixPathList) {
+    Objects.requireNonNull(prefixPathList.getPrefixPaths(), "prefix_paths should not be null");
+    if (prefixPathList.getPrefixPaths().isEmpty()) {
+      throw new IllegalArgumentException("prefix_paths should not be empty");
     }
   }
 
