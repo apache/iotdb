@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -42,10 +43,9 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
+public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeDataNodeRemainingEventAndTimeMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeSinglePipeMetrics.class);
 
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
@@ -103,11 +103,31 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
+
+    // Resources
     metricService.createAutoGauge(
         Metric.PIPE_FLOATING_MEMORY_USAGE.toString(),
         MetricLevel.IMPORTANT,
         PipeDataNodeAgent.task(),
         a -> a.getFloatingMemoryUsageInByte(operator.getPipeName()),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.createAutoGauge(
+        Metric.PIPE_LINKED_TSFILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.tsfile(),
+        a -> a.getLinkedTsFileCount(operator.getPipeName()),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.createAutoGauge(
+        Metric.PIPE_LINKED_TSFILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.tsfile(),
+        a -> a.getTotalLinkedTsFileSize(operator.getPipeName()),
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -177,6 +197,20 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
     metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_LINKED_TSFILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_LINKED_TSFILE_SIZE.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_INSERT_NODE_EVENT_TRANSFER_TIME.toString(),
         Tag.NAME.toString(),
@@ -196,12 +230,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingEventAndTimeOperatorMap.computeIfAbsent(
         pipeID,
-        k ->
-            new PipeDataNodeRemainingEventAndTimeOperator(
-                extractor.getPipeName(), extractor.getCreationTime()));
-    if (Objects.nonNull(metricService)) {
-      createMetrics(pipeID);
-    }
+        k -> {
+          if (Objects.nonNull(metricService)) {
+            createMetrics(pipeID);
+          }
+          return new PipeDataNodeRemainingEventAndTimeOperator(
+              extractor.getPipeName(), extractor.getCreationTime());
+        });
   }
 
   public void register(final IoTDBSchemaRegionExtractor extractor) {
@@ -210,13 +245,14 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeID,
-            k ->
-                new PipeDataNodeRemainingEventAndTimeOperator(
-                    extractor.getPipeName(), extractor.getCreationTime()))
+            k -> {
+              if (Objects.nonNull(metricService)) {
+                createMetrics(pipeID);
+              }
+              return new PipeDataNodeRemainingEventAndTimeOperator(
+                  extractor.getPipeName(), extractor.getCreationTime());
+            })
         .register(extractor);
-    if (Objects.nonNull(metricService)) {
-      createMetrics(pipeID);
-    }
   }
 
   public void increaseInsertNodeEventCount(final String pipeName, final long creationTime) {
@@ -372,19 +408,19 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
   private static class PipeDataNodeRemainingEventAndTimeMetricsHolder {
 
-    private static final PipeDataNodeRemainingEventAndTimeMetrics INSTANCE =
-        new PipeDataNodeRemainingEventAndTimeMetrics();
+    private static final PipeDataNodeSinglePipeMetrics INSTANCE =
+        new PipeDataNodeSinglePipeMetrics();
 
     private PipeDataNodeRemainingEventAndTimeMetricsHolder() {
       // Empty constructor
     }
   }
 
-  public static PipeDataNodeRemainingEventAndTimeMetrics getInstance() {
+  public static PipeDataNodeSinglePipeMetrics getInstance() {
     return PipeDataNodeRemainingEventAndTimeMetricsHolder.INSTANCE;
   }
 
-  private PipeDataNodeRemainingEventAndTimeMetrics() {
+  private PipeDataNodeSinglePipeMetrics() {
     PipeEventCommitManager.getInstance().setCommitRateMarker(this::markRegionCommit);
   }
 }

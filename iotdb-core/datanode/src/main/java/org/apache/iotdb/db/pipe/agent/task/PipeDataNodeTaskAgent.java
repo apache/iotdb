@@ -49,7 +49,7 @@ import org.apache.iotdb.db.pipe.agent.task.builder.PipeDataNodeTaskBuilder;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -267,13 +267,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   protected void thawRate(final String pipeName, final long creationTime) {
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().thawRate(pipeName + "_" + creationTime);
+    PipeDataNodeSinglePipeMetrics.getInstance().thawRate(pipeName + "_" + creationTime);
   }
 
   @Override
   protected void freezeRate(final String pipeName, final long creationTime) {
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-        .freezeRate(pipeName + "_" + creationTime);
+    PipeDataNodeSinglePipeMetrics.getInstance().freezeRate(pipeName + "_" + creationTime);
   }
 
   @Override
@@ -284,7 +283,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     final String taskId = pipeName + "_" + creationTime;
     PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
+    PipeDataNodeSinglePipeMetrics.getInstance().deregister(taskId);
 
     return true;
   }
@@ -312,7 +311,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
       final String taskId = pipeName + "_" + creationTime;
       PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
+      PipeDataNodeSinglePipeMetrics.getInstance().deregister(taskId);
       // When the pipe contains no pipe tasks, there is no corresponding prefetching queue for the
       // subscribed pipe, so the subscription needs to be manually marked as completed.
       if (!hasPipeTasks && PipeStaticMeta.isSubscriptionPipe(pipeName)) {
@@ -405,7 +404,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
         final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
         final Pair<Long, Double> remainingEventAndTime =
-            PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            PipeDataNodeSinglePipeMetrics.getInstance()
                 .getRemainingEventAndTime(staticMeta.getPipeName(), staticMeta.getCreationTime());
         pipeCompletedList.add(isCompleted);
         pipeRemainingEventCountList.add(remainingEventAndTime.getLeft());
@@ -488,7 +487,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
         final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
         final Pair<Long, Double> remainingEventAndTime =
-            PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            PipeDataNodeSinglePipeMetrics.getInstance()
                 .getRemainingEventAndTime(staticMeta.getPipeName(), staticMeta.getCreationTime());
         pipeCompletedList.add(isCompleted);
         pipeRemainingEventCountList.add(remainingEventAndTime.getLeft());

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPend
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeHeartbeatEventMetrics;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -83,7 +83,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+      PipeDataNodeSinglePipeMetrics.getInstance()
           .increaseHeartbeatEventCount(pipeName, creationTime);
     }
     return true;
@@ -94,7 +94,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     // PipeName == null indicates that the event is the raw event at disruptor,
     // not the event copied and passed to the extractor
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+      PipeDataNodeSinglePipeMetrics.getInstance()
           .decreaseHeartbeatEventCount(pipeName, creationTime);
       if (shouldPrintMessage && LOGGER.isDebugEnabled()) {
         LOGGER.debug(this.toString());

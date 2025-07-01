@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
-import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -91,17 +90,6 @@ public class PipeResourceMetrics implements IMetricSet {
         o -> PipeDataNodeAgent.task().getAllFloatingMemoryUsageInByte(),
         Tag.NAME.toString(),
         PIPE_USED_FLOATING_MEMORY);
-    // resource reference count
-    metricService.createAutoGauge(
-        Metric.PIPE_LINKED_TSFILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        PipeDataNodeResourceManager.tsfile(),
-        PipeTsFileResourceManager::getLinkedTsfileCount);
-    metricService.createAutoGauge(
-        Metric.PIPE_LINKED_TSFILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        PipeDataNodeResourceManager.tsfile(),
-        PipeTsFileResourceManager::getTotalLinkedTsfileSize);
     // phantom reference count
     metricService.createAutoGauge(
         Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString(),

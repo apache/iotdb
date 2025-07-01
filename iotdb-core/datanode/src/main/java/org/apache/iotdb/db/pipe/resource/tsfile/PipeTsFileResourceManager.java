@@ -43,8 +43,10 @@ public class PipeTsFileResourceManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResourceManager.class);
 
-  private final Map<String, PipeTsFileResource> hardlinkOrCopiedFileToPipeTsFileResourceMap =
+  private final Map<String, PipeTsFileResource> hardlinkOrCopiedFileToAssignerTsFileResourceMap =
       new ConcurrentHashMap<>();
+  private final Map<String, Map<String, PipeTsFileResource>>
+      hardlinkOrCopiedFileToPipeTsFileResourceMap = new ConcurrentHashMap<>();
   private final PipeTsFileResourceSegmentLock segmentLock = new PipeTsFileResourceSegmentLock();
 
   /**
@@ -78,7 +80,7 @@ public class PipeTsFileResourceManager {
     // just increase reference count and return it
     segmentLock.lock(file);
     try {
-      if (increaseReferenceIfExists(file)) {
+      if (increaseReferenceIfExists(file, pipeName)) {
         return file;
       }
     } finally {
@@ -90,8 +92,8 @@ public class PipeTsFileResourceManager {
     final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file, pipeName);
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
-      if (increaseReferenceIfExists(hardlinkOrCopiedFile)) {
-        return hardlinkOrCopiedFileToPipeTsFileResourceMap
+      if (increaseReferenceIfExists(hardlinkOrCopiedFile, pipeName)) {
+        return getHardlinkOrCopiedFile2TsFileResourceMap(pipeName)
             .get(hardlinkOrCopiedFile.getPath())
             .getFile();
       }
@@ -106,17 +108,17 @@ public class PipeTsFileResourceManager {
       // If the file is not a hardlink or copied file, and there is no related hardlink or copied
       // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
       // the hardlink or copied file, and return the hardlink or copied file.
-      hardlinkOrCopiedFileToPipeTsFileResourceMap.put(
-          resultFile.getPath(), new PipeTsFileResource(resultFile, isTsFile, tsFileResource));
+      getHardlinkOrCopiedFile2TsFileResourceMap(pipeName)
+          .put(resultFile.getPath(), new PipeTsFileResource(resultFile, isTsFile, tsFileResource));
       return resultFile;
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
     }
   }
 
-  private boolean increaseReferenceIfExists(final File file) {
+  private boolean increaseReferenceIfExists(final File file, final String pipeName) {
     final PipeTsFileResource resource =
-        hardlinkOrCopiedFileToPipeTsFileResourceMap.get(file.getPath());
+        getHardlinkOrCopiedFile2TsFileResourceMap(pipeName).get(file.getPath());
     if (resource != null) {
       resource.increaseReferenceCount();
       return true;
@@ -175,9 +177,10 @@ public class PipeTsFileResourceManager {
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
       final String filePath = hardlinkOrCopiedFile.getPath();
-      final PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(filePath);
+      final PipeTsFileResource resource =
+          getHardlinkOrCopiedFile2TsFileResourceMap(pipeName).get(filePath);
       if (resource != null && resource.decreaseReferenceCount()) {
-        hardlinkOrCopiedFileToPipeTsFileResourceMap.remove(filePath);
+        getHardlinkOrCopiedFile2TsFileResourceMap(pipeName).remove(filePath);
       }
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
@@ -190,11 +193,12 @@ public class PipeTsFileResourceManager {
    * @param hardlinkOrCopiedFile the copied or hardlinked file
    * @return the reference count of the file
    */
-  public int getFileReferenceCount(final File hardlinkOrCopiedFile) {
+  public int getFileReferenceCount(final File hardlinkOrCopiedFile, final String pipeName) {
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
       final String filePath = hardlinkOrCopiedFile.getPath();
-      final PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(filePath);
+      final PipeTsFileResource resource =
+          getHardlinkOrCopiedFile2TsFileResourceMap(pipeName).get(filePath);
       return resource != null ? resource.getReferenceCount() : 0;
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
@@ -274,12 +278,12 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public int getLinkedTsfileCount() {
-    return hardlinkOrCopiedFileToPipeTsFileResourceMap.size();
+  public int getLinkedTsFileCount(final String pipeName) {
+    return getHardlinkOrCopiedFile2TsFileResourceMap(pipeName).size();
   }
 
-  public long getTotalLinkedTsfileSize() {
-    return hardlinkOrCopiedFileToPipeTsFileResourceMap.values().stream()
+  public long getTotalLinkedTsFileSize(final String pipeName) {
+    return getHardlinkOrCopiedFile2TsFileResourceMap(pipeName).values().stream()
         .mapToLong(
             resource -> {
               try {
@@ -292,46 +296,11 @@ public class PipeTsFileResourceManager {
         .sum();
   }
 
-  /**
-   * Get the total size of linked TsFiles whose original TsFile is deleted (by compaction or else)
-   */
-  public long getTotalLinkedButDeletedTsfileSize() {
-    try {
-      return hardlinkOrCopiedFileToPipeTsFileResourceMap.values().parallelStream()
-          .filter(PipeTsFileResource::isOriginalTsFileDeleted)
-          .mapToLong(
-              resource -> {
-                try {
-                  return resource.getFileSize();
-                } catch (Exception e) {
-                  LOGGER.warn(
-                      "failed to get file size of linked but deleted TsFile {}: ", resource, e);
-                  return 0;
-                }
-              })
-          .sum();
-    } catch (final Exception e) {
-      LOGGER.warn("failed to get total size of linked but deleted TsFiles: ", e);
-      return 0;
-    }
-  }
-
-  public long getTotalLinkedButDeletedTsFileResourceRamSize() {
-    long totalLinkedButDeletedTsfileResourceRamSize = 0;
-    try {
-      for (final Map.Entry<String, PipeTsFileResource> resourceEntry :
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet()) {
-        final PipeTsFileResource pipeTsFileResource = resourceEntry.getValue();
-        // If the original TsFile is not deleted, the memory of the resource is not counted
-        // because the memory of the resource is controlled by TsFileResourceManager.
-        if (pipeTsFileResource.isOriginalTsFileDeleted()) {
-          totalLinkedButDeletedTsfileResourceRamSize += pipeTsFileResource.getTsFileResourceSize();
-        }
-      }
-      return totalLinkedButDeletedTsfileResourceRamSize;
-    } catch (final Exception e) {
-      LOGGER.warn("failed to get total size of linked but deleted TsFiles resource ram size: ", e);
-      return totalLinkedButDeletedTsfileResourceRamSize;
-    }
+  private Map<String, PipeTsFileResource> getHardlinkOrCopiedFile2TsFileResourceMap(
+      final String pipeName) {
+    return Objects.nonNull(pipeName)
+        ? hardlinkOrCopiedFileToPipeTsFileResourceMap.computeIfAbsent(
+            pipeName, pipe -> new ConcurrentHashMap<>())
+        : hardlinkOrCopiedFileToAssignerTsFileResourceMap;
   }
 }

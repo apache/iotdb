@@ -31,8 +31,8 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeOperator;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -95,9 +95,7 @@ public class DataNodeShutdownHook extends Thread {
     long startTime = System.currentTimeMillis();
     if (PipeDataNodeAgent.task().getPipeCount() != 0) {
       for (Map.Entry<String, PipeDataNodeRemainingEventAndTimeOperator> entry :
-          PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-              .remainingEventAndTimeOperatorMap
-              .entrySet()) {
+          PipeDataNodeSinglePipeMetrics.getInstance().remainingEventAndTimeOperatorMap.entrySet()) {
         while (entry.getValue().getRemainingNonHeartbeatEvents() > 0) {
           if (System.currentTimeMillis() - startTime
               > PipeConfig.getInstance().getPipeMaxWaitFinishTime()) {
