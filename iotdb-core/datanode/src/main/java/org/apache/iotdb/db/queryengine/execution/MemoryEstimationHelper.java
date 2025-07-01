@@ -25,10 +25,14 @@ import org.apache.iotdb.commons.path.PartialPath;
 
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 
 public class MemoryEstimationHelper {
 
@@ -40,6 +44,11 @@ public class MemoryEstimationHelper {
 
   private static final long MEASUREMENT_PATH_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AlignedPath.class);
+
+  private static final long ARRAY_LIST_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
+  private static final long INTEGER_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(Integer.class);
 
   private MemoryEstimationHelper() {
     // hide the constructor
@@ -99,5 +108,27 @@ public class MemoryEstimationHelper {
       return 0;
     }
     return PARTIAL_PATH_INSTANCE_SIZE + RamUsageEstimator.shallowSizeOf(partialPath.getNodes());
+  }
+
+  public static long getEstimatedSizeOfIntegerArrayList(List<Integer> integerArrayList) {
+    if (integerArrayList == null) {
+      return 0L;
+    }
+    long size = ARRAY_LIST_INSTANCE_SIZE;
+    size +=
+        (long) RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + (long) integerArrayList.size() * (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    size += INTEGER_INSTANCE_SIZE * integerArrayList.size();
+    return RamUsageEstimator.alignObjectSize(size);
+  }
+
+  public static long shallowSizeOfCollection(Collection<IMeasurementSchema> collection) {
+    if (collection == null) {
+      return 0L;
+    }
+    long size =
+        RamUsageEstimator.shallowSizeOf(collection)
+            + RamUsageEstimator.sizeOfObjectArray(collection.size());
+    return RamUsageEstimator.alignObjectSize(size);
   }
 }

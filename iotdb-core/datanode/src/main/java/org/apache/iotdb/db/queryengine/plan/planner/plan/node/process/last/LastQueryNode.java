@@ -62,7 +62,7 @@ public class LastQueryNode extends MultiChildProcessNode {
   // After Logical planning is completed, this map is no longer needed and it will be set to null
   private Map<IMeasurementSchema, Integer> measurementSchema2IdxMap;
   // All LastSeriesSourceNode share this structure
-  private List<IMeasurementSchema> globalMeasurementSchemaList;
+  private final List<IMeasurementSchema> globalMeasurementSchemaList;
 
   public LastQueryNode(
       PlanNodeId id, @Nullable Ordering timeseriesOrdering, boolean containsLastTransformNode) {
@@ -133,7 +133,9 @@ public class LastQueryNode extends MultiChildProcessNode {
   }
 
   public long getMemorySizeOfSharedStructures() {
-    return RamUsageEstimator.sizeOfCollection(this.globalMeasurementSchemaList, 0);
+    return RamUsageEstimator.alignObjectSize(
+        RamUsageEstimator.shallowSizeOf(globalMeasurementSchemaList)
+            + RamUsageEstimator.sizeOfObjectArray(globalMeasurementSchemaList.size()));
   }
 
   @Override
