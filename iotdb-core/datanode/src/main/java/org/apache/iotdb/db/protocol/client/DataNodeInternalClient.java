@@ -39,7 +39,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -112,15 +114,10 @@ public class DataNodeInternalClient {
   }
 
   public TSStatus insertRelationalTablets(InsertMultiTabletsStatement statement) {
+    long startTime = System.nanoTime();
     try {
-      // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, session);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return status;
-      }
       // call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
-      SessionManager.getInstance().registerSession(session);
       ExecutionResult result =
           COORDINATOR.executeForTableModel(
               statement.getInsertTabletStatementList().get(0),
@@ -132,9 +129,14 @@ public class DataNodeInternalClient {
               metadata,
               config.getConnectionTimeoutInMS());
       return result.status;
-    } catch (final Exception e) {
+    } catch (Exception e) {
       return onQueryException(
-          e, OperationType.INSERT_TABLETS.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.SELECT_INTO.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      CommonUtils.addStatementExecutionLatency(
+          OperationType.SELECT_INTO,
+          StatementType.SELECT_INTO.name(),
+          System.nanoTime() - startTime);
     }
   }
 
