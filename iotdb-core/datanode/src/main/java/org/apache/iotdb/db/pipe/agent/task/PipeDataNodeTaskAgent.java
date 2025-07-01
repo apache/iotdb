@@ -891,10 +891,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
+    calculateInsertNodeQueueMemory(extractorParameters, processorParameters, connectorParameters);
+
     long needMemory = 0;
-    needMemory +=
-        calculateInsertNodeQueueMemory(
-            extractorParameters, processorParameters, connectorParameters);
+
     needMemory +=
         calculateTsFileParserMemory(extractorParameters, processorParameters, connectorParameters);
     needMemory +=
@@ -904,24 +904,25 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             extractorParameters, processorParameters, connectorParameters);
 
     PipeMemoryManager pipeMemoryManager = PipeDataNodeResourceManager.memory();
-    if (pipeMemoryManager.getFreeMemorySizeInBytes()
-        < needMemory
-            + PipeMemoryManager.getTotalMemorySizeInBytes()
-                * PipeConfig.getInstance().getReservedMemoryPercentage()) {
-      final String e =
+    final long reservedMemory =
+        (long)
+            (PipeMemoryManager.getTotalMemorySizeInBytes()
+                * PipeConfig.getInstance().getReservedMemoryPercentage());
+    final long freeMemory = pipeMemoryManager.getFreeMemorySizeInBytes();
+    if (freeMemory < needMemory + reservedMemory) {
+      final String message =
           String.format(
               "Not enough memory for pipe. Need memory: %d bytes, free memory: %d bytes, reserved memory: %d bytes, total memory: %d bytes",
               needMemory,
-              pipeMemoryManager.getFreeMemorySizeInBytes(),
-              (long)
-                  (PipeMemoryManager.getTotalMemorySizeInBytes()
-                      * PipeConfig.getInstance().getReservedMemoryPercentage()),
+              freeMemory,
+              reservedMemory,
               PipeMemoryManager.getTotalMemorySizeInBytes());
-      throw new PipeException(e);
+      LOGGER.warn(message);
+      throw new PipeException(message);
     }
   }
 
-  private long calculateInsertNodeQueueMemory(
+  private void calculateInsertNodeQueueMemory(
       final PipeParameters extractorParameters,
       final PipeParameters processorParameters,
       final PipeParameters connectorParameters) {
@@ -930,7 +931,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     if (!extractorParameters.getBooleanOrDefault(
         Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
         EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
-      return 0;
+      return;
     }
 
     // If the realtime mode is batch or file, we do not need to allocate memory
@@ -940,10 +941,22 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             PipeExtractorConstant.SOURCE_REALTIME_MODE_KEY);
     if (PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE.equals(realtimeMode)
         || PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_FILE_VALUE.equals(realtimeMode)) {
-      return 0;
+      return;
     }
 
-    return PipeConfig.getInstance().getPipeInsertNodeQueueMemory();
+    final long freeFloatingMemorySizeInBytes =
+        PipeMemoryManager.getTotalFloatingMemorySizeInBytes()
+            - this.getAllFloatingMemoryUsageInByte();
+    final long insertNodeQueueMemorySizeInBytes =
+        PipeConfig.getInstance().getPipeInsertNodeQueueMemory();
+    if (freeFloatingMemorySizeInBytes < insertNodeQueueMemorySizeInBytes) {
+      final String message =
+          String.format(
+              "Not enough memory for pipe. Need Floating memory: %d  bytes, free Floating memory: %d bytes",
+              insertNodeQueueMemorySizeInBytes, freeFloatingMemorySizeInBytes);
+      LOGGER.warn(message);
+      throw new PipeException(message);
+    }
   }
 
   private long calculateTsFileParserMemory(
