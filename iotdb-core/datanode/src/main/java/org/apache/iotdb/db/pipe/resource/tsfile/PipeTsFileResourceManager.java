@@ -120,6 +120,10 @@ public class PipeTsFileResourceManager {
       resource.increaseReferenceCount();
       return true;
     }
+    // Increase the assigner's file to avoid hard-link or memory cache cleaning
+    if (Objects.nonNull(pipeName)) {
+      hardlinkOrCopiedFileToAssignerTsFileResourceMap.get(file.getPath()).increaseReferenceCount();
+    }
     return false;
   }
 
@@ -167,7 +171,7 @@ public class PipeTsFileResourceManager {
    * Given a hardlink or copied file, decrease its reference count, if the reference count is 0,
    * delete the file. if the given file is not a hardlink or copied file, do nothing.
    *
-   * @param hardlinkOrCopiedFile the copied or hardlinked file
+   * @param hardlinkOrCopiedFile the copied or hard-linked file
    */
   public void decreaseFileReference(
       final File hardlinkOrCopiedFile, final @Nullable String pipeName) {
@@ -178,6 +182,13 @@ public class PipeTsFileResourceManager {
           getHardlinkOrCopiedFile2TsFileResourceMap(pipeName).get(filePath);
       if (resource != null && resource.decreaseReferenceCount()) {
         getHardlinkOrCopiedFile2TsFileResourceMap(pipeName).remove(filePath);
+      }
+      // Decrease the assigner's file to clear hard-link and memory cache
+      if (Objects.nonNull(pipeName)
+          && hardlinkOrCopiedFileToAssignerTsFileResourceMap
+              .get(hardlinkOrCopiedFile.getPath())
+              .decreaseReferenceCount()) {
+        hardlinkOrCopiedFileToPipeTsFileResourceMap.remove(filePath);
       }
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
