@@ -109,24 +109,34 @@ public class PipeTsFileResourceManager {
       // the hardlink or copied file, and return the hardlink or copied file.
       getHardlinkOrCopiedFile2TsFileResourceMap(pipeName)
           .put(resultFile.getPath(), new PipeTsFileResource(resultFile, isTsFile));
+
+      increaseAssignerReferenceIfExists(file, pipeName);
+
       return resultFile;
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
     }
   }
 
-  private boolean increaseReferenceIfExists(final File file, final String pipeName) {
+  private boolean increaseReferenceIfExists(final File file, final @Nullable String pipeName) {
+    final String path = file.getPath();
     final PipeTsFileResource resource =
-        getHardlinkOrCopiedFile2TsFileResourceMap(pipeName).get(file.getPath());
+        getHardlinkOrCopiedFile2TsFileResourceMap(pipeName).get(path);
     if (resource != null) {
       resource.increaseReferenceCount();
       return true;
     }
+    increaseAssignerReferenceIfExists(file, pipeName);
+    return false;
+  }
+
+  private void increaseAssignerReferenceIfExists(final File file, final @Nullable String pipeName) {
     // Increase the assigner's file to avoid hard-link or memory cache cleaning
-    if (Objects.nonNull(pipeName)) {
+    // Note that it does not exist for historical files
+    if (Objects.nonNull(pipeName)
+        && hardlinkOrCopiedFileToPipeTsFileResourceMap.containsKey(file.getPath())) {
       hardlinkOrCopiedFileToAssignerTsFileResourceMap.get(file.getPath()).increaseReferenceCount();
     }
-    return false;
   }
 
   public static File getHardlinkOrCopiedFileInPipeDir(final File file, final String pipeName)
@@ -145,7 +155,8 @@ public class PipeTsFileResourceManager {
 
   private static String getPipeTsFileDirPath(File file, final String pipeName) throws IOException {
     while (!file.getName().equals(IoTDBConstant.SEQUENCE_FOLDER_NAME)
-        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FOLDER_NAME)) {
+        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
+        && !file.getName().equals(PipeConfig.getInstance().getPipeHardlinkBaseDirName())) {
       file = file.getParentFile();
     }
     return file.getParentFile().getCanonicalPath()
@@ -159,7 +170,10 @@ public class PipeTsFileResourceManager {
   private static String getRelativeFilePath(File file) {
     StringBuilder builder = new StringBuilder(file.getName());
     while (!file.getName().equals(IoTDBConstant.SEQUENCE_FOLDER_NAME)
-        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FOLDER_NAME)) {
+        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
+        && !file.getParentFile()
+            .getName()
+            .equals(PipeConfig.getInstance().getPipeHardlinkTsFileDirName())) {
       file = file.getParentFile();
       builder =
           new StringBuilder(file.getName())
@@ -186,14 +200,22 @@ public class PipeTsFileResourceManager {
         getHardlinkOrCopiedFile2TsFileResourceMap(pipeName).remove(filePath);
       }
       // Decrease the assigner's file to clear hard-link and memory cache
-      if (Objects.nonNull(pipeName)
-          && hardlinkOrCopiedFileToAssignerTsFileResourceMap
-              .get(hardlinkOrCopiedFile.getPath())
-              .decreaseReferenceCount()) {
-        hardlinkOrCopiedFileToPipeTsFileResourceMap.remove(filePath);
-      }
+      // Note that it does not exist for historical files
+      decreaseAssignerReferenceIfExists(hardlinkOrCopiedFile, pipeName);
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
+    }
+  }
+
+  private void decreaseAssignerReferenceIfExists(final File file, final @Nullable String pipeName) {
+    // Increase the assigner's file to avoid hard-link or memory cache cleaning
+    // Note that it does not exist for historical files
+    if (Objects.nonNull(pipeName)
+        && hardlinkOrCopiedFileToPipeTsFileResourceMap.containsKey(file.getPath())
+        && hardlinkOrCopiedFileToAssignerTsFileResourceMap
+            .get(file.getPath())
+            .decreaseReferenceCount()) {
+      hardlinkOrCopiedFileToPipeTsFileResourceMap.remove(file.getPath());
     }
   }
 
