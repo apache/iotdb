@@ -654,4 +654,8 @@ public class PipeMemoryManager {
         (TOTAL_MEMORY_SIZE_IN_BYTES
             * PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion());
   }
+
+  public static long getTotalMemorySizeInBytes() {
+    return TOTAL_MEMORY_SIZE_IN_BYTES;
+  }
 }

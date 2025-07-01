@@ -132,7 +132,6 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;
-    tabletReq.body = transferReq.body;
 
     return tabletReq;
   }
