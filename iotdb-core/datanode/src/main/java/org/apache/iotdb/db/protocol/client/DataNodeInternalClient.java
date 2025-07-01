@@ -77,6 +77,7 @@ public class DataNodeInternalClient {
 
     try {
       session = new InternalClientSession("SELECT_INTO");
+      session.setSqlDialect(sessionInfo.getSqlDialect());
 
       SESSION_MANAGER.supplySession(
           session, sessionInfo.getUserName(), sessionInfo.getZoneId(), ClientVersion.V_1_0);
