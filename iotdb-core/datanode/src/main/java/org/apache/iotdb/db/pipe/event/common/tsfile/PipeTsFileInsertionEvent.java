@@ -303,22 +303,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   @Override
   public ProgressIndex getProgressIndex() {
-    try {
-      if (!waitForTsFileClose()) {
-        LOGGER.warn(
-            "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex",
-            tsFile);
-        return MinimumProgressIndex.INSTANCE;
-      }
-      if (Objects.nonNull(overridingProgressIndex)) {
-        return overridingProgressIndex;
-      }
-      return resource.getMaxProgressIndexAfterClose();
-    } catch (final InterruptedException e) {
-      LOGGER.warn(
-          "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex", tsFile);
-      return MinimumProgressIndex.INSTANCE;
-    }
+    return resource.getMaxProgressIndex();
   }
 
   /**

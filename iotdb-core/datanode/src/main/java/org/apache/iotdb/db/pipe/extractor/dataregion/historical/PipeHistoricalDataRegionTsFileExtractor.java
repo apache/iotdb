@@ -36,6 +36,7 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -60,6 +61,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -372,12 +374,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         // Some resource is marked as deleted but not removed from the list.
                         !resource.isDeleted()
                             && (
-                            // Some resource may not be closed because the flush may be incomplete.
-                            resource.isClosed()
-                                && mayTsFileContainUnprocessedData(resource)
-                                && isTsFileResourceOverlappedWithTimeRange(resource)
-                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
-                                && mayTsFileResourceOverlappedWithPattern(resource)))
+                            // If the tsFile is not already marked closing, it is not captured by
+                            // the pipe realtime module. Thus, we can wait for the realtime sync
+                            // module to handle this, to avoid blocking the pipe sync process.
+                            !resource.isClosed()
+                                    && Optional.ofNullable(resource.getProcessor())
+                                        .map(TsFileProcessor::alreadyMarkedClosing)
+                                        .orElse(true)
+                                || mayTsFileContainUnprocessedData(resource)
+                                    && isTsFileResourceOverlappedWithTimeRange(resource)
+                                    && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                                    && mayTsFileResourceOverlappedWithPattern(resource)))
                 .collect(Collectors.toList());
         resourceList.addAll(sequenceTsFileResources);
 
@@ -388,12 +395,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         // Some resource is marked as deleted but not removed from the list.
                         !resource.isDeleted()
                             && (
-                            // Some resource may not be closed because the flush may be incomplete.
-                            resource.isClosed()
-                                && mayTsFileContainUnprocessedData(resource)
-                                && isTsFileResourceOverlappedWithTimeRange(resource)
-                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
-                                && mayTsFileResourceOverlappedWithPattern(resource)))
+                            // If the tsFile is not already marked closing, it is not captured by
+                            // the pipe realtime module. Thus, we can wait for the realtime sync
+                            // module to handle this, to avoid blocking the pipe sync process.
+                            !resource.isClosed()
+                                    && Optional.ofNullable(resource.getProcessor())
+                                        .map(TsFileProcessor::alreadyMarkedClosing)
+                                        .orElse(true)
+                                || mayTsFileContainUnprocessedData(resource)
+                                    && isTsFileResourceOverlappedWithTimeRange(resource)
+                                    && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                                    && mayTsFileResourceOverlappedWithPattern(resource)))
                 .collect(Collectors.toList());
         resourceList.addAll(unSequenceTsFileResources);
 
@@ -447,8 +459,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     if (startIndex instanceof StateProgressIndex) {
       startIndex = ((StateProgressIndex) startIndex).getInnerProgressIndex();
     }
-    return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
-        && !startIndex.equals(resource.getMaxProgressIndexAfterClose());
+    return !startIndex.isAfter(resource.getMaxProgressIndex())
+        && !startIndex.equals(resource.getMaxProgressIndex());
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {

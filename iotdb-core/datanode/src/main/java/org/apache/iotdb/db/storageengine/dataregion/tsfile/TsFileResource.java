@@ -1218,14 +1218,6 @@ public class TsFileResource {
         .updateProgressIndex(getDataRegionId(), getTsFilePath(), maxProgressIndex);
   }
 
-  public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {
-    if (getStatus().equals(TsFileResourceStatus.UNCLOSED)) {
-      throw new IllegalStateException(
-          "Should not get progress index from a unclosing TsFileResource.");
-    }
-    return getMaxProgressIndex();
-  }
-
   public ProgressIndex getMaxProgressIndex() {
     return maxProgressIndex == null ? MinimumProgressIndex.INSTANCE : maxProgressIndex;
   }
