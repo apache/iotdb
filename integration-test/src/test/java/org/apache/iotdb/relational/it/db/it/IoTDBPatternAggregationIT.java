@@ -215,7 +215,9 @@ public class IoTDBPatternAggregationIT {
           "time",
           "match",
           "label",
-          "count",
+          "count_0",
+          "count_1",
+          "count_2",
           "count_c",
           "final_count_c",
           "count_u",
@@ -224,22 +226,24 @@ public class IoTDBPatternAggregationIT {
         };
     String[] retArray =
         new String[] {
-          "2025-01-01T00:01:00.000Z,1,A,1,0,1,0,2,10.0,",
-          "2025-01-01T00:02:00.000Z,1,B,2,0,1,1,2,20.0,",
-          "2025-01-01T00:03:00.000Z,1,C,3,1,1,1,2,30.0,",
-          "2025-01-01T00:04:00.000Z,1,D,4,1,1,2,2,40.0,",
-          "2025-01-01T00:05:00.000Z,2,A,1,0,1,0,1,10.0,",
-          "2025-01-01T00:06:00.000Z,2,B,2,0,1,1,1,20.0,",
-          "2025-01-01T00:07:00.000Z,2,C,3,1,1,1,1,30.0,",
+          "2025-01-01T00:01:00.000Z,1,A,1,1,1,0,1,0,2,10.0,",
+          "2025-01-01T00:02:00.000Z,1,B,2,2,2,0,1,1,2,20.0,",
+          "2025-01-01T00:03:00.000Z,1,C,3,3,3,1,1,1,2,30.0,",
+          "2025-01-01T00:04:00.000Z,1,D,4,4,4,1,1,2,2,40.0,",
+          "2025-01-01T00:05:00.000Z,2,A,1,1,1,0,1,0,1,10.0,",
+          "2025-01-01T00:06:00.000Z,2,B,2,2,2,0,1,1,1,20.0,",
+          "2025-01-01T00:07:00.000Z,2,C,3,3,3,1,1,1,1,30.0,",
         };
     tableResultSetEqualTest(
-        "SELECT m.time, m.match, m.label, m.count, m.count_c, m.final_count_c, m.count_u, m.final_count_u, m.totalprice "
+        "SELECT m.time, m.match, m.label, m.count_0, m.count_1, m.count_2, m.count_c, m.final_count_c, m.count_u, m.final_count_u, m.totalprice "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        CLASSIFIER() AS label, "
-            + "        COUNT(totalprice) AS count, "
+            + "        COUNT() AS count_0, "
+            + "        COUNT(*) AS count_1, "
+            + "        COUNT(totalprice) AS count_2, "
             + "        COUNT(C.totalprice) AS count_c, "
             + "        FINAL COUNT(C.totalprice) AS final_count_c, "
             + "        COUNT(U.totalprice) AS count_u, "

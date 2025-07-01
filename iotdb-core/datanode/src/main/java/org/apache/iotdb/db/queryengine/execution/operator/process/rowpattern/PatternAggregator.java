@@ -28,10 +28,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
 
 /**
  * This class computes an aggregate function result in row pattern recognition context.
@@ -109,25 +111,35 @@ public class PatternAggregator {
         AggregationMask.createSelectedPositions(
             partition.getPositionCount(), positions.toArray(), positions.length());
 
-    // extract the columns that need to be aggregated.
-    int argCount = argumentChannels.size();
-    Column[] argumentColumns = new Column[argCount];
+    // process COUNT()/COUNT(*)
+    if (argumentChannels.isEmpty()) {
+      Column[] arguments =
+          new Column[] {
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, partition.getPositionCount())
+          };
+      accumulator.addInput(arguments, mask);
+    } else {
+      // extract the columns that need to be aggregated.
+      int argCount = argumentChannels.size();
+      Column[] argumentColumns = new Column[argCount];
 
-    for (int i = 0; i < argCount; i++) {
-      int channel = argumentChannels.get(i);
-      // FIX: The type of the first argument of the aggregate function is used temporarily here, so
-      // only one-argument aggregate functions are supported
-      ColumnBuilder builder =
-          boundSignature.getArgumentType(0).createColumnBuilder(partition.getPositionCount());
+      for (int i = 0; i < argCount; i++) {
+        int channel = argumentChannels.get(i);
+        // FIX: The type of the first argument of the aggregate function is used temporarily here,
+        // so
+        // only one-argument aggregate functions are supported
+        ColumnBuilder builder =
+            boundSignature.getArgumentType(0).createColumnBuilder(partition.getPositionCount());
 
-      for (int row = 0; row < partition.getPositionCount(); row++) {
-        partition.writeTo(builder, channel, row);
+        for (int row = 0; row < partition.getPositionCount(); row++) {
+          partition.writeTo(builder, channel, row);
+        }
+
+        argumentColumns[i] = builder.build();
       }
 
-      argumentColumns[i] = builder.build();
+      accumulator.addInput(argumentColumns, mask);
     }
-
-    accumulator.addInput(argumentColumns, mask);
 
     // The return result of the aggregation function is one line
     ColumnBuilder resultBuilder = boundSignature.getReturnType().createColumnBuilder(1);

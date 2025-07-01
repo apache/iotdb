@@ -93,8 +93,8 @@ public class PatternAggregationTracker {
    * measures after a non-empty match is found. Search is limited up to the current row in case of
    * RUNNING semantics and to the entire match in case of FINAL semantics.
    *
-   * <p>TODO If `evaluated` exceeds `aggregated`, we could reuse the pre-evaluated positions. For
-   * that, we need to keep count of all previously returned positions from the `aggregated` prefix.
+   * <p>If `evaluated` exceeds `aggregated`, we could reuse the pre-evaluated positions. For that,
+   * we need to keep count of all previously returned positions from the `aggregated` prefix.
    *
    * @return array of new matching positions since the last call, relative to partition start
    */
