@@ -353,16 +353,16 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       tsFileManager.readLock();
       try {
         final int originalSequenceTsFileCount = tsFileManager.size(true);
-        final int originalUnsequenceTsFileCount = tsFileManager.size(false);
+        final int originalUnSequenceTsFileCount = tsFileManager.size(false);
         final List<TsFileResource> resourceList =
-            new ArrayList<>(originalSequenceTsFileCount + originalUnsequenceTsFileCount);
+            new ArrayList<>(originalSequenceTsFileCount + originalUnSequenceTsFileCount);
         LOGGER.info(
             "Pipe {}@{}: start to extract historical TsFile, original sequence file count {}, "
-                + "original unsequence file count {}, start progress index {}",
+                + "original unSequence file count {}, start progress index {}",
             pipeName,
             dataRegionId,
             originalSequenceTsFileCount,
-            originalUnsequenceTsFileCount,
+            originalUnSequenceTsFileCount,
             startIndex);
 
         final Collection<TsFileResource> sequenceTsFileResources =
@@ -426,9 +426,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             sequenceTsFileResources.size(),
             originalSequenceTsFileCount,
             unSequenceTsFileResources.size(),
-            originalUnsequenceTsFileCount,
+            originalUnSequenceTsFileCount,
             resourceList.size(),
-            originalSequenceTsFileCount + originalUnsequenceTsFileCount,
+            originalSequenceTsFileCount + originalUnSequenceTsFileCount,
             System.currentTimeMillis() - startHistoricalExtractionTime);
       } finally {
         tsFileManager.readUnlock();
