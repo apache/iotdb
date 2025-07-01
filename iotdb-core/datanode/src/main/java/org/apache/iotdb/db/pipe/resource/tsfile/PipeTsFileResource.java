@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -53,9 +51,6 @@ public class PipeTsFileResource implements AutoCloseable {
   private final File hardlinkOrCopiedFile;
   private final boolean isTsFile;
 
-  /** this TsFileResource is used to track the {@link TsFileResourceStatus} of original TsFile. * */
-  private final TsFileResource tsFileResource;
-
   private volatile long fileSize = -1L;
 
   private final AtomicInteger referenceCount;
@@ -64,23 +59,15 @@ public class PipeTsFileResource implements AutoCloseable {
   private Map<IDeviceID, Boolean> deviceIsAlignedMap = null;
   private Map<String, TSDataType> measurementDataTypeMap = null;
 
-  public PipeTsFileResource(
-      final File hardlinkOrCopiedFile,
-      final boolean isTsFile,
-      final TsFileResource tsFileResource) {
+  public PipeTsFileResource(final File hardlinkOrCopiedFile, final boolean isTsFile) {
     this.hardlinkOrCopiedFile = hardlinkOrCopiedFile;
     this.isTsFile = isTsFile;
-    this.tsFileResource = tsFileResource;
 
     referenceCount = new AtomicInteger(1);
   }
 
   public File getFile() {
     return hardlinkOrCopiedFile;
-  }
-
-  public boolean isOriginalTsFileDeleted() {
-    return isTsFile && Objects.nonNull(tsFileResource) && tsFileResource.isDeleted();
   }
 
   public long getFileSize() {
@@ -92,10 +79,6 @@ public class PipeTsFileResource implements AutoCloseable {
       }
     }
     return fileSize;
-  }
-
-  public long getTsFileResourceSize() {
-    return Objects.nonNull(tsFileResource) ? tsFileResource.calculateRamSize() : 0;
   }
 
   ///////////////////// Reference Count /////////////////////

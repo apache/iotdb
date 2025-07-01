@@ -43,6 +43,9 @@ public class PipeTsFileResourceManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResourceManager.class);
 
+  // This is used to hold the assigner pinned tsFiles.
+  // Also, it is used to provide metadata cache of the tsFile, and is shared by all the pipe's
+  // tsFiles.
   private final Map<String, PipeTsFileResource> hardlinkOrCopiedFileToAssignerTsFileResourceMap =
       new ConcurrentHashMap<>();
   private final Map<String, Map<String, PipeTsFileResource>>
@@ -65,17 +68,11 @@ public class PipeTsFileResourceManager {
    * @param file tsfile, resource file or mod file. can be original file or hardlink/copy of
    *     original file
    * @param isTsFile {@code true} to create hardlink, {@code false} to copy file
-   * @param tsFileResource the TsFileResource of original TsFile. Ignored if {@param isTsFile} is
-   *     {@code false}.
    * @return the hardlink or copied file
    * @throws IOException when create hardlink or copy file failed
    */
   public File increaseFileReference(
-      final File file,
-      final boolean isTsFile,
-      final TsFileResource tsFileResource,
-      final @Nullable String pipeName)
-      throws IOException {
+      final File file, final boolean isTsFile, final @Nullable String pipeName) throws IOException {
     // If the file is already a hardlink or copied file,
     // just increase reference count and return it
     segmentLock.lock(file);
@@ -109,7 +106,7 @@ public class PipeTsFileResourceManager {
       // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
       // the hardlink or copied file, and return the hardlink or copied file.
       getHardlinkOrCopiedFile2TsFileResourceMap(pipeName)
-          .put(resultFile.getPath(), new PipeTsFileResource(resultFile, isTsFile, tsFileResource));
+          .put(resultFile.getPath(), new PipeTsFileResource(resultFile, isTsFile));
       return resultFile;
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
@@ -215,7 +212,7 @@ public class PipeTsFileResourceManager {
     segmentLock.lock(hardlinkOrCopiedTsFile);
     try {
       final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
+          hardlinkOrCopiedFileToAssignerTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
       return resource != null && resource.cacheObjectsIfAbsent();
     } finally {
       segmentLock.unlock(hardlinkOrCopiedTsFile);
@@ -227,7 +224,7 @@ public class PipeTsFileResourceManager {
     segmentLock.lock(hardlinkOrCopiedTsFile);
     try {
       final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
+          hardlinkOrCopiedFileToAssignerTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
       return resource == null ? null : resource.tryGetDeviceMeasurementsMap();
     } finally {
       segmentLock.unlock(hardlinkOrCopiedTsFile);
@@ -239,7 +236,7 @@ public class PipeTsFileResourceManager {
     segmentLock.lock(hardlinkOrCopiedTsFile);
     try {
       final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
+          hardlinkOrCopiedFileToAssignerTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
       return resource == null ? null : resource.tryGetDeviceIsAlignedMap(cacheOtherMetadata);
     } finally {
       segmentLock.unlock(hardlinkOrCopiedTsFile);
@@ -251,7 +248,7 @@ public class PipeTsFileResourceManager {
     segmentLock.lock(hardlinkOrCopiedTsFile);
     try {
       final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
+          hardlinkOrCopiedFileToAssignerTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
       return resource == null ? null : resource.tryGetMeasurementDataTypeMap();
     } finally {
       segmentLock.unlock(hardlinkOrCopiedTsFile);
@@ -261,9 +258,9 @@ public class PipeTsFileResourceManager {
   public void pinTsFileResource(
       final TsFileResource resource, final boolean withMods, final String pipeName)
       throws IOException {
-    increaseFileReference(resource.getTsFile(), true, resource, pipeName);
+    increaseFileReference(resource.getTsFile(), true, pipeName);
     if (withMods && resource.getModFile().exists()) {
-      increaseFileReference(new File(resource.getModFile().getFilePath()), false, null, pipeName);
+      increaseFileReference(new File(resource.getModFile().getFilePath()), false, pipeName);
     }
   }
 

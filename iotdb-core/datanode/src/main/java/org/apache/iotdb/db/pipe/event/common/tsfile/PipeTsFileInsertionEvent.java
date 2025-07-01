@@ -248,13 +248,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     extractTime = System.nanoTime();
     try {
-      tsFile =
-          PipeDataNodeResourceManager.tsfile()
-              .increaseFileReference(tsFile, true, resource, pipeName);
+      tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
       if (isWithMod) {
         modFile =
-            PipeDataNodeResourceManager.tsfile()
-                .increaseFileReference(modFile, false, null, pipeName);
+            PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, pipeName);
       }
       return true;
     } catch (final Exception e) {
