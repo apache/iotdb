@@ -48,6 +48,8 @@ public class PipeTsFileResourceManager {
   // tsFiles.
   private final Map<String, PipeTsFileResource> hardlinkOrCopiedFileToAssignerTsFileResourceMap =
       new ConcurrentHashMap<>();
+
+  // PipeName -> TsFilePath -> PipeTsFileResource
   private final Map<String, Map<String, PipeTsFileResource>>
       hardlinkOrCopiedFileToPipeTsFileResourceMap = new ConcurrentHashMap<>();
   private final PipeTsFileResourceSegmentLock segmentLock = new PipeTsFileResourceSegmentLock();
