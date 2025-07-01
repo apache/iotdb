@@ -20,19 +20,19 @@ import java.util.TreeSet;
 
 public class MatchingKeyState implements State {
 
-  int labelIndex;
-  double min_support;
-  double min_confidence;
-  int columnLength;
-  int totalPairs;
-  int[] distanceMin;
-  int[] distanceMax;
-  List<TupleEntry> tupleList;
-  Set<String> positivePairs;
-  Set<String> negativePairs;
-  Map<Integer, Set<Integer>> distanceMap;
-  Map<String, int[]> distanceCache;
-  Set<String> CandidateCache;
+  private int labelIndex;
+  private double min_support;
+  private double min_confidence;
+  private int columnLength;
+  private int totalPairs;
+  private int[] distanceMin;
+  private int[] distanceMax;
+  private List<TupleEntry> tupleList;
+  private Set<String> positivePairs;
+  private Set<String> negativePairs;
+  private Map<Integer, Set<Integer>> distanceMap;
+  private Map<String, int[]> distanceCache;
+  private Set<String> CandidateCache;
 
   public MatchingKeyState() {
     reset();
@@ -172,18 +172,52 @@ public class MatchingKeyState implements State {
     }
   }
 
-  public void merge(MatchingKeyState other) {
-    this.tupleList.addAll(other.tupleList);
-    this.positivePairs.addAll(other.positivePairs);
-    this.negativePairs.addAll(other.negativePairs);
+  public int getLabelIndex() {
+    return labelIndex;
+  }
+
+  public double getMinSupport() {
+    return min_support;
+  }
+
+  public double getMinConfidence() {
+    return min_confidence;
   }
 
   public int getColumnLength() {
     return columnLength;
   }
 
-  public int getLabelIndex() {
-    return labelIndex;
+  public List<TupleEntry> getTupleList() {
+    return tupleList;
+  }
+
+  public Set<String> getPositivePairs() {
+    return positivePairs;
+  }
+
+  public Set<String> getNegativePairs() {
+    return negativePairs;
+  }
+
+  public void addPositivePair(String pair) {
+    if (positivePairs == null) {
+      positivePairs = new HashSet<>();
+    }
+    positivePairs.add(pair);
+  }
+
+  public void addNegativePair(String pair) {
+    if (negativePairs == null) {
+      negativePairs = new HashSet<>();
+    }
+    negativePairs.add(pair);
+  }
+
+  public void merge(MatchingKeyState other) {
+    this.tupleList.addAll(other.tupleList);
+    this.positivePairs.addAll(other.positivePairs);
+    this.negativePairs.addAll(other.negativePairs);
   }
 
   private void writePairList(DataOutputStream dos, Set<String> list) throws IOException {
@@ -422,7 +456,7 @@ public class MatchingKeyState implements State {
     }
   }
 
-  private Candidate calculatePsiP1(List<int[]> originalRestrictions) {
+  public Candidate calculatePsiP1(List<int[]> originalRestrictions) {
     List<int[]> newRestrictions = new ArrayList<>();
     int i = 0;
     for (int[] range : originalRestrictions) {
@@ -438,7 +472,7 @@ public class MatchingKeyState implements State {
     return new Candidate(newRestrictions, totalPairs);
   }
 
-  private Candidate calculatePsiP5(List<int[]> originalRestrictions) {
+  public Candidate calculatePsiP5(List<int[]> originalRestrictions) {
     List<int[]> newRestrictions = new ArrayList<>();
     int i = 0;
     for (int[] range : originalRestrictions) {
@@ -453,7 +487,7 @@ public class MatchingKeyState implements State {
     return new Candidate(newRestrictions, totalPairs);
   }
 
-  private Candidate calculatePsiP6(List<int[]> originalRestrictions) {
+  public Candidate calculatePsiP6(List<int[]> originalRestrictions) {
     List<int[]> newRestrictions = new ArrayList<>();
     int i = 0;
 
@@ -469,7 +503,7 @@ public class MatchingKeyState implements State {
     return new Candidate(newRestrictions, totalPairs);
   }
 
-  private String serializeRestrictions(List<int[]> restrictions) {
+  public String serializeRestrictions(List<int[]> restrictions) {
     StringBuilder sb = new StringBuilder();
     for (int[] r : restrictions) {
       sb.append(r[0]).append(r[1]);
@@ -493,10 +527,10 @@ public class MatchingKeyState implements State {
     return subsets;
   }
 
-  private static class TupleEntry {
+  public static class TupleEntry {
     int index;
-    long time;
-    String[] tuple;
+    public long time;
+    public String[] tuple;
 
     TupleEntry(int index, long time, String[] tuple) {
       this.index = index;

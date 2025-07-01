@@ -16,15 +16,30 @@ import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * This is a UDAF function used to identify sets of matching keys that satisfy user-defined
+ * constraints.
+ */
 public class UDAFMKIdentify implements AggregateFunction {
-  int label;
-  int length;
-  double min_confidence;
-  double min_support;
-  String a;
-  int l = 0;
+  /**
+   * CREATE DATABASE root; USE root; CREATE TABLE test ( Time TIMESTAMP TIME, PlateText TEXT FIELD,
+   * VehicleID TEXT FIELD, CameraID TEXT FIELD ) WITH (TTL=31536000000); INSERT INTO test(Time,
+   * "PlateText", "VehicleID", "CameraID") values ('2025-01-01T01:56:19.000+08:00', 'B0D3O444s',
+   * '100', '78'); INSERT INTO test(Time, "PlateText", "VehicleID", "CameraID") values
+   * ('2025-01-01T01:56:39.000+08:00', 'B0D3O444s', '100', '78'); INSERT INTO test(Time,
+   * "PlateText", "VehicleID", "CameraID") values ('2025-01-01T03:30:59.000+08:00', 'B0134s00', '2',
+   * '150');
+   *
+   * <p>CREATE FUNCTION mkidentify AS 'org.apache.iotdb.udf.UDAFMK'; SHOW FUNCTIONS;
+   *
+   * <p>SELECT mkidentify(Time, PlateText, VehicleID, CameraID, 2, 0.2, 1.0) FROM root.test;
+   */
+  private int label;
 
-  private FunctionArguments arguments;
+  private int length;
+  private double min_confidence;
+  private double min_support;
+  private int l = 0;
 
   public AggregateFunctionAnalysis analyze(FunctionArguments arguments)
       throws UDFArgumentNotValidException {
@@ -33,7 +48,6 @@ public class UDAFMKIdentify implements AggregateFunction {
       throw new UDFArgumentNotValidException("At least 2 columns and 3 parameters are required.");
     }
 
-    this.arguments = arguments;
     Type thirdLastType = arguments.getDataType(num - 3);
     Type secondLastType = arguments.getDataType(num - 2);
     Type lastType = arguments.getDataType(num - 1);
@@ -80,7 +94,7 @@ public class UDAFMKIdentify implements AggregateFunction {
     long time = input.getLong(0);
     String[] fullTuple = new String[length];
     for (int i = 0; i < length; i++) {
-      Type col0Type = arguments.getDataType(i + 1);
+      Type col0Type = input.getDataType(i + 1);
       String valueAsString;
       switch (col0Type) {
         case TEXT:
