@@ -331,7 +331,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     } else {
       dataBuffer = null;
       channel.position(pos);
-      return (int)pos;
+      return (int) pos;
     }
   }
 
