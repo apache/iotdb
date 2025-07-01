@@ -99,7 +99,7 @@ public class PipeConfig {
     return COMMON_CONFIG.isPipeEnableMemoryChecked();
   }
 
-  public long getPipeInodeMemory() {
+  public long PipeInsertNodeQueueMemory() {
     return COMMON_CONFIG.getPipeInsertNodeQueueMemory();
   }
 
