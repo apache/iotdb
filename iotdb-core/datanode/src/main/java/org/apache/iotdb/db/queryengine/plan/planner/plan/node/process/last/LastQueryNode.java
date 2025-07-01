@@ -104,7 +104,7 @@ public class LastQueryNode extends MultiChildProcessNode {
         new LastQueryScanNode(
             id, devicePath, aligned, idxList, outputViewPath, globalMeasurementSchemaList);
     children.add(scanNode);
-    return scanNode.getMemorySize();
+    return scanNode.ramBytesUsed();
   }
 
   public void sort() {
