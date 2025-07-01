@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandlerMetrics;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
@@ -92,8 +91,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
-import org.apache.iotdb.session.rpccompress.RpcUncompressor;
-import org.apache.iotdb.session.rpccompress.decoder.RpcDecoder;
+import org.apache.iotdb.util.TabletDecoder;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -101,12 +99,13 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TimeDuration;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
@@ -116,6 +115,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
@@ -335,117 +335,37 @@ public class StatementGenerator {
     insertStatement.setDevicePath(
         DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
-    long[] timestamps;
-
-    long startDeCompressedTimes = 0L;
-    long endDeCompressedTimes = 0L;
-    long startDecodeTime = 0L;
-    long endDecodeTime = 0L;
-
-    long startDeCompressedValue = 0L;
-    long endDeCompressedValue = 0L;
-    long startDecodeValue = 0L;
-    long endDecodeValue = 0L;
-
-    int uncompressedTimestampsSize = 0;
-    int uncompressedValuesSize = 0;
-
-    try {
-      if (insertTabletReq.isIsCompressed()) {
-        startDeCompressedTimes = System.nanoTime();
-        RpcDecoder rpcDecoder = new RpcDecoder();
-        RpcUncompressor rpcUncompressor =
-            new RpcUncompressor(
-                CompressionType.deserialize((byte) insertTabletReq.getCompressType()));
-        ByteBuffer uncompressedTimestamps = rpcUncompressor.uncompress(insertTabletReq.timestamps);
-        uncompressedTimestampsSize = uncompressedTimestamps.remaining();
-        endDeCompressedTimes = System.nanoTime();
-
-        startDecodeTime = System.nanoTime();
-        timestamps = rpcDecoder.readTimesFromBuffer(uncompressedTimestamps, insertTabletReq.size);
-        endDecodeTime = System.nanoTime();
-      } else {
-        timestamps =
-            QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size);
-      }
-
-      if (timestamps.length != 0) {
-        TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
-      }
-      insertStatement.setTimes(timestamps);
-      // decode values
-      if (insertTabletReq.isIsCompressed()) {
-        startDeCompressedValue = System.nanoTime();
-        RpcDecoder rpcDecoder = new RpcDecoder();
-        RpcUncompressor rpcUncompressor =
-            new RpcUncompressor(
-                CompressionType.deserialize((byte) insertTabletReq.getCompressType()));
-        ByteBuffer uncompressedValues = rpcUncompressor.uncompress(insertTabletReq.values);
-        uncompressedValuesSize = uncompressedValues.remaining();
-        endDeCompressedValue = System.nanoTime();
-
-        startDecodeValue = System.nanoTime();
-        insertStatement.setColumns(
-            rpcDecoder.decodeValues(uncompressedValues, insertTabletReq.size));
-        endDecodeValue = System.nanoTime();
-      } else {
-        insertStatement.setColumns(
-            QueryDataSetUtils.readTabletValuesFromBuffer(
-                insertTabletReq.values,
-                insertTabletReq.types,
-                insertTabletReq.types.size(),
-                insertTabletReq.size));
-        insertStatement.setBitMaps(
-            QueryDataSetUtils.readBitMapsFromBuffer(
-                    insertTabletReq.values, insertTabletReq.types.size(), insertTabletReq.size)
-                .orElse(null));
-      }
-    } finally {
-      System.out.println("YYM");
-      RPCServiceThriftHandlerMetrics.getInstance()
-          .recordDecompressLatencyTimer(
-              (endDeCompressedValue
-                  - startDeCompressedValue
-                  + endDeCompressedTimes
-                  - startDeCompressedTimes));
-
-      RPCServiceThriftHandlerMetrics.getInstance()
-          .recordDecodeLatencyTimer(
-              (endDecodeValue - startDecodeValue + endDecodeTime - startDecodeTime));
-
-      if (insertTabletReq.isIsCompressed()) {
-        RPCServiceThriftHandlerMetrics.getInstance()
-            .recordUnCompressionSizeTimer((uncompressedTimestampsSize + uncompressedValuesSize));
-
-        long memoryUsage =
-            uncompressedTimestampsSize
-                + uncompressedValuesSize
-                + insertTabletReq.timestamps.remaining()
-                + insertTabletReq.values.remaining();
-        System.out.println(memoryUsage);
-        RPCServiceThriftHandlerMetrics.getInstance().recordMemoryUsage(memoryUsage);
-      } else {
-        RPCServiceThriftHandlerMetrics.getInstance()
-            .recordUnCompressionSizeTimer(
-                (insertTabletReq.timestamps.remaining() + insertTabletReq.values.remaining()));
-
-        long memoryUsage =
-            insertTabletReq.timestamps.remaining() + insertTabletReq.values.remaining();
-        RPCServiceThriftHandlerMetrics.getInstance().recordMemoryUsage(memoryUsage);
-      }
-
-      RPCServiceThriftHandlerMetrics.getInstance()
-          .recordCompressionSizeTimer(
-              (insertTabletReq.timestamps.remaining() + insertTabletReq.values.remaining()));
-      System.out.println(
-          insertTabletReq.timestamps.remaining() + insertTabletReq.values.remaining());
-    }
-    insertStatement.setRowCount(insertTabletReq.size);
     TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];
     for (int i = 0; i < insertTabletReq.types.size(); i++) {
       dataTypes[i] = TSDataType.deserialize((byte) insertTabletReq.types.get(i).intValue());
     }
     insertStatement.setDataTypes(dataTypes);
+
+    TabletDecoder tabletDecoder =
+        new TabletDecoder(
+            insertTabletReq.isIsCompressed()
+                ? CompressionType.deserialize(insertTabletReq.getCompressType())
+                : CompressionType.UNCOMPRESSED,
+            dataTypes,
+            insertTabletReq.isIsCompressed()
+                ? insertTabletReq.encodingTypes.stream()
+                    .map(TSEncoding::deserialize)
+                    .collect(Collectors.toList())
+                : Collections.nCopies(dataTypes.length + 1, TSEncoding.PLAIN),
+            insertTabletReq.size);
+
+    long[] timestamps = tabletDecoder.decodeTime(insertTabletReq.timestamps);
+    Pair<Object[], ByteBuffer> valueAndRemainingBuffer =
+        tabletDecoder.decodeValues(insertTabletReq.values);
+    insertStatement.setTimes(timestamps);
+    insertStatement.setColumns(valueAndRemainingBuffer.left);
+    insertStatement.setBitMaps(
+        QueryDataSetUtils.readBitMapsFromBuffer(
+                valueAndRemainingBuffer.right, insertTabletReq.types.size(), insertTabletReq.size)
+            .orElse(null));
+
+    insertStatement.setRowCount(insertTabletReq.size);
+
     insertStatement.setAligned(insertTabletReq.isAligned);
     insertStatement.setWriteToTable(insertTabletReq.isWriteToTable());
     if (insertTabletReq.isWriteToTable()) {

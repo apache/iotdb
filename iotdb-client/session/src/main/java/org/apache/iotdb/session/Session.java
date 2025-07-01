@@ -56,8 +56,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
-import org.apache.iotdb.session.rpccompress.RpcCompressor;
-import org.apache.iotdb.session.rpccompress.encoder.RpcEncoder;
+import org.apache.iotdb.session.rpccompress.TabletEncoder;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
@@ -2980,28 +2979,34 @@ public class Session implements ISession {
     request.setPrefixPath(tablet.getDeviceId());
     request.setIsAligned(isAligned);
 
-    if (this.enableRPCCompression) {
-      request.setIsCompressed(true);
+    List<Byte> encodingTypes;
+    if (enableRPCCompression) {
+      encodingTypes = new ArrayList<>(tablet.getSchemas().size() + 1);
+      encodingTypes.add(this.columnEncodersMap.get(TSDataType.INT64).serialize());
       for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
         if (measurementSchema.getMeasurementName() == null) {
           throw new IllegalArgumentException("measurement should be non null value");
         }
-        request.addToEncodingTypes(
-            this.columnEncodersMap.get(measurementSchema.getType()).ordinal());
-      }
-      final long startTime = System.nanoTime();
-      try {
-        RpcEncoder rpcEncoder = new RpcEncoder(this.columnEncodersMap);
-        RpcCompressor rpcCompressor = new RpcCompressor(this.compressionType);
-        request.setCompressType(this.compressionType.serialize());
-        request.setTimestamps(rpcCompressor.compress(rpcEncoder.encodeTimestamps(tablet)));
-        request.setValues(rpcCompressor.compress(rpcEncoder.encodeValues(tablet)));
-      } finally {
+        encodingTypes.add(this.columnEncodersMap.get(measurementSchema.getType()).serialize());
       }
     } else {
-      request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
-      request.setValues(SessionUtils.getValueBuffer(tablet));
+      encodingTypes =
+          Collections.nCopies(tablet.getSchemas().size() + 1, TSEncoding.PLAIN.serialize());
     }
+
+    TabletEncoder encoder =
+        new TabletEncoder(
+            this.compressionType,
+            encodingTypes.stream().map(TSEncoding::deserialize).collect(Collectors.toList()));
+
+    request.setIsCompressed(this.enableRPCCompression);
+    if (this.enableRPCCompression) {
+      request.setCompressType(compressionType.serialize());
+      request.setEncodingTypes(encodingTypes);
+    }
+    request.setTimestamps(encoder.encodeTime(tablet));
+    request.setValues(encoder.encodeValues(tablet));
+
     request.setSize(tablet.getRowSize());
     return request;
   }
