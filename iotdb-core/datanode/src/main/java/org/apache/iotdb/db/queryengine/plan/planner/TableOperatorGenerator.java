@@ -3605,26 +3605,20 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 new MeasurementPath(String.format("%s.%s", tableName, columnName), columnType)));
       }
 
-      Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =
-          ImmutableMap.of(devicePath, inputLocationMap);
-      Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap =
-          ImmutableMap.of(devicePath, tsDataTypeMap);
-      Map<String, Boolean> targetDeviceToAlignedMap = ImmutableMap.of(tableName, true);
-
       long statementSizePerLine =
-          OperatorGeneratorUtil.calculateStatementSizePerLine(targetPathToDataTypeMap);
+          OperatorGeneratorUtil.calculateStatementSizePerLine(
+              new ArrayList<>(tsDataTypeMap.values()));
 
       return new TableIntoOperator(
           operatorContext,
           child,
           node.getDatabase(),
-          devicePath.getIDeviceID(),
+          devicePath,
           inputColumnTypes,
           inputColumnCategories,
-          targetPathToSourceInputLocationMap,
-          targetPathToDataTypeMap,
-          targetDeviceToAlignedMap,
-          sourceTargetPathPairList,
+          inputLocationMap,
+          tsDataTypeMap,
+          true,
           FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
           statementSizePerLine);
     } catch (Exception e) {

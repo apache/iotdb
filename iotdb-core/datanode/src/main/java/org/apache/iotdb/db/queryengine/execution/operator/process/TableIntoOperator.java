@@ -23,89 +23,63 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.protocol.client.DataNodeInternalClient;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
+import com.google.common.util.concurrent.Futures;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
-import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 public class TableIntoOperator extends AbstractIntoOperator {
+  protected InsertTabletStatementGenerator insertTabletStatementGenerator;
+
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableIntoOperator.class);
 
-  private final IDeviceID deviceID;
-  private final List<Pair<String, PartialPath>> sourceTargetPathPairList;
+  private final PartialPath targetDevice;
 
   public TableIntoOperator(
       OperatorContext operatorContext,
       Operator child,
       String databaseName,
-      IDeviceID deviceID,
+      PartialPath targetDevice,
       List<TSDataType> inputColumnTypes,
       List<TsTableColumnCategory> inputColumnCategories,
-      Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
-      Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
-      Map<String, Boolean> targetDeviceToAlignedMap,
-      List<Pair<String, PartialPath>> sourceTargetPathPairList,
+      Map<String, InputLocation> measurementToInputLocationMap,
+      Map<String, TSDataType> measurementToDataTypeMap,
+      Boolean isAligned,
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
     super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
-    this.deviceID = deviceID;
-    this.sourceTargetPathPairList = sourceTargetPathPairList;
-    insertTabletStatementGenerators =
-        constructInsertTabletStatementGenerators(
+    this.targetDevice = targetDevice;
+    insertTabletStatementGenerator =
+        new TableInsertTabletStatementGenerator(
             databaseName,
-            targetPathToSourceInputLocationMap,
-            targetPathToDataTypeMap,
-            targetDeviceToAlignedMap,
+            targetDevice,
+            measurementToInputLocationMap,
+            measurementToDataTypeMap,
+            isAligned,
             typeConvertors,
             inputColumnCategories,
             maxRowNumberInStatement);
   }
 
-  protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
-      String databaseName,
-      Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
-      Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
-      Map<String, Boolean> targetDeviceToAlignedMap,
-      List<Type> sourceTypeConvertors,
-      List<TsTableColumnCategory> tsTableColumnCategory,
-      int maxRowNumberInStatement) {
-    List<InsertTabletStatementGenerator> insertTabletStatementGenerators =
-        new ArrayList<>(targetPathToSourceInputLocationMap.size());
-    for (Map.Entry<PartialPath, Map<String, InputLocation>> entry :
-        targetPathToSourceInputLocationMap.entrySet()) {
-      PartialPath targetDevice = entry.getKey();
-      TableInsertTabletStatementGenerator generator =
-          new TableInsertTabletStatementGenerator(
-              databaseName,
-              targetDevice,
-              entry.getValue(),
-              targetPathToDataTypeMap.get(targetDevice),
-              targetDeviceToAlignedMap.get(targetDevice.toString()),
-              sourceTypeConvertors,
-              tsTableColumnCategory,
-              maxRowNumberInStatement);
-      insertTabletStatementGenerators.add(generator);
-    }
-    return insertTabletStatementGenerators;
+  @Override
+  protected void resetInsertTabletStatementGenerators() {
+    insertTabletStatementGenerator.reset();
   }
 
   @Override
@@ -116,12 +90,8 @@ public class TableIntoOperator extends AbstractIntoOperator {
 
     int readIndex = 0;
     while (readIndex < inputTsBlock.getPositionCount()) {
-      int lastReadIndex = readIndex;
-      for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-        lastReadIndex = Math.max(lastReadIndex, generator.processTsBlock(inputTsBlock, readIndex));
-      }
-      readIndex = lastReadIndex;
-      if (insertMultiTabletsInternally(true)) {
+      readIndex = insertTabletStatementGenerator.processTsBlock(inputTsBlock, readIndex);
+      if (insertTabletInternally(true)) {
         cachedTsBlock = inputTsBlock.subTsBlock(readIndex);
         return false;
       }
@@ -131,7 +101,7 @@ public class TableIntoOperator extends AbstractIntoOperator {
 
   @Override
   protected TsBlock tryToReturnResultTsBlock() {
-    if (insertMultiTabletsInternally(false)) {
+    if (insertTabletInternally(false)) {
       return null;
     }
 
@@ -144,24 +114,37 @@ public class TableIntoOperator extends AbstractIntoOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
-        + (sourceTargetPathPairList == null
-            ? 0
-            : sourceTargetPathPairList.stream()
-                .mapToLong(
-                    pair ->
-                        RamUsageEstimator.sizeOf(pair.left)
-                            + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(pair.right))
-                .sum());
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(targetDevice);
   }
 
-  @Override
-  protected InsertMultiTabletsStatement constructInsertMultiTabletsStatement(boolean needCheck) {
-    InsertMultiTabletsStatement insertMultiTabletsStatement =
-        super.constructInsertMultiTabletsStatement(needCheck);
-    if (insertMultiTabletsStatement != null) {
-      insertMultiTabletsStatement.setWriteToTable(true);
+  private boolean insertTabletInternally(boolean needCheck) {
+    final InsertTabletStatement insertTabletStatement = constructInsertTabletStatement(needCheck);
+    if (insertTabletStatement == null) {
+      return false;
     }
-    return insertMultiTabletsStatement;
+
+    executeInsertTabletStatement(insertTabletStatement);
+    return true;
+  }
+
+  private InsertTabletStatement constructInsertTabletStatement(boolean needCheck) {
+    if (insertTabletStatementGenerator == null
+        || (needCheck && !insertTabletStatementGenerator.isFull())) {
+      return null;
+    }
+    if (insertTabletStatementGenerator.isEmpty()) {
+      return null;
+    }
+    return insertTabletStatementGenerator.constructInsertTabletStatement();
+  }
+
+  private void executeInsertTabletStatement(InsertTabletStatement insertTabletStatement) {
+    if (client == null) {
+      client = new DataNodeInternalClient(operatorContext.getSessionInfo());
+    }
+    writeOperationFuture =
+        Futures.submit(
+            () -> client.insertRelationalTablets(insertTabletStatement), writeOperationExecutor);
   }
 
   private TsBlock constructResultTsBlock() {
@@ -173,18 +156,12 @@ public class TableIntoOperator extends AbstractIntoOperator {
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     timeColumnBuilder.writeLong(0);
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-    columnBuilders[0].writeInt(findWritten(deviceID.toString()));
+    columnBuilders[0].writeInt(findWritten());
     resultTsBlockBuilder.declarePosition();
     return resultTsBlockBuilder.build();
   }
 
-  private int findWritten(String device) {
-    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-      if (!Objects.equals(generator.getDevice(), device)) {
-        continue;
-      }
-      return generator.getWrittenCount();
-    }
-    return 0;
+  private int findWritten() {
+    return insertTabletStatementGenerator.getWrittenCount();
   }
 }
