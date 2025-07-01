@@ -184,7 +184,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.DEVICE_LAST_QUERY_SCAN;
+    return PlanNodeType.LAST_QUERY_SCAN;
   }
 
   @Override
@@ -264,7 +264,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.DEVICE_LAST_QUERY_SCAN.serialize(byteBuffer);
+    PlanNodeType.LAST_QUERY_SCAN.serialize(byteBuffer);
     devicePath.serialize(byteBuffer);
     ReadWriteIOUtils.write(aligned, byteBuffer);
     ReadWriteIOUtils.write(indexOfMeasurementSchemas.size(), byteBuffer);
@@ -281,7 +281,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.DEVICE_LAST_QUERY_SCAN.serialize(stream);
+    PlanNodeType.LAST_QUERY_SCAN.serialize(stream);
     devicePath.serialize(stream);
     ReadWriteIOUtils.write(aligned, stream);
     ReadWriteIOUtils.write(indexOfMeasurementSchemas.size(), stream);

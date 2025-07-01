@@ -146,16 +146,6 @@ public class LastQueryNode extends MultiChildProcessNode {
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    super.serialize(stream);
-  }
-
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    super.serialize(byteBuffer);
-  }
-
-  @Override
   public PlanNodeType getType() {
     return PlanNodeType.LAST_QUERY;
   }

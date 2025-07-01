@@ -198,9 +198,9 @@ public enum PlanNodeType {
   DELETE_DATA((short) 44),
   DELETE_TIME_SERIES((short) 45),
   @Deprecated
-  LAST_QUERY_SCAN((short) 46),
+  DEPRECATED_LAST_QUERY_SCAN((short) 46),
   @Deprecated
-  ALIGNED_LAST_QUERY_SCAN((short) 47),
+  DEPRECATED_ALIGNED_LAST_QUERY_SCAN((short) 47),
   LAST_QUERY((short) 48),
   LAST_QUERY_MERGE((short) 49),
   LAST_QUERY_COLLECT((short) 50),
@@ -259,7 +259,7 @@ public enum PlanNodeType {
 
   CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR((short) 97),
 
-  DEVICE_LAST_QUERY_SCAN((short) 98),
+  LAST_QUERY_SCAN((short) 98),
 
   CREATE_OR_UPDATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_QUERY_SCAN((short) 903),
@@ -479,7 +479,7 @@ public enum PlanNodeType {
         return DeleteTimeSeriesNode.deserialize(buffer);
       case 46:
       case 47:
-        throw new UnsupportedOperationException("LastQueryScanNode is deprecated");
+        throw new UnsupportedOperationException("This LastQueryScanNode is deprecated");
       case 48:
         return LastQueryNode.deserialize(buffer);
       case 49:
