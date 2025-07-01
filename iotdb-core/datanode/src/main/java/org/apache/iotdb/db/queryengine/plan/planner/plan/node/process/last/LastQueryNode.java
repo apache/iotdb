@@ -127,13 +127,6 @@ public class LastQueryNode extends MultiChildProcessNode {
     }
   }
 
-  public void setGlobalMeasurementSchemaList(List<IMeasurementSchema> globalMeasurementSchemaList) {
-    this.globalMeasurementSchemaList = globalMeasurementSchemaList;
-  }
-
-  public List<IMeasurementSchema> getGlobalMeasurementSchemaList() {
-    return globalMeasurementSchemaList;
-  }
 
   public void clearMeasurementSchema2IdxMap() {
     this.measurementSchema2IdxMap = null;
