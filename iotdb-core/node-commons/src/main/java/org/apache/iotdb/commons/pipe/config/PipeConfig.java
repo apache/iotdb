@@ -107,6 +107,38 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
   }
 
+  public boolean isPipeEnableMemoryCheck() {
+    return COMMON_CONFIG.isPipeEnableMemoryChecked();
+  }
+
+  public long getPipeInsertNodeQueueMemory() {
+    return COMMON_CONFIG.getPipeInsertNodeQueueMemory();
+  }
+
+  public long getPipeTsFileParserMemory() {
+    return COMMON_CONFIG.getPipeTsFileParserMemory();
+  }
+
+  public long getPipeSinkBatchMemoryInsertNode() {
+    return COMMON_CONFIG.getPipeSinkBatchMemoryInsertNode();
+  }
+
+  public long getPipeSinkBatchMemoryTsFile() {
+    return COMMON_CONFIG.getPipeSinkBatchMemoryTsFile();
+  }
+
+  public long getPipeSendTsFileReadBuffer() {
+    return COMMON_CONFIG.getPipeSendTsFileReadBuffer();
+  }
+
+  public double getReservedMemoryPercentage() {
+    return COMMON_CONFIG.getPipeReservedMemoryPercentage();
+  }
+
+  public long getPipeMinimumReceiverMemory() {
+    return COMMON_CONFIG.getPipeMinimumReceiverMemory();
+  }
+
   /////////////////////////////// Subtask Connector ///////////////////////////////
 
   public int getPipeRealTimeQueuePollTsFileThreshold() {
@@ -500,6 +532,16 @@ public class PipeConfig {
         "PipeDataStructureTsFileMemoryBlockAllocationRejectThreshold: {}",
         getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold());
     LOGGER.info("PipeTotalFloatingMemoryProportion: {}", getPipeTotalFloatingMemoryProportion());
+
+    LOGGER.info(
+        "PipeDataStructureBatchMemoryProportion: {}", getPipeDataStructureBatchMemoryProportion());
+    LOGGER.info("IsPipeEnableMemoryCheck: {}", isPipeEnableMemoryCheck());
+    LOGGER.info("PipeTsFileParserMemory: {}", getPipeTsFileParserMemory());
+    LOGGER.info("PipeSinkBatchMemoryInsertNode: {}", getPipeSinkBatchMemoryInsertNode());
+    LOGGER.info("PipeSinkBatchMemoryTsFile: {}", getPipeSinkBatchMemoryTsFile());
+    LOGGER.info("PipeSendTsFileReadBuffer: {}", getPipeSendTsFileReadBuffer());
+    LOGGER.info("PipeReservedMemoryPercentage: {}", getReservedMemoryPercentage());
+    LOGGER.info("PipeMinimumReceiverMemory: {}", getPipeMinimumReceiverMemory());
 
     LOGGER.info(
         "PipeRealTimeQueuePollTsFileThreshold: {}", getPipeRealTimeQueuePollTsFileThreshold());
