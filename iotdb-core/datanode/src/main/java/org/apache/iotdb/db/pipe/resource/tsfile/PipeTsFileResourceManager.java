@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.resource.tsfile;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -110,7 +111,7 @@ public class PipeTsFileResourceManager {
       getHardlinkOrCopiedFile2TsFileResourceMap(pipeName)
           .put(resultFile.getPath(), new PipeTsFileResource(resultFile, isTsFile));
 
-      increaseAssignerReferenceIfExists(file, pipeName);
+      increaseAssignerReferenceIfExists(resultFile, pipeName);
 
       return resultFile;
     } finally {
@@ -124,9 +125,9 @@ public class PipeTsFileResourceManager {
         getHardlinkOrCopiedFile2TsFileResourceMap(pipeName).get(path);
     if (resource != null) {
       resource.increaseReferenceCount();
+      increaseAssignerReferenceIfExists(file, pipeName);
       return true;
     }
-    increaseAssignerReferenceIfExists(file, pipeName);
     return false;
   }
 
@@ -228,7 +229,7 @@ public class PipeTsFileResourceManager {
   // Warning: Shall not be called by the assigner
   private String getAssignerFilePath(final File file) {
     // Skip the "pipeName" of this file
-    return file.getParentFile().getParent() + file.getName();
+    return file.getParentFile().getParent() + File.separator + file.getName();
   }
 
   /**
@@ -237,6 +238,7 @@ public class PipeTsFileResourceManager {
    * @param hardlinkOrCopiedFile the copied or hardlinked file
    * @return the reference count of the file
    */
+  @TestOnly
   public int getFileReferenceCount(final File hardlinkOrCopiedFile, final String pipeName) {
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
