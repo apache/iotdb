@@ -717,7 +717,7 @@ class RatisConsensus implements IConsensus {
     } catch (Exception e) {
       String errorMsg =
           String.format(
-              "transferLeader for group %s to %s failed. Ratis reply: %s. This could be due to a timeout, "
+              "transferLeader for group %s to %s failed. This could be due to a timeout, "
                   + "especially during initial startup. Consider increasing the "
                   + "'ratis_rpc_transfer_leader_timeout_ms' configuration property.",
               groupId, newLeader);

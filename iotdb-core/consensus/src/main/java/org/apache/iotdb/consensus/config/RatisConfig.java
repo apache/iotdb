@@ -196,8 +196,9 @@ public class RatisConfig {
       return this;
     }
 
-    public void setUtils(Utils utils) {
+    public Builder setUtils(Utils utils) {
       this.utils = utils;
+      return this;
     }
   }
 
@@ -1132,16 +1133,19 @@ public class RatisConfig {
         return new Utils(sleepDeviationThresholdMs, closeThresholdMs, transferLeaderTimeoutMs);
       }
 
-      public void setSleepDeviationThresholdMs(int sleepDeviationThresholdMs) {
+      public Utils.Builder setSleepDeviationThresholdMs(int sleepDeviationThresholdMs) {
         this.sleepDeviationThresholdMs = sleepDeviationThresholdMs;
+        return this;
       }
 
-      public void setCloseThresholdMs(int closeThresholdMs) {
+      public Utils.Builder setCloseThresholdMs(int closeThresholdMs) {
         this.closeThresholdMs = closeThresholdMs;
+        return this;
       }
 
-      public void setTransferLeaderTimeoutMs(int transferLeaderTimeoutMs) {
+      public Utils.Builder setTransferLeaderTimeoutMs(int transferLeaderTimeoutMs) {
         this.transferLeaderTimeoutMs = transferLeaderTimeoutMs;
+        return this;
       }
     }
   }
