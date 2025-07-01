@@ -135,9 +135,8 @@ public class LastQueryNode extends MultiChildProcessNode {
     return globalMeasurementSchemaList;
   }
 
-  public void setMeasurementSchema2IdxMap(
-      Map<IMeasurementSchema, Integer> measurementSchema2IdxMap) {
-    this.measurementSchema2IdxMap = measurementSchema2IdxMap;
+  public void clearMeasurementSchema2IdxMap() {
+    this.measurementSchema2IdxMap = null;
   }
 
   public long getMemorySizeOfSharedStructures() {
