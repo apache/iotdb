@@ -298,14 +298,14 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       return false;
     }
     final boolean mayTsFileLinkedCountReachDangerousThreshold =
-        PipeDataNodeResourceManager.tsfile().getLinkedTsFileCount()
+        PipeDataNodeResourceManager.tsfile().getLinkedTsFileCount(pipeName)
             >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
     if (mayTsFileLinkedCountReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
       LOGGER.info(
           "Pipe task {}@{} canNotUseTabletAnymoreDeprecated(4): The number of linked tsFiles {} has reached the dangerous threshold {}",
           pipeName,
           dataRegionId,
-          PipeDataNodeResourceManager.tsfile().getLinkedTsFileCount(),
+          PipeDataNodeResourceManager.tsfile().getLinkedTsFileCount(pipeName),
           PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount());
     }
     return mayTsFileLinkedCountReachDangerousThreshold;
