@@ -87,23 +87,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   private volatile ProgressIndex overridingProgressIndex;
 
-  public PipeTsFileInsertionEvent(
-      final TsFileResource resource,
-      final boolean isLoaded,
-      final boolean isGeneratedByHistoricalExtractor) {
+  public PipeTsFileInsertionEvent(final TsFileResource resource, final boolean isLoaded) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
-        resource,
-        null,
-        true,
-        isLoaded,
-        isGeneratedByHistoricalExtractor,
-        null,
-        0,
-        null,
-        null,
-        Long.MIN_VALUE,
-        Long.MAX_VALUE);
+        resource, null, true, isLoaded, false, null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   public PipeTsFileInsertionEvent(

@@ -69,6 +69,10 @@ public abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionI
     sender.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiver1.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiver2.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+
+    sender.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
+    receiver1.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
+    receiver2.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
   }
 
   @Override
