@@ -216,7 +216,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     final long totalFloatingMemorySizeInBytes =
         PipeMemoryManager.getTotalFloatingMemorySizeInBytes();
     final boolean mayInsertNodeMemoryReachDangerousThreshold =
-        3 * floatingMemoryUsageInByte * pipeCount >= 2 * totalFloatingMemorySizeInBytes;
+        floatingMemoryUsageInByte * pipeCount >= totalFloatingMemorySizeInBytes;
     if (mayInsertNodeMemoryReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
       logByLogManager(
           l ->
@@ -225,7 +225,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                   pipeName,
                   dataRegionId,
                   floatingMemoryUsageInByte * pipeCount,
-                  2 * totalFloatingMemorySizeInBytes / 3.0d));
+                  totalFloatingMemorySizeInBytes));
     }
     return mayInsertNodeMemoryReachDangerousThreshold;
   }
