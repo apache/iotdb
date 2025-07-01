@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.pipe.agent.task.connection;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import java.io.File;
+import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
@@ -37,4 +39,6 @@ public class UnboundedBlockingPendingQueue<E extends Event> extends BlockingPend
   public E peekLast() {
     return pendingDeque.peekLast();
   }
+
+  public void replace(Set<File> sourceFiles, Set<File> targetFiles) {}
 }

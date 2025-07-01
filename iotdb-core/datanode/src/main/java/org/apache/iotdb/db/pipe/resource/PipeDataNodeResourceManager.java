@@ -25,11 +25,13 @@ import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManag
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.ref.PipeDataNodePhantomReferenceManager;
 import org.apache.iotdb.db.pipe.resource.snapshot.PipeDataNodeSnapshotResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeCompactionManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 
 public class PipeDataNodeResourceManager {
 
   private final PipeTsFileResourceManager pipeTsFileResourceManager;
+  private final PipeCompactionManager pipeCompactionManager;
   private final PipeSnapshotResourceManager pipeSnapshotResourceManager;
   private final PipeMemoryManager pipeMemoryManager;
   private final PipeLogManager pipeLogManager;
@@ -37,6 +39,10 @@ public class PipeDataNodeResourceManager {
 
   public static PipeTsFileResourceManager tsfile() {
     return PipeResourceManagerHolder.INSTANCE.pipeTsFileResourceManager;
+  }
+
+  public static PipeCompactionManager compaction() {
+    return PipeResourceManagerHolder.INSTANCE.pipeCompactionManager;
   }
 
   public static PipeSnapshotResourceManager snapshot() {
@@ -59,6 +65,7 @@ public class PipeDataNodeResourceManager {
 
   private PipeDataNodeResourceManager() {
     pipeTsFileResourceManager = new PipeTsFileResourceManager();
+    pipeCompactionManager = new PipeCompactionManager();
     pipeSnapshotResourceManager = new PipeDataNodeSnapshotResourceManager();
     pipeMemoryManager = new PipeMemoryManager();
     pipeLogManager = new PipeLogManager();
