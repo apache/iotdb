@@ -99,7 +99,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       return;
     }
 
-    if (((PipeTsFileInsertionEvent) tsFileInsertionEvent).isEmpty()) {
+    if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
       LOGGER.warn(
           "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
           ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile());

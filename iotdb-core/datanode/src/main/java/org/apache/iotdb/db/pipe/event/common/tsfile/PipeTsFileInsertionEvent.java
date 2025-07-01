@@ -78,6 +78,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   private final boolean isGeneratedByPipeConsensus;
   private final boolean isGeneratedByHistoricalExtractor;
 
+  private final AtomicBoolean isClosed;
   private final AtomicReference<TsFileInsertionDataContainer> dataContainer;
 
   // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
@@ -129,6 +130,42 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
 
+    isClosed = new AtomicBoolean(resource.isClosed());
+    // Register close listener if TsFile is not closed
+    if (!isClosed.get()) {
+      final TsFileProcessor processor = resource.getProcessor();
+      if (processor != null) {
+        processor.addCloseFileListener(
+            o -> {
+              synchronized (isClosed) {
+                isClosed.set(true);
+                isClosed.notifyAll();
+
+                // Update flushPointCount after TsFile is closed
+                flushPointCount = processor.getMemTableFlushPointCount();
+              }
+            });
+      }
+    }
+    // Check again after register close listener in case TsFile is closed during the process
+    // TsFile flushing steps:
+    // 1. Flush tsFile
+    // 2. First listener (Set resource status "closed" -> Set processor == null -> processor == null
+    // is seen)
+    // 3. Other listeners (Set "closed" status for events)
+    // Then we can imply that:
+    // 1. If the listener cannot be executed because all listeners passed, then resources status is
+    // set "closed" and can be set here
+    // 2. If the listener cannot be executed because processor == null is seen, then resources
+    // status is set "closed" and can be set here
+    // Then we know:
+    // 1. The status in the event can be closed eventually.
+    // 2. If the status is "closed", then the resource status is "closed".
+    // Then we know:
+    // If the status is "closed", then the resource status is "closed", the tsFile won't be altered
+    // and can be sent.
+    isClosed.set(resource.isClosed());
+
     this.dataContainer = new AtomicReference<>(null);
   }
 
@@ -136,10 +173,35 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
    * @return {@code false} if this file can't be sent by pipe because it is empty. {@code true}
    *     otherwise.
    */
-  public boolean isEmpty() {
-    // Here we guarantee that the isEmpty() is set before flushing if tsFile is empty
+  public boolean waitForTsFileClose() throws InterruptedException {
+    if (!isClosed.get()) {
+      isClosed.set(resource.isClosed());
+
+      synchronized (isClosed) {
+        while (!isClosed.get()) {
+          isClosed.wait(100);
+
+          final boolean isClosedNow = resource.isClosed();
+          if (isClosedNow) {
+            isClosed.set(true);
+            isClosed.notifyAll();
+
+            // Update flushPointCount after TsFile is closed
+            final TsFileProcessor processor = resource.getProcessor();
+            if (processor != null) {
+              flushPointCount = processor.getMemTableFlushPointCount();
+            }
+
+            break;
+          }
+        }
+      }
+    }
+
+    // From illustrations above we know If the status is "closed", then the tsFile is flushed
+    // And here we guarantee that the isEmpty() is set before flushing if tsFile is empty
     // Then we know: "isClosed" --> tsFile flushed --> (isEmpty() <--> tsFile is empty)
-    return resource.isEmpty();
+    return !resource.isEmpty();
   }
 
   public File getTsFile() {
@@ -162,10 +224,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   public boolean isLoaded() {
     return isLoaded;
-  }
-
-  public long getFileStartTime() {
-    return resource.getFileStartTime();
   }
 
   /**
@@ -245,15 +303,22 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   @Override
   public ProgressIndex getProgressIndex() {
-    if (isEmpty()) {
+    try {
+      if (!waitForTsFileClose()) {
+        LOGGER.warn(
+            "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex",
+            tsFile);
+        return MinimumProgressIndex.INSTANCE;
+      }
+      if (Objects.nonNull(overridingProgressIndex)) {
+        return overridingProgressIndex;
+      }
+      return resource.getMaxProgressIndexAfterClose();
+    } catch (final InterruptedException e) {
       LOGGER.warn(
           "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex", tsFile);
       return MinimumProgressIndex.INSTANCE;
     }
-    if (Objects.nonNull(overridingProgressIndex)) {
-      return overridingProgressIndex;
-    }
-    return resource.getMaxProgressIndexAfterClose();
   }
 
   /**
@@ -313,8 +378,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
-    // If the tsFile is not closed the resource.getFileEndTime() will be Long.MIN_VALUE
-    // In that case we only judge the resource.getFileStartTime() to avoid losing data
+    // Notice that this is only called at realtime extraction, and the tsFile is always closed
+    // Thus we can use the end time to judge the overlap
     return startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime;
   }
 
@@ -403,7 +468,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents(final long timeoutMs)
       throws PipeException {
     try {
-      if (isEmpty()) {
+      if (!waitForTsFileClose()) {
         LOGGER.warn(
             "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
         return Collections.emptyList();
