@@ -306,7 +306,7 @@ public class LogicalPlanBuilder {
                 .getTypeProvider()
                 .setTreeModelType(columnHeader.getColumnName(), columnHeader.getColumnType()));
     // After planning is completed, this map is no longer needed
-    lastQueryNode.setMeasurementSchema2IdxMap(null);
+    lastQueryNode.clearMeasurementSchema2IdxMap();
 
     return this;
   }

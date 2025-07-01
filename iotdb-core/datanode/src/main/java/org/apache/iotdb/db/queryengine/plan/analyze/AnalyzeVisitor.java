@@ -666,7 +666,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     analysis.setShouldHaveSourceExpression(!allDeviceSet.isEmpty());
     analysis.setLastQueryOutputPathToSourceExpressionMap(outputPathToSourceExpressionMap);
-        analysis.setDeviceExistViewSet(deviceExistViewSet.isEmpty() ? Collections.emptySet() : deviceExistViewSet);
+    analysis.setDeviceExistViewSet(
+        deviceExistViewSet.isEmpty() ? Collections.emptySet() : deviceExistViewSet);
     analysis.setLastQueryNonWritableViewSourceExpressionMap(
         lastQueryNonWritableViewSourceExpressionMap);
 

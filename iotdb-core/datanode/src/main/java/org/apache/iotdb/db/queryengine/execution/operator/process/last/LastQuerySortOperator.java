@@ -185,9 +185,7 @@ public class LastQuerySortOperator implements ProcessOperator {
       if (children.get(currentIndex).hasNextWithTimer()) {
         previousTsBlock = children.get(currentIndex).nextWithTimer();
         previousTsBlockIndex = 0;
-        if (previousTsBlock == null || children.get(currentIndex).hasNextWithTimer()) {
-          return;
-        }
+        return;
       } else {
         children.get(currentIndex).close();
         children.set(currentIndex, null);

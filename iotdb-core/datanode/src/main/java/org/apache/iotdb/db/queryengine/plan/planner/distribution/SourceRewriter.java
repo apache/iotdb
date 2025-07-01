@@ -976,8 +976,11 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     context.setForceAddParent();
     boolean isLastQueryWithTransformNode = node.isContainsLastTransformNode();
     PlanNode root = processRawMultiChildNode(node, context, false, isLastQueryWithTransformNode);
-    // For some optimizations later, we should ensure that the LastQueryNode
-    // does not contain any Transform Node
+    // For LastQueryNode, we force the LastQueryTransformNode to be split from the new cloned
+    // LastQueryNode for some subsequent optimizations. In the case of multiple regions, we do not
+    // need to do anything to achieve this. The judgement of 'isLastQueryWithTransformNode' here
+    // is only for the case where the query involves only a single region. See this document for
+    // details(https://docs.google.com/document/d/1w_weCIr39htOUbkHk2ffGVz2-kqBfdvLSZ2EblJaHMo).
     if (context.queryMultiRegion || isLastQueryWithTransformNode) {
       PlanNode newRoot = genLastQueryRootNode(node, context);
       // add sort op for each if we add LastQueryMergeNode as root
@@ -1256,6 +1259,11 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       // If `forceAddParent` is true, we should not create new MultiChildNode as the parent, either.
       // At last, we can use the parameter `addParent` to judge whether to create new
       // MultiChildNode.
+      // For LastQueryNode, we force the LastQueryTransformNode to be split from the new cloned
+      // LastQueryNode for some subsequent optimizations. In the case of multiple regions, we do not
+      // need to do anything to achieve this. The judgement of 'isLastQueryWithTransformNode' here
+      // is only for the case where the query involves only a single region. See this document for
+      // details(https://docs.google.com/document/d/1w_weCIr39htOUbkHk2ffGVz2-kqBfdvLSZ2EblJaHMo).
       boolean appendToRootDirectly =
           !isLastQueryWithTransformNode
               && (sourceGroup.size() == 1 || (!addParent && !context.isForceAddParent()));

@@ -59,6 +59,7 @@ public class LastQueryNode extends MultiChildProcessNode {
   // if children contains LastTransformNode, this variable is only used in distribute plan
   private boolean containsLastTransformNode;
 
+  // After Logical planning is completed, this map is no longer needed and it will be set to null
   private Map<IMeasurementSchema, Integer> measurementSchema2IdxMap;
   // All LastSeriesSourceNode share this structure
   private List<IMeasurementSchema> globalMeasurementSchemaList;
@@ -126,7 +127,6 @@ public class LastQueryNode extends MultiChildProcessNode {
       Collections.reverse(children);
     }
   }
-
 
   public void clearMeasurementSchema2IdxMap() {
     this.measurementSchema2IdxMap = null;
