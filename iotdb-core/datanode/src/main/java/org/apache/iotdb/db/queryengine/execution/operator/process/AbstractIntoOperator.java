@@ -26,11 +26,8 @@ import org.apache.iotdb.db.exception.runtime.IntoProcessException;
 import org.apache.iotdb.db.protocol.client.DataNodeInternalClient;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -38,7 +35,6 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -53,13 +49,10 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   protected final Operator child;
 
   protected TsBlock cachedTsBlock;
+  protected DataNodeInternalClient client;
 
-  protected List<InsertTabletStatementGenerator> insertTabletStatementGenerators;
-
-  private DataNodeInternalClient client;
-
-  private final ExecutorService writeOperationExecutor;
-  private ListenableFuture<TSStatus> writeOperationFuture;
+  protected final ExecutorService writeOperationExecutor;
+  protected ListenableFuture<TSStatus> writeOperationFuture;
 
   protected boolean finished = false;
 
@@ -87,23 +80,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     initMemoryEstimates(statementSizePerLine);
   }
 
-  private void initMemoryEstimates(long statementSizePerLine) {
-    long intoOperationBufferSizeInByte =
-        IoTDBDescriptor.getInstance().getConfig().getIntoOperationBufferSizeInByte();
-    long memAllowedMaxRowNumber = Math.max(intoOperationBufferSizeInByte / statementSizePerLine, 1);
-    if (memAllowedMaxRowNumber > Integer.MAX_VALUE) {
-      memAllowedMaxRowNumber = Integer.MAX_VALUE;
-    }
-    this.maxRowNumberInStatement =
-        Math.min(
-            (int) memAllowedMaxRowNumber,
-            IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit());
-    long maxStatementSize = maxRowNumberInStatement * statementSizePerLine;
-
-    this.maxRetainedSize = child.calculateMaxReturnSize() + maxStatementSize;
-    this.maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
-  }
-
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;
@@ -122,14 +98,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     } else {
       return successfulAsList(Arrays.asList(writeOperationFuture, childBlocked));
     }
-  }
-
-  private boolean writeOperationDone() {
-    if (writeOperationFuture == null) {
-      return true;
-    }
-
-    return writeOperationFuture.isDone();
   }
 
   @Override
@@ -154,116 +122,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     } else {
       return tryToReturnResultTsBlock();
     }
-  }
-
-  /**
-   * Check whether the last write operation was executed successfully, and throw an exception if the
-   * execution failed, otherwise continue to execute the operator.
-   *
-   * @throws IntoProcessException wrap InterruptedException with IntoProcessException while
-   *     Interruption happened
-   */
-  private void checkLastWriteOperation() {
-    if (writeOperationFuture == null) {
-      return;
-    }
-
-    try {
-      if (!writeOperationFuture.isDone()) {
-        throw new IllegalStateException(
-            "The operator cannot continue until the last write operation is done.");
-      }
-
-      TSStatus executionStatus = writeOperationFuture.get();
-      if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        String message =
-            String.format(
-                "Error occurred while inserting tablets in SELECT INTO: %s",
-                executionStatus.getMessage());
-        throw new IntoProcessException(message, executionStatus.getCode());
-      }
-
-      for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-        generator.reset();
-      }
-
-      writeOperationFuture = null;
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new IntoProcessException(e);
-    } catch (ExecutionException e) {
-      throw new IntoProcessException(e);
-    }
-  }
-
-  /**
-   * Write the data of the input TsBlock into Statement.
-   *
-   * <p>If the Statement is full, submit one write task and return false.
-   *
-   * <p>If TsBlock is empty, or all data has been written to Statement, return true.
-   */
-  protected abstract boolean processTsBlock(TsBlock inputTsBlock);
-
-  protected abstract TsBlock tryToReturnResultTsBlock();
-
-  /** Return true if write task is submitted successfully. */
-  protected boolean insertMultiTabletsInternally(boolean needCheck) {
-    final InsertMultiTabletsStatement insertMultiTabletsStatement =
-        constructInsertMultiTabletsStatement(needCheck);
-    if (insertMultiTabletsStatement == null) {
-      return false;
-    }
-
-    executeInsertMultiTabletsStatement(insertMultiTabletsStatement);
-    return true;
-  }
-
-  protected InsertMultiTabletsStatement constructInsertMultiTabletsStatement(boolean needCheck) {
-    if (insertTabletStatementGenerators == null
-        || (needCheck && !existFullStatement(insertTabletStatementGenerators))) {
-      return null;
-    }
-
-    List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
-    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-      if (!generator.isEmpty()) {
-        insertTabletStatementList.add(generator.constructInsertTabletStatement());
-      }
-    }
-    if (insertTabletStatementList.isEmpty()) {
-      return null;
-    }
-
-    InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
-    insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
-    return insertMultiTabletsStatement;
-  }
-
-  protected void executeInsertMultiTabletsStatement(
-      InsertMultiTabletsStatement insertMultiTabletsStatement) {
-    if (client == null) {
-      client = new DataNodeInternalClient(operatorContext.getSessionInfo());
-    }
-
-    writeOperationFuture =
-        Futures.submit(
-            () ->
-                insertMultiTabletsStatement.isWriteToTable()
-                    ? client.insertRelationalTablets(insertMultiTabletsStatement)
-                    : client.insertTablets(insertMultiTabletsStatement),
-            writeOperationExecutor);
-  }
-
-  protected boolean existFullStatement(
-      List<InsertTabletStatementGenerator> insertTabletStatementGenerators) {
-    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-      if (generator.isFull()) {
-        return true;
-      }
-    }
-    return false;
   }
 
   @Override
@@ -300,5 +158,82 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   @TestOnly
   public int getMaxRowNumberInStatement() {
     return maxRowNumberInStatement;
+  }
+
+  /**
+   * Check whether the last write operation was executed successfully, and throw an exception if the
+   * execution failed, otherwise continue to execute the operator.
+   *
+   * @throws IntoProcessException wrap InterruptedException with IntoProcessException while
+   *     Interruption happened
+   */
+  protected void checkLastWriteOperation() {
+    if (writeOperationFuture == null) {
+      return;
+    }
+
+    try {
+      if (!writeOperationFuture.isDone()) {
+        throw new IllegalStateException(
+            "The operator cannot continue until the last write operation is done.");
+      }
+
+      TSStatus executionStatus = writeOperationFuture.get();
+      if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        String message =
+            String.format(
+                "Error occurred while inserting tablets in SELECT INTO: %s",
+                executionStatus.getMessage());
+        throw new IntoProcessException(message, executionStatus.getCode());
+      }
+
+      resetInsertTabletStatementGenerators();
+
+      writeOperationFuture = null;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IntoProcessException(e);
+    } catch (ExecutionException e) {
+      throw new IntoProcessException(e);
+    }
+  }
+
+  /**
+   * Write the data of the input TsBlock into Statement.
+   *
+   * <p>If the Statement is full, submit one write task and return false.
+   *
+   * <p>If TsBlock is empty, or all data has been written to Statement, return true.
+   */
+  protected abstract boolean processTsBlock(TsBlock inputTsBlock);
+
+  protected abstract TsBlock tryToReturnResultTsBlock();
+
+  protected abstract void resetInsertTabletStatementGenerators();
+
+  private void initMemoryEstimates(long statementSizePerLine) {
+    long intoOperationBufferSizeInByte =
+        IoTDBDescriptor.getInstance().getConfig().getIntoOperationBufferSizeInByte();
+    long memAllowedMaxRowNumber = Math.max(intoOperationBufferSizeInByte / statementSizePerLine, 1);
+    if (memAllowedMaxRowNumber > Integer.MAX_VALUE) {
+      memAllowedMaxRowNumber = Integer.MAX_VALUE;
+    }
+    this.maxRowNumberInStatement =
+        Math.min(
+            (int) memAllowedMaxRowNumber,
+            IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit());
+    long maxStatementSize = maxRowNumberInStatement * statementSizePerLine;
+
+    this.maxRetainedSize = child.calculateMaxReturnSize() + maxStatementSize;
+    this.maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  private boolean writeOperationDone() {
+    if (writeOperationFuture == null) {
+      return true;
+    }
+
+    return writeOperationFuture.isDone();
   }
 }

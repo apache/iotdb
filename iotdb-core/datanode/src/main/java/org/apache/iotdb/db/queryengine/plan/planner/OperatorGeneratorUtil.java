@@ -32,6 +32,14 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 
 public class OperatorGeneratorUtil {
 
+  public static long calculateStatementSizePerLine(List<TSDataType> dataTypeList) {
+    long maxStatementSize = Long.BYTES;
+    for (TSDataType dataType : dataTypeList) {
+      maxStatementSize += getValueSizePerLine(dataType);
+    }
+    return maxStatementSize;
+  }
+
   public static long calculateStatementSizePerLine(
       Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap) {
     long maxStatementSize = Long.BYTES;

@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -114,14 +115,14 @@ public class DataNodeInternalClient {
     }
   }
 
-  public TSStatus insertRelationalTablets(InsertMultiTabletsStatement statement) {
+  public TSStatus insertRelationalTablets(InsertTabletStatement statement) {
     long startTime = System.nanoTime();
     try {
       // call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.executeForTableModel(
-              statement.getInsertTabletStatementList().get(0),
+              statement,
               relationSqlParser,
               session,
               queryId,
