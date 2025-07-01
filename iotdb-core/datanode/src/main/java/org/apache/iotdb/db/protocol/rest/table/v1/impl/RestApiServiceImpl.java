@@ -69,45 +69,10 @@ public class RestApiServiceImpl extends RestApiService {
         IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit();
   }
 
-  public Response executeQueryStatement(SQL sql, SecurityContext securityContext)
-      throws NotFoundException {
-    return executeQueryStatement(sql, securityContext, false);
-  }
-
-  public Response executeQueryStatement(
-      SQL sql, SecurityContext securityContext, boolean skipValidateStatement)
-      throws NotFoundException {
-    SqlParser relationSqlParser = new SqlParser();
+  public Response executeQueryInternal(
+      SQL sql, Statement statement, IClientSession clientSession, SqlParser relationSqlParser) {
     Long queryId = null;
-    Statement statement = null;
-    long startTime = System.nanoTime();
     try {
-      RequestValidationHandler.validateSQL(sql);
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-      if (sql.getDatabase() != null && !sql.getDatabase().isEmpty()) {
-        clientSession.setDatabaseName(sql.getDatabase());
-      }
-      clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
-      statement =
-          relationSqlParser.createStatement(sql.getSql(), ZoneId.systemDefault(), clientSession);
-      if (statement == null) {
-        return Response.ok()
-            .entity(
-                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
-                    .code(TSStatusCode.SQL_PARSE_ERROR.getStatusCode())
-                    .message("This operation type is not supported"))
-            .build();
-      }
-
-      if (!skipValidateStatement && ExecuteStatementHandler.validateStatement(statement)) {
-        return Response.ok()
-            .entity(
-                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
-                    .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-                    .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
-            .build();
-      }
-
       queryId = SESSION_MANAGER.requestQueryId();
       Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
 
@@ -146,15 +111,35 @@ public class RestApiServiceImpl extends RestApiService {
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
+      if (queryId != null) {
+        COORDINATOR.cleanupQueryExecution(queryId);
+      }
+    }
+  }
+
+  public Response executeQueryStatement(SQL sql, SecurityContext securityContext)
+      throws NotFoundException {
+    SqlParser relationSqlParser = new SqlParser();
+    Statement statement = null;
+    long startTime = System.nanoTime();
+    try {
+      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      statement = createStatement(sql, clientSession, relationSqlParser);
+      Response resp = validateStatement(statement, true);
+      if (resp != null) {
+        return resp;
+      }
+
+      return executeQueryInternal(sql, statement, clientSession, relationSqlParser);
+    } catch (Exception e) {
+      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+    } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(statement)
           .ifPresent(
               s ->
                   CommonUtils.addStatementExecutionLatency(
                       OperationType.EXECUTE_QUERY_STATEMENT, s.toString(), costTime));
-      if (queryId != null) {
-        COORDINATOR.cleanupQueryExecution(queryId);
-      }
     }
   }
 
@@ -212,34 +197,14 @@ public class RestApiServiceImpl extends RestApiService {
     long startTime = System.nanoTime();
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-      RequestValidationHandler.validateSQL(sql);
-      if (sql.getDatabase() != null && !sql.getDatabase().isEmpty()) {
-        clientSession.setDatabaseName(sql.getDatabase());
-      }
-
-      clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
-      statement =
-          relationSqlParser.createStatement(sql.getSql(), ZoneId.systemDefault(), clientSession);
-
-      if (statement == null) {
-        return Response.ok()
-            .entity(
-                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
-                    .code(TSStatusCode.SQL_PARSE_ERROR.getStatusCode())
-                    .message("This operation type is not supported"))
-            .build();
-      }
-      if (!ExecuteStatementHandler.validateStatement(statement)) {
-        return Response.ok()
-            .entity(
-                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
-                    .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-                    .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
-            .build();
+      statement = createStatement(sql, clientSession, relationSqlParser);
+      Response resp = validateStatement(statement, false);
+      if (resp != null) {
+        return resp;
       }
 
       if (statement instanceof Insert) {
-        return executeQueryStatement(sql, securityContext, true);
+        return executeQueryInternal(sql, statement, clientSession, relationSqlParser);
       }
 
       queryId = SESSION_MANAGER.requestQueryId();
@@ -312,5 +277,38 @@ public class RestApiServiceImpl extends RestApiService {
                   .message(result.status.getMessage()))
           .build();
     }
+  }
+
+  private Statement createStatement(
+      SQL sql, IClientSession clientSession, SqlParser relationSqlParser) {
+    RequestValidationHandler.validateSQL(sql);
+    if (sql.getDatabase() != null && !sql.getDatabase().isEmpty()) {
+      clientSession.setDatabaseName(sql.getDatabase());
+    }
+
+    clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
+    return relationSqlParser.createStatement(sql.getSql(), ZoneId.systemDefault(), clientSession);
+  }
+
+  private Response validateStatement(Statement statement, boolean userQuery) {
+    if (statement == null) {
+      return Response.ok()
+          .entity(
+              new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
+                  .code(TSStatusCode.SQL_PARSE_ERROR.getStatusCode())
+                  .message("This operation type is not supported"))
+          .build();
+    }
+    boolean isQueryStmt = ExecuteStatementHandler.validateStatement(statement);
+
+    if (userQuery == isQueryStmt) {
+      return Response.ok()
+          .entity(
+              new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
+                  .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                  .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
+          .build();
+    }
+    return null;
   }
 }
