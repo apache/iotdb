@@ -100,7 +100,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       }
 
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.**", "Time,", Collections.emptySet());
+          receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
     }
   }
 
@@ -263,7 +263,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.ln.**",
           "Time,root.ln.wf01.wt01.status1,",
           Collections.emptySet());
     }

@@ -187,9 +187,9 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+        senderEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+        receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
     try {
       TestUtils.restartCluster(senderEnv);
@@ -222,9 +222,9 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
       expectedResSet.add(i + ",1.0,");
     }
     TestUtils.assertDataEventuallyOnEnv(
-        senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+        senderEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+        receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
   }
 
   @Test

@@ -163,7 +163,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.ln.**",
           "Time,root.ln.wf02.wt01.temperature,root.ln.wf02.wt01.status,",
           Collections.singleton("1800000000000,23,true,"));
     }

@@ -286,17 +286,21 @@ public class IoTDBSeriesPermissionIT {
     executeNonQuery("insert into root.test1.d2(time,s1) values(2,2)");
 
     resultSetEqualTest(
-        "select * from root.**", new String[] {TIME}, new String[] {}, "test", "test123123456");
+        "select * from root.test1.**",
+        new String[] {TIME},
+        new String[] {},
+        "test",
+        "test123123456");
     grantUserSeriesPrivilege("test", PrivilegeType.READ_DATA, "root.test.**");
     resultSetEqualTest(
-        "select * from root.**",
+        "select * from root.test.**",
         new String[] {TIME, "root.test.d1.s1"},
         new String[] {"1,1.0,"},
         "test",
         "test123123456");
     grantUserSeriesPrivilege("test", PrivilegeType.READ_DATA, "root.test1.d1.**");
     resultSetEqualTest(
-        "select * from root.**",
+        "select * from root.test.**,root.test1.**",
         new String[] {TIME, "root.test.d1.s1", "root.test1.d1.s1"},
         new String[] {"1,1.0,null,", "2,null,2.0,"},
         "test",

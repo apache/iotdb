@@ -1563,7 +1563,7 @@ public class IoTDBAuthIT {
 
     try (ResultSet resultSet =
         statement.executeQuery(
-            "select last password from root.__system.password_history.`userA`")) {
+            "select last password from root.__system.password_history.`_userA`")) {
       if (!resultSet.next()) {
         fail("Password history not found");
       }
@@ -1576,7 +1576,7 @@ public class IoTDBAuthIT {
 
     try (ResultSet resultSet =
         statement.executeQuery(
-            "select last password from root.__system.password_history.`userA`")) {
+            "select last password from root.__system.password_history.`_userA`")) {
       if (!resultSet.next()) {
         fail("Password history not found");
       }
@@ -1585,13 +1585,13 @@ public class IoTDBAuthIT {
 
     try (ResultSet resultSet =
         statement.executeQuery(
-            "select oldPassword from root.__system.password_history.`userA` order by time desc limit 1")) {
+            "select oldPassword from root.__system.password_history.`_userA` order by time desc limit 1")) {
       if (!resultSet.next()) {
         fail("Password history not found");
       }
       assertEquals(
           AuthUtils.encryptPassword("abcdef123456"),
-          resultSet.getString("root.__system.password_history.userA.oldPassword"));
+          resultSet.getString("root.__system.password_history._userA.oldPassword"));
     }
   }
 }

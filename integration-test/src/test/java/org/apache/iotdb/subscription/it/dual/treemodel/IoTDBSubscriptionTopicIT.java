@@ -383,7 +383,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         AWAIT.untilAsserted(
             () ->
                 TestUtils.assertResultSetEqual(
-                    TestUtils.executeQueryWithRetry(statement, "select * from root.**"),
+                    TestUtils.executeQueryWithRetry(statement, "select * from root.db.**"),
                     "Time,root.db.d1.at1,",
                     expectedResSet));
       }

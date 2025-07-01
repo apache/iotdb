@@ -157,7 +157,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
           Collections.singleton("root.ln,3,2,0,604800000,"));
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.ln.**",
           "Time,root.ln.wf01.wt01.temperature,root.ln.wf01.wt01.status,",
           Collections.singleton("1800000000000,23.0,true,"));
 
@@ -259,7 +259,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
           "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionOrigin,TimePartitionInterval,",
           Collections.emptySet());
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.**", "Time", Collections.emptySet());
+          receiverEnv, "select * from root.ln.**", "Time", Collections.emptySet());
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "CREATE ROLE test")) {
         return;

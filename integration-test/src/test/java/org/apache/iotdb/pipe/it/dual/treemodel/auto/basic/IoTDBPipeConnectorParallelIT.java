@@ -98,7 +98,7 @@ public class IoTDBPipeConnectorParallelIT extends AbstractPipeDualTreeModelAutoI
       expectedResSet.add("2,3.0,");
       expectedResSet.add("3,4.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.sg1.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.sg1.**", "Time,root.sg1.d1.s1,", expectedResSet);
     }
   }
 }

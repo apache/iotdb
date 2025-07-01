@@ -115,7 +115,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       // now, the query should throw exception
       Assert.assertThrows(
           StatementExecutionException.class,
-          () -> session.executeQueryStatement("select * from root.**"));
+          () -> session.executeQueryStatement("select * from root.sg.**"));
 
       // start DataNode, reconstruct the delete one
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().start();
@@ -140,7 +140,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
       // now, the query should work fine
-      SessionDataSet resultSet = session.executeQueryStatement("select * from root.**");
+      SessionDataSet resultSet = session.executeQueryStatement("select * from root.sg.**");
       RowRecord rowRecord = resultSet.next();
       Assert.assertEquals("2.0", rowRecord.getField(0).getStringValue());
       Assert.assertEquals("1.0", rowRecord.getField(1).getStringValue());

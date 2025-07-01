@@ -152,21 +152,33 @@ public class DataNodeAuthUtils {
           });
       insertRowStatement.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.STRING});
     } catch (IllegalPathException ignored) {
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+          .setMessage(
+              "Cannot create password history for "
+                  + username
+                  + " because the path will be illegal");
     }
 
-    SessionInfo sessionInfo =
-        new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+    try {
+      SessionInfo sessionInfo =
+          new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
 
-    long queryId = SessionManager.getInstance().requestQueryId();
-    ExecutionResult result =
-        Coordinator.getInstance()
-            .executeForTreeModel(
-                insertRowStatement,
-                queryId,
-                sessionInfo,
-                "",
-                ClusterPartitionFetcher.getInstance(),
-                ClusterSchemaFetcher.getInstance());
-    return result.status;
+      long queryId = SessionManager.getInstance().requestQueryId();
+      ExecutionResult result =
+          Coordinator.getInstance()
+              .executeForTreeModel(
+                  insertRowStatement,
+                  queryId,
+                  sessionInfo,
+                  "",
+                  ClusterPartitionFetcher.getInstance(),
+                  ClusterSchemaFetcher.getInstance());
+      return result.status;
+    } catch (Exception e) {
+      LOGGER.error("Cannot create password history for {} because {}", username, e.getMessage());
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+          .setMessage(
+              "Cannot create password history for " + username + " because " + e.getMessage());
+    }
   }
 }

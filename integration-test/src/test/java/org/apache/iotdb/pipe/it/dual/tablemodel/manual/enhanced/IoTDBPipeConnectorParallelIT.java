@@ -110,7 +110,7 @@ public class IoTDBPipeConnectorParallelIT extends AbstractPipeTableModelDualManu
       expectedResSet.add("3,4.0,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.sg1.**",
           "Time,root.sg1.d1.s1,",
           expectedResSet,
           handleFailure);

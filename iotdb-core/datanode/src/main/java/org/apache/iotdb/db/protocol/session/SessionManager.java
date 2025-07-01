@@ -245,7 +245,14 @@ public class SessionManager implements SessionManagerMBean {
         if (timeToExpire != null && timeToExpire != Long.MAX_VALUE) {
           logInMessage += ". Your password will expire at " + new Date(timeToExpire);
         } else {
-          DataNodeAuthUtils.recordPassword(username, password, null);
+          TSStatus tsStatus = DataNodeAuthUtils.recordPassword(username, password, null);
+          if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            openSessionResp
+                .sessionId(-1)
+                .setCode(tsStatus.getCode())
+                .setMessage(tsStatus.getMessage());
+            return openSessionResp;
+          }
           timeToExpire =
               System.currentTimeMillis()
                   + CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays()
