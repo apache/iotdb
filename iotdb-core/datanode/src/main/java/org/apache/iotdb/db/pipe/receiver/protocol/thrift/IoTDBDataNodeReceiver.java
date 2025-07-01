@@ -86,6 +86,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -174,6 +175,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case HANDSHAKE_DATANODE_V1:
             {
               try {
+                if (PipeConfig.getInstance().isPipeEnableMemoryCheck()) {
+                  if (PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
+                      < PipeConfig.getInstance().getPipeMinimumReceiverMemory()) {
+                    throw new PipeException(
+                        "The receiver memory is not enough to handle the handshake request from datanode.");
+                  }
+                }
                 return handleTransferHandshakeV1(
                     PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req));
               } finally {

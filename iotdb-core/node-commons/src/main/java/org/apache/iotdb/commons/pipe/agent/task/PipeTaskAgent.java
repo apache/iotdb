@@ -469,6 +469,11 @@ public abstract class PipeTaskAgent {
     final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
     final long creationTime = pipeMetaFromCoordinator.getStaticMeta().getCreationTime();
 
+    calculateMemoryUsage(
+        pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
+        pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters(),
+        pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters());
+
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     if (existedPipeMeta != null) {
       if (!checkBeforeCreatePipe(existedPipeMeta, pipeName, creationTime)) {
@@ -507,6 +512,13 @@ public abstract class PipeTaskAgent {
 
     // If the pipe status from coordinator is RUNNING, we will start the pipe later.
     return needToStartPipe;
+  }
+
+  protected void calculateMemoryUsage(
+      final PipeParameters extractorParameters,
+      final PipeParameters processorParameters,
+      final PipeParameters connectorParameters) {
+    // do nothing
   }
 
   protected abstract Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromCoordinator)
