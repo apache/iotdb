@@ -364,7 +364,8 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(id)
         // The memory of each String has been calculated before
         + MemoryEstimationHelper.getEstimatedSizeOfCopiedPartialPath(devicePath)
-        + RamUsageEstimator.shallowSizeOfInstance(Integer.class) * indexOfMeasurementSchemas.size()
+        + RamUsageEstimator.sizeOfCollection(indexOfMeasurementSchemas, RamUsageEstimator.shallowSizeOfInstance(Integer.class))
+
         + RamUsageEstimator.sizeOf(outputViewPath);
   }
 }
