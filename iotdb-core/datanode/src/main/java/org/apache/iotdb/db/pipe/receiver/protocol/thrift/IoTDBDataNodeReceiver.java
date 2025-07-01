@@ -208,6 +208,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case HANDSHAKE_DATANODE_V1:
             {
               try {
+                if (PipeConfig.getInstance().isPipeEnableMemoryCheck()
+                    && PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
+                        < PipeConfig.getInstance().getPipeMinimumReceiverMemory()) {
+                  return new TPipeTransferResp(
+                      RpcUtils.getStatus(
+                          TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(),
+                          "The receiver memory is not enough to handle the handshake request from datanode."));
+                }
                 return handleTransferHandshakeV1(
                     PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req));
               } finally {
@@ -218,6 +226,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case HANDSHAKE_DATANODE_V2:
             {
               try {
+                if (PipeConfig.getInstance().isPipeEnableMemoryCheck()
+                    && PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
+                        < PipeConfig.getInstance().getPipeMinimumReceiverMemory()) {
+                  return new TPipeTransferResp(
+                      RpcUtils.getStatus(
+                          TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(),
+                          "The receiver memory is not enough to handle the handshake request from datanode."));
+                }
                 return handleTransferHandshakeV2(
                     PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req));
               } finally {
