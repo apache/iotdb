@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
@@ -140,6 +141,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTsFileInsertion(final PipeRealtimeEvent event) {
+    // Notice that, if the tsFile is partially extracted because the pipe is not opened before, the
+    // former data won't be extracted
     event
         .getTsFileEpoch()
         .migrateState(
@@ -147,10 +150,13 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
             state -> {
               switch (state) {
                 case EMPTY:
-                case USING_TSFILE:
-                  return TsFileEpoch.State.USING_TSFILE;
+                  return ((PipeTsFileInsertionEvent) event.getEvent()).isLoaded()
+                      ? TsFileEpoch.State.USING_TSFILE
+                      : TsFileEpoch.State.USING_TABLET;
                 case USING_TABLET:
                   return TsFileEpoch.State.USING_TABLET;
+                case USING_TSFILE:
+                  return TsFileEpoch.State.USING_TSFILE;
                 case USING_BOTH:
                 default:
                   return canNotUseTabletAnyMore(event)
