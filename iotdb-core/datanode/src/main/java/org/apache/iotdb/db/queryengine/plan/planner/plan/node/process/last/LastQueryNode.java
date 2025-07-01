@@ -140,8 +140,7 @@ public class LastQueryNode extends MultiChildProcessNode {
   }
 
   public long getMemorySizeOfSharedStructures() {
-    return RamUsageEstimator.shallowSizeOf(this.globalMeasurementSchemaList)
-        + RamUsageEstimator.sizeOfObjectArray(globalMeasurementSchemaList.size());
+    return RamUsageEstimator.sizeOfCollection(this.globalMeasurementSchemaList, 0);
   }
 
   @Override
