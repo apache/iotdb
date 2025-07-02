@@ -406,7 +406,7 @@ public class IoTDBLoadTsFileIT {
       isAligned.put(SchemaConfig.DEVICE_2, "false");
       isAligned.put(SchemaConfig.DEVICE_3, "false");
       isAligned.put(SchemaConfig.DEVICE_4, "true");
-      try (final ResultSet resultSet = statement.executeQuery("show devices")) {
+      try (final ResultSet resultSet = statement.executeQuery("show devices root.sg.**")) {
         int size = 0;
         while (resultSet.next()) {
           size += 1;
@@ -742,7 +742,7 @@ public class IoTDBLoadTsFileIT {
 
       statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
 
-      try (final ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (final ResultSet resultSet = statement.executeQuery("show timeseries root.sg")) {
         Assert.assertFalse(resultSet.next());
       }
     }

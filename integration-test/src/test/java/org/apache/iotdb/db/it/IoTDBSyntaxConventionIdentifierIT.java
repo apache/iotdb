@@ -116,7 +116,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
         statement.execute(insertSql);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
         while (resultSet.next()) {
@@ -274,7 +274,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
         statement.execute(insertSql);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
         while (resultSet.next()) {

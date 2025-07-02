@@ -104,7 +104,7 @@ public class IoTDBSimpleQueryIT {
       }
 
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.**")) {
         while (resultSet.next()) {
           count++;
         }
@@ -131,7 +131,7 @@ public class IoTDBSimpleQueryIT {
       List<String> expected = Arrays.asList("root.turbine.d1.s1", "root.turbine.d1.s2");
       List<String> actual = new ArrayList<>();
 
-      try (ResultSet resultSet = statement.executeQuery("select last ** from root")) {
+      try (ResultSet resultSet = statement.executeQuery("select last ** from root.turbine")) {
         while (resultSet.next()) {
           actual.add(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
         }
@@ -140,7 +140,7 @@ public class IoTDBSimpleQueryIT {
       assertEquals(expected, actual);
 
       actual.clear();
-      try (ResultSet resultSet = statement.executeQuery("select last * from root")) {
+      try (ResultSet resultSet = statement.executeQuery("select last * from root.turbine")) {
         while (resultSet.next()) {
           actual.add(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
         }
@@ -562,7 +562,7 @@ public class IoTDBSimpleQueryIT {
       statement.execute("flush");
 
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.**")) {
         while (resultSet.next()) {
           count++;
         }
@@ -595,7 +595,7 @@ public class IoTDBSimpleQueryIT {
       statement.execute("flush");
 
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.**")) {
         while (resultSet.next()) {
           count++;
         }
@@ -628,7 +628,7 @@ public class IoTDBSimpleQueryIT {
       statement.execute("flush");
 
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.**")) {
         while (resultSet.next()) {
           count++;
         }
@@ -1051,7 +1051,8 @@ public class IoTDBSimpleQueryIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
+      try (final ResultSet resultSet =
+          statement.executeQuery("SHOW DATABASES DETAILS root.group_with_hyphen")) {
         while (resultSet.next()) {
           Assert.assertEquals("root.group_with_hyphen", resultSet.getString(1));
         }

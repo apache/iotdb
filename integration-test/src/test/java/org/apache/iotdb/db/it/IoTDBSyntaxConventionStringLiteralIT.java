@@ -423,7 +423,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute(
           "create timeseries root.vehicle.d1.s6 "
               + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, `max_point_number` = `5`");
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.vehicle.**")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -472,7 +472,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
           "create timeseries root.vehicle.d1.s8 "
               + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
               + "tags(tag1=v1)");
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.vehicle.**")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -506,7 +506,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
           "create timeseries root.vehicle.d1.s4 "
               + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
               + "attributes('attr1'=v1, attr2=v2)");
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.vehicle.**")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;

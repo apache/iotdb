@@ -3256,7 +3256,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRealStatement(seriesSchemaFetchStatement);
 
     SchemaPartition schemaPartition =
-        partitionFetcher.getSchemaPartition(seriesSchemaFetchStatement.getPatternTree());
+        partitionFetcher.getSchemaPartition(
+            seriesSchemaFetchStatement.getPatternTree(), context.getSession().getUserName());
     analysis.setSchemaPartitionInfo(schemaPartition);
 
     if (schemaPartition.isEmpty()) {
