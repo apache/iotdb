@@ -424,13 +424,10 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> createTraining(
       String modelId,
-      String modelType,
       boolean isTableModel,
       Map<String, String> parameters,
-      boolean useAllData,
       List<List<Long>> timeRanges,
       String existingModelId,
-      @Nullable List<String> tableList,
-      @Nullable List<String> databaseList,
+      @Nullable String targetSql,
       @Nullable List<String> pathList);
 }

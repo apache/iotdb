@@ -759,4 +759,56 @@ public class JoinTest {
 
     assertPlan(planTester.getFragmentPlan(10), mergeSort(exchange(), exchange(), exchange()));
   }
+
+  @Test
+  public void joinSortEliminationTest() {
+    PlanTester planTester = new PlanTester();
+    sql = "select * from table1 t1 " + "left join table1 t2 using (tag1, tag2, tag3, time)";
+    logicalQueryPlan = planTester.createPlan(sql);
+    assertPlan(
+        logicalQueryPlan.getRootNode(),
+        output(join(sort(tableScan("testdb.table1")), sort(tableScan("testdb.table1")))));
+
+    assertPlan(planTester.getFragmentPlan(0), output(join(exchange(), exchange())));
+
+    assertPlan(planTester.getFragmentPlan(1), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(2), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(3), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(4), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(5), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(6), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(7), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(8), tableScan("testdb.table1"));
+
+    sql = "select * from table1 t1 " + "full join table1 t2 using (tag1, tag2, tag3, time)";
+    logicalQueryPlan = planTester.createPlan(sql);
+    assertPlan(
+        logicalQueryPlan.getRootNode(),
+        output(project(join(sort(tableScan("testdb.table1")), sort(tableScan("testdb.table1"))))));
+
+    assertPlan(planTester.getFragmentPlan(0), output(project(join(exchange(), exchange()))));
+
+    assertPlan(planTester.getFragmentPlan(1), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(2), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(3), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(4), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(5), mergeSort(exchange(), exchange(), exchange()));
+
+    assertPlan(planTester.getFragmentPlan(6), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(7), tableScan("testdb.table1"));
+
+    assertPlan(planTester.getFragmentPlan(8), tableScan("testdb.table1"));
+  }
 }

@@ -481,13 +481,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (modelInformation.isBuiltIn()) {
       return;
     }
-
-    if (modelInformation.getInputShape()[0] != windowSize) {
-      throw new SemanticException(
-          String.format(
-              "Window output %d is not equal to input size of model %d",
-              windowSize, modelInformation.getInputShape()[0]));
-    }
   }
 
   private ISchemaTree analyzeSchema(
