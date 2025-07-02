@@ -254,7 +254,8 @@ public class InferenceOperator implements ProcessOperator {
   }
 
   private TsBlock preProcess(TsBlock inputTsBlock) {
-    boolean notBuiltIn = !modelInferenceDescriptor.getModelInformation().isBuiltIn();
+    //    boolean notBuiltIn = !modelInferenceDescriptor.getModelInformation().isBuiltIn();
+    boolean notBuiltIn = false;
     if (windowType == null || windowType == InferenceWindowType.HEAD) {
       if (notBuiltIn
           && totalRow != modelInferenceDescriptor.getModelInformation().getInputShape()[0]) {

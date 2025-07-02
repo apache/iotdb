@@ -63,10 +63,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
@@ -304,10 +306,19 @@ public class ForecastTableFunction implements TableFunction {
         (String) ((ScalarArgument) arguments.get(PREDICATED_COLUMNS_PARAMETER_NAME)).getValue();
 
     String timeColumn =
-        (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
+        ((String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue())
+            .toLowerCase(Locale.ENGLISH);
+
+    if (timeColumn.isEmpty()) {
+      throw new SemanticException(
+          String.format("%s should never be null or empty.", TIMECOL_PARAMETER_NAME));
+    }
 
     // predicated columns should never contain partition by columns and time column
-    Set<String> excludedColumns = new HashSet<>(input.getPartitionBy());
+    Set<String> excludedColumns =
+        input.getPartitionBy().stream()
+            .map(s -> s.toLowerCase(Locale.ENGLISH))
+            .collect(Collectors.toSet());
     excludedColumns.add(timeColumn);
     int timeColumnIndex = findColumnIndex(input, timeColumn, Collections.singleton(Type.TIMESTAMP));
 
@@ -324,7 +335,8 @@ public class ForecastTableFunction implements TableFunction {
       // partition by columns
       for (int i = 0, size = allInputColumnsName.size(); i < size; i++) {
         Optional<String> fieldName = allInputColumnsName.get(i);
-        if (!fieldName.isPresent() || !excludedColumns.contains(fieldName.get())) {
+        if (!fieldName.isPresent()
+            || !excludedColumns.contains(fieldName.get().toLowerCase(Locale.ENGLISH))) {
           Type columnType = allInputColumnsType.get(i);
           predicatedColumnTypes.add(columnType);
           checkType(columnType, fieldName.orElse(""));
@@ -340,17 +352,18 @@ public class ForecastTableFunction implements TableFunction {
         if (!fieldName.isPresent()) {
           continue;
         }
-        inputColumnIndexMap.put(fieldName.get(), i);
+        inputColumnIndexMap.put(fieldName.get().toLowerCase(Locale.ENGLISH), i);
       }
 
       Set<Integer> requiredIndexSet = new HashSet<>(predictedColumnsArray.length);
       // columns need to be predicated
       for (String outputColumn : predictedColumnsArray) {
-        if (excludedColumns.contains(outputColumn)) {
+        String lowerCaseOutputColumn = outputColumn.toLowerCase(Locale.ENGLISH);
+        if (excludedColumns.contains(lowerCaseOutputColumn)) {
           throw new SemanticException(
               String.format("%s is in partition by clause or is time column", outputColumn));
         }
-        Integer inputColumnIndex = inputColumnIndexMap.get(outputColumn);
+        Integer inputColumnIndex = inputColumnIndexMap.get(lowerCaseOutputColumn);
         if (inputColumnIndex == null) {
           throw new SemanticException(
               String.format("Column %s don't exist in input", outputColumn));
@@ -571,6 +584,7 @@ public class ForecastTableFunction implements TableFunction {
                 modelId, predicatedResult.getPositionCount(), outputLength),
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
+
       for (int columnIndex = 1, size = predicatedResult.getValueColumnCount();
           columnIndex <= size;
           columnIndex++) {
@@ -628,7 +642,15 @@ public class ForecastTableFunction implements TableFunction {
         throw new IoTDBRuntimeException(message, resp.getStatus().getCode());
       }
 
-      return SERDE.deserialize(ByteBuffer.wrap(resp.getForecastResult()));
+      TsBlock res = SERDE.deserialize(ByteBuffer.wrap(resp.getForecastResult()));
+      if (res.getValueColumnCount() != inputData.getValueColumnCount()) {
+        throw new IoTDBRuntimeException(
+            String.format(
+                "Model %s output %s columns, doesn't equal to specified %s",
+                modelId, res.getValueColumnCount(), inputData.getValueColumnCount()),
+            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      }
+      return res;
     }
   }
 

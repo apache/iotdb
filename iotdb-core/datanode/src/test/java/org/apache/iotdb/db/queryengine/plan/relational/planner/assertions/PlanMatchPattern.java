@@ -572,6 +572,10 @@ public final class PlanMatchPattern {
     return node(StreamSortNode.class, source).with(new SortMatcher(orderBy));
   }
 
+  public static PlanMatchPattern topK(PlanMatchPattern... source) {
+    return node(TopKNode.class, source);
+  }
+
   public static PlanMatchPattern topK(
       long count, List<Ordering> orderBy, boolean childrenDataInOrder, PlanMatchPattern source) {
     return node(TopKNode.class, source).with(new TopKMatcher(orderBy, count, childrenDataInOrder));

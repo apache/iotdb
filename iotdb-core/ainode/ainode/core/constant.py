@@ -30,7 +30,9 @@ AINODE_SYSTEM_FILE_NAME = "system.properties"
 # inference_rpc_address
 AINODE_INFERENCE_RPC_ADDRESS = "127.0.0.1"
 AINODE_INFERENCE_RPC_PORT = 10810
+# AINode folder structure
 AINODE_MODELS_DIR = "data/ainode/models"
+AINODE_BUILTIN_MODELS_DIR = "data/ainode/models/weights"  # For built-in models, we only need to store their weights and config.
 AINODE_SYSTEM_DIR = "data/ainode/system"
 AINODE_LOG_DIR = "logs/ainode"
 AINODE_THRIFT_COMPRESSION_ENABLED = False
@@ -41,6 +43,12 @@ AINODE_BUILD_INFO = "UNKNOWN"
 AINODE_ROOT_DIR = os.path.dirname(
     os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 )
+# connect IoTDB cluster
+AINODE_CLUSTER_INGRESS_ADDRESS = "127.0.0.1"
+AINODE_CLUSTER_INGRESS_PORT = 6667
+AINODE_CLUSTER_INGRESS_USERNAME = "root"
+AINODE_CLUSTER_INGRESS_PASSWORD = "root"
+AINODE_CLUSTER_INGRESS_TIME_ZONE = "UTC+8"
 
 # AINode log
 AINODE_LOG_FILE_NAMES = [
@@ -53,8 +61,11 @@ AINODE_LOG_FILE_LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING, logging.
 
 TRIAL_ID_PREFIX = "__trial_"
 DEFAULT_TRIAL_ID = TRIAL_ID_PREFIX + "0"
-DEFAULT_MODEL_FILE_NAME = "model.safetensors"
-DEFAULT_CONFIG_FILE_NAME = "config.json"
+
+MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"
+MODEL_CONFIG_FILE_IN_JSON = "config.json"
+DEFAULT_MODEL_FILE_NAME = "model.pt"
+DEFAULT_CONFIG_FILE_NAME = "config.yaml"
 DEFAULT_CHUNK_SIZE = 8192
 
 DEFAULT_RECONNECT_TIMEOUT = 20
@@ -134,33 +145,6 @@ class ModelInputName(Enum):
     TIME_STAMP_X = "time_stamp_x"
     TIME_STAMP_Y = "time_stamp_y"
     DEC_INP = "dec_inp"
-
-
-class BuiltInModelType(Enum):
-    # forecast models
-    ARIMA = "_arima"
-    HOLTWINTERS = "_holtwinters"
-    EXPONENTIAL_SMOOTHING = "_exponentialsmoothing"
-    NAIVE_FORECASTER = "_naiveforecaster"
-    STL_FORECASTER = "_stlforecaster"
-
-    # anomaly detection models
-    GAUSSIAN_HMM = "_gaussianhmm"
-    GMM_HMM = "_gmmhmm"
-    STRAY = "_stray"
-
-    # timerxl
-    TIMER_XL = "_timerxl"
-
-    # sundial
-    SUNDIAL = "_sundial"
-
-    @classmethod
-    def values(cls) -> List[str]:
-        values = []
-        for item in list(cls):
-            values.append(item.value)
-        return values
 
 
 class AttributeName(Enum):
