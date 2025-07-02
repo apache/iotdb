@@ -41,7 +41,6 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -375,13 +374,15 @@ public class PipeTsFileResourceManager {
         final File[] files = pipeDir.listFiles();
         for (final File file : files) {
           try {
-            increaseFileReference(
-                file, file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX), pipeName);
+            final boolean isTsFile = file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX);
+            increaseFileReference(file, isTsFile, pipeName);
+            if (isTsFile) {
+              result.add(file);
+            }
           } catch (final IOException e) {
             throw new PipeException(e.getMessage());
           }
         }
-        result.addAll(Arrays.asList(files));
       } else {
         return null;
       }
