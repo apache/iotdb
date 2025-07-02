@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -30,7 +29,6 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,12 +42,8 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataRegionAssigner.class);
 
-  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
-
   private final String dataRegionId;
   protected final Set<PipeRealtimeDataRegionExtractor> extractors = new CopyOnWriteArraySet<>();
-
-  private int counter = 0;
 
   private final AtomicReference<ProgressIndex> maxProgressIndexForRealtimeEvent =
       new AtomicReference<>(MinimumProgressIndex.INSTANCE);
@@ -70,16 +64,6 @@ public class PipeDataRegionAssigner implements Closeable {
     extractors.forEach(
         extractor -> {
           if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
-            // The frequency of progress reports is limited by the counter, while progress
-            // reports to TsFileInsertionEvent are not limited.
-            if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
-              if (counter < PIPE_CONFIG.getPipeNonForwardingEventsProgressReportInterval()) {
-                counter++;
-                return;
-              }
-              counter = 0;
-            }
-
             final ProgressReportEvent reportEvent =
                 new ProgressReportEvent(
                     extractor.getPipeName(),

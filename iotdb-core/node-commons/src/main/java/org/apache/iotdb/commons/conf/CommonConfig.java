@@ -213,8 +213,6 @@ public class CommonConfig {
   private int pipeSubtaskExecutorMaxThreadNum =
       Math.max(5, Runtime.getRuntime().availableProcessors() / 2);
 
-  private int pipeNonForwardingEventsProgressReportInterval = 100;
-
   private int pipeDataStructureTabletRowSize = 2048;
   private int pipeDataStructureTabletSizeInBytes = 2097152;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.3;
@@ -735,23 +733,6 @@ public class CommonConfig {
 
   public boolean isTimestampPrecisionCheckEnabled() {
     return timestampPrecisionCheckEnabled;
-  }
-
-  public int getPipeNonForwardingEventsProgressReportInterval() {
-    return pipeNonForwardingEventsProgressReportInterval;
-  }
-
-  public void setPipeNonForwardingEventsProgressReportInterval(
-      int pipeNonForwardingEventsProgressReportInterval) {
-    if (this.pipeNonForwardingEventsProgressReportInterval
-        == pipeNonForwardingEventsProgressReportInterval) {
-      return;
-    }
-    this.pipeNonForwardingEventsProgressReportInterval =
-        pipeNonForwardingEventsProgressReportInterval;
-    logger.info(
-        "pipeNonForwardingEventsProgressReportInterval is set to {}.",
-        pipeNonForwardingEventsProgressReportInterval);
   }
 
   public String getPipeHardlinkBaseDirName() {

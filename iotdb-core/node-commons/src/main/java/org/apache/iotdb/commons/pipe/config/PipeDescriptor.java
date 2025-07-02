@@ -199,14 +199,7 @@ public class PipeDescriptor {
                 .trim()));
   }
 
-  public static void loadPipeInternalConfig(CommonConfig config, TrimProperties properties)
-      throws IOException {
-    config.setPipeNonForwardingEventsProgressReportInterval(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_non_forwarding_events_progress_report_interval",
-                Integer.toString(config.getPipeNonForwardingEventsProgressReportInterval()))));
-
+  public static void loadPipeInternalConfig(CommonConfig config, TrimProperties properties) {
     config.setPipeFileReceiverFsyncEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
