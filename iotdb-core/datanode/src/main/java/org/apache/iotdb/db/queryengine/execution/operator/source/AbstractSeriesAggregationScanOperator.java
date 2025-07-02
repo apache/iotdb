@@ -194,11 +194,9 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         if (!b.isPresent()) {
           return b;
         }
-        if (!b.get()) {
-          if (readAndCalcFromFile()) {
-            updateResultTsBlock();
-            return Optional.of(true);
-          }
+        if (!b.get() && readAndCalcFromFile()) {
+          updateResultTsBlock();
+          return Optional.of(true);
         }
       }
 

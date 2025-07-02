@@ -98,30 +98,27 @@ public abstract class AbstractSeriesScanOperator extends AbstractDataSourceOpera
   }
 
   protected Optional<Boolean> readFileData() throws IOException {
-    while (true) {
-      Optional<Boolean> b = seriesScanUtil.hasNextFile();
-      if (!b.isPresent() || !b.get()) {
-        return b;
-      }
-      b = readChunkData();
-      if (!b.isPresent() || !b.get()) {
-        return b;
-      }
-      return Optional.of(true);
+    Optional<Boolean> b = seriesScanUtil.hasNextFile();
+    if (!b.isPresent() || !b.get()) {
+      return b;
     }
+    b = readChunkData();
+    if (!b.isPresent() || b.get()) {
+      return b;
+    }
+    return Optional.empty();
   }
 
   protected Optional<Boolean> readChunkData() throws IOException {
-    while (true) {
-      Optional<Boolean> b = seriesScanUtil.hasNextChunk();
-      if (!b.isPresent() || !b.get()) {
-        return b;
-      }
-
-      if (readPageData()) {
-        return Optional.of(true);
-      }
+    Optional<Boolean> b = seriesScanUtil.hasNextChunk();
+    if (!b.isPresent() || !b.get()) {
+      return b;
     }
+
+    if (readPageData()) {
+      return Optional.of(true);
+    }
+    return Optional.empty();
   }
 
   protected boolean readPageData() throws IOException {
