@@ -349,9 +349,8 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public void unpinTsFileResource(final TsFileResource resource, final String pipeName)
-      throws IOException {
-    final File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName);
+  public void unpinTsFile(final File tsFile, final String pipeName) throws IOException {
+    final File pinnedFile = getHardlinkOrCopiedFileInPipeDir(tsFile, pipeName);
     decreaseFileReference(pinnedFile, pipeName);
 
     final File modFile = new File(pinnedFile + ModificationFile.FILE_SUFFIX);
