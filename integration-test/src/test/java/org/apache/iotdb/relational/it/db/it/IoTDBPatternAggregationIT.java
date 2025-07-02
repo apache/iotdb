@@ -387,7 +387,7 @@ public class IoTDBPatternAggregationIT {
           "2025-01-01T00:07:00.000Z,2,2025-01-01T00:05:00.000Z,2025-01-01T00:07:00.000Z,2025-01-01T00:07:00.000Z,2025-01-01T00:05:00.000Z,10.0,30.0,"
         };
     tableResultSetEqualTest(
-        "SELECT m.time, m.match, m.firstTime, m.lastTime, m.maxTime, m.minTime "
+        "SELECT m.time, m.match, m.firstTime, m.lastTime, m.maxTime, m.minTime, m.firstVal, m.lastVal "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
             + "    MEASURES "
