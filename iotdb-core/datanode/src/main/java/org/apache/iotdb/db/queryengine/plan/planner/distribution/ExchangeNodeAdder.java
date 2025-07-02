@@ -61,7 +61,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQ
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
@@ -196,12 +195,6 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   }
 
   @Override
-  public PlanNode visitAlignedLastQueryScan(
-      AlignedLastQueryScanNode node, NodeGroupContext context) {
-    return processNoChildSourceNode(node, context);
-  }
-
-  @Override
   public PlanNode visitSeriesAggregationScan(
       SeriesAggregationScanNode node, NodeGroupContext context) {
     return processNoChildSourceNode(node, context);
@@ -263,7 +256,13 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   @Override
   public PlanNode visitLastQuery(LastQueryNode node, NodeGroupContext context) {
-    return processMultiChildNode(node, context);
+    // At this point, there should only be LastSeriesSourceNode in LastQueryNode, and all of them
+    // have been grouped in the rewriteSource stage by region.
+    context.putNodeDistribution(
+        node.getPlanNodeId(),
+        new NodeDistribution(
+            NodeDistributionType.SAME_WITH_ALL_CHILDREN, node.getRegionReplicaSetByFirstChild()));
+    return node;
   }
 
   @Override
