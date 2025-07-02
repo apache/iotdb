@@ -219,9 +219,9 @@ public class SeriesScanUtil implements Accountable {
   // file level methods
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public boolean hasNextFile() throws IOException {
+  public Optional<Boolean> hasNextFile() throws IOException {
     if (!paginationController.hasCurLimit()) {
-      return false;
+      return Optional.of(false);
     }
 
     if (!unSeqPageReaders.isEmpty()
@@ -241,21 +241,25 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (firstTimeSeriesMetadata != null) {
-      return true;
+      return Optional.of(true);
     }
 
-    while (firstTimeSeriesMetadata == null
-        && (orderUtils.hasNextSeqResource()
-            || orderUtils.hasNextUnseqResource()
-            || !seqTimeSeriesMetadata.isEmpty()
-            || !unSeqTimeSeriesMetadata.isEmpty())) {
+    boolean checked = false;
+    if (orderUtils.hasNextSeqResource()
+        || orderUtils.hasNextUnseqResource()
+        || !seqTimeSeriesMetadata.isEmpty()
+        || !unSeqTimeSeriesMetadata.isEmpty()) {
       // init first time series metadata whose startTime is minimum
       tryToUnpackAllOverlappedFilesToTimeSeriesMetadata();
       // filter file based on push-down conditions
       filterFirstTimeSeriesMetadata();
+      checked = true;
     }
 
-    return firstTimeSeriesMetadata != null;
+    if (checked && firstTimeSeriesMetadata == null) {
+      return Optional.empty();
+    }
+    return Optional.of(firstTimeSeriesMetadata != null);
   }
 
   private boolean currentFileOverlapped() {
@@ -301,9 +305,9 @@ public class SeriesScanUtil implements Accountable {
    *
    * @throws IllegalStateException illegal state
    */
-  public boolean hasNextChunk() throws IOException {
+  public Optional<Boolean> hasNextChunk() throws IOException {
     if (!paginationController.hasCurLimit()) {
-      return false;
+      return Optional.of(false);
     }
 
     if (!unSeqPageReaders.isEmpty()
@@ -319,18 +323,30 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (firstChunkMetadata != null) {
-      return true;
+      return Optional.of(true);
       // hasNextFile() has not been invoked
     } else if (firstTimeSeriesMetadata == null && cachedChunkMetadata.isEmpty()) {
-      return false;
+      return Optional.of(false);
     }
 
-    while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
+    Optional<Boolean> hasNextFileReturnValue = null;
+    while (firstChunkMetadata == null && hasNextFileReturnValue == null) {
+      if (cachedChunkMetadata.isEmpty()) {
+        hasNextFileReturnValue = hasNextFile();
+        if (!hasNextFileReturnValue.isPresent() || !hasNextFileReturnValue.get()) {
+          break;
+        }
+      }
       initFirstChunkMetadata();
       // filter chunk based on push-down conditions
       filterFirstChunkMetadata();
     }
-    return firstChunkMetadata != null;
+    if (hasNextFileReturnValue != null
+        && !hasNextFileReturnValue.isPresent()
+        && firstChunkMetadata == null) {
+      return hasNextFileReturnValue;
+    }
+    return Optional.of(firstChunkMetadata != null);
   }
 
   private void filterFirstChunkMetadata() {
