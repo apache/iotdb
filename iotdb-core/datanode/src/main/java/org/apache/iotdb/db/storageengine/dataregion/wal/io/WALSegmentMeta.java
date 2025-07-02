@@ -62,6 +62,10 @@ public class WALSegmentMeta {
     return headerSize;
   }
 
+  public List<Integer> getBuffersSize() {
+    return buffersSize;
+  }
+
   public long getSegmentSize() {
     return segmentSize;
   }

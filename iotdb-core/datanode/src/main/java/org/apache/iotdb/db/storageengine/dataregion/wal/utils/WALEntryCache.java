@@ -1,12 +1,13 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
-import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 
-import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
+import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -14,15 +15,17 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class WALEntryCache implements WALCache {
 
-  private Logger LOGGER = LoggerFactory.getLogger(WALEntryCache.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(WALEntryCache.class);
 
-  private final Cache<WALEntryPosition, ByteBuffer> bufferCache;
+  private final LoadingCache<WALEntryPosition, ByteBuffer> bufferCache;
   private final Set<Long> memTablesNeedSearch;
 
   public WALEntryCache(long maxSize, Set<Long> memTablesNeedSearch) {
@@ -40,20 +43,31 @@ public class WALEntryCache implements WALCache {
   }
 
   @Override
-  public ByteBuffer load(WALEntryPosition key) throws Exception {
-    return bufferCache.getIfPresent(key);
+  public ByteBuffer load(WALEntryPosition key) {
+    if (PipeConfig.getInstance().getWALCacheBatchLoadEnabled()) {
+      synchronized (key.getWalSegmentMeta()) {
+        return bufferCache.getAll(Collections.singleton(key)).get(key);
+      }
+    }
+
+    return bufferCache.get(key);
   }
 
   @Override
-  public ByteBuffer loadAll(WALEntryPosition walEntryPositions) {
-    return bufferCache.getAll(walEntryPositions);
+  public void invalidateAll() {
+    bufferCache.invalidateAll();
   }
 
-  class WALEntryCacheLoader implements CacheLoader<WALEntryPosition, ByteBuffer> {
+  public CacheStats stats() {
+    return bufferCache.stats();
+  }
+
+  private class WALEntryCacheLoader implements CacheLoader<WALEntryPosition, ByteBuffer> {
 
     @Override
     public @Nullable ByteBuffer load(@NonNull final WALEntryPosition key) throws Exception {
-      return key.read();
+      ByteBuffer buffer = key.getSegmentBuffer();
+      return WALCache.getEntryBySegment(key, buffer);
     }
 
     /** Batch load all wal entries in the file when any one key is absent. */
@@ -69,41 +83,39 @@ public class WALEntryCache implements WALCache {
 
         final long walFileVersionId = walEntryPosition.getWalFileVersionId();
 
-        // load one when wal file is not sealed
-        if (!walEntryPosition.isInSealedFile()) {
-          try {
-            loadedEntries.put(walEntryPosition, load(walEntryPosition));
-          } catch (final Exception e) {
-            LOGGER.info(
-                "Fail to cache wal entries from the wal file with version id {}",
-                walFileVersionId,
-                e);
-          }
-          continue;
-        }
+        long maxCacheSize = 1024 * 32;
+        try {
+          ByteBuffer segment = walEntryPosition.getSegmentBuffer();
+          List<Integer> list = walEntryPosition.getWalSegmentMeta().getBuffersSize();
+          int pos = 0;
+          for (int size : list) {
+            if (walEntryPosition.getPosition() < pos) {
+              pos += size;
+              continue;
+            }
+            segment.position(pos);
+            segment.limit(pos + size);
+            ByteBuffer buffer = segment.slice();
 
-        // batch load when wal file is sealed
-        long position = 0;
-        try (final WALByteBufReader walByteBufReader = new WALByteBufReader(walEntryPosition)) {
-          while (walByteBufReader.hasNext()) {
-            // see WALInfoEntry#serialize, entry type + memtable id + plan node type
-            final ByteBuffer buffer = walByteBufReader.next();
-
-            final int size = buffer.capacity();
             final WALEntryType type = WALEntryType.valueOf(buffer.get());
             final long memTableId = buffer.getLong();
-
-            if ((memTablesNeedSearch.contains(memTableId)
-                    || walEntryPosition.getPosition() == position)
+            if ((memTablesNeedSearch.contains(memTableId) || walEntryPosition.getPosition() == pos)
                 && type.needSearch()) {
               buffer.clear();
               loadedEntries.put(
                   new WALEntryPosition(
-                      walEntryPosition.getIdentifier(), walFileVersionId, position, size),
+                      walEntryPosition.getIdentifier(),
+                      walFileVersionId,
+                      pos,
+                      size,
+                      walEntryPosition.getWalSegmentMeta()),
                   buffer);
             }
-
-            position += size;
+            pos += size;
+            maxCacheSize -= size;
+            if (maxCacheSize <= 0) {
+              break;
+            }
           }
         } catch (final IOException e) {
           LOGGER.info(

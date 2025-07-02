@@ -604,15 +604,18 @@ public class WALBuffer extends AbstractWALBuffer {
           CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
         }
       }
-      if (currentWALFileWriter.getWalSegmentMeta() == null) {
-        logger.info(
-            "WALSegmentMeta is null, walFileVersionId: {}, currentWALFileWriter: {}",
-            walFileVersionId,
-            currentWALFileWriter);
-      }
 
       // notify all waiting listeners
       if (forceSuccess) {
+        if (currentWALFileWriter.getWalSegmentMeta() == null) {
+          logger.warn(
+              "WALSegmentMeta is null, walFileVersionId: {}, currentWALFileWriter: {}",
+              walFileVersionId,
+              currentWALFileWriter);
+        } else {
+          currentWALFileWriter.getWalSegmentMeta().setBuffersSize(info.metaData.getBuffersSize());
+        }
+
         long position = 0;
         for (WALFlushListener fsyncListener : info.fsyncListeners) {
           fsyncListener.succeed();

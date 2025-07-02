@@ -28,25 +28,15 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeModelFixedMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
-import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.tsfile.utils.Pair;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,7 +50,7 @@ public class WALInsertNodeCache {
   private static PipeModelFixedMemoryBlock walModelFixedMemory = null;
 
   // LRU cache, find ByteBuffer or InsertNode by WALEntryPosition
-  private final LoadingCache<WALEntryPosition, ByteBuffer> bufferCache;
+  private final WALCache bufferCache;
 
   private final Cache<WALEntryPosition, InsertNode> insertNodeCache;
 
@@ -68,7 +58,6 @@ public class WALInsertNodeCache {
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
 
   private volatile boolean hasPipeRunning = false;
-  private long batchLoadSize = 1 << 12;
 
   private WALInsertNodeCache() {
     if (walModelFixedMemory == null) {
@@ -77,16 +66,7 @@ public class WALInsertNodeCache {
 
     final long requestedAllocateSize = walModelFixedMemory.getMemoryUsageInBytes();
 
-    bufferCache =
-        Caffeine.newBuilder()
-            .maximumWeight(requestedAllocateSize / 2)
-            .weigher(
-                (Weigher<WALEntryPosition, ByteBuffer>)
-                    (position, buffer) -> {
-                      return position.getSize();
-                    })
-            .recordStats()
-            .build(new WALInsertNodeCacheLoader());
+    bufferCache = new WALSegmentCache(requestedAllocateSize);
 
     insertNodeCache =
         Caffeine.newBuilder()
@@ -151,7 +131,7 @@ public class WALInsertNodeCache {
       return insertNode;
     }
 
-    ByteBuffer buffer = bufferCache.getIfPresent(position);
+    ByteBuffer buffer = bufferCache.load(position);
 
     if (buffer == null) {
       throw new IllegalStateException();
@@ -194,9 +174,7 @@ public class WALInsertNodeCache {
 
   public ByteBuffer getByteBufferIfPossible(final WALEntryPosition position) {
     hasPipeRunning = true;
-    return PIPE_CONFIG.getWALCacheBatchLoadEnabled()
-        ? bufferCache.getAll(Collections.singleton(position)).get(position)
-        : bufferCache.getIfPresent(position);
+    return bufferCache.load(position);
   }
 
   public void cacheInsertNodeIfNeeded(
@@ -266,76 +244,6 @@ public class WALInsertNodeCache {
     memTablesNeedSearch.remove(memTableId);
   }
 
-  /////////////////////////// Cache Loader ///////////////////////////
-
-  class WALInsertNodeCacheLoader implements CacheLoader<WALEntryPosition, ByteBuffer> {
-
-    @Override
-    public @Nullable ByteBuffer load(@NonNull final WALEntryPosition key) throws Exception {
-      return key.read();
-    }
-
-    /** Batch load all wal entries in the file when any one key is absent. */
-    @Override
-    public @NonNull Map<@NonNull WALEntryPosition, @NonNull ByteBuffer> loadAll(
-        @NonNull final Iterable<? extends @NonNull WALEntryPosition> walEntryPositions) {
-      final Map<WALEntryPosition, ByteBuffer> loadedEntries = new HashMap<>();
-
-      for (final WALEntryPosition walEntryPosition : walEntryPositions) {
-        if (loadedEntries.containsKey(walEntryPosition) || !walEntryPosition.canRead()) {
-          continue;
-        }
-
-        final long walFileVersionId = walEntryPosition.getWalFileVersionId();
-
-        // load one when wal file is not sealed
-        if (!walEntryPosition.isInSealedFile()) {
-          try {
-            loadedEntries.put(walEntryPosition, load(walEntryPosition));
-          } catch (final Exception e) {
-            LOGGER.info(
-                "Fail to cache wal entries from the wal file with version id {}",
-                walFileVersionId,
-                e);
-          }
-          continue;
-        }
-
-        // batch load when wal file is sealed
-        long position = 0;
-        try (final WALByteBufReader walByteBufReader = new WALByteBufReader(walEntryPosition)) {
-          while (walByteBufReader.hasNext()) {
-            // see WALInfoEntry#serialize, entry type + memtable id + plan node type
-            final ByteBuffer buffer = walByteBufReader.next();
-
-            final int size = buffer.capacity();
-            final WALEntryType type = WALEntryType.valueOf(buffer.get());
-            final long memTableId = buffer.getLong();
-
-            if ((memTablesNeedSearch.contains(memTableId)
-                    || walEntryPosition.getPosition() == position)
-                && type.needSearch()) {
-              buffer.clear();
-              loadedEntries.put(
-                  new WALEntryPosition(
-                      walEntryPosition.getIdentifier(), walFileVersionId, position, size),
-                  buffer);
-            }
-
-            position += size;
-          }
-        } catch (final IOException e) {
-          LOGGER.info(
-              "Fail to cache wal entries from the wal file with version id {}",
-              walFileVersionId,
-              e);
-        }
-      }
-
-      return loadedEntries;
-    }
-  }
-
   /////////////////////////// Singleton ///////////////////////////
 
   public static WALInsertNodeCache getInstance() {
@@ -352,11 +260,6 @@ public class WALInsertNodeCache {
   }
 
   /////////////////////////// Test Only ///////////////////////////
-
-  @TestOnly
-  boolean contains(WALEntryPosition position) {
-    return bufferCache.getIfPresent(position) != null;
-  }
 
   @TestOnly
   public void clear() {

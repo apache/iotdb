@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALInputStream;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALSegmentMeta;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 
+import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,11 +61,17 @@ public class WALEntryPosition {
 
   public WALEntryPosition() {}
 
-  public WALEntryPosition(String identifier, long walFileVersionId, long position, int size) {
+  public WALEntryPosition(
+      String identifier,
+      long walFileVersionId,
+      long position,
+      int size,
+      WALSegmentMeta segmentMeta) {
     this.identifier = identifier;
     this.walFileVersionId = walFileVersionId;
     this.position = position;
     this.size = size;
+    this.walSegmentMeta = segmentMeta;
   }
 
   /**
@@ -104,7 +111,7 @@ public class WALEntryPosition {
    *
    * @throws IOException failing to read.
    */
-  ByteBuffer read() throws IOException {
+  ByteBuffer readEntry() throws IOException {
     if (!canRead()) {
       throw new IOException("Target file hasn't been specified.");
     }
@@ -131,7 +138,7 @@ public class WALEntryPosition {
    *
    * @throws IOException failing to open the file channel.
    */
-  public FileChannel openReadFileChannel() throws IOException {
+  private FileChannel openReadFileChannel() throws IOException {
     if (isInSealedFile()) {
       walFile = walNode.getWALFile(walFileVersionId);
       return FileChannel.open(walFile.toPath(), StandardOpenOption.READ);
@@ -148,6 +155,40 @@ public class WALEntryPosition {
           throw e;
         }
       }
+    }
+  }
+
+  public ByteBuffer getSegmentBuffer() throws IOException {
+    if (walSegmentMeta == null) {
+      throw new IOException("WAL segment meta is not set.");
+    }
+    try (FileChannel channel = openReadFileChannel()) {
+      channel.position(walSegmentMeta.getPosition());
+      final ByteBuffer segmentHeaderWithoutCompressedSizeBuffer =
+          ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
+      final ByteBuffer compressedSizeBuffer = ByteBuffer.allocate(Integer.BYTES);
+      final ByteBuffer compressedDataBuffer =
+          ByteBuffer.allocate((int) walSegmentMeta.getSegmentSize());
+
+      WALInputStream.SegmentInfo segmentInfo =
+          WALInputStream.getNextSegmentInfo(
+              channel, segmentHeaderWithoutCompressedSizeBuffer, compressedSizeBuffer);
+      WALInputStream.readWALBufferFromChannel(compressedDataBuffer, channel);
+
+      final ByteBuffer uncompressedDataBuffer = ByteBuffer.allocate(segmentInfo.uncompressedSize);
+      WALInputStream.uncompressWALBuffer(
+          compressedDataBuffer,
+          uncompressedDataBuffer,
+          IUnCompressor.getUnCompressor(segmentInfo.compressionType));
+      return uncompressedDataBuffer;
+    } catch (Exception e) {
+      LOGGER.error(
+          "Unexpected error when reading a wal segment from {}@{} with size {}",
+          walFile,
+          position,
+          size,
+          e);
+      throw new IOException(e);
     }
   }
 
@@ -213,6 +254,10 @@ public class WALEntryPosition {
     if (cache != null && value instanceof InsertNode) {
       cache.cacheInsertNodeIfNeeded(this, (InsertNode) value);
     }
+  }
+
+  public WALSegmentMeta getWalSegmentMeta() {
+    return walSegmentMeta;
   }
 
   public long getPosition() {
