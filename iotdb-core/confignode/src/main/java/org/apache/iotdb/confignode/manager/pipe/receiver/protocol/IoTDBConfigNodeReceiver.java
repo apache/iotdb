@@ -840,7 +840,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 true)
             .getStatus();
       case RenameTable:
-        configManager
+        return configManager
             .getProcedureManager()
             .executeWithoutDuplicate(
                 ((RenameTablePlan) plan).getDatabase(),
@@ -855,7 +855,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((RenameTablePlan) plan).getNewName(),
                     true));
       case RenameView:
-        configManager
+        return configManager
             .getProcedureManager()
             .executeWithoutDuplicate(
                 ((RenameViewPlan) plan).getDatabase(),
