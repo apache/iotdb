@@ -89,13 +89,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   public PipeTsFileInsertionEvent(final TsFileResource resource, final boolean isLoaded) {
     // The modFile must be copied before the event is assigned to the listening pipes
-    this(
-        resource, null, true, isLoaded, false, null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(resource, true, isLoaded, false, null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   public PipeTsFileInsertionEvent(
       final TsFileResource resource,
-      final File tsFile,
       final boolean isWithMod,
       final boolean isLoaded,
       final boolean isGeneratedByHistoricalExtractor,
@@ -113,7 +111,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     // For events created for source, the tsFile is inherited from the assigner, because the
     // original tsFile may be gone, and we need to get the assigner's hard-linked tsFile to
     // hard-link it to each pipe dir
-    this.tsFile = Objects.isNull(tsFile) ? resource.getTsFile() : tsFile;
+    this.tsFile = resource.getTsFile();
 
     final ModificationFile modFile = resource.getModFile();
     this.isWithMod = isWithMod && modFile.exists();
@@ -337,7 +335,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final long endTime) {
     return new PipeTsFileInsertionEvent(
         resource,
-        tsFile,
         isWithMod,
         isLoaded,
         isGeneratedByHistoricalExtractor,
