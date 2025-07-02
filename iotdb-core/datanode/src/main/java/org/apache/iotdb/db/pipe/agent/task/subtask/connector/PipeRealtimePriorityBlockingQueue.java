@@ -228,11 +228,16 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     for (final Map.Entry<CommitterKey, Set<PipeTsFileInsertionEvent>> entry :
         eventsToBeRemovedGroupByCommitterKey.entrySet()) {
       final CommitterKey committerKey = entry.getKey();
+      final PipeTsFileInsertionEvent anyEvent = entry.getValue().stream().findFirst().orElse(null);
       final Set<PipeTsFileInsertionEvent> newEvents = new HashSet<>();
       for (int i = 0; i < targetFiles.size(); i++) {
         newEvents.add(
             new PipeCompactedTsFileInsertionEvent(
-                committerKey, entry.getValue(), targetFiles.get(i), i == targetFiles.size() - 1));
+                committerKey,
+                entry.getValue(),
+                anyEvent,
+                targetFiles.get(i),
+                i == targetFiles.size() - 1));
       }
       eventsToBeAddedGroupByCommitterKey.put(committerKey, newEvents);
     }
