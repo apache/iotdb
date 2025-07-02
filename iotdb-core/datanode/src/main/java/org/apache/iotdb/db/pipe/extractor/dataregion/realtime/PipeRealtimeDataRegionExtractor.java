@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SegmentProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -200,6 +202,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     pipeName = environment.getPipeName();
     dataRegionId = String.valueOf(environment.getRegionId());
     pipeTaskMeta = environment.getPipeTaskMeta();
+
+    if (pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex) {
+      pipeTaskMeta.updateProgressIndex(new SegmentProgressIndex());
+    }
 
     // Metrics related to TsFileEpoch are managed in PipeExtractorMetrics. These metrics are
     // indexed by the taskID of IoTDBDataRegionExtractor. To avoid PipeRealtimeDataRegionExtractor
