@@ -53,8 +53,7 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
             "Pipe hardlink dir found, deleting it: {}, result: {}",
             pipeHardLinkDir,
             // For child directories, we need them to recover each pipe's progress
-            // Hence we do not delete them here, only delete the child files (from older version ||
-            // assigner pinned tsFiles)
+            // Hence we do not delete them here, only delete the child files (older version)
             FileUtils.deleteFileChildrenQuietly(pipeHardLinkDir));
       }
     }
