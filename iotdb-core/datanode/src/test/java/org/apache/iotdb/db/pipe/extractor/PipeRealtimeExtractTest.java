@@ -250,7 +250,6 @@ public class PipeRealtimeExtractTest {
   }
 
   private Future<?> write2DataRegion(int writeNum, String dataRegionId, int startNum) {
-
     File dataRegionDir =
         new File(tsFileDir.getPath() + File.separator + dataRegionId + File.separator + "0");
     boolean ignored = dataRegionDir.mkdirs();

@@ -85,56 +85,6 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
   }
 
   @Override
-  public Event supply() {
-    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
-
-    while (realtimeEvent != null) {
-      while (!CachedSchemaPatternMatcher.match(realtimeEvent, this)) {
-        realtimeEvent.decreaseReferenceCount(
-            PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
-        realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
-      }
-
-      Event suppliedEvent = null;
-
-      if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
-        suppliedEvent = supplyHeartbeat(realtimeEvent);
-      } else if (realtimeEvent.getEvent() instanceof PipeSchemaRegionWritePlanEvent
-          || realtimeEvent.getEvent() instanceof ProgressReportEvent) {
-        suppliedEvent = supplyDirectly(realtimeEvent);
-      } else if (realtimeEvent.increaseReferenceCount(
-          PipeRealtimeDataRegionTsFileExtractor.class.getName())) {
-        suppliedEvent = realtimeEvent.getEvent();
-      } else {
-        // if the event's reference count can not be increased, it means the data represented by
-        // this event is not reliable anymore. the data has been lost. we simply discard this event
-        // and report the exception to PipeRuntimeAgent.
-        final String errorMessage =
-            String.format(
-                "Event %s can not be supplied because "
-                    + "the reference count can not be increased, "
-                    + "the data represented by this event is lost",
-                realtimeEvent.getEvent());
-        LOGGER.error(errorMessage);
-        PipeDataNodeAgent.runtime()
-            .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
-      }
-
-      realtimeEvent.decreaseReferenceCount(
-          PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
-
-      if (suppliedEvent != null) {
-        return suppliedEvent;
-      }
-
-      realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
-    }
-
-    // means the pending queue is empty.
-    return null;
-  }
-
-  @Override
   protected Event doSupply(final PipeRealtimeEvent realtimeEvent) {
     if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
       return supplyHeartbeat(realtimeEvent);
