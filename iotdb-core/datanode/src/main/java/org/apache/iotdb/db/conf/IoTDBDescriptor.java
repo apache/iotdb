@@ -1791,6 +1791,9 @@ public class IoTDBDescriptor {
     TSFileDescriptor.getInstance()
         .getConfig()
         .setEncryptType(properties.getProperty("encrypt_type", "UNENCRYPTED"));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptKeyFromToken(System.getenv("user_encrypt_token"));
   }
 
   // Mqtt related

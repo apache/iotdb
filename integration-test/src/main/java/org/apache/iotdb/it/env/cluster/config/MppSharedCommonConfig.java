@@ -83,9 +83,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
-    cnConfig.setProperty("encrypt_key_path", encryptKeyPath);
-    dnConfig.setProperty("encrypt_key_path", encryptKeyPath);
+  public CommonConfig setSaveEncryptKey(boolean saveEncryptKey) {
+    cnConfig.setProperty("encrypt_key_path", String.valueOf(saveEncryptKey));
+    dnConfig.setProperty("encrypt_key_path", String.valueOf(saveEncryptKey));
     return this;
   }
 

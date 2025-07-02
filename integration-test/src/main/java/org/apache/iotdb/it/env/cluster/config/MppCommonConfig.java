@@ -104,8 +104,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
-    setProperty("encrypt_key_path", encryptKeyPath);
+  public CommonConfig setSaveEncryptKey(boolean saveEncryptKey) {
+    setProperty("save_encrypt_key", String.valueOf(saveEncryptKey));
     return this;
   }
 

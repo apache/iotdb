@@ -38,7 +38,7 @@ public interface CommonConfig {
 
   CommonConfig setEncryptType(String encryptType);
 
-  CommonConfig setEncryptKeyPath(String encryptKeyPath);
+  CommonConfig setSaveEncryptKey(boolean saveEncryptKey);
 
   CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
 

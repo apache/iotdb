@@ -403,6 +403,9 @@ public class CommonConfig {
 
   private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
+  /** Whether to save the encrypt key of TsFile in IoTDB, default value is false. */
+  private boolean saveEncryptKey = false;
+
   CommonConfig() {
     // Empty constructor
   }
@@ -441,6 +444,14 @@ public class CommonConfig {
 
   public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
+  }
+
+  public boolean getSaveEncryptKey() {
+    return saveEncryptKey;
+  }
+
+  public void setSaveEncryptKey(boolean saveEncryptKey) {
+    this.saveEncryptKey = saveEncryptKey;
   }
 
   public String getOpenIdProviderUrl() {

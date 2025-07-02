@@ -60,7 +60,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
+  public CommonConfig setSaveEncryptKey(boolean saveEncryptKey) {
     return this;
   }
 
