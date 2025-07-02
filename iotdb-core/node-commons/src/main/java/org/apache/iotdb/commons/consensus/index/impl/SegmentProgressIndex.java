@@ -44,7 +44,9 @@ import java.util.Objects;
  * #latestProgressIndex} and none of the {@link #brokenProgressIndexes}es has its {@link Pair#left}
  * <= its {@link ProgressIndex} <= {@link Pair#right}. If the {@link #brokenProgressIndexes} {@link
  * List#isEmpty()}, the progress Index behave just like the {@link #latestProgressIndex}. It is only
- * used in the realtime data region extractor to handle downgrading.
+ * used in the realtime data region extractor's {@link
+ * org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta} to handle downgrading, and will never
+ * be in the insertNodes or tsFiles.
  */
 public class SegmentProgressIndex extends ProgressIndex {
   private static final long INSTANCE_SIZE =
@@ -106,7 +108,8 @@ public class SegmentProgressIndex extends ProgressIndex {
             .noneMatch(
                 pair ->
                     pair.getRight().isAfter(progressIndex)
-                        && progressIndex.isAfter(pair.getLeft()));
+                        && (progressIndex.isAfter(pair.getLeft())
+                            || progressIndex.equals(pair.getLeft())));
   }
 
   @Override
