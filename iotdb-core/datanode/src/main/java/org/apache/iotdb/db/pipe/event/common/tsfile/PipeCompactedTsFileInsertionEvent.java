@@ -21,7 +21,9 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -142,8 +144,22 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
 
   @Override
   public long getCommitId() {
-    throw new UnsupportedOperationException(
-        "PipeCompactedTsFileInsertionEvent does not support getCommitId.");
+    // max of commitIds is used as the commit id for this event
+    return commitIds.stream()
+        .max(Long::compareTo)
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "No commit IDs found in PipeCompactedTsFileInsertionEvent."));
+  }
+
+  // return dummy events for each commit ID (except the max one)
+  @Override
+  public List<EnrichedEvent> getDummyEventsForCommitIds() {
+    return commitIds.stream()
+        .filter(commitId -> commitId != getCommitId())
+        .map(PipeCompactedTsFileInsertionDummyEvent::new)
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -164,6 +180,74 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         PipeTsFileEpochProgressIndexKeeper.getInstance()
             .eliminateProgressIndex(dataRegionId, originFilePath);
       }
+    }
+  }
+
+  public class PipeCompactedTsFileInsertionDummyEvent extends EnrichedEvent {
+
+    private final long commitId;
+
+    public PipeCompactedTsFileInsertionDummyEvent(final long commitId) {
+      super(
+          PipeCompactedTsFileInsertionEvent.this.pipeName,
+          PipeCompactedTsFileInsertionEvent.this.creationTime,
+          PipeCompactedTsFileInsertionEvent.this.pipeTaskMeta,
+          null, // PipePattern is not needed for dummy event
+          Long.MIN_VALUE,
+          Long.MAX_VALUE);
+      this.commitId = commitId; // Use the commitId passed in
+      this.shouldReportOnCommit = false; // Dummy events do not report progress
+    }
+
+    @Override
+    public long getCommitId() {
+      return commitId;
+    }
+
+    @Override
+    public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+      return true;
+    }
+
+    @Override
+    public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+      return true;
+    }
+
+    @Override
+    public ProgressIndex getProgressIndex() {
+      return MinimumProgressIndex.INSTANCE;
+    }
+
+    @Override
+    public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+        String pipeName,
+        long creationTime,
+        PipeTaskMeta pipeTaskMeta,
+        PipePattern pattern,
+        long startTime,
+        long endTime) {
+      return null;
+    }
+
+    @Override
+    public boolean isGeneratedByPipe() {
+      return false;
+    }
+
+    @Override
+    public boolean mayEventTimeOverlappedWithTimeRange() {
+      return false;
+    }
+
+    @Override
+    public boolean mayEventPathsOverlappedWithPattern() {
+      return false;
+    }
+
+    @Override
+    public String coreReportMessage() {
+      return "PipeCompactedTsFileInsertionDummyEvent";
     }
   }
 }

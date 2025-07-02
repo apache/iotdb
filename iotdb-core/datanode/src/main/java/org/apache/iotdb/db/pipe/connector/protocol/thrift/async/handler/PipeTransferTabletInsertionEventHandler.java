@@ -104,7 +104,7 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
               ? ((EnrichedEvent) event).coreReportMessage()
               : event.toString(),
           event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitterKey() : null,
-          event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitId() : null,
+          event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitIds() : null,
           exception);
     } finally {
       connector.addFailureEventToRetryQueue(event);

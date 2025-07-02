@@ -404,6 +404,10 @@ public abstract class EnrichedEvent implements Event {
     return commitId;
   }
 
+  public List<EnrichedEvent> getDummyEventsForCommitIds() {
+    return Collections.emptyList();
+  }
+
   public List<Long> getCommitIds() {
     return Collections.singletonList(commitId);
   }
