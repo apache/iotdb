@@ -121,7 +121,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private volatile boolean hasBeenStarted = false;
 
   private Queue<TsFileResource> pendingQueue;
-  private List<File> tsFileList;
+  private Queue<File> tsFileList;
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -532,12 +532,21 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       start();
     }
 
-    if (Objects.isNull(pendingQueue)) {
+    if (Objects.isNull(pendingQueue) && Objects.isNull(tsFileList)) {
       return null;
     }
 
-    final TsFileResource resource = pendingQueue.poll();
-    if (resource == null) {
+    TsFileResource resource = null;
+    if (Objects.nonNull(pendingQueue)) {
+      resource = pendingQueue.poll();
+    }
+
+    File tsFile = null;
+    if (Objects.nonNull(tsFileList)) {
+      tsFile = tsFileList.poll();
+    }
+
+    if (resource == null && tsFile == null) {
       final PipeTerminateEvent terminateEvent =
           new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
       if (!terminateEvent.increaseReferenceCount(

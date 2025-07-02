@@ -40,10 +40,11 @@ import javax.annotation.Nullable;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeTsFileResourceManager {
@@ -359,8 +360,8 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public List<File> recoverTsFile(final @Nonnull String pipeName) {
-    final List<File> result = new ArrayList<>();
+  public Queue<File> recoverTsFile(final @Nonnull String pipeName) {
+    final Queue<File> result = new ArrayDeque<>();
     final String suffix =
         File.separator
             + PipeConfig.getInstance().getPipeHardlinkBaseDirName()
