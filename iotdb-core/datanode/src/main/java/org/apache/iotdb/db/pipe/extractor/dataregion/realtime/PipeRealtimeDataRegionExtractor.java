@@ -376,16 +376,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   @Override
   public Event supply() {
-    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+    PipeRealtimeEvent realtimeEvent = getNextRealtimeEvent();
 
     while (realtimeEvent != null) {
-      while (!CachedSchemaPatternMatcher.match(realtimeEvent, this)
-          || !coarseFilterEvent(realtimeEvent)) {
-        realtimeEvent.decreaseReferenceCount(
-            PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
-        realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
-      }
-
       final Event suppliedEvent = doSupply(realtimeEvent);
 
       realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
@@ -393,10 +386,26 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       if (suppliedEvent != null) {
         return suppliedEvent;
       }
+
+      realtimeEvent = getNextRealtimeEvent();
     }
 
     // means the pending queue is empty.
     return null;
+  }
+
+  private PipeRealtimeEvent getNextRealtimeEvent() {
+    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+
+    while (realtimeEvent != null
+        && (!CachedSchemaPatternMatcher.match(realtimeEvent, this)
+            || !coarseFilterEvent(realtimeEvent))) {
+      realtimeEvent.decreaseReferenceCount(
+          PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
+      realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+    }
+
+    return realtimeEvent;
   }
 
   // This may require some time thus we leave it for processor thread instead of writing thread
