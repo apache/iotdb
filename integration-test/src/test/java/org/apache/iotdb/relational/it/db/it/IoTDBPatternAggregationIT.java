@@ -85,6 +85,14 @@ public class IoTDBPatternAggregationIT {
         "INSERT INTO t2 VALUES (2025-01-01T00:02:00, 6)",
         "INSERT INTO t2 VALUES (2025-01-01T00:03:00, 5)",
         "INSERT INTO t2 VALUES (2025-01-01T00:04:00, 13)",
+
+        // TABLE: t3
+        "CREATE TABLE t3(totalprice DOUBLE FIELD)",
+        "INSERT INTO t3 VALUES (2025-01-01T00:01:00, 4)",
+        "INSERT INTO t3 VALUES (2025-01-01T00:02:00, 6)",
+        "INSERT INTO t3 VALUES (2025-01-01T00:03:00, 7)",
+        "INSERT INTO t3 VALUES (2025-01-01T00:04:00, 7)",
+        "INSERT INTO t3 VALUES (2025-01-01T00:05:00, -8)",
       };
 
   private static void insertData() {
@@ -365,16 +373,18 @@ public class IoTDBPatternAggregationIT {
   @Test
   public void test5() {
     String[] expectedHeader =
-        new String[] {"time", "match", "firstTime", "lastTime", "maxTime", "minTime"};
+        new String[] {
+          "time", "match", "firstTime", "lastTime", "maxTime", "minTime", "firstVal", "lastVal"
+        };
     String[] retArray =
         new String[] {
-          "2025-01-01T00:01:00.000Z,1,2025-01-01T00:01:00.000Z,2025-01-01T00:01:00.000Z,2025-01-01T00:01:00.000Z,2025-01-01T00:01:00.000Z,",
-          "2025-01-01T00:02:00.000Z,1,2025-01-01T00:01:00.000Z,2025-01-01T00:02:00.000Z,2025-01-01T00:02:00.000Z,2025-01-01T00:01:00.000Z,",
-          "2025-01-01T00:03:00.000Z,1,2025-01-01T00:01:00.000Z,2025-01-01T00:03:00.000Z,2025-01-01T00:03:00.000Z,2025-01-01T00:01:00.000Z,",
-          "2025-01-01T00:04:00.000Z,1,2025-01-01T00:01:00.000Z,2025-01-01T00:04:00.000Z,2025-01-01T00:04:00.000Z,2025-01-01T00:01:00.000Z,",
-          "2025-01-01T00:05:00.000Z,2,2025-01-01T00:05:00.000Z,2025-01-01T00:05:00.000Z,2025-01-01T00:05:00.000Z,2025-01-01T00:05:00.000Z,",
-          "2025-01-01T00:06:00.000Z,2,2025-01-01T00:05:00.000Z,2025-01-01T00:06:00.000Z,2025-01-01T00:06:00.000Z,2025-01-01T00:05:00.000Z,",
-          "2025-01-01T00:07:00.000Z,2,2025-01-01T00:05:00.000Z,2025-01-01T00:07:00.000Z,2025-01-01T00:07:00.000Z,2025-01-01T00:05:00.000Z,",
+          "2025-01-01T00:01:00.000Z,1,2025-01-01T00:01:00.000Z,2025-01-01T00:01:00.000Z,2025-01-01T00:01:00.000Z,2025-01-01T00:01:00.000Z,10.0,10.0,",
+          "2025-01-01T00:02:00.000Z,1,2025-01-01T00:01:00.000Z,2025-01-01T00:02:00.000Z,2025-01-01T00:02:00.000Z,2025-01-01T00:01:00.000Z,10.0,20.0,",
+          "2025-01-01T00:03:00.000Z,1,2025-01-01T00:01:00.000Z,2025-01-01T00:03:00.000Z,2025-01-01T00:03:00.000Z,2025-01-01T00:01:00.000Z,10.0,30.0,",
+          "2025-01-01T00:04:00.000Z,1,2025-01-01T00:01:00.000Z,2025-01-01T00:04:00.000Z,2025-01-01T00:04:00.000Z,2025-01-01T00:01:00.000Z,10.0,40.0,",
+          "2025-01-01T00:05:00.000Z,2,2025-01-01T00:05:00.000Z,2025-01-01T00:05:00.000Z,2025-01-01T00:05:00.000Z,2025-01-01T00:05:00.000Z,10.0,10.0,",
+          "2025-01-01T00:06:00.000Z,2,2025-01-01T00:05:00.000Z,2025-01-01T00:06:00.000Z,2025-01-01T00:06:00.000Z,2025-01-01T00:05:00.000Z,10.0,20.0,",
+          "2025-01-01T00:07:00.000Z,2,2025-01-01T00:05:00.000Z,2025-01-01T00:07:00.000Z,2025-01-01T00:07:00.000Z,2025-01-01T00:05:00.000Z,10.0,30.0,"
         };
     tableResultSetEqualTest(
         "SELECT m.time, m.match, m.firstTime, m.lastTime, m.maxTime, m.minTime "
@@ -385,7 +395,9 @@ public class IoTDBPatternAggregationIT {
             + "      FIRST_BY(time, totalprice) AS firstTime, "
             + "      LAST_BY(time, totalprice) AS lastTime, "
             + "      MAX_BY(time, totalprice) AS maxTime, "
-            + "      MIN_BY(time, totalprice) AS minTime "
+            + "      MIN_BY(time, totalprice) AS minTime, "
+            + "      FIRST(totalprice) AS firstVal, "
+            + "      LAST(totalprice) AS lastVal "
             + "    ALL ROWS PER MATCH "
             + "    PATTERN (A B C D?) "
             + "    DEFINE "
@@ -393,8 +405,56 @@ public class IoTDBPatternAggregationIT {
             + "      B AS totalprice = 20, "
             + "      C AS totalprice = 30, "
             + "      D AS totalprice = 40 "
-            + ") AS m "
-            + "ORDER BY m.match, m.time",
+            + ") AS m ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void test6() {
+    String[] expectedHeader =
+        new String[] {
+          "time", "match", "mode", "extreme", "avg", "var_0", "var_1", "var_2", "std_0", "std_1",
+          "std_2"
+        };
+    String[] retArray =
+        new String[] {
+          // [4]
+          "2025-01-01T00:01:00.000Z,1,4.0,4.0,4.0,0.0,0.0,0.0,0.0,0.0,0.0,",
+          // [4, 6]
+          "2025-01-01T00:02:00.000Z,1,4.0,6.0,5.0,2.0,2.0,1.0,1.414214,1.414214,1.0,",
+          // [4, 6, 7]
+          "2025-01-01T00:03:00.000Z,1,4.0,7.0,5.666667,2.333333,2.333333,1.555556,1.527525,1.527525,1.247219,",
+          // [4, 6, 7, 7]
+          "2025-01-01T00:04:00.000Z,1,7.0,7.0,6.0,2.0,2.0,1.5,1.414214,1.414214,1.224745,",
+          // [4, 6, 7, 7, -8]
+          "2025-01-01T00:05:00.000Z,1,7.0,-8.0,3.2,40.7,40.7,32.56,6.379655,6.379655,5.706137,"
+        };
+
+    tableResultSetEqualTest(
+        "SELECT m.time, m.match, m.mode, m.extreme, "
+            + "ROUND(m.avg, 6) AS avg, "
+            + "ROUND(m.var_0, 6) AS var_0, ROUND(m.var_1, 6) AS var_1, ROUND(m.var_2, 6) AS var_2, "
+            + "ROUND(m.std_0, 6) AS std_0, ROUND(m.std_1, 6) AS std_1, ROUND(m.std_2, 6) AS std_2 "
+            + "FROM t3 "
+            + "MATCH_RECOGNIZE ( "
+            + "    MEASURES "
+            + "      MATCH_NUMBER() AS match, "
+            + "      MODE(totalprice) AS mode, "
+            + "      EXTREME(totalprice) AS extreme, "
+            + "      AVG(totalprice) AS avg, "
+            + "      VARIANCE(totalprice) AS var_0, "
+            + "      VAR_SAMP(totalprice) AS var_1, "
+            + "      VAR_POP(totalprice) AS var_2, "
+            + "      STDDEV(totalprice) AS std_0, "
+            + "      STDDEV_SAMP(totalprice) AS std_1, "
+            + "      STDDEV_POP(totalprice) AS std_2 "
+            + "    ALL ROWS PER MATCH "
+            + "    PATTERN (A+) "
+            + "    DEFINE "
+            + "      A AS true "
+            + ") AS m ",
         expectedHeader,
         retArray,
         DATABASE_NAME);
