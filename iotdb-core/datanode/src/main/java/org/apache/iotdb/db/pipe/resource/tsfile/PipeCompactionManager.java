@@ -25,12 +25,10 @@ import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeRealtimePriorit
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import java.io.File;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.stream.Collectors;
 
 public class PipeCompactionManager {
 
@@ -54,11 +52,8 @@ public class PipeCompactionManager {
       final List<TsFileResource> seqFileResources,
       final List<TsFileResource> unseqFileResources,
       final List<TsFileResource> targetFileResources) {
-    final Set<File> sourceFiles = new HashSet<>();
-    seqFileResources.forEach(tsFileResource -> sourceFiles.add(tsFileResource.getTsFile()));
-    unseqFileResources.forEach(tsFileResource -> sourceFiles.add(tsFileResource.getTsFile()));
-    final Set<File> targetFiles =
-        targetFileResources.stream().map(TsFileResource::getTsFile).collect(Collectors.toSet());
+    final Set<TsFileResource> sourceFileResources = new HashSet<>(seqFileResources);
+    sourceFileResources.addAll(unseqFileResources);
 
     for (final PipeConnectorSubtaskLifeCycle lifeCycle : pipeConnectorSubtaskLifeCycles) {
       final UnboundedBlockingPendingQueue<Event> pendingQueue = lifeCycle.getPendingQueue();
@@ -66,7 +61,8 @@ public class PipeCompactionManager {
       if (pendingQueue instanceof PipeRealtimePriorityBlockingQueue) {
         final PipeRealtimePriorityBlockingQueue realtimePriorityBlockingQueue =
             (PipeRealtimePriorityBlockingQueue) pendingQueue;
-        realtimePriorityBlockingQueue.replace(dataRegionId, sourceFiles, targetFiles);
+        realtimePriorityBlockingQueue.replace(
+            dataRegionId, sourceFileResources, targetFileResources);
       }
     }
   }

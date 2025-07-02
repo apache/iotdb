@@ -65,27 +65,27 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
-  private final TsFileResource resource;
-  private File tsFile;
-  private long extractTime = 0;
+  protected final TsFileResource resource;
+  protected File tsFile;
+  protected long extractTime = 0;
 
   // This is true iff the modFile exists and should be transferred
-  private boolean isWithMod;
-  private File modFile;
+  protected boolean isWithMod;
+  protected File modFile;
 
-  private final boolean isLoaded;
-  private final boolean isGeneratedByPipe;
-  private final boolean isGeneratedByPipeConsensus;
-  private final boolean isGeneratedByHistoricalExtractor;
+  protected final boolean isLoaded;
+  protected final boolean isGeneratedByPipe;
+  protected final boolean isGeneratedByPipeConsensus;
+  protected final boolean isGeneratedByHistoricalExtractor;
 
-  private final AtomicBoolean isClosed;
-  private final AtomicReference<TsFileInsertionDataContainer> dataContainer;
+  protected final AtomicBoolean isClosed;
+  protected final AtomicReference<TsFileInsertionDataContainer> dataContainer;
 
   // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
-  private long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
+  protected long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
 
-  private volatile ProgressIndex overridingProgressIndex;
+  protected volatile ProgressIndex overridingProgressIndex;
 
   public PipeTsFileInsertionEvent(final TsFileResource resource, final boolean isLoaded) {
     // The modFile must be copied before the event is assigned to the listening pipes
