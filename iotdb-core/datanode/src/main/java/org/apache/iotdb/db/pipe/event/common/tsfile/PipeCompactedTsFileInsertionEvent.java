@@ -22,11 +22,13 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.File;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -35,6 +37,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
 
   private final String dataRegionId;
   private final Set<String> originFilePaths;
+  private final List<Long> commitIds;
 
   public PipeCompactedTsFileInsertionEvent(
       final CommitterKey committerKey,
@@ -60,8 +63,18 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
             .map(PipeTsFileInsertionEvent::getTsFile)
             .map(File::getPath)
             .collect(Collectors.toSet());
+    this.commitIds =
+        originalEvents.stream()
+            .map(PipeTsFileInsertionEvent::getCommitId)
+            .distinct()
+            .collect(Collectors.toList());
 
     // init fields of EnrichedEvent
+    this.committerKey = committerKey;
+    // TODO pipe consensus: handle rebootTimes
+    isPatternParsed = bindIsPatternParsed(originalEvents);
+    isTimeParsed = bindIsTimeParsed(originalEvents);
+    this.shouldReportOnCommit = shouldReportProgress;
 
     // init fields of PipeTsFileInsertionEvent
     flushPointCount = bindFlushPointCount(originalEvents);
@@ -80,6 +93,14 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
       Set<PipeTsFileInsertionEvent> originalEvents) {
     return originalEvents.stream()
         .anyMatch(PipeTsFileInsertionEvent::isGeneratedByHistoricalExtractor);
+  }
+
+  private static boolean bindIsTimeParsed(Set<PipeTsFileInsertionEvent> originalEvents) {
+    return originalEvents.stream().noneMatch(EnrichedEvent::shouldParseTime);
+  }
+
+  private static boolean bindIsPatternParsed(Set<PipeTsFileInsertionEvent> originalEvents) {
+    return originalEvents.stream().noneMatch(EnrichedEvent::shouldParsePattern);
   }
 
   private static long bindFlushPointCount(Set<PipeTsFileInsertionEvent> originalEvents) {
@@ -105,6 +126,34 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
             && !overridingProgressIndex.equals(MinimumProgressIndex.INSTANCE)
         ? overridingProgressIndex
         : null;
+  }
+
+  @Override
+  public int getRebootTimes() {
+    throw new UnsupportedOperationException(
+        "PipeCompactedTsFileInsertionEvent does not support getRebootTimes.");
+  }
+
+  @Override
+  public boolean hasMultipleCommitIds() {
+    return true;
+  }
+
+  @Override
+  public long getCommitId() {
+    throw new UnsupportedOperationException(
+        "PipeCompactedTsFileInsertionEvent does not support getCommitId.");
+  }
+
+  @Override
+  public List<Long> getCommitIds() {
+    return commitIds;
+  }
+
+  @Override
+  public boolean equalsInPipeConsensus(final Object o) {
+    throw new UnsupportedOperationException(
+        "PipeCompactedTsFileInsertionEvent does not support equalsInPipeConsensus.");
   }
 
   @Override

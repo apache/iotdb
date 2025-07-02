@@ -203,6 +203,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   public synchronized void replace(
       String dataRegionId, Set<TsFileResource> sourceFiles, List<TsFileResource> targetFiles) {
+    // TODO: return if pipe sink is for pipe consensus
+
     final int regionId = Integer.parseInt(dataRegionId);
     final Map<CommitterKey, Set<PipeTsFileInsertionEvent>> eventsToBeRemovedGroupByCommitterKey =
         tsfileInsertEventDeque.stream()
