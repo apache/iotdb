@@ -521,6 +521,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     CommonTableScanOperatorParameters commonParameter =
         new CommonTableScanOperatorParameters(node, fieldColumnsRenameMap, true);
     List<IMeasurementSchema> measurementSchemas = commonParameter.measurementSchemas;
+    List<Symbol> measurementSchemaIndex2Symbols = commonParameter.measurementSchemaIndex2Symbol;
     List<String> measurementColumnNames = commonParameter.measurementColumnNames;
     List<ColumnSchema> fullColumnSchemas = commonParameter.columnSchemas;
     List<Symbol> symbolInputs = commonParameter.symbolInputs;
@@ -580,7 +581,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             }
             seriesScanOptionsList = new ArrayList<>(measurementSchemas.size());
             cannotPushDownConjuncts = new ArrayList<>();
-            Map<String, List<Expression>> pushDownConjunctsForEachMeasurement = new HashMap<>();
+            Map<Symbol, List<Expression>> pushDownConjunctsForEachMeasurement = new HashMap<>();
             if (node.getPushDownPredicate() != null) {
               List<Expression> conjuncts = IrUtils.extractConjuncts(node.getPushDownPredicate());
               for (Expression conjunct : conjuncts) {
@@ -590,9 +591,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                   cannotPushDownConjuncts.add(conjunct);
                   continue;
                 }
-                String symbolName = symbols.iterator().next().getName();
+                Symbol symbol = symbols.iterator().next();
                 pushDownConjunctsForEachMeasurement
-                    .computeIfAbsent(symbolName, k -> new ArrayList<>())
+                    .computeIfAbsent(symbol, k -> new ArrayList<>())
                     .add(conjunct);
               }
             }
@@ -611,10 +612,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 pushDownOffsetAndLimitToLeftChildSeriesScanOperator
                     || pushDownOffsetAndLimitAfterInnerJoinOperator
                     || isSingleColumn;
-            for (int i = 0; i < measurementSchemas.size(); i++) {
-              IMeasurementSchema measurementSchema = measurementSchemas.get(i);
+            for (Symbol symbol : measurementSchemaIndex2Symbols) {
               List<Expression> pushDownPredicatesForCurrentMeasurement =
-                  pushDownConjunctsForEachMeasurement.get(measurementSchema.getMeasurementName());
+                  pushDownConjunctsForEachMeasurement.get(symbol);
               Expression pushDownPredicateForCurrentMeasurement =
                   isSingleColumn
                       ? node.getPushDownPredicate()
@@ -632,7 +632,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 builder.withPushDownFilter(
                     convertPredicateToFilter(
                         pushDownPredicateForCurrentMeasurement,
-                        Collections.singletonMap(measurementSchema.getMeasurementName(), 0),
+                        Collections.singletonMap(symbol.getName(), 0),
                         commonParameter.columnSchemaMap,
                         commonParameter.timeColumnName));
               }
@@ -890,6 +890,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Map<String, Integer> measurementColumnsIndexMap;
     String timeColumnName;
     List<IMeasurementSchema> measurementSchemas;
+    List<Symbol> measurementSchemaIndex2Symbol;
     int measurementColumnCount;
     int idx;
 
@@ -908,6 +909,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       measurementColumnNames = new ArrayList<>();
       measurementColumnsIndexMap = new HashMap<>();
       measurementSchemas = new ArrayList<>();
+      measurementSchemaIndex2Symbol = new ArrayList<>();
       measurementColumnCount = 0;
       idx = 0;
 
@@ -935,6 +937,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             measurementColumnNames.add(realMeasurementName);
             measurementSchemas.add(
                 new MeasurementSchema(realMeasurementName, getTSDataType(schema.getType())));
+            measurementSchemaIndex2Symbol.add(columnName);
             columnSchemas.add(schema);
             measurementColumnsIndexMap.put(columnName.getName(), measurementColumnCount - 1);
             break;
@@ -966,6 +969,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           measurementSchemas.add(
               new MeasurementSchema(
                   realMeasurementName, getTSDataType(entry.getValue().getType())));
+          measurementSchemaIndex2Symbol.add(entry.getKey());
           measurementColumnsIndexMap.put(entry.getKey().getName(), measurementColumnCount - 1);
         } else if (entry.getValue().getColumnCategory() == TIME) {
           timeColumnName = entry.getKey().getName();

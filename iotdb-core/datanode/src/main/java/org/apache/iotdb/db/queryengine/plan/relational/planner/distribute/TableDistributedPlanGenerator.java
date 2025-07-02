@@ -786,6 +786,8 @@ public class TableDistributedPlanGenerator
     DataPartition dataPartition = analysis.getDataPartitionInfo();
     if (dataPartition == null || node.getTreeDBName() == null) {
       node.setRegionReplicaSet(NOT_ASSIGNED);
+      node.setDeviceEntries(Collections.emptyList());
+      node.setTreeDBName(null);
       return Collections.singletonList(node);
     }
 
@@ -868,6 +870,8 @@ public class TableDistributedPlanGenerator
 
     if (tableScanNodeMap.isEmpty()) {
       node.setRegionReplicaSet(NOT_ASSIGNED);
+      node.setDeviceEntries(Collections.emptyList());
+      node.setTreeDBName(null);
       return Collections.singletonList(node);
     }
 

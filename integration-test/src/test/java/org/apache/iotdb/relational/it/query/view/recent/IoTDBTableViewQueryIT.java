@@ -356,6 +356,24 @@ public class IoTDBTableViewQueryIT {
           "select * from (select * from view1 where battery = 'b1') join (select * from view1 where battery = 'b1' and (voltage > 0 or current > 0)) using(time)",
           "select * from (select * from table1 where battery = 'b1') join (select * from table1 where battery = 'b1' and (voltage > 0 or current > 0)) using(time)",
           true);
+
+      compareQueryResults(
+          session,
+          "select time from view1 where time > 604800000",
+          "select time from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select time from view2 where current_rename > 1",
+          "select time from table1 where current > 1",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(*) from view1 where time < -1",
+          "select count(*) from table1 where time < -1",
+          true);
     }
   }
 
