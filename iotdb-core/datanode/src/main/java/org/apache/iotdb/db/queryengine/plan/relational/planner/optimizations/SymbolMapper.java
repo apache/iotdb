@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Measure;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrLabel;
@@ -349,13 +350,47 @@ public class SymbolMapper {
         expressionAndValuePointers.getAssignments()) {
       ValuePointer newPointer;
       if (assignment.getValuePointer() instanceof ClassifierValuePointer) {
-        newPointer = (ClassifierValuePointer) assignment.getValuePointer();
+        newPointer = assignment.getValuePointer();
       } else if (assignment.getValuePointer() instanceof MatchNumberValuePointer) {
-        newPointer = (MatchNumberValuePointer) assignment.getValuePointer();
+        newPointer = assignment.getValuePointer();
       } else if (assignment.getValuePointer() instanceof ScalarValuePointer) {
         ScalarValuePointer pointer = (ScalarValuePointer) assignment.getValuePointer();
         newPointer =
             new ScalarValuePointer(pointer.getLogicalIndexPointer(), map(pointer.getInputSymbol()));
+      } else if (assignment.getValuePointer() instanceof AggregationValuePointer) {
+        AggregationValuePointer pointer = (AggregationValuePointer) assignment.getValuePointer();
+        List<Expression> newArguments =
+            pointer.getArguments().stream()
+                .map(
+                    expression ->
+                        ExpressionTreeRewriter.rewriteWith(
+                            new ExpressionRewriter<Void>() {
+                              @Override
+                              public Expression rewriteSymbolReference(
+                                  SymbolReference node,
+                                  Void context,
+                                  ExpressionTreeRewriter<Void> treeRewriter) {
+                                if (pointer.getClassifierSymbol().isPresent()
+                                        && Symbol.from(node)
+                                            .equals(pointer.getClassifierSymbol().get())
+                                    || pointer.getMatchNumberSymbol().isPresent()
+                                        && Symbol.from(node)
+                                            .equals(pointer.getMatchNumberSymbol().get())) {
+                                  return node;
+                                }
+                                return map(node);
+                              }
+                            },
+                            expression))
+                .collect(toImmutableList());
+
+        newPointer =
+            new AggregationValuePointer(
+                pointer.getFunction(),
+                pointer.getSetDescriptor(),
+                newArguments,
+                pointer.getClassifierSymbol(),
+                pointer.getMatchNumberSymbol());
       } else {
         throw new IllegalArgumentException(
             "Unsupported ValuePointer type: " + assignment.getValuePointer().getClass().getName());
