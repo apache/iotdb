@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALInputStream;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALSegmentMeta;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 
 import org.apache.tsfile.utils.Pair;
@@ -52,6 +53,8 @@ public class WALEntryPosition {
   private WALNode walNode = null;
   // wal file is not null when openReadFileChannel method has been called
   private File walFile = null;
+
+  private WALSegmentMeta walSegmentMeta = null;
 
   private static final String ENTRY_NOT_READY_MESSAGE = "This entry isn't ready for read.";
 
@@ -197,10 +200,15 @@ public class WALEntryPosition {
   }
 
   public void setEntryPosition(
-      long walFileVersionId, long position, WALEntryValue value, long memTableId) {
+      long walFileVersionId,
+      long position,
+      WALEntryValue value,
+      long memTableId,
+      WALSegmentMeta walSegmentMeta) {
     this.position = position;
     this.walFileVersionId = walFileVersionId;
     this.memTableId = memTableId;
+    this.walSegmentMeta = walSegmentMeta;
     final WALInsertNodeCache cache = WALInsertNodeCache.getInstance();
     if (cache != null && value instanceof InsertNode) {
       cache.cacheInsertNodeIfNeeded(this, (InsertNode) value);

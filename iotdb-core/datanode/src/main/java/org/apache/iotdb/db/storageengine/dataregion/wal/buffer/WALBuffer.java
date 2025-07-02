@@ -122,6 +122,7 @@ public class WALBuffer extends AbstractWALBuffer {
   // manage wal files which have MemTableIds
   private final Map<Long, Set<Long>> memTableIdsOfWal = new ConcurrentHashMap<>();
 
+  @TestOnly
   public WALBuffer(String identifier, String logDirectory) throws IOException {
     this(identifier, logDirectory, new CheckpointManager(identifier, logDirectory), 0, 0L);
   }
@@ -603,14 +604,23 @@ public class WALBuffer extends AbstractWALBuffer {
           CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
         }
       }
+      if (currentWALFileWriter.getWalSegmentMeta() == null) {
+        logger.info(
+            "WALSegmentMeta is null, walFileVersionId: {}, currentWALFileWriter: {}",
+            walFileVersionId,
+            currentWALFileWriter);
+      }
 
       // notify all waiting listeners
       if (forceSuccess) {
-        long position = lastFsyncPosition;
+        long position = 0;
         for (WALFlushListener fsyncListener : info.fsyncListeners) {
           fsyncListener.succeed();
           if (fsyncListener.getWalEntryHandler() != null) {
-            fsyncListener.getWalEntryHandler().setEntryPosition(walFileVersionId, position);
+            fsyncListener
+                .getWalEntryHandler()
+                .setEntryPosition(
+                    walFileVersionId, position, currentWALFileWriter.getWalSegmentMeta());
             position += fsyncListener.getWalEntryHandler().getSize();
           }
         }

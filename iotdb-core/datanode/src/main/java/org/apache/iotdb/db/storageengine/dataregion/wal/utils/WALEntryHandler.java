@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALSegmentMeta;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 
 import org.apache.tsfile.utils.Pair;
@@ -194,8 +195,10 @@ public class WALEntryHandler {
     return memTableId;
   }
 
-  public void setEntryPosition(final long walFileVersionId, final long position) {
-    this.walEntryPosition.setEntryPosition(walFileVersionId, position, value, memTableId);
+  public void setEntryPosition(
+      final long walFileVersionId, final long position, final WALSegmentMeta segmentMeta) {
+    this.walEntryPosition.setEntryPosition(
+        walFileVersionId, position, value, memTableId, segmentMeta);
     this.value = null;
     synchronized (this) {
       this.notifyAll();
