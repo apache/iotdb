@@ -53,6 +53,7 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -120,6 +121,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private volatile boolean hasBeenStarted = false;
 
   private Queue<TsFileResource> pendingQueue;
+  private List<File> tsFileList;
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -322,6 +324,12 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       return;
     }
     hasBeenStarted = true;
+
+    // Recover
+    tsFileList = PipeDataNodeResourceManager.tsfile().recoverTsFile(pipeName);
+    if (Objects.nonNull(tsFileList)) {
+      return;
+    }
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));

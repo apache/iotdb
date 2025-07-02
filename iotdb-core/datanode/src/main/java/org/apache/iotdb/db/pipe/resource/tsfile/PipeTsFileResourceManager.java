@@ -20,12 +20,16 @@
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
@@ -36,6 +40,8 @@ import javax.annotation.Nullable;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -352,6 +358,35 @@ public class PipeTsFileResourceManager {
     if (modFile.exists()) {
       decreaseFileReference(modFile, pipeName);
     }
+  }
+
+  public List<File> recoverTsFile(final @Nonnull String pipeName) {
+    final List<File> result = new ArrayList<>();
+    final String suffix =
+        File.separator
+            + PipeConfig.getInstance().getPipeHardlinkBaseDirName()
+            + File.separator
+            + PipeConfig.getInstance().getPipeHardlinkTsFileDirName()
+            + File.separator
+            + pipeName;
+    for (final String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
+      final File pipeDir = SystemFileFactory.INSTANCE.getFile(dataDir + suffix);
+      if (pipeDir.exists() && pipeDir.isDirectory()) {
+        final File[] files = pipeDir.listFiles();
+        for (final File file : files) {
+          try {
+            increaseFileReference(
+                file, file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX), pipeName);
+          } catch (final IOException e) {
+            throw new PipeException(e.getMessage());
+          }
+        }
+        result.addAll(Arrays.asList(files));
+      } else {
+        return null;
+      }
+    }
+    return result;
   }
 
   public int getLinkedTsFileCount(final @Nonnull String pipeName) {
