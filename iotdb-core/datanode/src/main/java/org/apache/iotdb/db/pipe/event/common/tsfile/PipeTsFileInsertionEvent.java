@@ -48,6 +48,8 @@ import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
@@ -65,7 +67,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
-  private final TsFileResource resource;
+  private @Nullable final TsFileResource resource;
   private File tsFile;
   private long extractTime = 0;
 
@@ -89,11 +91,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   public PipeTsFileInsertionEvent(final TsFileResource resource, final boolean isLoaded) {
     // The modFile must be copied before the event is assigned to the listening pipes
-    this(resource, true, isLoaded, false, null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(
+        resource, null, true, isLoaded, false, null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   public PipeTsFileInsertionEvent(
-      final TsFileResource resource,
+      final @Nullable TsFileResource resource,
+      final @Nullable File tsFile,
       final boolean isWithMod,
       final boolean isLoaded,
       final boolean isGeneratedByHistoricalExtractor,
@@ -104,23 +108,34 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final long startTime,
       final long endTime) {
     super(pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
-
+    assert Objects.nonNull(tsFile) || Objects.nonNull(resource);
     this.resource = resource;
 
     // For events created at assigner or historical extractor, the tsFile is get from the resource
     // For events created for source, the tsFile is inherited from the assigner, because the
     // original tsFile may be gone, and we need to get the assigner's hard-linked tsFile to
     // hard-link it to each pipe dir
-    this.tsFile = resource.getTsFile();
+    this.tsFile = Objects.nonNull(resource) ? resource.getTsFile() : tsFile;
 
-    final ModificationFile modFile = resource.getModFile();
+    final ModificationFile modFile =
+        Objects.nonNull(resource)
+            ? resource.getModFile()
+            : new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
     this.isWithMod = isWithMod && modFile.exists();
     this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
 
     this.isLoaded = isLoaded;
-    this.isGeneratedByPipe = resource.isGeneratedByPipe();
-    this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
+    this.isGeneratedByPipe = Objects.nonNull(resource) && resource.isGeneratedByPipe();
+    this.isGeneratedByPipeConsensus =
+        Objects.nonNull(resource) && resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
+
+    this.dataContainer = new AtomicReference<>(null);
+
+    if (Objects.isNull(resource)) {
+      isClosed = new AtomicBoolean(true);
+      return;
+    }
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // Register close listener if TsFile is not closed
@@ -157,8 +172,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     // If the status is "closed", then the resource status is "closed", the tsFile won't be altered
     // and can be sent.
     isClosed.set(resource.isClosed());
-
-    this.dataContainer = new AtomicReference<>(null);
   }
 
   /**
@@ -166,6 +179,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
    *     otherwise.
    */
   public boolean waitForTsFileClose() throws InterruptedException {
+    if (Objects.isNull(resource)) {
+      return true;
+    }
+
     if (!isClosed.get()) {
       isClosed.set(resource.isClosed());
 
@@ -319,7 +336,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   }
 
   public void eliminateProgressIndex() {
-    if (Objects.isNull(overridingProgressIndex)) {
+    if (Objects.isNull(overridingProgressIndex) && Objects.nonNull(resource)) {
       PipeTsFileEpochProgressIndexKeeper.getInstance()
           .eliminateProgressIndex(resource.getDataRegionId(), resource.getTsFilePath());
     }
@@ -335,6 +352,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final long endTime) {
     return new PipeTsFileInsertionEvent(
         resource,
+        tsFile,
         isWithMod,
         isLoaded,
         isGeneratedByHistoricalExtractor,
@@ -355,12 +373,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   public boolean mayEventTimeOverlappedWithTimeRange() {
     // Notice that this is only called at realtime extraction, and the tsFile is always closed
     // Thus we can use the end time to judge the overlap
-    return startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime;
+    return Objects.isNull(resource)
+        || startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime;
   }
 
   @Override
   public boolean mayEventPathsOverlappedWithPattern() {
-    if (!resource.isClosed()) {
+    if (Objects.isNull(resource) || !resource.isClosed()) {
       return true;
     }
 
@@ -541,7 +560,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     } catch (final IOException e) {
       close();
 
-      final String errorMsg = String.format("Read TsFile %s error.", resource.getTsFilePath());
+      final String errorMsg = String.format("Read TsFile %s error.", tsFile.getPath());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
     }
