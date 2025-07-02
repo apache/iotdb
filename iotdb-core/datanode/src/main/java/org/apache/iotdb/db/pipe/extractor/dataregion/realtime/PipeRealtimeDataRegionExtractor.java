@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimePartitionListener;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -394,6 +395,32 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
     }
   }
+
+  @Override
+  public Event supply() {
+    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+
+    while (realtimeEvent != null) {
+      while (!CachedSchemaPatternMatcher.match(realtimeEvent, this)) {
+        realtimeEvent.decreaseReferenceCount(
+            PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
+        realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+      }
+
+      final Event suppliedEvent = doSupply(realtimeEvent);
+
+      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
+
+      if (suppliedEvent != null) {
+        return suppliedEvent;
+      }
+    }
+
+    // means the pending queue is empty.
+    return null;
+  }
+
+  protected abstract Event doSupply(final PipeRealtimeEvent realtimeEvent);
 
   protected Event supplyHeartbeat(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {

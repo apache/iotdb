@@ -110,7 +110,7 @@ public class PipeInsertionDataNodeListener {
       return;
     }
 
-    assigner.publishToAssign(
+    assigner.assignToExtractor(
         PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource, isLoaded));
   }
 
@@ -127,20 +127,21 @@ public class PipeInsertionDataNodeListener {
       return;
     }
 
-    assigner.publishToAssign(
+    assigner.assignToExtractor(
         PipeRealtimeEventFactory.createRealtimeEvent(insertNode, tsFileResource));
   }
 
   public void listenToHeartbeat(boolean shouldPrintMessage) {
     dataRegionId2Assigner.forEach(
         (key, value) ->
-            value.publishToAssign(
+            value.assignToExtractor(
                 PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
   }
 
   public void listenToDeleteData(DeleteDataNode node) {
     dataRegionId2Assigner.forEach(
-        (key, value) -> value.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node)));
+        (key, value) ->
+            value.assignToExtractor(PipeRealtimeEventFactory.createRealtimeEvent(node)));
   }
 
   /////////////////////////////// singleton ///////////////////////////////

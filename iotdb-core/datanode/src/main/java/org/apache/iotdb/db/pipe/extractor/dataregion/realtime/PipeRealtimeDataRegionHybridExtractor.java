@@ -350,6 +350,27 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     return null;
   }
 
+  @Override
+  protected Event doSupply(final PipeRealtimeEvent realtimeEvent) {
+    // Used to judge the type of the event, not directly for supplying.
+    final Event eventToSupply = realtimeEvent.getEvent();
+    if (eventToSupply instanceof TabletInsertionEvent) {
+      return supplyTabletInsertion(realtimeEvent);
+    } else if (eventToSupply instanceof TsFileInsertionEvent) {
+      return supplyTsFileInsertion(realtimeEvent);
+    } else if (eventToSupply instanceof PipeHeartbeatEvent) {
+      return supplyHeartbeat(realtimeEvent);
+    } else if (eventToSupply instanceof PipeSchemaRegionWritePlanEvent
+        || eventToSupply instanceof ProgressReportEvent) {
+      return supplyDirectly(realtimeEvent);
+    } else {
+      throw new UnsupportedOperationException(
+          String.format(
+              "Unsupported event type %s for hybrid realtime extractor %s to supply.",
+              eventToSupply.getClass(), this));
+    }
+  }
+
   private Event supplyTabletInsertion(final PipeRealtimeEvent event) {
     event
         .getTsFileEpoch()

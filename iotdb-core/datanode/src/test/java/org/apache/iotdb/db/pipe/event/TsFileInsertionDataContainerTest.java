@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.event;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
@@ -523,7 +522,7 @@ public class TsFileInsertionDataContainerTest {
   }
 
   private void testPartialNullValue(final boolean isQuery)
-      throws IOException, WriteProcessException, IllegalPathException {
+      throws IOException, WriteProcessException {
     alignedTsFile = new File("0-0-2-0.tsfile");
 
     final List<MeasurementSchema> schemaList = new ArrayList<>();

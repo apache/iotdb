@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
@@ -88,6 +89,12 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
     PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
 
     while (realtimeEvent != null) {
+      while (!CachedSchemaPatternMatcher.match(realtimeEvent, this)) {
+        realtimeEvent.decreaseReferenceCount(
+            PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
+        realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+      }
+
       Event suppliedEvent = null;
 
       if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
@@ -124,6 +131,34 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
     }
 
     // means the pending queue is empty.
+    return null;
+  }
+
+  @Override
+  protected Event doSupply(final PipeRealtimeEvent realtimeEvent) {
+    if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
+      return supplyHeartbeat(realtimeEvent);
+    } else if (realtimeEvent.getEvent() instanceof PipeSchemaRegionWritePlanEvent
+        || realtimeEvent.getEvent() instanceof ProgressReportEvent) {
+      return supplyDirectly(realtimeEvent);
+    } else if (realtimeEvent.increaseReferenceCount(
+        PipeRealtimeDataRegionTsFileExtractor.class.getName())) {
+      return realtimeEvent.getEvent();
+    } else {
+      // if the event's reference count can not be increased, it means the data represented by
+      // this event is not reliable anymore. the data has been lost. we simply discard this event
+      // and report the exception to PipeRuntimeAgent.
+      final String errorMessage =
+          String.format(
+              "Event %s can not be supplied because "
+                  + "the reference count can not be increased, "
+                  + "the data represented by this event is lost",
+              realtimeEvent.getEvent());
+      LOGGER.error(errorMessage);
+      PipeDataNodeAgent.runtime()
+          .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+    }
+
     return null;
   }
 }
