@@ -684,21 +684,21 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             extractorParameters, processorParameters, connectorParameters);
 
     PipeMemoryManager pipeMemoryManager = PipeDataNodeResourceManager.memory();
-    if (pipeMemoryManager.getFreeMemorySizeInBytes()
-        < needMemory
-            + PipeMemoryManager.getTotalMemorySizeInBytes()
-                * PipeConfig.getInstance().getReservedMemoryPercentage()) {
-      final String e =
+    final long freeMemorySizeInBytes = pipeMemoryManager.getFreeMemorySizeInBytes();
+    final long reservedMemorySizeInBytes =
+        (long)
+            (PipeMemoryManager.getTotalMemorySizeInBytes()
+                * PipeConfig.getInstance().getReservedMemoryPercentage());
+    if (freeMemorySizeInBytes < needMemory + reservedMemorySizeInBytes) {
+      final String message =
           String.format(
               "Not enough memory for pipe. Need memory: %d bytes, free memory: %d bytes, reserved memory: %d bytes, total memory: %d bytes",
               needMemory,
-              pipeMemoryManager.getFreeMemorySizeInBytes(),
-              (long)
-                  (PipeMemoryManager.getTotalMemorySizeInBytes()
-                      * PipeConfig.getInstance().getReservedMemoryPercentage()),
+              freeMemorySizeInBytes,
+              freeMemorySizeInBytes,
               PipeMemoryManager.getTotalMemorySizeInBytes());
-      LOGGER.warn(e);
-      throw new PipeException(e);
+      LOGGER.warn(message);
+      throw new PipeException(message);
     }
   }
 
@@ -724,17 +724,16 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
-    if (PipeMemoryManager.getTotalFloatingMemorySizeInBytes()
-            - this.getAllFloatingMemoryUsageInByte()
-        < PipeConfig.getInstance().PipeInsertNodeQueueMemory()) {
-      final String m =
+    final long allocatedMemorySizeInBytes = this.getAllFloatingMemoryUsageInByte();
+    final long remainingMemory =
+        PipeMemoryManager.getTotalFloatingMemorySizeInBytes() - allocatedMemorySizeInBytes;
+    if (remainingMemory < PipeConfig.getInstance().PipeInsertNodeQueueMemory()) {
+      final String message =
           String.format(
               "Not enough memory for pipe. Need Floating memory: %d  bytes, free Floating memory: %d bytes",
-              PipeConfig.getInstance().PipeInsertNodeQueueMemory(),
-              (PipeMemoryManager.getTotalFloatingMemorySizeInBytes()
-                  - this.getAllFloatingMemoryUsageInByte()));
-      LOGGER.warn(m);
-      throw new PipeException(m);
+              PipeConfig.getInstance().PipeInsertNodeQueueMemory(), remainingMemory);
+      LOGGER.warn(message);
+      throw new PipeException(message);
     }
   }
 
