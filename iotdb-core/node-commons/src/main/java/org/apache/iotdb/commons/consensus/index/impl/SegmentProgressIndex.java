@@ -42,9 +42,9 @@ import java.util.Objects;
  * {@link SegmentProgressIndex} is a usual {@link ProgressIndex} with broken segments allowed. An
  * {@link org.apache.iotdb.pipe.api.event.Event} is sent if its {@link ProgressIndex} <= the {@link
  * #latestProgressIndex} and none of the {@link #brokenProgressIndexes}es has its {@link Pair#left}
- * <= its {@link ProgressIndex} <= {@link Pair#right}. If the {@link #brokenProgressIndexes} {@link
- * List#isEmpty()}, the progress Index behave just like the {@link #latestProgressIndex}. It is only
- * used in the realtime data region extractor's {@link
+ * <= its {@link ProgressIndex} < {@link Pair#right}. If the {@link #brokenProgressIndexes} {@link
+ * List#isEmpty()}, the {@link ProgressIndex} behave just like the {@link #latestProgressIndex}. It
+ * is only used in the realtime data region extractor's {@link
  * org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta} to handle downgrading, and will never
  * be in the insertNodes or tsFiles.
  */
