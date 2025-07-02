@@ -48,8 +48,6 @@ import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
@@ -67,7 +65,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
-  protected @Nullable final TsFileResource resource;
+  protected final TsFileResource resource;
   protected File tsFile;
   protected long extractTime = 0;
 
@@ -91,13 +89,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   public PipeTsFileInsertionEvent(final TsFileResource resource, final boolean isLoaded) {
     // The modFile must be copied before the event is assigned to the listening pipes
-    this(
-        resource, null, true, isLoaded, false, null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(resource, true, isLoaded, false, null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   public PipeTsFileInsertionEvent(
-      final @Nullable TsFileResource resource,
-      final @Nullable File tsFile,
+      final TsFileResource resource,
       final boolean isWithMod,
       final boolean isLoaded,
       final boolean isGeneratedByHistoricalExtractor,
@@ -108,34 +104,24 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final long startTime,
       final long endTime) {
     super(pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
-    assert Objects.nonNull(tsFile) || Objects.nonNull(resource);
     this.resource = resource;
 
     // For events created at assigner or historical extractor, the tsFile is get from the resource
     // For events created for source, the tsFile is inherited from the assigner, because the
     // original tsFile may be gone, and we need to get the assigner's hard-linked tsFile to
     // hard-link it to each pipe dir
-    this.tsFile = Objects.nonNull(resource) ? resource.getTsFile() : tsFile;
+    this.tsFile = resource.getTsFile();
 
-    final ModificationFile modFile =
-        Objects.nonNull(resource)
-            ? resource.getModFile()
-            : new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+    final ModificationFile modFile = resource.getModFile();
     this.isWithMod = isWithMod && modFile.exists();
     this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
 
     this.isLoaded = isLoaded;
-    this.isGeneratedByPipe = Objects.nonNull(resource) && resource.isGeneratedByPipe();
-    this.isGeneratedByPipeConsensus =
-        Objects.nonNull(resource) && resource.isGeneratedByPipeConsensus();
+    this.isGeneratedByPipe = resource.isGeneratedByPipe();
+    this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
 
     this.dataContainer = new AtomicReference<>(null);
-
-    if (Objects.isNull(resource)) {
-      isClosed = new AtomicBoolean(true);
-      return;
-    }
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // Register close listener if TsFile is not closed
@@ -352,7 +338,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final long endTime) {
     return new PipeTsFileInsertionEvent(
         resource,
-        tsFile,
         isWithMod,
         isLoaded,
         isGeneratedByHistoricalExtractor,

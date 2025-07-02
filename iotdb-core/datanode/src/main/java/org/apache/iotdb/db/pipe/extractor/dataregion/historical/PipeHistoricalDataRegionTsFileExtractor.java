@@ -53,7 +53,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -121,7 +120,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private volatile boolean hasBeenStarted = false;
 
   private Queue<TsFileResource> pendingQueue;
-  private Queue<File> tsFileQueue;
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -325,12 +323,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
     hasBeenStarted = true;
 
-    // Recover
-    tsFileQueue = PipeDataNodeResourceManager.tsfile().recoverTsFile(pipeName);
-    if (Objects.nonNull(tsFileQueue)) {
-      return;
-    }
-
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
     if (Objects.isNull(dataRegion)) {
@@ -532,21 +524,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       start();
     }
 
-    if (Objects.isNull(pendingQueue) && Objects.isNull(tsFileQueue)) {
+    if (Objects.isNull(pendingQueue)) {
       return null;
     }
 
-    TsFileResource resource = null;
-    if (Objects.nonNull(pendingQueue)) {
-      resource = pendingQueue.poll();
-    }
+    final TsFileResource resource = pendingQueue.poll();
 
-    File tsFile = null;
-    if (Objects.nonNull(tsFileQueue)) {
-      tsFile = tsFileQueue.poll();
-    }
-
-    if (resource == null && tsFile == null) {
+    if (resource == null) {
       final PipeTerminateEvent terminateEvent =
           new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
       if (!terminateEvent.increaseReferenceCount(
@@ -564,7 +548,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             resource,
-            tsFile,
             shouldTransferModFile,
             false,
             true,
@@ -578,8 +561,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       event.skipParsingPattern();
     }
 
-    if (sloppyTimeRange
-        || Objects.nonNull(resource) && isTsFileResourceCoveredByTimeRange(resource)) {
+    if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
       event.skipParsingTime();
     }
 
@@ -596,14 +578,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       return isReferenceCountIncreased ? event : null;
     } finally {
       try {
-        PipeDataNodeResourceManager.tsfile()
-            .unpinTsFile(Objects.nonNull(resource) ? resource.getTsFile() : tsFile, pipeName);
+        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
       } catch (final IOException e) {
         LOGGER.warn(
             "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
             pipeName,
             dataRegionId,
-            Objects.nonNull(resource) ? resource.getTsFilePath() : tsFile.getPath());
+            resource.getTsFilePath());
       }
     }
   }
@@ -612,17 +593,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   public synchronized boolean hasConsumedAll() {
     // If the pendingQueue is null when the function is called, it implies that the extractor only
     // extracts deletion thus the historical event has nothing to consume.
-    final Queue<?> dataQueue = Objects.nonNull(pendingQueue) ? pendingQueue : tsFileQueue;
     return hasBeenStarted
-        && (Objects.isNull(dataQueue) || dataQueue.isEmpty() && isTerminateSignalSent);
+        && (Objects.isNull(pendingQueue) || pendingQueue.isEmpty() && isTerminateSignalSent);
   }
 
   @Override
   public int getPendingQueueSize() {
-    if (Objects.nonNull(pendingQueue)) {
-      return pendingQueue.size();
-    }
-    return Objects.nonNull(tsFileQueue) ? tsFileQueue.size() : 0;
+    return Objects.nonNull(pendingQueue) ? pendingQueue.size() : 0;
   }
 
   @Override
@@ -631,7 +608,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       pendingQueue.forEach(
           resource -> {
             try {
-              PipeDataNodeResourceManager.tsfile().unpinTsFile(resource.getTsFile(), pipeName);
+              PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
             } catch (final IOException e) {
               LOGGER.warn(
                   "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",
@@ -642,23 +619,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
           });
       pendingQueue.clear();
       pendingQueue = null;
-    }
-
-    if (Objects.nonNull(tsFileQueue)) {
-      tsFileQueue.forEach(
-          tsFile -> {
-            try {
-              PipeDataNodeResourceManager.tsfile().unpinTsFile(tsFile, pipeName);
-            } catch (final IOException e) {
-              LOGGER.warn(
-                  "Pipe {}@{}: failed to unpin TsFile after dropping pipe, original path: {}",
-                  pipeName,
-                  dataRegionId,
-                  tsFile.getPath());
-            }
-          });
-      tsFileQueue.clear();
-      tsFileQueue = null;
     }
   }
 }
