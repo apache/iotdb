@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
@@ -76,6 +77,31 @@ public class ModelFetcher implements IModelFetcher {
       }
     } catch (ClientManagerException | TException e) {
       throw new StatementAnalyzeException(e.getMessage());
+    }
+  }
+
+  @Override
+  public ModelInferenceDescriptor fetchModel(String modelName) {
+    try (ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TGetModelInfoResp getModelInfoResp = client.getModelInfo(new TGetModelInfoReq(modelName));
+      if (getModelInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (getModelInfoResp.modelInfo != null && getModelInfoResp.isSetAiNodeAddress()) {
+          return new ModelInferenceDescriptor(
+              getModelInfoResp.aiNodeAddress,
+              ModelInformation.deserialize(getModelInfoResp.modelInfo));
+        } else {
+          throw new IoTDBRuntimeException(
+              String.format("model [%s] is not available", modelName),
+              TSStatusCode.GET_MODEL_INFO_ERROR.getStatusCode());
+        }
+      } else {
+        throw new ModelNotFoundException(getModelInfoResp.getStatus().getMessage());
+      }
+    } catch (ClientManagerException | TException e) {
+      throw new IoTDBRuntimeException(
+          String.format("fetch model [%s] info failed: %s", modelName, e.getMessage()),
+          TSStatusCode.GET_MODEL_INFO_ERROR.getStatusCode());
     }
   }
 }

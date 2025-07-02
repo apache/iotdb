@@ -50,7 +50,6 @@ public class SchemaRegionConsensusImpl {
     return SchemaRegionConsensusImplHolder.INSTANCE;
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     SchemaRegionConsensusImplHolder.reinitializeStatics();
   }

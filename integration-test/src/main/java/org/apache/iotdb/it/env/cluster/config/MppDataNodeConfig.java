@@ -107,4 +107,28 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     setProperty("mqtt_payload_formatter", String.valueOf(mqttPayloadFormatter));
     return this;
   }
+
+  @Override
+  public DataNodeConfig setLoadLastCacheStrategy(String strategyName) {
+    setProperty("last_cache_operation_on_load", strategyName);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setCacheLastValuesForLoad(boolean cacheLastValuesForLoad) {
+    setProperty("cache_last_values_for_load", String.valueOf(cacheLastValuesForLoad));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setWalThrottleSize(long walThrottleSize) {
+    setProperty("wal_throttle_threshold_in_byte", String.valueOf(walThrottleSize));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
+    setProperty("delete_wal_files_period_in_ms", String.valueOf(deleteWalFilesPeriodInMs));
+    return this;
+  }
 }

@@ -35,8 +35,6 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeac
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeactivateTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -97,7 +95,7 @@ public class DeactivateTemplateProcedure
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, DeactivateTemplateState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     long startTime = System.currentTimeMillis();
     try {
       switch (state) {

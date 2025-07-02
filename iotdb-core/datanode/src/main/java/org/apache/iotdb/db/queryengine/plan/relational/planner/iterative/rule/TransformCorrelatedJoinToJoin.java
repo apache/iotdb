@@ -91,6 +91,7 @@ public class TransformCorrelatedJoinToJoin implements Rule<CorrelatedJoinNode> {
             correlatedJoinNode.getInput(),
             decorrelatedSubquery.getNode(),
             ImmutableList.of(),
+            Optional.empty(),
             correlatedJoinNode.getInput().getOutputSymbols(),
             correlatedJoinNode.getSubquery().getOutputSymbols(),
             filter.equals(TRUE_LITERAL) ? Optional.empty() : Optional.of(filter),

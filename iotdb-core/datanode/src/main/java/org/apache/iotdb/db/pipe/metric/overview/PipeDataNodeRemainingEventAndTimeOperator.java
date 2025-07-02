@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.pipe.metric.overview;
 
-import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
+import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
 import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.codahale.metrics.Clock;
@@ -44,7 +46,8 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-  private final AtomicInteger tabletEventCount = new AtomicInteger(0);
+  private final AtomicInteger insertNodeEventCount = new AtomicInteger(0);
+  private final AtomicInteger rawTabletEventCount = new AtomicInteger(0);
   private final AtomicInteger tsfileEventCount = new AtomicInteger(0);
   private final AtomicInteger heartbeatEventCount = new AtomicInteger(0);
 
@@ -52,6 +55,11 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
   private final IoTDBHistogram collectInvocationHistogram =
       (IoTDBHistogram) IoTDBMetricManager.getInstance().createHistogram();
+
+  private Timer insertNodeTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer tsfileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  private final InsertNodeEMA insertNodeEventCountEMA = new InsertNodeEMA();
 
   private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
   private double lastSchemaRegionCommitSmoothingValue = Long.MAX_VALUE;
@@ -62,12 +70,20 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   //////////////////////////// Remaining event & time calculation ////////////////////////////
 
-  void increaseTabletEventCount() {
-    tabletEventCount.incrementAndGet();
+  void increaseInsertNodeEventCount() {
+    insertNodeEventCount.incrementAndGet();
   }
 
-  void decreaseTabletEventCount() {
-    tabletEventCount.decrementAndGet();
+  void decreaseInsertNodeEventCount() {
+    insertNodeEventCount.decrementAndGet();
+  }
+
+  void increaseRawTabletEventCount() {
+    rawTabletEventCount.incrementAndGet();
+  }
+
+  void decreaseRawTabletEventCount() {
+    rawTabletEventCount.decrementAndGet();
   }
 
   void increaseTsFileEventCount() {
@@ -86,10 +102,16 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     heartbeatEventCount.decrementAndGet();
   }
 
+  double getRemainingInsertEventSmoothingCount() {
+    insertNodeEventCountEMA.update(insertNodeEventCount.get());
+    return insertNodeEventCountEMA.insertNodeEMAValue;
+  }
+
   long getRemainingEvents() {
     final long remainingEvents =
         tsfileEventCount.get()
-            + tabletEventCount.get()
+            + rawTabletEventCount.get()
+            + insertNodeEventCount.get()
             + heartbeatEventCount.get()
             + schemaRegionExtractors.stream()
                 .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
@@ -110,13 +132,15 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
    * @return The estimated remaining time
    */
   double getRemainingTime() {
-    final PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
+    final PipeRateAverage pipeRemainingTimeCommitRateAverageTime =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
     final double invocationValue = collectInvocationHistogram.getMean();
     // Do not take heartbeat event into account
     final double totalDataRegionWriteEventCount =
-        tsfileEventCount.get() * Math.max(invocationValue, 1) + tabletEventCount.get();
+        tsfileEventCount.get() * Math.max(invocationValue, 1)
+            + rawTabletEventCount.get()
+            + insertNodeEventCount.get();
 
     dataRegionCommitMeter.updateAndGet(
         meter -> {
@@ -203,6 +227,22 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     collectInvocationHistogram.update(Math.max(collectInvocationCount, 1));
   }
 
+  public void setInsertNodeTransferTimer(Timer insertNodeTransferTimer) {
+    this.insertNodeTransferTimer = insertNodeTransferTimer;
+  }
+
+  public Timer getInsertNodeTransferTimer() {
+    return insertNodeTransferTimer;
+  }
+
+  public void setTsFileTransferTimer(Timer tsFileTransferTimer) {
+    this.tsfileTransferTimer = tsFileTransferTimer;
+  }
+
+  public Timer getTsFileTransferTimer() {
+    return tsfileTransferTimer;
+  }
+
   //////////////////////////// Switch ////////////////////////////
 
   // Thread-safe & Idempotent
@@ -225,5 +265,18 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     super.freezeRate(isStopPipe);
     dataRegionCommitMeter.set(null);
     schemaRegionCommitMeter.set(null);
+  }
+
+  private static class InsertNodeEMA {
+    private double insertNodeEMAValue;
+
+    public void update(final double newValue) {
+      final double alpha = PipeConfig.getInstance().getPipeRemainingInsertNodeCountEMAAlpha();
+      if (insertNodeEMAValue == 0) {
+        insertNodeEMAValue = newValue;
+      } else {
+        insertNodeEMAValue = alpha * newValue + (1 - alpha) * insertNodeEMAValue;
+      }
+    }
   }
 }

@@ -117,6 +117,10 @@ public final class ObjectBigArray<T> {
     fill(null);
   }
 
+  /**
+   * Attention: the element in Array may be null!!! You have to handle this case like {@link
+   * MapBigArray#reset()} in input action.
+   */
   public void forEach(Consumer<T> action) {
     for (Object[] segment : array) {
       if (segment == null) {

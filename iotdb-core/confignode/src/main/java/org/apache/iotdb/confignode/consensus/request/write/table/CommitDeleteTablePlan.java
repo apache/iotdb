@@ -22,11 +22,16 @@ package org.apache.iotdb.confignode.consensus.request.write.table;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 public class CommitDeleteTablePlan extends AbstractTablePlan {
-  public CommitDeleteTablePlan() {
-    super(ConfigPhysicalPlanType.CommitDeleteTable);
+  public CommitDeleteTablePlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   public CommitDeleteTablePlan(final String database, final String tableName) {
-    super(ConfigPhysicalPlanType.CommitDeleteTable, database, tableName);
+    this(ConfigPhysicalPlanType.CommitDeleteTable, database, tableName);
+  }
+
+  protected CommitDeleteTablePlan(
+      final ConfigPhysicalPlanType type, final String database, final String tableName) {
+    super(type, database, tableName);
   }
 }

@@ -17,7 +17,7 @@
 #
 import re
 
-from ainode.core.constant import DEFAULT_MODEL_FILE_NAME, DEFAULT_CONFIG_FILE_NAME
+from ainode.core.constant import DEFAULT_CONFIG_FILE_NAME, DEFAULT_MODEL_FILE_NAME
 
 
 class _BaseError(Exception):
@@ -41,8 +41,10 @@ class ModelNotExistError(_BaseError):
 
 
 class BadConfigValueError(_BaseError):
-    def __init__(self, config_name: str, config_value, hint: str = ''):
-        self.message = "Bad value [{0}] for config {1}. {2}".format(config_value, config_name, hint)
+    def __init__(self, config_name: str, config_value, hint: str = ""):
+        self.message = "Bad value [{0}] for config {1}. {2}".format(
+            config_value, config_name, hint
+        )
 
 
 class MissingConfigError(_BaseError):
@@ -62,7 +64,9 @@ class RedundantOptionError(_BaseError):
 
 class WrongTypeConfigError(_BaseError):
     def __init__(self, config_name: str, expected_type: str):
-        self.message = "Wrong type for config: {0}, expected: {1}".format(config_name, expected_type)
+        self.message = "Wrong type for config: {0}, expected: {1}".format(
+            config_name, expected_type
+        )
 
 
 class UnsupportedError(_BaseError):
@@ -72,16 +76,13 @@ class UnsupportedError(_BaseError):
 
 class InvalidUriError(_BaseError):
     def __init__(self, uri: str):
-        self.message = "Invalid uri: {}, there are no {} or {} under this uri.".format(uri, DEFAULT_MODEL_FILE_NAME,
-                                                                                       DEFAULT_CONFIG_FILE_NAME)
+        self.message = "Invalid uri: {}, there are no {} or {} under this uri.".format(
+            uri, DEFAULT_MODEL_FILE_NAME, DEFAULT_CONFIG_FILE_NAME
+        )
 
 
 class InvalidWindowArgumentError(_BaseError):
-    def __init__(
-            self,
-            window_interval,
-            window_step,
-            dataset_length):
+    def __init__(self, window_interval, window_step, dataset_length):
         self.message = f"Invalid inference input: window_interval {window_interval}, window_step {window_step}, dataset_length {dataset_length}"
 
 
@@ -97,30 +98,41 @@ class BuiltInModelNotSupportError(_BaseError):
 
 class WrongAttributeTypeError(_BaseError):
     def __init__(self, attribute_name: str, expected_type: str):
-        self.message = "Wrong type for attribute: {0}, expected: {1}".format(attribute_name, expected_type)
+        self.message = "Wrong type for attribute: {0}, expected: {1}".format(
+            attribute_name, expected_type
+        )
 
 
 class NumericalRangeException(_BaseError):
     def __init__(self, attribute_name: str, value, min_value, max_value):
-        self.message = "Attribute {0} expect value between {1} and {2}, got {3} instead." \
-            .format(attribute_name, min_value, max_value, value)
+        self.message = (
+            "Attribute {0} expect value between {1} and {2}, got {3} instead.".format(
+                attribute_name, min_value, max_value, value
+            )
+        )
 
 
 class StringRangeException(_BaseError):
     def __init__(self, attribute_name: str, value: str, expect_value):
-        self.message = "Attribute {0} expect value in {1}, got {2} instead." \
-            .format(attribute_name, expect_value, value)
+        self.message = "Attribute {0} expect value in {1}, got {2} instead.".format(
+            attribute_name, expect_value, value
+        )
 
 
 class ListRangeException(_BaseError):
     def __init__(self, attribute_name: str, value: list, expected_type: str):
-        self.message = "Attribute {0} expect value type list[{1}], got {2} instead." \
-            .format(attribute_name, expected_type, value)
+        self.message = (
+            "Attribute {0} expect value type list[{1}], got {2} instead.".format(
+                attribute_name, expected_type, value
+            )
+        )
 
 
 class AttributeNotSupportError(_BaseError):
     def __init__(self, model_name: str, attribute_name: str):
-        self.message = "Attribute {0} is not supported in model {1}".format(attribute_name, model_name)
+        self.message = "Attribute {0} is not supported in model {1}".format(
+            attribute_name, model_name
+        )
 
 
 # This is used to extract the key message in RuntimeError instead of the traceback message

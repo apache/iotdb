@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
@@ -93,8 +94,11 @@ public abstract class TVList implements WALEntryValue {
 
   private final TVList outer = this;
 
+  protected static int defaultArrayNum = 0;
+  protected static volatile long defaultArrayNumLastUpdatedTimeMs = 0;
+
   protected TVList() {
-    timestamps = new ArrayList<>();
+    timestamps = new ArrayList<>(getDefaultArrayNum());
     rowCount = 0;
     seqRowCount = 0;
     maxTime = Long.MIN_VALUE;
@@ -213,7 +217,7 @@ public abstract class TVList implements WALEntryValue {
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     // prepare indices for sorting
     if (indices == null) {
-      indices = new ArrayList<>();
+      indices = new ArrayList<>(getDefaultArrayNum());
       for (int i = 0; i < timestamps.size(); i++) {
         indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
         int offset = i * ARRAY_SIZE;
@@ -248,7 +252,7 @@ public abstract class TVList implements WALEntryValue {
   protected void markNullValue(int arrayIndex, int elementIndex) {
     // init bitMap if doesn't have
     if (bitMap == null) {
-      List<BitMap> localBitMap = new ArrayList<>();
+      List<BitMap> localBitMap = new ArrayList<>(getDefaultArrayNum());
       for (int i = 0; i < timestamps.size(); i++) {
         localBitMap.add(new BitMap(ARRAY_SIZE));
       }
@@ -283,7 +287,7 @@ public abstract class TVList implements WALEntryValue {
 
   protected void cloneBitMap(TVList cloneList) {
     if (bitMap != null) {
-      cloneList.bitMap = new ArrayList<>();
+      cloneList.bitMap = new ArrayList<>(bitMap.size());
       for (BitMap bm : bitMap) {
         cloneList.bitMap.add(bm == null ? null : bm.clone());
       }
@@ -432,7 +436,7 @@ public abstract class TVList implements WALEntryValue {
     }
     // clone indices
     if (indices != null) {
-      cloneList.indices = new ArrayList<>();
+      cloneList.indices = new ArrayList<>(indices.size());
       for (int[] indicesArray : indices) {
         cloneList.indices.add(cloneIndex(indicesArray));
       }
@@ -946,5 +950,15 @@ public abstract class TVList implements WALEntryValue {
     public TVList getTVList() {
       return outer;
     }
+  }
+
+  protected static int getDefaultArrayNum() {
+    if (System.currentTimeMillis() - defaultArrayNumLastUpdatedTimeMs > 10_000) {
+      defaultArrayNumLastUpdatedTimeMs = System.currentTimeMillis();
+      defaultArrayNum =
+          ((int) WritingMetrics.getInstance().getAvgPointHistogram().takeSnapshot().getMean()
+              / ARRAY_SIZE);
+    }
+    return defaultArrayNum;
   }
 }

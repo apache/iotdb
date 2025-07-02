@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 
@@ -85,6 +86,11 @@ public class AllowAllAccessControl implements AccessControl {
 
   @Override
   public void checkCanShowOrDescTable(String userName, QualifiedObjectName tableName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkCanCreateViewFromTreePath(String userName, PartialPath path) {
     // allow anything
   }
 

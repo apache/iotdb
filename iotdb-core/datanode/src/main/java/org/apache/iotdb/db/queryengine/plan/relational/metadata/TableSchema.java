@@ -21,25 +21,25 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class TableSchema {
 
   private final String tableName;
-
-  private final List<ColumnSchema> columns;
+  protected final List<ColumnSchema> columns;
+  protected Map<String, String> props;
 
   public TableSchema(final String tableName, final List<ColumnSchema> columns) {
     this.tableName = tableName;
@@ -54,15 +54,23 @@ public class TableSchema {
     return columns;
   }
 
+  public void setProps(final Map<String, String> props) {
+    this.props = props;
+  }
+
+  public Map<String, String> getProps() {
+    return props;
+  }
+
   /** Get the column with the specified name and category, return null if not found. */
   public ColumnSchema getColumn(
       final String columnName, final TsTableColumnCategory columnCategory) {
-    for (final ColumnSchema column : columns) {
-      if (column.getName().equals(columnName) && column.getColumnCategory() == columnCategory) {
-        return column;
-      }
-    }
-    return null;
+    return columns.stream()
+        .filter(
+            column ->
+                column.getName().equals(columnName) && column.getColumnCategory() == columnCategory)
+        .findAny()
+        .orElse(null);
   }
 
   /**
@@ -81,20 +89,22 @@ public class TableSchema {
   }
 
   public static TableSchema of(final TsTable tsTable) {
-    final String tableName = tsTable.getTableName();
-    final List<ColumnSchema> columns = new ArrayList<>();
-    for (final TsTableColumnSchema tsTableColumnSchema : tsTable.getColumnList()) {
-      columns.add(ColumnSchema.ofTsColumnSchema(tsTableColumnSchema));
-    }
-    return new TableSchema(tableName, columns);
+    final TableSchema schema =
+        new TableSchema(
+            tsTable.getTableName(),
+            tsTable.getColumnList().stream()
+                .map(ColumnSchema::ofTsColumnSchema)
+                .collect(Collectors.toList()));
+    schema.setProps(tsTable.getProps());
+    return schema;
   }
 
   public org.apache.tsfile.file.metadata.TableSchema toTsFileTableSchema() {
     // TODO-Table: unify redundant definitions
-    String tableName = this.getTableName();
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    List<ColumnCategory> columnTypes = new ArrayList<>();
-    for (ColumnSchema column : columns) {
+    final String tableName = this.getTableName();
+    final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    final List<ColumnCategory> columnTypes = new ArrayList<>();
+    for (final ColumnSchema column : columns) {
       if (column.getColumnCategory() == TsTableColumnCategory.TIME) {
         continue;
       }
@@ -109,10 +119,10 @@ public class TableSchema {
 
   public org.apache.tsfile.file.metadata.TableSchema toTsFileTableSchemaNoAttribute() {
     // TODO-Table: unify redundant definitions
-    String tableName = this.getTableName();
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    List<ColumnCategory> columnTypes = new ArrayList<>();
-    for (ColumnSchema column : columns) {
+    final String tableName = this.getTableName();
+    final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    final List<ColumnCategory> columnTypes = new ArrayList<>();
+    for (final ColumnSchema column : columns) {
       if (column.getColumnCategory() == TsTableColumnCategory.TIME
           || column.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE) {
         continue;

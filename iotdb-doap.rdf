@@ -64,6 +64,14 @@
     <release>
       <Version>
         <name>Apache IoTDB</name>
+        <created>2025-05-30</created>
+        <revision>2.0.3</revision>
+      </Version>
+    </release>
+
+    <release>
+      <Version>
+        <name>Apache IoTDB</name>
         <created>2025-04-17</created>
         <revision>2.0.2</revision>
       </Version>

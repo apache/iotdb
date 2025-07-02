@@ -32,13 +32,21 @@ public class SetTablePropertiesPlan extends AbstractTablePlan {
 
   private Map<String, String> properties;
 
-  public SetTablePropertiesPlan() {
-    super(ConfigPhysicalPlanType.SetTableProperties);
+  public SetTablePropertiesPlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   public SetTablePropertiesPlan(
       final String database, final String tableName, final Map<String, String> properties) {
-    super(ConfigPhysicalPlanType.SetTableProperties, database, tableName);
+    this(ConfigPhysicalPlanType.SetTableProperties, database, tableName, properties);
+  }
+
+  protected SetTablePropertiesPlan(
+      final ConfigPhysicalPlanType type,
+      final String database,
+      final String tableName,
+      final Map<String, String> properties) {
+    super(type, database, tableName);
     this.properties = properties;
   }
 

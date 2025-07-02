@@ -39,8 +39,10 @@ import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQuerySuccessfulCallbackVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
@@ -57,6 +59,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,6 +70,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -118,17 +122,104 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   @Override
-  public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
+  public Future<FragInstanceDispatchResult> dispatch(
+      SubPlan root, List<FragmentInstance> instances) {
     if (type == QueryType.READ) {
-      return dispatchRead(instances);
+      return instances.size() == 1 || root == null
+          ? dispatchRead(instances)
+          : topologicalParallelDispatchRead(root, instances);
     } else {
       return dispatchWrite(instances);
     }
   }
 
-  // TODO: (xingtanzjr) currently we use a sequential dispatch policy for READ, which is
-  //  unsafe for current FragmentInstance scheduler framework. We need to implement the
-  //  topological dispatch according to dependency relations between FragmentInstances
+  private Future<FragInstanceDispatchResult> topologicalParallelDispatchRead(
+      SubPlan root, List<FragmentInstance> instances) {
+    long startTime = System.nanoTime();
+    LinkedBlockingQueue<Pair<SubPlan, Boolean>> queue = new LinkedBlockingQueue<>(instances.size());
+    List<Future<FragInstanceDispatchResult>> futures = new ArrayList<>(instances.size());
+    queue.add(new Pair<>(root, true));
+    try {
+      while (futures.size() < instances.size()) {
+        Pair<SubPlan, Boolean> pair = queue.take();
+        SubPlan next = pair.getLeft();
+        boolean previousSuccess = pair.getRight();
+        if (!previousSuccess) {
+          break;
+        }
+        FragmentInstance fragmentInstance =
+            instances.get(next.getPlanFragment().getIndexInFragmentInstanceList());
+        futures.add(asyncDispatchOneInstance(next, fragmentInstance, queue));
+      }
+      for (Future<FragInstanceDispatchResult> future : futures) {
+        FragInstanceDispatchResult result = future.get();
+        if (!result.isSuccessful()) {
+          return immediateFuture(result);
+        }
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("Interrupted when dispatching read async", e);
+      return immediateFuture(
+          new FragInstanceDispatchResult(
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, "Interrupted errors: " + e.getMessage())));
+    } catch (Throwable t) {
+      LOGGER.warn(DISPATCH_FAILED, t);
+      return immediateFuture(
+          new FragInstanceDispatchResult(
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
+    } finally {
+      long queryDispatchReadTime = System.nanoTime() - startTime;
+      QUERY_EXECUTION_METRIC_SET.recordExecutionCost(DISPATCH_READ, queryDispatchReadTime);
+      queryContext.recordDispatchCost(queryDispatchReadTime);
+    }
+    return immediateFuture(new FragInstanceDispatchResult(true));
+  }
+
+  private Future<FragInstanceDispatchResult> asyncDispatchOneInstance(
+      SubPlan plan, FragmentInstance instance, LinkedBlockingQueue<Pair<SubPlan, Boolean>> queue) {
+    return Coordinator.getInstance()
+        .getDispatchExecutor()
+        .submit(
+            () -> {
+              boolean success = false;
+              try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+                dispatchOneInstance(instance);
+                success = true;
+              } catch (FragmentInstanceDispatchException e) {
+                return new FragInstanceDispatchResult(e.getFailureStatus());
+              } catch (Throwable t) {
+                LOGGER.warn(DISPATCH_FAILED, t);
+                return new FragInstanceDispatchResult(
+                    RpcUtils.getStatus(
+                        TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
+              } finally {
+                if (!success) {
+                  // In case of failure, only one notification needs to be sent to the outer layer.
+                  // If the failure is not notified and the child FI is not sent, the outer loop
+                  // won't be able to exit.
+                  queue.add(new Pair<>(null, false));
+                } else {
+                  for (SubPlan child : plan.getChildren()) {
+                    queue.add(new Pair<>(child, true));
+                  }
+                }
+                // friendly for gc, clear the plan node tree, for some queries select all devices,
+                // it will release lots of memory
+                if (!queryContext.isExplainAnalyze()) {
+                  // EXPLAIN ANALYZE will use these instances, so we can't clear them
+                  instance.getFragment().clearUselessField();
+                } else {
+                  // TypeProvider is not used in EXPLAIN ANALYZE, so we can clear it
+                  instance.getFragment().clearTypeProvider();
+                }
+              }
+              return new FragInstanceDispatchResult(true);
+            });
+  }
+
   private Future<FragInstanceDispatchResult> dispatchRead(List<FragmentInstance> instances) {
     long startTime = System.nanoTime();
 
@@ -380,8 +471,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               } else if (sendFragmentInstanceResp.status.getCode()
                   == TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()) {
                 throw new ConsensusGroupNotExistException(sendFragmentInstanceResp.message);
-              } else if (sendFragmentInstanceResp.status.getCode()
-                  == TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()) {
+              } else {
                 throw new FragmentInstanceDispatchException(sendFragmentInstanceResp.status);
               }
             } else if (sendFragmentInstanceResp.status != null) {
@@ -519,9 +609,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         if (!executionResult.isAccepted()) {
           LOGGER.warn(executionResult.getMessage());
           if (executionResult.isReadNeedRetry()) {
-            if (executionResult.getStatus() != null
-                && executionResult.getStatus().getCode()
-                    == TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()) {
+            if (executionResult.getStatus() != null) {
               throw new FragmentInstanceDispatchException(executionResult.getStatus());
             }
             throw new FragmentInstanceDispatchException(

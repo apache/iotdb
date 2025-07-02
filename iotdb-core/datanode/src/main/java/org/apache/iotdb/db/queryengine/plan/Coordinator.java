@@ -82,6 +82,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorS
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveConfigNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
@@ -125,6 +127,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.BiFunction;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
@@ -163,6 +166,7 @@ public class Coordinator {
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
+  private final ExecutorService dispatchExecutor;
 
   private final QueryIdGenerator queryIdGenerator =
       new QueryIdGenerator(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
@@ -182,10 +186,15 @@ public class Coordinator {
     this.executor = getQueryExecutor();
     this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
+    int dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
+    this.dispatchExecutor =
+        IoTDBThreadPoolFactory.newCachedThreadPool(
+            ThreadName.FRAGMENT_INSTANCE_DISPATCH.getName(),
+            dispatchThreadNum,
+            dispatchThreadNum,
+            new ThreadPoolExecutor.CallerRunsPolicy());
     this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
-    this.statementRewrite =
-        new StatementRewriteFactory(LocalExecutionPlanner.getInstance().metadata, accessControl)
-            .getStatementRewrite();
+    this.statementRewrite = new StatementRewriteFactory().getStatementRewrite();
     this.logicalPlanOptimizers =
         new LogicalOptimizeFactory(
                 new PlannerContext(
@@ -411,6 +420,8 @@ public class Coordinator {
         || statement instanceof SetTableComment
         || statement instanceof SetColumnComment
         || statement instanceof DeleteDevice
+        || statement instanceof RenameColumn
+        || statement instanceof RenameTable
         || statement instanceof ShowCluster
         || statement instanceof ShowRegions
         || statement instanceof ShowDataNodes
@@ -583,5 +594,9 @@ public class Coordinator {
 
   public DataNodeLocationSupplierFactory.DataNodeLocationSupplier getDataNodeLocationSupplier() {
     return dataNodeLocationSupplier;
+  }
+
+  public ExecutorService getDispatchExecutor() {
+    return dispatchExecutor;
   }
 }

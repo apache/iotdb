@@ -35,6 +35,7 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
@@ -62,7 +63,7 @@ public class ImportDataTable extends AbstractImportData {
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
   private static ITableSessionPool sessionPool;
   private static Map<String, TSDataType> dataTypes = new HashMap<>();
-  private static Map<String, Tablet.ColumnCategory> columnCategory = new HashMap<>();
+  private static Map<String, ColumnCategory> columnCategory = new HashMap<>();
 
   public void init() throws InterruptedException {
     sessionPool =
@@ -256,7 +257,7 @@ public class ImportDataTable extends AbstractImportData {
         });
     List<String> headNames = new LinkedList<>(dataTypes.keySet());
     List<TSDataType> columnTypes = new LinkedList<>(dataTypes.values());
-    List<Tablet.ColumnCategory> columnCategorys = new LinkedList<>(columnCategory.values());
+    List<ColumnCategory> columnCategorys = new LinkedList<>(columnCategory.values());
     Tablet tablet = new Tablet(table, headNames, columnTypes, columnCategorys, batchPointSize);
     for (CSVRecord recordObj : records) {
       boolean isFail = false;
@@ -277,11 +278,11 @@ public class ImportDataTable extends AbstractImportData {
               if (newIndex >= columnTypes.size()) {
                 headNames.add(headerName);
                 columnTypes.add(type);
-                columnCategorys.add(Tablet.ColumnCategory.FIELD);
+                columnCategorys.add(ColumnCategory.FIELD);
               } else {
                 headNames.add(headerName);
                 columnTypes.add(newIndex, type);
-                columnCategorys.add(newIndex, Tablet.ColumnCategory.FIELD);
+                columnCategorys.add(newIndex, ColumnCategory.FIELD);
               }
               writeAndEmptyDataSet(tablet, 3);
               tablet = new Tablet(table, headNames, columnTypes, columnCategorys, batchPointSize);

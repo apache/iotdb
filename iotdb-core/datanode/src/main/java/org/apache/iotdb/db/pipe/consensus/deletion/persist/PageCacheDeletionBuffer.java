@@ -273,6 +273,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     }
     // clean buffer
     MmapUtil.clean(serializeBuffer);
+    serializeBuffer = null;
   }
 
   private void waitUntilFlushAllDeletionsOrTimeOut() {

@@ -140,7 +140,8 @@ public class AlterTimeSeriesStatement extends Statement {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathPermission(userName, path, PrivilegeType.WRITE_SCHEMA),
+        AuthorityChecker.checkFullPathOrPatternPermission(
+            userName, path, PrivilegeType.WRITE_SCHEMA),
         PrivilegeType.WRITE_SCHEMA);
   }
 

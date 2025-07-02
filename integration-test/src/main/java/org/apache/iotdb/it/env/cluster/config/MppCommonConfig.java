@@ -98,12 +98,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptFlag(boolean encryptFlag) {
-    setProperty("encrypt_flag", String.valueOf(encryptFlag));
-    return this;
-  }
-
-  @Override
   public CommonConfig setEncryptType(String encryptType) {
     setProperty("encrypt_type", encryptType);
     return this;
@@ -529,6 +523,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     setProperty("chunk_timeseriesmeta_free_memory_proportion", queryMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    setProperty("subscription_enabled", String.valueOf(subscriptionEnabled));
     return this;
   }
 

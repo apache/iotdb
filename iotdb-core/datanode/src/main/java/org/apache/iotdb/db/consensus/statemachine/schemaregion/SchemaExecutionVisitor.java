@@ -433,6 +433,11 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     try {
       final Template template =
           ClusterTemplateManager.getInstance().getTemplate(node.getTemplateId());
+      if (Objects.isNull(template)) {
+        return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
+            .setMessage(
+                "The template is null when trying to activate template, may be the template is being unset.");
+      }
       schemaRegion.activateSchemaTemplate(node, template);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (final MetadataException e) {
@@ -450,6 +455,11 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         node.getTemplateActivationMap().entrySet()) {
       final Template template =
           ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
+      if (Objects.isNull(template)) {
+        return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
+            .setMessage(
+                "The template is null when trying to activate template, may be the template is being unset.");
+      }
       try {
         schemaRegion.activateSchemaTemplate(
             SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
@@ -480,6 +490,11 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         node.getTemplateActivationMap().entrySet()) {
       final Template template =
           ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
+      if (Objects.isNull(template)) {
+        return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
+            .setMessage(
+                "The template is null when trying to activate template, may be the template is being unset.");
+      }
       try {
         schemaRegion.activateSchemaTemplate(
             SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(

@@ -75,6 +75,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -94,6 +95,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
@@ -136,7 +138,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
@@ -625,8 +629,14 @@ public interface IManager {
   /** Show DataNodes. */
   TShowDataNodesResp showDataNodes();
 
+  /** Show DataNodes for information schema. */
+  TShowDataNodes4InformationSchemaResp showDataNodes4InformationSchema();
+
   /** Show ConfigNodes. */
   TShowConfigNodesResp showConfigNodes();
+
+  /** Show ConfigNodes for information schema. */
+  TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema();
 
   /**
    * Show StorageGroup.
@@ -791,6 +801,8 @@ public interface IManager {
 
   TSStatus dropSubscription(TUnsubscribeReq req);
 
+  TSStatus dropSubscriptionById(TDropSubscriptionReq req);
+
   TShowSubscriptionResp showSubscription(TShowSubscriptionReq req);
 
   TGetAllSubscriptionInfoResp getAllSubscriptionInfo();
@@ -861,6 +873,8 @@ public interface IManager {
   TSStatus setSpaceQuota(TSetSpaceQuotaReq req);
 
   TSStatus createTable(final ByteBuffer tableInfo);
+
+  TSStatus createTableView(final TCreateTableViewReq req);
 
   TSStatus alterOrDropTable(final TAlterOrDropTableReq req);
 

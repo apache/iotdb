@@ -31,8 +31,8 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /**
- * {@link IdFilter} and {@link AttributeFilter} share the same values filter for query logic on
- * their values. {@link IdFilter} and {@link AttributeFilter} just indicates that how to get the
+ * {@link TagFilter} and {@link AttributeFilter} share the same values filter for query logic on
+ * their values. {@link TagFilter} and {@link AttributeFilter} just indicates that how to get the
  * id/attribute value from the device entry.
  */
 public class AttributeFilter extends AbstractSingleChildFilter {
