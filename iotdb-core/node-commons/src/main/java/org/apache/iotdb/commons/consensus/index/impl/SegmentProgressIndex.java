@@ -54,14 +54,15 @@ public class SegmentProgressIndex extends ProgressIndex {
   private ProgressIndex latestProgressIndex = MinimumProgressIndex.INSTANCE;
 
   // <startIndex, endIndex> of the downgraded segments
-  private final List<Pair<ProgressIndex, ProgressIndex>> brokenProgressIndexes = new LinkedList<>();
+  private final LinkedList<Pair<ProgressIndex, ProgressIndex>> brokenProgressIndexes =
+      new LinkedList<>();
 
   public void recordStart(final ProgressIndex index) {
     brokenProgressIndexes.add(new Pair<>(index, null));
   }
 
   public void recordEnd(final ProgressIndex index) {
-    brokenProgressIndexes.get(brokenProgressIndexes.size() - 1).setRight(index);
+    brokenProgressIndexes.getLast().setRight(index);
   }
 
   public void eliminate(final ProgressIndex index) {
