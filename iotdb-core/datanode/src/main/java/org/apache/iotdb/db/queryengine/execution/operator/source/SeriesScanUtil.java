@@ -330,21 +330,18 @@ public class SeriesScanUtil implements Accountable {
     }
 
     Optional<Boolean> hasNextFileReturnValue = null;
-    while (firstChunkMetadata == null && hasNextFileReturnValue == null) {
+    while (firstChunkMetadata == null) {
       if (cachedChunkMetadata.isEmpty()) {
+        if (hasNextFileReturnValue != null) {
+          return Optional.empty();
+        }
         hasNextFileReturnValue = hasNextFile();
         if (!hasNextFileReturnValue.isPresent() || !hasNextFileReturnValue.get()) {
-          break;
+          return hasNextFileReturnValue;
         }
       }
       initFirstChunkMetadata();
-      // filter chunk based on push-down conditions
       filterFirstChunkMetadata();
-    }
-    if (hasNextFileReturnValue != null
-        && !hasNextFileReturnValue.isPresent()
-        && firstChunkMetadata == null) {
-      return hasNextFileReturnValue;
     }
     return Optional.of(firstChunkMetadata != null);
   }
