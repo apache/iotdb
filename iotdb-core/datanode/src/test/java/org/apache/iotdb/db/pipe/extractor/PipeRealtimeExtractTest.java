@@ -104,36 +104,37 @@ public class PipeRealtimeExtractTest {
   public void testRealtimeExtractProcess() {
     // set up realtime extractor
 
-    try (PipeRealtimeDataRegionLogExtractor extractor0 = new PipeRealtimeDataRegionLogExtractor();
-        PipeRealtimeDataRegionHybridExtractor extractor1 =
+    try (final PipeRealtimeDataRegionLogExtractor extractor0 =
+            new PipeRealtimeDataRegionLogExtractor();
+        final PipeRealtimeDataRegionHybridExtractor extractor1 =
             new PipeRealtimeDataRegionHybridExtractor();
-        PipeRealtimeDataRegionTsFileExtractor extractor2 =
+        final PipeRealtimeDataRegionTsFileExtractor extractor2 =
             new PipeRealtimeDataRegionTsFileExtractor();
-        PipeRealtimeDataRegionHybridExtractor extractor3 =
+        final PipeRealtimeDataRegionHybridExtractor extractor3 =
             new PipeRealtimeDataRegionHybridExtractor()) {
 
-      PipeParameters parameters0 =
+      final PipeParameters parameters0 =
           new PipeParameters(
               new HashMap<String, String>() {
                 {
                   put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, pattern1);
                 }
               });
-      PipeParameters parameters1 =
+      final PipeParameters parameters1 =
           new PipeParameters(
               new HashMap<String, String>() {
                 {
                   put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, pattern2);
                 }
               });
-      PipeParameters parameters2 =
+      final PipeParameters parameters2 =
           new PipeParameters(
               new HashMap<String, String>() {
                 {
                   put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, pattern1);
                 }
               });
-      PipeParameters parameters3 =
+      final PipeParameters parameters3 =
           new PipeParameters(
               new HashMap<String, String>() {
                 {
@@ -141,16 +142,16 @@ public class PipeRealtimeExtractTest {
                 }
               });
 
-      PipeTaskRuntimeConfiguration configuration0 =
+      final PipeTaskRuntimeConfiguration configuration0 =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(dataRegion1), null));
-      PipeTaskRuntimeConfiguration configuration1 =
+      final PipeTaskRuntimeConfiguration configuration1 =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(dataRegion1), null));
-      PipeTaskRuntimeConfiguration configuration2 =
+      final PipeTaskRuntimeConfiguration configuration2 =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(dataRegion2), null));
-      PipeTaskRuntimeConfiguration configuration3 =
+      final PipeTaskRuntimeConfiguration configuration3 =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(dataRegion2), null));
 
@@ -164,7 +165,7 @@ public class PipeRealtimeExtractTest {
       extractor3.validate(new PipeParameterValidator(parameters3));
       extractor3.customize(parameters3, configuration3);
 
-      PipeRealtimeDataRegionExtractor[] extractors =
+      final PipeRealtimeDataRegionExtractor[] extractors =
           new PipeRealtimeDataRegionExtractor[] {extractor0, extractor1, extractor2, extractor3};
 
       // start extractor 0, 1
@@ -172,7 +173,7 @@ public class PipeRealtimeExtractTest {
       extractors[1].start();
 
       // test result of extractor 0, 1
-      int writeNum = 10;
+      final int writeNum = 10;
       List<Future<?>> writeFutures =
           Arrays.asList(
               write2DataRegion(writeNum, dataRegion1, 0),
@@ -190,7 +191,7 @@ public class PipeRealtimeExtractTest {
       try {
         listenFutures.get(0).get(10, TimeUnit.MINUTES);
         listenFutures.get(1).get(10, TimeUnit.MINUTES);
-      } catch (TimeoutException e) {
+      } catch (final TimeoutException e) {
         LOGGER.warn("Time out when listening extractor", e);
         alive.set(false);
         Assert.fail();
@@ -232,7 +233,7 @@ public class PipeRealtimeExtractTest {
         listenFutures.get(1).get(10, TimeUnit.MINUTES);
         listenFutures.get(2).get(10, TimeUnit.MINUTES);
         listenFutures.get(3).get(10, TimeUnit.MINUTES);
-      } catch (TimeoutException e) {
+      } catch (final TimeoutException e) {
         LOGGER.warn("Time out when listening extractor", e);
         alive.set(false);
         Assert.fail();
@@ -245,33 +246,34 @@ public class PipeRealtimeExtractTest {
               throw new RuntimeException(e);
             }
           });
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new RuntimeException(e);
     }
   }
 
-  private Future<?> write2DataRegion(int writeNum, String dataRegionId, int startNum) {
-    File dataRegionDir =
+  private Future<?> write2DataRegion(
+      final int writeNum, final String dataRegionId, final int startNum) {
+    final File dataRegionDir =
         new File(tsFileDir.getPath() + File.separator + dataRegionId + File.separator + "0");
-    boolean ignored = dataRegionDir.mkdirs();
+    final boolean ignored = dataRegionDir.mkdirs();
     return writeService.submit(
         () -> {
           for (int i = startNum; i < startNum + writeNum; ++i) {
-            File tsFile = new File(dataRegionDir, String.format("%s-%s-0-0.tsfile", i, i));
+            final File tsFile = new File(dataRegionDir, String.format("%s-%s-0-0.tsfile", i, i));
             try {
-              boolean ignored1 = tsFile.createNewFile();
-            } catch (IOException e) {
+              final boolean ignored1 = tsFile.createNewFile();
+            } catch (final IOException e) {
               e.printStackTrace();
               throw new RuntimeException(e);
             }
 
-            TsFileResource resource = new TsFileResource(tsFile);
+            final TsFileResource resource = new TsFileResource(tsFile);
             resource.updateStartTime(
                 new PlainDeviceID(String.join(TsFileConstant.PATH_SEPARATOR, device)), 0);
 
             try {
               resource.close();
-            } catch (IOException e) {
+            } catch (final IOException e) {
               e.printStackTrace();
               throw new RuntimeException(e);
             }
@@ -309,7 +311,9 @@ public class PipeRealtimeExtractTest {
   }
 
   private Future<?> listen(
-      PipeRealtimeDataRegionExtractor extractor, Function<Event, Integer> weight, int expectNum) {
+      final PipeRealtimeDataRegionExtractor extractor,
+      final Function<Event, Integer> weight,
+      final int expectNum) {
     return listenerService.submit(
         () -> {
           int eventNum = 0;
@@ -318,7 +322,7 @@ public class PipeRealtimeExtractTest {
               Event event;
               try {
                 event = extractor.supply();
-              } catch (Exception e) {
+              } catch (final Exception e) {
                 throw new RuntimeException(e);
               }
               if (event != null) {
