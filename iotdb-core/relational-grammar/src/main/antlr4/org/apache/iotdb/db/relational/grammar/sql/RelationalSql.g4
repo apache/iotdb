@@ -1115,6 +1115,7 @@ primaryExpression
         trimSource=valueExpression ')'                                                    #trim
     | TRIM '(' trimSource=valueExpression ',' trimChar=valueExpression ')'                #trim
     | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
+    | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
     | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
     | DATE_BIN_GAPFILL '(' timeDuration ',' valueExpression (',' timeValue)? ')'          #dateBinGapFill
     | '(' expression ')'                                                                  #parenthesizedExpression

@@ -91,6 +91,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
@@ -282,6 +283,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.lang.Long.parseLong;
+import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
@@ -3088,6 +3090,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitCurrentUser(RelationalSqlParser.CurrentUserContext ctx) {
     return new CurrentUser(getLocation(ctx));
+  }
+
+  @Override
+  public Node visitExtract(RelationalSqlParser.ExtractContext context) {
+    String fieldString = context.identifier().getText();
+    Extract.Field field;
+    try {
+      field = Extract.Field.valueOf(fieldString.toUpperCase(ENGLISH));
+    } catch (IllegalArgumentException e) {
+      throw parseError("Invalid EXTRACT field: " + fieldString, context);
+    }
+    return new Extract(getLocation(context), (Expression) visit(context.valueExpression()), field);
   }
 
   @Override
