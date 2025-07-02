@@ -147,7 +147,7 @@ public class PipeTsFileResourceManager {
         getCommonFilePath(file),
         (k, v) -> {
           if (Objects.isNull(v)) {
-            return new PipeTsFileMemResource(file);
+            return new PipeTsFileMemResource();
           } else {
             v.increaseReferenceCount();
             return v;
@@ -240,9 +240,13 @@ public class PipeTsFileResourceManager {
   }
 
   // Warning: Shall not be called by the assigner
-  private String getCommonFilePath(final File file) {
+  private String getCommonFilePath(final @Nonnull File file) {
+    // If the parent or grandparent is null then this is testing scenario
     // Skip the "pipeName" of this file
-    return file.getParentFile().getParent() + File.separator + file.getName();
+    return Objects.isNull(file.getParentFile())
+            || Objects.isNull(file.getParentFile().getParentFile())
+        ? file.getPath()
+        : file.getParentFile().getParent() + File.separator + file.getName();
   }
 
   /**
@@ -278,9 +282,13 @@ public class PipeTsFileResourceManager {
   public boolean cacheObjectsIfAbsent(final File hardlinkOrCopiedTsFile) throws IOException {
     segmentLock.lock(hardlinkOrCopiedTsFile);
     try {
+      if (hardlinkOrCopiedTsFile.getParentFile() == null
+          || hardlinkOrCopiedTsFile.getParentFile().getParentFile() == null) {
+        return false;
+      }
       final PipeTsFileMemResource resource =
           hardlinkOrCopiedFileToTsFileMemResourceMap.get(getCommonFilePath(hardlinkOrCopiedTsFile));
-      return resource != null && resource.cacheObjectsIfAbsent();
+      return resource != null && resource.cacheObjectsIfAbsent(hardlinkOrCopiedTsFile);
     } finally {
       segmentLock.unlock(hardlinkOrCopiedTsFile);
     }
@@ -292,7 +300,7 @@ public class PipeTsFileResourceManager {
     try {
       final PipeTsFileMemResource resource =
           hardlinkOrCopiedFileToTsFileMemResourceMap.get(getCommonFilePath(hardlinkOrCopiedTsFile));
-      return resource == null ? null : resource.tryGetDeviceMeasurementsMap();
+      return resource == null ? null : resource.tryGetDeviceMeasurementsMap(hardlinkOrCopiedTsFile);
     } finally {
       segmentLock.unlock(hardlinkOrCopiedTsFile);
     }
@@ -304,7 +312,9 @@ public class PipeTsFileResourceManager {
     try {
       final PipeTsFileMemResource resource =
           hardlinkOrCopiedFileToTsFileMemResourceMap.get(getCommonFilePath(hardlinkOrCopiedTsFile));
-      return resource == null ? null : resource.tryGetDeviceIsAlignedMap(cacheOtherMetadata);
+      return resource == null
+          ? null
+          : resource.tryGetDeviceIsAlignedMap(cacheOtherMetadata, hardlinkOrCopiedTsFile);
     } finally {
       segmentLock.unlock(hardlinkOrCopiedTsFile);
     }
@@ -316,7 +326,9 @@ public class PipeTsFileResourceManager {
     try {
       final PipeTsFileMemResource resource =
           hardlinkOrCopiedFileToTsFileMemResourceMap.get(getCommonFilePath(hardlinkOrCopiedTsFile));
-      return resource == null ? null : resource.tryGetMeasurementDataTypeMap();
+      return resource == null
+          ? null
+          : resource.tryGetMeasurementDataTypeMap(hardlinkOrCopiedTsFile);
     } finally {
       segmentLock.unlock(hardlinkOrCopiedTsFile);
     }

@@ -30,7 +30,7 @@ public class PipeTsFileResource implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResource.class);
 
-  protected final File hardlinkOrCopiedFile;
+  private final File hardlinkOrCopiedFile;
 
   private volatile long fileSize = -1L;
 

@@ -47,8 +47,8 @@ public class PipeTsFileMemResource extends PipeTsFileResource {
   private Map<IDeviceID, Boolean> deviceIsAlignedMap = null;
   private Map<String, TSDataType> measurementDataTypeMap = null;
 
-  public PipeTsFileMemResource(final File hardlinkOrCopiedFile) {
-    super(hardlinkOrCopiedFile);
+  public PipeTsFileMemResource() {
+    super(null);
   }
 
   @Override
@@ -73,34 +73,35 @@ public class PipeTsFileMemResource extends PipeTsFileResource {
 
   //////////////////////////// Cache Getter ////////////////////////////
 
-  public synchronized Map<IDeviceID, List<String>> tryGetDeviceMeasurementsMap()
+  public synchronized Map<IDeviceID, List<String>> tryGetDeviceMeasurementsMap(final File tsFile)
       throws IOException {
     if (deviceMeasurementsMap == null) {
-      cacheObjectsIfAbsent();
+      cacheObjectsIfAbsent(tsFile);
     }
     return deviceMeasurementsMap;
   }
 
   public synchronized Map<IDeviceID, Boolean> tryGetDeviceIsAlignedMap(
-      final boolean cacheOtherMetadata) throws IOException {
+      final boolean cacheOtherMetadata, final File tsFile) throws IOException {
     if (deviceIsAlignedMap == null) {
       if (cacheOtherMetadata) {
-        cacheObjectsIfAbsent();
+        cacheObjectsIfAbsent(tsFile);
       } else {
-        cacheDeviceIsAlignedMapIfAbsent();
+        cacheDeviceIsAlignedMapIfAbsent(tsFile);
       }
     }
     return deviceIsAlignedMap;
   }
 
-  public synchronized Map<String, TSDataType> tryGetMeasurementDataTypeMap() throws IOException {
+  public synchronized Map<String, TSDataType> tryGetMeasurementDataTypeMap(final File tsFile)
+      throws IOException {
     if (measurementDataTypeMap == null) {
-      cacheObjectsIfAbsent();
+      cacheObjectsIfAbsent(tsFile);
     }
     return measurementDataTypeMap;
   }
 
-  synchronized boolean cacheDeviceIsAlignedMapIfAbsent() throws IOException {
+  synchronized boolean cacheDeviceIsAlignedMapIfAbsent(final File tsFile) throws IOException {
 
     if (allocatedMemoryBlock != null) {
       // This means objects are already cached.
@@ -118,13 +119,13 @@ public class PipeTsFileMemResource extends PipeTsFileResource {
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
           "Failed to cacheDeviceIsAlignedMapIfAbsent for tsfile {}, because memory usage is high",
-          hardlinkOrCopiedFile.getPath());
+          tsFile.getPath());
       return false;
     }
 
     long memoryRequiredInBytes = 0L;
     try (TsFileSequenceReader sequenceReader =
-        new TsFileSequenceReader(hardlinkOrCopiedFile.getPath(), true, false)) {
+        new TsFileSequenceReader(tsFile.getPath(), true, false)) {
       deviceIsAlignedMap = new HashMap<>();
       final TsFileDeviceIterator deviceIsAlignedIterator =
           sequenceReader.getAllDevicesIteratorWithIsAligned();
@@ -145,19 +146,16 @@ public class PipeTsFileMemResource extends PipeTsFileResource {
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
           "PipeTsFileResource: Failed to cache objects for tsfile {} in cache, because memory usage is high",
-          hardlinkOrCopiedFile.getPath());
+          tsFile.getPath());
       deviceIsAlignedMap = null;
       return false;
     }
 
-    LOGGER.info(
-        "PipeTsFileResource: Cached deviceIsAlignedMap for tsfile {}.",
-        hardlinkOrCopiedFile.getPath());
+    LOGGER.info("PipeTsFileResource: Cached deviceIsAlignedMap for tsfile {}.", tsFile.getPath());
     return true;
   }
 
-  synchronized boolean cacheObjectsIfAbsent() throws IOException {
-
+  synchronized boolean cacheObjectsIfAbsent(final File tsFile) throws IOException {
     if (allocatedMemoryBlock != null) {
       if (deviceMeasurementsMap != null) {
         return true;
@@ -179,13 +177,13 @@ public class PipeTsFileMemResource extends PipeTsFileResource {
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
           "Failed to cacheObjectsIfAbsent for tsfile {}, because memory usage is high",
-          hardlinkOrCopiedFile.getPath());
+          tsFile.getPath());
       return false;
     }
 
     long memoryRequiredInBytes = 0L;
     try (TsFileSequenceReader sequenceReader =
-        new TsFileSequenceReader(hardlinkOrCopiedFile.getPath(), true, true)) {
+        new TsFileSequenceReader(tsFile.getPath(), true, true)) {
       deviceMeasurementsMap = sequenceReader.getDeviceMeasurementsMap();
       memoryRequiredInBytes +=
           PipeMemoryWeightUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
@@ -215,15 +213,14 @@ public class PipeTsFileMemResource extends PipeTsFileResource {
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
           "PipeTsFileResource: Failed to cache objects for tsfile {} in cache, because memory usage is high",
-          hardlinkOrCopiedFile.getPath());
+          tsFile.getPath());
       deviceIsAlignedMap = null;
       deviceMeasurementsMap = null;
       measurementDataTypeMap = null;
       return false;
     }
 
-    LOGGER.info(
-        "PipeTsFileResource: Cached objects for tsfile {}.", hardlinkOrCopiedFile.getPath());
+    LOGGER.info("PipeTsFileResource: Cached objects for tsfile {}.", tsFile.getPath());
     return true;
   }
 }

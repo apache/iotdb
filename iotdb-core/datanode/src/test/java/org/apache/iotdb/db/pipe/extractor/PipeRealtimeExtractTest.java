@@ -39,6 +39,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.After;
 import org.junit.Assert;
@@ -283,9 +284,9 @@ public class PipeRealtimeExtractTest {
                         new PartialPath(device),
                         false,
                         new String[] {"a"},
-                        null,
+                        new TSDataType[] {TSDataType.INT32},
                         0,
-                        null,
+                        new Integer[] {1},
                         false),
                     resource);
             PipeInsertionDataNodeListener.getInstance()
@@ -296,9 +297,9 @@ public class PipeRealtimeExtractTest {
                         new PartialPath(device),
                         false,
                         new String[] {"b"},
-                        null,
+                        new TSDataType[] {TSDataType.INT32},
                         0,
-                        null,
+                        new Integer[] {1},
                         false),
                     resource);
             PipeInsertionDataNodeListener.getInstance()

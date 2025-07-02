@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
@@ -62,6 +63,10 @@ public class PipeDataRegionAssigner implements Closeable {
   }
 
   public void assignToExtractor(final PipeRealtimeEvent event) {
+    if (event.getEvent() instanceof PipeHeartbeatEvent) {
+      ((PipeHeartbeatEvent) event.getEvent()).onPublished();
+    }
+
     extractors.forEach(
         extractor -> {
           if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
