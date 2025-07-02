@@ -216,10 +216,12 @@ public class CommonConfig {
   private int pipeDataStructureTabletRowSize = 2048;
   private int pipeDataStructureTabletSizeInBytes = 2097152;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.2;
-  private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.2;
-  private double pipeDataStructureWalMemoryProportion = 0.3;
+  private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.1;
+  private double pipeDataStructureWalMemoryProportion = 0.4;
   private double PipeDataStructureBatchMemoryProportion = 0.1;
-  private double pipeTotalFloatingMemoryProportion = 0.2;
+  private double pipeTotalFloatingMemoryProportion = 0.1;
+  private double pipeInsertNodeMemoryProportion = 0.6;
+  private double pipeBufferCacheMemoryProportion = 0.4;
 
   private boolean WALCacheBatchLoadEnabled = true;
 
