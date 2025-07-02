@@ -188,18 +188,19 @@ class ModelStorage(object):
         """
         result = {}
         user_dirs = [
-            d for d in os.listdir(self._model_dir)
-            if os.path.isdir(os.path.join(self._model_dir, d)) and d != 'weights'
+            d
+            for d in os.listdir(self._model_dir)
+            if os.path.isdir(os.path.join(self._model_dir, d)) and d != "weights"
         ]
         for model_id in user_dirs:
             result[model_id] = ModelInfo(
                 model_id=model_id,
-                model_type='',
+                model_type="",
                 category=ModelCategory.USER_DEFINED,
                 state=ModelStates.ACTIVE,
             )
         return result
-        
+
     def register_model(self, model_id: str, uri: str):
         """
         Args:
@@ -216,10 +217,12 @@ class ModelStorage(object):
             os.makedirs(storage_path)
         model_storage_path = os.path.join(storage_path, DEFAULT_MODEL_FILE_NAME)
         config_storage_path = os.path.join(storage_path, DEFAULT_CONFIG_FILE_NAME)
-        configs, attributes = fetch_model_by_uri(uri, model_storage_path, config_storage_path)
+        configs, attributes = fetch_model_by_uri(
+            uri, model_storage_path, config_storage_path
+        )
         self._model_info_map[model_id] = ModelInfo(
             model_id=model_id,
-            model_type='',
+            model_type="",
             category=ModelCategory.USER_DEFINED,
             state=ModelStates.ACTIVE,
         )
@@ -281,13 +284,18 @@ class ModelStorage(object):
                 if not os.path.exists(model_path):
                     raise ModelNotExistError(model_path)
                 model = torch.jit.load(model_path)
-                if isinstance(model, torch._dynamo.eval_frame.OptimizedModule) or not acceleration:
+                if (
+                    isinstance(model, torch._dynamo.eval_frame.OptimizedModule)
+                    or not acceleration
+                ):
                     return model
 
                 try:
                     model = torch.compile(model)
                 except Exception as e:
-                    logger.warning(f"acceleration failed, fallback to normal mode: {str(e)}")
+                    logger.warning(
+                        f"acceleration failed, fallback to normal mode: {str(e)}"
+                    )
                 return model
 
     def save_model(self, model_id: str, model: nn.Module):
@@ -307,7 +315,11 @@ class ModelStorage(object):
                 os.makedirs(model_dir, exist_ok=True)
                 model_path = os.path.join(model_dir, DEFAULT_MODEL_FILE_NAME)
                 try:
-                    scripted_model = model if isinstance(model, torch.jit.ScriptModule) else torch.jit.script(model)
+                    scripted_model = (
+                        model
+                        if isinstance(model, torch.jit.ScriptModule)
+                        else torch.jit.script(model)
+                    )
                     torch.jit.save(scripted_model, model_path)
                 except Exception as e:
                     logger.error(f"Failed to save scripted model: {e}")
