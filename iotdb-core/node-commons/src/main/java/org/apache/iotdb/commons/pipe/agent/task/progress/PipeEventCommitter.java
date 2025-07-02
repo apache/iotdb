@@ -58,6 +58,11 @@ public class PipeEventCommitter {
 
   @SuppressWarnings("java:S899")
   public synchronized void commit(final EnrichedEvent event) {
+    if (event.hasMultipleCommitIds()) {
+      for (final EnrichedEvent dummyEvent : event.getDummyEventsForCommitIds()) {
+        commitQueue.offer(dummyEvent);
+      }
+    }
     commitQueue.offer(event);
 
     final int commitQueueSizeBeforeCommit = commitQueue.size();
