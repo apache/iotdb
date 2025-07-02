@@ -312,42 +312,24 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   @Override
-  public Event supply() {
-    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
-
-    while (realtimeEvent != null) {
-      final Event suppliedEvent;
-
-      // Used to judge the type of the event, not directly for supplying.
-      final Event eventToSupply = realtimeEvent.getEvent();
-      if (eventToSupply instanceof TabletInsertionEvent) {
-        suppliedEvent = supplyTabletInsertion(realtimeEvent);
-      } else if (eventToSupply instanceof TsFileInsertionEvent) {
-        suppliedEvent = supplyTsFileInsertion(realtimeEvent);
-      } else if (eventToSupply instanceof PipeHeartbeatEvent) {
-        suppliedEvent = supplyHeartbeat(realtimeEvent);
-      } else if (eventToSupply instanceof PipeSchemaRegionWritePlanEvent
-          || eventToSupply instanceof ProgressReportEvent) {
-        suppliedEvent = supplyDirectly(realtimeEvent);
-      } else {
-        throw new UnsupportedOperationException(
-            String.format(
-                "Unsupported event type %s for hybrid realtime extractor %s to supply.",
-                eventToSupply.getClass(), this));
-      }
-
-      realtimeEvent.decreaseReferenceCount(
-          PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
-
-      if (suppliedEvent != null) {
-        return suppliedEvent;
-      }
-
-      realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+  protected Event doSupply(final PipeRealtimeEvent realtimeEvent) {
+    // Used to judge the type of the event, not directly for supplying.
+    final Event eventToSupply = realtimeEvent.getEvent();
+    if (eventToSupply instanceof TabletInsertionEvent) {
+      return supplyTabletInsertion(realtimeEvent);
+    } else if (eventToSupply instanceof TsFileInsertionEvent) {
+      return supplyTsFileInsertion(realtimeEvent);
+    } else if (eventToSupply instanceof PipeHeartbeatEvent) {
+      return supplyHeartbeat(realtimeEvent);
+    } else if (eventToSupply instanceof PipeSchemaRegionWritePlanEvent
+        || eventToSupply instanceof ProgressReportEvent) {
+      return supplyDirectly(realtimeEvent);
+    } else {
+      throw new UnsupportedOperationException(
+          String.format(
+              "Unsupported event type %s for hybrid realtime extractor %s to supply.",
+              eventToSupply.getClass(), this));
     }
-
-    // Means the pending queue is empty.
-    return null;
   }
 
   private Event supplyTabletInsertion(final PipeRealtimeEvent event) {

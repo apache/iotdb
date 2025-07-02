@@ -1570,6 +1570,16 @@ public class TsFileProcessor {
       logger.debug("Start to end file {}", tsFileResource);
     }
     writer.endFile();
+
+    // Listen after "endFile" to avoid unnecessary waiting for tsFile close
+    // before resource serialization to avoid missing hardlink after restart
+    PipeInsertionDataNodeListener.getInstance()
+        .listenToTsFile(
+            dataRegionInfo.getDataRegion().getDataRegionId(),
+            tsFileResource,
+            false,
+            workMemTable != null && workMemTable.isTotallyGeneratedByPipe());
+
     tsFileResource.serialize();
     FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
     if (logger.isDebugEnabled()) {

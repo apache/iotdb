@@ -547,7 +547,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             resource,
-            null,
             shouldTransferModFile,
             false,
             true,

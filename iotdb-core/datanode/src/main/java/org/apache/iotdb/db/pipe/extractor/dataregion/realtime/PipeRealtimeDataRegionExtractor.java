@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimePartitionListener;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -312,29 +313,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       }
     }
 
-    // 1. Check if time parsing is necessary. If not, it means that the timestamps of the data
-    // contained in this event are definitely within the time range [start time, end time].
-    // 2. Check if the event's data timestamps may intersect with the time range. If not, it means
-    // that the data timestamps of this event are definitely not within the time range.
-    // 3. Check if pattern parsing is necessary. If not, it means that the paths of the data
-    // contained in this event are definitely covered by the pattern.
-    // 4. Check if the event's data paths may intersect with the pattern. If not, it means that the
-    // data of this event is definitely not overlapped with the pattern.
-    if ((!event.shouldParseTime() || event.getEvent().mayEventTimeOverlappedWithTimeRange())
-        && (!event.shouldParsePattern() || event.getEvent().mayEventPathsOverlappedWithPattern())) {
-      if (sloppyTimeRange) {
-        // only skip parsing time for events whose data timestamps may intersect with the time range
-        event.skipParsingTime();
-      }
-      if (sloppyPattern) {
-        // only skip parsing pattern for events whose data paths may intersect with the pattern
-        event.skipParsingPattern();
-      }
-
-      doExtract(event);
-    } else {
-      event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
-    }
+    doExtract(event);
 
     synchronized (isClosed) {
       if (isClosed.get()) {
@@ -394,6 +373,67 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
     }
   }
+
+  @Override
+  public Event supply() {
+    PipeRealtimeEvent realtimeEvent = getNextRealtimeEvent();
+
+    while (realtimeEvent != null) {
+      final Event suppliedEvent = doSupply(realtimeEvent);
+
+      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
+
+      if (suppliedEvent != null) {
+        return suppliedEvent;
+      }
+
+      realtimeEvent = getNextRealtimeEvent();
+    }
+
+    // means the pending queue is empty.
+    return null;
+  }
+
+  private PipeRealtimeEvent getNextRealtimeEvent() {
+    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+
+    while (realtimeEvent != null
+        && (!CachedSchemaPatternMatcher.match(realtimeEvent, this)
+            || !coarseFilterEvent(realtimeEvent))) {
+      realtimeEvent.decreaseReferenceCount(
+          PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
+      realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+    }
+
+    return realtimeEvent;
+  }
+
+  // This may require some time thus we leave it for processor thread instead of writing thread
+  private boolean coarseFilterEvent(final PipeRealtimeEvent event) {
+    // 1. Check if time parsing is necessary. If not, it means that the timestamps of the data
+    // contained in this event are definitely within the time range [start time, end time].
+    // 2. Check if the event's data timestamps may intersect with the time range. If not, it means
+    // that the data timestamps of this event are definitely not within the time range.
+    // 3. Check if pattern parsing is necessary. If not, it means that the paths of the data
+    // contained in this event are definitely covered by the pattern.
+    // 4. Check if the event's data paths may intersect with the pattern. If not, it means that the
+    // data of this event is definitely not overlapped with the pattern.
+    if ((!event.shouldParseTime() || event.getEvent().mayEventTimeOverlappedWithTimeRange())
+        && (!event.shouldParsePattern() || event.getEvent().mayEventPathsOverlappedWithPattern())) {
+      if (sloppyTimeRange) {
+        // only skip parsing time for events whose data timestamps may intersect with the time range
+        event.skipParsingTime();
+      }
+      if (sloppyPattern) {
+        // only skip parsing pattern for events whose data paths may intersect with the pattern
+        event.skipParsingPattern();
+      }
+      return true;
+    }
+    return false;
+  }
+
+  protected abstract Event doSupply(final PipeRealtimeEvent realtimeEvent);
 
   protected Event supplyHeartbeat(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {

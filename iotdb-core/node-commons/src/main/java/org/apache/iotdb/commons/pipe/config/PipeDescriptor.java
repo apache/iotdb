@@ -346,13 +346,6 @@ public class PipeDescriptor {
                         String.valueOf(
                             config
                                 .getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes())))));
-    config.setPipeExtractorMatcherCacheSize(
-        Integer.parseInt(
-            Optional.ofNullable(properties.getProperty("pipe_source_matcher_cache_size"))
-                .orElse(
-                    properties.getProperty(
-                        "pipe_extractor_matcher_cache_size",
-                        String.valueOf(config.getPipeExtractorMatcherCacheSize())))));
 
     config.setPipeConnectorHandshakeTimeoutMs(
         Long.parseLong(

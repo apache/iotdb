@@ -24,23 +24,20 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
-import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSchemaPatternMatcher;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.PipeDataRegionMatcher;
-import org.apache.iotdb.db.pipe.metric.source.PipeAssignerMetrics;
-import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeDataRegionAssigner implements Closeable {
@@ -49,143 +46,87 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
-  /**
-   * The {@link PipeDataRegionMatcher} is used to match the event with the extractor based on the
-   * pattern.
-   */
-  private final PipeDataRegionMatcher matcher;
-
-  /** The {@link DisruptorQueue} is used to assign the event to the extractor. */
-  private final DisruptorQueue disruptor;
-
   private final String dataRegionId;
+  protected final Set<PipeRealtimeDataRegionExtractor> extractors = new CopyOnWriteArraySet<>();
 
   private int counter = 0;
 
   private final AtomicReference<ProgressIndex> maxProgressIndexForRealtimeEvent =
       new AtomicReference<>(MinimumProgressIndex.INSTANCE);
 
-  private final PipeEventCounter eventCounter = new PipeDataRegionEventCounter();
-
   public String getDataRegionId() {
     return dataRegionId;
   }
 
   public PipeDataRegionAssigner(final String dataRegionId) {
-    this.matcher = new CachedSchemaPatternMatcher();
-    this.disruptor = new DisruptorQueue(this::assignToExtractor, this::onAssignedHook);
     this.dataRegionId = dataRegionId;
-    PipeAssignerMetrics.getInstance().register(this);
   }
 
-  public void publishToAssign(final PipeRealtimeEvent event) {
-    if (!event.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
-      LOGGER.warn(
-          "The reference count of the realtime event {} cannot be increased, skipping it.", event);
-      return;
+  public void assignToExtractor(final PipeRealtimeEvent event) {
+    if (event.getEvent() instanceof PipeHeartbeatEvent) {
+      ((PipeHeartbeatEvent) event.getEvent()).onPublished();
     }
 
-    final EnrichedEvent innerEvent = event.getEvent();
-    eventCounter.increaseEventCount(innerEvent);
-    if (innerEvent instanceof PipeHeartbeatEvent) {
-      ((PipeHeartbeatEvent) innerEvent).onPublished();
-    }
-
-    // use synchronized here for completely preventing reference count leaks under extreme thread
-    // scheduling when closing
-    synchronized (this) {
-      if (!disruptor.isClosed()) {
-        disruptor.publish(event);
-      } else {
-        onAssignedHook(event);
-      }
-    }
-  }
-
-  private void onAssignedHook(final PipeRealtimeEvent realtimeEvent) {
-    realtimeEvent.gcSchemaInfo();
-    realtimeEvent.decreaseReferenceCount(PipeDataRegionAssigner.class.getName(), false);
-
-    final EnrichedEvent innerEvent = realtimeEvent.getEvent();
-    eventCounter.decreaseEventCount(innerEvent);
-    if (innerEvent instanceof PipeHeartbeatEvent) {
-      ((PipeHeartbeatEvent) innerEvent).onAssigned();
-    }
-  }
-
-  private void assignToExtractor(
-      final PipeRealtimeEvent event, final long sequence, final boolean endOfBatch) {
-    if (disruptor.isClosed()) {
-      return;
-    }
-
-    matcher
-        .match(event)
-        .forEach(
-            extractor -> {
-              if (disruptor.isClosed()) {
+    extractors.forEach(
+        extractor -> {
+          if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
+            // The frequency of progress reports is limited by the counter, while progress
+            // reports to TsFileInsertionEvent are not limited.
+            if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
+              if (counter < PIPE_CONFIG.getPipeNonForwardingEventsProgressReportInterval()) {
+                counter++;
                 return;
               }
+              counter = 0;
+            }
 
-              if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
-                // The frequency of progress reports is limited by the counter, while progress
-                // reports to TsFileInsertionEvent are not limited.
-                if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
-                  if (counter < PIPE_CONFIG.getPipeNonForwardingEventsProgressReportInterval()) {
-                    counter++;
-                    return;
-                  }
-                  counter = 0;
-                }
+            final ProgressReportEvent reportEvent =
+                new ProgressReportEvent(
+                    extractor.getPipeName(),
+                    extractor.getCreationTime(),
+                    extractor.getPipeTaskMeta(),
+                    extractor.getPipePattern(),
+                    extractor.getRealtimeDataExtractionStartTime(),
+                    extractor.getRealtimeDataExtractionEndTime());
+            reportEvent.bindProgressIndex(event.getProgressIndex());
+            if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
+              LOGGER.warn(
+                  "The reference count of the event {} cannot be increased, skipping it.",
+                  reportEvent);
+              return;
+            }
+            extractor.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
+            return;
+          }
 
-                final ProgressReportEvent reportEvent =
-                    new ProgressReportEvent(
-                        extractor.getPipeName(),
-                        extractor.getCreationTime(),
-                        extractor.getPipeTaskMeta(),
-                        extractor.getPipePattern(),
-                        extractor.getRealtimeDataExtractionStartTime(),
-                        extractor.getRealtimeDataExtractionEndTime());
-                reportEvent.bindProgressIndex(event.getProgressIndex());
-                if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
-                  LOGGER.warn(
-                      "The reference count of the event {} cannot be increased, skipping it.",
-                      reportEvent);
-                  return;
-                }
-                extractor.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
-                return;
-              }
+          final PipeRealtimeEvent copiedEvent =
+              event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+                  extractor.getPipeName(),
+                  extractor.getCreationTime(),
+                  extractor.getPipeTaskMeta(),
+                  extractor.getPipePattern(),
+                  extractor.getRealtimeDataExtractionStartTime(),
+                  extractor.getRealtimeDataExtractionEndTime());
+          final EnrichedEvent innerEvent = copiedEvent.getEvent();
+          if (innerEvent instanceof PipeTsFileInsertionEvent) {
+            final PipeTsFileInsertionEvent tsFileInsertionEvent =
+                (PipeTsFileInsertionEvent) innerEvent;
+            tsFileInsertionEvent.disableMod4NonTransferPipes(extractor.isShouldTransferModFile());
+          }
 
-              final PipeRealtimeEvent copiedEvent =
-                  event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-                      extractor.getPipeName(),
-                      extractor.getCreationTime(),
-                      extractor.getPipeTaskMeta(),
-                      extractor.getPipePattern(),
-                      extractor.getRealtimeDataExtractionStartTime(),
-                      extractor.getRealtimeDataExtractionEndTime());
-              final EnrichedEvent innerEvent = copiedEvent.getEvent();
-              if (innerEvent instanceof PipeTsFileInsertionEvent) {
-                final PipeTsFileInsertionEvent tsFileInsertionEvent =
-                    (PipeTsFileInsertionEvent) innerEvent;
-                tsFileInsertionEvent.disableMod4NonTransferPipes(
-                    extractor.isShouldTransferModFile());
-              }
+          if (innerEvent instanceof PipeTsFileInsertionEvent
+              || innerEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+            bindOrUpdateProgressIndexForRealtimeEvent(copiedEvent);
+          }
 
-              if (innerEvent instanceof PipeTsFileInsertionEvent
-                  || innerEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-                bindOrUpdateProgressIndexForRealtimeEvent(copiedEvent);
-              }
-
-              if (!copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
-                LOGGER.warn(
-                    "The reference count of the event {} cannot be increased, skipping it.",
-                    copiedEvent);
-                return;
-              }
-              extractor.extract(copiedEvent);
-            });
+          if (!copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
+            LOGGER.warn(
+                "The reference count of the event {} cannot be increased, skipping it.",
+                copiedEvent);
+            return;
+          }
+          extractor.extract(copiedEvent);
+        });
   }
 
   private void bindOrUpdateProgressIndexForRealtimeEvent(final PipeRealtimeEvent event) {
@@ -217,45 +158,26 @@ public class PipeDataRegionAssigner implements Closeable {
   }
 
   public void startAssignTo(final PipeRealtimeDataRegionExtractor extractor) {
-    matcher.register(extractor);
+    extractors.add(extractor);
   }
 
   public void stopAssignTo(final PipeRealtimeDataRegionExtractor extractor) {
-    matcher.deregister(extractor);
+    extractors.remove(extractor);
   }
 
   public boolean notMoreExtractorNeededToBeAssigned() {
-    return matcher.getRegisterCount() == 0;
+    return extractors.isEmpty();
   }
 
-  /**
-   * Clear the matcher and disruptor. The method {@link PipeDataRegionAssigner#publishToAssign}
-   * should not be used after calling this method.
-   */
   @Override
   // use synchronized here for completely preventing reference count leaks under extreme thread
   // scheduling when closing
   public synchronized void close() {
-    PipeAssignerMetrics.getInstance().deregister(dataRegionId);
-
     final long startTime = System.currentTimeMillis();
-    disruptor.shutdown();
-    matcher.clear();
+    extractors.clear();
     LOGGER.info(
         "Pipe: Assigner on data region {} shutdown internal disruptor within {} ms",
         dataRegionId,
         System.currentTimeMillis() - startTime);
-  }
-
-  public int getTabletInsertionEventCount() {
-    return eventCounter.getTabletInsertionEventCount();
-  }
-
-  public int getTsFileInsertionEventCount() {
-    return eventCounter.getTsFileInsertionEventCount();
-  }
-
-  public int getPipeHeartbeatEventCount() {
-    return eventCounter.getPipeHeartbeatEventCount();
   }
 }
