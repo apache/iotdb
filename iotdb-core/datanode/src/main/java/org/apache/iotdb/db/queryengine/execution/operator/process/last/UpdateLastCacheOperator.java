@@ -53,7 +53,33 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
       DataNodeSchemaCache dataNodeSchemaCache,
       boolean needUpdateCache,
       boolean isNeedUpdateNullEntry) {
-    super(operatorContext, child, dataNodeSchemaCache, needUpdateCache, isNeedUpdateNullEntry);
+    this(
+        operatorContext,
+        child,
+        fullPath,
+        dataType,
+        dataNodeSchemaCache,
+        needUpdateCache,
+        isNeedUpdateNullEntry,
+        true);
+  }
+
+  public UpdateLastCacheOperator(
+      OperatorContext operatorContext,
+      Operator child,
+      MeasurementPath fullPath,
+      TSDataType dataType,
+      DataNodeSchemaCache dataNodeSchemaCache,
+      boolean needUpdateCache,
+      boolean isNeedUpdateNullEntry,
+      boolean deviceInMultiRegion) {
+    super(
+        operatorContext,
+        child,
+        dataNodeSchemaCache,
+        needUpdateCache,
+        isNeedUpdateNullEntry,
+        deviceInMultiRegion);
     this.fullPath = fullPath;
     this.dataType = dataType.name();
   }
