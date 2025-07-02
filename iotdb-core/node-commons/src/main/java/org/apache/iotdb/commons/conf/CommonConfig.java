@@ -333,9 +333,9 @@ public class CommonConfig {
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
   private int subscriptionSubtaskExecutorMaxThreadNum = 2;
 
-  private int subscriptionPrefetchTabletBatchMaxDelayInMs = 20; // 1s
+  private int subscriptionPrefetchTabletBatchMaxDelayInMs = 20;
   private long subscriptionPrefetchTabletBatchMaxSizeInBytes = MB;
-  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 1000; // 5s
+  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 1000;
   private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 2 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionDefaultTimeoutInMs = 10_000; // 10s

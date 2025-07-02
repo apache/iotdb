@@ -118,7 +118,7 @@ public class IoTDBDataSet1TopicConsumerSpecialIT extends AbstractSubscriptionReg
     consumer.subscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
     // Consumption data
-    consume_data(consumer);
+    consume_data(consumer, session_dest);
     check_count(4, "select count(`ABH#01`) from " + device, "Consumption data:" + pattern);
     // Unsubscribe
     consumer.unsubscribe(topicName);
@@ -133,7 +133,7 @@ public class IoTDBDataSet1TopicConsumerSpecialIT extends AbstractSubscriptionReg
     consumer.subscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after re-subscribing");
     // Consumption data
-    consume_data(consumer);
+    consume_data(consumer, session_dest);
     check_count(8, "select count(`ABH#01`) from " + device, "consume data again:" + pattern);
     // Unsubscribe
     consumer.unsubscribe(topicName);
