@@ -358,15 +358,6 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     return results;
   }
 
-  public void consume_data(SubscriptionPullConsumer consumer)
-      throws TException,
-          IOException,
-          StatementExecutionException,
-          InterruptedException,
-          IoTDBConnectionException {
-    consume_data(consumer, session_dest);
-  }
-
   public void consume_data_await(
       SubscriptionPullConsumer consumer, Session session, List<WrappedVoidSupplier> assertions) {
     AWAIT.untilAsserted(
