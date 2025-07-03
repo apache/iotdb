@@ -27,9 +27,11 @@ import org.apache.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -63,6 +65,7 @@ public class TabletEncoder {
     } catch (IOException e) {
       throw new IllegalStateException(e);
     }
+
     ByteBuffer buffer = ByteBuffer.wrap(baos.getBuf(), 0, baos.size());
     return compressBuffer(buffer);
   }
@@ -75,7 +78,23 @@ public class TabletEncoder {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = encodingList.get(j + 1);
       Encoder encoder = TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
-      SessionUtils.encodeValue(dataType, tablet, j, encoder, baos);
+      if (encoding == TSEncoding.PLAIN && dataType.isBinary()) {
+        // PlainEncoder uses var int for binaries, which causes compatibility problem
+        Binary[] binaryValues = (Binary[]) tablet.getValues()[j];
+        try {
+          for (int index = 0; index < tablet.getRowSize(); index++) {
+            if (!tablet.isNull(index, j)) {
+              ReadWriteIOUtils.write(binaryValues[index], baos);
+            } else {
+              ReadWriteIOUtils.write(Binary.EMPTY_VALUE, baos);
+            }
+          }
+        } catch (IOException e) {
+          throw new IllegalStateException(e);
+        }
+      } else {
+        SessionUtils.encodeValue(dataType, tablet, j, encoder, baos);
+      }
     }
 
     BitMap[] bitMaps = tablet.getBitMaps();

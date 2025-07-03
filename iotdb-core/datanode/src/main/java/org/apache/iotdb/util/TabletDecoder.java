@@ -29,6 +29,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -183,8 +184,15 @@ public class TabletDecoder {
       case BLOB:
       case TEXT:
         Binary[] binaryCol = new Binary[rowSize];
-        for (int j = 0; j < rowSize; j++) {
-          binaryCol[j] = decoder.readBinary(uncompressed);
+        if (encoding == TSEncoding.PLAIN) {
+          // PlainEncoder uses var int, which may cause compatibility problem
+          for (int j = 0; j < rowSize; j++) {
+            binaryCol[j] = ReadWriteIOUtils.readBinary(uncompressed);
+          }
+        } else {
+          for (int j = 0; j < rowSize; j++) {
+            binaryCol[j] = decoder.readBinary(uncompressed);
+          }
         }
         column = binaryCol;
         break;
