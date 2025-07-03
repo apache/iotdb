@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+// TODO:[OBJECT] WAL serde
+// TODO:[OBJECT] dispatch serde
 public class FileNode {
 
   private String filePath;
@@ -34,5 +36,21 @@ public class FileNode {
     this.isEOF = isEOF;
     this.offset = offset;
     this.content = content;
+  }
+
+  public String getFilePath() {
+    return filePath;
+  }
+
+  public boolean isEOF() {
+    return isEOF;
+  }
+
+  public byte[] getContent() {
+    return content;
+  }
+
+  public long getOffset() {
+    return offset;
   }
 }

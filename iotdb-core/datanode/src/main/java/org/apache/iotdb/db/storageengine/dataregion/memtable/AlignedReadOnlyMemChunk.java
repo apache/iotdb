@@ -233,6 +233,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             for (int i = 0; i < tsBlock.getPositionCount(); i++) {
               if (tsBlock.getColumn(column).isNull(i)) {
                 continue;

@@ -77,6 +77,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.ObjectWriter;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -565,9 +566,12 @@ public class TsFileProcessor {
           ((RelationalInsertTabletNode) insertTabletNode).getFileNodeList();
       if (fileNodeList != null) {
         for (FileNode fileNode : fileNodeList) {
-          System.out.println(fileNode);
-          //          fileNode.writeFile();
-          // TODO write file node wal
+          try (ObjectWriter writer = new ObjectWriter(fileNode.getFilePath())) {
+            writer.write(fileNode.getContent());
+          } catch (Exception e) {
+            throw new WriteProcessException(e);
+          }
+          // TODO:[OBJECT] write file node wal
         }
       }
     }

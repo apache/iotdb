@@ -796,6 +796,7 @@ public class QueryDataSetUtils {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           parseTextColumn(size, stream, values, i);
           break;
         default:

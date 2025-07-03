@@ -249,6 +249,7 @@ public class PrimitiveArrayManager {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         dataArray = new Binary[ARRAY_SIZE];
         break;
       default:
