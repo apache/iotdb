@@ -184,6 +184,7 @@ timeConditionClause
     :whereClause
     ;
 
+
 // ---- Show Devices
 showDevices
     : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? devicesWhereClause? timeConditionClause? rowPaginationClause?
@@ -1029,6 +1030,7 @@ deleteStatement
 // Create User
 createUser
     : CREATE USER userName=identifier password=STRING_LITERAL
+    (WITH LABEL_POLICY  policyExpression FOR labelPolicyScope)?
     ;
 
 // Create Role
@@ -1518,4 +1520,48 @@ subStringExpression
 
 signedIntegerLiteral
     : (PLUS|MINUS)?INTEGER_LITERAL
+    ;
+
+// Policy expression rules
+
+
+labelPolicyScope
+    : READ
+    | WRITE
+    | READ COMMA WRITE
+    ;
+
+policyExpression
+    : policyTerm (OR policyTerm)*
+    ;
+
+policyTerm
+    : policyFactor (AND policyFactor)*
+    ;
+
+policyFactor
+    : LR_BRACKET policyExpression RR_BRACKET
+    | policyComparison
+    ;
+
+policyComparison
+    : policyField policyOperator policyValue
+    ;
+
+policyField
+    : identifier
+    ;
+
+policyOperator
+    : OPERATOR_SEQ        // =
+    | OPERATOR_NEQ       // !=
+    | OPERATOR_GT        // >
+    | OPERATOR_LT        // <
+    | OPERATOR_GTE       // >=
+    | OPERATOR_LTE       // <=
+    ;
+
+policyValue
+    : STRING_LITERAL     // For string values
+    | INTEGER_LITERAL    // For numeric values
     ;

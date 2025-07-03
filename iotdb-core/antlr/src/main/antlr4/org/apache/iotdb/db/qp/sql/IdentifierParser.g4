@@ -132,6 +132,7 @@ keyWords
     | IS
     | KILL
     | LABEL
+    |LABEL_POLICY
     | LAST
     | LATEST
     | LEVEL
