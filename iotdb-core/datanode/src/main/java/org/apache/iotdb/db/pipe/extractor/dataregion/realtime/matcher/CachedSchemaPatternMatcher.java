@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher;
 
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
@@ -38,7 +39,8 @@ public class CachedSchemaPatternMatcher {
   public static boolean match(
       final PipeRealtimeEvent event, final PipeRealtimeDataRegionExtractor extractor) {
     // HeartbeatEvent will be assigned to all extractors
-    if (event.getEvent() instanceof PipeHeartbeatEvent) {
+    if (event.getEvent() instanceof PipeHeartbeatEvent
+        || event.getEvent() instanceof ProgressReportEvent) {
       return true;
     }
 
