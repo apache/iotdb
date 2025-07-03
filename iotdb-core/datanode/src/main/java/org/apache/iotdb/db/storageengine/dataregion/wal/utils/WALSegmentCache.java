@@ -60,6 +60,7 @@ public class WALSegmentCache implements WALCache {
 
     if (buffer == null) {
       LOGGER.warn("WALSegmentCache load failed, key: {}", key);
+      return null;
     }
 
     return WALCache.getEntryBySegment(key, buffer);
