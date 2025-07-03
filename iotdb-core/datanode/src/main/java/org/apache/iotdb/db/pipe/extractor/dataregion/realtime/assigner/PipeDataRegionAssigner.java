@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -36,7 +35,6 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeDataRegionAssigner implements Closeable {
 
@@ -44,9 +42,6 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private final String dataRegionId;
   protected final Set<PipeRealtimeDataRegionExtractor> extractors = new CopyOnWriteArraySet<>();
-
-  private final AtomicReference<ProgressIndex> maxProgressIndexForRealtimeEvent =
-      new AtomicReference<>(MinimumProgressIndex.INSTANCE);
 
   public String getDataRegionId() {
     return dataRegionId;
@@ -119,19 +114,13 @@ public class PipeDataRegionAssigner implements Closeable {
             dataRegionId,
             event.getTsFileEpoch().getFilePath(),
             getProgressIndex4RealtimeEvent(event))) {
-      event.bindProgressIndex(maxProgressIndexForRealtimeEvent.get());
+      event.skipReportOnCommit();
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Data region {} bind {} to event {} because it was flushed prematurely.",
+            "Data region {} skip commit of event {} because it was flushed prematurely.",
             dataRegionId,
-            maxProgressIndexForRealtimeEvent,
             event.coreReportMessage());
       }
-    } else {
-      maxProgressIndexForRealtimeEvent.updateAndGet(
-          index ->
-              index.updateToMinimumEqualOrIsAfterProgressIndex(
-                  getProgressIndex4RealtimeEvent(event)));
     }
   }
 
