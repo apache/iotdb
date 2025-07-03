@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.pipe.connector.reader.PipeSeekableReader;
+import org.apache.iotdb.commons.pipe.connector.reader.PipeSeekableReaderFactory;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -43,7 +45,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -177,7 +178,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+    try (final PipeSeekableReader reader = PipeSeekableReaderFactory.getReader(file)) {
       while (true) {
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {

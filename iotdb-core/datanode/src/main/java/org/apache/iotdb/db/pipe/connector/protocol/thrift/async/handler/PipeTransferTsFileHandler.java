@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.pipe.connector.reader.PipeSeekableReader;
+import org.apache.iotdb.commons.pipe.connector.reader.PipeSeekableReaderFactory;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
@@ -46,9 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -83,7 +83,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private final byte[] readBuffer;
   private long position;
 
-  private RandomAccessFile reader;
+  private PipeSeekableReader reader;
 
   private final AtomicBoolean isSealSignalSent;
 
@@ -100,7 +100,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final File modFile,
       final boolean transferMod,
       final String dataBaseName)
-      throws FileNotFoundException, InterruptedException {
+      throws IOException, InterruptedException {
     super(connector);
 
     this.pipeName2WeightMap = pipeName2WeightMap;
@@ -138,8 +138,8 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
     reader =
         Objects.nonNull(modFile)
-            ? new RandomAccessFile(modFile, "r")
-            : new RandomAccessFile(tsFile, "r");
+            ? PipeSeekableReaderFactory.getReader(modFile)
+            : PipeSeekableReaderFactory.getReader(tsFile);
 
     isSealSignalSent = new AtomicBoolean(false);
   }
@@ -173,7 +173,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         } catch (final IOException e) {
           LOGGER.warn("Failed to close file reader when successfully transferred mod file.", e);
         }
-        reader = new RandomAccessFile(tsFile, "r");
+        reader = PipeSeekableReaderFactory.getReader(tsFile);
         transfer(clientManager, client);
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);

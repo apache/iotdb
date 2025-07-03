@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
+import org.apache.iotdb.commons.pipe.connector.reader.PipeSeekableReader;
+import org.apache.iotdb.commons.pipe.connector.reader.PipeSeekableReaderFactory;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -39,7 +41,6 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
@@ -261,7 +262,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+    try (final PipeSeekableReader reader = PipeSeekableReaderFactory.getReader(file)) {
       while (true) {
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
