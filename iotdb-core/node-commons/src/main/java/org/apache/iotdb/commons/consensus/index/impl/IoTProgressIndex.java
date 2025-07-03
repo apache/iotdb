@@ -116,7 +116,7 @@ public class IoTProgressIndex extends ProgressIndex {
               entry ->
                   !thisIoTProgressIndex.peerId2SearchIndex.containsKey(entry.getKey())
                       || thisIoTProgressIndex.peerId2SearchIndex.get(entry.getKey())
-                          <= entry.getValue());
+                          < entry.getValue());
     } finally {
       lock.readLock().unlock();
     }

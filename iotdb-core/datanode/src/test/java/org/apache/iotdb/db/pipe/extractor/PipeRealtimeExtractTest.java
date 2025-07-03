@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.pipe.extractor;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -144,16 +146,36 @@ public class PipeRealtimeExtractTest {
 
       final PipeTaskRuntimeConfiguration configuration0 =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(dataRegion1), null));
+              new PipeTaskExtractorRuntimeEnvironment(
+                  "1",
+                  1,
+                  Integer.parseInt(dataRegion1),
+                  new PipeTaskMeta(
+                      MinimumProgressIndex.INSTANCE, 1, Integer.parseInt(dataRegion1), false)));
       final PipeTaskRuntimeConfiguration configuration1 =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(dataRegion1), null));
+              new PipeTaskExtractorRuntimeEnvironment(
+                  "1",
+                  1,
+                  Integer.parseInt(dataRegion1),
+                  new PipeTaskMeta(
+                      MinimumProgressIndex.INSTANCE, 1, Integer.parseInt(dataRegion1), false)));
       final PipeTaskRuntimeConfiguration configuration2 =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(dataRegion2), null));
+              new PipeTaskExtractorRuntimeEnvironment(
+                  "1",
+                  1,
+                  Integer.parseInt(dataRegion2),
+                  new PipeTaskMeta(
+                      MinimumProgressIndex.INSTANCE, 1, Integer.parseInt(dataRegion2), false)));
       final PipeTaskRuntimeConfiguration configuration3 =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(dataRegion2), null));
+              new PipeTaskExtractorRuntimeEnvironment(
+                  "1",
+                  1,
+                  Integer.parseInt(dataRegion2),
+                  new PipeTaskMeta(
+                      MinimumProgressIndex.INSTANCE, 1, Integer.parseInt(dataRegion2), false)));
 
       // Some parameters of extractor are validated and initialized during the validation process.
       extractor0.validate(new PipeParameterValidator(parameters0));
