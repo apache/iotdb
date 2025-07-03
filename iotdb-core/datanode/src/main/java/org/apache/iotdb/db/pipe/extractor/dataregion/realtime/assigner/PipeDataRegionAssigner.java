@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
@@ -93,11 +91,6 @@ public class PipeDataRegionAssigner implements Closeable {
             tsFileInsertionEvent.disableMod4NonTransferPipes(extractor.isShouldTransferModFile());
           }
 
-          if (innerEvent instanceof PipeTsFileInsertionEvent
-              || innerEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-            bindOrUpdateProgressIndexForRealtimeEvent(copiedEvent);
-          }
-
           if (!copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
             LOGGER.warn(
                 "The reference count of the event {} cannot be increased, skipping it.",
@@ -106,28 +99,6 @@ public class PipeDataRegionAssigner implements Closeable {
           }
           extractor.extract(copiedEvent);
         });
-  }
-
-  private void bindOrUpdateProgressIndexForRealtimeEvent(final PipeRealtimeEvent event) {
-    if (PipeTsFileEpochProgressIndexKeeper.getInstance()
-        .isProgressIndexAfterOrEquals(
-            dataRegionId,
-            event.getTsFileEpoch().getFilePath(),
-            getProgressIndex4RealtimeEvent(event))) {
-      event.skipReportOnCommit();
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Data region {} skip commit of event {} because it was flushed prematurely.",
-            dataRegionId,
-            event.coreReportMessage());
-      }
-    }
-  }
-
-  private ProgressIndex getProgressIndex4RealtimeEvent(final PipeRealtimeEvent event) {
-    return event.getEvent() instanceof PipeTsFileInsertionEvent
-        ? ((PipeTsFileInsertionEvent) event.getEvent()).forceGetProgressIndex()
-        : event.getProgressIndex();
   }
 
   public void startAssignTo(final PipeRealtimeDataRegionExtractor extractor) {

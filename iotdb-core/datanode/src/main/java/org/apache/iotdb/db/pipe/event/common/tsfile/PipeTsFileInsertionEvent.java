@@ -324,7 +324,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex) && Objects.nonNull(resource)) {
       PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .eliminateProgressIndex(resource.getDataRegionId(), resource.getTsFilePath());
+          .eliminateProgressIndex(resource.getDataRegionId(), pipeName, resource.getTsFilePath());
     }
   }
 

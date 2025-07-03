@@ -83,6 +83,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
     if (canNotUseTabletAnyMore(event)) {
       event.getTsFileEpoch().migrateState(this, curState -> TsFileEpoch.State.USING_TSFILE);
+      PipeTsFileEpochProgressIndexKeeper.getInstance()
+          .registerProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
     } else {
       event
           .getTsFileEpoch()
@@ -355,11 +357,14 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
             });
 
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+    if (state == TsFileEpoch.State.USING_TSFILE) {
+      PipeTsFileEpochProgressIndexKeeper.getInstance()
+          .registerProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
+    }
+
     switch (state) {
       case USING_TSFILE:
         // If the state is USING_TSFILE, discard the event and poll the next one.
-        PipeTsFileEpochProgressIndexKeeper.getInstance()
-            .eliminateProgressIndex(dataRegionId, event.getTsFileEpoch().getFilePath());
         return null;
       case EMPTY:
       case USING_TABLET:
@@ -400,6 +405,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     switch (state) {
       case USING_TABLET:
         // If the state is USING_TABLET, discard the event and poll the next one.
+        PipeTsFileEpochProgressIndexKeeper.getInstance()
+            .eliminateProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
         return null;
       case EMPTY:
       case USING_TSFILE:

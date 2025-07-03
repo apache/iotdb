@@ -177,7 +177,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
     if (Objects.isNull(overridingProgressIndex)) {
       for (final String originFilePath : originFilePaths) {
         PipeTsFileEpochProgressIndexKeeper.getInstance()
-            .eliminateProgressIndex(dataRegionId, originFilePath);
+            .eliminateProgressIndex(dataRegionId, pipeName, originFilePath);
       }
     }
   }
