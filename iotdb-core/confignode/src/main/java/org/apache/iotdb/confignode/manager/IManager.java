@@ -148,6 +148,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
@@ -625,6 +626,9 @@ public interface IManager {
 
   /** Show AINodes. */
   TShowAINodesResp showAINodes();
+
+  /** Show AINodes. */
+  TShowProceduresResp showProcedures();
 
   /** Show DataNodes. */
   TShowDataNodesResp showDataNodes();

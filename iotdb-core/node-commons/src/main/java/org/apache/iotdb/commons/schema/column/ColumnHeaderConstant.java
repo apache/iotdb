@@ -94,6 +94,11 @@ public class ColumnHeaderConstant {
   public static final String SCHEMA_CONSENSUS_PORT = "SchemaConsensusPort";
   public static final String MPP_PORT = "MppPort";
 
+  public static final String PROC_ID = "ProcedureId";
+  public static final String SUBMITTED_TIME = "SubmittedTime";
+  public static final String LAST_UPDATE = "LastUpdate";
+  public static final String PARENT_PROC_ID = "ParentProcId";
+
   // column names for show clusterId statement
   public static final String CLUSTER_ID = "ClusterId";
 
@@ -437,6 +442,14 @@ public class ColumnHeaderConstant {
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(INTERNAL_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(INTERNAL_PORT, TSDataType.INT32));
+
+  public static final List<ColumnHeader> showProceduresColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(PROC_ID, TSDataType.INT64),
+              new ColumnHeader(STATE, TSDataType.TEXT),
+              new ColumnHeader(SUBMITTED_TIME, TSDataType.TEXT),
+              new ColumnHeader(LAST_UPDATE, TSDataType.TEXT),
+              new ColumnHeader(PARENT_PROC_ID, TSDataType.INT64));
 
   public static final List<ColumnHeader> showDataNodesColumnHeaders =
       ImmutableList.of(
