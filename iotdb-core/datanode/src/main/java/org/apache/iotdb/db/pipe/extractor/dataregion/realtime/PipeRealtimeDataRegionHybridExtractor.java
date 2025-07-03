@@ -84,7 +84,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     if (canNotUseTabletAnyMore(event)) {
       event.getTsFileEpoch().migrateState(this, curState -> TsFileEpoch.State.USING_TSFILE);
       PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .registerProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
+          .registerProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getResource());
     } else {
       event
           .getTsFileEpoch()
@@ -359,7 +359,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
     if (state == TsFileEpoch.State.USING_TSFILE) {
       PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .registerProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
+          .registerProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getResource());
     }
 
     switch (state) {

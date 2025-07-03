@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
@@ -1202,9 +1201,6 @@ public class TsFileResource {
         (maxProgressIndex == null
             ? progressIndex
             : maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
-
-    PipeTsFileEpochProgressIndexKeeper.getInstance()
-        .updateProgressIndex(getDataRegionId(), getTsFilePath(), maxProgressIndex);
   }
 
   public void setProgressIndex(ProgressIndex progressIndex) {
@@ -1213,9 +1209,6 @@ public class TsFileResource {
     }
 
     maxProgressIndex = progressIndex;
-
-    PipeTsFileEpochProgressIndexKeeper.getInstance()
-        .updateProgressIndex(getDataRegionId(), getTsFilePath(), maxProgressIndex);
   }
 
   public ProgressIndex getMaxProgressIndex() {

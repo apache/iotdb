@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import javax.annotation.Nonnull;
 
@@ -32,26 +32,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PipeTsFileEpochProgressIndexKeeper {
 
   // data region id -> pipeName -> tsFile path -> max progress index
-  private final Map<String, Map<String, Map<String, ProgressIndex>>> progressIndexKeeper =
+  private final Map<String, Map<String, Map<String, TsFileResource>>> progressIndexKeeper =
       new ConcurrentHashMap<>();
 
   public synchronized void registerProgressIndex(
-      final String dataRegionId, final String pipeName, final String tsFileName) {
+      final String dataRegionId, final String pipeName, final TsFileResource resource) {
     progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
         .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
-        .put(tsFileName, MinimumProgressIndex.INSTANCE);
-  }
-
-  public synchronized void updateProgressIndex(
-      final String dataRegionId, final String tsFileName, final ProgressIndex progressIndex) {
-    progressIndexKeeper
-        .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
-        .compute(
-            tsFileName,
-            (k, v) ->
-                v == null ? null : v.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
+        .put(resource.getTsFilePath(), resource);
   }
 
   public synchronized void eliminateProgressIndex(
@@ -75,7 +64,7 @@ public class PipeTsFileEpochProgressIndexKeeper {
         .filter(entry -> !Objects.equals(entry.getKey(), tsFilePath))
         .map(Entry::getValue)
         .filter(Objects::nonNull)
-        .anyMatch(index -> !index.isAfter(progressIndex));
+        .anyMatch(resource -> !resource.getMaxProgressIndex().isAfter(progressIndex));
   }
 
   //////////////////////////// singleton ////////////////////////////
