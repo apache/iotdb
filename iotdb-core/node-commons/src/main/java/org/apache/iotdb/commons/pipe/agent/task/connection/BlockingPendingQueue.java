@@ -50,7 +50,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     this.eventCounter = eventCounter;
   }
 
-  public boolean waitedOffer(final E event) {
+  public synchronized boolean waitedOffer(final E event) {
     checkBeforeOffer(event);
     try {
       final boolean offered =
@@ -69,7 +69,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     }
   }
 
-  public boolean directOffer(final E event) {
+  public synchronized boolean directOffer(final E event) {
     checkBeforeOffer(event);
     final boolean offered = pendingQueue.offer(event);
     if (offered) {
@@ -78,7 +78,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     return offered;
   }
 
-  public boolean put(final E event) {
+  public synchronized boolean put(final E event) {
     checkBeforeOffer(event);
     try {
       pendingQueue.put(event);
@@ -91,13 +91,13 @@ public abstract class BlockingPendingQueue<E extends Event> {
     }
   }
 
-  public E directPoll() {
+  public synchronized E directPoll() {
     final E event = pendingQueue.poll();
     eventCounter.decreaseEventCount(event);
     return event;
   }
 
-  public E waitedPoll() {
+  public synchronized E waitedPoll() {
     E event = null;
     try {
       event =
@@ -112,22 +112,22 @@ public abstract class BlockingPendingQueue<E extends Event> {
     return event;
   }
 
-  public E peek() {
+  public synchronized E peek() {
     return pendingQueue.peek();
   }
 
-  public void clear() {
+  public synchronized void clear() {
     isClosed.set(true);
     pendingQueue.clear();
     eventCounter.reset();
   }
 
   /** DO NOT FORGET to set eventCounter to new value after invoking this method. */
-  public void forEach(final Consumer<? super E> action) {
+  public synchronized void forEach(final Consumer<? super E> action) {
     pendingQueue.forEach(action);
   }
 
-  public void discardAllEvents() {
+  public synchronized void discardAllEvents() {
     isClosed.set(true);
     pendingQueue.removeIf(
         event -> {
@@ -141,7 +141,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     eventCounter.reset();
   }
 
-  public void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
+  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
     pendingQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent

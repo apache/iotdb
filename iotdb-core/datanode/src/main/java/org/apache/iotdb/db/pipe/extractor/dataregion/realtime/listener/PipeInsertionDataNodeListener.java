@@ -27,7 +27,6 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeDataR
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -111,15 +110,12 @@ public class PipeInsertionDataNodeListener {
       return;
     }
 
-    assigner.publishToAssign(
+    assigner.assignToExtractor(
         PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource, isLoaded));
   }
 
   public void listenToInsertNode(
-      String dataRegionId,
-      WALEntryHandler walEntryHandler,
-      InsertNode insertNode,
-      TsFileResource tsFileResource) {
+      String dataRegionId, InsertNode insertNode, TsFileResource tsFileResource) {
     if (listenToInsertNodeExtractorCount.get() == 0) {
       return;
     }
@@ -131,20 +127,21 @@ public class PipeInsertionDataNodeListener {
       return;
     }
 
-    assigner.publishToAssign(
-        PipeRealtimeEventFactory.createRealtimeEvent(walEntryHandler, insertNode, tsFileResource));
+    assigner.assignToExtractor(
+        PipeRealtimeEventFactory.createRealtimeEvent(insertNode, tsFileResource));
   }
 
   public void listenToHeartbeat(boolean shouldPrintMessage) {
     dataRegionId2Assigner.forEach(
         (key, value) ->
-            value.publishToAssign(
+            value.assignToExtractor(
                 PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
   }
 
   public void listenToDeleteData(DeleteDataNode node) {
     dataRegionId2Assigner.forEach(
-        (key, value) -> value.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node)));
+        (key, value) ->
+            value.assignToExtractor(PipeRealtimeEventFactory.createRealtimeEvent(node)));
   }
 
   /////////////////////////////// singleton ///////////////////////////////

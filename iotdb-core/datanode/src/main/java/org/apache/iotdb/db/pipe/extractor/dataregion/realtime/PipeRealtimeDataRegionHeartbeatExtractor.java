@@ -27,29 +27,13 @@ import org.apache.iotdb.pipe.api.event.Event;
 public class PipeRealtimeDataRegionHeartbeatExtractor extends PipeRealtimeDataRegionExtractor {
 
   @Override
-  public Event supply() {
-    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
-
-    while (realtimeEvent != null) {
-      Event suppliedEvent = null;
-
-      // only supply PipeHeartbeatEvent
-      if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
-        suppliedEvent = supplyHeartbeat(realtimeEvent);
-      } else if (realtimeEvent.getEvent() instanceof ProgressReportEvent) {
-        suppliedEvent = supplyDirectly(realtimeEvent);
-      }
-
-      realtimeEvent.decreaseReferenceCount(
-          PipeRealtimeDataRegionHeartbeatExtractor.class.getName(), false);
-
-      if (suppliedEvent != null) {
-        return suppliedEvent;
-      }
-
-      realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+  protected Event doSupply(PipeRealtimeEvent realtimeEvent) {
+    // only supply PipeHeartbeatEvent
+    if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
+      return supplyHeartbeat(realtimeEvent);
+    } else if (realtimeEvent.getEvent() instanceof ProgressReportEvent) {
+      return supplyDirectly(realtimeEvent);
     }
-
     return null;
   }
 

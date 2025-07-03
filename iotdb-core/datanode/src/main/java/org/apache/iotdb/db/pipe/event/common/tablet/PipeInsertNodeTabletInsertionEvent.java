@@ -28,8 +28,9 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -37,8 +38,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryPosition;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -69,52 +68,26 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(PipeInsertNodeTabletInsertionEvent.class)
-          + RamUsageEstimator.shallowSizeOfInstance(WALEntryHandler.class)
-          + RamUsageEstimator.shallowSizeOfInstance(WALEntryPosition.class)
           + RamUsageEstimator.shallowSizeOfInstance(AtomicInteger.class)
           + RamUsageEstimator.shallowSizeOfInstance(AtomicBoolean.class);
-
-  private final WALEntryHandler walEntryHandler;
-  private final boolean isAligned;
-  private final boolean isGeneratedByPipe;
 
   private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
   private volatile List<Tablet> tablets;
 
   private List<TabletInsertionDataContainer> dataContainers;
 
-  private final PartialPath devicePath;
+  private InsertNode insertNode;
 
   private ProgressIndex progressIndex;
 
   private long extractTime = 0;
 
-  public PipeInsertNodeTabletInsertionEvent(
-      final WALEntryHandler walEntryHandler,
-      final PartialPath devicePath,
-      final ProgressIndex progressIndex,
-      final boolean isAligned,
-      final boolean isGeneratedByPipe) {
-    this(
-        walEntryHandler,
-        devicePath,
-        progressIndex,
-        isAligned,
-        isGeneratedByPipe,
-        null,
-        0,
-        null,
-        null,
-        Long.MIN_VALUE,
-        Long.MAX_VALUE);
+  public PipeInsertNodeTabletInsertionEvent(final InsertNode insertNode) {
+    this(insertNode, null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   private PipeInsertNodeTabletInsertionEvent(
-      final WALEntryHandler walEntryHandler,
-      final PartialPath devicePath,
-      final ProgressIndex progressIndex,
-      final boolean isAligned,
-      final boolean isGeneratedByPipe,
+      final InsertNode insertNode,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -122,34 +95,24 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       final long startTime,
       final long endTime) {
     super(pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
-    this.walEntryHandler = walEntryHandler;
     // Record device path here so there's no need to get it from InsertNode cache later.
-    this.devicePath = devicePath;
-    this.progressIndex = progressIndex;
-    this.isAligned = isAligned;
-    this.isGeneratedByPipe = isGeneratedByPipe;
-
+    this.progressIndex = insertNode.getProgressIndex();
+    this.insertNode = insertNode;
     this.allocatedMemoryBlock = new AtomicReference<>();
   }
 
-  public InsertNode getInsertNode() throws WALPipeException {
-    return walEntryHandler.getInsertNode();
+  public InsertNode getInsertNode() {
+    return insertNode;
   }
 
   public ByteBuffer getByteBuffer() throws WALPipeException {
-    return walEntryHandler.getByteBuffer();
-  }
-
-  // This method is a pre-determination of whether to use binary transfers.
-  // If the insert node is null in cache, it means that we need to read the bytebuffer from the wal,
-  // and when the pattern is default, we can transfer the bytebuffer directly without serializing or
-  // deserializing
-  public InsertNode getInsertNodeViaCacheIfPossible() {
-    return walEntryHandler.getInsertNodeViaCacheIfPossible();
+    return insertNode.serializeToByteBuffer();
   }
 
   public String getDeviceId() {
-    return Objects.nonNull(devicePath) ? devicePath.getFullPath() : null;
+    return Objects.nonNull(insertNode.getDevicePath())
+        ? insertNode.getDevicePath().getFullPath()
+        : null;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -158,19 +121,16 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     extractTime = System.nanoTime();
     try {
-      PipeDataNodeResourceManager.wal().pin(walEntryHandler);
       if (Objects.nonNull(pipeName)) {
-        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+        PipeDataNodeSinglePipeMetrics.getInstance()
             .increaseInsertNodeEventCount(pipeName, creationTime);
-        PipeDataNodeAgent.task().addFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
+        PipeDataNodeAgent.task()
+            .addFloatingMemoryUsageInByte(pipeName, creationTime, ramBytesUsed());
       }
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
-          String.format(
-              "Increase reference count for memTable %d error. Holder Message: %s",
-              walEntryHandler.getMemTableId(), holderMessage),
-          e);
+          String.format("Increase reference count error. Holder Message: %s", holderMessage), e);
       return false;
     }
   }
@@ -178,7 +138,6 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
-      PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
       // release the containers' memory and close memory block
       if (dataContainers != null) {
         dataContainers.clear();
@@ -188,17 +147,16 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
-          String.format(
-              "Decrease reference count for memtable %d error. Holder Message: %s",
-              walEntryHandler.getMemTableId(), holderMessage),
-          e);
+          String.format("Decrease reference count error. Holder Message: %s", holderMessage), e);
       return false;
     } finally {
       if (Objects.nonNull(pipeName)) {
-        PipeDataNodeAgent.task().decreaseFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
-        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+        PipeDataNodeAgent.task()
+            .decreaseFloatingMemoryUsageInByte(pipeName, creationTime, ramBytesUsed());
+        PipeDataNodeSinglePipeMetrics.getInstance()
             .decreaseInsertNodeEventCount(pipeName, creationTime, System.nanoTime() - extractTime);
       }
+      insertNode = null;
     }
   }
 
@@ -221,28 +179,18 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       final long startTime,
       final long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
-        walEntryHandler,
-        devicePath,
-        progressIndex,
-        isAligned,
-        isGeneratedByPipe,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        pattern,
-        startTime,
-        endTime);
+        insertNode, pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
   }
 
   @Override
   public boolean isGeneratedByPipe() {
-    return isGeneratedByPipe;
+    return insertNode.isGeneratedByPipe();
   }
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     try {
-      final InsertNode insertNode = getInsertNodeViaCacheIfPossible();
+      final InsertNode insertNode = getInsertNode();
       if (Objects.isNull(insertNode)) {
         return true;
       }
@@ -286,7 +234,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean mayEventPathsOverlappedWithPattern() {
     try {
-      final InsertNode insertNode = getInsertNodeViaCacheIfPossible();
+      final InsertNode insertNode = getInsertNode();
       if (Objects.isNull(insertNode)) {
         return true;
       }
@@ -439,8 +387,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public String toString() {
     return String.format(
-            "PipeInsertNodeTabletInsertionEvent{walEntryHandler=%s, progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s, dataContainers=%s}",
-            walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, dataContainers)
+            "PipeInsertNodeTabletInsertionEvent{progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s, dataContainers=%s}",
+            progressIndex, insertNode.isAligned(), insertNode.isGeneratedByPipe(), dataContainers)
         + " - "
         + super.toString();
   }
@@ -448,8 +396,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public String coreReportMessage() {
     return String.format(
-            "PipeInsertNodeTabletInsertionEvent{walEntryHandler=%s, progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s}",
-            walEntryHandler, progressIndex, isAligned, isGeneratedByPipe)
+            "PipeInsertNodeTabletInsertionEvent{progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s}",
+            progressIndex, insertNode.isAligned(), insertNode.isGeneratedByPipe())
         + " - "
         + super.coreReportMessage();
   }
@@ -462,7 +410,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + (Objects.nonNull(devicePath) ? PartialPath.estimateSize(devicePath) : 0)
+        + (Objects.nonNull(insertNode) ? InsertNodeMemoryEstimator.sizeOf(insertNode) : 0)
         + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
   }
 
@@ -476,28 +424,24 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public PipeEventResource eventResourceBuilder() {
     return new PipeInsertNodeTabletInsertionEventResource(
-        this.isReleased, this.referenceCount, this.walEntryHandler, this.allocatedMemoryBlock);
+        this.isReleased, this.referenceCount, this.allocatedMemoryBlock);
   }
 
   private static class PipeInsertNodeTabletInsertionEventResource extends PipeEventResource {
 
-    private final WALEntryHandler walEntryHandler;
     private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
 
     private PipeInsertNodeTabletInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
-        final WALEntryHandler walEntryHandler,
         final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock) {
       super(isReleased, referenceCount);
-      this.walEntryHandler = walEntryHandler;
       this.allocatedMemoryBlock = allocatedMemoryBlock;
     }
 
     @Override
     protected void finalizeResource() {
       try {
-        PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
         allocatedMemoryBlock.getAndUpdate(
             memoryBlock -> {
               if (Objects.nonNull(memoryBlock)) {
@@ -506,8 +450,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
               return null;
             });
       } catch (final Exception e) {
-        LOGGER.warn(
-            "Decrease reference count for memTable {} error.", walEntryHandler.getMemTableId(), e);
+        LOGGER.warn("Decrease reference count error.", e);
       }
     }
   }
