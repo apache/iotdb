@@ -133,6 +133,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Lo
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RTrim2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RTrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RadiansColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ReadObjectColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RegexpLike2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RegexpLikeColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Replace2ColumnTransformer;
@@ -199,6 +200,7 @@ import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.ObjectType.OBJECT;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 
 public class ColumnTransformerBuilder
@@ -999,6 +1001,25 @@ public class ColumnTransformerBuilder
       Type returnType = columnTransformers.get(0).getType();
       return AbstractGreatestLeastColumnTransformer.getLeastColumnTransformer(
           returnType, columnTransformers);
+    } else if (TableBuiltinScalarFunction.READ_OBJECT
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new ReadObjectColumnTransformer(OBJECT, first);
+      } else if (children.size() == 2) {
+        return new ReadObjectColumnTransformer(
+            OBJECT, ((LongLiteral) children.get(1)).getParsedValue(), first);
+      } else {
+        long offset = ((LongLiteral) children.get(1)).getParsedValue();
+        long length = ((LongLiteral) children.get(2)).getParsedValue();
+        checkArgument(offset >= 0 && length >= 0);
+        return new ReadObjectColumnTransformer(
+            OBJECT,
+            ((LongLiteral) children.get(1)).getParsedValue(),
+            ((LongLiteral) children.get(2)).getParsedValue(),
+            first);
+      }
     } else {
       // user defined function
       if (TableUDFUtils.isScalarFunction(functionName)) {

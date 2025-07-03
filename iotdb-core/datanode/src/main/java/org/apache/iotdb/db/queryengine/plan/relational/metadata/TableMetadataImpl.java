@@ -65,7 +65,7 @@ import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.common.type.BlobType;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
@@ -79,6 +79,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -570,6 +571,21 @@ public class TableMetadataImpl implements Metadata {
                 + " must have at least two arguments, and all type must be the same.");
       }
       return argumentTypes.get(0);
+    } else if (TableBuiltinScalarFunction.READ_OBJECT
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.isEmpty()
+          || argumentTypes.size() > 3
+          || !isIntegerNumber(argumentTypes.get(0))
+          //          || !isObjectType(argumentTypes.get(0))
+          || (argumentTypes.size() >= 2 && !isIntegerNumber(argumentTypes.get(1)))
+          || (argumentTypes.size() >= 3 && !isIntegerNumber(argumentTypes.get(2)))) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " must have at 1~3 arguments, and first argument must be OBJECT type, other arguments must be int32 or int64 type");
+      }
+      return BLOB;
     }
 
     // builtin aggregation function
@@ -962,8 +978,12 @@ public class TableMetadataImpl implements Metadata {
     return TEXT.equals(type) || StringType.STRING.equals(type);
   }
 
+  public static boolean isObjectType(Type type) {
+    return ObjectType.OBJECT.equals(type);
+  }
+
   public static boolean isBlobType(Type type) {
-    return BlobType.BLOB.equals(type);
+    return BLOB.equals(type);
   }
 
   public static boolean isBool(Type type) {
