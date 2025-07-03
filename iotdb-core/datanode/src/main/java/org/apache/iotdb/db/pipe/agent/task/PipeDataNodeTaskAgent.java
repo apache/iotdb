@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
@@ -55,6 +56,9 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
@@ -65,6 +69,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.thrift.TException;
@@ -455,7 +460,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   protected void collectPipeMetaListInternal(
       final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
-    if (PipeDataNodeAgent.runtime().isShutdown()) {
+    // If the heartbeat
+    if (PipeDataNodeAgent.runtime().isShutdown() && req.heartbeatId != Long.MIN_VALUE) {
       return;
     }
     LOGGER.info("Received pipe heartbeat request {} from config node.", req.heartbeatId);
@@ -596,6 +602,28 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   ///////////////////////// Shutdown Logic /////////////////////////
+
+  public void persistAllProgressIndex() {
+    persistAllProgressIndexLocally();
+    persistAllProgressIndex2ConfigNode();
+  }
+
+  public void persistAllProgressIndex2ConfigNode() {
+    try (final ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      final TPipeHeartbeatResp resp = new TPipeHeartbeatResp();
+      collectPipeMetaList(new TPipeHeartbeatReq(Long.MIN_VALUE), resp);
+      final TSStatus result =
+          configNodeClient.pushHeartbeat(
+              IoTDBDescriptor.getInstance().getConfig().getDataNodeId(), resp);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
+        LOGGER.warn("Failed to persist progress index to configNode, status: {}", result);
+      }
+    } catch (final Exception e) {
+      LOGGER.warn(e.getMessage());
+    }
+  }
 
   public void persistAllProgressIndexLocally() {
     if (!PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()) {

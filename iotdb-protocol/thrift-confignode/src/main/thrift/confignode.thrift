@@ -1773,6 +1773,6 @@ service IConfigNodeRPCService {
   TThrottleQuotaResp getThrottleQuota()
 
   /** Push heartbeat in shutdown */
-  common.TSStatus pushHeartbeat(common.TPipeHeartbeatResp resp)
+  common.TSStatus pushHeartbeat(i32 dataNodeId, common.TPipeHeartbeatResp resp)
 }
 

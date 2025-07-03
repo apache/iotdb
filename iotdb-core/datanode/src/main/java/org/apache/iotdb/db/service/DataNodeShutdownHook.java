@@ -111,7 +111,7 @@ public class DataNodeShutdownHook extends Thread {
       }
     }
     // Persist progress index before shutdown to accurate recovery after restart
-    PipeDataNodeAgent.task().persistAllProgressIndexLocally();
+    PipeDataNodeAgent.task().persistAllProgressIndex();
 
     // Shutdown pipe progressIndex background service
     PipePeriodicalJobExecutor.shutdownBackgroundService();
