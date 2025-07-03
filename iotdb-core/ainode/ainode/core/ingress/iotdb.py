@@ -223,6 +223,7 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
             + self.seq_len
             + self.output_token_len
         ]
+        result = torch.tensor(result)
         return (
             result[0 : self.seq_len],
             result[self.input_token_len : self.seq_len + self.output_token_len],
