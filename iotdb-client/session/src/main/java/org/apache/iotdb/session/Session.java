@@ -3644,6 +3644,7 @@ public class Session implements ISession {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) valueList;
         Binary[] sortedBinaryValues = new Binary[binaryValues.length];
         for (int i = 0; i < index.length; i++) {

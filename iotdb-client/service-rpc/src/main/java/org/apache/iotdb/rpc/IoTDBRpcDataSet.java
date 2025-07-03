@@ -490,6 +490,7 @@ public class IoTDBRpcDataSet {
         return convertToTimestamp(timestamp, timeFactor);
       case TEXT:
       case STRING:
+      case OBJECT:
         return curTsBlock
             .getColumn(tsBlockColumnIndex)
             .getBinary(tsBlockIndex)
@@ -550,6 +551,7 @@ public class IoTDBRpcDataSet {
         return String.valueOf(curTsBlock.getColumn(index).getDouble(tsBlockIndex));
       case TEXT:
       case STRING:
+      case OBJECT:
         return curTsBlock
             .getColumn(index)
             .getBinary(tsBlockIndex)

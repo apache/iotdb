@@ -576,8 +576,7 @@ public class TableMetadataImpl implements Metadata {
         .equalsIgnoreCase(functionName)) {
       if (argumentTypes.isEmpty()
           || argumentTypes.size() > 3
-          || !isIntegerNumber(argumentTypes.get(0))
-          //          || !isObjectType(argumentTypes.get(0))
+          || !isObjectType(argumentTypes.get(0))
           || (argumentTypes.size() >= 2 && !isIntegerNumber(argumentTypes.get(1)))
           || (argumentTypes.size() >= 3 && !isIntegerNumber(argumentTypes.get(2)))) {
         throw new SemanticException(

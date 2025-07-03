@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 
@@ -37,7 +38,7 @@ import java.nio.file.StandardOpenOption;
 
 public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
 
-  private long offset = -1;
+  private long offset = 0;
   private long length = -1;
 
   public ReadObjectColumnTransformer(Type type, ColumnTransformer childColumnTransformer) {
@@ -80,11 +81,10 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
   }
 
   private void transform(Column column, ColumnBuilder columnBuilder, int i) {
-    //    if (TSDataType.OBJECT.equals(column.getDataType())) {
-    //      Binary binary = column.getBinary(i);
-    //      columnBuilder.writeBinary(readObject(binary));
-    //    }
-    columnBuilder.writeBinary(readObject(new Binary(new byte[0])));
+    if (TSDataType.TEXT == column.getDataType()) {
+      Binary binary = column.getBinary(i);
+      columnBuilder.writeBinary(readObject(binary));
+    }
   }
 
   private Binary readObject(Binary binary) {
@@ -94,7 +94,7 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
     if (offset >= fileSize) {
       throw new UnsupportedOperationException("offset is greater than object size");
     }
-    long actualReadSize = Math.min(length, fileSize - offset);
+    long actualReadSize = Math.min(length < 0 ? fileSize : length, fileSize - offset);
     if (actualReadSize > Integer.MAX_VALUE) {
       throw new UnsupportedOperationException("Read object size is too large (size > 2G)");
     }

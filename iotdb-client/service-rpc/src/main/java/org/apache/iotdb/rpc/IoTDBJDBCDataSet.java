@@ -184,6 +184,7 @@ public class IoTDBJDBCDataSet {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           values[i] = null;
           break;
         default:
@@ -307,6 +308,7 @@ public class IoTDBJDBCDataSet {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           values[i] = null;
           break;
         default:
@@ -418,6 +420,7 @@ public class IoTDBJDBCDataSet {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             int length = valueBuffer.getInt();
             values[i] = ReadWriteIOUtils.readBytes(valueBuffer, length);
             break;
@@ -595,6 +598,7 @@ public class IoTDBJDBCDataSet {
         return String.valueOf(BytesUtils.bytesToDouble(values[index]));
       case TEXT:
       case STRING:
+      case OBJECT:
         return new String(values[index], StandardCharsets.UTF_8);
       case BLOB:
         return BytesUtils.parseBlobByteArrayToString(values[index]);
@@ -633,6 +637,7 @@ public class IoTDBJDBCDataSet {
         return BytesUtils.bytesToDouble(values[index]);
       case TEXT:
       case STRING:
+      case OBJECT:
         return new String(values[index], StandardCharsets.UTF_8);
       case BLOB:
         return new Binary(values[index]);

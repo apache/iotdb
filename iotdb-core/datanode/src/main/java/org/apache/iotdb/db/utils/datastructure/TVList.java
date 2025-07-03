@@ -112,6 +112,7 @@ public abstract class TVList implements WALEntryValue {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         return BinaryTVList.newList();
       case FLOAT:
         return FloatTVList.newList();
@@ -601,6 +602,7 @@ public abstract class TVList implements WALEntryValue {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         return BinaryTVList.deserializeWithoutBitMap(stream);
       case FLOAT:
         return FloatTVList.deserializeWithoutBitMap(stream);
@@ -821,6 +823,7 @@ public abstract class TVList implements WALEntryValue {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
@@ -891,6 +894,7 @@ public abstract class TVList implements WALEntryValue {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             Binary value = getBinary(index);
             chunkWriterImpl.write(time, value);
             encodeInfo.dataSizeInChunk += 8L + getBinarySize(value);
