@@ -361,26 +361,6 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     return results;
   }
 
-  public static void consume_data_long(
-      SubscriptionPullConsumer consumer, Session session, Long timeout)
-      throws StatementExecutionException, InterruptedException, IoTDBConnectionException {
-    timeout = System.currentTimeMillis() + timeout;
-    while (System.currentTimeMillis() < timeout) {
-      List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
-      if (messages.isEmpty()) {
-        Thread.sleep(1000);
-      }
-      for (final SubscriptionMessage message : messages) {
-        for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
-            it.hasNext(); ) {
-          final Tablet tablet = it.next();
-          session.insertTablet(tablet);
-        }
-      }
-      consumer.commitSync(messages);
-    }
-  }
-
   public void consume_data(SubscriptionPullConsumer consumer)
       throws TException,
           IOException,
