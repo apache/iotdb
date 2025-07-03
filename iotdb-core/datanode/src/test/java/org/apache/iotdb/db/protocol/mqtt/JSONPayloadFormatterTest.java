@@ -94,7 +94,6 @@ public class JSONPayloadFormatterTest {
     JSONPayloadFormatter formatter = new JSONPayloadFormatter();
     Message message = formatter.format(topic, buf).get(1);
 
-
     assertEquals("root.sg.d2", message.getDevice());
     assertEquals(Long.valueOf(1586076065526L), message.getTimestamp());
     assertEquals("s3", message.getMeasurements().get(0));
