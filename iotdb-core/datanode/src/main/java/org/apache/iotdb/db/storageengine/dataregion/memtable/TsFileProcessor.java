@@ -43,10 +43,12 @@ import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.FileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -558,6 +560,17 @@ public class TsFileProcessor {
       boolean noFailure,
       long[] infoForMetrics)
       throws WriteProcessException {
+    if (insertTabletNode instanceof RelationalInsertTabletNode) {
+      List<FileNode> fileNodeList =
+          ((RelationalInsertTabletNode) insertTabletNode).getFileNodeList();
+      if (fileNodeList != null) {
+        for (FileNode fileNode : fileNodeList) {
+          System.out.println(fileNode);
+          //          fileNode.writeFile();
+          // TODO write file node wal
+        }
+      }
+    }
 
     ensureMemTable(infoForMetrics);
 

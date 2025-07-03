@@ -129,6 +129,7 @@ public class SessionUtils {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         valueOccupation += rowSize * 4;
         Binary[] binaries = (Binary[]) values[columnIndex];
         for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
@@ -319,6 +320,7 @@ public class SessionUtils {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) tablet.getValues()[i];
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i) && binaryValues[index] != null) {

@@ -58,6 +58,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   private boolean singleDevice;
 
+  private List<FileNode> fileNodeList;
+
   public RelationalInsertTabletNode(
       PlanNodeId id,
       PartialPath devicePath,
@@ -106,6 +108,14 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   public void setSingleDevice() {
     this.singleDevice = true;
+  }
+
+  public void setFileNodeList(List<FileNode> fileNodeList) {
+    this.fileNodeList = fileNodeList;
+  }
+
+  public List<FileNode> getFileNodeList() {
+    return fileNodeList;
   }
 
   @Override

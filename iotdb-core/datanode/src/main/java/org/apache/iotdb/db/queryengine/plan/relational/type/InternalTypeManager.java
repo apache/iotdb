@@ -105,6 +105,8 @@ public class InternalTypeManager implements TypeManager {
         return TSDataType.BLOB;
       case STRING:
         return TSDataType.STRING;
+      case OBJECT:
+        return TSDataType.OBJECT;
       default:
         throw new IllegalArgumentException();
     }
