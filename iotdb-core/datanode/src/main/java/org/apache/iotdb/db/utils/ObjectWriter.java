@@ -19,25 +19,32 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class ObjectWriter implements AutoCloseable {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ObjectWriter.class);
+
   private final FileOutputStream fos;
 
-  public ObjectWriter(String filePath) throws FileNotFoundException {
-    // TODO:[OBJECT] Dir creation
-    Path path = Paths.get(filePath);
-    if (!Files.exists(path)) {
+  public ObjectWriter(File filePath) throws FileNotFoundException {
+    try {
+      FileUtils.forceMkdir(filePath.getParentFile());
+    } catch (final IOException e) {
+      throw new FileNotFoundException("Error occurred during creating directory " + filePath);
+    }
+    if (!Files.exists(filePath.toPath())) {
       try {
-        Files.createFile(path);
+        Files.createFile(filePath.toPath());
       } catch (IOException e) {
-        e.printStackTrace();
         throw new FileNotFoundException(e.getMessage());
       }
     }

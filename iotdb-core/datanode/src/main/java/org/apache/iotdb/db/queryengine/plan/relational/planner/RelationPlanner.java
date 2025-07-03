@@ -131,7 +131,6 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1141,16 +1140,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           long offset = BytesUtils.bytesToLong(offsetBytes);
           byte[] content = new byte[value.getLength() - 9];
           System.arraycopy(value.getValues(), 9, content, 0, value.getLength() - 9);
-          // TODO:[OBJECT] Generate File name
-          String fileName = "/Users/ht/Documents/iotdb/data/object/file1";
-          FileNode fileNode = new FileNode(fileName, isEoF, offset, content);
+          FileNode fileNode = new FileNode(isEoF, offset, content);
           fileNodeList.add(fileNode);
-          if (isEoF) {
-            ((Binary[]) insertTabletStatement.getColumns()[i])[j] =
-                new Binary(fileName.getBytes(StandardCharsets.UTF_8));
-          } else {
-            ((Binary[]) insertTabletStatement.getColumns()[i])[j] = null;
-          }
+          ((Binary[]) insertTabletStatement.getColumns()[i])[j] = null;
         }
       }
     }

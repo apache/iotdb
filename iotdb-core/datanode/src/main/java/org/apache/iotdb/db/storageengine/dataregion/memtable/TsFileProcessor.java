@@ -100,6 +100,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -562,11 +563,22 @@ public class TsFileProcessor {
       long[] infoForMetrics)
       throws WriteProcessException {
     if (insertTabletNode instanceof RelationalInsertTabletNode) {
-      List<FileNode> fileNodeList =
-          ((RelationalInsertTabletNode) insertTabletNode).getFileNodeList();
+      RelationalInsertTabletNode relationalInsertTabletNode =
+          (RelationalInsertTabletNode) insertTabletNode;
+      List<FileNode> fileNodeList = relationalInsertTabletNode.getFileNodeList();
       if (fileNodeList != null) {
-        for (FileNode fileNode : fileNodeList) {
-          try (ObjectWriter writer = new ObjectWriter(fileNode.getFilePath())) {
+        for (int i = 0; i < fileNodeList.size(); i++) {
+          FileNode fileNode = fileNodeList.get(i);
+          String objectFileName =
+              insertTabletNode.getTimes()[i] + "-" + config.getDataNodeId() + "-" + 1 + ".bin";
+          File objectFile = new File(writer.getFile().getParent(), objectFileName);
+          if (fileNode.isEOF()) {
+            relationalInsertTabletNode.getObjectColumn()[i] =
+                new Binary(
+                    (objectFile.getPath() + "," + objectFile.length())
+                        .getBytes(StandardCharsets.UTF_8));
+          }
+          try (ObjectWriter writer = new ObjectWriter(objectFile)) {
             writer.write(fileNode.getContent());
           } catch (Exception e) {
             throw new WriteProcessException(e);

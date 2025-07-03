@@ -37,6 +37,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -116,6 +117,15 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   public List<FileNode> getFileNodeList() {
     return fileNodeList;
+  }
+
+  public Binary[] getObjectColumn() {
+    for (int i = 0; i < columns.length; i++) {
+      if (dataTypes[i] == TSDataType.OBJECT) {
+        return (Binary[]) columns[i];
+      }
+    }
+    return null;
   }
 
   @Override

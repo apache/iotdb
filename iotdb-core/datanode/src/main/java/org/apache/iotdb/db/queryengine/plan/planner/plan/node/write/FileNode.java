@@ -38,6 +38,16 @@ public class FileNode {
     this.content = content;
   }
 
+  public FileNode(boolean isEOF, long offset, byte[] content) {
+    this.isEOF = isEOF;
+    this.offset = offset;
+    this.content = content;
+  }
+
+  public void setFilePath(String filePath) {
+    this.filePath = filePath;
+  }
+
   public String getFilePath() {
     return filePath;
   }
