@@ -54,8 +54,7 @@ public class PipeRemoteFile extends File {
   @Override
   public String toString() {
     return "PipeRemoteTsFile{"
-        + "remoteFile="
-        + ", tsFile="
+        + "tsFile="
         + tsFile
         + ", hardLinkOrCopiedFile="
         + hardLinkOrCopiedFile
