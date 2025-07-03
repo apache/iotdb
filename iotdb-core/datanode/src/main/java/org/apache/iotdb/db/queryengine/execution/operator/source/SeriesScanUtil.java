@@ -219,6 +219,11 @@ public class SeriesScanUtil implements Accountable {
   // file level methods
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // When Optional.empty() is returned, it means that the current hasNextFile has not been fully
+  // executed. In order to avoid the execution time of this method exceeding the allocated time
+  // slice, it is return early in this way. For the upper-level method, when encountering
+  // Optional.empty(), it needs to return directly to the checkpoint method that checks the operator
+  // execution time slice.
   public Optional<Boolean> hasNextFile() throws IOException {
     if (!paginationController.hasCurLimit()) {
       return Optional.of(false);
@@ -303,6 +308,11 @@ public class SeriesScanUtil implements Accountable {
    * This method should be called after hasNextFile() until no next chunk, make sure that all
    * overlapped chunks are consumed.
    *
+   * @return Optional<Boolean> When Optional.empty() is returned, it means that the current
+   *     hasNextFile has not been fully executed. In order to avoid the execution time of this
+   *     method exceeding the allocated time slice, it is return early in this way. For the
+   *     upper-level method, when encountering Optional.empty(), it needs to return directly to the
+   *     checkpoint method who checks the operator execution time slice.
    * @throws IllegalStateException illegal state
    */
   public Optional<Boolean> hasNextChunk() throws IOException {
