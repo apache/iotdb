@@ -314,6 +314,18 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       eventsToRemove.addAll(pipeTsFileInsertionEvents);
     }
     tsfileInsertEventDeque.removeIf(eventsToRemove::contains);
+
+    LOGGER.info(
+        "Region {}: Replaced TsFileInsertionEvents {} with {}",
+        regionId,
+        eventsToBeRemovedGroupByCommitterKey.values().stream()
+            .flatMap(Set::stream)
+            .map(PipeTsFileInsertionEvent::coreReportMessage)
+            .collect(Collectors.joining(", ")),
+        eventsToBeAddedGroupByCommitterKey.values().stream()
+            .flatMap(Set::stream)
+            .map(PipeTsFileInsertionEvent::coreReportMessage)
+            .collect(Collectors.joining(", ")));
   }
 
   @Override
