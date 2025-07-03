@@ -35,6 +35,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -78,25 +79,53 @@ public class TabletEncoder {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = encodingList.get(j + 1);
       Encoder encoder = TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
-      if (encoding == TSEncoding.PLAIN && dataType.isBinary()) {
-        // PlainEncoder uses var int for binaries, which causes compatibility problem
-        Binary[] binaryValues = (Binary[]) tablet.getValues()[j];
-        try {
-          for (int index = 0; index < tablet.getRowSize(); index++) {
-            if (!tablet.isNull(index, j)) {
-              ReadWriteIOUtils.write(binaryValues[index], baos);
-            } else {
-              ReadWriteIOUtils.write(Binary.EMPTY_VALUE, baos);
-            }
-          }
-        } catch (IOException e) {
-          throw new IllegalStateException(e);
+      if (encoding == TSEncoding.PLAIN) {
+        // PlainEncoder uses var int, which may cause compatibility problem
+        if (dataType.isBinary()) {
+          encodePlainBinary(tablet, j, baos);
+        } else if (dataType == TSDataType.INT32) {
+          encodePlainI32(tablet, j, baos);
+        } else {
+          SessionUtils.encodeValue(dataType, tablet, j, encoder, baos);
         }
       } else {
         SessionUtils.encodeValue(dataType, tablet, j, encoder, baos);
       }
     }
 
+    encodeBitMap(tablet, baos);
+
+    ByteBuffer buffer = ByteBuffer.wrap(baos.getBuf(), 0, baos.size());
+    return compressBuffer(buffer);
+  }
+
+  private void encodePlainBinary(Tablet tablet, int j, ByteArrayOutputStream baos) {
+    Binary[] binaryValues = (Binary[]) tablet.getValues()[j];
+    try {
+      for (int index = 0; index < tablet.getRowSize(); index++) {
+        if (!tablet.isNull(index, j)) {
+          ReadWriteIOUtils.write(binaryValues[index], baos);
+        } else {
+          ReadWriteIOUtils.write(Binary.EMPTY_VALUE, baos);
+        }
+      }
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private void encodePlainI32(Tablet tablet, int j, ByteArrayOutputStream baos) {
+    int[] intValues = (int[]) tablet.getValues()[j];
+    try {
+      for (int index = 0; index < tablet.getRowSize(); index++) {
+        ReadWriteIOUtils.write(intValues[index], baos);
+      }
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private void encodeBitMap(Tablet tablet, ByteArrayOutputStream baos) {
     BitMap[] bitMaps = tablet.getBitMaps();
     if (bitMaps != null) {
       try (DataOutputStream dataOutputStream = new DataOutputStream(baos)) {
@@ -111,9 +140,6 @@ public class TabletEncoder {
         throw new IllegalStateException(e);
       }
     }
-
-    ByteBuffer buffer = ByteBuffer.wrap(baos.getBuf(), 0, baos.size());
-    return compressBuffer(buffer);
   }
 
   private ByteBuffer compressBuffer(ByteBuffer buffer) {

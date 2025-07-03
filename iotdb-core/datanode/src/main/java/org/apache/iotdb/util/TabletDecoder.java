@@ -146,8 +146,15 @@ public class TabletDecoder {
       case DATE:
       case INT32:
         int[] intCol = new int[rowSize];
-        for (int j = 0; j < rowSize; j++) {
-          intCol[j] = decoder.readInt(uncompressed);
+        if (encoding == TSEncoding.PLAIN) {
+          // PlainEncoder uses var int, which may cause compatibility problem
+          for (int j = 0; j < rowSize; j++) {
+            intCol[j] = ReadWriteIOUtils.readInt(uncompressed);
+          }
+        } else {
+          for (int j = 0; j < rowSize; j++) {
+            intCol[j] = decoder.readInt(uncompressed);
+          }
         }
         column = intCol;
         break;
