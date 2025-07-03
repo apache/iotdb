@@ -222,6 +222,12 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
             .filter(entry -> entry.getValue().size() == sourceFiles.size())
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     if (eventsToBeRemovedGroupByCommitterKey.isEmpty()) {
+      LOGGER.info(
+          "Region {}: No TsFileInsertionEvents to replace for source files {}",
+          regionId,
+          sourceFiles.stream()
+              .map(TsFileResource::getTsFilePath)
+              .collect(Collectors.joining(", ")));
       return;
     }
 
