@@ -107,8 +107,24 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
   }
 
+  public double getPipeWALCacheInsertNodeMemoryProportion() {
+    return COMMON_CONFIG.getPipeWALCacheInsertNodeMemoryProportion();
+  }
+
+  public double getPipeWAlCacheBufferMemoryProportion() {
+    return COMMON_CONFIG.getPipeWAlCacheBufferMemoryProportion();
+  }
+
   public boolean getWALCacheBatchLoadEnabled() {
-    return COMMON_CONFIG.getWALCacheBatchLoadEnabled();
+    return COMMON_CONFIG.getPipeWALCacheBatchLoadEnabled();
+  }
+
+  public boolean getPipeWALCacheSegmentUnitEnabled() {
+    return COMMON_CONFIG.getPipeWALCacheSegmentUnitEnabled();
+  }
+
+  public int getPipeWALCacheEntryPageSize() {
+    return COMMON_CONFIG.getPipeWALCacheEntryPageSize();
   }
 
   /////////////////////////////// Subtask Connector ///////////////////////////////
@@ -496,6 +512,13 @@ public class PipeConfig {
         "PipeDataStructureTsFileMemoryBlockAllocationRejectThreshold: {}",
         getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold());
     LOGGER.info("PipeTotalFloatingMemoryProportion: {}", getPipeTotalFloatingMemoryProportion());
+
+    LOGGER.info("WALCacheBatchLoadEnabled: {}", getWALCacheBatchLoadEnabled());
+    LOGGER.info(
+        "PipeWALCacheInsertNodeMemoryProportion: {}", getPipeWALCacheInsertNodeMemoryProportion());
+    LOGGER.info("PipeWAlCacheBufferMemoryProportion: {}", getPipeWAlCacheBufferMemoryProportion());
+    LOGGER.info("PipeWALEntryPageSize: {}", getPipeWALCacheEntryPageSize());
+    LOGGER.info("PipeWALCacheSegmentUnitEnabled: {}", getPipeWALCacheSegmentUnitEnabled());
 
     LOGGER.info(
         "PipeRealTimeQueuePollTsFileThreshold: {}", getPipeRealTimeQueuePollTsFileThreshold());

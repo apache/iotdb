@@ -83,7 +83,7 @@ public class WALEntryCache implements WALCache {
 
         final long walFileVersionId = walEntryPosition.getWalFileVersionId();
 
-        long maxCacheSize = 1024 * 32;
+        long maxCacheSize = PipeConfig.getInstance().getPipeWALCacheEntryPageSize();
         try {
           ByteBuffer segment = walEntryPosition.getSegmentBuffer();
           List<Integer> list = walEntryPosition.getWalSegmentMeta().getBuffersSize();

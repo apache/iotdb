@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.Set;
 
 public class WALSegmentCache implements WALCache {
 
@@ -18,7 +19,7 @@ public class WALSegmentCache implements WALCache {
 
   private final LoadingCache<WALEntryPosition, ByteBuffer> bufferCache;
 
-  public WALSegmentCache(long maxSize) {
+  public WALSegmentCache(long maxSize, Set<Long> memTablesNeedSearch) {
     this.bufferCache =
         Caffeine.newBuilder()
             .maximumWeight(maxSize / 2)

@@ -220,10 +220,12 @@ public class CommonConfig {
   private double pipeDataStructureWalMemoryProportion = 0.4;
   private double PipeDataStructureBatchMemoryProportion = 0.1;
   private double pipeTotalFloatingMemoryProportion = 0.1;
-  private double pipeInsertNodeMemoryProportion = 0.6;
-  private double pipeBufferCacheMemoryProportion = 0.4;
 
-  private boolean WALCacheBatchLoadEnabled = true;
+  private boolean pipeWALCacheBatchLoadEnabled = true;
+  private double pipeWALCacheInsertNodeMemoryProportion = 0.6;
+  private double pipeWAlCacheBufferMemoryProportion = 0.4;
+  private boolean pipeWALCacheSegmentUnitEnabled = true;
+  private int pipeWALCacheEntryPageSize = 64 * 1024;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
@@ -902,16 +904,68 @@ public class CommonConfig {
         "pipeTotalFloatingMemoryProportion is set to {}.", pipeTotalFloatingMemoryProportion);
   }
 
-  public boolean getWALCacheBatchLoadEnabled() {
-    return WALCacheBatchLoadEnabled;
+  public double getPipeWALCacheInsertNodeMemoryProportion() {
+    return pipeWALCacheInsertNodeMemoryProportion;
   }
 
-  public void setWALCacheBatchLoadEnabled(boolean WALCacheBatchLoadEnabled) {
-    if (this.WALCacheBatchLoadEnabled == WALCacheBatchLoadEnabled) {
+  public void setPipeWALCacheInsertNodeMemoryProportion(
+      double pipeWALCacheInsertNodeMemoryProportion) {
+    if (this.pipeWALCacheInsertNodeMemoryProportion == pipeWALCacheInsertNodeMemoryProportion) {
       return;
     }
-    this.WALCacheBatchLoadEnabled = WALCacheBatchLoadEnabled;
-    logger.info("WALCacheBatchLoadEnabled is set to {}.", WALCacheBatchLoadEnabled);
+    this.pipeWALCacheInsertNodeMemoryProportion = pipeWALCacheInsertNodeMemoryProportion;
+    logger.info(
+        "pipeWalCacheInsertNodeMemoryProportion is set to {}.",
+        pipeWALCacheInsertNodeMemoryProportion);
+  }
+
+  public double getPipeWAlCacheBufferMemoryProportion() {
+    return pipeWAlCacheBufferMemoryProportion;
+  }
+
+  public void setPipeWAlCacheBufferMemoryProportion(double pipeWAlCacheBufferMemoryProportion) {
+    if (this.pipeWAlCacheBufferMemoryProportion == pipeWAlCacheBufferMemoryProportion) {
+      return;
+    }
+    this.pipeWAlCacheBufferMemoryProportion = pipeWAlCacheBufferMemoryProportion;
+    logger.info(
+        "pipeWalCacheBufferMemoryProportion is set to {}.", pipeWAlCacheBufferMemoryProportion);
+  }
+
+  public boolean getPipeWALCacheBatchLoadEnabled() {
+    return pipeWALCacheBatchLoadEnabled;
+  }
+
+  public void setPipeWALCacheBatchLoadEnabled(boolean pipeWALCacheBatchLoadEnabled) {
+    if (this.pipeWALCacheBatchLoadEnabled == pipeWALCacheBatchLoadEnabled) {
+      return;
+    }
+    this.pipeWALCacheBatchLoadEnabled = pipeWALCacheBatchLoadEnabled;
+    logger.info("WALCacheBatchLoadEnabled is set to {}.", pipeWALCacheBatchLoadEnabled);
+  }
+
+  public boolean getPipeWALCacheSegmentUnitEnabled() {
+    return pipeWALCacheSegmentUnitEnabled;
+  }
+
+  public void setPipeWALCacheSegmentUnitEnabled(boolean pipeWALCacheSegmentUnitEnabled) {
+    if (this.pipeWALCacheSegmentUnitEnabled == pipeWALCacheSegmentUnitEnabled) {
+      return;
+    }
+    this.pipeWALCacheSegmentUnitEnabled = pipeWALCacheSegmentUnitEnabled;
+    logger.info("pipeWALCacheSegmentUnitEnabled is set to {}.", pipeWALCacheSegmentUnitEnabled);
+  }
+
+  public int getPipeWALCacheEntryPageSize() {
+    return pipeWALCacheEntryPageSize;
+  }
+
+  public void setPipeWALCacheEntryPageSize(int pipeWALCacheEntryPageSize) {
+    if (this.pipeWALCacheEntryPageSize == pipeWALCacheEntryPageSize) {
+      return;
+    }
+    this.pipeWALCacheEntryPageSize = pipeWALCacheEntryPageSize;
+    logger.info("pipeWALCacheEntryPageSize is set to {}.", pipeWALCacheEntryPageSize);
   }
 
   public int getPipeExtractorAssignerDisruptorRingBufferSize() {

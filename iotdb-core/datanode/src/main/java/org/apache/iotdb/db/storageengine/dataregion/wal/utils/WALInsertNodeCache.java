@@ -67,9 +67,11 @@ public class WALInsertNodeCache {
     final long requestedAllocateSize = walModelFixedMemory.getMemoryUsageInBytes();
 
     final long insertNodeCacheSize =
-        PIPE_CONFIG.getWALInsertNodeCacheSizeInBytes() > 0
-            ? PIPE_CONFIG.getWALInsertNodeCacheSizeInBytes()
-            : requestedAllocateSize / 2;
+        (long) (PIPE_CONFIG.getPipeWALCacheInsertNodeMemoryProportion() * requestedAllocateSize);
+    final long bufferCacheSize =
+        Math.min(
+            requestedAllocateSize - insertNodeCacheSize,
+            (long) (PIPE_CONFIG.getPipeWAlCacheBufferMemoryProportion() * requestedAllocateSize));
     insertNodeCache =
         Caffeine.newBuilder()
             .maximumWeight(requestedAllocateSize / 2)
@@ -85,7 +87,10 @@ public class WALInsertNodeCache {
                     })
             .build();
 
-    bufferCache = new WALSegmentCache(requestedAllocateSize);
+    bufferCache =
+        PipeConfig.getInstance().getPipeWALCacheSegmentUnitEnabled()
+            ? new WALSegmentCache(bufferCacheSize, memTablesNeedSearch)
+            : new WALEntryCache(bufferCacheSize, memTablesNeedSearch);
   }
 
   // please call this method at PipeLauncher

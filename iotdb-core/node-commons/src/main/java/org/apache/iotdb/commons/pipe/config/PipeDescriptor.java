@@ -269,11 +269,31 @@ public class PipeDescriptor {
                 "pipe_total_floating_memory_proportion",
                 String.valueOf(config.getPipeTotalFloatingMemoryProportion()))));
 
-    config.setWALCacheBatchLoadEnabled(
+    config.setPipeWALCacheBatchLoadEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_wal_cache_batch_load_enabled",
-                Boolean.toString(config.getWALCacheBatchLoadEnabled()))));
+                Boolean.toString(config.getPipeWALCacheBatchLoadEnabled()))));
+    config.setPipeWALCacheInsertNodeMemoryProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_wal_cache_insert_node_memory_proportion",
+                String.valueOf(config.getPipeWALCacheInsertNodeMemoryProportion()))));
+    config.setPipeWAlCacheBufferMemoryProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_wal_cache_buffer_memory_proportion",
+                String.valueOf(config.getPipeWAlCacheBufferMemoryProportion()))));
+    config.setPipeWALCacheSegmentUnitEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_wal_cache_segment_unit_enabled",
+                Boolean.toString(config.getPipeWALCacheSegmentUnitEnabled()))));
+    config.setPipeWALCacheEntryPageSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_wal_cache_entry_page_size",
+                String.valueOf(config.getPipeWALCacheEntryPageSize()))));
 
     config.setPipeRealTimeQueuePollTsFileThreshold(
         Integer.parseInt(
