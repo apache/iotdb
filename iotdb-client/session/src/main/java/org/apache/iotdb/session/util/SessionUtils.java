@@ -179,6 +179,7 @@ public class SessionUtils {
           break;
         case TEXT:
         case STRING:
+        case OBJECT:
           res += Integer.BYTES;
           if (values.get(i) instanceof Binary) {
             res += ((Binary) values.get(i)).getValues().length;

@@ -61,6 +61,7 @@ public class SumAccumulator implements Accumulator {
       case TIMESTAMP:
       case DATE:
       case STRING:
+      case OBJECT:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in aggregation AVG : %s", seriesDataType));

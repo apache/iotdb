@@ -1142,7 +1142,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           byte[] content = new byte[value.getLength() - 9];
           System.arraycopy(value.getValues(), 9, content, 0, value.getLength() - 9);
           // TODO:[OBJECT] Generate File name
-          String fileName = "/Users/ht/Documents/iotdb/data/object/file1";
+          String fileName = "/Users/shuww/Downloads/test_0703/aaa";
           FileNode fileNode = new FileNode(fileName, isEoF, offset, content);
           fileNodeList.add(fileNode);
           if (isEoF) {

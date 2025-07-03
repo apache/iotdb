@@ -236,6 +236,7 @@ public class QueryDataSetUtils {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             for (int i = 0; i < currentCount; i++) {
               rowCount++;
               if (column.isNull(i)) {
@@ -379,6 +380,7 @@ public class QueryDataSetUtils {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           doWithTextColumn(
               rowCount,
               column,
