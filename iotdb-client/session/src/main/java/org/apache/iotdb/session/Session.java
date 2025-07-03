@@ -3015,7 +3015,7 @@ public class Session implements ISession {
 
     TabletEncoder encoder =
         new TabletEncoder(
-            this.compressionType,
+            enableRPCCompression ? this.compressionType : CompressionType.UNCOMPRESSED,
             encodingTypes.stream().map(TSEncoding::deserialize).collect(Collectors.toList()));
 
     request.setIsCompressed(this.enableRPCCompression);
