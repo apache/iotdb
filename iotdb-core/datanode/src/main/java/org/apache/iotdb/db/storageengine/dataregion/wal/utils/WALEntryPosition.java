@@ -168,12 +168,11 @@ public class WALEntryPosition {
       final ByteBuffer segmentHeaderWithoutCompressedSizeBuffer =
           ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
       final ByteBuffer compressedSizeBuffer = ByteBuffer.allocate(Integer.BYTES);
-      final ByteBuffer compressedDataBuffer =
-          ByteBuffer.allocate((int) walSegmentMeta.getSegmentSize());
 
       WALInputStream.SegmentInfo segmentInfo =
           WALInputStream.getNextSegmentInfo(
               channel, segmentHeaderWithoutCompressedSizeBuffer, compressedSizeBuffer);
+      final ByteBuffer compressedDataBuffer = ByteBuffer.allocate(segmentInfo.dataInDiskSize);
       WALInputStream.readWALBufferFromChannel(compressedDataBuffer, channel);
 
       final ByteBuffer uncompressedDataBuffer = ByteBuffer.allocate(segmentInfo.uncompressedSize);

@@ -30,20 +30,17 @@ public class WALSegmentMeta {
 
   private final long position;
 
-  private final long headerSize;
-
-  private final long segmentSize;
-
   private final String logFile;
 
   private List<Integer> buffersSize;
 
-  public WALSegmentMeta(
-      final long position, final long headerSize, final long segmentSize, String logFile) {
+  public WALSegmentMeta(final long position, final String logFile) {
     this.position = position;
-    this.headerSize = headerSize;
-    this.segmentSize = segmentSize;
     this.logFile = logFile;
+  }
+
+  public List<Integer> getBuffersSize() {
+    return buffersSize;
   }
 
   public void setBuffersSize(List<Integer> buffersSize) {
@@ -58,30 +55,15 @@ public class WALSegmentMeta {
     return position;
   }
 
-  public long getHeaderSize() {
-    return headerSize;
-  }
-
-  public List<Integer> getBuffersSize() {
-    return buffersSize;
-  }
-
-  public long getSegmentSize() {
-    return segmentSize;
-  }
-
   @Override
   public boolean equals(Object o) {
     if (o == null || getClass() != o.getClass()) return false;
     WALSegmentMeta that = (WALSegmentMeta) o;
-    return position == that.position
-        && headerSize == that.headerSize
-        && segmentSize == that.segmentSize
-        && Objects.equals(logFile, that.logFile);
+    return position == that.position && Objects.equals(logFile, that.logFile);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(position, headerSize, segmentSize, logFile);
+    return Objects.hash(position, logFile);
   }
 }

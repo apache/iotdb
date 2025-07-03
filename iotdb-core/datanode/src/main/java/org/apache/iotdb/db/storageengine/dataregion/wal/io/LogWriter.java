@@ -48,7 +48,7 @@ public abstract class LogWriter implements ILogWriter {
   protected final FileOutputStream logStream;
   protected final FileChannel logChannel;
   protected long originalSize = 0;
-  protected WALSegmentMeta walSegmentMeta = null;
+  protected volatile WALSegmentMeta walSegmentMeta = null;
 
   /**
    * 1 byte for whether enable compression, 4 byte for compressedSize, 4 byte for uncompressedSize
@@ -123,9 +123,7 @@ public abstract class LogWriter implements ILogWriter {
     }
     startTime = System.nanoTime();
     try {
-      walSegmentMeta =
-          new WALSegmentMeta(
-              logChannel.position(), headerBuffer.position(), bufferSize, logFilePath);
+      walSegmentMeta = new WALSegmentMeta(logChannel.position(), logFilePath);
       headerBuffer.flip();
       logChannel.write(headerBuffer);
       logChannel.write(buffer);
