@@ -192,7 +192,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db*.**",
           "count(root.db1.d1.at1),count(root.db2.d1.at1),",
           Collections.singleton("2,2,"),
           handleFailure);
@@ -512,7 +512,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("3,"),
           handleFailure);
@@ -535,7 +535,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
       }
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"),
           handleFailure);
@@ -560,7 +560,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
       }
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"),
           600,
@@ -638,7 +638,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("3,"),
           handleFailure);
@@ -658,7 +658,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
           Collections.singleton("3,3,"),
           handleFailure);
@@ -980,6 +980,6 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
 
   private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, int count) {
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton(count + ","));
+        receiverEnv, "count timeseries root.db.**", "count(timeseries),", Collections.singleton(count + ","));
   }
 }

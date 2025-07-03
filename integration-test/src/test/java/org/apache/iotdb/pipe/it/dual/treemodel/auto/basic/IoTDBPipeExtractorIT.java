@@ -497,7 +497,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "show devices",
+          "show devices root.nonAligned.**",
           "Device,IsAligned,Template,TTL(ms),",
           new HashSet<>(
               Arrays.asList(
@@ -505,7 +505,13 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
                   "root.nonAligned.100TS,false,null,INF,",
                   "root.nonAligned.1000TS,false,null,INF,",
                   "root.nonAligned.`1(TS)`,false,null,INF,",
-                  "root.nonAligned.6TS.`6`,false,null,INF,",
+                  "root.nonAligned.6TS.`6`,false,null,INF,")));
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show devices root.aligned.**",
+          "Device,IsAligned,Template,TTL(ms),",
+          new HashSet<>(
+              Arrays.asList(
                   "root.aligned.1TS,true,null,INF,",
                   "root.aligned.100TS,true,null,INF,",
                   "root.aligned.1000TS,true,null,INF,",
@@ -591,7 +597,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db*.**",
           "count(root.db1.d1.at1),count(root.db2.d1.at1),",
           Collections.singleton("2,2,"));
     }
@@ -675,12 +681,12 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** where time <= 1",
+          "select count(*) from root.db.** where time <= 1",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
           Collections.singleton("1,0,1,"));
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** where time >= 2",
+          "select count(*) from root.db.** where time >= 2",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
           Collections.singleton("2,1,0,"));
     }
@@ -733,7 +739,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("3,"));
 
@@ -749,7 +755,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
           Collections.singleton("3,3,"));
     }
@@ -798,7 +804,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("3,"));
 
@@ -814,7 +820,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"));
 
@@ -830,7 +836,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"));
     }
@@ -882,7 +888,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("3,"));
 
@@ -898,7 +904,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
           Collections.singleton("3,3,"));
     }
@@ -959,7 +965,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** group by level=0",
+          "select count(*) from root.db.** group by level=0",
           "count(root.*.*.*),",
           Collections.singleton("4,"));
     }
@@ -1035,8 +1041,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, int count) {
+    // for system password history
+    count += 2;
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton(count + ","));
+        receiverEnv, "count timeseries root.**", "count(timeseries),", Collections.singleton(count + ","));
   }
 
   private void assertPipeCount(int count) throws Exception {

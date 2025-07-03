@@ -90,7 +90,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testSourcePermission() {
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "create user `thulab` 'passwd123456'")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "create user `thulab` 'passwD@123456'")) {
       return;
     }
 
@@ -162,7 +162,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "alter pipe a2b modify source ('username'='thulab', 'password'='passwd123456')");
+          "alter pipe a2b modify source ('username'='thulab', 'password'='passwD@123456')");
     } catch (final SQLException e) {
       e.printStackTrace();
       fail("Alter pipe shall not fail if user and password are specified");
@@ -243,7 +243,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "create user testUser 'password'")) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "create user testUser 'passwD@123456'")) {
         return;
       }
 
@@ -263,7 +263,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.user", "testUser");
-      connectorAttributes.put("connector.password", "password123456");
+      connectorAttributes.put("connector.password", "passwD@123456");
 
       final TSStatus status =
           client.createPipe(
