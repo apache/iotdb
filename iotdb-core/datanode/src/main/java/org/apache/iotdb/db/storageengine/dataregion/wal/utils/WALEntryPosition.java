@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -258,6 +259,13 @@ public class WALEntryPosition {
 
   public WALSegmentMeta getWalSegmentMeta() {
     return walSegmentMeta;
+  }
+
+  public List<Integer> getWalSegmentMetaBuffersSize() {
+    if (walSegmentMeta == null) {
+      throw new IllegalStateException("WAL segment meta is not set.");
+    }
+    return walSegmentMeta.getBuffersSize();
   }
 
   public long getPosition() {

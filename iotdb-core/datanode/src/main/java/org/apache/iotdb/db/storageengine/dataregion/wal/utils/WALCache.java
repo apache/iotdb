@@ -33,7 +33,7 @@ public interface WALCache {
   CacheStats stats();
 
   public static ByteBuffer getEntryBySegment(WALEntryPosition key, ByteBuffer segment) {
-    List<Integer> list = key.getWalSegmentMeta().getBuffersSize();
+    List<Integer> list = key.getWalSegmentMetaBuffersSize();
     int pos = 0;
     for (int size : list) {
       if (key.getPosition() == pos) {
