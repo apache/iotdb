@@ -109,6 +109,6 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
   }
 
   private String getObjectPathFromBinary(Binary binary) {
-    return "/Users/shuww/Downloads/test_0703/aaa";
+    return binary.toString().split(",")[0];
   }
 }

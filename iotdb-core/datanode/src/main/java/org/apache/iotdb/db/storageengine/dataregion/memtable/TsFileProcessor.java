@@ -572,18 +572,18 @@ public class TsFileProcessor {
           String objectFileName =
               insertTabletNode.getTimes()[i] + "-" + config.getDataNodeId() + "-" + 1 + ".bin";
           File objectFile = new File(writer.getFile().getParent(), objectFileName);
-          if (fileNode.isEOF()) {
-            relationalInsertTabletNode.getObjectColumn()[i] =
-                new Binary(
-                    (objectFile.getPath() + "," + objectFile.length())
-                        .getBytes(StandardCharsets.UTF_8));
-          }
           try (ObjectWriter writer = new ObjectWriter(objectFile)) {
             writer.write(fileNode.getContent());
           } catch (Exception e) {
             throw new WriteProcessException(e);
           }
           // TODO:[OBJECT] write file node wal
+          if (fileNode.isEOF()) {
+            relationalInsertTabletNode.getObjectColumn()[i] =
+                new Binary(
+                    (objectFile.getPath() + "," + objectFile.length())
+                        .getBytes(StandardCharsets.UTF_8));
+          }
         }
       }
     }
