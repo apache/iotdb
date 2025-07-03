@@ -47,9 +47,15 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
       AlignedPath seriesPath,
       TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       boolean needUpdateCache,
-      boolean needUpdateNullEntry) {
+      boolean needUpdateNullEntry,
+      boolean deviceInMultiRegion) {
     super(
-        operatorContext, child, treeDeviceSchemaCacheManager, needUpdateCache, needUpdateNullEntry);
+        operatorContext,
+        child,
+        treeDeviceSchemaCacheManager,
+        needUpdateCache,
+        needUpdateNullEntry,
+        deviceInMultiRegion);
     this.seriesPath = seriesPath;
     this.devicePath = seriesPath.getDevicePath();
   }

@@ -81,10 +81,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
@@ -110,12 +108,12 @@ import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGene
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -123,7 +121,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -234,41 +231,24 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLast(Analysis analysis, Ordering timeseriesOrdering) {
-    Set<IDeviceID> deviceAlignedSet = new HashSet<>();
-    Set<IDeviceID> deviceExistViewSet = new HashSet<>();
     // <Device, <Measurement, Expression>>
-    Map<IDeviceID, Map<String, Expression>> outputPathToSourceExpressionMap = new LinkedHashMap<>();
+    Map<IDeviceID, Map<String, Expression>> outputPathToSourceExpressionMap =
+        analysis.getLastQueryOutputPathToSourceExpressionMap();
+    Set<IDeviceID> deviceExistViewSet = analysis.getDeviceExistViewSet();
 
-    for (Expression sourceExpression : analysis.getLastQueryBaseExpressions()) {
-      MeasurementPath outputPath =
-          (MeasurementPath)
-              (sourceExpression.isViewExpression()
-                  ? sourceExpression.getViewPath()
-                  : ((TimeSeriesOperand) sourceExpression).getPath());
-      IDeviceID outputDevice = outputPath.getIDeviceID();
-      outputPathToSourceExpressionMap
-          .computeIfAbsent(
-              outputDevice,
-              k ->
-                  timeseriesOrdering != null
-                      ? new TreeMap<>(timeseriesOrdering.getStringComparator())
-                      : new LinkedHashMap<>())
-          .put(outputPath.getMeasurement(), sourceExpression);
-      if (outputPath.isUnderAlignedEntity()) {
-        deviceAlignedSet.add(outputDevice);
-      }
-      if (sourceExpression.isViewExpression()) {
-        deviceExistViewSet.add(outputDevice);
-      }
-    }
-
-    List<PlanNode> sourceNodeList = new ArrayList<>();
+    LastQueryNode lastQueryNode =
+        new LastQueryNode(
+            context.getQueryId().genPlanNodeId(),
+            timeseriesOrdering,
+            analysis.getLastQueryNonWritableViewSourceExpressionMap() != null);
     for (Map.Entry<IDeviceID, Map<String, Expression>> deviceMeasurementExpressionEntry :
         outputPathToSourceExpressionMap.entrySet()) {
-      IDeviceID outputDevice = deviceMeasurementExpressionEntry.getKey();
+      IDeviceID deviceId = deviceMeasurementExpressionEntry.getKey();
       Map<String, Expression> measurementToExpressionsOfDevice =
           deviceMeasurementExpressionEntry.getValue();
-      if (deviceExistViewSet.contains(outputDevice)) {
+
+      boolean deviceExistView = deviceExistViewSet.contains(deviceId);
+      if (deviceExistView) {
         // exist view
         for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
           MeasurementPath selectedPath =
@@ -278,90 +258,64 @@ public class LogicalPlanBuilder {
                   ? sourceExpression.getViewPath().getFullPath()
                   : null;
 
-          if (selectedPath.isUnderAlignedEntity()) { // aligned series
-            sourceNodeList.add(
-                reserveMemoryForSeriesSourceNode(
-                    new AlignedLastQueryScanNode(
-                        context.getQueryId().genPlanNodeId(),
-                        new AlignedPath(selectedPath),
-                        outputViewPath)));
-          } else { // non-aligned series
-            sourceNodeList.add(
-                reserveMemoryForSeriesSourceNode(
-                    new LastQueryScanNode(
-                        context.getQueryId().genPlanNodeId(), selectedPath, outputViewPath)));
-          }
+          PartialPath devicePath = selectedPath.getDevicePath();
+          devicePath.setIDeviceID(deviceId);
+          long memCost =
+              lastQueryNode.addDeviceLastQueryScanNode(
+                  context.getQueryId().genPlanNodeId(),
+                  devicePath,
+                  selectedPath.isUnderAlignedEntity(),
+                  Collections.singletonList(selectedPath.getMeasurementSchema()),
+                  outputViewPath);
+          this.context.reserveMemoryForFrontEnd(memCost);
         }
       } else {
-        if (deviceAlignedSet.contains(outputDevice)) {
-          // aligned series
-          List<MeasurementPath> measurementPaths =
-              measurementToExpressionsOfDevice.values().stream()
-                  .map(expression -> (MeasurementPath) ((TimeSeriesOperand) expression).getPath())
-                  .collect(Collectors.toList());
-          AlignedPath alignedPath = new AlignedPath(measurementPaths.get(0).getDevicePath());
-          for (MeasurementPath measurementPath : measurementPaths) {
-            alignedPath.addMeasurement(measurementPath);
-          }
-          sourceNodeList.add(
-              reserveMemoryForSeriesSourceNode(
-                  new AlignedLastQueryScanNode(
-                      context.getQueryId().genPlanNodeId(), alignedPath, null)));
-        } else {
-          // non-aligned series
-          for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
-            MeasurementPath selectedPath =
-                (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
-            sourceNodeList.add(
-                reserveMemoryForSeriesSourceNode(
-                    new LastQueryScanNode(
-                        context.getQueryId().genPlanNodeId(), selectedPath, null)));
-          }
+        boolean aligned = false;
+        List<IMeasurementSchema> measurementSchemas =
+            new ArrayList<>(measurementToExpressionsOfDevice.size());
+        PartialPath devicePath = null;
+        for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
+          MeasurementPath selectedPath =
+              (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
+          aligned = selectedPath.isUnderAlignedEntity();
+          devicePath = devicePath == null ? selectedPath.getDevicePath() : devicePath;
+          measurementSchemas.add(selectedPath.getMeasurementSchema());
         }
+        // DeviceId is needed in the distribution plan stage
+        devicePath.setIDeviceID(deviceId);
+        long memCost =
+            lastQueryNode.addDeviceLastQueryScanNode(
+                context.getQueryId().genPlanNodeId(),
+                devicePath,
+                aligned,
+                measurementSchemas,
+                null);
+        this.context.reserveMemoryForFrontEnd(memCost);
       }
     }
+    this.context.reserveMemoryForFrontEnd(lastQueryNode.getMemorySizeOfSharedStructures());
 
-    processLastQueryTransformNode(analysis, sourceNodeList);
+    processLastQueryTransformNode(analysis, lastQueryNode);
 
-    if (timeseriesOrdering != null) {
-      sourceNodeList.sort(
-          Comparator.comparing(
-              child -> {
-                String sortKey = "";
-                if (child instanceof LastQueryScanNode) {
-                  sortKey = ((LastQueryScanNode) child).getOutputSymbolForSort();
-                } else if (child instanceof AlignedLastQueryScanNode) {
-                  sortKey = ((AlignedLastQueryScanNode) child).getOutputSymbolForSort();
-                } else if (child instanceof LastQueryTransformNode) {
-                  sortKey = ((LastQueryTransformNode) child).getOutputSymbolForSort();
-                }
-                return sortKey;
-              }));
-      if (timeseriesOrdering.equals(Ordering.DESC)) {
-        Collections.reverse(sourceNodeList);
-      }
-    }
-
-    this.root =
-        new LastQueryNode(
-            context.getQueryId().genPlanNodeId(),
-            sourceNodeList,
-            timeseriesOrdering,
-            analysis.getLastQueryNonWritableViewSourceExpressionMap() != null);
+    lastQueryNode.sort();
+    this.root = lastQueryNode;
 
     ColumnHeaderConstant.lastQueryColumnHeaders.forEach(
         columnHeader ->
             context
                 .getTypeProvider()
                 .setTreeModelType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+    // After planning is completed, this map is no longer needed
+    lastQueryNode.clearMeasurementSchema2IdxMap();
 
     return this;
   }
 
-  private void processLastQueryTransformNode(Analysis analysis, List<PlanNode> sourceNodeList) {
+  private void processLastQueryTransformNode(Analysis analysis, LastQueryNode lastQueryNode) {
     if (analysis.getLastQueryNonWritableViewSourceExpressionMap() == null) {
       return;
     }
+    context.setNeedUpdateScanNumForLastQuery(true);
 
     for (Map.Entry<Expression, List<Expression>> entry :
         analysis.getLastQueryNonWritableViewSourceExpressionMap().entrySet()) {
@@ -399,7 +353,7 @@ public class LogicalPlanBuilder {
               planBuilder.getRoot(),
               expression.getViewPath().getFullPath(),
               analysis.getType(expression).toString());
-      sourceNodeList.add(transformNode);
+      lastQueryNode.addChild(transformNode);
     }
   }
 

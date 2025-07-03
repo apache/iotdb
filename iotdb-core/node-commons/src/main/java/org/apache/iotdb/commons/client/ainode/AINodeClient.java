@@ -28,6 +28,7 @@ import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelReq;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelResp;
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
 import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -149,6 +150,18 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
   public TSStatus deleteModel(String modelId) throws TException {
     try {
       return client.deleteModel(new TDeleteModelReq(modelId));
+    } catch (TException e) {
+      logger.warn(
+          "Failed to connect to AINode from ConfigNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
+      throw new TException(MSG_CONNECTION_FAIL);
+    }
+  }
+
+  public TShowModelsResp showModels() throws TException {
+    try {
+      return client.showModels();
     } catch (TException e) {
       logger.warn(
           "Failed to connect to AINode from ConfigNode when executing {}: {}",

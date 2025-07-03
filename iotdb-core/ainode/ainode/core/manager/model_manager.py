@@ -26,12 +26,14 @@ from ainode.core.exception import (
     InvalidUriError,
 )
 from ainode.core.log import Logger
+from ainode.core.model.model_info import BuiltInModelType, ModelInfo, ModelStates
 from ainode.core.model.model_storage import ModelStorage
 from ainode.core.util.status import get_status
 from ainode.thrift.ainode.ttypes import (
     TDeleteModelReq,
     TRegisterModelReq,
     TRegisterModelResp,
+    TShowModelsResp,
 )
 from ainode.thrift.common.ttypes import TSStatus
 
@@ -95,32 +97,26 @@ class ModelManager:
             logger.warning(e)
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
 
-    def load_model(
-        self, model_id: str, is_built_in: bool, acceleration: bool = False
-    ) -> Callable:
+    def load_model(self, model_id: str, acceleration: bool = False) -> Callable:
         """
         Load the model with the given model_id.
         """
         logger.info(f"Load model {model_id}")
         try:
-            model = self.model_storage.load_model(
-                model_id.lower(), is_built_in, acceleration
-            )
+            model = self.model_storage.load_model(model_id, acceleration)
             logger.info(f"Model {model_id} loaded")
             return model
         except Exception as e:
             logger.error(f"Failed to load model {model_id}: {e}")
             raise
 
-    def save_model(
-        self, model_id: str, is_built_in: bool, model: nn.Module
-    ) -> TSStatus:
+    def save_model(self, model_id: str, model: nn.Module) -> TSStatus:
         """
         Save the model using save_pretrained
         """
         logger.info(f"Saving model {model_id}")
         try:
-            self.model_storage.save_model(model_id, is_built_in, model)
+            self.model_storage.save_model(model_id, model)
             logger.info(f"Saving model {model_id} successfully")
             return get_status(
                 TSStatusCode.SUCCESS_STATUS, f"Model {model_id} saved successfully"
@@ -140,3 +136,18 @@ class ModelManager:
             str: The path to the checkpoint file for the model.
         """
         return self.model_storage.get_ckpt_path(model_id)
+
+    def show_models(self) -> TShowModelsResp:
+        return self.model_storage.show_models()
+
+    def register_built_in_model(self, model_info: ModelInfo):
+        self.model_storage.register_built_in_model(model_info)
+
+    def update_model_state(self, model_id: str, state: ModelStates):
+        self.model_storage.update_model_state(model_id, state)
+
+    def get_built_in_model_type(self, model_id: str) -> BuiltInModelType:
+        """
+        Get the type of the model with the given model_id.
+        """
+        return self.model_storage.get_built_in_model_type(model_id)
