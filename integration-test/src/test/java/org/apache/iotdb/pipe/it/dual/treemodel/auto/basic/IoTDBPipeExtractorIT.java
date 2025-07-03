@@ -1044,7 +1044,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
     // for system password history
     count += 2;
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeseries root.**", "count(timeseries),", Collections.singleton(count + ","));
+        receiverEnv,
+        "count timeseries root.**",
+        "count(timeseries),",
+        Collections.singleton(count + ","));
   }
 
   private void assertPipeCount(int count) throws Exception {

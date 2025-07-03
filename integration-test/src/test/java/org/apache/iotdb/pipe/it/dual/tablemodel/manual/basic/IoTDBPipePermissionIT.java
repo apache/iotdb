@@ -243,7 +243,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "create user testUser 'passwD@123456'")) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          receiverEnv, "create user testUser 'passwD@123456'")) {
         return;
       }
 

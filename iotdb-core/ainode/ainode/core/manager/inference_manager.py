@@ -15,8 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import random
 from abc import ABC, abstractmethod
 
+import numpy as np
 import pandas as pd
 import torch
 from iotdb.tsfile.utils.tsblock_serde import deserialize
@@ -41,6 +43,7 @@ from ainode.thrift.ainode.ttypes import (
 )
 
 logger = Logger()
+FIX_SEED = 2021
 
 
 class InferenceStrategy(ABC):
@@ -143,6 +146,9 @@ class InferenceManager:
     ):
         model_id = req.modelId
         logger.info(f"Start processing for {model_id}")
+        random.seed(FIX_SEED)
+        torch.manual_seed(FIX_SEED)
+        np.random.seed(FIX_SEED)
         try:
             raw = data_getter(req)
             full_data = deserializer(raw)
