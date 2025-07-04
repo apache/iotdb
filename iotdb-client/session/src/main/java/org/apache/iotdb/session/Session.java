@@ -56,6 +56,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.rpccompress.TabletEncoder;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
@@ -217,6 +218,9 @@ public class Session implements ISession {
 
   protected static final String TABLE = "table";
   protected static final String TREE = "tree";
+
+  private CompressionType compressionType;
+  public Map<TSDataType, TSEncoding> columnEncodersMap;
 
   public Session(String host, int rpcPort) {
     this(
@@ -449,6 +453,9 @@ public class Session implements ISession {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
       this.enableQueryRedirection = builder.enableRedirection;
     }
+    this.enableRPCCompression = builder.isCompressed;
+    this.compressionType = builder.compressionType;
+    this.columnEncodersMap = builder.columnEncodersMap;
     this.enableRedirection = builder.enableRedirection;
     this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
     this.username = builder.username;
@@ -1779,12 +1786,7 @@ public class Session implements ISession {
     return false;
   }
 
-  /**
-   * Filter the null object of list。
-   *
-   * @param prefixPaths devices path。
-   * @return true:all values of valuesList are null;false:Not all values of valuesList are null.
-   */
+  /** Filter the null object of list。 */
   private void filterNullValueAndMeasurementWithStringType(
       List<String> prefixPaths,
       List<Long> times,
@@ -3000,8 +3002,35 @@ public class Session implements ISession {
 
     request.setPrefixPath(tablet.getDeviceId());
     request.setIsAligned(isAligned);
-    request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
-    request.setValues(SessionUtils.getValueBuffer(tablet));
+
+    List<Byte> encodingTypes;
+    if (enableRPCCompression) {
+      encodingTypes = new ArrayList<>(tablet.getSchemas().size() + 1);
+      encodingTypes.add(this.columnEncodersMap.get(TSDataType.INT64).serialize());
+      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+        if (measurementSchema.getMeasurementName() == null) {
+          throw new IllegalArgumentException("measurement should be non null value");
+        }
+        encodingTypes.add(this.columnEncodersMap.get(measurementSchema.getType()).serialize());
+      }
+    } else {
+      encodingTypes =
+          Collections.nCopies(tablet.getSchemas().size() + 1, TSEncoding.PLAIN.serialize());
+    }
+
+    TabletEncoder encoder =
+        new TabletEncoder(
+            enableRPCCompression ? this.compressionType : CompressionType.UNCOMPRESSED,
+            encodingTypes.stream().map(TSEncoding::deserialize).collect(Collectors.toList()));
+
+    request.setIsCompressed(this.enableRPCCompression);
+    if (this.enableRPCCompression) {
+      request.setCompressType(compressionType.serialize());
+      request.setEncodingTypes(encodingTypes);
+    }
+    request.setTimestamps(encoder.encodeTime(tablet));
+    request.setValues(encoder.encodeValues(tablet));
+
     request.setSize(tablet.getRowSize());
     return request;
   }
