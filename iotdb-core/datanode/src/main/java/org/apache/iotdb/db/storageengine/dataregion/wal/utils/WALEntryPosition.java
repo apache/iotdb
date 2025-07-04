@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALSegmentMeta;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 
 import org.apache.tsfile.compress.IUnCompressor;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,11 +150,17 @@ public class WALEntryPosition {
       final ByteBuffer compressedDataBuffer = ByteBuffer.allocate(segmentInfo.dataInDiskSize);
       WALInputStream.readWALBufferFromChannel(compressedDataBuffer, channel);
 
-      final ByteBuffer uncompressedDataBuffer = ByteBuffer.allocate(segmentInfo.uncompressedSize);
-      WALInputStream.uncompressWALBuffer(
-          compressedDataBuffer,
-          uncompressedDataBuffer,
-          IUnCompressor.getUnCompressor(segmentInfo.compressionType));
+      ByteBuffer uncompressedDataBuffer = null;
+      if (segmentInfo.compressionType != CompressionType.UNCOMPRESSED) {
+        uncompressedDataBuffer = ByteBuffer.allocate(segmentInfo.uncompressedSize);
+        WALInputStream.uncompressWALBuffer(
+            compressedDataBuffer,
+            uncompressedDataBuffer,
+            IUnCompressor.getUnCompressor(segmentInfo.compressionType));
+      } else {
+        uncompressedDataBuffer = compressedDataBuffer;
+      }
+      uncompressedDataBuffer.flip();
       return uncompressedDataBuffer;
     } catch (Exception e) {
       LOGGER.error(

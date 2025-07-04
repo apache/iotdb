@@ -120,6 +120,7 @@ public class WALEntryCache implements WALCache {
             final long memTableId = buffer.getLong();
             if ((memTablesNeedSearch.contains(memTableId) || walEntryPosition.getPosition() == pos)
                 && type.needSearch()) {
+              maxCacheSize -= size;
               buffer.clear();
               loadedEntries.put(
                   new WALEntryPosition(
@@ -131,7 +132,6 @@ public class WALEntryCache implements WALCache {
                   buffer);
             }
             pos += size;
-            maxCacheSize -= size;
             if (maxCacheSize <= 0) {
               break;
             }
