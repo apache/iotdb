@@ -26,8 +26,8 @@ import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.concurrent.GuardedBy;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -43,7 +43,7 @@ public class DataNodeQueryContext {
   private final ReentrantLock lock = new ReentrantLock();
 
   public DataNodeQueryContext(int dataNodeFINum) {
-    this.uncachedPathToSeriesScanInfo = new HashMap<>();
+    this.uncachedPathToSeriesScanInfo = new ConcurrentHashMap<>();
     this.dataNodeFINum = new AtomicInteger(dataNodeFINum);
   }
 
@@ -59,15 +59,24 @@ public class DataNodeQueryContext {
     return uncachedPathToSeriesScanInfo.get(path);
   }
 
+  public Map<PartialPath, Pair<AtomicInteger, TimeValuePair>> getUncachedPathToSeriesScanInfo() {
+    return uncachedPathToSeriesScanInfo;
+  }
+
   public int decreaseDataNodeFINum() {
     return dataNodeFINum.decrementAndGet();
   }
 
-  public void lock() {
-    lock.lock();
+  public void lock(boolean isDeviceInMultiRegion) {
+    // When a device exists in only one region, there will be no intermediate state.
+    if (isDeviceInMultiRegion) {
+      lock.lock();
+    }
   }
 
-  public void unLock() {
-    lock.unlock();
+  public void unLock(boolean isDeviceInMultiRegion) {
+    if (isDeviceInMultiRegion) {
+      lock.unlock();
+    }
   }
 }

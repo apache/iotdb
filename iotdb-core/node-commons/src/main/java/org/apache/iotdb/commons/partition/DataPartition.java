@@ -118,14 +118,17 @@ public class DataPartition extends Partition {
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
-      String deviceName, Filter timeFilter) {
-    String storageGroup = getStorageGroupByDevice(deviceName);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
-    if (!dataPartitionMap.containsKey(storageGroup)
-        || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
+      final String deviceName, final Filter timeFilter) {
+    final String storageGroup = getStorageGroupByDevice(deviceName);
+    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetMap =
+        dataPartitionMap
+            .getOrDefault(storageGroup, Collections.emptyMap())
+            .getOrDefault(seriesPartitionSlot, Collections.emptyMap());
+    if (regionReplicaSetMap.isEmpty()) {
       return Collections.singletonList(NOT_ASSIGNED);
     }
-    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
+    return regionReplicaSetMap.entrySet().stream()
         .filter(
             entry ->
                 TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime))

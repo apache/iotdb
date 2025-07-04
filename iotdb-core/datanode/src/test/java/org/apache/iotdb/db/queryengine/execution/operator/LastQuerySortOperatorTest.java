@@ -40,7 +40,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -55,6 +54,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -192,7 +192,7 @@ public class LastQuerySortOperatorTest {
           new LastQuerySortOperator(
               driverContext.getOperatorContexts().get(4),
               LastQueryUtil.createTsBlockBuilder().build(),
-              ImmutableList.of(updateLastCacheOperator1, updateLastCacheOperator2),
+              Arrays.asList(updateLastCacheOperator1, updateLastCacheOperator2),
               Comparator.naturalOrder());
 
       int count = 0;
@@ -329,7 +329,7 @@ public class LastQuerySortOperatorTest {
           new LastQuerySortOperator(
               driverContext.getOperatorContexts().get(4),
               builder.build(),
-              ImmutableList.of(updateLastCacheOperator2, updateLastCacheOperator1),
+              Arrays.asList(updateLastCacheOperator2, updateLastCacheOperator1),
               Comparator.reverseOrder());
 
       int count = 0;

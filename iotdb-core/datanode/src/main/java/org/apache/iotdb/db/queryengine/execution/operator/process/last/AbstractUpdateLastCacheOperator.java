@@ -61,12 +61,15 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected String databaseName;
 
+  protected boolean deviceInMultiRegion;
+
   protected AbstractUpdateLastCacheOperator(
-      OperatorContext operatorContext,
-      Operator child,
-      DataNodeSchemaCache dataNodeSchemaCache,
-      boolean needUpdateCache,
-      boolean needUpdateNullEntry) {
+      final OperatorContext operatorContext,
+      final Operator child,
+      final DataNodeSchemaCache dataNodeSchemaCache,
+      final boolean needUpdateCache,
+      final boolean needUpdateNullEntry,
+      final boolean deviceInMultiRegion) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.lastCache = dataNodeSchemaCache;
@@ -75,6 +78,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
     this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);
     this.dataNodeQueryContext =
         operatorContext.getDriverContext().getFragmentInstanceContext().getDataNodeQueryContext();
+    this.deviceInMultiRegion = deviceInMultiRegion;
   }
 
   @Override
@@ -103,8 +107,8 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
       return;
     }
     try {
-      dataNodeQueryContext.lock();
-      Pair<AtomicInteger, TimeValuePair> seriesScanInfo =
+      dataNodeQueryContext.lock(deviceInMultiRegion);
+      final Pair<AtomicInteger, TimeValuePair> seriesScanInfo =
           dataNodeQueryContext.getSeriesScanInfo(fullPath);
 
       // may enter this case when use TTL
@@ -112,6 +116,11 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
         return;
       }
 
+      if (!deviceInMultiRegion) {
+        lastCache.updateLastCache(
+            getDatabaseName(), fullPath, new TimeValuePair(time, value), false, Long.MIN_VALUE);
+        return;
+      }
       // update cache in DataNodeQueryContext
       if (seriesScanInfo.right == null || time > seriesScanInfo.right.getTimestamp()) {
         seriesScanInfo.right = new TimeValuePair(time, value);
@@ -122,7 +131,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
             getDatabaseName(), fullPath, seriesScanInfo.right, false, Long.MIN_VALUE);
       }
     } finally {
-      dataNodeQueryContext.unLock();
+      dataNodeQueryContext.unLock(deviceInMultiRegion);
     }
   }
 

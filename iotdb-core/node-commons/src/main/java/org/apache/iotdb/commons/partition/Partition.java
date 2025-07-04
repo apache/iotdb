@@ -39,7 +39,7 @@ public abstract class Partition {
             seriesSlotExecutorName, seriesPartitionSlotNum);
   }
 
-  protected TSeriesPartitionSlot calculateDeviceGroupId(String deviceName) {
+  public TSeriesPartitionSlot calculateDeviceGroupId(String deviceName) {
     return executor.getSeriesPartitionSlot(deviceName);
   }
 
