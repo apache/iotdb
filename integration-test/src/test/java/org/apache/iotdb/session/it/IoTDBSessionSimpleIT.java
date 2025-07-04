@@ -2203,11 +2203,17 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
-  public void testInsertWrongTypeRecord()
-      throws IoTDBConnectionException {
+  public void testInsertWrongTypeRecord() throws IoTDBConnectionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      assertThrows(ClassCastException.class,
-          () -> session.insertRecord("root.db1.d1", 0, Collections.singletonList("s1"), Collections.singletonList(TSDataType.INT32), Collections.singletonList(1L)));
+      assertThrows(
+          ClassCastException.class,
+          () ->
+              session.insertRecord(
+                  "root.db1.d1",
+                  0,
+                  Collections.singletonList("s1"),
+                  Collections.singletonList(TSDataType.INT32),
+                  Collections.singletonList(1L)));
     }
   }
 }
