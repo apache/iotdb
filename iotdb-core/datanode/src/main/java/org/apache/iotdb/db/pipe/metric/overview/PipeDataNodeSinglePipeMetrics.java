@@ -42,7 +42,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
@@ -229,15 +228,12 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   public void register(final IoTDBDataRegionExtractor extractor) {
     // The metric is global thus the regionId is omitted
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
-    final AtomicBoolean first = new AtomicBoolean(false);
     remainingEventAndTimeOperatorMap.computeIfAbsent(
         pipeID,
-        k -> {
-          first.set(true);
-          return new PipeDataNodeRemainingEventAndTimeOperator(
-              extractor.getPipeName(), extractor.getCreationTime());
-        });
-    if (Objects.nonNull(metricService) && first.get()) {
+        k ->
+            new PipeDataNodeRemainingEventAndTimeOperator(
+                extractor.getPipeName(), extractor.getCreationTime()));
+    if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }
   }
@@ -245,17 +241,14 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   public void register(final IoTDBSchemaRegionExtractor extractor) {
     // The metric is global thus the regionId is omitted
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
-    final AtomicBoolean first = new AtomicBoolean(false);
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeID,
-            k -> {
-              first.set(true);
-              return new PipeDataNodeRemainingEventAndTimeOperator(
-                  extractor.getPipeName(), extractor.getCreationTime());
-            })
+            k ->
+                new PipeDataNodeRemainingEventAndTimeOperator(
+                    extractor.getPipeName(), extractor.getCreationTime()))
         .register(extractor);
-    if (Objects.nonNull(metricService) && first.get()) {
+    if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }
   }
