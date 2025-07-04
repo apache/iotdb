@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.libpipe.extractor.mqtt.util;
+package org.apache.iotdb.libpipe.extractor.mqtt.utils;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.commons.lang3.NotImplementedException;

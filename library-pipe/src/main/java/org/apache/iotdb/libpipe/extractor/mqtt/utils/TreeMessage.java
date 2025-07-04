@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.libpipe.extractor.mqtt.util;
+package org.apache.iotdb.libpipe.extractor.mqtt.utils;
 
 import org.apache.tsfile.enums.TSDataType;
 

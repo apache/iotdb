@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.libpipe.extractor.mqtt.util;
+package org.apache.iotdb.libpipe.extractor.mqtt.utils;
 
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;

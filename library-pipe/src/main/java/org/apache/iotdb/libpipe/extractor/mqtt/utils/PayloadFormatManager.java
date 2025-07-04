@@ -16,12 +16,13 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.libpipe.extractor.mqtt.util;
+package org.apache.iotdb.libpipe.extractor.mqtt.utils;
+
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

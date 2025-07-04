@@ -16,12 +16,13 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.libpipe.extractor.mqtt.util;
+package org.apache.iotdb.libpipe.extractor.mqtt.utils;
+
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.moquette.broker.security.IAuthenticator;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

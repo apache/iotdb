@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.libpipe.extractor.mqtt.util;
+package org.apache.iotdb.libpipe.extractor.mqtt.utils;
 
 /** Generic parsing of messages */
 public class Message {
