@@ -183,7 +183,10 @@ public class WALInsertNodeCache {
 
   public ByteBuffer getByteBufferIfPossible(final WALEntryPosition position) {
     hasPipeRunning = true;
-    return bufferCache.load(position);
+    final ByteBuffer buffer = bufferCache.load(position);
+    byte[] data = new byte[buffer.limit()];
+    buffer.get(data, 0, buffer.limit());
+    return ByteBuffer.wrap(data);
   }
 
   public void cacheInsertNodeIfNeeded(
@@ -205,10 +208,7 @@ public class WALInsertNodeCache {
     }
 
     // forbid multi threads to invalidate and load the same entry
-    final ByteBuffer byteBuffer;
-    synchronized (this) {
-      byteBuffer = getByteBufferIfPossible(position);
-    }
+    final ByteBuffer byteBuffer = getByteBufferIfPossible(position);
 
     if (byteBuffer == null) {
       throw new IllegalStateException();
