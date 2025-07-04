@@ -149,7 +149,7 @@ public class WALInsertNodeCache {
     try {
       // multi pipes may share the same wal entry, so we need to wrap the byte[] into
       // different ByteBuffer for each pipe
-      insertNode = parse(ByteBuffer.wrap(buffer.array()));
+      insertNode = parse(buffer);
       return insertNode;
     } catch (final Exception e) {
       LOGGER.error(
@@ -183,10 +183,7 @@ public class WALInsertNodeCache {
 
   public ByteBuffer getByteBufferIfPossible(final WALEntryPosition position) {
     hasPipeRunning = true;
-    final ByteBuffer buffer = bufferCache.load(position);
-    byte[] data = new byte[buffer.limit()];
-    buffer.get(data, 0, buffer.limit());
-    return ByteBuffer.wrap(data);
+    return bufferCache.load(position);
   }
 
   public void cacheInsertNodeIfNeeded(
@@ -211,10 +208,11 @@ public class WALInsertNodeCache {
     final ByteBuffer byteBuffer = getByteBufferIfPossible(position);
 
     if (byteBuffer == null) {
-      throw new IllegalStateException();
+      throw new IllegalStateException(
+          "WALInsertNodeCache getByteBuffer failed, position: " + position);
     }
 
-    return new Pair<>(ByteBuffer.wrap(byteBuffer.array()), null);
+    return new Pair<>(byteBuffer, null);
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

@@ -63,13 +63,21 @@ public class WALEntryCache implements WALCache {
 
   @Override
   public ByteBuffer load(WALEntryPosition key) {
+    ByteBuffer buffer = null;
     if (PipeConfig.getInstance().getWALCacheBatchLoadEnabled()) {
       synchronized (key.getWalSegmentMeta()) {
-        return bufferCache.getAll(Collections.singleton(key)).get(key);
+        buffer = bufferCache.getAll(Collections.singleton(key)).get(key);
       }
+    } else {
+      buffer = bufferCache.get(key);
     }
 
-    return bufferCache.get(key);
+    if (buffer == null) {
+      LOGGER.warn("WALEntryCache load failed, key: {}", key);
+      return null;
+    }
+
+    return ByteBuffer.wrap(buffer.array());
   }
 
   @Override
@@ -104,7 +112,7 @@ public class WALEntryCache implements WALCache {
 
         long maxCacheSize = PipeConfig.getInstance().getPipeWALCacheEntryPageSize();
         try {
-          ByteBuffer segment = walEntryPosition.getSegmentBuffer();
+          byte[] segment = walEntryPosition.getSegmentBuffer().array();
           List<Integer> list = walEntryPosition.getWalSegmentMetaBuffersSize();
           int pos = 0;
           for (int size : list) {
@@ -112,9 +120,10 @@ public class WALEntryCache implements WALCache {
               pos += size;
               continue;
             }
-            segment.position(pos);
-            segment.limit(pos + size);
-            ByteBuffer buffer = segment.slice();
+
+            final byte[] data = new byte[size];
+            System.arraycopy(segment, pos, data, 0, size);
+            ByteBuffer buffer = ByteBuffer.wrap(data);
 
             final WALEntryType type = WALEntryType.valueOf(buffer.get());
             final long memTableId = buffer.getLong();

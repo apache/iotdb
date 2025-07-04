@@ -37,9 +37,9 @@ public interface WALCache {
     int pos = 0;
     for (int size : list) {
       if (key.getPosition() == pos) {
-        segment.position(pos);
-        segment.limit(pos + size);
-        return segment.slice();
+        final byte[] data = new byte[size];
+        System.arraycopy(segment.array(), pos, data, 0, size);
+        return ByteBuffer.wrap(data);
       }
       pos += size;
     }
