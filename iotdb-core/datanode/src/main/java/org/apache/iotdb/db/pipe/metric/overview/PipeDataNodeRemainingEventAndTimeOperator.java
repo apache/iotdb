@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
+public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   // Calculate from schema region extractors directly for it requires less computation
   private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
@@ -107,7 +107,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     return insertNodeEventCountEMA.insertNodeEMAValue;
   }
 
-  long getRemainingEvents() {
+  public long getRemainingEvents() {
     final long remainingEvents =
         tsfileEventCount.get()
             + rawTabletEventCount.get()
@@ -131,7 +131,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
    *
    * @return The estimated remaining time
    */
-  double getRemainingTime() {
+  public double getRemainingTime() {
     final PipeRateAverage pipeRemainingTimeCommitRateAverageTime =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 

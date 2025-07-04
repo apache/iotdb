@@ -228,6 +228,8 @@ public class CommonConfig {
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
   private long pipeSubtaskExecutorForcedRestartIntervalMs = Long.MAX_VALUE;
 
+  private long pipeMaxWaitFinishTime = 2 * 60 * 1000;
+
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
   private int pipeExtractorMatcherCacheSize = 1024;
@@ -281,7 +283,7 @@ public class CommonConfig {
   private long pipeMaxAllowedLinkedTsFileCount = Long.MAX_VALUE; // Deprecated
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
-  private long pipeStuckRestartMinIntervalMs = 5 * 60 * 1000L; // 5 minutes
+  private long pipeStuckRestartMinIntervalMs = 10 * 60 * 1000L; // 5 minutes
   private boolean pipeEpochKeepTsFileAfterStuckRestartEnabled = false;
   private long pipeFlushAfterLastTerminateSeconds = 30;
   private long pipeFlushAfterTerminateCount = 30;
@@ -1369,6 +1371,18 @@ public class CommonConfig {
     logger.info(
         "pipeSubtaskExecutorForcedRestartIntervalMs is set to {}",
         pipeSubtaskExecutorForcedRestartIntervalMs);
+  }
+
+  public long getPipeMaxWaitFinishTime() {
+    return pipeMaxWaitFinishTime;
+  }
+
+  public void setPipeMaxWaitFinishTime(long pipeMaxWaitFinishTime) {
+    if (this.pipeMaxWaitFinishTime == pipeMaxWaitFinishTime) {
+      return;
+    }
+    this.pipeMaxWaitFinishTime = pipeMaxWaitFinishTime;
+    logger.info("pipeMaxWaitFinishTime is set to {}.", pipeMaxWaitFinishTime);
   }
 
   public int getPipeRealTimeQueuePollTsFileThreshold() {
