@@ -72,8 +72,6 @@ public class UDFManager {
               .getConfigNodeRatisConsensusLogAppenderBufferSize()
           - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
 
-
-
   public UDFManager(ConfigManager configManager, UDFInfo udfInfo) {
     this.configManager = configManager;
     this.udfInfo = udfInfo;
