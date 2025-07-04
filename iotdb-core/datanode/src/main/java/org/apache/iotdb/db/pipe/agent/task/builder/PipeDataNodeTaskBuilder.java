@@ -58,8 +58,11 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_SNAPSHOT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_ENABLE_KEY;
 
 public class PipeDataNodeTaskBuilder {
 
@@ -195,10 +198,6 @@ public class PipeDataNodeTaskBuilder {
                 || extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_QUERY_VALUE);
       }
 
-      if (!insertionDeletionListeningOptionPair.right
-          && !shouldTerminatePipeOnAllHistoricalEventsConsumed) {
-        return;
-      }
     } catch (final IllegalPathException e) {
       LOGGER.warn(
           "PipeDataNodeTaskBuilder failed to parse 'inclusion' and 'exclusion' parameters: {}",
@@ -207,29 +206,52 @@ public class PipeDataNodeTaskBuilder {
       return;
     }
 
-    final Boolean isRealtime =
-        connectorParameters.getBooleanByKeys(
-            PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY,
-            PipeConnectorConstant.SINK_REALTIME_FIRST_KEY);
-    if (isRealtime == null) {
-      connectorParameters.addAttribute(PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY, "false");
-      if (insertionDeletionListeningOptionPair.right) {
-        LOGGER.info(
-            "PipeDataNodeTaskBuilder: When 'inclusion' contains 'data.delete', 'realtime-first' is defaulted to 'false' to prevent sync issues after deletion.");
-      } else {
-        LOGGER.info(
-            "PipeDataNodeTaskBuilder: When extractor uses snapshot model, 'realtime-first' is defaulted to 'false' to prevent premature halt before transfer completion.");
+    if (insertionDeletionListeningOptionPair.right
+        || shouldTerminatePipeOnAllHistoricalEventsConsumed) {
+      final Boolean isRealtime =
+          connectorParameters.getBooleanByKeys(
+              PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY,
+              PipeConnectorConstant.SINK_REALTIME_FIRST_KEY);
+      if (isRealtime == null) {
+        connectorParameters.addAttribute(
+            PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY, "false");
+        if (insertionDeletionListeningOptionPair.right) {
+          LOGGER.info(
+              "PipeDataNodeTaskBuilder: When 'inclusion' contains 'data.delete', 'realtime-first' is defaulted to 'false' to prevent sync issues after deletion.");
+        } else {
+          LOGGER.info(
+              "PipeDataNodeTaskBuilder: When extractor uses snapshot model, 'realtime-first' is defaulted to 'false' to prevent premature halt before transfer completion.");
+        }
+      } else if (isRealtime) {
+        if (insertionDeletionListeningOptionPair.right) {
+          LOGGER.warn(
+              "PipeDataNodeTaskBuilder: When 'inclusion' includes 'data.delete', 'realtime-first' set to 'true' may result in data synchronization issues after deletion.");
+        } else {
+          LOGGER.warn(
+              "PipeDataNodeTaskBuilder: When extractor uses snapshot model, 'realtime-first' set to 'true' may cause prevent premature halt before transfer completion.");
+        }
       }
-      return;
     }
 
-    if (isRealtime) {
-      if (insertionDeletionListeningOptionPair.right) {
+    final boolean isRealtimeEnabled =
+        extractorParameters.getBooleanOrDefault(
+            Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
+            EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE);
+
+    if (isRealtimeEnabled && !shouldTerminatePipeOnAllHistoricalEventsConsumed) {
+      final Boolean enableSendTsFileLimit =
+          connectorParameters.getBooleanByKeys(
+              PipeConnectorConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
+              PipeConnectorConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT);
+
+      if (enableSendTsFileLimit == null) {
+        connectorParameters.addAttribute(
+            PipeConnectorConstant.SINK_ENABLE_SEND_TSFILE_LIMIT, "true");
+        LOGGER.info(
+            "PipeDataNodeTaskBuilder: When the realtime sync is enabled, we enable rate limiter in sending tsfile by default to reserve disk and network IO for realtime sending.");
+      } else if (!enableSendTsFileLimit) {
         LOGGER.warn(
-            "PipeDataNodeTaskBuilder: When 'inclusion' includes 'data.delete', 'realtime-first' set to 'true' may result in data synchronization issues after deletion.");
-      } else {
-        LOGGER.warn(
-            "PipeDataNodeTaskBuilder: When extractor uses snapshot model, 'realtime-first' set to 'true' may cause prevent premature halt before transfer completion.");
+            "PipeDataNodeTaskBuilder: When the realtime sync is enabled, not enabling the rate limiter in sending tsfile may introduce delay for realtime sending.");
       }
     }
   }
