@@ -2763,7 +2763,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     IMeasurementSchema measurementSchema = node.getMeasurementSchema(idx);
     final SeriesAggregationScanOperator lastQueryScan =
         createLastQueryScanOperator(node, context, measurementSchema);
-    MeasurementPath fullPath = new MeasurementPath(node.getDevicePath(), measurementSchema);
+    MeasurementPath fullPath =
+        node.getDevicePath().concatAsMeasurementPath(measurementSchema.getMeasurementId());
+    fullPath.setMeasurementSchema(measurementSchema);
     final OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -2833,7 +2835,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       LastQueryScanNode node,
       LocalExecutionPlanContext context,
       IMeasurementSchema measurementSchema) {
-    MeasurementPath seriesPath = new MeasurementPath(node.getDevicePath(), measurementSchema);
+    MeasurementPath seriesPath =
+        node.getDevicePath().concatAsMeasurementPath(measurementSchema.getMeasurementId());
+    seriesPath.setMeasurementSchema(measurementSchema);
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -2918,6 +2922,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitLastQueryScan(LastQueryScanNode node, LocalExecutionPlanContext context) {
+    DATA_NODE_SCHEMA_CACHE.cleanUp();
     final PartialPath devicePath = node.getDevicePath();
     List<Integer> idxOfMeasurementSchemas = node.getIdxOfMeasurementSchemas();
     List<Integer> unCachedMeasurementIndexes = new ArrayList<>();
