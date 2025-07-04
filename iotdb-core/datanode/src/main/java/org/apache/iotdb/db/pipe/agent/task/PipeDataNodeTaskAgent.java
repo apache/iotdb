@@ -464,6 +464,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     if (PipeDataNodeAgent.runtime().isShutdown() && req.heartbeatId != Long.MIN_VALUE) {
       return;
     }
+    final Optional<Logger> logger =
+        PipeDataNodeResourceManager.log()
+            .schedule(
+                PipeDataNodeTaskAgent.class,
+                PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
+                PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
+                pipeMetaKeeper.getPipeMetaCount());
     LOGGER.info("Received pipe heartbeat request {} from config node.", req.heartbeatId);
 
     final Set<Integer> dataRegionIds =
@@ -476,13 +483,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
-      final Optional<Logger> logger =
-          PipeDataNodeResourceManager.log()
-              .schedule(
-                  PipeDataNodeTaskAgent.class,
-                  PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
-                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
-                  pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
 
@@ -529,7 +529,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                     remainingEventAndTime.getLeft(),
                     remainingEventAndTime.getRight()));
       }
-      LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
+      logger.ifPresent(l -> l.info("Reported {} pipe metas.", pipeMetaBinaryList.size()));
     } catch (final IOException | IllegalPathException e) {
       throw new TException(e);
     }

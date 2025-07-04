@@ -388,8 +388,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   public Event supply() {
     PipeRealtimeEvent realtimeEvent = getNextRealtimeEvent();
 
-    final EnrichedEvent innerEvent = realtimeEvent.getEvent();
     while (realtimeEvent != null) {
+      final EnrichedEvent innerEvent = realtimeEvent.getEvent();
       if (innerEvent instanceof PipeTsFileInsertionEvent
           || innerEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         bindOrUpdateProgressIndexForRealtimeEvent(realtimeEvent);

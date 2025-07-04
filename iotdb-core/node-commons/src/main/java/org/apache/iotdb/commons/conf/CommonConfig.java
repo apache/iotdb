@@ -306,8 +306,8 @@ public class CommonConfig {
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = Integer.MAX_VALUE; // Deprecated
   private long pipeMaxAllowedLinkedTsFileCount = Long.MAX_VALUE; // Deprecated
 
-  private int pipeMetaReportMaxLogNumPerRound = 10;
-  private int pipeMetaReportMaxLogIntervalRounds = 36;
+  private double pipeMetaReportMaxLogNumPerRound = 0.1;
+  private int pipeMetaReportMaxLogIntervalRounds = 360;
   private int pipeTsFilePinMaxLogNumPerRound = 10;
   private int pipeTsFilePinMaxLogIntervalRounds = 90;
 
@@ -1596,11 +1596,11 @@ public class CommonConfig {
     logger.info("pipeMaxAllowedLinkedTsFileCount is set to {}", pipeMaxAllowedLinkedTsFileCount);
   }
 
-  public int getPipeMetaReportMaxLogNumPerRound() {
+  public double getPipeMetaReportMaxLogNumPerRound() {
     return pipeMetaReportMaxLogNumPerRound;
   }
 
-  public void setPipeMetaReportMaxLogNumPerRound(int pipeMetaReportMaxLogNumPerRound) {
+  public void setPipeMetaReportMaxLogNumPerRound(double pipeMetaReportMaxLogNumPerRound) {
     if (this.pipeMetaReportMaxLogNumPerRound == pipeMetaReportMaxLogNumPerRound) {
       return;
     }
