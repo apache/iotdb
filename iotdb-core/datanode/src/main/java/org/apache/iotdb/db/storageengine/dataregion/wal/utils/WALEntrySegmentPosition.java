@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import org.apache.iotdb.db.pipe.metric.overview.PipeWALInsertNodeCacheMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALInputStream;
@@ -138,6 +139,7 @@ public class WALEntrySegmentPosition {
     if (walSegmentMeta == null) {
       throw new IOException("WAL segment meta is not set.");
     }
+    final long startTime = System.nanoTime();
     try (FileChannel channel = openReadFileChannel()) {
       channel.position(walSegmentMeta.getPosition());
       final ByteBuffer segmentHeaderWithoutCompressedSizeBuffer =
@@ -170,6 +172,10 @@ public class WALEntrySegmentPosition {
           size,
           e);
       throw new IOException(e);
+    } finally {
+      PipeWALInsertNodeCacheMetrics.getInstance()
+          .LoadWALTimer
+          .updateNanos(System.nanoTime() - startTime);
     }
   }
 

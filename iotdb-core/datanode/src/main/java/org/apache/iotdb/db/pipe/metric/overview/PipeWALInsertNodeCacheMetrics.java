@@ -22,7 +22,9 @@ package org.apache.iotdb.db.pipe.metric.overview;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALInsertNodeCache;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingTimer;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -32,6 +34,7 @@ import org.slf4j.LoggerFactory;
 public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeWALInsertNodeCacheMetrics.class);
+  public Timer LoadWALTimer = new DoNothingTimer();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -67,6 +70,9 @@ public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
         MetricLevel.IMPORTANT,
         WALInsertNodeCache.getInstance(),
         WALInsertNodeCache::getBufferCacheRequestCount);
+    LoadWALTimer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_LOAD_WAL_TIMER.toString(), MetricLevel.IMPORTANT);
   }
 
   @Override
@@ -81,6 +87,7 @@ public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_WAL_BUFFER_CACHE_HIT_COUNT.toString());
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.PIPE_WAL_BUFFER_CACHE_REQUEST_COUNT.toString());
+    metricService.remove(MetricType.TIMER, Metric.PIPE_LOAD_WAL_TIMER.toString());
   }
 
   //////////////////////////// singleton ////////////////////////////

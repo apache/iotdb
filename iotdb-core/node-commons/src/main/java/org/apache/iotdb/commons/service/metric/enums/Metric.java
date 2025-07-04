@@ -168,6 +168,7 @@ public enum Metric {
   PIPE_WAL_BUFFER_CACHE_HIT_RATE("pipe_wal_buffer_cache_hit_rate"),
   PIPE_WAL_BUFFER_CACHE_HIT_COUNT("pipe_wal_buffer_node_cache_hit_count"),
   PIPE_WAL_BUFFER_CACHE_REQUEST_COUNT("pipe_wal_buffer_cache_request_count"),
+  PIPE_LOAD_WAL_TIMER("pipe_load_wal_timer"),
   PIPE_EXTRACTOR_TSFILE_EPOCH_STATE("pipe_extractor_tsfile_epoch_state"),
   PIPE_MEM("pipe_mem"),
   PIPE_PINNED_MEMTABLE_COUNT("pipe_pinned_memtable_count"),
