@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import org.apache.iotdb.db.pipe.metric.overview.PipeWALInsertNodeCacheMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALInputStream;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALSegmentMeta;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 
+import org.apache.tsfile.compress.IUnCompressor;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,36 +37,44 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.Objects;
 
 /**
  * This class uses the tuple(identifier, file, position) to denote the position of the wal entry,
  * and give some methods to read the content from the disk.
  */
-public class WALEntryPosition {
+public class WALEntrySegmentPosition {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WALEntryPosition.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(WALEntrySegmentPosition.class);
 
   private volatile String identifier = "";
   private volatile long walFileVersionId = -1;
   private volatile long position;
   private volatile int size;
+  private volatile long memTableId;
   // wal node, null when wal is disabled
   private WALNode walNode = null;
   // wal file is not null when openReadFileChannel method has been called
   private File walFile = null;
-  // cache for wal entry
-  private WALInsertNodeCache cache = null;
+
+  private WALSegmentMeta walSegmentMeta = null;
 
   private static final String ENTRY_NOT_READY_MESSAGE = "This entry isn't ready for read.";
 
-  public WALEntryPosition() {}
+  public WALEntrySegmentPosition() {}
 
-  public WALEntryPosition(String identifier, long walFileVersionId, long position, int size) {
+  public WALEntrySegmentPosition(
+      String identifier,
+      long walFileVersionId,
+      long position,
+      int size,
+      WALSegmentMeta segmentMeta) {
     this.identifier = identifier;
     this.walFileVersionId = walFileVersionId;
     this.position = position;
     this.size = size;
+    this.walSegmentMeta = segmentMeta;
   }
 
   /**
@@ -70,7 +82,7 @@ public class WALEntryPosition {
    * for read.
    */
   public Pair<ByteBuffer, InsertNode> getByteBufferOrInsertNodeIfPossible() {
-    return cache.getByteBufferOrInsertNodeIfPossible(this);
+    return WALInsertNodeCache.getInstance().getByteBufferOrInsertNodeIfPossible(this);
   }
 
   /**
@@ -82,7 +94,7 @@ public class WALEntryPosition {
     if (!canRead()) {
       throw new IOException(ENTRY_NOT_READY_MESSAGE);
     }
-    return cache.getInsertNode(this);
+    return WALInsertNodeCache.getInstance().getInsertNode(this);
   }
 
   /**
@@ -94,33 +106,7 @@ public class WALEntryPosition {
     if (!canRead()) {
       throw new IOException(ENTRY_NOT_READY_MESSAGE);
     }
-    return cache.getByteBuffer(this);
-  }
-
-  /**
-   * Read the byte buffer directly.
-   *
-   * @throws IOException failing to read.
-   */
-  ByteBuffer read() throws IOException {
-    if (!canRead()) {
-      throw new IOException("Target file hasn't been specified.");
-    }
-    // TODO: Reuse the file stream
-    try (WALInputStream is = openReadFileStream()) {
-      is.skipToGivenLogicalPosition(position);
-      ByteBuffer buffer = ByteBuffer.allocate(size);
-      is.read(buffer);
-      return buffer;
-    } catch (Exception e) {
-      LOGGER.error(
-          "Unexpected error when reading a wal entry from {}@{} with size {}",
-          walFile,
-          position,
-          size,
-          e);
-      throw new IOException(e);
-    }
+    return WALInsertNodeCache.getInstance().getByteBuffer(this);
   }
 
   /**
@@ -129,7 +115,7 @@ public class WALEntryPosition {
    *
    * @throws IOException failing to open the file channel.
    */
-  public FileChannel openReadFileChannel() throws IOException {
+  private FileChannel openReadFileChannel() throws IOException {
     if (isInSealedFile()) {
       walFile = walNode.getWALFile(walFileVersionId);
       return FileChannel.open(walFile.toPath(), StandardOpenOption.READ);
@@ -146,6 +132,50 @@ public class WALEntryPosition {
           throw e;
         }
       }
+    }
+  }
+
+  public ByteBuffer getSegmentBuffer() throws IOException {
+    if (walSegmentMeta == null) {
+      throw new IOException("WAL segment meta is not set.");
+    }
+    final long startTime = System.nanoTime();
+    try (FileChannel channel = openReadFileChannel()) {
+      channel.position(walSegmentMeta.getPosition());
+      final ByteBuffer segmentHeaderWithoutCompressedSizeBuffer =
+          ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
+      final ByteBuffer compressedSizeBuffer = ByteBuffer.allocate(Integer.BYTES);
+
+      WALInputStream.SegmentInfo segmentInfo =
+          WALInputStream.getNextSegmentInfo(
+              channel, segmentHeaderWithoutCompressedSizeBuffer, compressedSizeBuffer);
+      final ByteBuffer compressedDataBuffer = ByteBuffer.allocate(segmentInfo.dataInDiskSize);
+      WALInputStream.readWALBufferFromChannel(compressedDataBuffer, channel);
+
+      ByteBuffer uncompressedDataBuffer = null;
+      if (segmentInfo.compressionType != CompressionType.UNCOMPRESSED) {
+        uncompressedDataBuffer = ByteBuffer.allocate(segmentInfo.uncompressedSize);
+        WALInputStream.uncompressWALBuffer(
+            compressedDataBuffer,
+            uncompressedDataBuffer,
+            IUnCompressor.getUnCompressor(segmentInfo.compressionType));
+      } else {
+        uncompressedDataBuffer = compressedDataBuffer;
+      }
+      uncompressedDataBuffer.flip();
+      return uncompressedDataBuffer;
+    } catch (Exception e) {
+      LOGGER.error(
+          "Unexpected error when reading a wal segment from {}@{} with size {}",
+          walFile,
+          position,
+          size,
+          e);
+      throw new IOException(e);
+    } finally {
+      PipeWALInsertNodeCacheMetrics.getInstance()
+          .LoadWALTimer
+          .updateNanos(System.nanoTime() - startTime);
     }
   }
 
@@ -190,19 +220,38 @@ public class WALEntryPosition {
   public void setWalNode(WALNode walNode, long memTableId) {
     this.walNode = walNode;
     identifier = walNode.getIdentifier();
-    cache = WALInsertNodeCache.getInstance();
+    this.memTableId = memTableId;
   }
 
   public String getIdentifier() {
     return identifier;
   }
 
-  public void setEntryPosition(long walFileVersionId, long position, WALEntryValue value) {
+  public void setEntryPosition(
+      long walFileVersionId,
+      long position,
+      WALEntryValue value,
+      long memTableId,
+      WALSegmentMeta walSegmentMeta) {
     this.position = position;
     this.walFileVersionId = walFileVersionId;
+    this.memTableId = memTableId;
+    this.walSegmentMeta = walSegmentMeta;
+    final WALInsertNodeCache cache = WALInsertNodeCache.getInstance();
     if (cache != null && value instanceof InsertNode) {
       cache.cacheInsertNodeIfNeeded(this, (InsertNode) value);
     }
+  }
+
+  public WALSegmentMeta getWalSegmentMeta() {
+    return walSegmentMeta;
+  }
+
+  public List<Integer> getWalSegmentMetaBuffersSize() {
+    if (walSegmentMeta == null) {
+      throw new IllegalStateException("WAL segment meta is not set.");
+    }
+    return walSegmentMeta.getBuffersSize();
   }
 
   public long getPosition() {
@@ -221,9 +270,13 @@ public class WALEntryPosition {
     return size;
   }
 
+  public long getMemTableId() {
+    return memTableId;
+  }
+
   @Override
   public int hashCode() {
-    return Objects.hash(identifier, walFileVersionId, position);
+    return Objects.hash(identifier, walFileVersionId, position, memTableId);
   }
 
   @Override
@@ -234,9 +287,10 @@ public class WALEntryPosition {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    WALEntryPosition that = (WALEntryPosition) o;
+    WALEntrySegmentPosition that = (WALEntrySegmentPosition) o;
     return identifier.equals(that.identifier)
         && walFileVersionId == that.walFileVersionId
-        && position == that.position;
+        && position == that.position
+        && memTableId == that.memTableId;
   }
 }
