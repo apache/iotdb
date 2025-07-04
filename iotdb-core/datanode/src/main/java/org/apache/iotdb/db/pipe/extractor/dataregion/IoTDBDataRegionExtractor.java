@@ -393,7 +393,9 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
             "Pipe {}@{}: Started historical extractor {} and realtime extractor {} successfully within {} ms.",
             pipeName,
             regionId,
-            historicalExtractor.getClass().getSimpleName(),
+            Objects.nonNull(historicalExtractor)
+                ? historicalExtractor.getClass().getSimpleName()
+                : null,
             realtimeExtractor.getClass().getSimpleName(),
             System.currentTimeMillis() - startTime);
         return;
