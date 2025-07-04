@@ -41,7 +41,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** This cache is used by {@link WALEntryPosition}. */
+/** This cache is used by {@link WALEntrySegmentPosition}. */
 public class WALInsertNodeCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WALInsertNodeCache.class);
@@ -52,7 +52,7 @@ public class WALInsertNodeCache {
   // LRU cache, find ByteBuffer or InsertNode by WALEntryPosition
   private final WALCache bufferCache;
 
-  private final Cache<WALEntryPosition, InsertNode> insertNodeCache;
+  private final Cache<WALEntrySegmentPosition, InsertNode> insertNodeCache;
 
   // ids of all pinned memTables
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
@@ -76,7 +76,7 @@ public class WALInsertNodeCache {
         Caffeine.newBuilder()
             .maximumWeight(requestedAllocateSize / 2)
             .weigher(
-                (Weigher<WALEntryPosition, InsertNode>)
+                (Weigher<WALEntrySegmentPosition, InsertNode>)
                     (position, insertNode) -> {
                       long weightInLong = InsertNodeMemoryEstimator.sizeOf(insertNode);
                       if (weightInLong <= 0) {
@@ -128,12 +128,12 @@ public class WALInsertNodeCache {
 
   /////////////////////////// Getter & Setter ///////////////////////////
 
-  public InsertNode getInsertNodeIfPossible(final WALEntryPosition position) {
+  public InsertNode getInsertNodeIfPossible(final WALEntrySegmentPosition position) {
     hasPipeRunning = true;
     return insertNodeCache.getIfPresent(position);
   }
 
-  public InsertNode getInsertNode(final WALEntryPosition position) {
+  public InsertNode getInsertNode(final WALEntrySegmentPosition position) {
     InsertNode insertNode = getInsertNodeIfPossible(position);
 
     if (insertNode != null) {
@@ -171,7 +171,7 @@ public class WALInsertNodeCache {
     }
   }
 
-  public ByteBuffer getByteBuffer(final WALEntryPosition position) {
+  public ByteBuffer getByteBuffer(final WALEntrySegmentPosition position) {
     final ByteBuffer buffer = getByteBufferIfPossible(position);
 
     if (buffer == null) {
@@ -181,21 +181,21 @@ public class WALInsertNodeCache {
     return buffer;
   }
 
-  public ByteBuffer getByteBufferIfPossible(final WALEntryPosition position) {
+  public ByteBuffer getByteBufferIfPossible(final WALEntrySegmentPosition position) {
     hasPipeRunning = true;
     return bufferCache.load(position);
   }
 
   public void cacheInsertNodeIfNeeded(
-      final WALEntryPosition walEntryPosition, final InsertNode insertNode) {
+      final WALEntrySegmentPosition walEntrySegmentPosition, final InsertNode insertNode) {
     // reduce memory usage
     if (hasPipeRunning) {
-      insertNodeCache.put(walEntryPosition, insertNode);
+      insertNodeCache.put(walEntrySegmentPosition, insertNode);
     }
   }
 
   public Pair<ByteBuffer, InsertNode> getByteBufferOrInsertNodeIfPossible(
-      final WALEntryPosition position) {
+      final WALEntrySegmentPosition position) {
     final InsertNode insertNode = getInsertNodeIfPossible(position);
 
     if (insertNode != null) {

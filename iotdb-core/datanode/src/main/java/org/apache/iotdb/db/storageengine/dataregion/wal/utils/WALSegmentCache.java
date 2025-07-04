@@ -36,14 +36,14 @@ public class WALSegmentCache implements WALCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WALSegmentCache.class);
 
-  private final LoadingCache<WALEntryPosition, ByteBuffer> bufferCache;
+  private final LoadingCache<WALEntrySegmentPosition, ByteBuffer> bufferCache;
 
   public WALSegmentCache(long maxSize, Set<Long> memTablesNeedSearch) {
     this.bufferCache =
         Caffeine.newBuilder()
             .maximumWeight(maxSize / 2)
             .weigher(
-                (Weigher<WALEntryPosition, ByteBuffer>)
+                (Weigher<WALEntrySegmentPosition, ByteBuffer>)
                     (position, buffer) -> {
                       return position.getSize();
                     })
@@ -52,7 +52,7 @@ public class WALSegmentCache implements WALCache {
   }
 
   @Override
-  public ByteBuffer load(WALEntryPosition key) {
+  public ByteBuffer load(WALEntrySegmentPosition key) {
     ByteBuffer buffer = null;
     synchronized (key.getWalSegmentMeta()) {
       buffer = bufferCache.get(key);
@@ -75,10 +75,11 @@ public class WALSegmentCache implements WALCache {
     return bufferCache.stats();
   }
 
-  private static class WALEntryCacheLoader implements CacheLoader<WALEntryPosition, ByteBuffer> {
+  private static class WALEntryCacheLoader
+      implements CacheLoader<WALEntrySegmentPosition, ByteBuffer> {
 
     @Override
-    public @Nullable ByteBuffer load(@NonNull final WALEntryPosition key) throws Exception {
+    public @Nullable ByteBuffer load(@NonNull final WALEntrySegmentPosition key) throws Exception {
       return key.getSegmentBuffer();
     }
   }

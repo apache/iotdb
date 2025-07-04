@@ -43,9 +43,9 @@ import java.util.Objects;
  * This class uses the tuple(identifier, file, position) to denote the position of the wal entry,
  * and give some methods to read the content from the disk.
  */
-public class WALEntryPosition {
+public class WALEntrySegmentPosition {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WALEntryPosition.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(WALEntrySegmentPosition.class);
 
   private volatile String identifier = "";
   private volatile long walFileVersionId = -1;
@@ -61,9 +61,9 @@ public class WALEntryPosition {
 
   private static final String ENTRY_NOT_READY_MESSAGE = "This entry isn't ready for read.";
 
-  public WALEntryPosition() {}
+  public WALEntrySegmentPosition() {}
 
-  public WALEntryPosition(
+  public WALEntrySegmentPosition(
       String identifier,
       long walFileVersionId,
       long position,
@@ -281,7 +281,7 @@ public class WALEntryPosition {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    WALEntryPosition that = (WALEntryPosition) o;
+    WALEntrySegmentPosition that = (WALEntrySegmentPosition) o;
     return identifier.equals(that.identifier)
         && walFileVersionId == that.walFileVersionId
         && position == that.position

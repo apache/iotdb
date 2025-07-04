@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryPosition;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntrySegmentPosition;
 
 import java.io.Closeable;
 import java.io.DataInputStream;
@@ -50,8 +50,8 @@ public class WALByteBufReader implements Closeable {
     }
   }
 
-  public WALByteBufReader(WALEntryPosition walEntryPosition) throws IOException {
-    WALInputStream walInputStream = walEntryPosition.openReadFileStream();
+  public WALByteBufReader(WALEntrySegmentPosition walEntrySegmentPosition) throws IOException {
+    WALInputStream walInputStream = walEntrySegmentPosition.openReadFileStream();
     try {
       this.logStream = new DataInputStream(walInputStream);
       this.metaData = walInputStream.getWALMetaData();

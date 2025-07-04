@@ -49,7 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryPosition;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntrySegmentPosition;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -83,7 +83,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(PipeInsertNodeTabletInsertionEvent.class)
           + RamUsageEstimator.shallowSizeOfInstance(WALEntryHandler.class)
-          + RamUsageEstimator.shallowSizeOfInstance(WALEntryPosition.class)
+          + RamUsageEstimator.shallowSizeOfInstance(WALEntrySegmentPosition.class)
           + RamUsageEstimator.shallowSizeOfInstance(AtomicInteger.class)
           + RamUsageEstimator.shallowSizeOfInstance(AtomicBoolean.class)
           + RamUsageEstimator.shallowSizeOf(Boolean.class);

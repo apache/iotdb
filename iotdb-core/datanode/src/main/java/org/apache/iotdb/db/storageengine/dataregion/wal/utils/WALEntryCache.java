@@ -44,7 +44,7 @@ public class WALEntryCache implements WALCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WALEntryCache.class);
 
-  private final LoadingCache<WALEntryPosition, ByteBuffer> bufferCache;
+  private final LoadingCache<WALEntrySegmentPosition, ByteBuffer> bufferCache;
   private final Set<Long> memTablesNeedSearch;
 
   public WALEntryCache(long maxSize, Set<Long> memTablesNeedSearch) {
@@ -52,7 +52,7 @@ public class WALEntryCache implements WALCache {
         Caffeine.newBuilder()
             .maximumWeight(maxSize / 2)
             .weigher(
-                (Weigher<WALEntryPosition, ByteBuffer>)
+                (Weigher<WALEntrySegmentPosition, ByteBuffer>)
                     (position, buffer) -> {
                       return position.getSize();
                     })
@@ -62,7 +62,7 @@ public class WALEntryCache implements WALCache {
   }
 
   @Override
-  public ByteBuffer load(WALEntryPosition key) {
+  public ByteBuffer load(WALEntrySegmentPosition key) {
     ByteBuffer buffer = null;
     if (PipeConfig.getInstance().getWALCacheBatchLoadEnabled()) {
       synchronized (key.getWalSegmentMeta()) {
@@ -89,34 +89,35 @@ public class WALEntryCache implements WALCache {
     return bufferCache.stats();
   }
 
-  private class WALEntryCacheLoader implements CacheLoader<WALEntryPosition, ByteBuffer> {
+  private class WALEntryCacheLoader implements CacheLoader<WALEntrySegmentPosition, ByteBuffer> {
 
     @Override
-    public @Nullable ByteBuffer load(@NonNull final WALEntryPosition key) throws Exception {
+    public @Nullable ByteBuffer load(@NonNull final WALEntrySegmentPosition key) throws Exception {
       ByteBuffer buffer = key.getSegmentBuffer();
       return WALCache.getEntryBySegment(key, buffer);
     }
 
     /** Batch load all wal entries in the file when any one key is absent. */
     @Override
-    public @NonNull Map<@NonNull WALEntryPosition, @NonNull ByteBuffer> loadAll(
-        @NonNull final Iterable<? extends @NonNull WALEntryPosition> walEntryPositions) {
-      final Map<WALEntryPosition, ByteBuffer> loadedEntries = new HashMap<>();
+    public @NonNull Map<@NonNull WALEntrySegmentPosition, @NonNull ByteBuffer> loadAll(
+        @NonNull final Iterable<? extends @NonNull WALEntrySegmentPosition> walEntryPositions) {
+      final Map<WALEntrySegmentPosition, ByteBuffer> loadedEntries = new HashMap<>();
 
-      for (final WALEntryPosition walEntryPosition : walEntryPositions) {
-        if (loadedEntries.containsKey(walEntryPosition) || !walEntryPosition.canRead()) {
+      for (final WALEntrySegmentPosition walEntrySegmentPosition : walEntryPositions) {
+        if (loadedEntries.containsKey(walEntrySegmentPosition)
+            || !walEntrySegmentPosition.canRead()) {
           continue;
         }
 
-        final long walFileVersionId = walEntryPosition.getWalFileVersionId();
+        final long walFileVersionId = walEntrySegmentPosition.getWalFileVersionId();
 
         long maxCacheSize = PipeConfig.getInstance().getPipeWALCacheEntryPageSize();
         try {
-          byte[] segment = walEntryPosition.getSegmentBuffer().array();
-          List<Integer> list = walEntryPosition.getWalSegmentMetaBuffersSize();
+          byte[] segment = walEntrySegmentPosition.getSegmentBuffer().array();
+          List<Integer> list = walEntrySegmentPosition.getWalSegmentMetaBuffersSize();
           int pos = 0;
           for (int size : list) {
-            if (walEntryPosition.getPosition() < pos) {
+            if (walEntrySegmentPosition.getPosition() < pos) {
               pos += size;
               continue;
             }
@@ -127,17 +128,18 @@ public class WALEntryCache implements WALCache {
 
             final WALEntryType type = WALEntryType.valueOf(buffer.get());
             final long memTableId = buffer.getLong();
-            if ((memTablesNeedSearch.contains(memTableId) || walEntryPosition.getPosition() == pos)
+            if ((memTablesNeedSearch.contains(memTableId)
+                    || walEntrySegmentPosition.getPosition() == pos)
                 && type.needSearch()) {
               maxCacheSize -= size;
               buffer.clear();
               loadedEntries.put(
-                  new WALEntryPosition(
-                      walEntryPosition.getIdentifier(),
+                  new WALEntrySegmentPosition(
+                      walEntrySegmentPosition.getIdentifier(),
                       walFileVersionId,
                       pos,
                       size,
-                      walEntryPosition.getWalSegmentMeta()),
+                      walEntrySegmentPosition.getWalSegmentMeta()),
                   buffer);
             }
             pos += size;

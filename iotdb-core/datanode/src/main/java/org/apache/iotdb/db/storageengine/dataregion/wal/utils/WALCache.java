@@ -26,13 +26,13 @@ import java.util.List;
 
 public interface WALCache {
 
-  ByteBuffer load(final WALEntryPosition key);
+  ByteBuffer load(final WALEntrySegmentPosition key);
 
   void invalidateAll();
 
   CacheStats stats();
 
-  public static ByteBuffer getEntryBySegment(WALEntryPosition key, ByteBuffer segment) {
+  public static ByteBuffer getEntryBySegment(WALEntrySegmentPosition key, ByteBuffer segment) {
     List<Integer> list = key.getWalSegmentMetaBuffersSize();
     int pos = 0;
     for (int size : list) {
