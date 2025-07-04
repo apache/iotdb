@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowProcedures;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
@@ -67,6 +68,7 @@ public class ExecuteStatementHandler {
     INVALID_STATEMENT_CLASSES.add(ExplainAnalyze.class);
     INVALID_STATEMENT_CLASSES.add(Query.class);
     INVALID_STATEMENT_CLASSES.add(ShowAINodes.class);
+    INVALID_STATEMENT_CLASSES.add(ShowProcedures.class);
     INVALID_STATEMENT_CLASSES.add(ShowCluster.class);
     INVALID_STATEMENT_CLASSES.add(ShowClusterId.class);
     INVALID_STATEMENT_CLASSES.add(ShowConfigNodes.class);

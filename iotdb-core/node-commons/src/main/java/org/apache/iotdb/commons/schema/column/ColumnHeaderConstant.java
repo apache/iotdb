@@ -446,10 +446,10 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showProceduresColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(PROC_ID, TSDataType.INT64),
-              new ColumnHeader(STATE, TSDataType.TEXT),
-              new ColumnHeader(SUBMITTED_TIME, TSDataType.TEXT),
-              new ColumnHeader(LAST_UPDATE, TSDataType.TEXT),
-              new ColumnHeader(PARENT_PROC_ID, TSDataType.INT64));
+          new ColumnHeader(STATE, TSDataType.TEXT),
+          new ColumnHeader(SUBMITTED_TIME, TSDataType.TEXT),
+          new ColumnHeader(LAST_UPDATE, TSDataType.TEXT),
+          new ColumnHeader(PARENT_PROC_ID, TSDataType.INT64));
 
   public static final List<ColumnHeader> showDataNodesColumnHeaders =
       ImmutableList.of(

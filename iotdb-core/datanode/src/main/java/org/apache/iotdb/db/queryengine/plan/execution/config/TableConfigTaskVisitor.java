@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowCluste
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowProcedureTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTrainingTask;
@@ -179,6 +180,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowProcedures;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
@@ -451,6 +453,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.READ);
     accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ShowAINodesTask();
+  }
+
+  @Override
+  protected IConfigTask visitShowProcedures(
+      final ShowProcedures showProceduresStatement, final MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    return new ShowProcedureTask();
   }
 
   @Override

@@ -397,6 +397,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitShowProcedures(ShowProcedures node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitClearCache(ClearCache node, C context) {
     return visitStatement(node, context);
   }

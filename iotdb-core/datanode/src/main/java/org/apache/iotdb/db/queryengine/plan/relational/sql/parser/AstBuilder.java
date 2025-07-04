@@ -183,6 +183,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowProcedures;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
@@ -1368,6 +1369,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitShowAINodesStatement(RelationalSqlParser.ShowAINodesStatementContext ctx) {
     return new ShowAINodes();
+  }
+
+  @Override
+  public Node visitShowProceduresStatement(RelationalSqlParser.ShowProceduresStatementContext ctx) {
+    return new ShowProcedures();
   }
 
   @Override

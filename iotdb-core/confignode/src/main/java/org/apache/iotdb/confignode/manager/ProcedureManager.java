@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
-import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
@@ -128,7 +127,6 @@ import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -148,7 +146,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TProcedureInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -2131,8 +2128,9 @@ public class ProcedureManager {
   public List<TProcedureInfo> getProcedureInfoList() {
     List<TProcedureInfo> procedureInfoList = new ArrayList<>();
     ConcurrentHashMap<Long, Procedure<ConfigNodeProcedureEnv>> procedures =
-            this.getExecutor().getProcedures();
-    for(Map.Entry<Long, Procedure<ConfigNodeProcedureEnv>> procedureEntry : procedures.entrySet()) {
+        this.getExecutor().getProcedures();
+    for (Map.Entry<Long, Procedure<ConfigNodeProcedureEnv>> procedureEntry :
+        procedures.entrySet()) {
       TProcedureInfo procedureInfo = new TProcedureInfo();
       procedureInfo.setProcId(procedureEntry.getKey());
       procedureInfo.setState(procedureEntry.getValue().getState().name());

@@ -64,9 +64,14 @@ public class ShowProcedureTask implements IConfigTask {
         builder.getTimeColumnBuilder().writeLong(0);
         builder.getColumnBuilder(0).writeLong(procedureInfo.getProcId());
         builder.getColumnBuilder(1).writeBinary(BytesUtils.valueOf(procedureInfo.getState()));
-        builder.getColumnBuilder(2).writeBinary(
-                BytesUtils.valueOf(DateTimeUtils.convertLongToDate(procedureInfo.getSubmittedTime())));
-        builder.getColumnBuilder(3).writeBinary(
+        builder
+            .getColumnBuilder(2)
+            .writeBinary(
+                BytesUtils.valueOf(
+                    DateTimeUtils.convertLongToDate(procedureInfo.getSubmittedTime())));
+        builder
+            .getColumnBuilder(3)
+            .writeBinary(
                 BytesUtils.valueOf(DateTimeUtils.convertLongToDate(procedureInfo.getLastUpdate())));
         builder.getColumnBuilder(4).writeLong(procedureInfo.getParentProcId());
         builder.declarePosition();
