@@ -259,6 +259,7 @@ public class CommonConfig {
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
+  private long pipeExtractorMatcherCacheSize = 1024;
 
   private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
   private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
@@ -1000,6 +1001,18 @@ public class CommonConfig {
     logger.info(
         "pipeExtractorAssignerDisruptorRingBufferEntrySize is set to {}.",
         pipeExtractorAssignerDisruptorRingBufferEntrySize);
+  }
+
+  public long getPipeExtractorMatcherCacheSize() {
+    return pipeExtractorMatcherCacheSize;
+  }
+
+  public void setPipeExtractorMatcherCacheSize(long pipeExtractorMatcherCacheSize) {
+    if (this.pipeExtractorMatcherCacheSize == pipeExtractorMatcherCacheSize) {
+      return;
+    }
+    this.pipeExtractorMatcherCacheSize = pipeExtractorMatcherCacheSize;
+    logger.info("pipeExtractorMatcherCacheSize is set to {}.", pipeExtractorMatcherCacheSize);
   }
 
   public int getPipeConnectorHandshakeTimeoutMs() {

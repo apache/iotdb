@@ -175,6 +175,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes();
   }
 
+  public long getPipeExtractorMatcherCacheSize() {
+    return COMMON_CONFIG.getPipeExtractorMatcherCacheSize();
+  }
+
   /////////////////////////////// Connector ///////////////////////////////
 
   public int getPipeConnectorHandshakeTimeoutMs() {
@@ -496,6 +500,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes: {}",
         getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes());
+    LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeExtractorMatcherCacheSize());
 
     LOGGER.info("PipeConnectorHandshakeTimeoutMs: {}", getPipeConnectorHandshakeTimeoutMs());
     LOGGER.info("PipeConnectorTransferTimeoutMs: {}", getPipeConnectorTransferTimeoutMs());
