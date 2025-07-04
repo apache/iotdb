@@ -95,7 +95,7 @@
             <artifactId>ratis-metrics-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.timecho.ratis</groupId>
+            <groupId>org.apache.ratis</groupId>
             <artifactId>ratis-thirdparty-misc</artifactId>
         </dependency>
         <dependency>

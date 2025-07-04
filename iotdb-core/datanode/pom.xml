@@ -352,7 +352,7 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.timecho.ratis</groupId>
+            <groupId>org.apache.ratis</groupId>
             <artifactId>ratis-thirdparty-misc</artifactId>
             <scope>runtime</scope>
         </dependency>

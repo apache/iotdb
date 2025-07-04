@@ -354,7 +354,7 @@
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-thirdparty-misc</artifactId>
                 <version>${ratis-thirdparty-misc.version}</version>
             </dependency>
