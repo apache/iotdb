@@ -34,6 +34,8 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
@@ -44,6 +46,7 @@ import static org.apache.iotdb.session.Session.MSG_UNSUPPORTED_DATA_TYPE;
 
 public class SessionUtils {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(SessionUtils.class);
   private static final byte TYPE_NULL = -2;
   private static final int EMPTY_DATE_INT = 10000101;
 
@@ -145,10 +148,11 @@ public class SessionUtils {
     return valueOccupation;
   }
 
-  public static ByteBuffer getValueBuffer(List<TSDataType> types, List<Object> values)
+  public static ByteBuffer getValueBuffer(
+      List<TSDataType> types, List<Object> values, List<String> measurements)
       throws IoTDBConnectionException {
     ByteBuffer buffer = ByteBuffer.allocate(SessionUtils.calculateLength(types, values));
-    SessionUtils.putValues(types, values, buffer);
+    SessionUtils.putValues(types, values, buffer, measurements);
     return buffer;
   }
 
@@ -204,53 +208,60 @@ public class SessionUtils {
    * @param buffer buffer to insert
    * @throws IoTDBConnectionException
    */
-  private static void putValues(List<TSDataType> types, List<Object> values, ByteBuffer buffer)
+  private static void putValues(
+      List<TSDataType> types, List<Object> values, ByteBuffer buffer, List<String> measurements)
       throws IoTDBConnectionException {
     for (int i = 0; i < values.size(); i++) {
-      if (values.get(i) == null) {
-        ReadWriteIOUtils.write(TYPE_NULL, buffer);
-        continue;
-      }
-      ReadWriteIOUtils.write(types.get(i), buffer);
-      switch (types.get(i)) {
-        case BOOLEAN:
-          ReadWriteIOUtils.write((Boolean) values.get(i), buffer);
-          break;
-        case INT32:
-          ReadWriteIOUtils.write((Integer) values.get(i), buffer);
-          break;
-        case DATE:
-          ReadWriteIOUtils.write(
-              DateUtils.parseDateExpressionToInt((LocalDate) values.get(i)), buffer);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          ReadWriteIOUtils.write((Long) values.get(i), buffer);
-          break;
-        case FLOAT:
-          ReadWriteIOUtils.write((Float) values.get(i), buffer);
-          break;
-        case DOUBLE:
-          ReadWriteIOUtils.write((Double) values.get(i), buffer);
-          break;
-        case TEXT:
-        case STRING:
-          byte[] bytes;
-          if (values.get(i) instanceof Binary) {
+      try {
+        if (values.get(i) == null) {
+          ReadWriteIOUtils.write(TYPE_NULL, buffer);
+          continue;
+        }
+        ReadWriteIOUtils.write(types.get(i), buffer);
+        switch (types.get(i)) {
+          case BOOLEAN:
+            ReadWriteIOUtils.write((Boolean) values.get(i), buffer);
+            break;
+          case INT32:
+            ReadWriteIOUtils.write((Integer) values.get(i), buffer);
+            break;
+          case DATE:
+            ReadWriteIOUtils.write(
+                DateUtils.parseDateExpressionToInt((LocalDate) values.get(i)), buffer);
+            break;
+          case INT64:
+          case TIMESTAMP:
+            ReadWriteIOUtils.write((Long) values.get(i), buffer);
+            break;
+          case FLOAT:
+            ReadWriteIOUtils.write((Float) values.get(i), buffer);
+            break;
+          case DOUBLE:
+            ReadWriteIOUtils.write((Double) values.get(i), buffer);
+            break;
+          case TEXT:
+          case STRING:
+            byte[] bytes;
+            if (values.get(i) instanceof Binary) {
+              bytes = ((Binary) values.get(i)).getValues();
+            } else {
+              bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
+            }
+            ReadWriteIOUtils.write(bytes.length, buffer);
+            buffer.put(bytes);
+            break;
+          case BLOB:
             bytes = ((Binary) values.get(i)).getValues();
-          } else {
-            bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
-          }
-          ReadWriteIOUtils.write(bytes.length, buffer);
-          buffer.put(bytes);
-          break;
-        case BLOB:
-          bytes = ((Binary) values.get(i)).getValues();
-          ReadWriteIOUtils.write(bytes.length, buffer);
-          buffer.put(bytes);
-          break;
-        default:
-          throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
+            ReadWriteIOUtils.write(bytes.length, buffer);
+            buffer.put(bytes);
+            break;
+          default:
+            throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
+        }
+      } catch (Throwable e) {
+        LOGGER.error(
+            "Cannot put values for measurement {}, type={}", measurements.get(i), types.get(i), e);
+        throw e;
       }
     }
     buffer.flip();
