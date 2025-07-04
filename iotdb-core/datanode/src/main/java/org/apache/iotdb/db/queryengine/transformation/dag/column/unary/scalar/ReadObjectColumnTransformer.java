@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -35,27 +36,42 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.Optional;
 
 public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
 
+  private final Optional<FragmentInstanceContext> fragmentInstanceContext;
   private long offset = 0;
   private long length = -1;
 
-  public ReadObjectColumnTransformer(Type type, ColumnTransformer childColumnTransformer) {
+  public ReadObjectColumnTransformer(
+      Type type,
+      ColumnTransformer childColumnTransformer,
+      Optional<FragmentInstanceContext> fragmentInstanceContext) {
     super(type, childColumnTransformer);
+    this.fragmentInstanceContext = fragmentInstanceContext;
   }
 
   public ReadObjectColumnTransformer(
-      Type type, long offset, ColumnTransformer childColumnTransformer) {
+      Type type,
+      long offset,
+      ColumnTransformer childColumnTransformer,
+      Optional<FragmentInstanceContext> fragmentInstanceContext) {
     super(type, childColumnTransformer);
     this.offset = offset;
+    this.fragmentInstanceContext = fragmentInstanceContext;
   }
 
   public ReadObjectColumnTransformer(
-      Type type, long offset, long length, ColumnTransformer childColumnTransformer) {
+      Type type,
+      long offset,
+      long length,
+      ColumnTransformer childColumnTransformer,
+      Optional<FragmentInstanceContext> fragmentInstanceContext) {
     super(type, childColumnTransformer);
     this.offset = offset;
     this.length = length;
+    this.fragmentInstanceContext = fragmentInstanceContext;
   }
 
   @Override
@@ -98,6 +114,8 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
     if (actualReadSize > Integer.MAX_VALUE) {
       throw new UnsupportedOperationException("Read object size is too large (size > 2G)");
     }
+    fragmentInstanceContext.ifPresent(
+        context -> context.getMemoryReservationContext().reserveMemoryCumulatively(actualReadSize));
     byte[] bytes = new byte[(int) actualReadSize];
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     try (FileChannel fileChannel = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {

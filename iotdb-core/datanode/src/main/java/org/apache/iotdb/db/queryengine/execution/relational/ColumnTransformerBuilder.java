@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
@@ -177,6 +178,8 @@ import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
+
+import javax.annotation.Nullable;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -1006,10 +1009,13 @@ public class ColumnTransformerBuilder
         .equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
-        return new ReadObjectColumnTransformer(OBJECT, first);
+        return new ReadObjectColumnTransformer(OBJECT, first, context.fragmentInstanceContext);
       } else if (children.size() == 2) {
         return new ReadObjectColumnTransformer(
-            OBJECT, ((LongLiteral) children.get(1)).getParsedValue(), first);
+            OBJECT,
+            ((LongLiteral) children.get(1)).getParsedValue(),
+            first,
+            context.fragmentInstanceContext);
       } else {
         long offset = ((LongLiteral) children.get(1)).getParsedValue();
         long length = ((LongLiteral) children.get(2)).getParsedValue();
@@ -1018,7 +1024,8 @@ public class ColumnTransformerBuilder
             OBJECT,
             ((LongLiteral) children.get(1)).getParsedValue(),
             ((LongLiteral) children.get(2)).getParsedValue(),
-            first);
+            first,
+            context.fragmentInstanceContext);
       }
     } else {
       // user defined function
@@ -1484,6 +1491,8 @@ public class ColumnTransformerBuilder
 
     private final Metadata metadata;
 
+    private final Optional<FragmentInstanceContext> fragmentInstanceContext;
+
     public Context(
         SessionInfo sessionInfo,
         List<LeafColumnTransformer> leafList,
@@ -1494,7 +1503,8 @@ public class ColumnTransformerBuilder
         List<TSDataType> inputDataTypes,
         int originSize,
         TypeProvider typeProvider,
-        Metadata metadata) {
+        Metadata metadata,
+        @Nullable FragmentInstanceContext fragmentInstanceContext) {
       this.sessionInfo = sessionInfo;
       this.leafList = leafList;
       this.inputLocations = inputLocations;
@@ -1505,6 +1515,7 @@ public class ColumnTransformerBuilder
       this.originSize = originSize;
       this.typeProvider = typeProvider;
       this.metadata = metadata;
+      this.fragmentInstanceContext = Optional.ofNullable(fragmentInstanceContext);
     }
 
     public Type getType(SymbolReference symbolReference) {
