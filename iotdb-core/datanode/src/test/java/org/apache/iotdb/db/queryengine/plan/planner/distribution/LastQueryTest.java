@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -193,9 +194,11 @@ public class LastQueryTest {
     LastQueryNode root = new LastQueryNode(context.getQueryId().genPlanNodeId(), null, false);
     for (String path : paths) {
       MeasurementPath selectPath = new MeasurementPath(path);
+      PartialPath devicePath = selectPath.getDevicePath();
+      devicePath.setIDeviceID(selectPath.getDevice());
       root.addDeviceLastQueryScanNode(
           context.getQueryId().genPlanNodeId(),
-          selectPath.getDevicePath(),
+          devicePath,
           selectPath.isUnderAlignedEntity(),
           Collections.singletonList(selectPath.getMeasurementSchema()),
           null);
