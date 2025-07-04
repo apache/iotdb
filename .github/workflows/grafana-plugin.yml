@@ -64,6 +64,11 @@ jobs:
           cd iotdb-connector/grafana-plugin/
           ./backend-compile.sh
 
+      - name: Build Loongarcc64
+        run: |
+          cd iotdb-connector/grafana-plugin/
+          ./buildloongarcc64.sh
+
       - name: Sign grafana plugin
         run: npx @grafana/sign-plugin@latest --distDir iotdb-connector/grafana-plugin/dist
         env:
