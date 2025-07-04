@@ -145,7 +145,7 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
       expectedResSet.add("45000,6.0,");
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.vehicle.d0.s1,", expectedResSet);
+          receiverEnv, "select * from root.vehicle.**", "Time,root.vehicle.d0.s1,", expectedResSet);
     }
   }
 }

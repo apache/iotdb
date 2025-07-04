@@ -29,6 +29,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.utils.DataNodeAuthUtils;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
@@ -344,5 +347,39 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       default:
         throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }
+  }
+
+  /**
+   * Post-process when the statement is successfully executed.
+   *
+   * @return null if the post-process succeeds, a status otherwise.
+   */
+  public TSStatus onSuccess() {
+    if (authorType == AuthorType.CREATE_USER) {
+      return onCreateUserSuccess();
+    } else if (authorType == AuthorType.UPDATE_USER) {
+      return onUpdateUserSuccess();
+    }
+    return null;
+  }
+
+  private TSStatus onCreateUserSuccess() {
+    TSStatus tsStatus = DataNodeAuthUtils.recordPassword(userName, password, null);
+    try {
+      RpcUtils.verifySuccess(tsStatus);
+    } catch (StatementExecutionException e) {
+      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    }
+    return null;
+  }
+
+  private TSStatus onUpdateUserSuccess() {
+    TSStatus tsStatus = DataNodeAuthUtils.recordPassword(userName, newPassword, password);
+    try {
+      RpcUtils.verifySuccess(tsStatus);
+    } catch (StatementExecutionException e) {
+      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    }
+    return null;
   }
 }

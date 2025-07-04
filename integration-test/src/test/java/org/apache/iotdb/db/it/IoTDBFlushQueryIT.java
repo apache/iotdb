@@ -91,7 +91,7 @@ public class IoTDBFlushQueryIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**"); ) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.vehicle.**"); ) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;

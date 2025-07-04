@@ -84,6 +84,7 @@ public class IoTDBNullIdQueryTableViewIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(createSqls);
@@ -500,9 +501,9 @@ public class IoTDBNullIdQueryTableViewIT {
 
   @Test
   public void setSqlDialectTest() throws SQLException {
-    createUser("tempuser", "temppw");
+    createUser("tempuser", "temppw123456");
 
-    try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+    try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
         Statement userStmt = userCon.createStatement()) {
       assertCurrentSqlDialect(true, userStmt);
 

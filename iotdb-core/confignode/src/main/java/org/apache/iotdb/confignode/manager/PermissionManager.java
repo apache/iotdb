@@ -137,4 +137,8 @@ public class PermissionManager {
       throws AuthException {
     return authorInfo.checkRoleOfUser(username, rolename);
   }
+
+  public TPermissionInfoResp getUser(String username) throws AuthException {
+    return authorInfo.getUser(username);
+  }
 }

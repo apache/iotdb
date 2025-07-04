@@ -100,7 +100,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
@@ -109,7 +109,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -120,14 +120,14 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       }
 
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       expectedResSet.add("3,3.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
 
@@ -272,7 +272,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
@@ -281,7 +281,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -292,7 +292,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       }
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
 
@@ -336,7 +336,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
@@ -345,7 +345,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -356,7 +356,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       }
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
 
@@ -400,7 +400,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
@@ -409,7 +409,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -420,7 +420,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       }
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
 
@@ -462,7 +462,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
 
       expectedResSet.add("1,1.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
@@ -471,7 +471,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     }
 
     try {
@@ -492,7 +492,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
 
       expectedResSet.add("3,3.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
 
@@ -734,9 +734,9 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+        senderEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+        receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
     try {
       TestUtils.restartCluster(senderEnv);
@@ -769,14 +769,14 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       expectedResSet.add(i + ",1.0,");
     }
     TestUtils.assertDataEventuallyOnEnv(
-        senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+        senderEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+        receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
   }
 
   @Test
   public void testPermission() {
-    createUser(senderEnv, "test", "test123");
+    createUser(senderEnv, "test", "test123123456");
 
     assertNonQueryTestFail(
         senderEnv,
@@ -788,50 +788,50 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
             + ")",
         "803: No permissions for this operation, please add privilege USE_PIPE",
         "test",
-        "test123");
+        "test123123456");
     assertNonQueryTestFail(
         senderEnv,
         "drop pipe testPipe",
         "803: No permissions for this operation, please add privilege USE_PIPE",
         "test",
-        "test123");
+        "test123123456");
     assertTestFail(
         senderEnv,
         "show pipes",
         "803: No permissions for this operation, please add privilege USE_PIPE",
         "test",
-        "test123");
+        "test123123456");
     assertNonQueryTestFail(
         senderEnv,
         "start pipe testPipe",
         "803: No permissions for this operation, please add privilege USE_PIPE",
         "test",
-        "test123");
+        "test123123456");
     assertNonQueryTestFail(
         senderEnv,
         "stop pipe testPipe",
         "803: No permissions for this operation, please add privilege USE_PIPE",
         "test",
-        "test123");
+        "test123123456");
 
     assertNonQueryTestFail(
         senderEnv,
         "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
         "803: No permissions for this operation, please add privilege USE_PIPE",
         "test",
-        "test123");
+        "test123123456");
     assertNonQueryTestFail(
         senderEnv,
         "drop pipePlugin TestProcessor",
         "803: No permissions for this operation, please add privilege USE_PIPE",
         "test",
-        "test123");
+        "test123123456");
     assertTestFail(
         senderEnv,
         "show pipe plugins",
         "803: No permissions for this operation, please add privilege USE_PIPE",
         "test",
-        "test123");
+        "test123123456");
 
     grantUserSystemPrivileges(senderEnv, "test", PrivilegeType.USE_PIPE);
 
@@ -842,20 +842,20 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
             + "  'connector'='write-back-connector'\n"
             + ")",
         "test",
-        "test123");
-    executeQueryWithRetry(senderEnv, "show pipes", "test", "test123");
+        "test123123456");
+    executeQueryWithRetry(senderEnv, "show pipes", "test", "test123123456");
     executeNonQueriesWithRetry(
         senderEnv,
         Arrays.asList("start pipe testPipe", "stop pipe testPipe", "drop pipe testPipe"),
         "test",
-        "test123");
+        "test123123456");
 
     assertNonQueryTestFail(
         senderEnv,
         "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
         "701: Untrusted uri xxx",
         "test",
-        "test123");
-    executeQueryWithRetry(senderEnv, "show pipe plugins", "test", "test123");
+        "test123123456");
+    executeQueryWithRetry(senderEnv, "show pipe plugins", "test", "test123123456");
   }
 }

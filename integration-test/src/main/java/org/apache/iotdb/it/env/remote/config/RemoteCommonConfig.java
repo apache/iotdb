@@ -382,6 +382,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
       int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
     return this;
@@ -393,6 +398,7 @@ public class RemoteCommonConfig implements CommonConfig {
     return this;
   }
 
+  @Override
   public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
     return this;
   }

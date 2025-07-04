@@ -126,7 +126,7 @@ public class IoTDBTimeZoneIT {
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T13:00:09+08:00", "12"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:10+07:00", "13"));
 
-      ResultSet resultSet = statement.executeQuery("select * from root.**");
+      ResultSet resultSet = statement.executeQuery("select * from root.timezone");
       int cnt = 0;
       try {
         while (resultSet.next()) {

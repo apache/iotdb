@@ -79,7 +79,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.ln.**")) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
@@ -102,7 +102,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.ln1.**")) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
@@ -134,7 +134,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.ln3.**")) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
