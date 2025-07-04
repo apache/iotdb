@@ -280,6 +280,8 @@ public class IoTDBConfig {
   private String extPipeDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
 
+  private int pipeTaskThreadCount = 5;
+
   /** External lib directory for MQTT, stores user-uploaded JAR files */
   private String mqttDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
@@ -959,6 +961,7 @@ public class IoTDBConfig {
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
 
+  private int schemaThreadCount = 5;
   private int dataNodeTableCacheSemaphorePermitNum = 5;
 
   /** GRASS Service */
@@ -3118,6 +3121,14 @@ public class IoTDBConfig {
     this.extPipeDir = extPipeDir;
   }
 
+  public int getPipeTaskThreadCount() {
+    return pipeTaskThreadCount;
+  }
+
+  public void setPipeTaskThreadCount(int pipeTaskThreadCount) {
+    this.pipeTaskThreadCount = pipeTaskThreadCount;
+  }
+
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
   }
@@ -3212,6 +3223,14 @@ public class IoTDBConfig {
 
   public TEndPoint getAddressAndPort() {
     return new TEndPoint(rpcAddress, rpcPort);
+  }
+
+  public int getSchemaThreadCount() {
+    return schemaThreadCount;
+  }
+
+  public void setSchemaThreadCount(int schemaThreadCount) {
+    this.schemaThreadCount = schemaThreadCount;
   }
 
   public String getDataNodeSchemaCacheEvictionPolicy() {
