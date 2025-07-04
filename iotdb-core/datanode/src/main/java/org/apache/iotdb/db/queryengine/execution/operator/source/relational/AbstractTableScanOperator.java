@@ -142,11 +142,19 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
          * 2. consume chunk data secondly
          * 3. consume next file finally
          */
-        if (!readPageData() && !readChunkData() && !readFileData()) {
-          currentDeviceNoMoreData = true;
-          break;
+        if (readPageData()) {
+          continue;
         }
-
+        Optional<Boolean> b = readChunkData();
+        if (!b.isPresent() || b.get()) {
+          continue;
+        }
+        b = readFileData();
+        if (!b.isPresent() || b.get()) {
+          continue;
+        }
+        currentDeviceNoMoreData = true;
+        break;
       } while (System.nanoTime() - start < maxRuntime
           && !measurementDataBuilder.isFull()
           && measurementDataBlock == null);

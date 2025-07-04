@@ -219,9 +219,14 @@ public class SeriesScanUtil implements Accountable {
   // file level methods
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public boolean hasNextFile() throws IOException {
+  // When Optional.empty() is returned, it means that the current hasNextFile has not been fully
+  // executed. In order to avoid the execution time of this method exceeding the allocated time
+  // slice, it is return early in this way. For the upper-level method, when encountering
+  // Optional.empty(), it needs to return directly to the checkpoint method that checks the operator
+  // execution time slice.
+  public Optional<Boolean> hasNextFile() throws IOException {
     if (!paginationController.hasCurLimit()) {
-      return false;
+      return Optional.of(false);
     }
 
     if (!unSeqPageReaders.isEmpty()
@@ -241,21 +246,25 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (firstTimeSeriesMetadata != null) {
-      return true;
+      return Optional.of(true);
     }
 
-    while (firstTimeSeriesMetadata == null
-        && (orderUtils.hasNextSeqResource()
-            || orderUtils.hasNextUnseqResource()
-            || !seqTimeSeriesMetadata.isEmpty()
-            || !unSeqTimeSeriesMetadata.isEmpty())) {
+    boolean checked = false;
+    if (orderUtils.hasNextSeqResource()
+        || orderUtils.hasNextUnseqResource()
+        || !seqTimeSeriesMetadata.isEmpty()
+        || !unSeqTimeSeriesMetadata.isEmpty()) {
       // init first time series metadata whose startTime is minimum
       tryToUnpackAllOverlappedFilesToTimeSeriesMetadata();
       // filter file based on push-down conditions
       filterFirstTimeSeriesMetadata();
+      checked = true;
     }
 
-    return firstTimeSeriesMetadata != null;
+    if (checked && firstTimeSeriesMetadata == null) {
+      return Optional.empty();
+    }
+    return Optional.of(firstTimeSeriesMetadata != null);
   }
 
   private boolean currentFileOverlapped() {
@@ -299,11 +308,16 @@ public class SeriesScanUtil implements Accountable {
    * This method should be called after hasNextFile() until no next chunk, make sure that all
    * overlapped chunks are consumed.
    *
+   * @return Optional<Boolean> When Optional.empty() is returned, it means that the current
+   *     hasNextFile has not been fully executed. In order to avoid the execution time of this
+   *     method exceeding the allocated time slice, it is return early in this way. For the
+   *     upper-level method, when encountering Optional.empty(), it needs to return directly to the
+   *     checkpoint method who checks the operator execution time slice.
    * @throws IllegalStateException illegal state
    */
-  public boolean hasNextChunk() throws IOException {
+  public Optional<Boolean> hasNextChunk() throws IOException {
     if (!paginationController.hasCurLimit()) {
-      return false;
+      return Optional.of(false);
     }
 
     if (!unSeqPageReaders.isEmpty()
@@ -319,18 +333,27 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (firstChunkMetadata != null) {
-      return true;
+      return Optional.of(true);
       // hasNextFile() has not been invoked
     } else if (firstTimeSeriesMetadata == null && cachedChunkMetadata.isEmpty()) {
-      return false;
+      return Optional.of(false);
     }
 
-    while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
+    Optional<Boolean> hasNextFileReturnValue = null;
+    while (firstChunkMetadata == null) {
+      if (cachedChunkMetadata.isEmpty()) {
+        if (hasNextFileReturnValue != null) {
+          return Optional.empty();
+        }
+        hasNextFileReturnValue = hasNextFile();
+        if (!hasNextFileReturnValue.isPresent() || !hasNextFileReturnValue.get()) {
+          return hasNextFileReturnValue;
+        }
+      }
       initFirstChunkMetadata();
-      // filter chunk based on push-down conditions
       filterFirstChunkMetadata();
     }
-    return firstChunkMetadata != null;
+    return Optional.of(firstChunkMetadata != null);
   }
 
   private void filterFirstChunkMetadata() {
