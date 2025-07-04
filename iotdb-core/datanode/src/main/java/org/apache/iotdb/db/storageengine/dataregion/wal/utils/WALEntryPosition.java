@@ -108,32 +108,6 @@ public class WALEntryPosition {
   }
 
   /**
-   * Read the byte buffer directly.
-   *
-   * @throws IOException failing to read.
-   */
-  ByteBuffer readEntry() throws IOException {
-    if (!canRead()) {
-      throw new IOException("Target file hasn't been specified.");
-    }
-    // TODO: Reuse the file stream
-    try (WALInputStream is = openReadFileStream()) {
-      is.skipToGivenLogicalPosition(position);
-      ByteBuffer buffer = ByteBuffer.allocate(size);
-      is.read(buffer);
-      return buffer;
-    } catch (Exception e) {
-      LOGGER.error(
-          "Unexpected error when reading a wal entry from {}@{} with size {}",
-          walFile,
-          position,
-          size,
-          e);
-      throw new IOException(e);
-    }
-  }
-
-  /**
    * Open the read file channel for this wal entry, this method will retry automatically when the
    * file is sealed when opening the file channel.
    *

@@ -192,15 +192,9 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     long startTime = System.nanoTime();
     long startPosition = channel.position();
     if (version == WALFileVersion.V2) {
-      loadNextSegmentV2(
-          logFile,
-          channel,
-          segmentHeaderWithoutCompressedSizeBuffer,
-          compressedSizeBuffer,
-          compressedBuffer,
-          dataBuffer);
+      loadNextSegmentV2();
     } else if (version == WALFileVersion.V1) {
-      loadNextSegmentV1(channel, dataBuffer);
+      loadNextSegmentV1();
     } else {
       tryLoadSegment();
     }
@@ -208,7 +202,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         .recordWALRead(channel.position() - startPosition, System.nanoTime() - startTime);
   }
 
-  private void loadNextSegmentV1(FileChannel channel, ByteBuffer dataBuffer) throws IOException {
+  private void loadNextSegmentV1() throws IOException {
     // just read raw data as input
     if (channel.position() >= fileSize) {
       throw new IOException("Unexpected end of file");
@@ -222,14 +216,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     dataBuffer.flip();
   }
 
-  private static void loadNextSegmentV2(
-      File logFile,
-      FileChannel channel,
-      ByteBuffer segmentHeaderWithoutCompressedSizeBuffer,
-      ByteBuffer compressedSizeBuffer,
-      ByteBuffer compressedBuffer,
-      ByteBuffer dataBuffer)
-      throws IOException {
+  private void loadNextSegmentV2() throws IOException {
     long position = channel.position();
     SegmentInfo segmentInfo =
         getNextSegmentInfo(channel, segmentHeaderWithoutCompressedSizeBuffer, compressedSizeBuffer);
@@ -290,18 +277,12 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   private void tryLoadSegment() throws IOException {
     long originPosition = channel.position();
     try {
-      loadNextSegmentV1(channel, dataBuffer);
+      loadNextSegmentV1();
       version = WALFileVersion.V1;
     } catch (Throwable e) {
       // failed to load in V2 way, try in V1 way
       channel.position(originPosition);
-      loadNextSegmentV2(
-          logFile,
-          channel,
-          segmentHeaderWithoutCompressedSizeBuffer,
-          compressedSizeBuffer,
-          compressedBuffer,
-          dataBuffer);
+      loadNextSegmentV2();
       version = WALFileVersion.V2;
       logger.info("Failed to load WAL segment in V1 way, try in V2 way successfully.");
     }
