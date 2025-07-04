@@ -40,7 +40,7 @@ public class PipeTsFileEpochProgressIndexKeeper {
     progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
         .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
-        .put(resource.getTsFilePath(), resource);
+        .putIfAbsent(resource.getTsFilePath(), resource);
   }
 
   public synchronized void eliminateProgressIndex(
