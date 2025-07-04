@@ -481,9 +481,8 @@ public abstract class PipeTaskAgent {
     // Create pipe tasks
     final Map<Integer, PipeTask> pipeTasks = buildPipeTasks(pipeMetaFromCoordinator);
 
-    // Trigger create() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::create);
+    pipeTasks.values().forEach(PipeTask::create);
     LOGGER.info(
         "Create all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -536,9 +535,8 @@ public abstract class PipeTaskAgent {
       return false;
     }
 
-    // Trigger drop() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::drop);
+    pipeTasks.values().forEach(PipeTask::drop);
     LOGGER.info(
         "Drop all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -575,9 +573,8 @@ public abstract class PipeTaskAgent {
       return false;
     }
 
-    // Trigger drop() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::drop);
+    pipeTasks.values().forEach(PipeTask::drop);
     LOGGER.info(
         "Drop all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -608,9 +605,8 @@ public abstract class PipeTaskAgent {
       return;
     }
 
-    // Trigger start() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::start);
+    pipeTasks.values().forEach(PipeTask::start);
     LOGGER.info(
         "Start all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -647,9 +643,8 @@ public abstract class PipeTaskAgent {
       return;
     }
 
-    // Trigger stop() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::stop);
+    pipeTasks.values().forEach(PipeTask::stop);
     LOGGER.info(
         "Stop all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,

@@ -156,18 +156,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
-    if (PIPE_NAME_TO_LAST_RESTART_TIME_MAP.isEmpty()) {
-      LOGGER.info(
-          "Flushing storage engine before restarting pipe {}.",
-          pipeMeta.getStaticMeta().getPipeName());
-      final long currentTime = System.currentTimeMillis();
-      StorageEngine.getInstance().syncCloseAllProcessor();
-      WALManager.getInstance().syncDeleteOutdatedFilesInWALNodes();
-      LOGGER.info(
-          "Finished flushing storage engine, time cost: {} ms.",
-          System.currentTimeMillis() - currentTime);
-    }
-
     restartStuckPipe(pipeMeta);
     LOGGER.info(
         "Reloaded resource for stopped pipe {} before starting it.",
@@ -562,21 +550,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Restart Logic /////////////////////////
 
   public void restartAllStuckPipes() {
-    final List<String> removedPipeName = removeOutdatedPipeInfoFromLastRestartTimeMap();
-    if (!removedPipeName.isEmpty()) {
-      final long currentTime = System.currentTimeMillis();
-      LOGGER.info(
-          "Pipes {} now can dynamically adjust their extraction strategies. "
-              + "Start to flush storage engine to trigger the adjustment.",
-          removedPipeName);
-      StorageEngine.getInstance().syncCloseAllProcessor();
-      WALManager.getInstance().syncDeleteOutdatedFilesInWALNodes();
-      LOGGER.info(
-          "Finished flushing storage engine, time cost: {} ms.",
-          System.currentTimeMillis() - currentTime);
-      LOGGER.info("Skipping restarting pipes this round because of the dynamic flushing.");
-      return;
-    }
+    removeOutdatedPipeInfoFromLastRestartTimeMap();
 
     if (!tryWriteLockWithTimeOut(5)) {
       return;
