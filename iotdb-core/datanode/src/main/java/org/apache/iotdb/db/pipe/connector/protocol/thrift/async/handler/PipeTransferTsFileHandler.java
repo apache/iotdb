@@ -285,7 +285,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
               "Successfully transferred file {} (committer key={}, commit id={}, reference count={}).",
               tsFile,
               events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-              events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
+              events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()),
               referenceCount);
         } else {
           LOGGER.info(
@@ -350,7 +350,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
             "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
             tsFile,
             events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-            events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
+            events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()),
             exception);
       } else {
         LOGGER.warn(

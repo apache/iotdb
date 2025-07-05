@@ -58,6 +58,11 @@ public class PipeEventCommitter {
 
   @SuppressWarnings("java:S899")
   public synchronized void commit(final EnrichedEvent event) {
+    if (event.hasMultipleCommitIds()) {
+      for (final EnrichedEvent dummyEvent : event.getDummyEventsForCommitIds()) {
+        commitQueue.offer(dummyEvent);
+      }
+    }
     commitQueue.offer(event);
 
     final int commitQueueSizeBeforeCommit = commitQueue.size();
@@ -83,12 +88,11 @@ public class PipeEventCommitter {
       final EnrichedEvent e = commitQueue.peek();
 
       if (e.getCommitId() <= lastCommitId.get()) {
-        LOGGER.warn(
-            "commit id must be monotonically increasing, current commit id: {}, last commit id: {}, event: {}, stack trace: {}",
+        LOGGER.info(
+            "commit id is not monotonically increasing, current commit id: {}, last commit id: {}, event: {}, may be because the tsFile has been compacted",
             e.getCommitId(),
             lastCommitId.get(),
-            e.coreReportMessage(),
-            Thread.currentThread().getStackTrace());
+            e.coreReportMessage());
         commitQueue.poll();
         continue;
       }

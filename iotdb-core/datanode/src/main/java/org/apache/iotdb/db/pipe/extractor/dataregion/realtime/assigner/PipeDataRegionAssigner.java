@@ -26,16 +26,13 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.PipeDataRegionMatcher;
-import org.apache.iotdb.db.pipe.metric.source.PipeAssignerMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,8 +57,6 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private final String dataRegionId;
 
-  private int counter = 0;
-
   private final AtomicReference<ProgressIndex> maxProgressIndexForRealtimeEvent =
       new AtomicReference<>(MinimumProgressIndex.INSTANCE);
 
@@ -75,7 +70,6 @@ public class PipeDataRegionAssigner implements Closeable {
     this.matcher = new CachedSchemaPatternMatcher();
     this.disruptor = new DisruptorQueue(this::assignToExtractor, this::onAssignedHook);
     this.dataRegionId = dataRegionId;
-    PipeAssignerMetrics.getInstance().register(this);
   }
 
   public void publishToAssign(final PipeRealtimeEvent event) {
@@ -103,14 +97,10 @@ public class PipeDataRegionAssigner implements Closeable {
   }
 
   private void onAssignedHook(final PipeRealtimeEvent realtimeEvent) {
-    realtimeEvent.gcSchemaInfo();
     realtimeEvent.decreaseReferenceCount(PipeDataRegionAssigner.class.getName(), false);
 
     final EnrichedEvent innerEvent = realtimeEvent.getEvent();
     eventCounter.decreaseEventCount(innerEvent);
-    if (innerEvent instanceof PipeHeartbeatEvent) {
-      ((PipeHeartbeatEvent) innerEvent).onAssigned();
-    }
   }
 
   private void assignToExtractor(
@@ -128,16 +118,6 @@ public class PipeDataRegionAssigner implements Closeable {
               }
 
               if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
-                // The frequency of progress reports is limited by the counter, while progress
-                // reports to TsFileInsertionEvent are not limited.
-                if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
-                  if (counter < PIPE_CONFIG.getPipeNonForwardingEventsProgressReportInterval()) {
-                    counter++;
-                    return;
-                  }
-                  counter = 0;
-                }
-
                 final ProgressReportEvent reportEvent =
                     new ProgressReportEvent(
                         extractor.getPipeName(),
@@ -173,11 +153,6 @@ public class PipeDataRegionAssigner implements Closeable {
                     extractor.isShouldTransferModFile());
               }
 
-              if (innerEvent instanceof PipeTsFileInsertionEvent
-                  || innerEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-                bindOrUpdateProgressIndexForRealtimeEvent(copiedEvent);
-              }
-
               if (!copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
                 LOGGER.warn(
                     "The reference count of the event {} cannot be increased, skipping it.",
@@ -186,34 +161,6 @@ public class PipeDataRegionAssigner implements Closeable {
               }
               extractor.extract(copiedEvent);
             });
-  }
-
-  private void bindOrUpdateProgressIndexForRealtimeEvent(final PipeRealtimeEvent event) {
-    if (PipeTsFileEpochProgressIndexKeeper.getInstance()
-        .isProgressIndexAfterOrEquals(
-            dataRegionId,
-            event.getTsFileEpoch().getFilePath(),
-            getProgressIndex4RealtimeEvent(event))) {
-      event.bindProgressIndex(maxProgressIndexForRealtimeEvent.get());
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Data region {} bind {} to event {} because it was flushed prematurely.",
-            dataRegionId,
-            maxProgressIndexForRealtimeEvent,
-            event.coreReportMessage());
-      }
-    } else {
-      maxProgressIndexForRealtimeEvent.updateAndGet(
-          index ->
-              index.updateToMinimumEqualOrIsAfterProgressIndex(
-                  getProgressIndex4RealtimeEvent(event)));
-    }
-  }
-
-  private ProgressIndex getProgressIndex4RealtimeEvent(final PipeRealtimeEvent event) {
-    return event.getEvent() instanceof PipeTsFileInsertionEvent
-        ? ((PipeTsFileInsertionEvent) event.getEvent()).forceGetProgressIndex()
-        : event.getProgressIndex();
   }
 
   public void startAssignTo(final PipeRealtimeDataRegionExtractor extractor) {
@@ -236,8 +183,6 @@ public class PipeDataRegionAssigner implements Closeable {
   // use synchronized here for completely preventing reference count leaks under extreme thread
   // scheduling when closing
   public synchronized void close() {
-    PipeAssignerMetrics.getInstance().deregister(dataRegionId);
-
     final long startTime = System.currentTimeMillis();
     disruptor.shutdown();
     matcher.clear();
@@ -245,17 +190,5 @@ public class PipeDataRegionAssigner implements Closeable {
         "Pipe: Assigner on data region {} shutdown internal disruptor within {} ms",
         dataRegionId,
         System.currentTimeMillis() - startTime);
-  }
-
-  public int getTabletInsertionEventCount() {
-    return eventCounter.getTabletInsertionEventCount();
-  }
-
-  public int getTsFileInsertionEventCount() {
-    return eventCounter.getTsFileInsertionEventCount();
-  }
-
-  public int getPipeHeartbeatEventCount() {
-    return eventCounter.getPipeHeartbeatEventCount();
   }
 }

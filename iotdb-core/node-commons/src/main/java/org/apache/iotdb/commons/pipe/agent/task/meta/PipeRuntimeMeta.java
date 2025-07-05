@@ -140,6 +140,15 @@ public class PipeRuntimeMeta {
     this.isStoppedByRuntimeException.set(isStoppedByRuntimeException);
   }
 
+  public void persistProgressIndex() {
+    // Iterate through all the task metas and persist their progress index
+    for (final PipeTaskMeta taskMeta : consensusGroupId2TaskMetaMap.values()) {
+      if (taskMeta.getProgressIndex() != null) {
+        taskMeta.persistProgressIndex();
+      }
+    }
+  }
+
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);

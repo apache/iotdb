@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.agent.task;
 
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -35,7 +36,6 @@ import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeConfigNodeRe
 import org.apache.iotdb.confignode.manager.pipe.metric.source.PipeConfigRegionExtractorMetrics;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -46,11 +46,13 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
@@ -249,5 +251,11 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     resp.setPipeMetaList(pipeMetaBinaryList);
     resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
     resp.setPipeRemainingTimeList(pipeRemainingTimeList);
+  }
+
+  @Override
+  public void runPipeTasks(
+      final Collection<PipeTask> pipeTasks, final Consumer<PipeTask> runSingle) {
+    pipeTasks.forEach(runSingle);
   }
 }

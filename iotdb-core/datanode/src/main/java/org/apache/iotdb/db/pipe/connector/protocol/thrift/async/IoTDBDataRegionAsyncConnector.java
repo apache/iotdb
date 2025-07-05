@@ -265,8 +265,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         return false;
       }
 
-      final InsertNode insertNode =
-          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       final TPipeTransferReq pipeTransferReq =
           compressIfNeeded(
               Objects.isNull(insertNode)
@@ -409,7 +408,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
               AsyncPipeDataTransferServiceClient client = null;
               try {
                 client = transferTsFileClientManager.borrowClient();
-                pipeTransferTsFileHandler.transfer(clientManager, client);
+                pipeTransferTsFileHandler.transfer(transferTsFileClientManager, client);
               } catch (final Exception ex) {
                 logOnClientException(client, ex);
                 pipeTransferTsFileHandler.onError(ex);

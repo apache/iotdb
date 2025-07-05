@@ -114,7 +114,6 @@ public class CombineRequest extends TPipeTransferReq {
 
     version = transferReq.version;
     type = transferReq.type;
-    body = transferReq.body;
 
     return this;
   }

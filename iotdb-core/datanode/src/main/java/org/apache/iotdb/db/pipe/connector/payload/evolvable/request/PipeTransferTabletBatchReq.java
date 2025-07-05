@@ -182,7 +182,6 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
 
     batchReq.version = transferReq.version;
     batchReq.type = transferReq.type;
-    batchReq.body = transferReq.body;
 
     return batchReq;
   }
