@@ -272,6 +272,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
+      if (pipeName == null) {
+        return true;
+      }
       PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
       if (isWithMod) {
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
