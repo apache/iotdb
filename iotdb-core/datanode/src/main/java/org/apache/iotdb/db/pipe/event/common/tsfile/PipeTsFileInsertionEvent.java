@@ -244,6 +244,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     extractTime = System.nanoTime();
     try {
+      if (Objects.isNull(pipeName)) {
+        return true;
+      }
+
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
       if (isWithMod) {
         modFile =
