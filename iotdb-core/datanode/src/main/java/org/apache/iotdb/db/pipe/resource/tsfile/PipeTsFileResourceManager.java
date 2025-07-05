@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.reader.PipeRemoteFile;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -160,18 +161,26 @@ public class PipeTsFileResourceManager {
             .getFile();
       }
 
-      // If the file is a tsfile, create a hardlink in pipe dir and will return it.
-      // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
-      final File resultFile =
-          isTsFile
-              ? FileUtils.createHardLink(file, hardlinkOrCopiedFile)
-              : FileUtils.copyFile(file, hardlinkOrCopiedFile);
+      File resultFile = null;
+      // If the file is a remote object storage tsfile, create a PipeRemoteTsFile.
+      // the hard link is not created, but is cached to provide compatibility with Pipe framework.
+      if (isTsFile && tsFileResource.onRemote()) {
+        resultFile = new PipeRemoteFile(file, hardlinkOrCopiedFile);
+      } else {
+        // If the file is a tsfile, create a hardlink in pipe dir and will return it.
+        // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
+        resultFile =
+            isTsFile
+                ? FileUtils.createHardLink(file, hardlinkOrCopiedFile)
+                : FileUtils.copyFile(file, hardlinkOrCopiedFile);
+      }
 
       // If the file is not a hardlink or copied file, and there is no related hardlink or copied
       // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
       // the hardlink or copied file, and return the hardlink or copied file.
       hardlinkOrCopiedFileToPipeTsFileResourceMap.put(
-          resultFile.getPath(), new PipeTsFileResource(resultFile, isTsFile, tsFileResource));
+          getFileIdentifierPath(resultFile),
+          new PipeTsFileResource(resultFile, isTsFile, tsFileResource));
       return resultFile;
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
@@ -180,7 +189,7 @@ public class PipeTsFileResourceManager {
 
   private boolean increaseReferenceIfExists(final File file) {
     final PipeTsFileResource resource =
-        hardlinkOrCopiedFileToPipeTsFileResourceMap.get(file.getPath());
+        hardlinkOrCopiedFileToPipeTsFileResourceMap.get(getFileIdentifierPath(file));
     if (resource != null) {
       resource.increaseAndGetReference();
       return true;
@@ -226,6 +235,12 @@ public class PipeTsFileResourceManager {
     return builder.toString();
   }
 
+  private static String getFileIdentifierPath(File file) {
+    return file instanceof PipeRemoteFile
+        ? ((PipeRemoteFile) file).getHardLinkOrCopiedFilePath()
+        : file.getPath();
+  }
+
   /**
    * Given a hardlink or copied file, decrease its reference count, if the reference count is 0,
    * delete the file. if the given file is not a hardlink or copied file, do nothing.
@@ -235,7 +250,7 @@ public class PipeTsFileResourceManager {
   public void decreaseFileReference(final File hardlinkOrCopiedFile) {
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
-      final String filePath = hardlinkOrCopiedFile.getPath();
+      final String filePath = getFileIdentifierPath(hardlinkOrCopiedFile);
       final PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(filePath);
       if (resource != null) {
         resource.decreaseAndGetReference();
@@ -254,7 +269,7 @@ public class PipeTsFileResourceManager {
   public int getFileReferenceCount(final File hardlinkOrCopiedFile) {
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
-      final String filePath = hardlinkOrCopiedFile.getPath();
+      final String filePath = getFileIdentifierPath(hardlinkOrCopiedFile);
       final PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(filePath);
       return resource != null ? resource.getReferenceCount() : 0;
     } finally {
@@ -272,7 +287,8 @@ public class PipeTsFileResourceManager {
     segmentLock.lock(hardlinkOrCopiedTsFile);
     try {
       final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
+          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(
+              getFileIdentifierPath(hardlinkOrCopiedTsFile));
       return resource != null && resource.cacheObjectsIfAbsent();
     } finally {
       segmentLock.unlock(hardlinkOrCopiedTsFile);
@@ -284,7 +300,8 @@ public class PipeTsFileResourceManager {
     segmentLock.lock(hardlinkOrCopiedTsFile);
     try {
       final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
+          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(
+              getFileIdentifierPath(hardlinkOrCopiedTsFile));
       return resource == null ? null : resource.tryGetDeviceMeasurementsMap();
     } finally {
       segmentLock.unlock(hardlinkOrCopiedTsFile);
@@ -296,7 +313,8 @@ public class PipeTsFileResourceManager {
     segmentLock.lock(hardlinkOrCopiedTsFile);
     try {
       final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
+          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(
+              getFileIdentifierPath(hardlinkOrCopiedTsFile));
       return resource == null ? null : resource.tryGetDeviceIsAlignedMap(cacheOtherMetadata);
     } finally {
       segmentLock.unlock(hardlinkOrCopiedTsFile);
@@ -308,7 +326,8 @@ public class PipeTsFileResourceManager {
     segmentLock.lock(hardlinkOrCopiedTsFile);
     try {
       final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
+          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(
+              getFileIdentifierPath(hardlinkOrCopiedTsFile));
       return resource == null ? null : resource.tryGetMeasurementDataTypeMap();
     } finally {
       segmentLock.unlock(hardlinkOrCopiedTsFile);

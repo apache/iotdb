@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.subscription.event.response;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.pipe.connector.reader.PipeSeekableReader;
+import org.apache.iotdb.commons.pipe.connector.reader.PipeSeekableReaderFactory;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
@@ -42,7 +44,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -187,7 +188,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     }
 
     waitForResourceEnough4Slicing(SubscriptionAgent.receiver().remainingMs());
-    try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
+    try (final PipeSeekableReader reader = PipeSeekableReaderFactory.getReader(tsFile)) {
       reader.seek(writingOffset);
 
       final PipeTsFileMemoryBlock memoryBlock =
