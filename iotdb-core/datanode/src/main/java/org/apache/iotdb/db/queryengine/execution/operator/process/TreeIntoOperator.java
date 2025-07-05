@@ -42,15 +42,15 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
-public class IntoOperator extends AbstractIntoOperator {
+public class TreeIntoOperator extends AbstractTreeIntoOperator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(IntoOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(TreeIntoOperator.class);
 
   private final List<Pair<String, PartialPath>> sourceTargetPathPairList;
 
   @SuppressWarnings("squid:S107")
-  public IntoOperator(
+  public TreeIntoOperator(
       OperatorContext operatorContext,
       Operator child,
       List<TSDataType> inputColumnTypes,

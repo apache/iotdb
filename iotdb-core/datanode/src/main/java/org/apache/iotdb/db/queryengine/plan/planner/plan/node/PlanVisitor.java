@@ -256,6 +256,11 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
+  public R visitInto(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
   public R visitDeviceViewInto(DeviceViewIntoNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
