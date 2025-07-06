@@ -22,8 +22,11 @@ package org.apache.iotdb.db.storageengine.load.converter;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
@@ -47,16 +50,20 @@ public class LoadTsFileDataTypeConverter {
       STATEMENT_EXCEPTION_VISITOR = new LoadConvertedInsertTabletStatementExceptionVisitor();
 
   private final boolean isGeneratedByPipe;
+  private final MPPQueryContext context;
 
   private final LoadTreeStatementDataTypeConvertExecutionVisitor
       treeStatementDataTypeConvertExecutionVisitor =
           new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
 
-  public LoadTsFileDataTypeConverter(final boolean isGeneratedByPipe) {
+  public LoadTsFileDataTypeConverter(
+      final MPPQueryContext context, final boolean isGeneratedByPipe) {
+    this.context = context;
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
   public Optional<TSStatus> convertForTreeModel(final LoadTsFileStatement loadTsFileTreeStatement) {
+    DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     try {
       return loadTsFileTreeStatement.accept(treeStatementDataTypeConvertExecutionVisitor, null);
     } catch (Exception e) {
@@ -64,6 +71,9 @@ public class LoadTsFileDataTypeConverter {
           "Failed to convert data types for tree model statement {}.", loadTsFileTreeStatement, e);
       return Optional.of(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+    } finally {
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
     }
   }
 
