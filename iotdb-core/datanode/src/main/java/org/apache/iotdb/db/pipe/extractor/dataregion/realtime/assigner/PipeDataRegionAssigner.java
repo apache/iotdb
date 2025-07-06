@@ -32,6 +32,7 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.PipeDataRegionMatcher;
+import org.apache.iotdb.db.pipe.metric.source.PipeAssignerMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 
 import org.slf4j.Logger;
@@ -70,6 +71,7 @@ public class PipeDataRegionAssigner implements Closeable {
     this.matcher = new CachedSchemaPatternMatcher();
     this.disruptor = new DisruptorQueue(this::assignToExtractor, this::onAssignedHook);
     this.dataRegionId = dataRegionId;
+    PipeAssignerMetrics.getInstance().register(this);
   }
 
   public void publishToAssign(final PipeRealtimeEvent event) {
@@ -100,6 +102,10 @@ public class PipeDataRegionAssigner implements Closeable {
     realtimeEvent.decreaseReferenceCount(PipeDataRegionAssigner.class.getName(), false);
 
     final EnrichedEvent innerEvent = realtimeEvent.getEvent();
+    if (innerEvent instanceof PipeHeartbeatEvent) {
+      ((PipeHeartbeatEvent) innerEvent).onAssigned();
+    }
+
     eventCounter.decreaseEventCount(innerEvent);
   }
 
@@ -183,6 +189,8 @@ public class PipeDataRegionAssigner implements Closeable {
   // use synchronized here for completely preventing reference count leaks under extreme thread
   // scheduling when closing
   public synchronized void close() {
+    PipeAssignerMetrics.getInstance().deregister(dataRegionId);
+
     final long startTime = System.currentTimeMillis();
     disruptor.shutdown();
     matcher.clear();
@@ -190,5 +198,17 @@ public class PipeDataRegionAssigner implements Closeable {
         "Pipe: Assigner on data region {} shutdown internal disruptor within {} ms",
         dataRegionId,
         System.currentTimeMillis() - startTime);
+  }
+
+  public int getTabletInsertionEventCount() {
+    return eventCounter.getTabletInsertionEventCount();
+  }
+
+  public int getTsFileInsertionEventCount() {
+    return eventCounter.getTsFileInsertionEventCount();
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return eventCounter.getPipeHeartbeatEventCount();
   }
 }

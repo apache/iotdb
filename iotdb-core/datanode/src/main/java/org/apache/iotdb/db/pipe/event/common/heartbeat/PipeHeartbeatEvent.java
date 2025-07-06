@@ -43,6 +43,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private final String dataRegionId;
 
   private long timePublished;
+  private long timeAssigned;
   private long timeProcessed;
   private long timeTransferred;
 
@@ -150,12 +151,22 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     }
   }
 
+  public void onAssigned() {
+    if (shouldPrintMessage) {
+      timeAssigned = System.currentTimeMillis();
+      if (timePublished != 0) {
+        PipeHeartbeatEventMetrics.getInstance()
+            .recordPublishedToAssignedTime(timeAssigned - timePublished);
+      }
+    }
+  }
+
   public void onProcessed() {
     if (shouldPrintMessage) {
       timeProcessed = System.currentTimeMillis();
-      if (timePublished != 0) {
+      if (timeAssigned != 0) {
         PipeHeartbeatEventMetrics.getInstance()
-            .recordAssignedToProcessedTime(timeProcessed - timePublished);
+            .recordAssignedToProcessedTime(timeProcessed - timeAssigned);
       }
     }
   }
@@ -212,9 +223,13 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         (timePublished != 0)
             ? DateTimeUtils.convertLongToDate(timePublished, "ms")
             : unknownMessage;
+    final String publishedToAssignedMessage =
+        (timeAssigned != 0 && timePublished != 0)
+            ? (timeAssigned - timePublished) + "ms"
+            : unknownMessage;
     final String assignedToProcessedMessage =
-        (timeProcessed != 0 && timePublished != 0)
-            ? (timeProcessed - timePublished) + "ms"
+        (timeProcessed != 0 && timeAssigned != 0)
+            ? (timeProcessed - timeAssigned) + "ms"
             : unknownMessage;
     final String processedToTransferredMessage =
         (timeTransferred != 0 && timeProcessed != 0)
@@ -228,11 +243,11 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     final String disruptorSizeMessage = Integer.toString(disruptorSize);
 
     final String extractorQueueTabletSizeMessage =
-        timePublished != 0 ? Integer.toString(extractorQueueTabletSize) : unknownMessage;
+        timeAssigned != 0 ? Integer.toString(extractorQueueTabletSize) : unknownMessage;
     final String extractorQueueTsFileSizeMessage =
-        timePublished != 0 ? Integer.toString(extractorQueueTsFileSize) : unknownMessage;
+        timeAssigned != 0 ? Integer.toString(extractorQueueTsFileSize) : unknownMessage;
     final String extractorQueueSizeMessage =
-        timePublished != 0 ? Integer.toString(extractorQueueSize) : unknownMessage;
+        timeAssigned != 0 ? Integer.toString(extractorQueueSize) : unknownMessage;
 
     final String connectorQueueTabletSizeMessage =
         timeProcessed != 0 ? Integer.toString(connectorQueueTabletSize) : unknownMessage;
@@ -248,7 +263,9 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + dataRegionId
         + ", startTime="
         + startTimeMessage
-        + ", publishedToProcessed="
+        + ", publishedToAssigned="
+        + publishedToAssignedMessage
+        + ", assignedToProcessed="
         + assignedToProcessedMessage
         + ", processedToTransferred="
         + processedToTransferredMessage

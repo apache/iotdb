@@ -30,6 +30,7 @@ import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionListenerMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
+import org.apache.iotdb.db.pipe.metric.source.PipeAssignerMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -40,6 +41,7 @@ public class PipeDataNodeMetrics implements IMetricSet {
 
   @Override
   public void bindTo(final AbstractMetricService metricService) {
+    PipeAssignerMetrics.getInstance().bindTo(metricService);
     PipeDataRegionExtractorMetrics.getInstance().bindTo(metricService);
     PipeProcessorMetrics.getInstance().bindTo(metricService);
     PipeDataRegionConnectorMetrics.getInstance().bindTo(metricService);
@@ -56,6 +58,7 @@ public class PipeDataNodeMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
+    PipeAssignerMetrics.getInstance().unbindFrom(metricService);
     PipeDataRegionExtractorMetrics.getInstance().unbindFrom(metricService);
     PipeProcessorMetrics.getInstance().unbindFrom(metricService);
     PipeDataRegionConnectorMetrics.getInstance().unbindFrom(metricService);
