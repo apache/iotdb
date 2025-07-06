@@ -72,7 +72,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public synchronized boolean directOffer(final Event event) {
+  public boolean directOffer(final Event event) {
     checkBeforeOffer(event);
 
     if (event instanceof TsFileInsertionEvent) {
@@ -90,18 +90,18 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public synchronized boolean waitedOffer(final Event event) {
+  public boolean waitedOffer(final Event event) {
     return directOffer(event);
   }
 
   @Override
-  public synchronized boolean put(final Event event) {
+  public boolean put(final Event event) {
     directOffer(event);
     return true;
   }
 
   @Override
-  public synchronized Event directPoll() {
+  public Event directPoll() {
     Event event = null;
     final int pollHistoricalTsFileThreshold =
         PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
@@ -146,7 +146,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
    *     available.
    */
   @Override
-  public synchronized Event waitedPoll() {
+  public Event waitedPoll() {
     Event event = null;
     final int pollHistoricalTsFileThreshold =
         PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
@@ -193,7 +193,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public synchronized Event peek() {
+  public Event peek() {
     final Event event = pendingQueue.peek();
     if (Objects.nonNull(event)) {
       return event;
