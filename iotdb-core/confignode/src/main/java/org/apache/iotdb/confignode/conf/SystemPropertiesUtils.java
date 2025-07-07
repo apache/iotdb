@@ -202,6 +202,15 @@ public class SystemPropertiesUtils {
         COMMON_CONFIG.setTimePartitionInterval(timePartitionInterval);
       }
     }
+    if (systemProperties.getProperty("enable_grant_option", null) != null) {
+      boolean enableGrantOption =
+          Boolean.parseBoolean(systemProperties.getProperty("enable_grant_option"));
+      if (enableGrantOption != COMMON_CONFIG.getEnableGrantOpt()) {
+        LOGGER.warn(
+            format, "enable_grant_option", COMMON_CONFIG.getEnableGrantOpt(), enableGrantOption);
+        COMMON_CONFIG.setEnableGrantOpt(enableGrantOption);
+      }
+    }
   }
 
   /**
@@ -273,7 +282,8 @@ public class SystemPropertiesUtils {
     systemProperties.setProperty("schema_engine_mode", COMMON_CONFIG.getSchemaEngineMode());
     systemProperties.setProperty(
         "tag_attribute_total_size", String.valueOf(COMMON_CONFIG.getTagAttributeTotalSize()));
-
+    systemProperties.setProperty(
+        "enable_grant_option", String.valueOf(COMMON_CONFIG.getEnableGrantOpt()));
     systemPropertiesHandler.overwrite(systemProperties);
   }
 

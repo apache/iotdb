@@ -1671,9 +1671,9 @@ author_cache_expire_time=30
 trusted_uri_pattern=file:.*
 
 # Whether to enable the with-grant-option in grant statement.
-# EffectiveMode: restart
+# EffectiveMode: first_start
 # Datatype: boolean
-enable_grant_option=false
+enable_grant_option=true
 
 ####################
 ### UDF Configuration
