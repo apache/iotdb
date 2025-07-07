@@ -638,6 +638,7 @@ struct TProcedureInfo {
   3: required i64 submittedTime
   4: required i64 lastUpdate
   5: required i64 parentProcId
+  6: required string className
 }
 
 struct TShowDataNodes4InformationSchemaResp {

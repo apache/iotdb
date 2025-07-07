@@ -2137,6 +2137,7 @@ public class ProcedureManager {
       procedureInfo.setSubmittedTime(procedureEntry.getValue().getSubmittedTime());
       procedureInfo.setLastUpdate(procedureEntry.getValue().getLastUpdate());
       procedureInfo.setParentProcId(procedureEntry.getValue().getParentProcId());
+      procedureInfo.setClassName(procedureEntry.getValue().getClass().getName());
       procedureInfoList.add(procedureInfo);
     }
     return procedureInfoList;

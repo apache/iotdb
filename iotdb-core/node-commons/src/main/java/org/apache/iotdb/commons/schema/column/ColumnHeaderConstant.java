@@ -449,7 +449,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(STATE, TSDataType.TEXT),
           new ColumnHeader(SUBMITTED_TIME, TSDataType.TEXT),
           new ColumnHeader(LAST_UPDATE, TSDataType.TEXT),
-          new ColumnHeader(PARENT_PROC_ID, TSDataType.INT64));
+          new ColumnHeader(PARENT_PROC_ID, TSDataType.INT64),
+          new ColumnHeader(CLASS_NAME, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDataNodesColumnHeaders =
       ImmutableList.of(
