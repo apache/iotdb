@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -73,6 +72,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
+import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -91,6 +91,7 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
@@ -583,16 +584,32 @@ public class TsFileProcessor {
                     + DataRegion.objectFileId.incrementAndGet()
                     + ".bin";
             String objectTmpFileName = objectFileName + ".tmp";
-            File objectTmpFile = new File(writer.getFile().getParent(), objectTmpFileName);
-            try (ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
-              writer.write(fileNode);
+            File objectTmpFile;
+            try {
+              String baseDir = TierManager.getInstance().getNextFolderForObjectFile();
+              String objectFileDir =
+                  baseDir
+                      + File.separator
+                      + dataRegionInfo.getDataRegion().getDatabaseName()
+                      + File.separator
+                      + dataRegionInfo.getDataRegion().getDataRegionId()
+                      + File.separator
+                      + tsFileResource.getTsFileID().timePartitionId;
+
+              objectTmpFile =
+                  FSFactoryProducer.getFSFactory().getFile(objectFileDir, objectTmpFileName);
+              try (ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
+                writer.write(fileNode);
+              }
             } catch (Exception e) {
               results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
               throw new WriteProcessException(e);
             }
             // TODO:[OBJECT] write file node wal
             if (fileNode.isEOF()) {
-              File objectFile = new File(writer.getFile().getParent(), objectFileName);
+              File objectFile =
+                  FSFactoryProducer.getFSFactory()
+                      .getFile(objectTmpFile.getParentFile(), objectFileName);
               try {
                 Files.move(
                     objectTmpFile.toPath(),
@@ -603,11 +620,7 @@ public class TsFileProcessor {
                 throw new WriteProcessException(e);
               }
               String relativePathString =
-                  (sequence
-                          ? IoTDBConstant.SEQUENCE_FOLDER_NAME
-                          : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
-                      + File.separator
-                      + dataRegionInfo.getDataRegion().getDatabaseName()
+                  dataRegionInfo.getDataRegion().getDatabaseName()
                       + File.separator
                       + dataRegionInfo.getDataRegion().getDataRegionId()
                       + File.separator

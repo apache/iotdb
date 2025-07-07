@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 // TODO:[OBJECT] WAL serde
-// TODO:[OBJECT] dispatch serde
 public class FileNode {
 
   private String filePath;

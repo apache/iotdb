@@ -39,6 +39,7 @@ import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -392,5 +393,28 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
       startOffset = endOffset;
     }
+  }
+
+  public void handleObjectTypeValue() {
+    List<List<FileNode>> fileNodesList = new ArrayList<>();
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (dataTypes[i] == TSDataType.OBJECT) {
+        List<FileNode> fileNodes = new ArrayList<>();
+        for (int j = 0; j < times.length; j++) {
+          Binary value = ((Binary[]) columns[i])[j];
+          boolean isEoF = value.getValues()[0] == 1;
+          byte[] offsetBytes = new byte[8];
+          System.arraycopy(value.getValues(), 1, offsetBytes, 0, 8);
+          long offset = BytesUtils.bytesToLong(offsetBytes);
+          byte[] content = new byte[value.getLength() - 9];
+          System.arraycopy(value.getValues(), 9, content, 0, value.getLength() - 9);
+          FileNode fileNode = new FileNode(isEoF, offset, content);
+          fileNodes.add(fileNode);
+          ((Binary[]) columns[i])[j] = null;
+        }
+        fileNodesList.add(fileNodes);
+      }
+    }
+    this.fileNodesList = fileNodesList;
   }
 }

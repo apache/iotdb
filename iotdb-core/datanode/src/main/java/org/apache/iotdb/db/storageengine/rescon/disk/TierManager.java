@@ -65,6 +65,8 @@ public class TierManager {
    */
   private final List<FolderManager> unSeqTiers = new ArrayList<>();
 
+  private final List<FolderManager> objectTiers = new ArrayList<>();
+
   /** seq file folder's rawFsPath path -> tier level */
   private final Map<String, Integer> seqDir2TierLevel = new HashMap<>();
 
@@ -151,6 +153,22 @@ public class TierManager {
       for (String dir : unSeqDirs) {
         unSeqDir2TierLevel.put(dir, tierLevel);
       }
+
+      List<String> objectDirs =
+          Arrays.stream(tierDirs[tierLevel])
+              .filter(Objects::nonNull)
+              .map(
+                  v ->
+                      FSFactoryProducer.getFSFactory()
+                          .getFile(v, IoTDBConstant.OBJECT_FOLDER_NAME)
+                          .getPath())
+              .collect(Collectors.toList());
+
+      try {
+        objectTiers.add(new FolderManager(objectDirs, directoryStrategyType));
+      } catch (DiskSpaceInsufficientException e) {
+        logger.error("All disks of tier {} are full.", tierLevel, e);
+      }
     }
 
     tierDiskTotalSpace = getTierDiskSpace(DiskSpaceType.TOTAL);
@@ -160,6 +178,7 @@ public class TierManager {
     long startTime = System.currentTimeMillis();
     seqTiers.clear();
     unSeqTiers.clear();
+    objectTiers.clear();
     seqDir2TierLevel.clear();
     unSeqDir2TierLevel.clear();
 
@@ -188,6 +207,10 @@ public class TierManager {
     return sequence
         ? seqTiers.get(tierLevel).getNextFolder()
         : unSeqTiers.get(tierLevel).getNextFolder();
+  }
+
+  public String getNextFolderForObjectFile() throws DiskSpaceInsufficientException {
+    return objectTiers.get(0).getNextFolder();
   }
 
   public List<String> getAllFilesFolders() {

@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.FileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
@@ -125,10 +124,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
@@ -1127,27 +1123,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     String[] measurements = insertTabletStatement.getMeasurements();
     MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
     stayConsistent(measurements, measurementSchemas);
-    boolean hasObject = false;
-    List<List<FileNode>> fileNodesList = new ArrayList<>();
-    for (int i = 0; i < insertTabletStatement.getDataTypes().length; i++) {
-      if (insertTabletStatement.getDataTypes()[i] == TSDataType.OBJECT) {
-        hasObject = true;
-        List<FileNode> fileNodes = new ArrayList<>();
-        for (int j = 0; j < insertTabletStatement.getTimes().length; j++) {
-          Binary value = ((Binary[]) insertTabletStatement.getColumns()[i])[j];
-          boolean isEoF = value.getValues()[0] == 1;
-          byte[] offsetBytes = new byte[8];
-          System.arraycopy(value.getValues(), 1, offsetBytes, 0, 8);
-          long offset = BytesUtils.bytesToLong(offsetBytes);
-          byte[] content = new byte[value.getLength() - 9];
-          System.arraycopy(value.getValues(), 9, content, 0, value.getLength() - 9);
-          FileNode fileNode = new FileNode(isEoF, offset, content);
-          fileNodes.add(fileNode);
-          ((Binary[]) insertTabletStatement.getColumns()[i])[j] = null;
-        }
-        fileNodesList.add(fileNodes);
-      }
-    }
 
     RelationalInsertTabletNode insertNode =
         new RelationalInsertTabletNode(
@@ -1163,9 +1138,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             insertTabletStatement.getRowCount(),
             insertTabletStatement.getColumnCategories());
     insertNode.setFailedMeasurementNumber(insertTabletStatement.getFailedMeasurementNumber());
-    if (hasObject) {
-      insertNode.setFileNodeList(fileNodesList);
-    }
     if (insertTabletStatement.isSingleDevice()) {
       insertNode.setSingleDevice();
     }
