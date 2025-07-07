@@ -28,7 +28,7 @@ public abstract class ModelProcessor {
    * @param height the height of image
    * @return the byte array of the file
    */
-  abstract byte[] write(float[] values, int width, int height);
+  public abstract byte[] write(float[] values, int width, int height);
 
   /**
    * Read all float values from a file, eg. tsfile, tiff
@@ -36,7 +36,7 @@ public abstract class ModelProcessor {
    * @param fileBytes the byte array of the file to read
    * @return the float array of the image
    */
-  abstract float[] readAll(byte[] fileBytes);
+  public abstract float[] readAll(byte[] fileBytes);
 
   /**
    * Read all float values from a file, eg. tsfile, tiff
@@ -44,9 +44,9 @@ public abstract class ModelProcessor {
    * @param filePath the path of the file to read
    * @return the float array of the image
    */
-  abstract float[] readAll(String filePath);
+  public abstract float[] readAll(String filePath);
 
-  public ModelProcessor getInstance(ModelProcessorType modelFileType) {
+  public static ModelProcessor getInstance(ModelProcessorType modelFileType) {
     switch (modelFileType) {
       case UNCOMPRESSED_TIFF:
         return new UnCompressedTiffModelProcessor();

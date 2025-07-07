@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.ObjectFileNotExist;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -29,14 +30,18 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Optional;
 
 // TODO:[OBJECT] WAL serde
 public class FileNode extends SearchNode implements WALEntryValue {
@@ -56,7 +61,7 @@ public class FileNode extends SearchNode implements WALEntryValue {
     this.content = content;
   }
 
-  public FileNode(boolean isEOF, long offset, String filePath) {
+  public FileNode(boolean isEOF, long offset, byte[] content, String filePath) {
     super(new PlanNodeId(""));
     this.isEOF = isEOF;
     this.offset = offset;
@@ -89,6 +94,7 @@ public class FileNode extends SearchNode implements WALEntryValue {
     buffer.putLong(searchIndex);
     buffer.put((byte) (isEOF ? 1 : 0));
     buffer.putLong(offset);
+    buffer.putInt(content.length);
     WALWriteUtils.write(filePath, buffer);
   }
 
@@ -98,6 +104,7 @@ public class FileNode extends SearchNode implements WALEntryValue {
         + Long.BYTES
         + Byte.BYTES
         + Long.BYTES
+        + Integer.BYTES
         + ReadWriteIOUtils.sizeToWrite(filePath);
   }
 
@@ -105,10 +112,22 @@ public class FileNode extends SearchNode implements WALEntryValue {
     long searchIndex = stream.readLong();
     boolean isEOF = stream.readByte() == 1;
     long offset = stream.readLong();
+    int contentLength = stream.readInt();
     String filePath = ReadWriteIOUtils.readString(stream);
+    Optional<File> objectFile = TierManager.getInstance().getAbsoluteObjectFilePath(filePath);
+    byte[] contents = new byte[contentLength];
+    if (objectFile.isPresent()) {
+      try (RandomAccessFile raf = new RandomAccessFile(filePath, "r")) {
+        raf.seek(offset);
+        raf.read(contents);
+      }
+    } else {
+      throw new ObjectFileNotExist(filePath);
+    }
 
-    FileNode fileNode = new FileNode(isEOF, offset, filePath);
+    FileNode fileNode = new FileNode(isEOF, offset, contents, filePath);
     fileNode.setSearchIndex(searchIndex);
+
     return fileNode;
   }
 
@@ -116,9 +135,22 @@ public class FileNode extends SearchNode implements WALEntryValue {
     long searchIndex = buffer.getLong();
     boolean isEOF = buffer.get() == 1;
     long offset = buffer.getLong();
+    int contentLength = buffer.getInt();
     String filePath = ReadWriteIOUtils.readString(buffer);
+    Optional<File> objectFile = TierManager.getInstance().getAbsoluteObjectFilePath(filePath);
+    byte[] contents = new byte[contentLength];
+    if (objectFile.isPresent()) {
+      try (RandomAccessFile raf = new RandomAccessFile(filePath, "r")) {
+        raf.seek(offset);
+        raf.read(contents);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    } else {
+      throw new ObjectFileNotExist(filePath);
+    }
 
-    FileNode fileNode = new FileNode(isEOF, offset, filePath);
+    FileNode fileNode = new FileNode(isEOF, offset, contents, filePath);
     fileNode.setSearchIndex(searchIndex);
     return fileNode;
   }
@@ -182,6 +214,6 @@ public class FileNode extends SearchNode implements WALEntryValue {
 
   @Override
   public long getMemorySize() {
-    return super.getMemorySize();
+    return content.length;
   }
 }

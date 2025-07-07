@@ -27,7 +27,7 @@ import ij.process.ImageProcessor;
 
 public class UnCompressedTiffModelProcessor extends ModelProcessor {
   @Override
-  byte[] write(float[] values, int width, int height) {
+  public byte[] write(float[] values, int width, int height) {
     FloatProcessor floatProcessor = new FloatProcessor(width, height, values);
     ImagePlus imp = new ImagePlus("first level", floatProcessor);
     FileSaver fs = new FileSaver(imp);
@@ -35,7 +35,7 @@ public class UnCompressedTiffModelProcessor extends ModelProcessor {
   }
 
   @Override
-  float[] readAll(String filePath) {
+  public float[] readAll(String filePath) {
     Opener opener = new Opener();
     ImagePlus imagePlus = opener.openImage(filePath);
     ImageProcessor processor = imagePlus.getProcessor();
@@ -47,7 +47,7 @@ public class UnCompressedTiffModelProcessor extends ModelProcessor {
   }
 
   @Override
-  float[] readAll(byte[] fileBytes) {
+  public float[] readAll(byte[] fileBytes) {
     Opener opener = new Opener();
     ImagePlus imagePlus = opener.deserialize(fileBytes);
     ImageProcessor processor = imagePlus.getProcessor();

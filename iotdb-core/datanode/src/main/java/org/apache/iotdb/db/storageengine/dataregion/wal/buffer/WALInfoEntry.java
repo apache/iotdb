@@ -169,7 +169,7 @@ public class WALInfoEntry extends WALEntry {
       case MEMORY_TABLE_CHECKPOINT:
         return RamUsageEstimator.sizeOfObject(value);
       case OBJECT_FILE_NODE:
-        return ((FileNode) value).getMemorySize();
+        return ((FileNode) value).serializedSize();
       default:
         throw new RuntimeException("Unsupported wal entry type " + type);
     }

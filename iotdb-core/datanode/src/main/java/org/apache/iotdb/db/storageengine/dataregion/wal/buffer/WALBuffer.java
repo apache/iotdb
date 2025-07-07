@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.FileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
@@ -332,6 +333,8 @@ public class WALBuffer extends AbstractWALBuffer {
           searchIndex = ((DeleteDataNode) walEntry.getValue()).getSearchIndex();
         } else if (walEntry.getType() == WALEntryType.RELATIONAL_DELETE_DATA_NODE) {
           searchIndex = ((RelationalDeleteDataNode) walEntry.getValue()).getSearchIndex();
+        } else if (walEntry.getType() == WALEntryType.OBJECT_FILE_NODE) {
+          searchIndex = ((FileNode) walEntry.getValue()).getSearchIndex();
         } else {
           searchIndex = ((InsertNode) walEntry.getValue()).getSearchIndex();
         }
