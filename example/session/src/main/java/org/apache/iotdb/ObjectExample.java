@@ -28,7 +28,9 @@ import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
 
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -74,7 +76,30 @@ public class ObjectExample {
       tablet.addValue(rowIndex, 1, "5");
       tablet.addValue(rowIndex, 2, "3");
       tablet.addValue(rowIndex, 3, 37.6F);
-      tablet.addValue(rowIndex, 4, true, 0, "123456".getBytes(StandardCharsets.UTF_8));
+      tablet.addValue(
+          rowIndex,
+          4,
+          true,
+          0,
+          Files.readAllBytes(
+              Paths.get("/Users/ht/Downloads/2_1746622362350_fa24aa15233f4e76bcda789a5771f43f")));
+      session.insert(tablet);
+      tablet.reset();
+
+      tablet = new Tablet("test1", columnNameList, dataTypeList, columnTypeList, 1);
+      rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, 2);
+      tablet.addValue(rowIndex, 0, "1");
+      tablet.addValue(rowIndex, 1, "5");
+      tablet.addValue(rowIndex, 2, "3");
+      tablet.addValue(rowIndex, 3, 37.6F);
+      tablet.addValue(
+          rowIndex,
+          4,
+          true,
+          0,
+          Files.readAllBytes(
+              Paths.get("/Users/ht/Downloads/2_1746622367063_8fb5ac8e21724140874195b60b878664")));
       session.insert(tablet);
       tablet.reset();
 
@@ -82,6 +107,8 @@ public class ObjectExample {
       e.printStackTrace();
     } catch (StatementExecutionException e) {
       e.printStackTrace();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 }

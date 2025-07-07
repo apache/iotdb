@@ -347,6 +347,8 @@ public class DataRegion implements IDataRegionForQuery {
   private ILoadDiskSelector ordinaryLoadDiskSelector;
   private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
 
+  public static AtomicLong objectFileId = new AtomicLong(0);
+
   /**
    * Construct a database processor.
    *

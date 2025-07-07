@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.FileNode;
+
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,8 @@ public class ObjectWriter implements AutoCloseable {
 
   private final FileOutputStream fos;
 
+  private final File file;
+
   public ObjectWriter(File filePath) throws FileNotFoundException {
     try {
       FileUtils.forceMkdir(filePath.getParentFile());
@@ -48,11 +52,15 @@ public class ObjectWriter implements AutoCloseable {
         throw new FileNotFoundException(e.getMessage());
       }
     }
+    file = filePath;
     fos = new FileOutputStream(filePath, true);
   }
 
-  public void write(byte[] content) throws IOException {
-    fos.write(content);
+  public void write(FileNode fileNode) throws IOException {
+    if (file.length() != fileNode.getOffset()) {
+      throw new IOException("the file length is not equal to the file offset");
+    }
+    fos.write(fileNode.getContent());
   }
 
   @Override

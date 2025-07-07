@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -92,6 +93,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -101,6 +103,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -570,19 +574,46 @@ public class TsFileProcessor {
         for (int i = 0; i < fileNodeList.size(); i++) {
           FileNode fileNode = fileNodeList.get(i);
           String objectFileName =
-              insertTabletNode.getTimes()[i] + "-" + config.getDataNodeId() + "-" + 1 + ".bin";
-          File objectFile = new File(writer.getFile().getParent(), objectFileName);
-          try (ObjectWriter writer = new ObjectWriter(objectFile)) {
-            writer.write(fileNode.getContent());
+              insertTabletNode.getTimes()[i]
+                  + "-"
+                  + config.getDataNodeId()
+                  + "-"
+                  + DataRegion.objectFileId.incrementAndGet()
+                  + ".bin";
+          String objectTmpFileName = objectFileName + ".tmp";
+          File objectTmpFile = new File(writer.getFile().getParent(), objectTmpFileName);
+          try (ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
+            writer.write(fileNode);
           } catch (Exception e) {
             throw new WriteProcessException(e);
           }
           // TODO:[OBJECT] write file node wal
           if (fileNode.isEOF()) {
-            relationalInsertTabletNode.getObjectColumn()[i] =
-                new Binary(
-                    (objectFile.getPath() + "," + objectFile.length())
-                        .getBytes(StandardCharsets.UTF_8));
+            File objectFile = new File(writer.getFile().getParent(), objectFileName);
+            try {
+              Files.move(
+                  objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+              throw new WriteProcessException(e);
+            }
+            String relativePathString =
+                (sequence
+                        ? IoTDBConstant.SEQUENCE_FOLDER_NAME
+                        : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
+                    + File.separator
+                    + dataRegionInfo.getDataRegion().getDatabaseName()
+                    + File.separator
+                    + dataRegionInfo.getDataRegion().getDataRegionId()
+                    + File.separator
+                    + tsFileResource.getTsFileID().timePartitionId
+                    + File.separator
+                    + objectFileName;
+            byte[] filePathBytes = relativePathString.getBytes(StandardCharsets.UTF_8);
+            byte[] valueBytes = new byte[filePathBytes.length + Long.BYTES];
+            System.arraycopy(
+                BytesUtils.longToBytes(objectFile.length()), 0, valueBytes, 0, Long.BYTES);
+            System.arraycopy(filePathBytes, 0, valueBytes, 4, filePathBytes.length);
+            relationalInsertTabletNode.getObjectColumn()[i] = new Binary(valueBytes);
           }
         }
       }
