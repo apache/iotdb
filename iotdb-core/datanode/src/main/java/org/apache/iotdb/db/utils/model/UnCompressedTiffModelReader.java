@@ -38,7 +38,7 @@ public class UnCompressedTiffModelReader extends ModelReader {
     for (List<Integer> startAndEndTime : startAndEndTimeArray) {
       int start = startAndEndTime.get(0);
       int end = startAndEndTime.get(1);
-      int length = end - start + 2;
+      int length = end - start + 1;
       float[] pixels = new float[length];
       if (processor instanceof FloatProcessor) {
         for (int i = start; i <= end; i++) {

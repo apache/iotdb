@@ -69,7 +69,7 @@ public class ObjectExample {
                   ColumnCategory.TAG,
                   ColumnCategory.FIELD,
                   ColumnCategory.FIELD));
-      Tablet tablet = new Tablet("test1", columnNameList, dataTypeList, columnTypeList, 1);
+      Tablet tablet = new Tablet("tsfile_table", columnNameList, dataTypeList, columnTypeList, 1);
       int rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, 1);
       tablet.addValue(rowIndex, 0, "1");
@@ -87,7 +87,7 @@ public class ObjectExample {
       session.insert(tablet);
       tablet.reset();
 
-      tablet = new Tablet("test1", columnNameList, dataTypeList, columnTypeList, 1);
+      tablet = new Tablet("tsfile_table", columnNameList, dataTypeList, columnTypeList, 1);
       rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, 2);
       tablet.addValue(rowIndex, 0, "1");
@@ -102,6 +102,38 @@ public class ObjectExample {
           Files.readAllBytes(
               Paths.get(
                   "/Users/jackietien/Downloads/2_1746622367063_8fb5ac8e21724140874195b60b878664")));
+      session.insert(tablet);
+      tablet.reset();
+
+      tablet = new Tablet("tiff_table", columnNameList, dataTypeList, columnTypeList, 1);
+      rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, 1);
+      tablet.addValue(rowIndex, 0, "1");
+      tablet.addValue(rowIndex, 1, "5");
+      tablet.addValue(rowIndex, 2, "3");
+      tablet.addValue(rowIndex, 3, 37.6F);
+      tablet.addValue(
+          rowIndex,
+          4,
+          true,
+          0,
+          Files.readAllBytes(Paths.get("/Users/jackietien/Downloads/1751891240130.tiff")));
+      session.insert(tablet);
+      tablet.reset();
+
+      tablet = new Tablet("tiff_table", columnNameList, dataTypeList, columnTypeList, 1);
+      rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, 2);
+      tablet.addValue(rowIndex, 0, "1");
+      tablet.addValue(rowIndex, 1, "5");
+      tablet.addValue(rowIndex, 2, "3");
+      tablet.addValue(rowIndex, 3, 37.6F);
+      tablet.addValue(
+          rowIndex,
+          4,
+          true,
+          0,
+          Files.readAllBytes(Paths.get("/Users/jackietien/Downloads/1751891242743.tiff")));
       session.insert(tablet);
       tablet.reset();
 

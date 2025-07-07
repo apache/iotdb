@@ -47,7 +47,8 @@ public class ObjectReadExample {
             .thriftMaxFrameSize(256 * 1024 * 1024)
             .build()) {
       try (SessionDataSet dataSet =
-          session.executeQueryStatement("select READ_OBJECT(file) from test1 where time = 1")) {
+          session.executeQueryStatement(
+              "select READ_OBJECT(file) from tsfile_table where time = 1")) {
         SessionDataSet.DataIterator iterator = dataSet.iterator();
         while (iterator.next()) {
           Binary binary = iterator.getBlob(1);
@@ -56,7 +57,8 @@ public class ObjectReadExample {
       }
 
       try (SessionDataSet dataSet =
-          session.executeQueryStatement("select READ_OBJECT(file) from test1 where time = 2")) {
+          session.executeQueryStatement(
+              "select READ_OBJECT(file) from tsfile_table where time = 2")) {
         SessionDataSet.DataIterator iterator = dataSet.iterator();
         while (iterator.next()) {
           Binary binary = iterator.getBlob(1);
@@ -65,7 +67,7 @@ public class ObjectReadExample {
       }
 
       try (SessionDataSet dataSet =
-          session.executeQueryStatement("select READ_OBJECT(file) from test1")) {
+          session.executeQueryStatement("select READ_OBJECT(file) from tsfile_table")) {
         SessionDataSet.DataIterator iterator = dataSet.iterator();
         while (iterator.next()) {
           Binary binary = iterator.getBlob(1);
@@ -74,7 +76,23 @@ public class ObjectReadExample {
       }
 
       try (SessionDataSet dataSet =
-          session.executeQueryStatement("select geo_penetrate(file, '0,3,7501,7504') from test1")) {
+          session.executeQueryStatement(
+              "select geo_penetrate(file, '0,3,7501,7504') from tsfile_table")) {
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        while (iterator.next()) {
+          Binary binary = iterator.getBlob(1);
+          ByteBuffer byteBuffer = ByteBuffer.wrap(binary.getValues());
+          float[] res = new float[byteBuffer.limit() / Float.BYTES];
+          for (int i = 0; i < res.length; i++) {
+            res[i] = byteBuffer.getFloat();
+          }
+          System.out.println(Arrays.toString(res));
+        }
+      }
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select geo_penetrate(file, '0,3,7501,7504', 'UNCOMPRESSED_TIFF') from tiff_table")) {
         SessionDataSet.DataIterator iterator = dataSet.iterator();
         while (iterator.next()) {
           Binary binary = iterator.getBlob(1);
