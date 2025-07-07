@@ -33,14 +33,14 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 
 public class TableInsertTabletStatementGenerator extends InsertTabletStatementGenerator {
 
   private final String databaseName;
-  private final AtomicInteger writtenCounter;
+  private final AtomicLong writtenCounter;
   private final int timeColumnIndex;
   private final List<TsTableColumnCategory> tsTableColumnCategories;
 
@@ -63,7 +63,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
             .filter(entry -> !entry.getKey().equalsIgnoreCase(TIME_COLUMN_NAME))
             .map(Map.Entry::getValue)
             .toArray(InputLocation[]::new);
-    this.writtenCounter = new AtomicInteger(0);
+    this.writtenCounter = new AtomicLong(0);
     this.sourceTypeConvertors = sourceTypeConvertors;
     this.rowLimit = rowLimit;
     this.tsTableColumnCategories = tsTableColumnCategories;
@@ -144,12 +144,12 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
   }
 
   @Override
-  public int getWrittenCount() {
+  public long getWrittenCount() {
     return writtenCounter.get();
   }
 
   @Override
-  public int getWrittenCount(String measurement) {
+  public long getWrittenCount(String measurement) {
     throw new UnsupportedOperationException("getWrittenCount(measurement) is not supported");
   }
 }

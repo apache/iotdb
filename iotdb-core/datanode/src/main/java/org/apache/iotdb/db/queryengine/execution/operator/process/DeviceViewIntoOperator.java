@@ -172,7 +172,7 @@ public class DeviceViewIntoOperator extends AbstractTreeIntoOperator {
           new Binary(sourceTargetPathPair.left, TSFileConfig.STRING_CHARSET));
       columnBuilders[2].writeBinary(
           new Binary(sourceTargetPathPair.right.toString(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[3].writeInt(
+      columnBuilders[3].writeLong(
           findWritten(
               sourceTargetPathPair.right.getIDeviceID().toString(),
               sourceTargetPathPair.right.getMeasurement()));

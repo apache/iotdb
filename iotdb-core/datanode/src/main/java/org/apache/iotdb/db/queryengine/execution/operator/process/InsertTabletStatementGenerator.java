@@ -153,9 +153,9 @@ public abstract class InsertTabletStatementGenerator {
     return devicePath.toString();
   }
 
-  public abstract int getWrittenCount();
+  public abstract long getWrittenCount();
 
-  public abstract int getWrittenCount(String measurement);
+  public abstract long getWrittenCount(String measurement);
 
   public abstract int processTsBlock(TsBlock tsBlock, int lastReadIndex);
 }

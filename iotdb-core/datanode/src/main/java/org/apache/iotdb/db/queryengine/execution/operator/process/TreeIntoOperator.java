@@ -116,7 +116,7 @@ public class TreeIntoOperator extends AbstractTreeIntoOperator {
           new Binary(sourceTargetPathPair.left, TSFileConfig.STRING_CHARSET));
       columnBuilders[1].writeBinary(
           new Binary(sourceTargetPathPair.right.toString(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[2].writeInt(
+      columnBuilders[2].writeLong(
           findWritten(
               sourceTargetPathPair.right.getIDeviceID().toString(),
               sourceTargetPathPair.right.getMeasurement()));

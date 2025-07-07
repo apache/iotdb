@@ -32,10 +32,10 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGenerator {
-  private final Map<String, AtomicInteger> writtenCounter;
+  private final Map<String, AtomicLong> writtenCounter;
 
   public TreeInsertTabletStatementGenerator(
       PartialPath devicePath,
@@ -51,7 +51,7 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
     this.inputLocations = measurementToInputLocationMap.values().toArray(new InputLocation[0]);
     this.writtenCounter = new HashMap<>();
     for (String measurement : measurements) {
-      writtenCounter.put(measurement, new AtomicInteger(0));
+      writtenCounter.put(measurement, new AtomicLong(0));
     }
     this.sourceTypeConvertors = sourceTypeConvertors;
     this.rowLimit = rowLimit;
@@ -122,12 +122,12 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
   }
 
   @Override
-  public int getWrittenCount() {
+  public long getWrittenCount() {
     throw new UnsupportedOperationException("getWrittenCount() is not supported");
   }
 
   @Override
-  public int getWrittenCount(String measurement) {
+  public long getWrittenCount(String measurement) {
     if (!writtenCounter.containsKey(measurement)) {
       return -1;
     }
