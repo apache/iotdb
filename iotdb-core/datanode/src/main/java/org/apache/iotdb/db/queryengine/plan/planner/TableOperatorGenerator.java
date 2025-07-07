@@ -84,7 +84,10 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.Sin
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.LogicalIndexNavigation;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternAggregationTracker;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternVariableRecognizer;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalAggregationPointer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValueAccessor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.Computation;
@@ -146,6 +149,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -206,6 +210,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationLabelSet;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrLabel;
@@ -264,6 +270,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import javax.validation.constraints.NotNull;
 
 import java.io.File;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -3212,6 +3219,31 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     }
   }
 
+  private PatternAggregator buildPatternAggregator(
+      ResolvedFunction resolvedFunction,
+      List<Map.Entry<Expression, Type>> arguments,
+      List<Integer> argumentChannels,
+      PatternAggregationTracker patternAggregationTracker) {
+    String functionName = resolvedFunction.getSignature().getName();
+    List<TSDataType> originalArgumentTypes =
+        resolvedFunction.getSignature().getArgumentTypes().stream()
+            .map(InternalTypeManager::getTSDataType)
+            .collect(Collectors.toList());
+
+    TableAccumulator accumulator =
+        createBuiltinAccumulator(
+            getAggregationTypeByFuncName(functionName),
+            originalArgumentTypes,
+            arguments.stream().map(Map.Entry::getKey).collect(Collectors.toList()),
+            Collections.emptyMap(),
+            true);
+
+    BoundSignature signature = resolvedFunction.getSignature();
+
+    return new PatternAggregator(
+        signature, accumulator, argumentChannels, patternAggregationTracker);
+  }
+
   @Override
   public Operator visitPatternRecognition(
       PatternRecognitionNode node, LocalExecutionPlanContext context) {
@@ -3296,6 +3328,18 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     // 3. DEFINE: prepare patternVariableComputation (PatternVariableRecognizer is to be
     // instantiated once per partition)
+
+    // during pattern matching, each thread will have a list of aggregations necessary for label
+    // evaluations.
+    // the list of aggregations for a thread will be produced at thread creation time from this
+    // supplier list, respecting the order.
+    // pointers in LabelEvaluator and ThreadEquivalence will access aggregations by position in
+    // list.
+    int matchAggregationIndex = 0;
+    ImmutableList.Builder<PatternAggregator> variableRecognizerAggregatorBuilder =
+        ImmutableList.builder();
+    List<PatternAggregator> variableRecognizerAggregators = ImmutableList.of();
+
     ImmutableList.Builder<PatternVariableRecognizer.PatternVariableComputation> evaluationsBuilder =
         ImmutableList.builder();
 
@@ -3328,19 +3372,56 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                           ImmutableList.of(scalarPointer.getInputSymbol()), childLayout)),
                   context.getTypeProvider().getTableModelType(scalarPointer.getInputSymbol()),
                   scalarPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+        } else if (pointer instanceof AggregationValuePointer) {
+          AggregationValuePointer aggregationPointer = (AggregationValuePointer) pointer;
+
+          ResolvedFunction resolvedFunction = aggregationPointer.getFunction();
+
+          ImmutableList.Builder<Map.Entry<Expression, Type>> builder = ImmutableList.builder();
+          List<Type> signatureTypes = resolvedFunction.getSignature().getArgumentTypes();
+          for (int i = 0; i < aggregationPointer.getArguments().size(); i++) {
+            builder.add(
+                new AbstractMap.SimpleEntry<>(
+                    aggregationPointer.getArguments().get(i), signatureTypes.get(i)));
+          }
+          List<Map.Entry<Expression, Type>> arguments = builder.build();
+
+          List<Integer> valueChannels = new ArrayList<>();
+
+          for (Map.Entry<Expression, Type> argumentWithType : arguments) {
+            Expression argument = argumentWithType.getKey();
+            valueChannels.add(childLayout.get(Symbol.from(argument)));
+          }
+
+          AggregationLabelSet labelSet = aggregationPointer.getSetDescriptor();
+          Set<Integer> labels =
+              labelSet.getLabels().stream().map(mapping::get).collect(Collectors.toSet());
+          PatternAggregationTracker patternAggregationTracker =
+              new PatternAggregationTracker(
+                  labels, aggregationPointer.getSetDescriptor().isRunning());
+
+          PatternAggregator variableRecognizerAggregator =
+              buildPatternAggregator(
+                  resolvedFunction, arguments, valueChannels, patternAggregationTracker);
+
+          variableRecognizerAggregatorBuilder.add(variableRecognizerAggregator);
+
+          valueAccessors.add(new PhysicalAggregationPointer(matchAggregationIndex));
+          matchAggregationIndex++;
         }
       }
 
+      variableRecognizerAggregators = variableRecognizerAggregatorBuilder.build();
+
       // transform the symbolic expression tree in the logical planning stage into a parametric
       // expression tree
-      Computation computation =
-          Computation.ComputationParser.parse(expressionAndValuePointers.getExpression());
+      Computation computation = Computation.ComputationParser.parse(expressionAndValuePointers);
 
       // construct a `PatternVariableComputation` object, where valueAccessors is a parameter list
       // and computation is a parametric expression tree, encapsulating the computation logic
       PatternVariableRecognizer.PatternVariableComputation patternVariableComputation =
           new PatternVariableRecognizer.PatternVariableComputation(
-              valueAccessors, computation, labelNames);
+              valueAccessors, computation, ImmutableList.of(), labelNames);
 
       evaluationsBuilder.add(patternVariableComputation);
     }
@@ -3348,6 +3429,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     // 4. MEASURES: prepare measures computations
     ImmutableList.Builder<PatternExpressionComputation> measureComputationsBuilder =
         ImmutableList.builder();
+
+    matchAggregationIndex = 0;
+    ImmutableList.Builder<PatternAggregator> measurePatternAggregatorBuilder =
+        ImmutableList.builder();
+    List<PatternAggregator> measurePatternAggregators = ImmutableList.of();
 
     for (Measure measure : node.getMeasures().values()) {
       ExpressionAndValuePointers expressionAndValuePointers =
@@ -3377,19 +3463,55 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                           ImmutableList.of(scalarPointer.getInputSymbol()), childLayout)),
                   context.getTypeProvider().getTableModelType(scalarPointer.getInputSymbol()),
                   scalarPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+        } else if (pointer instanceof AggregationValuePointer) {
+          AggregationValuePointer aggregationPointer = (AggregationValuePointer) pointer;
+
+          ResolvedFunction resolvedFunction = aggregationPointer.getFunction();
+
+          ImmutableList.Builder<Map.Entry<Expression, Type>> builder = ImmutableList.builder();
+          List<Type> signatureTypes = resolvedFunction.getSignature().getArgumentTypes();
+          for (int i = 0; i < aggregationPointer.getArguments().size(); i++) {
+            builder.add(
+                new AbstractMap.SimpleEntry<>(
+                    aggregationPointer.getArguments().get(i), signatureTypes.get(i)));
+          }
+          List<Map.Entry<Expression, Type>> arguments = builder.build();
+
+          List<Integer> valueChannels = new ArrayList<>();
+
+          for (Map.Entry<Expression, Type> argumentWithType : arguments) {
+            Expression argument = argumentWithType.getKey();
+            valueChannels.add(childLayout.get(Symbol.from(argument)));
+          }
+
+          AggregationLabelSet labelSet = aggregationPointer.getSetDescriptor();
+          Set<Integer> labels =
+              labelSet.getLabels().stream().map(mapping::get).collect(Collectors.toSet());
+          PatternAggregationTracker patternAggregationTracker =
+              new PatternAggregationTracker(
+                  labels, aggregationPointer.getSetDescriptor().isRunning());
+
+          PatternAggregator measurePatternAggregator =
+              buildPatternAggregator(
+                  resolvedFunction, arguments, valueChannels, patternAggregationTracker);
+
+          measurePatternAggregatorBuilder.add(measurePatternAggregator);
+
+          valueAccessors.add(new PhysicalAggregationPointer(matchAggregationIndex));
+          matchAggregationIndex++;
         }
       }
 
+      measurePatternAggregators = measurePatternAggregatorBuilder.build();
+
       // transform the symbolic expression tree in the logical planning stage into a parametric
       // expression tree
-      Computation computation =
-          Computation.ComputationParser.parse(expressionAndValuePointers.getExpression());
+      Computation computation = Computation.ComputationParser.parse(expressionAndValuePointers);
 
       // construct a `PatternExpressionComputation` object, where valueAccessors is a parameter
-      // list
-      // and computation is a parametric expression tree, encapsulating the computation logic
+      // list and computation is a parametric expression tree, encapsulating the computation logic.
       PatternExpressionComputation measureComputation =
-          new PatternExpressionComputation(valueAccessors, computation);
+          new PatternExpressionComputation(valueAccessors, computation, measurePatternAggregators);
 
       measureComputationsBuilder.add(measureComputation);
     }
@@ -3415,8 +3537,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         node.getRowsPerMatch(),
         node.getSkipToPosition(),
         skipToNavigation,
-        new Matcher(program),
+        new Matcher(program, variableRecognizerAggregators),
         evaluationsBuilder.build(),
+        measurePatternAggregators,
         measureComputationsBuilder.build(),
         labelNames);
   }

@@ -84,7 +84,7 @@ class SundialStrategy(InferenceStrategy):
 
 
 class BuiltInStrategy(InferenceStrategy):
-    def infer(self, full_data, **_):
+    def infer(self, full_data):
         data = pd.DataFrame(full_data[1]).T
         output = self.model.inference(data)
         df = pd.DataFrame(output)
@@ -121,19 +121,18 @@ class RegisteredStrategy(InferenceStrategy):
         return [convert_to_binary(df) for df in results]
 
 
-def _get_strategy(model_id, model):
-    if isinstance(model, TimerForPrediction):
-        return TimerXLStrategy(model)
-    if isinstance(model, SundialForPrediction):
-        return SundialStrategy(model)
-    if model_id.startswith("_"):
-        return BuiltInStrategy(model)
-    return RegisteredStrategy(model)
-
-
 class InferenceManager:
     def __init__(self, model_manager: ModelManager):
         self.model_manager = model_manager
+
+    def _get_strategy(self, model_id, model):
+        if isinstance(model, TimerForPrediction):
+            return TimerXLStrategy(model)
+        if isinstance(model, SundialForPrediction):
+            return SundialStrategy(model)
+        if self.model_manager.model_storage._is_built_in(model_id):
+            return BuiltInStrategy(model)
+        return RegisteredStrategy(model)
 
     def _run(
         self,
@@ -156,11 +155,11 @@ class InferenceManager:
 
             # load model
             accel = str(inference_attrs.get("acceleration", "")).lower() == "true"
-            model = self.model_manager.load_model(model_id, accel)
+            model = self.model_manager.load_model(model_id, inference_attrs, accel)
 
             # inference by strategy
-            strategy = _get_strategy(model_id, model)
-            outputs = strategy.infer(full_data, **inference_attrs)
+            strategy = self._get_strategy(model_id, model)
+            outputs = strategy.infer(full_data)
 
             # construct response
             status = get_status(TSStatusCode.SUCCESS_STATUS)
