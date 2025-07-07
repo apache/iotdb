@@ -817,6 +817,17 @@ public class DataRegion implements IDataRegionForQuery {
               String tsFilePartitionPath = partitionName + File.separator + f.getName();
               tsFilePartitionPath2File.put(tsFilePartitionPath, f);
             }
+
+            File[] objectFileInThisFolder =
+                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), ".bin");
+            for (File f : objectFileInThisFolder) {
+              objectFileId.updateAndGet(
+                  current ->
+                      Math.max(
+                          current,
+                          Long.parseLong(
+                              f.getName().substring(0, f.getName().length() - 4).split("-")[2])));
+            }
           }
         }
       }
