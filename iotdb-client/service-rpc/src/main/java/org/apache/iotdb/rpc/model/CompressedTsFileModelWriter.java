@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.rpc.model;
 
-import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -34,13 +33,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 
 public class CompressedTsFileModelWriter extends ModelWriter {
@@ -48,7 +43,7 @@ public class CompressedTsFileModelWriter extends ModelWriter {
   private static final int DEFAULT_CHUNK_NUMBER = 128 * 128;
 
   @Override
-  void write(String filePath, float[] values, int width, int height) {
+  byte[] write(float[] values, int width, int height) {
     try {
 
       TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(1);
@@ -87,47 +82,11 @@ public class CompressedTsFileModelWriter extends ModelWriter {
           tablet.reset();
         }
       }
-      // SpriCoder write byteBuffer to file
-      ByteBuffer buffer = tsFileOutput.getByteBuffer();
-      createFile(filePath);
-      buffer.position(0); // 重置读取位置（安全措施）
-
-      try (FileChannel channel = FileChannel.open(Paths.get(filePath), StandardOpenOption.WRITE)) {
-
-        while (buffer.hasRemaining()) {
-          channel.write(buffer); // 零拷贝直接写入
-        }
-        buffer.flip(); // 恢复原始状态
-
-        // 强制磁盘同步（可靠性要求高的场景使用）
-        channel.force(true); // 强制元数据和内容写入磁盘
-      }
+      return tsFileOutput.getByteBuffer().array();
     } catch (Exception e) {
-      e.printStackTrace();
+      LOGGER.error("write tsfile failed", e);
     }
-  }
-
-  private void createFile(String filePath) throws TException {
-    File file = new File(filePath);
-    File directory = file.getParentFile();
-
-    if (directory != null && !directory.exists()) {
-      boolean isCreated = directory.mkdirs();
-      if (!isCreated) {
-        LOGGER.error("directory create failed please check");
-        throw new TException("insert Grid error ");
-      }
-    }
-    try {
-      boolean newFile = file.createNewFile();
-      if (!newFile) {
-        LOGGER.error("createNewFile failed please check");
-        throw new TException("insert Grid error ");
-      }
-    } catch (IOException e) {
-      LOGGER.error("createNewFile failed please check");
-      throw new TException("insert Grid error ");
-    }
+    return new byte[0];
   }
 
   private static class MemoryTsFileOutput implements TsFileOutput {

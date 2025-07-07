@@ -25,10 +25,10 @@ import ij.process.FloatProcessor;
 
 public class UnCompressedTiffModelWriter extends ModelWriter {
   @Override
-  void write(String filePath, float[] values, int width, int height) {
+  byte[] write(float[] values, int width, int height) {
     FloatProcessor floatProcessor = new FloatProcessor(width, height, values);
     ImagePlus imp = new ImagePlus("first level", floatProcessor);
     FileSaver fs = new FileSaver(imp);
-    fs.saveAsTiff(filePath);
+    return fs.serialize();
   }
 }

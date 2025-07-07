@@ -22,8 +22,22 @@ package org.apache.iotdb.db.utils.model;
 import java.util.List;
 
 public abstract class ModelReader {
+  /**
+   * Read all float values from a file, eg. tsfile, tiff
+   *
+   * @param filePath the path of the file to read
+   * @return the float array of the image
+   */
   abstract float[] readAll(String filePath);
 
+  /**
+   * Read part of float values from a file, eg. tsfile, tiff
+   *
+   * @param filePath the path of the file to read
+   * @param startAndEndTimeArray a list of start and end time pairs, each pair is a list of two
+   *     integers
+   * @return a list of float arrays, each array corresponds to a start and end time pair
+   */
   abstract List<float[]> penetrate(String filePath, List<List<Integer>> startAndEndTimeArray);
 
   public ModelReader getInstance(ModelReaderType modelFileType) {

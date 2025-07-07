@@ -20,7 +20,15 @@
 package org.apache.iotdb.rpc.model;
 
 public abstract class ModelWriter {
-  abstract void write(String filePath, float[] values, int width, int height);
+  /**
+   * Write float[] to specific type of file, eg. tsfile, tiff
+   *
+   * @param values the float values of image
+   * @param width the width of image
+   * @param height the height of image
+   * @return the byte array of the file
+   */
+  abstract byte[] write(float[] values, int width, int height);
 
   public ModelWriter getInstance(ModelWriterType modelFileType) {
     switch (modelFileType) {
