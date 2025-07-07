@@ -130,7 +130,7 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
     return new Binary(bytes);
   }
 
-  private File getObjectPathFromBinary(Binary binary) {
+  public static File getObjectPathFromBinary(Binary binary) {
     byte[] bytes = binary.getValues();
     String relativeObjectFilePath =
         new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET);

@@ -25,7 +25,7 @@ import java.util.List;
 public class UnCompressedTiffModelReader extends ModelReader {
 
   @Override
-  List<float[]> penetrate(String filePath, List<List<Integer>> startAndEndTimeArray) {
+  public List<float[]> penetrate(String filePath, List<List<Integer>> startAndEndTimeArray) {
     return Collections.emptyList();
   }
 }

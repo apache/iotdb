@@ -48,7 +48,7 @@ public class CompressedTsFileModelReader extends ModelReader {
   private static final Logger LOGGER = LoggerFactory.getLogger(CompressedTsFileModelReader.class);
 
   @Override
-  List<float[]> penetrate(String filePath, List<List<Integer>> startAndEndTimeArray) {
+  public List<float[]> penetrate(String filePath, List<List<Integer>> startAndEndTimeArray) {
     try {
       List<float[]> results = new ArrayList<>(startAndEndTimeArray.size());
       int currentQueryIndex = 0;

@@ -28,6 +28,8 @@ import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.tsfile.utils.Binary;
 
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 
 public class ObjectReadExample {
@@ -68,6 +70,20 @@ public class ObjectReadExample {
         while (iterator.next()) {
           Binary binary = iterator.getBlob(1);
           System.out.println(DigestUtils.md5Hex(binary.getValues()));
+        }
+      }
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("select geo_penetrate(file, '0,3,7501,7504') from test1")) {
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        while (iterator.next()) {
+          Binary binary = iterator.getBlob(1);
+          ByteBuffer byteBuffer = ByteBuffer.wrap(binary.getValues());
+          float[] res = new float[byteBuffer.limit() / Float.BYTES];
+          for (int i = 0; i < res.length; i++) {
+            res[i] = byteBuffer.getFloat();
+          }
+          System.out.println(Arrays.toString(res));
         }
       }
 

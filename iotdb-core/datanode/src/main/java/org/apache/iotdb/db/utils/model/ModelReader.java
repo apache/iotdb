@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils.model;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+
 import java.util.List;
 
 public abstract class ModelReader {
@@ -30,14 +32,20 @@ public abstract class ModelReader {
    *     integers
    * @return a list of float arrays, each array corresponds to a start and end time pair
    */
-  abstract List<float[]> penetrate(String filePath, List<List<Integer>> startAndEndTimeArray);
+  public abstract List<float[]> penetrate(
+      String filePath, List<List<Integer>> startAndEndTimeArray);
 
-  public ModelReader getInstance(ModelReaderType modelFileType) {
-    switch (modelFileType) {
-      case UNCOMPRESSED_TIFF:
-        return new UnCompressedTiffModelReader();
-      default:
-        return new CompressedTsFileModelReader();
+  public static ModelReader getDefaultInstance() {
+    return new CompressedTsFileModelReader();
+  }
+
+  public static ModelReader getInstance(String modelFileType) {
+    if (modelFileType.equalsIgnoreCase("UNCOMPRESSED_TIFF")) {
+      return new UnCompressedTiffModelReader();
+    } else if (modelFileType.equalsIgnoreCase("COMPRESSED_TSFILE")) {
+      return new CompressedTsFileModelReader();
+    } else {
+      throw new SemanticException("Unsupported model file type: " + modelFileType);
     }
   }
 }
