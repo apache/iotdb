@@ -28,6 +28,7 @@ import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.DoubleType;
 import org.apache.tsfile.read.common.type.FloatType;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TimestampType;
@@ -116,6 +117,8 @@ public class TypeUtil {
         return TimestampType.TIMESTAMP;
       case DATE:
         return DATE;
+      case OBJECT:
+        return ObjectType.OBJECT;
       case ROW:
         return RowType.anonymous(subTypes);
       default:
@@ -123,7 +126,6 @@ public class TypeUtil {
     }
   }
 
-  // TODO move these methods into each Type to avoid branch miss
   public static boolean isFlatVariableWidth(Type type) {
     switch (type.getTypeEnum()) {
       case BOOLEAN:
@@ -137,6 +139,7 @@ public class TypeUtil {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         return true;
       default:
         throw new UnsupportedOperationException();
@@ -160,6 +163,7 @@ public class TypeUtil {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         return 16;
       default:
         throw new UnsupportedOperationException();
@@ -179,6 +183,7 @@ public class TypeUtil {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         return column.isNull(position) ? 0 : column.getBinary(position).getLength();
       default:
         throw new UnsupportedOperationException();
@@ -198,6 +203,7 @@ public class TypeUtil {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         int result = 0;
         for (int i = 0; i < position.length; i++) {
           if (!column.isNull(i)) {
@@ -237,6 +243,7 @@ public class TypeUtil {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         int length = bytesToInt(fixedChunk, fixedOffset);
         byte[] result = new byte[length];
         if (length <= 12) {
@@ -282,6 +289,7 @@ public class TypeUtil {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         byte[] value = column.getBinary(position).getValues();
         intToBytes(value.length, fixedChunk, fixedOffset);
         if (value.length <= 12) {
@@ -320,6 +328,7 @@ public class TypeUtil {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         int leftLength = bytesToInt(fixedChunk, fixedOffset);
         byte[] leftValue = new byte[leftLength];
         byte[] rightValue = column.getBinary(position).getValues();
@@ -414,6 +423,7 @@ public class TypeUtil {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         int length = bytesToInt(fixedChunk, fixedOffset);
         byte[] values = new byte[length];
 
@@ -490,6 +500,7 @@ public class TypeUtil {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         return XxHash64.hash(column.getBinary(position).getValues());
       default:
         throw new UnsupportedOperationException();
