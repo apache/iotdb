@@ -19,13 +19,34 @@
 
 package org.apache.iotdb.db.utils.model;
 
-import java.util.Collections;
+import ij.ImagePlus;
+import ij.io.Opener;
+import ij.process.FloatProcessor;
+import ij.process.ImageProcessor;
+
+import java.util.ArrayList;
 import java.util.List;
 
 public class UnCompressedTiffModelReader extends ModelReader {
 
   @Override
   public List<float[]> penetrate(String filePath, List<List<Integer>> startAndEndTimeArray) {
-    return Collections.emptyList();
+    Opener opener = new Opener();
+    ImagePlus imagePlus = opener.openImage(filePath);
+    ImageProcessor processor = imagePlus.getProcessor();
+    List<float[]> result = new ArrayList<>();
+    for (List<Integer> startAndEndTime : startAndEndTimeArray) {
+      int start = startAndEndTime.get(0);
+      int end = startAndEndTime.get(1);
+      int length = end - start + 2;
+      float[] pixels = new float[length];
+      if (processor instanceof FloatProcessor) {
+        for (int i = start; i <= end; i++) {
+          pixels[i - start] = processor.getf(i);
+        }
+      }
+      result.add(pixels);
+    }
+    return result;
   }
 }
