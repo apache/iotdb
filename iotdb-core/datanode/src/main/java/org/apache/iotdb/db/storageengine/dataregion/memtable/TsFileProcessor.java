@@ -571,7 +571,8 @@ public class TsFileProcessor {
           (RelationalInsertTabletNode) insertTabletNode;
       List<List<FileNode>> fileNodesList = relationalInsertTabletNode.getFileNodeList();
       if (fileNodesList != null) {
-        for (List<FileNode> fileNodeList : fileNodesList) {
+        for (int j = 0; j < fileNodesList.size(); j++) {
+          List<FileNode> fileNodeList = fileNodesList.get(j);
           for (int i = 0; i < fileNodeList.size(); i++) {
             FileNode fileNode = fileNodeList.get(i);
             String objectFileName =
@@ -586,6 +587,7 @@ public class TsFileProcessor {
             try (ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
               writer.write(fileNode);
             } catch (Exception e) {
+              results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
               throw new WriteProcessException(e);
             }
             // TODO:[OBJECT] write file node wal
@@ -597,6 +599,7 @@ public class TsFileProcessor {
                     objectFile.toPath(),
                     StandardCopyOption.REPLACE_EXISTING);
               } catch (IOException e) {
+                results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
                 throw new WriteProcessException(e);
               }
               String relativePathString =
@@ -616,7 +619,7 @@ public class TsFileProcessor {
               System.arraycopy(
                   BytesUtils.longToBytes(objectFile.length()), 0, valueBytes, 0, Long.BYTES);
               System.arraycopy(filePathBytes, 0, valueBytes, 4, filePathBytes.length);
-              relationalInsertTabletNode.getObjectColumn()[i] = new Binary(valueBytes);
+              (relationalInsertTabletNode.getObjectColumns().get(j))[i] = new Binary(valueBytes);
             }
           }
         }

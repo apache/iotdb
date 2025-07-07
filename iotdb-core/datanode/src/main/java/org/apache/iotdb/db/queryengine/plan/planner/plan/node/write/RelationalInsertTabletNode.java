@@ -119,13 +119,14 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     return fileNodesList;
   }
 
-  public Binary[] getObjectColumn() {
+  public List<Binary[]> getObjectColumns() {
+    List<Binary[]> objectColumns = new ArrayList<>();
     for (int i = 0; i < columns.length; i++) {
       if (dataTypes[i] == TSDataType.OBJECT) {
-        return (Binary[]) columns[i];
+        objectColumns.add((Binary[]) columns[i]);
       }
     }
-    return null;
+    return objectColumns;
   }
 
   @Override
