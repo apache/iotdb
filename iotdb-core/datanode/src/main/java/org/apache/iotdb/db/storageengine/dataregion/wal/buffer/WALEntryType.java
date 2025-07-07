@@ -72,7 +72,8 @@ public enum WALEntryType {
         || this == INSERT_ROW_NODE
         || this == INSERT_ROWS_NODE
         || this == DELETE_DATA_NODE
-        || this == RELATIONAL_DELETE_DATA_NODE;
+        || this == RELATIONAL_DELETE_DATA_NODE
+        || this == OBJECT_FILE_NODE;
   }
 
   public static WALEntryType valueOf(byte code) {

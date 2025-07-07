@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -249,6 +250,16 @@ public class TierManager {
 
   public List<String> getAllObjectFileFolders() {
     return objectDirs;
+  }
+
+  public Optional<File> getAbsoluteObjectFilePath(String filePath) {
+    for (String objectDir : objectDirs) {
+      File objectFile = FSFactoryProducer.getFSFactory().getFile(objectDir, filePath);
+      if (objectFile.exists()) {
+        return Optional.of(objectFile);
+      }
+    }
+    return Optional.empty();
   }
 
   public int getTiersNum() {

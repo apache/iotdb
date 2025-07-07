@@ -568,9 +568,8 @@ public class TsFileProcessor {
       long[] infoForMetrics)
       throws WriteProcessException {
 
-    handleWriteObject(insertTabletNode, rangeList, results);
-
     ensureMemTable(infoForMetrics);
+    handleWriteObject(insertTabletNode, rangeList, results);
 
     long[] memIncrements =
         scheduleMemoryBlock(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
@@ -2413,6 +2412,17 @@ public class TsFileProcessor {
                   BytesUtils.longToBytes(objectFile.length()), 0, valueBytes, 0, Long.BYTES);
               System.arraycopy(filePathBytes, 0, valueBytes, Long.BYTES, filePathBytes.length);
               (relationalInsertTabletNode.getObjectColumns().get(j))[i] = new Binary(valueBytes);
+            }
+
+            WALFlushListener walFlushListener;
+            try {
+              walFlushListener = walNode.log(workMemTable.getMemTableId(), fileNode);
+              if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+                throw walFlushListener.getCause();
+              }
+            } catch (Exception e) {
+              results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+              throw new WriteProcessException(e);
             }
           }
         }

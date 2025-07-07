@@ -223,6 +223,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
           // The CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE doesn't need redo
           break;
+        case OBJECT_FILE_NODE:
+          break;
         default:
           throw new RuntimeException("Unsupported type " + walEntry.getType());
       }

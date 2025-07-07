@@ -106,6 +106,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueries
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.FileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -312,6 +313,7 @@ public enum PlanNodeType {
   RELATIONAL_INSERT_ROW((short) 2001),
   RELATIONAL_INSERT_ROWS((short) 2002),
   RELATIONAL_DELETE_DATA((short) 2003),
+  OBJECT_FILE_NODE((short) 2004),
   ;
 
   public static final int BYTES = Short.BYTES;
@@ -355,6 +357,8 @@ public enum PlanNodeType {
         return RelationalInsertRowsNode.deserializeFromWAL(stream);
       case 2003:
         return RelationalDeleteDataNode.deserializeFromWAL(stream);
+      case 2004:
+        return FileNode.deserializeFromWAL(stream);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -381,6 +385,8 @@ public enum PlanNodeType {
         return RelationalInsertRowsNode.deserializeFromWAL(buffer);
       case 2003:
         return RelationalDeleteDataNode.deserializeFromWAL(buffer);
+      case 2004:
+        return FileNode.deserializeFromWAL(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
