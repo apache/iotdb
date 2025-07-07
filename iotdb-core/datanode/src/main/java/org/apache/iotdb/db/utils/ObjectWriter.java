@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.FileNode;
 
 import org.apache.commons.io.FileUtils;
@@ -34,6 +36,8 @@ import java.nio.file.Files;
 public class ObjectWriter implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ObjectWriter.class);
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final FileOutputStream fos;
 
@@ -58,7 +62,10 @@ public class ObjectWriter implements AutoCloseable {
 
   public void write(FileNode fileNode) throws IOException {
     if (file.length() != fileNode.getOffset()) {
-      throw new IOException("the file length is not equal to the file offset");
+      throw new IOException("The file length is not equal to the file offset");
+    }
+    if (file.length() + fileNode.getContent().length > config.getMaxObjectSizeInByte()) {
+      throw new IOException("The file length is too large");
     }
     fos.write(fileNode.getContent());
   }

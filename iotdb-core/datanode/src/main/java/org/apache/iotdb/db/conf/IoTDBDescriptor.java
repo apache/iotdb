@@ -897,6 +897,11 @@ public class IoTDBDescriptor {
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()));
 
+    conf.setMaxObjectSizeInByte(
+        Long.parseLong(
+            properties.getProperty(
+                "max_object_file_size_in_byte", String.valueOf(conf.getMaxObjectSizeInByte()))));
+
     // At the same time, set TSFileConfig
     List<FSType> fsTypes = new ArrayList<>();
     fsTypes.add(FSType.LOCAL);
@@ -2056,6 +2061,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "tvlist_sort_threshold",
                   ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
+
+      conf.setMaxObjectSizeInByte(
+          Long.parseLong(
+              properties.getProperty(
+                  "max_object_file_size_in_byte", String.valueOf(conf.getMaxObjectSizeInByte()))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
