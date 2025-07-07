@@ -59,7 +59,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   private boolean singleDevice;
 
-  private List<FileNode> fileNodeList;
+  private List<List<FileNode>> fileNodesList;
 
   public RelationalInsertTabletNode(
       PlanNodeId id,
@@ -111,12 +111,12 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     this.singleDevice = true;
   }
 
-  public void setFileNodeList(List<FileNode> fileNodeList) {
-    this.fileNodeList = fileNodeList;
+  public void setFileNodeList(List<List<FileNode>> fileNodesList) {
+    this.fileNodesList = fileNodesList;
   }
 
-  public List<FileNode> getFileNodeList() {
-    return fileNodeList;
+  public List<List<FileNode>> getFileNodeList() {
+    return fileNodesList;
   }
 
   public Binary[] getObjectColumn() {

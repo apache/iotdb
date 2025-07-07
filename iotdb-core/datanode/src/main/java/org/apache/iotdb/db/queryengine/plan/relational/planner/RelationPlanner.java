@@ -1128,10 +1128,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
     stayConsistent(measurements, measurementSchemas);
     boolean hasObject = false;
-    List<FileNode> fileNodeList = new ArrayList<>();
+    List<List<FileNode>> fileNodesList = new ArrayList<>();
     for (int i = 0; i < insertTabletStatement.getDataTypes().length; i++) {
       if (insertTabletStatement.getDataTypes()[i] == TSDataType.OBJECT) {
         hasObject = true;
+        List<FileNode> fileNodes = new ArrayList<>();
         for (int j = 0; j < insertTabletStatement.getTimes().length; j++) {
           Binary value = ((Binary[]) insertTabletStatement.getColumns()[i])[j];
           boolean isEoF = value.getValues()[0] == 1;
@@ -1141,9 +1142,10 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           byte[] content = new byte[value.getLength() - 9];
           System.arraycopy(value.getValues(), 9, content, 0, value.getLength() - 9);
           FileNode fileNode = new FileNode(isEoF, offset, content);
-          fileNodeList.add(fileNode);
+          fileNodes.add(fileNode);
           ((Binary[]) insertTabletStatement.getColumns()[i])[j] = null;
         }
+        fileNodesList.add(fileNodes);
       }
     }
 
@@ -1162,7 +1164,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             insertTabletStatement.getColumnCategories());
     insertNode.setFailedMeasurementNumber(insertTabletStatement.getFailedMeasurementNumber());
     if (hasObject) {
-      insertNode.setFileNodeList(fileNodeList);
+      insertNode.setFileNodeList(fileNodesList);
     }
     if (insertTabletStatement.isSingleDevice()) {
       insertNode.setSingleDevice();
