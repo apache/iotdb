@@ -80,7 +80,7 @@ public abstract class AbstractTreeIntoOperator extends AbstractIntoOperator {
     }
   }
 
-  protected int findWritten(String device, String measurement) {
+  protected long findWritten(String device, String measurement) {
     for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
       if (!Objects.equals(generator.getDevice(), device)) {
         continue;

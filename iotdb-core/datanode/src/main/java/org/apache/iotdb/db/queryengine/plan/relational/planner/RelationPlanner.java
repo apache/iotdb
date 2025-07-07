@@ -130,7 +130,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import org.apache.tsfile.read.common.type.IntType;
+import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -1274,7 +1274,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             targetTable.getDatabaseName(),
             table.getName().getSuffix(),
             tableColumns,
-            symbolAllocator.newSymbol("rows", IntType.INT32));
+            symbolAllocator.newSymbol("rows", LongType.INT64));
     return new RelationPlan(
         intoNode, analysis.getRootScope(), intoNode.getOutputSymbols(), Optional.empty());
   }

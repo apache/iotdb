@@ -566,10 +566,10 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SOURCE_DEVICE, TSDataType.TEXT),
           new ColumnHeader(SOURCE_COLUMN, TSDataType.TEXT),
           new ColumnHeader(TARGET_TIMESERIES, TSDataType.TEXT),
-          new ColumnHeader(WRITTEN, TSDataType.INT32));
+          new ColumnHeader(WRITTEN, TSDataType.INT64));
 
   public static final List<ColumnHeader> selectIntoTableColumnHeaders =
-      ImmutableList.of(new ColumnHeader(ROWS, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(ROWS, TSDataType.INT64));
 
   public static final List<ColumnHeader> getRegionIdColumnHeaders =
       ImmutableList.of(new ColumnHeader(REGION_ID, TSDataType.INT32));

@@ -156,12 +156,12 @@ public class TableIntoOperator extends AbstractIntoOperator {
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     timeColumnBuilder.writeLong(0);
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-    columnBuilders[0].writeInt(findWritten());
+    columnBuilders[0].writeLong(findWritten());
     resultTsBlockBuilder.declarePosition();
     return resultTsBlockBuilder.build();
   }
 
-  private int findWritten() {
+  private long findWritten() {
     return insertTabletStatementGenerator.getWrittenCount();
   }
 }
