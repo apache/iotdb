@@ -23,10 +23,12 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
@@ -39,6 +41,8 @@ import java.nio.file.StandardOpenOption;
 import java.util.Optional;
 
 public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
+
+  private static final TierManager TIER_MANAGER = TierManager.getInstance();
 
   private final Optional<FragmentInstanceContext> fragmentInstanceContext;
   private long offset = 0;
@@ -104,8 +108,7 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
   }
 
   private Binary readObject(Binary binary) {
-    File file = new File(getObjectPathFromBinary(binary));
-    // TODO: allocate memory
+    File file = getObjectPathFromBinary(binary);
     long fileSize = file.length();
     if (offset >= fileSize) {
       throw new UnsupportedOperationException("offset is greater than object size");
@@ -126,7 +129,9 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
     return new Binary(bytes);
   }
 
-  private String getObjectPathFromBinary(Binary binary) {
-    return binary.toString().split(",")[0];
+  private File getObjectPathFromBinary(Binary binary) {
+    byte[] bytes = binary.getValues();
+    return TIER_MANAGER.getObjectFile(
+        new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET));
   }
 }

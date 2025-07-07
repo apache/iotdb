@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.rescon.disk;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.ObjectFileNotExist;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
@@ -321,6 +322,16 @@ public class TierManager {
       }
     }
     return tierDiskSpace;
+  }
+
+  public File getObjectFile(String relativePath) {
+    for (String folder : objectDirs) {
+      File file = new File(folder, relativePath);
+      if (file.exists()) {
+        return file;
+      }
+    }
+    throw new ObjectFileNotExist(relativePath);
   }
 
   private enum DiskSpaceType {
