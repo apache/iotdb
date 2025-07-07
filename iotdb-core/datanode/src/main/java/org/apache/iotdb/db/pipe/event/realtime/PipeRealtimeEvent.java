@@ -84,6 +84,10 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     return device2Measurements;
   }
 
+  public void gcSchemaInfo() {
+    device2Measurements = null;
+  }
+
   public boolean mayExtractorUseTablets(final PipeRealtimeDataRegionExtractor extractor) {
     final TsFileEpoch.State state = tsFileEpoch.getState(extractor);
     return state.equals(TsFileEpoch.State.EMPTY) || state.equals(TsFileEpoch.State.USING_TABLET);
@@ -178,7 +182,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
             pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime),
         this.tsFileEpoch,
-        this.device2Measurements,
+        // device2Measurements is not used anymore, so it is not copied.
+        // If null is not passed, the field will not be GCed and may cause OOM.
+        null,
         pipeTaskMeta,
         pattern,
         startTime,

@@ -99,6 +99,7 @@ public class PipeDataRegionAssigner implements Closeable {
   }
 
   private void onAssignedHook(final PipeRealtimeEvent realtimeEvent) {
+    realtimeEvent.gcSchemaInfo();
     realtimeEvent.decreaseReferenceCount(PipeDataRegionAssigner.class.getName(), false);
 
     final EnrichedEvent innerEvent = realtimeEvent.getEvent();
