@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.rpc.model;
 
-public abstract class ModelWriter {
+public abstract class ModelProcessor {
   /**
    * Write float[] to specific type of file, eg. tsfile, tiff
    *
@@ -30,12 +30,28 @@ public abstract class ModelWriter {
    */
   abstract byte[] write(float[] values, int width, int height);
 
-  public ModelWriter getInstance(ModelWriterType modelFileType) {
+  /**
+   * Read all float values from a file, eg. tsfile, tiff
+   *
+   * @param fileBytes the byte array of the file to read
+   * @return the float array of the image
+   */
+  abstract float[] readAll(byte[] fileBytes);
+
+  /**
+   * Read all float values from a file, eg. tsfile, tiff
+   *
+   * @param filePath the path of the file to read
+   * @return the float array of the image
+   */
+  abstract float[] readAll(String filePath);
+
+  public ModelProcessor getInstance(ModelProcessorType modelFileType) {
     switch (modelFileType) {
       case UNCOMPRESSED_TIFF:
-        return new UnCompressedTiffModelWriter();
+        return new UnCompressedTiffModelProcessor();
       default:
-        return new CompressedTsFileModelWriter();
+        return new CompressedTsFileModelProcessor();
     }
   }
 }
