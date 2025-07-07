@@ -409,6 +409,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
           byte[] content = new byte[value.getLength() - 9];
           System.arraycopy(value.getValues(), 9, content, 0, value.getLength() - 9);
           FileNode fileNode = new FileNode(isEoF, offset, content);
+          fileNode.setSearchIndex(this.getSearchIndex());
           fileNodes.add(fileNode);
           ((Binary[]) columns[i])[j] = null;
         }

@@ -23,6 +23,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.FileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -53,6 +54,8 @@ public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqRead
 
   /** Log BatchDoneNode */
   WALFlushListener log(long memTableId, ContinuousSameSearchIndexSeparatorNode separatorNode);
+
+  WALFlushListener log(long memTableId, FileNode fileNode);
 
   /** Callback when memTable created. */
   void onMemTableCreated(IMemTable memTable, String targetTsFile);

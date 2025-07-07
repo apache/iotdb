@@ -19,27 +19,10 @@
 
 package org.apache.iotdb.db.utils.model;
 
-import ij.ImagePlus;
-import ij.io.Opener;
-import ij.process.FloatProcessor;
-import ij.process.ImageProcessor;
-
 import java.util.Collections;
 import java.util.List;
 
 public class UnCompressedTiffModelReader extends ModelReader {
-
-  @Override
-  float[] readAll(String filePath) {
-    Opener opener = new Opener();
-    ImagePlus imagePlus = opener.openImage(filePath);
-    ImageProcessor processor = imagePlus.getProcessor();
-    if (processor instanceof FloatProcessor) {
-      return (float[]) processor.getPixels();
-    } else {
-      return new float[0];
-    }
-  }
 
   @Override
   List<float[]> penetrate(String filePath, List<List<Integer>> startAndEndTimeArray) {

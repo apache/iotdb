@@ -19,16 +19,7 @@
 
 package org.apache.iotdb.rpc.model;
 
-import ij.ImagePlus;
-import ij.io.FileSaver;
-import ij.process.FloatProcessor;
-
-public class UnCompressedTiffModelWriter extends ModelWriter {
-  @Override
-  byte[] write(float[] values, int width, int height) {
-    FloatProcessor floatProcessor = new FloatProcessor(width, height, values);
-    ImagePlus imp = new ImagePlus("first level", floatProcessor);
-    FileSaver fs = new FileSaver(imp);
-    return fs.serialize();
-  }
+public enum ModelProcessorType {
+  COMPRESSED_TSFILE,
+  UNCOMPRESSED_TIFF
 }

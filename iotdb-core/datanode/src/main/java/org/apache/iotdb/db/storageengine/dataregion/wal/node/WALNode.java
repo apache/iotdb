@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.FileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -189,6 +190,12 @@ public class WALNode implements IWALNode {
   public WALFlushListener log(
       long memTableId, ContinuousSameSearchIndexSeparatorNode separatorNode) {
     WALEntry walEntry = new WALInfoEntry(memTableId, separatorNode);
+    return log(walEntry);
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, FileNode fileNode) {
+    WALEntry walEntry = new WALInfoEntry(memTableId, fileNode);
     return log(walEntry);
   }
 

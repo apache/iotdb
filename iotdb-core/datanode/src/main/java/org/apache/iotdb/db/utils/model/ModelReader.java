@@ -23,14 +23,6 @@ import java.util.List;
 
 public abstract class ModelReader {
   /**
-   * Read all float values from a file, eg. tsfile, tiff
-   *
-   * @param filePath the path of the file to read
-   * @return the float array of the image
-   */
-  abstract float[] readAll(String filePath);
-
-  /**
    * Read part of float values from a file, eg. tsfile, tiff
    *
    * @param filePath the path of the file to read
