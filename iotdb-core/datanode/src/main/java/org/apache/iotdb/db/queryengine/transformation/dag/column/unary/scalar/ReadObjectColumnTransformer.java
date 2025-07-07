@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.exception.ObjectFileNotExist;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
@@ -131,7 +132,12 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
 
   private File getObjectPathFromBinary(Binary binary) {
     byte[] bytes = binary.getValues();
-    return TIER_MANAGER.getObjectFile(
-        new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET));
+    String relativeObjectFilePath =
+        new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET);
+    Optional<File> file = TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath);
+    if (!file.isPresent()) {
+      throw new ObjectFileNotExist(relativeObjectFilePath);
+    }
+    return file.get();
   }
 }
