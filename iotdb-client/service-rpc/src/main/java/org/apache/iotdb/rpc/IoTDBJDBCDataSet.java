@@ -598,8 +598,9 @@ public class IoTDBJDBCDataSet {
         return String.valueOf(BytesUtils.bytesToDouble(values[index]));
       case TEXT:
       case STRING:
-      case OBJECT:
         return new String(values[index], StandardCharsets.UTF_8);
+      case OBJECT:
+        return BytesUtils.parseObjectByteArrayToString(values[index]);
       case BLOB:
         return BytesUtils.parseBlobByteArrayToString(values[index]);
       case DATE:
@@ -637,8 +638,8 @@ public class IoTDBJDBCDataSet {
         return BytesUtils.bytesToDouble(values[index]);
       case TEXT:
       case STRING:
-      case OBJECT:
         return new String(values[index], StandardCharsets.UTF_8);
+      case OBJECT:
       case BLOB:
         return new Binary(values[index]);
       case TIMESTAMP:
