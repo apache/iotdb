@@ -828,6 +828,12 @@ public class DataRegion implements IDataRegionForQuery {
                           Long.parseLong(
                               f.getName().substring(0, f.getName().length() - 4).split("-")[2])));
             }
+            File[] objectTmpFileInThisFolder =
+                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), ".bin.tmp");
+            for (File f : objectTmpFileInThisFolder) {
+              // remove bin.tmp
+              Files.delete(f.toPath());
+            }
           }
         }
       }
