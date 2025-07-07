@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from typing import Callable
+from typing import Callable, Dict
 
 from torch import nn
 from yaml import YAMLError
@@ -97,13 +97,17 @@ class ModelManager:
             logger.warning(e)
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
 
-    def load_model(self, model_id: str, acceleration: bool = False) -> Callable:
+    def load_model(
+        self, model_id: str, inference_attrs: Dict[str, str], acceleration: bool = False
+    ) -> Callable:
         """
         Load the model with the given model_id.
         """
         logger.info(f"Load model {model_id}")
         try:
-            model = self.model_storage.load_model(model_id, acceleration)
+            model = self.model_storage.load_model(
+                model_id, inference_attrs, acceleration
+            )
             logger.info(f"Model {model_id} loaded")
             return model
         except Exception as e:

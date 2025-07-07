@@ -347,7 +347,7 @@ public class DataRegion implements IDataRegionForQuery {
   private ILoadDiskSelector ordinaryLoadDiskSelector;
   private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
 
-  public static AtomicLong objectFileId = new AtomicLong(0);
+  public AtomicLong objectFileId = new AtomicLong(0);
 
   /**
    * Construct a database processor.
@@ -537,6 +537,7 @@ public class DataRegion implements IDataRegionForQuery {
           getAllFiles(TierManager.getInstance().getAllLocalSequenceFileFolders());
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
           getAllFiles(TierManager.getInstance().getAllLocalUnSequenceFileFolders());
+      checkObjectFiles(TierManager.getInstance().getAllObjectFileFolders());
       DataRegionRecoveryContext dataRegionRecoveryContext =
           new DataRegionRecoveryContext(
               partitionTmpSeqTsFiles.values().stream().mapToLong(List::size).sum()
@@ -851,6 +852,40 @@ public class DataRegion implements IDataRegionForQuery {
           .add(resource);
     }
     return ret;
+  }
+
+  private void checkObjectFiles(List<String> folders) throws IOException {
+    for (String baseDir : folders) {
+      File fileFolder = fsFactory.getFile(baseDir + File.separator + databaseName, dataRegionId);
+      if (!fileFolder.exists()) {
+        continue;
+      }
+      File[] subFiles = fileFolder.listFiles();
+      if (subFiles != null) {
+        for (File partitionFolder : subFiles) {
+          if (!partitionFolder.isDirectory()) {
+            logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
+          } else {
+            File[] objectFileInThisFolder =
+                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), ".bin");
+            for (File f : objectFileInThisFolder) {
+              objectFileId.updateAndGet(
+                  current ->
+                      Math.max(
+                          current,
+                          Long.parseLong(
+                              f.getName().substring(0, f.getName().length() - 4).split("-")[2])));
+            }
+            File[] objectTmpFileInThisFolder =
+                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), ".bin.tmp");
+            for (File f : objectTmpFileInThisFolder) {
+              // remove bin.tmp
+              Files.delete(f.toPath());
+            }
+          }
+        }
+      }
+    }
   }
 
   private void continueFailedRenames(File fileFolder, String suffix) throws IOException {

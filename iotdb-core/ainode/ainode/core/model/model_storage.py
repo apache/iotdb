@@ -262,7 +262,9 @@ class ModelStorage(object):
             or self._model_info_map[model_id].category == ModelCategory.FINE_TUNED
         )
 
-    def load_model(self, model_id: str, acceleration: bool) -> Callable:
+    def load_model(
+        self, model_id: str, inference_attrs: Dict[str, str], acceleration: bool
+    ) -> Callable:
         """
         Load a model with automatic detection of .safetensors or .pt format
 
@@ -275,6 +277,7 @@ class ModelStorage(object):
                 return fetch_built_in_model(
                     get_built_in_model_type(self._model_info_map[model_id].model_type),
                     model_dir,
+                    inference_attrs,
                 )
             else:
                 # load the user-defined model

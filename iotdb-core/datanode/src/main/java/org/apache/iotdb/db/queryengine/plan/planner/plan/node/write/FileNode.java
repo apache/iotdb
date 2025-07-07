@@ -20,36 +20,20 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 // TODO:[OBJECT] WAL serde
-// TODO:[OBJECT] dispatch serde
 public class FileNode {
 
-  private String filePath;
+  private final boolean isEOF;
 
-  private long offset;
+  private final long offset;
 
   private byte[] content;
 
-  private boolean isEOF;
-
-  public FileNode(String filePath, boolean isEOF, long offset, byte[] content) {
-    this.filePath = filePath;
-    this.isEOF = isEOF;
-    this.offset = offset;
-    this.content = content;
-  }
+  private String filePath;
 
   public FileNode(boolean isEOF, long offset, byte[] content) {
     this.isEOF = isEOF;
     this.offset = offset;
     this.content = content;
-  }
-
-  public void setFilePath(String filePath) {
-    this.filePath = filePath;
-  }
-
-  public String getFilePath() {
-    return filePath;
   }
 
   public boolean isEOF() {
@@ -63,4 +47,72 @@ public class FileNode {
   public long getOffset() {
     return offset;
   }
+
+  public void setFilePath(String filePath) {
+    this.filePath = filePath;
+  }
+
+  public String getFilePath() {
+    return filePath;
+  }
+  //
+  //  @Override
+  //  public void serializeToWAL(IWALByteBufferView buffer) {}
+  //
+  //  @Override
+  //  public int serializedSize() {
+  //    return 0;
+  //  }
+  //
+  //  @Override
+  //  public SearchNode merge(List<SearchNode> searchNodes) {
+  //    return null;
+  //  }
+  //
+  //  @Override
+  //  public ProgressIndex getProgressIndex() {
+  //    return null;
+  //  }
+  //
+  //  @Override
+  //  public void setProgressIndex(ProgressIndex progressIndex) {}
+  //
+  //  @Override
+  //  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  //    return List.of();
+  //  }
+  //
+  //  @Override
+  //  public TRegionReplicaSet getRegionReplicaSet() {
+  //    return null;
+  //  }
+  //
+  //  @Override
+  //  public List<PlanNode> getChildren() {
+  //    return List.of();
+  //  }
+  //
+  //  @Override
+  //  public void addChild(PlanNode child) {}
+  //
+  //  @Override
+  //  public PlanNode clone() {
+  //    return null;
+  //  }
+  //
+  //  @Override
+  //  public int allowedChildCount() {
+  //    return 0;
+  //  }
+  //
+  //  @Override
+  //  public List<String> getOutputColumnNames() {
+  //    return List.of();
+  //  }
+  //
+  //  @Override
+  //  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  //
+  //  @Override
+  //  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
 }

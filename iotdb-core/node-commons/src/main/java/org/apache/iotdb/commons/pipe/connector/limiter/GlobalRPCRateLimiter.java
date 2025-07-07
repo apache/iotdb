@@ -17,22 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.load;
+package org.apache.iotdb.commons.pipe.connector.limiter;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
-public class LoadFileException extends IoTDBException {
+/** This is a global rate limiter for all connectors. */
+public class GlobalRPCRateLimiter extends GlobalRateLimiter {
 
-  public LoadFileException(String message) {
-    super(message, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-  }
+  private static final PipeConfig CONFIG = PipeConfig.getInstance();
 
-  public LoadFileException(Exception exception) {
-    super(exception, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-  }
-
-  public LoadFileException(String message, Exception exception) {
-    super(message, exception, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+  @Override
+  protected double getThroughputBytesPerSecond() {
+    return CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond();
   }
 }
