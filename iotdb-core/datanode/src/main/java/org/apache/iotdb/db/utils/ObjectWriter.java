@@ -62,10 +62,14 @@ public class ObjectWriter implements AutoCloseable {
 
   public void write(FileNode fileNode) throws IOException {
     if (file.length() != fileNode.getOffset()) {
-      throw new IOException("The file length is not equal to the file offset");
+      throw new IOException(
+          "The file length "
+              + file.length()
+              + " is not equal to the offset "
+              + fileNode.getOffset());
     }
     if (file.length() + fileNode.getContent().length > config.getMaxObjectSizeInByte()) {
-      throw new IOException("The file length is too large");
+      throw new IOException("The file length is larger than max_object_file_size_in_bytes");
     }
     fos.write(fileNode.getContent());
   }
