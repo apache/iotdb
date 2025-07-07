@@ -231,4 +231,26 @@ public interface IAuthorizer extends SnapshotProcessor {
   void createUserWithoutCheck(String username, String password) throws AuthException;
 
   void createUserWithRawPassword(String username, String password) throws AuthException;
+
+  /**
+   * Set label policy for a user.
+   *
+   * @param username The username of the user
+   * @param labelPolicyExpression The label policy expression
+   * @param labelPolicyScope The label policy scope (READ, WRITE, READ,WRITE)
+   * @throws AuthException If the user does not exist or the policy is invalid
+   */
+  void setUserLabelPolicy(String username, String labelPolicyExpression, String labelPolicyScope)
+      throws AuthException;
+
+  /**
+   * Update label policy for a user.
+   *
+   * @param username The username of the user
+   * @param labelPolicyExpression The label policy expression
+   * @param labelPolicyScope The label policy scope (READ, WRITE, READ,WRITE)
+   * @throws AuthException If the user does not exist or the policy is invalid
+   */
+  void updateUserLabelPolicy(String username, String labelPolicyExpression, String labelPolicyScope)
+      throws AuthException;
 }

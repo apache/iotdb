@@ -343,6 +343,8 @@ struct TAuthorizerReq {
   6: required set<i32> permissions
   7: required bool grantOpt
   8: required binary nodeNameList
+  9: optional string labelPolicyExpression
+  10: optional string labelPolicyScope
 }
 
 struct TAuthorizerRelationalReq {

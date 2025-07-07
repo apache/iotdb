@@ -48,6 +48,8 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private String[] privilegeList;
   private List<PartialPath> nodeNameList;
   private boolean grantOpt;
+  private String labelPolicyExpression;
+  private String labelPolicyScope;
 
   /**
    * Constructor with AuthorType.
@@ -177,6 +179,22 @@ public class AuthorStatement extends Statement implements IConfigStatement {
 
   public void setGrantOpt(boolean grantOpt) {
     this.grantOpt = grantOpt;
+  }
+
+  public String getLabelPolicyExpression() {
+    return labelPolicyExpression;
+  }
+
+  public void setLabelPolicyExpression(String labelPolicyExpression) {
+    this.labelPolicyExpression = labelPolicyExpression;
+  }
+
+  public String getLabelPolicyScope() {
+    return labelPolicyScope;
+  }
+
+  public void setLabelPolicyScope(String labelPolicyScope) {
+    this.labelPolicyScope = labelPolicyScope;
   }
 
   @Override

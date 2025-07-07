@@ -35,6 +35,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 /** This class stores information of each user. */
 public abstract class BasicUserManager extends BasicRoleManager {
 
@@ -189,6 +191,34 @@ public abstract class BasicUserManager extends BasicRoleManager {
   private void init() throws AuthException {
     this.accessor.reset();
     initAdmin();
+  }
+
+  /**
+   * Update user information and save to storage.
+   *
+   * @param user The user object to update
+   * @throws AuthException If the user does not exist or save fails
+   */
+  public void updateUser(User user) throws AuthException {
+    if (user == null) {
+      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "User cannot be null");
+    }
+    lock.writeLock(user.getName());
+    try {
+      User existingUser = this.getEntity(user.getName());
+      if (existingUser == null) {
+        throw new AuthException(
+            getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), user.getName()));
+      }
+      // Update the user in memory
+      entityMap.put(user.getName(), user);
+      // Save to storage
+      accessor.saveEntity(user);
+    } catch (IOException e) {
+      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, "Failed to save user", e);
+    } finally {
+      lock.writeUnlock(user.getName());
+    }
   }
 
   @Override

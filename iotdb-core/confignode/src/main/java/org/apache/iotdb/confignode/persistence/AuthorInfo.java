@@ -187,16 +187,31 @@ public class AuthorInfo implements SnapshotProcessor {
     Set<Integer> permissions = authorPlan.getPermissions();
     boolean grantOpt = authorPlan.getGrantOpt();
     List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
+    String labelPolicyExpression = authorPlan.getLabelPolicyExpression();
+    String labelPolicyScope = authorPlan.getLabelPolicyScope();
+
     try {
       switch (authorType) {
         case UpdateUser:
           authorizer.updateUserPassword(userName, newPassword);
+          // Set label policy if present
+          if (labelPolicyExpression != null || labelPolicyScope != null) {
+            authorizer.updateUserLabelPolicy(userName, labelPolicyExpression, labelPolicyScope);
+          }
           break;
         case CreateUser:
           authorizer.createUser(userName, password);
+          // Set label policy if present
+          if (labelPolicyExpression != null || labelPolicyScope != null) {
+            authorizer.setUserLabelPolicy(userName, labelPolicyExpression, labelPolicyScope);
+          }
           break;
         case CreateUserWithRawPassword:
           authorizer.createUserWithRawPassword(userName, password);
+          // Set label policy if present
+          if (labelPolicyExpression != null || labelPolicyScope != null) {
+            authorizer.setUserLabelPolicy(userName, labelPolicyExpression, labelPolicyScope);
+          }
           break;
         case CreateRole:
           authorizer.createRole(roleName);

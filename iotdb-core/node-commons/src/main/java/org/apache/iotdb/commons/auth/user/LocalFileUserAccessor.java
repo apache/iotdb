@@ -90,8 +90,12 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
   @Override
   protected void saveEntityName(BufferedOutputStream outputStream, Role role) throws IOException {
     super.saveEntityName(outputStream, role);
+    User user = (User) role;
+    IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
     IOUtils.writeString(
-        outputStream, ((User) role).getPassword(), STRING_ENCODING, encodingBufferLocal);
+        outputStream, user.getLabelPolicyExpression(), STRING_ENCODING, encodingBufferLocal);
+    IOUtils.writeString(
+        outputStream, user.getLabelPolicyScope(), STRING_ENCODING, encodingBufferLocal);
   }
 
   @Override
@@ -168,6 +172,18 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         loadPrivileges(dataInputStream, user);
+        // Load label policy fields if available
+        try {
+          user.setLabelPolicyExpression(
+              IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+          user.setLabelPolicyScope(
+              IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+        } catch (Exception e) {
+          // For backward compatibility, if label policy fields are not present, set them
+          // to null
+          user.setLabelPolicyExpression(null);
+          user.setLabelPolicyScope(null);
+        }
       }
 
       File roleOfUser = checkFileAvailable(entityName, "_role");

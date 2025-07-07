@@ -685,15 +685,25 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     if (authorStatement.getAuthorType() == null) {
       authorStatement.setNodeNameList(new ArrayList<>());
     }
-    return new TAuthorizerReq(
-        authorStatement.getAuthorType().ordinal(),
-        authorStatement.getUserName() == null ? "" : authorStatement.getUserName(),
-        authorStatement.getRoleName() == null ? "" : authorStatement.getRoleName(),
-        authorStatement.getPassWord() == null ? "" : authorStatement.getPassWord(),
-        authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
-        AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
-        authorStatement.getGrantOpt(),
-        AuthUtils.serializePartialPathList(authorStatement.getNodeNameList()));
+    TAuthorizerReq req =
+        new TAuthorizerReq(
+            authorStatement.getAuthorType().ordinal(),
+            authorStatement.getUserName() == null ? "" : authorStatement.getUserName(),
+            authorStatement.getRoleName() == null ? "" : authorStatement.getRoleName(),
+            authorStatement.getPassWord() == null ? "" : authorStatement.getPassWord(),
+            authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
+            AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
+            authorStatement.getGrantOpt(),
+            AuthUtils.serializePartialPathList(authorStatement.getNodeNameList()));
+    // Set label policy fields if present
+    if (authorStatement.getLabelPolicyExpression() != null) {
+      req.setLabelPolicyExpression(authorStatement.getLabelPolicyExpression());
+    }
+    if (authorStatement.getLabelPolicyScope() != null) {
+      req.setLabelPolicyScope(authorStatement.getLabelPolicyScope());
+    }
+
+    return req;
   }
 
   private TAuthorizerRelationalReq statementToAuthorizerReq(

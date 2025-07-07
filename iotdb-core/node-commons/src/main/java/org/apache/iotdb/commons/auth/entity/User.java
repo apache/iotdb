@@ -40,6 +40,12 @@ public class User extends Role {
 
   private boolean isOpenIdUser = false; // default NO openIdUser
 
+  // Label policy expression, e.g. env="prod" and region="cn"
+  private String labelPolicyExpression;
+
+  // Policy scope, value is READ, WRITE or READ,WRITE
+  private String labelPolicyScope;
+
   public User() {
     // empty constructor
   }
@@ -74,6 +80,42 @@ public class User extends Role {
   }
 
   /** ------------ get func ----------------* */
+  /**
+   * Get label policy expression.
+   *
+   * @return label policy expression
+   */
+  public String getLabelPolicyExpression() {
+    return labelPolicyExpression;
+  }
+
+  /**
+   * Set label policy expression.
+   *
+   * @param labelPolicyExpression policy expression string
+   */
+  public void setLabelPolicyExpression(String labelPolicyExpression) {
+    this.labelPolicyExpression = labelPolicyExpression;
+  }
+
+  /**
+   * Get label policy scope.
+   *
+   * @return label policy scope
+   */
+  public String getLabelPolicyScope() {
+    return labelPolicyScope;
+  }
+
+  /**
+   * Set label policy scope.
+   *
+   * @param labelPolicyScope policy scope string
+   */
+  public void setLabelPolicyScope(String labelPolicyScope) {
+    this.labelPolicyScope = labelPolicyScope;
+  }
+
   public String getPassword() {
     return password;
   }
@@ -117,7 +159,9 @@ public class User extends Role {
     return super.equals((Role) user)
         && Objects.equals(roleSet, user.roleSet)
         && Objects.equals(password, user.password)
-        && Objects.equals(isOpenIdUser, user.isOpenIdUser);
+        && Objects.equals(isOpenIdUser, user.isOpenIdUser)
+        && Objects.equals(labelPolicyExpression, user.labelPolicyExpression)
+        && Objects.equals(labelPolicyScope, user.labelPolicyScope);
   }
 
   @Override
@@ -128,7 +172,9 @@ public class User extends Role {
         super.getPathPrivilegeList(),
         super.getSysPrivilege(),
         roleSet,
-        isOpenIdUser);
+        isOpenIdUser,
+        labelPolicyExpression,
+        labelPolicyScope);
   }
 
   @Override
@@ -138,6 +184,9 @@ public class User extends Role {
 
     SerializeUtils.serialize(super.getName(), dataOutputStream);
     SerializeUtils.serialize(password, dataOutputStream);
+
+    SerializeUtils.serialize(labelPolicyExpression, dataOutputStream);
+    SerializeUtils.serialize(labelPolicyScope, dataOutputStream);
 
     try {
       dataOutputStream.writeInt(super.getSysPrivilege().size());
@@ -164,6 +213,8 @@ public class User extends Role {
   public void deserialize(ByteBuffer buffer) {
     super.setName(SerializeUtils.deserializeString(buffer));
     password = SerializeUtils.deserializeString(buffer);
+    labelPolicyExpression = SerializeUtils.deserializeString(buffer);
+    labelPolicyScope = SerializeUtils.deserializeString(buffer);
     int systemPriSize = buffer.getInt();
     Set<PrivilegeType> sysPri = new HashSet<>();
     for (int i = 0; i < systemPriSize; i++) {
@@ -211,6 +262,10 @@ public class User extends Role {
         + roleSet
         + ", isOpenIdUser="
         + isOpenIdUser
+        + ", labelPolicyExpression="
+        + labelPolicyExpression
+        + ", labelPolicyScope="
+        + labelPolicyScope
         + '}';
   }
 }

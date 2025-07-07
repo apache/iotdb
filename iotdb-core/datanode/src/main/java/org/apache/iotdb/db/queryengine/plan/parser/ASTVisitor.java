@@ -2440,6 +2440,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.CREATE_USER);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     authorStatement.setPassWord(parseStringLiteral(ctx.password.getText()));
+    // Parse label policy if present
+    if (ctx.policyExpression() != null && ctx.labelPolicyScope() != null) {
+      // Set label policy expression, e.g. env="prod" and region="cn"
+      authorStatement.setLabelPolicyExpression(ctx.policyExpression().getText());
+      // Set label policy scope, value is READ, WRITE or READ,WRITE
+      authorStatement.setLabelPolicyScope(ctx.labelPolicyScope().getText());
+    }
     return authorStatement;
   }
 

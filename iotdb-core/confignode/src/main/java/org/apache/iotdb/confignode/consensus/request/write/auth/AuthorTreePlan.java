@@ -38,6 +38,10 @@ import java.util.Set;
 public class AuthorTreePlan extends AuthorPlan {
   protected Set<Integer> permissions;
   protected List<PartialPath> nodeNameList;
+  // Label policy expression, e.g. env="prod" and region="cn"
+  private String labelPolicyExpression;
+  // Policy scope, value is READ, WRITE or READ,WRITE
+  private String labelPolicyScope;
 
   public AuthorTreePlan(final ConfigPhysicalPlanType type) {
     super(type);
@@ -99,6 +103,22 @@ public class AuthorTreePlan extends AuthorPlan {
     }
   }
 
+  public String getLabelPolicyExpression() {
+    return labelPolicyExpression;
+  }
+
+  public void setLabelPolicyExpression(String labelPolicyExpression) {
+    this.labelPolicyExpression = labelPolicyExpression;
+  }
+
+  public String getLabelPolicyScope() {
+    return labelPolicyScope;
+  }
+
+  public void setLabelPolicyScope(String labelPolicyScope) {
+    this.labelPolicyScope = labelPolicyScope;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), permissions, nodeNameList);
@@ -128,6 +148,8 @@ public class AuthorTreePlan extends AuthorPlan {
     BasicStructureSerDeUtil.write(roleName, stream);
     BasicStructureSerDeUtil.write(password, stream);
     BasicStructureSerDeUtil.write(newPassword, stream);
+    BasicStructureSerDeUtil.write(labelPolicyExpression, stream);
+    BasicStructureSerDeUtil.write(labelPolicyScope, stream);
     if (permissions == null) {
       stream.write((byte) 0);
     } else {
@@ -150,6 +172,8 @@ public class AuthorTreePlan extends AuthorPlan {
     roleName = BasicStructureSerDeUtil.readString(buffer);
     password = BasicStructureSerDeUtil.readString(buffer);
     newPassword = BasicStructureSerDeUtil.readString(buffer);
+    labelPolicyExpression = BasicStructureSerDeUtil.readString(buffer);
+    labelPolicyScope = BasicStructureSerDeUtil.readString(buffer);
     if (buffer.get() == (byte) 0) {
       this.permissions = null;
     } else {

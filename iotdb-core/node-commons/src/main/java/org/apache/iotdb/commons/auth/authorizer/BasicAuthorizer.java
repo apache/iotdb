@@ -177,6 +177,32 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
+  public void setUserLabelPolicy(
+      String username, String labelPolicyExpression, String labelPolicyScope) throws AuthException {
+    User user = userManager.getEntity(username);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
+    }
+    user.setLabelPolicyExpression(labelPolicyExpression);
+    user.setLabelPolicyScope(labelPolicyScope);
+    userManager.updateUser(user);
+  }
+
+  @Override
+  public void updateUserLabelPolicy(
+      String username, String labelPolicyExpression, String labelPolicyScope) throws AuthException {
+    User user = userManager.getEntity(username);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
+    }
+    user.setLabelPolicyExpression(labelPolicyExpression);
+    user.setLabelPolicyScope(labelPolicyScope);
+    userManager.updateUser(user);
+  }
+
+  @Override
   public void deleteUser(String username) throws AuthException {
     checkAdmin(username, "Default administrator cannot be deleted");
     if (!userManager.deleteEntity(username)) {
