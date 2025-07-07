@@ -73,6 +73,8 @@ public class TierManager {
   /** unSeq file folder's rawFsPath path -> tier level */
   private final Map<String, Integer> unSeqDir2TierLevel = new HashMap<>();
 
+  private List<String> objectDirs;
+
   /** total space of each tier, Long.MAX_VALUE when one tier contains remote storage */
   private long[] tierDiskTotalSpace;
 
@@ -154,7 +156,7 @@ public class TierManager {
         unSeqDir2TierLevel.put(dir, tierLevel);
       }
 
-      List<String> objectDirs =
+      objectDirs =
           Arrays.stream(tierDirs[tierLevel])
               .filter(Objects::nonNull)
               .map(
@@ -243,6 +245,10 @@ public class TierManager {
     return unSeqDir2TierLevel.keySet().stream()
         .filter(FSUtils::isLocal)
         .collect(Collectors.toList());
+  }
+
+  public List<String> getAllObjectFileFolders() {
+    return objectDirs;
   }
 
   public int getTiersNum() {
