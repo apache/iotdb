@@ -392,11 +392,6 @@
             <version>1.3.0</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>net.imagej</groupId>
-            <artifactId>ij</artifactId>
-            <version>1.54g</version>
-        </dependency>
     </dependencies>
     <build>
         <plugins>

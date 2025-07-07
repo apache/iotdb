@@ -65,7 +65,7 @@ public class CompressedTsFileModelProcessor extends ModelProcessor {
   private static final int DEFAULT_CHUNK_NUMBER = 128 * 128;
 
   @Override
-  byte[] write(float[] values, int width, int height) {
+  public byte[] write(float[] values, int width, int height) {
     try {
 
       TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(1);
@@ -112,7 +112,7 @@ public class CompressedTsFileModelProcessor extends ModelProcessor {
   }
 
   @Override
-  float[] readAll(byte[] fileBytes) {
+  public float[] readAll(byte[] fileBytes) {
     try {
       float[] values = null;
       int i = 0;
@@ -192,7 +192,7 @@ public class CompressedTsFileModelProcessor extends ModelProcessor {
   }
 
   @Override
-  float[] readAll(String filePath) {
+  public float[] readAll(String filePath) {
     try {
       byte[] fileBytes = Files.readAllBytes(new File(filePath).toPath());
       return readAll(fileBytes);
