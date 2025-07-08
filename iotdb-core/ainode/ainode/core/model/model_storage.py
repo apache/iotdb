@@ -50,7 +50,7 @@ from ainode.core.model.model_info import (
     get_built_in_model_type,
 )
 from ainode.core.util.lock import ModelLockPool
-from ainode.thrift.ainode.ttypes import TShowModelsResp
+from ainode.thrift.ainode.ttypes import TShowModelsReq, TShowModelsResp
 from ainode.thrift.common.ttypes import TSStatus
 
 logger = Logger()
@@ -343,12 +343,31 @@ class ModelStorage(object):
         # Only support built-in models for now
         return os.path.join(self._builtin_model_dir, f"{model_id}")
 
-    def show_models(self) -> TShowModelsResp:
+    def show_models(self, req: TShowModelsReq) -> TShowModelsResp:
+        resp_status = TSStatus(
+            code=TSStatusCode.SUCCESS_STATUS.value,
+            message="Show models successfully",
+        )
+        if req.modelId:
+            if req.modelId in self._model_info_map:
+                model_info = self._model_info_map[req.modelId]
+                return TShowModelsResp(
+                    status=resp_status,
+                    modelIdList=[req.modelId],
+                    modelTypeMap={req.modelId: model_info.model_type},
+                    categoryMap={req.modelId: model_info.category.value},
+                    stateMap={req.modelId: model_info.state.value},
+                )
+            else:
+                return TShowModelsResp(
+                    status=resp_status,
+                    modelIdList=[],
+                    modelTypeMap={},
+                    categoryMap={},
+                    stateMap={},
+                )
         return TShowModelsResp(
-            status=TSStatus(
-                code=TSStatusCode.SUCCESS_STATUS.value,
-                message="Show models successfully",
-            ),
+            status=resp_status,
             modelIdList=list(self._model_info_map.keys()),
             modelTypeMap=dict(
                 (model_id, model_info.model_type)

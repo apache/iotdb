@@ -33,6 +33,7 @@ from ainode.thrift.ainode.ttypes import (
     TDeleteModelReq,
     TRegisterModelReq,
     TRegisterModelResp,
+    TShowModelsReq,
     TShowModelsResp,
 )
 from ainode.thrift.common.ttypes import TSStatus
@@ -141,8 +142,8 @@ class ModelManager:
         """
         return self.model_storage.get_ckpt_path(model_id)
 
-    def show_models(self) -> TShowModelsResp:
-        return self.model_storage.show_models()
+    def show_models(self, req: TShowModelsReq) -> TShowModelsResp:
+        return self.model_storage.show_models(req)
 
     def register_built_in_model(self, model_info: ModelInfo):
         self.model_storage.register_built_in_model(model_info)
