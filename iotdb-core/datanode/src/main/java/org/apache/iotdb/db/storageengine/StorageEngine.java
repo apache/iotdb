@@ -1087,7 +1087,7 @@ public class StorageEngine implements IService {
             .filter(
                 path -> {
                   String name = path.getFileName().toString();
-                  return name.endsWith(".bin.tmp") || name.endsWith(".bin.back");
+                  return name.endsWith(".bin.back");
                 })
             .forEach(
                 path -> {

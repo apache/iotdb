@@ -48,7 +48,6 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Optional;
 
-// TODO:[OBJECT] WAL serde
 public class ObjectNode extends SearchNode implements WALEntryValue {
 
   private final boolean isEOF;
@@ -59,9 +58,11 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   private String filePath;
 
-  private int contentLength;
+  private final int contentLength;
 
   private TRegionReplicaSet dataRegionReplicaSet;
+
+  private boolean isGeneratedByRemoteConsensusLeader;
 
   public ObjectNode(boolean isEOF, long offset, byte[] content, String filePath) {
     super(new PlanNodeId(""));
@@ -274,6 +275,15 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
   @Override
   public long getMemorySize() {
     return content.length;
+  }
+
+  @Override
+  public void markAsGeneratedByRemoteConsensusLeader() {
+    isGeneratedByRemoteConsensusLeader = true;
+  }
+
+  public boolean isGeneratedByRemoteConsensusLeader() {
+    return isGeneratedByRemoteConsensusLeader;
   }
 
   @Override

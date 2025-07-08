@@ -59,10 +59,15 @@ public class ObjectWriter implements AutoCloseable {
     fos = new FileOutputStream(filePath, true);
   }
 
-  public void write(boolean isEoF, long offset, byte[] content) throws IOException {
+  public void write(boolean isGeneratedByConsensus, long offset, byte[] content)
+      throws IOException {
     if (file.length() != offset) {
-      throw new IOException(
-          "The file length " + file.length() + " is not equal to the offset " + offset);
+      if (isGeneratedByConsensus || offset == 0) {
+        fos.getChannel().truncate(offset);
+      } else {
+        throw new IOException(
+            "The file length " + file.length() + " is not equal to the offset " + offset);
+      }
     }
     if (file.length() + content.length > config.getMaxObjectSizeInByte()) {
       throw new IOException("The file length is larger than max_object_file_size_in_bytes");

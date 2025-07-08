@@ -3037,7 +3037,10 @@ public class DataRegion implements IDataRegionForQuery {
       File objectTmpFile =
           FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeTmpPathString);
       try (ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
-        writer.write(objectNode.isEOF(), objectNode.getOffset(), objectNode.getContent());
+        writer.write(
+            objectNode.isGeneratedByRemoteConsensusLeader(),
+            objectNode.getOffset(),
+            objectNode.getContent());
       }
       if (objectNode.isEOF()) {
         File objectFile =

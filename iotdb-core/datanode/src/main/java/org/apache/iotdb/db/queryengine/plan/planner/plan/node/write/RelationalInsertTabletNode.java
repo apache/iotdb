@@ -423,6 +423,13 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
                 ((Binary[]) columns[i])[j] = new Binary(valueBytes);
               } else {
                 ((Binary[]) columns[i])[j] = null;
+                if (bitMaps == null) {
+                  bitMaps = new BitMap[columns.length];
+                }
+                if (bitMaps[i] == null) {
+                  bitMaps[i] = new BitMap(rowCount);
+                }
+                bitMaps[i].mark(j);
               }
             }
           }
