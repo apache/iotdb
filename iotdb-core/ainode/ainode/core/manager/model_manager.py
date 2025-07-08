@@ -21,10 +21,7 @@ from torch import nn
 from yaml import YAMLError
 
 from ainode.core.constant import TSStatusCode
-from ainode.core.exception import (
-    BadConfigValueError,
-    InvalidUriError,
-)
+from ainode.core.exception import BadConfigValueError, InvalidUriError
 from ainode.core.log import Logger
 from ainode.core.model.model_info import BuiltInModelType, ModelInfo, ModelStates
 from ainode.core.model.model_storage import ModelStorage

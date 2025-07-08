@@ -15,11 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from transformers.modeling_outputs import MoeCausalLMOutputWithPast
 import torch
+from transformers.modeling_outputs import MoeCausalLMOutputWithPast
+
 
 def _slice_tensor(t, s, e):
     return None if t is None else t[s:e]
+
 
 def _slice_tuple_of_tensors(tup, s, e):
     """
@@ -33,13 +35,15 @@ def _slice_tuple_of_tensors(tup, s, e):
         sliced.append(_slice_tensor(x, s, e) if torch.is_tensor(x) else x)
     return tuple(sliced)
 
+
 def _slice_pkv(pkv, s, e):
     if pkv is None:
         return None
     out = []
-    for layer in pkv:                       # layer: Tuple[key, value, ...]
+    for layer in pkv:  # layer: Tuple[key, value, ...]
         out.append(tuple(x[s:e] for x in layer))
     return out
+
 
 def split_moe_output(batch_out: MoeCausalLMOutputWithPast, split_sizes):
     """
@@ -52,11 +56,13 @@ def split_moe_output(batch_out: MoeCausalLMOutputWithPast, split_sizes):
         end = start + bsz
         outs.append(
             MoeCausalLMOutputWithPast(
-                loss           = _slice_tensor(batch_out.loss, start, end),
-                logits         = batch_out.logits[start:end],
-                past_key_values= _slice_pkv(batch_out.past_key_values, start, end),
-                hidden_states  = _slice_tuple_of_tensors(batch_out.hidden_states, start, end),
-                attentions     = _slice_tuple_of_tensors(batch_out.attentions,  start, end),
+                loss=_slice_tensor(batch_out.loss, start, end),
+                logits=batch_out.logits[start:end],
+                past_key_values=_slice_pkv(batch_out.past_key_values, start, end),
+                hidden_states=_slice_tuple_of_tensors(
+                    batch_out.hidden_states, start, end
+                ),
+                attentions=_slice_tuple_of_tensors(batch_out.attentions, start, end),
             )
         )
         start = end

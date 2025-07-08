@@ -371,7 +371,6 @@ def register_dataset(key: str, dataset: Dataset):
 
 @singleton
 class DatasetFactory(object):
-
     def __init__(self):
         self.dataset_list = {
             "iotdb.table": IoTDBTableModelDataset,
