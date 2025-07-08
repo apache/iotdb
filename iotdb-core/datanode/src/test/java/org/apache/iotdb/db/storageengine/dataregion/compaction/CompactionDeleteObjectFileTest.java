@@ -21,8 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -40,6 +40,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class CompactionDeleteObjectFileTest extends AbstractCompactionTest {
@@ -77,9 +78,18 @@ public class CompactionDeleteObjectFileTest extends AbstractCompactionTest {
       resources.add(resource);
     }
 
-    InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, resources, true, new ReadChunkCompactionPerformer(), 0);
+    //    InnerSpaceCompactionTask task =
+    //        new InnerSpaceCompactionTask(
+    //            0, tsFileManager, resources, true, new ReadChunkCompactionPerformer(), 0);
+    SettleCompactionTask task =
+        new SettleCompactionTask(
+            0,
+            tsFileManager,
+            resources,
+            Collections.emptyList(),
+            true,
+            new FastCompactionPerformer(false),
+            0);
     task.start();
   }
 }

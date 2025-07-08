@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
@@ -192,6 +193,11 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         performer.setTargetFiles(targetTsfileResourceList);
         performer.setSummary(summary);
         performer.perform();
+        if (performer instanceof ReadPointCompactionPerformer) {
+          for (TsFileResource resource : getAllSourceTsFiles()) {
+            CompactionUtils.removeDeletedObjectFiles(resource);
+          }
+        }
 
         CompactionUtils.updateProgressIndexAndMark(
             targetTsfileResourceList, selectedSequenceFiles, selectedUnsequenceFiles);
