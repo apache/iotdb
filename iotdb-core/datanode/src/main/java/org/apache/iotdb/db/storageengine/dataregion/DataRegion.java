@@ -347,8 +347,6 @@ public class DataRegion implements IDataRegionForQuery {
   private ILoadDiskSelector ordinaryLoadDiskSelector;
   private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
 
-  public AtomicLong objectFileId = new AtomicLong(0);
-
   /**
    * Construct a database processor.
    *
@@ -821,14 +819,6 @@ public class DataRegion implements IDataRegionForQuery {
 
             File[] objectFileInThisFolder =
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), ".bin");
-            for (File f : objectFileInThisFolder) {
-              objectFileId.updateAndGet(
-                  current ->
-                      Math.max(
-                          current,
-                          Long.parseLong(
-                              f.getName().substring(0, f.getName().length() - 4).split("-")[2])));
-            }
             File[] objectTmpFileInThisFolder =
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), ".bin.tmp");
             for (File f : objectTmpFileInThisFolder) {
@@ -868,14 +858,18 @@ public class DataRegion implements IDataRegionForQuery {
           } else {
             File[] objectFileInThisFolder =
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), ".bin");
-            for (File f : objectFileInThisFolder) {
-              objectFileId.updateAndGet(
-                  current ->
-                      Math.max(
-                          current,
-                          Long.parseLong(
-                              f.getName().substring(0, f.getName().length() - 4).split("-")[2])));
-            }
+            //            for (File f : objectFileInThisFolder) {
+            //              StorageEngine.getInstance()
+            //                  .objectFileId
+            //                  .updateAndGet(
+            //                      current ->
+            //                          Math.max(
+            //                              current,
+            //                              Long.parseLong(
+            //                                  f.getName()
+            //                                      .substring(0, f.getName().length() - 4)
+            //                                      .split("-")[2])));
+            //            }
             File[] objectTmpFileInThisFolder =
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), ".bin.tmp");
             for (File f : objectTmpFileInThisFolder) {

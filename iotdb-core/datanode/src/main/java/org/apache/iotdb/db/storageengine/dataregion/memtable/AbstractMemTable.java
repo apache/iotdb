@@ -356,7 +356,7 @@ public abstract class AbstractMemTable implements IMemTable {
           createAlignedMemChunkGroupIfNotExistAndGet(deviceID, schemaList);
       memChunkGroup.writeTablet(
           insertTabletNode.getTimes(),
-          insertTabletNode.getColumns(),
+          insertTabletNode.getColumnsAndConvertObjects(),
           insertTabletNode.getBitMaps(),
           schemaList,
           splitStart,

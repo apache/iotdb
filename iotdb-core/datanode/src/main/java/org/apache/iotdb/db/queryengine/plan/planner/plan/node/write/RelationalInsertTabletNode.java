@@ -39,7 +39,6 @@ import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -60,7 +59,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   private boolean singleDevice;
 
-  private List<List<FileNode>> fileNodesList;
+  private Object[] convertedColumns;
 
   public RelationalInsertTabletNode(
       PlanNodeId id,
@@ -110,14 +109,6 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   public void setSingleDevice() {
     this.singleDevice = true;
-  }
-
-  public void setFileNodeList(List<List<FileNode>> fileNodesList) {
-    this.fileNodesList = fileNodesList;
-  }
-
-  public List<List<FileNode>> getFileNodeList() {
-    return fileNodesList;
   }
 
   public List<Binary[]> getObjectColumns() {
@@ -395,29 +386,35 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     }
   }
 
-  public void handleObjectTypeValue() {
-    List<List<FileNode>> fileNodesList = new ArrayList<>();
-    for (int i = 0; i < dataTypes.length; i++) {
+  public boolean hasObjectValue() {
+    for (int i = 0; i < columns.length; i++) {
       if (dataTypes[i] == TSDataType.OBJECT) {
-        List<FileNode> fileNodes = new ArrayList<>();
-        for (int j = 0; j < times.length; j++) {
-          Binary value = ((Binary[]) columns[i])[j];
-          boolean isEoF = value.getValues()[0] == 1;
-          byte[] offsetBytes = new byte[8];
-          System.arraycopy(value.getValues(), 1, offsetBytes, 0, 8);
-          long offset = BytesUtils.bytesToLong(offsetBytes);
-          byte[] content = new byte[value.getLength() - 9];
-          System.arraycopy(value.getValues(), 9, content, 0, value.getLength() - 9);
-          FileNode fileNode = new FileNode(isEoF, offset, content);
-          fileNode.setSearchIndex(this.getSearchIndex());
-          fileNodes.add(fileNode);
-          ((Binary[]) columns[i])[j] = null;
-        }
-        fileNodesList.add(fileNodes);
+        return true;
       }
     }
-    if (!fileNodesList.isEmpty()) {
-      this.fileNodesList = fileNodesList;
+    return false;
+  }
+
+  public void setConvertedObjectValue(Binary objectValue, int column, int row) {
+    if (convertedColumns == null) {
+      convertedColumns = new Object[columns.length];
+      for (int i = 0; i < columns.length; i++) {
+        if (dataTypes[i] == TSDataType.OBJECT) {
+          convertedColumns[i] = new Binary[((Binary[]) columns[i]).length];
+        } else {
+          convertedColumns[i] = columns[i];
+        }
+      }
+    }
+    ((Binary[]) convertedColumns[column])[row] = objectValue;
+  }
+
+  @Override
+  public Object[] getColumnsAndConvertObjects() {
+    if (!hasObjectValue()) {
+      return columns;
+    } else {
+      return convertedColumns;
     }
   }
 }

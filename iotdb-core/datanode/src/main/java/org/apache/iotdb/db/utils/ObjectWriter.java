@@ -21,7 +21,6 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.FileNode;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -60,18 +59,15 @@ public class ObjectWriter implements AutoCloseable {
     fos = new FileOutputStream(filePath, true);
   }
 
-  public void write(FileNode fileNode) throws IOException {
-    if (file.length() != fileNode.getOffset()) {
+  public void write(boolean isEoF, long offset, byte[] content) throws IOException {
+    if (file.length() != offset) {
       throw new IOException(
-          "The file length "
-              + file.length()
-              + " is not equal to the offset "
-              + fileNode.getOffset());
+          "The file length " + file.length() + " is not equal to the offset " + offset);
     }
-    if (file.length() + fileNode.getContent().length > config.getMaxObjectSizeInByte()) {
+    if (file.length() + content.length > config.getMaxObjectSizeInByte()) {
       throw new IOException("The file length is larger than max_object_file_size_in_bytes");
     }
-    fos.write(fileNode.getContent());
+    fos.write(content);
   }
 
   @Override

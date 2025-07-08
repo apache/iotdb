@@ -21,7 +21,9 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.generator;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
@@ -165,6 +167,20 @@ public class TsFileNameGenerator {
     } else {
       throw new IOException("tsfile file name format is incorrect:" + fileName);
     }
+  }
+
+  public static String generateObjectFilePath(
+      long time, int datanodeId, String databaseName, int dataRegionId) {
+    String objectFileName = time + ".bin";
+    String relativePathString =
+        databaseName
+            + File.separator
+            + dataRegionId
+            + File.separator
+            + TimePartitionUtils.getTimePartitionId(time)
+            + File.separator
+            + objectFileName;
+    return relativePathString;
   }
 
   @TestOnly

@@ -167,6 +167,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return columns;
   }
 
+  public Object[] getColumnsAndConvertObjects() {
+    return columns;
+  }
+
   public void setColumns(Object[] columns) {
     this.columns = columns;
   }

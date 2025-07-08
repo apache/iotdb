@@ -43,7 +43,6 @@ import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.FileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -96,12 +95,14 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -1021,7 +1022,9 @@ public class TsFileProcessor {
     // TEXT data size
     if (dataType.isBinary()) {
       Binary[] binColumn = (Binary[]) column;
-      memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end, null);
+      if (dataType != TSDataType.OBJECT) {
+        memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end, null);
+      }
     }
   }
 
@@ -2346,57 +2349,34 @@ public class TsFileProcessor {
       InsertTabletNode insertTabletNode, List<int[]> rangeList, TSStatus[] results)
       throws WriteProcessException {
     if (insertTabletNode instanceof RelationalInsertTabletNode) {
-      RelationalInsertTabletNode relationalInsertTabletNode =
-          (RelationalInsertTabletNode) insertTabletNode;
-      List<List<FileNode>> fileNodesList = relationalInsertTabletNode.getFileNodeList();
-      if (fileNodesList != null) {
-        for (int j = 0; j < fileNodesList.size(); j++) {
-          List<FileNode> fileNodeList = fileNodesList.get(j);
-          for (int i = 0; i < fileNodeList.size(); i++) {
-            FileNode fileNode = fileNodeList.get(i);
-            String objectFileName =
-                insertTabletNode.getTimes()[i]
-                    + "-"
-                    + config.getDataNodeId()
-                    + "-"
-                    + dataRegionInfo.getDataRegion().objectFileId.incrementAndGet()
-                    + ".bin";
-            String objectTmpFileName = objectFileName + ".tmp";
+      RelationalInsertTabletNode node = (RelationalInsertTabletNode) insertTabletNode;
+      for (int j = 0; j < node.getColumns().length; j++) {
+        if (node.getDataType(j) == TSDataType.OBJECT) {
+          Binary[] objectColumn = node.getObjectColumns().get(j);
+          for (int i = 0; i < node.getTimes().length; i++) {
+            ByteBuffer buffer = ByteBuffer.wrap(objectColumn[i].getValues()).duplicate();
+            String relativePathString = ReadWriteIOUtils.readString(buffer);
+            boolean isEoF = ReadWriteIOUtils.readBool(buffer);
+            long offset = ReadWriteIOUtils.readLong(buffer);
+            byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
+            String relativeTmpPathString = relativePathString + ".tmp";
+            String objectFileDir;
             File objectTmpFile;
-            String relativePathString =
-                dataRegionInfo.getDataRegion().getDatabaseName()
-                    + File.separator
-                    + dataRegionInfo.getDataRegion().getDataRegionId()
-                    + File.separator
-                    + tsFileResource.getTsFileID().timePartitionId
-                    + File.separator
-                    + objectFileName;
             try {
-              String baseDir = TierManager.getInstance().getNextFolderForObjectFile();
-              String objectFileDir =
-                  baseDir
-                      + File.separator
-                      + dataRegionInfo.getDataRegion().getDatabaseName()
-                      + File.separator
-                      + dataRegionInfo.getDataRegion().getDataRegionId()
-                      + File.separator
-                      + tsFileResource.getTsFileID().timePartitionId;
-
+              objectFileDir = TierManager.getInstance().getNextFolderForObjectFile();
               objectTmpFile =
-                  FSFactoryProducer.getFSFactory().getFile(objectFileDir, objectTmpFileName);
+                  FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeTmpPathString);
               try (ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
-                writer.write(fileNode);
+                writer.write(isEoF, offset, content);
               }
-              fileNode.setFilePath(relativePathString);
             } catch (Exception e) {
               results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
               throw new WriteProcessException(e);
             }
             // TODO:[OBJECT] write file node wal
-            if (fileNode.isEOF()) {
+            if (isEoF) {
               File objectFile =
-                  FSFactoryProducer.getFSFactory()
-                      .getFile(objectTmpFile.getParentFile(), objectFileName);
+                  FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativePathString);
               try {
                 Files.move(
                     objectTmpFile.toPath(),
@@ -2411,19 +2391,23 @@ public class TsFileProcessor {
               System.arraycopy(
                   BytesUtils.longToBytes(objectFile.length()), 0, valueBytes, 0, Long.BYTES);
               System.arraycopy(filePathBytes, 0, valueBytes, Long.BYTES, filePathBytes.length);
-              (relationalInsertTabletNode.getObjectColumns().get(j))[i] = new Binary(valueBytes);
+              node.setConvertedObjectValue(new Binary(valueBytes), j, i);
+            } else {
+              node.setConvertedObjectValue(null, j, i);
             }
 
-            WALFlushListener walFlushListener;
-            try {
-              walFlushListener = walNode.log(workMemTable.getMemTableId(), fileNode);
-              if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
-                throw walFlushListener.getCause();
-              }
-            } catch (Exception e) {
-              results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-              throw new WriteProcessException(e);
-            }
+            //            WALFlushListener walFlushListener;
+            //            try {
+            //              walFlushListener = walNode.log(workMemTable.getMemTableId(), fileNode);
+            //              if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE)
+            // {
+            //                throw walFlushListener.getCause();
+            //              }
+            //            } catch (Exception e) {
+            //              results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR,
+            // e.getMessage());
+            //              throw new WriteProcessException(e);
+            //            }
           }
         }
       }

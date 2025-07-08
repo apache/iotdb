@@ -82,8 +82,7 @@ public class ObjectExample {
           true,
           0,
           Files.readAllBytes(
-              Paths.get(
-                  "/Users/jackietien/Downloads/2_1746622362350_fa24aa15233f4e76bcda789a5771f43f")));
+              Paths.get("/Users/ht/Downloads/2_1746622362350_fa24aa15233f4e76bcda789a5771f43f")));
       session.insert(tablet);
       tablet.reset();
 
@@ -104,38 +103,38 @@ public class ObjectExample {
                   "/Users/jackietien/Downloads/2_1746622367063_8fb5ac8e21724140874195b60b878664")));
       session.insert(tablet);
       tablet.reset();
-
-      tablet = new Tablet("tiff_table", columnNameList, dataTypeList, columnTypeList, 1);
-      rowIndex = tablet.getRowSize();
-      tablet.addTimestamp(rowIndex, 1);
-      tablet.addValue(rowIndex, 0, "1");
-      tablet.addValue(rowIndex, 1, "5");
-      tablet.addValue(rowIndex, 2, "3");
-      tablet.addValue(rowIndex, 3, 37.6F);
-      tablet.addValue(
-          rowIndex,
-          4,
-          true,
-          0,
-          Files.readAllBytes(Paths.get("/Users/jackietien/Downloads/1751891240130.tiff")));
-      session.insert(tablet);
-      tablet.reset();
-
-      tablet = new Tablet("tiff_table", columnNameList, dataTypeList, columnTypeList, 1);
-      rowIndex = tablet.getRowSize();
-      tablet.addTimestamp(rowIndex, 2);
-      tablet.addValue(rowIndex, 0, "1");
-      tablet.addValue(rowIndex, 1, "5");
-      tablet.addValue(rowIndex, 2, "4");
-      tablet.addValue(rowIndex, 3, 37.6F);
-      tablet.addValue(
-          rowIndex,
-          4,
-          true,
-          0,
-          Files.readAllBytes(Paths.get("/Users/jackietien/Downloads/1751891242743.tiff")));
-      session.insert(tablet);
-      tablet.reset();
+      //
+      //      tablet = new Tablet("tiff_table", columnNameList, dataTypeList, columnTypeList, 1);
+      //      rowIndex = tablet.getRowSize();
+      //      tablet.addTimestamp(rowIndex, 1);
+      //      tablet.addValue(rowIndex, 0, "1");
+      //      tablet.addValue(rowIndex, 1, "5");
+      //      tablet.addValue(rowIndex, 2, "3");
+      //      tablet.addValue(rowIndex, 3, 37.6F);
+      //      tablet.addValue(
+      //          rowIndex,
+      //          4,
+      //          true,
+      //          0,
+      //          Files.readAllBytes(Paths.get("/Users/jackietien/Downloads/1751891240130.tiff")));
+      //      session.insert(tablet);
+      //      tablet.reset();
+      //
+      //      tablet = new Tablet("tiff_table", columnNameList, dataTypeList, columnTypeList, 1);
+      //      rowIndex = tablet.getRowSize();
+      //      tablet.addTimestamp(rowIndex, 2);
+      //      tablet.addValue(rowIndex, 0, "1");
+      //      tablet.addValue(rowIndex, 1, "5");
+      //      tablet.addValue(rowIndex, 2, "4");
+      //      tablet.addValue(rowIndex, 3, 37.6F);
+      //      tablet.addValue(
+      //          rowIndex,
+      //          4,
+      //          true,
+      //          0,
+      //          Files.readAllBytes(Paths.get("/Users/jackietien/Downloads/1751891242743.tiff")));
+      //      session.insert(tablet);
+      //      tablet.reset();
 
     } catch (IoTDBConnectionException e) {
       e.printStackTrace();
