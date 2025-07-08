@@ -344,6 +344,7 @@ public class TransformOperator implements ProcessOperator {
           break;
         case TEXT:
         case BLOB:
+        case OBJECT:
         case STRING:
           writer.writeBinary(valueColumn.getBinary(currentIndex));
           break;

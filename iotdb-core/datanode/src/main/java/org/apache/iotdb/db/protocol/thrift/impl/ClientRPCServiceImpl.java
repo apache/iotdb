@@ -844,7 +844,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     IMeasurementSchema measurementSchema = new MeasurementSchema(measurement, dataType);
     AbstractSeriesAggregationScanOperator operator;
     boolean canUseStatistics =
-        !TSDataType.BLOB.equals(dataType)
+        (!TSDataType.BLOB.equals(dataType) && !TSDataType.OBJECT.equals(dataType))
             || (!TAggregationType.LAST_VALUE.equals(aggregationType)
                 && !TAggregationType.FIRST_VALUE.equals(aggregationType));
     IFullPath path;

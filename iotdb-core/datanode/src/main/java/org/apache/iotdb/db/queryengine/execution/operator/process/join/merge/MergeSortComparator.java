@@ -113,6 +113,7 @@ public class MergeSortComparator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         comparator =
             Comparator.comparing(

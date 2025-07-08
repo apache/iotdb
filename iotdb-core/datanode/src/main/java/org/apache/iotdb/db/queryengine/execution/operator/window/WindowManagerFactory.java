@@ -70,6 +70,7 @@ public class WindowManagerFactory {
       case BOOLEAN:
         return new EqualBooleanWindowManager(eventWindowParameter, ascending);
       case BLOB:
+      case OBJECT:
       case STRING:
       case TIMESTAMP:
       case DATE:
@@ -97,6 +98,7 @@ public class WindowManagerFactory {
       case STRING:
       case BOOLEAN:
       case BLOB:
+      case OBJECT:
       case TEXT:
       default:
         throw new UnSupportedDataTypeException(

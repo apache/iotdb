@@ -59,6 +59,7 @@ public class ArithmeticNegationTransformer extends UnaryTransformer {
       case TEXT:
       case TIMESTAMP:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case STRING:
       default:

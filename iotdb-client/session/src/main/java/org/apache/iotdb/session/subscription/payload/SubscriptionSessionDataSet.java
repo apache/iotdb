@@ -242,6 +242,7 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         final Binary binaryValue = new Binary((((Binary[]) value)[index]).getValues());
         field.setBinaryV(binaryValue);
         break;

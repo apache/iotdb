@@ -66,6 +66,7 @@ public class UDTFEqualSizeBucketRandomSample extends UDTFEqualSizeBucketSample {
       case DATE:
       case STRING:
       case BLOB:
+      case OBJECT:
       case TEXT:
       default:
         // This will not happen

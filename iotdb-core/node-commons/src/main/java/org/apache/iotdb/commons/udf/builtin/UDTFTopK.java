@@ -53,6 +53,7 @@ public class UDTFTopK extends UDTFSelectK {
         break;
       case BOOLEAN:
       case BLOB:
+      case OBJECT:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(

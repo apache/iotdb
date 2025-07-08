@@ -95,6 +95,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(groupIds, arguments[0], mask);
         break;
       default:
@@ -166,6 +167,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         columnBuilder.writeBinary(maxEntry.getKey().getBinary());
         break;
       default:
@@ -270,6 +272,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         bytes =
             new byte
                 [offset
@@ -366,6 +369,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         for (int i = 0; i < size; i++) {
           int length = BytesUtils.bytesToInt(bytes, offset);
           offset += Integer.BYTES;

@@ -107,6 +107,7 @@ public class SerializableRowList implements SerializableList {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           rowLength +=
               MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + byteArrayLengthForMemoryControl;
           break;
@@ -214,6 +215,7 @@ public class SerializableRowList implements SerializableList {
             case TEXT:
             case BLOB:
             case STRING:
+            case OBJECT:
               row[i] = block[i].getBinary(offset);
               break;
             default:

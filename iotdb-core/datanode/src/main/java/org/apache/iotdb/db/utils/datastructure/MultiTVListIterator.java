@@ -137,6 +137,7 @@ public abstract class MultiTVListIterator implements MemPointIterator {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           builder.getColumnBuilder(0).writeBinary(iterator.getTVList().getBinary(rowIndex));
           break;
         default:

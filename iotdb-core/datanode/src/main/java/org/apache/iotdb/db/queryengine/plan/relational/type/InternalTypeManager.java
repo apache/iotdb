@@ -136,6 +136,8 @@ public class InternalTypeManager implements TypeManager {
         return TIMESTAMP;
       case BLOB:
         return BLOB;
+      case OBJECT:
+        return OBJECT;
       case STRING:
         return STRING;
       case OBJECT:

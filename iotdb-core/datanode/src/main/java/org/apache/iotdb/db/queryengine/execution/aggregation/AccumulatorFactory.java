@@ -160,6 +160,7 @@ public class AccumulatorFactory {
       case DOUBLE:
         return new DoubleModeAccumulator();
       case BLOB:
+      case OBJECT:
       case STRING:
       case TIMESTAMP:
       case DATE:

@@ -83,6 +83,7 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
         return;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case STRING:

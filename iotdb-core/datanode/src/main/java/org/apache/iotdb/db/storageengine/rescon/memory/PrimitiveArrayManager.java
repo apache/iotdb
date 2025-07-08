@@ -343,6 +343,7 @@ public class PrimitiveArrayManager {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         Binary[][] binaries = new Binary[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
           binaries[i] = new Binary[ARRAY_SIZE];

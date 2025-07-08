@@ -78,6 +78,7 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(groupIds, arguments[0], mask, hlls, maxStandardError);
         return;
       default:

@@ -482,6 +482,7 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
         aggregator.aggregateDouble(rowWindow, collector);
         break;
       case BLOB:
+      case OBJECT:
       case TEXT:
       case DATE:
       case STRING:

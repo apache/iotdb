@@ -325,6 +325,7 @@ public class TypeInferenceUtils {
       case DATE:
       case TIMESTAMP:
       case BLOB:
+      case OBJECT:
       case STRING:
         return false;
       default:
