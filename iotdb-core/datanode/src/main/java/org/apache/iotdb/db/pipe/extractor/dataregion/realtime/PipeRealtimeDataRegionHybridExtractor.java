@@ -342,6 +342,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
           PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
 
       if (suppliedEvent != null) {
+        maySkipIndex4Event(realtimeEvent);
         return suppliedEvent;
       }
 
@@ -446,6 +447,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
           LOGGER.error(errorMessage);
           PipeDataNodeAgent.runtime()
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+          PipeTsFileEpochProgressIndexKeeper.getInstance()
+              .eliminateProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
           return null;
         }
     }
