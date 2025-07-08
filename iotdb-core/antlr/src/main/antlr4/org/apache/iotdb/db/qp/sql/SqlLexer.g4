@@ -756,6 +756,12 @@ SCHEMA
     : S C H E M A
     ;
 
+
+SECURITY
+    : S E C U R I T Y
+    ;
+
+
 SELECT
     : S E L E C T
     ;

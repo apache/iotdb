@@ -131,7 +131,17 @@ dropPartition
 
 // ---- Alter Database
 alterDatabase
-    : ALTER (STORAGE GROUP | DATABASE) prefixPath databaseAttributesClause
+   : ALTER (STORAGE GROUP | DATABASE) prefixPath databaseAttributesClause #alterDatabaseProperty
+    | ALTER DATABASE prefixPath SET SECURITY_LABEL LR_BRACKET securityLabelClause RR_BRACKET #alterDatabaseSecurityLabel
+    | ALTER DATABASE prefixPath DROP SECURITY_LABEL #dropDatabaseSecurityLabel
+    ;
+
+securityLabelClause
+    : securityLabelPair (COMMA securityLabelPair)*
+    ;
+
+securityLabelPair
+    : key=identifier operator_eq value=(STRING_LITERAL | INTEGER_LITERAL)
     ;
 
 // ---- Show Databases
