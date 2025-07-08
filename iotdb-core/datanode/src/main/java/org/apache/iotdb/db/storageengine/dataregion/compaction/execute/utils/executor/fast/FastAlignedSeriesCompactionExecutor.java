@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
@@ -171,7 +172,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
             new ChunkMetadataElement(
                 alignedChunkMetadataList.get(i),
                 i == alignedChunkMetadataList.size() - 1,
-                fileElement));
+                fileElement,
+                measurementSchemas));
       }
     }
   }
@@ -259,6 +261,12 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                   throw new RuntimeException(e);
                 }
               });
+
+      CompactionUtils.removeDeletedObjectFiles(
+          readerCacheMap.get(resource),
+          alignedChunkMetadataList,
+          timeModifications,
+          valueModifications);
 
       // modify aligned chunk metadatas
       ModificationUtils.modifyAlignedChunkMetaData(
