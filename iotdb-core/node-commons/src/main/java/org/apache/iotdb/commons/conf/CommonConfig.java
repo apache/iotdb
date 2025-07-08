@@ -255,7 +255,7 @@ public class CommonConfig {
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
   private long pipeSubtaskExecutorForcedRestartIntervalMs = Long.MAX_VALUE;
 
-  private long pipeMaxWaitFinishTime = 2 * 60 * 1000;
+  private long pipeMaxWaitFinishTime = 10 * 1000;
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
