@@ -538,7 +538,6 @@ public class DataRegion implements IDataRegionForQuery {
           getAllFiles(TierManager.getInstance().getAllLocalSequenceFileFolders());
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
           getAllFiles(TierManager.getInstance().getAllLocalUnSequenceFileFolders());
-      checkObjectFiles(TierManager.getInstance().getAllObjectFileFolders());
       DataRegionRecoveryContext dataRegionRecoveryContext =
           new DataRegionRecoveryContext(
               partitionTmpSeqTsFiles.values().stream().mapToLong(List::size).sum()
@@ -819,15 +818,6 @@ public class DataRegion implements IDataRegionForQuery {
               String tsFilePartitionPath = partitionName + File.separator + f.getName();
               tsFilePartitionPath2File.put(tsFilePartitionPath, f);
             }
-
-            File[] objectFileInThisFolder =
-                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), ".bin");
-            File[] objectTmpFileInThisFolder =
-                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), ".bin.tmp");
-            for (File f : objectTmpFileInThisFolder) {
-              // remove bin.tmp
-              Files.delete(f.toPath());
-            }
           }
         }
       }
@@ -845,44 +835,6 @@ public class DataRegion implements IDataRegionForQuery {
           .add(resource);
     }
     return ret;
-  }
-
-  private void checkObjectFiles(List<String> folders) throws IOException {
-    for (String baseDir : folders) {
-      File fileFolder = fsFactory.getFile(baseDir + File.separator + databaseName, dataRegionId);
-      if (!fileFolder.exists()) {
-        continue;
-      }
-      File[] subFiles = fileFolder.listFiles();
-      if (subFiles != null) {
-        for (File partitionFolder : subFiles) {
-          if (!partitionFolder.isDirectory()) {
-            logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
-          } else {
-            File[] objectFileInThisFolder =
-                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), ".bin");
-            //            for (File f : objectFileInThisFolder) {
-            //              StorageEngine.getInstance()
-            //                  .objectFileId
-            //                  .updateAndGet(
-            //                      current ->
-            //                          Math.max(
-            //                              current,
-            //                              Long.parseLong(
-            //                                  f.getName()
-            //                                      .substring(0, f.getName().length() - 4)
-            //                                      .split("-")[2])));
-            //            }
-            File[] objectTmpFileInThisFolder =
-                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), ".bin.tmp");
-            for (File f : objectTmpFileInThisFolder) {
-              // remove bin.tmp
-              Files.delete(f.toPath());
-            }
-          }
-        }
-      }
-    }
   }
 
   private void continueFailedRenames(File fileFolder, String suffix) throws IOException {
@@ -3090,8 +3042,19 @@ public class DataRegion implements IDataRegionForQuery {
       if (objectNode.isEOF()) {
         File objectFile =
             FSFactoryProducer.getFSFactory().getFile(objectFileDir, objectNode.getFilePath());
-        Files.move(
-            objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        if (objectFile.exists()) {
+          String relativeBackPathString = objectNode.getFilePath() + ".back";
+          File objectBackFile =
+              FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeBackPathString);
+          Files.move(
+              objectFile.toPath(), objectBackFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          Files.move(
+              objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          Files.delete(objectBackFile.toPath());
+        } else {
+          Files.move(
+              objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
       }
       getWALNode()
           .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));
