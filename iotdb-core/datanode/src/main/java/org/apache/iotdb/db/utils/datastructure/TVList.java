@@ -576,6 +576,7 @@ public abstract class TVList implements WALEntryValue {
     switch (dataType) {
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         return BinaryTVList.deserialize(stream);
       case FLOAT:

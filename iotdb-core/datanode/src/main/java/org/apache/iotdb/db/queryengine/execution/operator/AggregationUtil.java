@@ -262,6 +262,7 @@ public class AggregationUtil {
         return BooleanColumn.SIZE_IN_BYTES_PER_POSITION;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         return StatisticsManager.getInstance().getMaxBinarySizeInBytes();
       default:

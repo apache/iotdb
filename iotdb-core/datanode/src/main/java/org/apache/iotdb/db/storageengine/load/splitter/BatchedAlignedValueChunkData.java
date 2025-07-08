@@ -115,6 +115,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
               break;
             case TEXT:
             case BLOB:
+            case OBJECT:
             case STRING:
               dataSize += ReadWriteIOUtils.write(values[i].getBinary(), stream);
               break;
@@ -204,6 +205,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
             break;
           case TEXT:
           case BLOB:
+          case OBJECT:
           case STRING:
             final Binary binaryValue =
                 isNull ? DEFAULT_BINARY : ReadWriteIOUtils.readBinary(stream);

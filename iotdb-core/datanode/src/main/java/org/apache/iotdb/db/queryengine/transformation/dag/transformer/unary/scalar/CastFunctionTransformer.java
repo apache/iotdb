@@ -68,6 +68,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
       case TEXT:
         return castBinaries(columns);
       case BLOB:
+      case OBJECT:
       case STRING:
       case TIMESTAMP:
       case DATE:
@@ -139,6 +140,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         break;
       case STRING:
       case BLOB:
+      case OBJECT:
       case TIMESTAMP:
       case DATE:
       case INT32:
@@ -213,6 +215,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         }
         break;
       case BLOB:
+      case OBJECT:
       case STRING:
       case DATE:
       case TIMESTAMP:
@@ -288,6 +291,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         }
         break;
       case BLOB:
+      case OBJECT:
       case STRING:
       case TIMESTAMP:
       case DATE:
@@ -363,6 +367,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         }
         break;
       case BLOB:
+      case OBJECT:
       case STRING:
       case TIMESTAMP:
       case DATE:
@@ -439,6 +444,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         break;
       case STRING:
       case BLOB:
+      case OBJECT:
       case DATE:
       case TIMESTAMP:
       case BOOLEAN:
@@ -521,6 +527,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
       case DATE:
       case STRING:
       case BLOB:
+      case OBJECT:
       case TEXT:
       default:
         throw new UnsupportedOperationException(

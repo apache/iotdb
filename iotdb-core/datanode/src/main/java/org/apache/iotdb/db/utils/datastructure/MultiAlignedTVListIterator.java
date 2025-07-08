@@ -193,6 +193,7 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
             break;
           case TEXT:
           case BLOB:
+          case OBJECT:
           case STRING:
             valueBuilder.writeBinary(
                 alignedTVList.getBinaryByValueIndex(valueIndex, validColumnIndex));

@@ -80,6 +80,7 @@ public class FirstAccumulator implements TableAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(arguments[0], arguments[1], mask);
         return;
       case BOOLEAN:
@@ -130,6 +131,7 @@ public class FirstAccumulator implements TableAccumulator {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           int length = BytesUtils.bytesToInt(bytes, offset);
           offset += Integer.BYTES;
           Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
@@ -182,6 +184,7 @@ public class FirstAccumulator implements TableAccumulator {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           columnBuilder.writeBinary(firstValue.getBinary());
           break;
         case BOOLEAN:
@@ -225,6 +228,7 @@ public class FirstAccumulator implements TableAccumulator {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         updateBinaryFirstValue(
             (Binary) statistics[0].getFirstValue(), statistics[0].getStartTime());
         break;

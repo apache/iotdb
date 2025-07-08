@@ -90,6 +90,7 @@ public class FileNode extends SearchNode implements WALEntryValue {
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    // TODO haonan only need relativePath, offset, length, eof
     buffer.putShort(getType().getNodeType());
     buffer.putLong(searchIndex);
     buffer.put((byte) (isEOF ? 1 : 0));
@@ -109,6 +110,8 @@ public class FileNode extends SearchNode implements WALEntryValue {
   }
 
   public static FileNode deserializeFromWAL(DataInputStream stream) throws IOException {
+    // TODO haonan only be called in recovery, should only deserialize relativePath, offset, eof,
+    // length
     long searchIndex = stream.readLong();
     boolean isEOF = stream.readByte() == 1;
     long offset = stream.readLong();

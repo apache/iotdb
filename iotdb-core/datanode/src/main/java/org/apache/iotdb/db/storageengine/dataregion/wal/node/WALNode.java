@@ -781,6 +781,11 @@ public class WALNode implements IWALNode {
                   WALEntry walEntry =
                       WALEntry.deserialize(
                           new DataInputStream(new ByteArrayInputStream(buffer.array())));
+                  // TODO haonan only be called by leader read from wal
+                  //  only have relativePath, offset, eof, length
+                  // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
+                  // filecontent
+                  // need to add IoTConsensusRequest instead of FileNode
                   tmpNodes.get().add((FileNode) walEntry.getValue());
                 } else {
                   tmpNodes.get().add(new IoTConsensusRequest(buffer));

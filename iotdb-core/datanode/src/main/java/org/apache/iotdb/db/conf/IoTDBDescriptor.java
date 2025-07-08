@@ -2579,6 +2579,7 @@ public class IoTDBDescriptor {
         return conf.getDefaultDoubleEncoding();
       case STRING:
       case BLOB:
+      case OBJECT:
       case TEXT:
       default:
         return conf.getDefaultTextEncoding();

@@ -366,6 +366,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             valueBuilder.writeBinary(values[columnIndex].getBinary());
             break;
           default:

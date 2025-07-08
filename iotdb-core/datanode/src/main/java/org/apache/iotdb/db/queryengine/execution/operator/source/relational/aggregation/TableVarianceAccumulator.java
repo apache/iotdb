@@ -79,6 +79,7 @@ public class TableVarianceAccumulator implements TableAccumulator {
         return;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case STRING:
@@ -106,6 +107,7 @@ public class TableVarianceAccumulator implements TableAccumulator {
         return;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case STRING:

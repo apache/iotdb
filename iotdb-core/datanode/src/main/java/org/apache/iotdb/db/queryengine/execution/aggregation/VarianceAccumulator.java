@@ -70,6 +70,7 @@ public class VarianceAccumulator implements Accumulator {
         return;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case STRING:

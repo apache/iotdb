@@ -959,8 +959,8 @@ public class SeriesScanUtil implements Accountable {
         break;
       case TEXT:
       case BLOB:
-      case STRING:
       case OBJECT:
+      case STRING:
         builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
         break;
       case VECTOR:

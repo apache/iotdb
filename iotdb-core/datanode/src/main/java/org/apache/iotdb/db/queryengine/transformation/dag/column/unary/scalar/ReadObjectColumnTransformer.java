@@ -102,6 +102,7 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
   }
 
   private void transform(Column column, ColumnBuilder columnBuilder, int i) {
+    // BinaryColumn.getDataType() returns TSDataType.TEXT
     if (TSDataType.TEXT == column.getDataType()) {
       Binary binary = column.getBinary(i);
       columnBuilder.writeBinary(readObject(binary));

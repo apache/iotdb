@@ -136,10 +136,10 @@ public class InternalTypeManager implements TypeManager {
         return TIMESTAMP;
       case BLOB:
         return BLOB;
-      case STRING:
-        return STRING;
       case OBJECT:
         return OBJECT;
+      case STRING:
+        return STRING;
       default:
         throw new IllegalArgumentException();
     }
