@@ -396,9 +396,6 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   public void handleObjectTypeValue() {
-    if (isGeneratedByRemoteConsensusLeader) {
-      return;
-    }
     List<List<FileNode>> fileNodesList = new ArrayList<>();
     for (int i = 0; i < dataTypes.length; i++) {
       if (dataTypes[i] == TSDataType.OBJECT) {
