@@ -65,7 +65,7 @@ safetensors = "^0.5.1"
 huggingface_hub = "^0.30.1"
 black = "25.1.0"
 isort = "6.0.1"
-transformers = "==4.40.1"
+transformers = "==4.52.1"
 torchmetrics = ">=1.2.0"
 
 [tool.poetry.scripts]
