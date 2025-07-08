@@ -126,7 +126,7 @@ public class ObjectExample {
       tablet.addTimestamp(rowIndex, 2);
       tablet.addValue(rowIndex, 0, "1");
       tablet.addValue(rowIndex, 1, "5");
-      tablet.addValue(rowIndex, 2, "3");
+      tablet.addValue(rowIndex, 2, "4");
       tablet.addValue(rowIndex, 3, 37.6F);
       tablet.addValue(
           rowIndex,
