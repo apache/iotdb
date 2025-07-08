@@ -757,10 +757,9 @@ SCHEMA
     ;
 
 
-SECURITY
-    : S E C U R I T Y
+SECURITY_LABEL
+    : S E C U R I T Y '_' L A B E L
     ;
-
 
 SELECT
     : S E L E C T

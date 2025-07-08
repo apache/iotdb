@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -112,6 +113,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> setDatabase(DatabaseSchemaStatement databaseSchemaStatement);
 
   SettableFuture<ConfigTaskResult> alterDatabase(DatabaseSchemaStatement databaseSchemaStatement);
+
+  SettableFuture<ConfigTaskResult> alterDatabaseSecurityLabel(
+      AlterDatabaseSecurityLabelStatement alterDatabaseSecurityLabelStatement);
 
   SettableFuture<ConfigTaskResult> showDatabase(ShowDatabaseStatement showDatabaseStatement);
 
@@ -298,7 +302,8 @@ public interface IConfigTaskExecutor {
 
   void handlePipeConfigClientExit(String clientId);
 
-  // =============================== table syntax =========================================
+  // =============================== table syntax
+  // =========================================
 
   SettableFuture<ConfigTaskResult> showDatabases(
       final ShowDB showDB, final Predicate<String> canSeenDB);

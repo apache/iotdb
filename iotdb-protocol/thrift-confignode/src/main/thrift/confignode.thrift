@@ -214,6 +214,12 @@ struct TDatabaseSchema {
     9: optional i32 maxDataRegionGroupNum
     10: optional i64 timePartitionOrigin
     11: optional bool isTableModel
+    12: optional map<string, string> securityLabel
+}
+
+struct TAlterDatabaseSecurityLabelReq {
+  1: required string databasePath
+  2: required map<string, string> securityLabel
 }
 
 // Schema
@@ -1369,6 +1375,14 @@ service IConfigNodeRPCService {
    *         DATABASE_NOT_EXIST if the specified Database doesn't exist
    */
   common.TSStatus alterDatabase(TDatabaseSchema databaseSchema)
+
+  /**
+   * Alter a Database's security label
+   *
+   * @return SUCCESS_STATUS if the specified Database's security label is altered successfully
+   *         DATABASE_NOT_EXIST if the specified Database doesn't exist
+   */
+  common.TSStatus alterDatabaseSecurityLabel(TAlterDatabaseSecurityLabelReq req)
 
   /**
    * Generate a DeleteDatabaseProcedure to delete a specified Database

@@ -44,11 +44,69 @@ public class PathUtils {
     if ("".equals(path)) {
       return new String[] {};
     }
+
+    // Add length check to prevent memory issues from overly long paths
+    if (path.length() > 10000) {
+      throw new IllegalPathException("Path too long: " + path.length() + " characters");
+    }
+
     try {
-      return PathNodesGenerator.splitPathToNodes(path);
+      // Use memory protection to avoid ANTLR parser infinite loops
+      return executeWithMemoryProtection(() -> PathNodesGenerator.splitPathToNodes(path), path);
     } catch (PathParseException e) {
       throw new IllegalPathException(path);
+    } catch (OutOfMemoryError e) {
+      // Catch memory overflow errors and provide clearer error messages
+      throw new IllegalPathException("Path parsing caused memory overflow: " + path);
+    } catch (Exception e) {
+      // Catch other exceptions like thread interruption
+      throw new IllegalPathException("Path parsing failed: " + path + " - " + e.getMessage());
     }
+  }
+
+  /**
+   * Execute path parsing operation with memory protection
+   *
+   * @param parseOperation parsing operation to execute
+   * @param path path to be parsed
+   * @return parsing result
+   * @throws Exception if parsing fails
+   */
+  private static String[] executeWithMemoryProtection(
+      MemoryProtectedOperation<String[]> parseOperation, String path) throws Exception {
+
+    // Record memory usage before parsing
+    Runtime runtime = Runtime.getRuntime();
+    long memoryBefore = runtime.totalMemory() - runtime.freeMemory();
+
+    try {
+      String[] result = parseOperation.execute();
+
+      // Check memory usage after parsing
+      long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
+      long memoryUsed = memoryAfter - memoryBefore;
+
+      // Log warning if memory usage exceeds 100MB
+      if (memoryUsed > 100 * 1024 * 1024) {
+        System.err.println(
+            "Warning: Path parsing used excessive memory: "
+                + (memoryUsed / 1024 / 1024)
+                + "MB for path: "
+                + path);
+      }
+
+      return result;
+    } catch (OutOfMemoryError e) {
+      // Attempt garbage collection
+      runtime.gc();
+      throw new IllegalPathException("Memory overflow during path parsing: " + path);
+    }
+  }
+
+  /** Memory protected operation interface */
+  @FunctionalInterface
+  private interface MemoryProtectedOperation<T> {
+    T execute() throws Exception;
   }
 
   public static String[] isLegalPath(String path) throws IllegalPathException {

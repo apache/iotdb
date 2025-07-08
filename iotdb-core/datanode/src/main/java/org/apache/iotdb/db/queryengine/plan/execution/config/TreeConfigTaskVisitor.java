@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterDatabaseSecurityLabelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateContinuousQueryTask;
@@ -115,6 +116,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -233,6 +235,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitAlterDatabase(
       DatabaseSchemaStatement statement, MPPQueryContext context) {
     return new DatabaseSchemaTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitAlterDatabaseSecurityLabel(
+      AlterDatabaseSecurityLabelStatement statement, MPPQueryContext context) {
+    return new AlterDatabaseSecurityLabelTask(statement);
   }
 
   @Override
@@ -586,7 +594,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     final String pipeName = alterPipeStatement.getPipeName();
     final Map<String, String> extractorAttributes = alterPipeStatement.getExtractorAttributes();
 
-    // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
+    // If the source is replaced, sql-dialect uses the current Alter Pipe
+    // sql-dialect. If it is
     // modified, the original sql-dialect is used.
     if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
       extractorAttributes.put(

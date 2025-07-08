@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterDatabaseSecurityLabelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -559,6 +560,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus alterDatabase(TDatabaseSchema databaseSchema) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.alterDatabase(databaseSchema), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus alterDatabaseSecurityLabel(TAlterDatabaseSecurityLabelReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.alterDatabaseSecurityLabel(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

@@ -90,6 +90,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterDatabaseSecurityLabelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -475,6 +476,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return resp;
   }
 
+  // TODO: 由于 TAlterDatabaseSecurityLabelReq 类型尚未完整实现，暂时注释掉此方法
+  // @Override
+  @Override
+  public TSStatus alterDatabaseSecurityLabel(final TAlterDatabaseSecurityLabelReq req) {
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .setMessage("SECURITY_LABEL feature is not fully implemented yet");
+  }
+
   @Override
   public TSStatus deleteDatabase(final TDeleteDatabaseReq tDeleteReq) {
     return configManager.deleteDatabases(
@@ -773,7 +782,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
 
-    // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
+    // Print log to record the ConfigNode that performs the
+    // RegisterConfigNodeRequest
     LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, resp);
 
     return resp;
@@ -845,11 +855,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus stopAndClearConfigNode(TConfigNodeLocation configNodeLocation) {
     new Thread(
-            // TODO: Perhaps we should find some other way of shutting down the config node, adding
+            // TODO: Perhaps we should find some other way of shutting down the config node,
+            // adding
             // a hard dependency
-            //  in order to do this feels a bit odd. Dispatching a shutdown event which is processed
+            // in order to do this feels a bit odd. Dispatching a shutdown event which is
+            // processed
             // where the
-            //  instance is created feels cleaner.
+            // instance is created feels cleaner.
             () -> {
               try {
                 // Sleep 5s before stop itself

@@ -75,6 +75,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterDatabaseSecurityLabelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -234,6 +235,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -420,7 +422,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        // If database already exists when loading, we do not throw exceptions to avoid printing too
+        // If database already exists when loading, we do not throw exceptions to avoid
+        // printing too
         // many logs
         if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
             && !databaseSchemaStatement.getEnablePrintExceptionLog()) {
@@ -463,6 +466,37 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               tsStatus);
         }
         future.setException(new IoTDBException(tsStatus));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterDatabaseSecurityLabel(
+      final AlterDatabaseSecurityLabelStatement alterDatabaseSecurityLabelStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // 构建请求参数，将数据库路径和安全标签传递给 ConfigNode
+      final TAlterDatabaseSecurityLabelReq req =
+          new TAlterDatabaseSecurityLabelReq(
+              alterDatabaseSecurityLabelStatement.getDatabasePath().getFullPath(),
+              alterDatabaseSecurityLabelStatement.getSecurityLabel().getLabels());
+
+      // 发送请求到 ConfigNode
+      final TSStatus tsStatus = configNodeClient.alterDatabaseSecurityLabel(req);
+
+      // 处理响应
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to execute alter database security label {} in config node, status is {}.",
+            alterDatabaseSecurityLabelStatement.getDatabasePath().getFullPath(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
@@ -598,7 +632,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           } else {
             // libRoot should be the path of the specified jar
             libRoot = new File(new URI(uriString)).getAbsolutePath();
-            // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
+            // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send
+            // it to
             // ConfigNode.
             jarFile = ExecutableManager.transferToBytebuffer(libRoot);
             // Set md5 of the jar file
@@ -805,7 +840,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           } else {
             // libRoot should be the path of the specified jar
             libRoot = new File(new URI(uriString)).getAbsolutePath();
-            // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
+            // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send
+            // it to
             // ConfigNode.
             jarFile = ExecutableManager.transferToBytebuffer(libRoot);
             // set md5 of the jar file
@@ -969,7 +1005,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         } else {
           // libRoot should be the path of the specified jar
           libRoot = new File(new URI(uriString)).getAbsolutePath();
-          // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
+          // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send
+          // it to
           // ConfigNode.
           jarFile = ExecutableManager.transferToBytebuffer(libRoot);
           // Set md5 of the jar file
@@ -1414,7 +1451,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (!killQueryStatement.isKillAll()) {
       String[] splits = queryId.split("_");
       try {
-        // We just judge the input queryId has three '_' and the DataNodeId from it is non-negative
+        // We just judge the input queryId has three '_' and the DataNodeId from it is
+        // non-negative
         // here
         if (splits.length != 4 || ((dataNodeId = Integer.parseInt(splits[3])) < 0)) {
           future.setException(
@@ -2475,7 +2513,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final String topicName = createTopicStatement.getTopicName();
     final Map<String, String> topicAttributes = createTopicStatement.getTopicAttributes();
 
-    // Replace now value with current time (raw timestamp based on system timestamp precision)
+    // Replace now value with current time (raw timestamp based on system timestamp
+    // precision)
     final long currentTime =
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             System.currentTimeMillis(),
