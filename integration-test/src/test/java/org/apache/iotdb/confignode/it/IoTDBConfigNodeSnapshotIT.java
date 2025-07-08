@@ -83,8 +83,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBConfigNodeSnapshotIT {
-  private static final int testRatisSnapshotTriggerThreshold = 100;
-  private static final long testTimePartitionInterval = 86400;
+  protected final long testTimePartitionInterval = 86400;
 
   @Before
   public void setUp() throws Exception {
@@ -92,7 +91,7 @@ public class IoTDBConfigNodeSnapshotIT {
         .getConfig()
         .getCommonConfig()
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setConfigNodeRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold)
+        .setConfigNodeRatisSnapshotTriggerThreshold(100)
         .setTimePartitionInterval(testTimePartitionInterval);
 
     // Init 2C2D cluster environment
