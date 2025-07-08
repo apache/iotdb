@@ -82,7 +82,10 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
   private void extractTsFileInsertion(PipeRealtimeEvent event) {
     final PipeTsFileInsertionEvent tsFileInsertionEvent =
         (PipeTsFileInsertionEvent) event.getEvent();
-    if (!tsFileInsertionEvent.isLoaded()) {
+    if (!(tsFileInsertionEvent.isLoaded()
+        // some insert nodes in the tsfile epoch are not captured by pipe
+        || tsFileInsertionEvent.getFileStartTime()
+            < event.getTsFileEpoch().getInsertNodeMinTime())) {
       // All data in the tsfile epoch has been extracted in tablet mode, so we should
       // simply ignore this event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
@@ -120,29 +123,46 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
   }
 
   @Override
-  protected Event doSupply(final PipeRealtimeEvent realtimeEvent) {
-    if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
-      return supplyHeartbeat(realtimeEvent);
-    } else if (realtimeEvent.getEvent() instanceof PipeSchemaRegionWritePlanEvent
-        || realtimeEvent.getEvent() instanceof ProgressReportEvent) {
-      return supplyDirectly(realtimeEvent);
-    } else if (realtimeEvent.increaseReferenceCount(
-        PipeRealtimeDataRegionLogExtractor.class.getName())) {
-      return realtimeEvent.getEvent();
-    } else {
-      // if the event's reference count can not be increased, it means the data represented by
-      // this event is not reliable anymore. the data has been lost. we simply discard this event
-      // and report the exception to PipeRuntimeAgent.
-      final String errorMessage =
-          String.format(
-              "Event %s can not be supplied because "
-                  + "the reference count can not be increased, "
-                  + "the data represented by this event is lost",
-              realtimeEvent.getEvent());
-      LOGGER.error(errorMessage);
-      PipeDataNodeAgent.runtime()
-          .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+  public Event supply() {
+    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+
+    while (realtimeEvent != null) {
+      Event suppliedEvent = null;
+
+      if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
+        suppliedEvent = supplyHeartbeat(realtimeEvent);
+      } else if (realtimeEvent.getEvent() instanceof PipeSchemaRegionWritePlanEvent
+          || realtimeEvent.getEvent() instanceof ProgressReportEvent) {
+        suppliedEvent = supplyDirectly(realtimeEvent);
+      } else if (realtimeEvent.increaseReferenceCount(
+          PipeRealtimeDataRegionLogExtractor.class.getName())) {
+        suppliedEvent = realtimeEvent.getEvent();
+      } else {
+        // if the event's reference count can not be increased, it means the data represented by
+        // this event is not reliable anymore. the data has been lost. we simply discard this event
+        // and report the exception to PipeRuntimeAgent.
+        final String errorMessage =
+            String.format(
+                "Event %s can not be supplied because "
+                    + "the reference count can not be increased, "
+                    + "the data represented by this event is lost",
+                realtimeEvent.getEvent());
+        LOGGER.error(errorMessage);
+        PipeDataNodeAgent.runtime()
+            .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+      }
+
+      realtimeEvent.decreaseReferenceCount(
+          PipeRealtimeDataRegionLogExtractor.class.getName(), false);
+
+      if (suppliedEvent != null) {
+        return suppliedEvent;
+      }
+
+      realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
     }
+
+    // means the pending queue is empty.
     return null;
   }
 }
