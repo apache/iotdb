@@ -99,8 +99,7 @@ public class ObjectExample {
           true,
           0,
           Files.readAllBytes(
-              Paths.get(
-                  "/Users/jackietien/Downloads/2_1746622367063_8fb5ac8e21724140874195b60b878664")));
+              Paths.get("/Users/ht/Downloads/2_1746622367063_8fb5ac8e21724140874195b60b878664")));
       session.insert(tablet);
       tablet.reset();
       //

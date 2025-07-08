@@ -167,10 +167,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return columns;
   }
 
-  public Object[] getColumnsAndConvertObjects() {
-    return columns;
-  }
-
   public void setColumns(Object[] columns) {
     this.columns = columns;
   }
@@ -299,7 +295,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return splitMap;
   }
 
-  private List<WritePlanNode> doSplit(Map<TRegionReplicaSet, List<Integer>> splitMap) {
+  protected List<WritePlanNode> doSplit(Map<TRegionReplicaSet, List<Integer>> splitMap) {
     List<WritePlanNode> result = new ArrayList<>();
 
     if (splitMap.size() == 1) {
@@ -336,7 +332,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         subTimes.length);
   }
 
-  private WritePlanNode generateOneSplit(Map.Entry<TRegionReplicaSet, List<Integer>> entry) {
+  protected WritePlanNode generateOneSplit(Map.Entry<TRegionReplicaSet, List<Integer>> entry) {
     List<Integer> locs;
     // generate a new times and values
     locs = entry.getValue();

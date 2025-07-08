@@ -30,10 +30,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.FileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -196,8 +196,8 @@ public class WALNode implements IWALNode {
   }
 
   @Override
-  public WALFlushListener log(long memTableId, FileNode fileNode) {
-    WALEntry walEntry = new WALInfoEntry(memTableId, fileNode);
+  public WALFlushListener log(long memTableId, ObjectNode objectNode) {
+    WALEntry walEntry = new WALInfoEntry(memTableId, objectNode);
     return log(walEntry);
   }
 
@@ -786,7 +786,7 @@ public class WALNode implements IWALNode {
                   // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
                   // filecontent
                   // need to add IoTConsensusRequest instead of FileNode
-                  tmpNodes.get().add((FileNode) walEntry.getValue());
+                  tmpNodes.get().add((ObjectNode) walEntry.getValue());
                 } else {
                   tmpNodes.get().add(new IoTConsensusRequest(buffer));
                 }

@@ -570,7 +570,6 @@ public class TsFileProcessor {
       throws WriteProcessException {
 
     ensureMemTable(infoForMetrics);
-    handleWriteObject(insertTabletNode, rangeList, results);
 
     long[] memIncrements =
         scheduleMemoryBlock(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
@@ -1022,9 +1021,7 @@ public class TsFileProcessor {
     // TEXT data size
     if (dataType.isBinary()) {
       Binary[] binColumn = (Binary[]) column;
-      if (dataType != TSDataType.OBJECT) {
-        memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end, null);
-      }
+      memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end, null);
     }
   }
 
@@ -2391,9 +2388,6 @@ public class TsFileProcessor {
               System.arraycopy(
                   BytesUtils.longToBytes(objectFile.length()), 0, valueBytes, 0, Long.BYTES);
               System.arraycopy(filePathBytes, 0, valueBytes, Long.BYTES, filePathBytes.length);
-              node.setConvertedObjectValue(new Binary(valueBytes), j, i);
-            } else {
-              node.setConvertedObjectValue(null, j, i);
             }
 
             //            WALFlushListener walFlushListener;

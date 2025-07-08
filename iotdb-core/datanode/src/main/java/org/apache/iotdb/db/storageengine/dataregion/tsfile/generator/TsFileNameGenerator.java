@@ -21,15 +21,14 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.generator;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.slf4j.Logger;
@@ -169,18 +168,15 @@ public class TsFileNameGenerator {
     }
   }
 
-  public static String generateObjectFilePath(
-      long time, int datanodeId, String databaseName, int dataRegionId) {
+  public static String generateObjectFilePath(long time, IDeviceID iDeviceID) {
     String objectFileName = time + ".bin";
-    String relativePathString =
-        databaseName
-            + File.separator
-            + dataRegionId
-            + File.separator
-            + TimePartitionUtils.getTimePartitionId(time)
-            + File.separator
-            + objectFileName;
-    return relativePathString;
+    Object[] segments = iDeviceID.getSegments();
+    StringBuilder relativePathString = new StringBuilder();
+    for (Object segment : segments) {
+      relativePathString.append(segment.toString().toLowerCase()).append(File.separator);
+    }
+    relativePathString.append(objectFileName);
+    return relativePathString.toString();
   }
 
   @TestOnly

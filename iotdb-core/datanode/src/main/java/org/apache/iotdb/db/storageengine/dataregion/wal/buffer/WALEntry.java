@@ -23,10 +23,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.FileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -78,7 +78,7 @@ public abstract class WALEntry implements SerializedSize {
       this.type = WALEntryType.CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE;
     } else if (value instanceof RelationalDeleteDataNode) {
       this.type = WALEntryType.RELATIONAL_DELETE_DATA_NODE;
-    } else if (value instanceof FileNode) {
+    } else if (value instanceof ObjectNode) {
       this.type = WALEntryType.OBJECT_FILE_NODE;
     } else {
       throw new RuntimeException("Unknown WALEntry type");
@@ -138,7 +138,7 @@ public abstract class WALEntry implements SerializedSize {
         value = (ContinuousSameSearchIndexSeparatorNode) PlanNodeType.deserializeFromWAL(stream);
         break;
       case OBJECT_FILE_NODE:
-        value = (FileNode) PlanNodeType.deserializeFromWAL(stream);
+        value = (ObjectNode) PlanNodeType.deserializeFromWAL(stream);
         break;
       default:
         throw new RuntimeException("Unknown WALEntry type " + type);

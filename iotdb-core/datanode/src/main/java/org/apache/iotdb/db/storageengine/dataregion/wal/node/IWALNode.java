@@ -23,10 +23,10 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.FileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -55,7 +55,7 @@ public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqRead
   /** Log BatchDoneNode */
   WALFlushListener log(long memTableId, ContinuousSameSearchIndexSeparatorNode separatorNode);
 
-  WALFlushListener log(long memTableId, FileNode fileNode);
+  WALFlushListener log(long memTableId, ObjectNode objectNode);
 
   /** Callback when memTable created. */
   void onMemTableCreated(IMemTable memTable, String targetTsFile);

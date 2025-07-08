@@ -76,6 +76,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
@@ -150,6 +151,7 @@ import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.ObjectWriter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -174,6 +176,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -3070,6 +3073,27 @@ public class DataRegion implements IDataRegionForQuery {
       return 0;
     } finally {
       CompactionScheduler.exclusiveUnlockCompactionSelection();
+      writeUnlock();
+    }
+  }
+
+  public void writeObject(ObjectNode objectNode) throws Exception {
+    writeLock("writeObject");
+    try {
+      String relativeTmpPathString = objectNode.getFilePath() + ".tmp";
+      String objectFileDir = TierManager.getInstance().getNextFolderForObjectFile();
+      File objectTmpFile =
+          FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeTmpPathString);
+      try (ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
+        writer.write(objectNode.isEOF(), objectNode.getOffset(), objectNode.getContent());
+      }
+      if (objectNode.isEOF()) {
+        File objectFile =
+            FSFactoryProducer.getFSFactory().getFile(objectFileDir, objectNode.getFilePath());
+        Files.move(
+            objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      }
+    } finally {
       writeUnlock();
     }
   }
