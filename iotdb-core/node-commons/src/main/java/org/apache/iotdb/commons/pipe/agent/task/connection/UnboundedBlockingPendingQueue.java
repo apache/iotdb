@@ -34,7 +34,7 @@ public class UnboundedBlockingPendingQueue<E extends Event> extends BlockingPend
     pendingDeque = (BlockingDeque<E>) pendingQueue;
   }
 
-  public synchronized E peekLast() {
+  public E peekLast() {
     return pendingDeque.peekLast();
   }
 }
