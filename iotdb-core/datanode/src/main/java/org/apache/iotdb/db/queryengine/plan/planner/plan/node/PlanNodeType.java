@@ -386,9 +386,7 @@ public enum PlanNodeType {
       case 2003:
         return RelationalDeleteDataNode.deserializeFromWAL(buffer);
       case 2004:
-        // TODO haonan only be called by follower, should call normal dserialize instead from
-        // deserializeFromWAL
-        return ObjectNode.deserializeFromWAL(buffer);
+        return ObjectNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -705,6 +703,8 @@ public enum PlanNodeType {
         return RelationalInsertRowsNode.deserialize(buffer);
       case 2003:
         return RelationalDeleteDataNode.deserialize(buffer);
+      case 2004:
+        return ObjectNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

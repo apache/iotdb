@@ -3093,6 +3093,8 @@ public class DataRegion implements IDataRegionForQuery {
         Files.move(
             objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
       }
+      getWALNode()
+          .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));
     } finally {
       writeUnlock();
     }

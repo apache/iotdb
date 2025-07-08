@@ -786,7 +786,9 @@ public class WALNode implements IWALNode {
                   // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
                   // filecontent
                   // need to add IoTConsensusRequest instead of FileNode
-                  tmpNodes.get().add((ObjectNode) walEntry.getValue());
+                  tmpNodes
+                      .get()
+                      .add(new IoTConsensusRequest(((ObjectNode) walEntry.getValue()).serialize()));
                 } else {
                   tmpNodes.get().add(new IoTConsensusRequest(buffer));
                 }

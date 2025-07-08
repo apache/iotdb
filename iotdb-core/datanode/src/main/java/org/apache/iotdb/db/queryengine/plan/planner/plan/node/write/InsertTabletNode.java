@@ -220,12 +220,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     final Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap = collectSplitRanges();
     final Map<TRegionReplicaSet, List<Integer>> splitMap =
         splitByReplicaSet(deviceIDSplitInfoMap, analysis);
-
-    // TODO haonan should generate ObjectNode for each object point
-    // TODO haonan normal serialize method should contain relativePath, offset, length, eof,
-    // fileContent
-    // ObjectPlanNode(relativePath, offset, eof, length, fileContent), ObjectNode, ObjectNode,
-    // InsertNode()
     return doSplit(splitMap);
   }
 

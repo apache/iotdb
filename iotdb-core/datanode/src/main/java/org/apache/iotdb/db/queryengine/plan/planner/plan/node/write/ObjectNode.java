@@ -22,17 +22,21 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.ObjectFileNotExist;
+import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -98,7 +102,6 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    // TODO haonan only need relativePath, offset, length, eof
     buffer.putShort(getType().getNodeType());
     buffer.putLong(searchIndex);
     buffer.put((byte) (isEOF ? 1 : 0));
@@ -118,17 +121,13 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
   }
 
   public static ObjectNode deserializeFromWAL(DataInputStream stream) throws IOException {
-    // TODO haonan only be called in recovery, should only deserialize relativePath, offset, eof,
-    // length
     long searchIndex = stream.readLong();
     boolean isEOF = stream.readByte() == 1;
     long offset = stream.readLong();
     String filePath = ReadWriteIOUtils.readString(stream);
     int contentLength = stream.readInt();
-
     ObjectNode objectNode = new ObjectNode(isEOF, offset, contentLength, filePath);
     objectNode.setSearchIndex(searchIndex);
-
     return objectNode;
   }
 
@@ -141,7 +140,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     int contentLength = buffer.getInt();
     byte[] contents = new byte[contentLength];
     if (objectFile.isPresent()) {
-      try (RandomAccessFile raf = new RandomAccessFile(filePath, "r")) {
+      try (RandomAccessFile raf = new RandomAccessFile(objectFile.get(), "r")) {
         raf.seek(offset);
         raf.read(contents);
       } catch (IOException e) {
@@ -154,6 +153,15 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     ObjectNode objectNode = new ObjectNode(isEOF, offset, contents, filePath);
     objectNode.setSearchIndex(searchIndex);
     return objectNode;
+  }
+
+  public static ObjectNode deserialize(ByteBuffer byteBuffer) {
+    boolean isEoF = ReadWriteIOUtils.readBool(byteBuffer);
+    long offset = ReadWriteIOUtils.readLong(byteBuffer);
+    String filePath = ReadWriteIOUtils.readString(byteBuffer);
+    int contentLength = ReadWriteIOUtils.readInt(byteBuffer);
+    byte[] content = ReadWriteIOUtils.readBytes(byteBuffer, contentLength);
+    return new ObjectNode(isEoF, offset, content, filePath);
   }
 
   @Override
@@ -227,6 +235,35 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     ReadWriteIOUtils.write(filePath, stream);
     ReadWriteIOUtils.write(contentLength, stream);
     stream.write(content);
+  }
+
+  public ByteBuffer serialize() {
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream stream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(WALEntryType.OBJECT_FILE_NODE.getCode(), stream);
+      ReadWriteIOUtils.write((long) TsFileProcessor.MEMTABLE_NOT_EXIST, stream);
+      ReadWriteIOUtils.write(getType().getNodeType(), stream);
+      ReadWriteIOUtils.write(isEOF, stream);
+      ReadWriteIOUtils.write(offset, stream);
+      ReadWriteIOUtils.write(filePath, stream);
+      ReadWriteIOUtils.write(contentLength, stream);
+      Optional<File> objectFile = TierManager.getInstance().getAbsoluteObjectFilePath(filePath);
+      byte[] contents = new byte[contentLength];
+      if (objectFile.isPresent()) {
+        try (RandomAccessFile raf = new RandomAccessFile(objectFile.get(), "r")) {
+          raf.seek(offset);
+          raf.read(contents);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      } else {
+        throw new ObjectFileNotExist(filePath);
+      }
+      stream.write(contents);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      throw new SerializationRunTimeException(e);
+    }
   }
 
   @Override

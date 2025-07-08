@@ -47,7 +47,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -71,13 +70,11 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
-import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
-import org.apache.iotdb.db.utils.ObjectWriter;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -90,23 +87,16 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
-import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -2339,72 +2329,6 @@ public class TsFileProcessor {
     if (logger.isDebugEnabled()) {
       logger.debug(
           "{}: {} release flushQueryLock", dataRegionName, tsFileResource.getTsFile().getName());
-    }
-  }
-
-  private void handleWriteObject(
-      InsertTabletNode insertTabletNode, List<int[]> rangeList, TSStatus[] results)
-      throws WriteProcessException {
-    if (insertTabletNode instanceof RelationalInsertTabletNode) {
-      RelationalInsertTabletNode node = (RelationalInsertTabletNode) insertTabletNode;
-      for (int j = 0; j < node.getColumns().length; j++) {
-        if (node.getDataType(j) == TSDataType.OBJECT) {
-          Binary[] objectColumn = node.getObjectColumns().get(j);
-          for (int i = 0; i < node.getTimes().length; i++) {
-            ByteBuffer buffer = ByteBuffer.wrap(objectColumn[i].getValues()).duplicate();
-            String relativePathString = ReadWriteIOUtils.readString(buffer);
-            boolean isEoF = ReadWriteIOUtils.readBool(buffer);
-            long offset = ReadWriteIOUtils.readLong(buffer);
-            byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
-            String relativeTmpPathString = relativePathString + ".tmp";
-            String objectFileDir;
-            File objectTmpFile;
-            try {
-              objectFileDir = TierManager.getInstance().getNextFolderForObjectFile();
-              objectTmpFile =
-                  FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeTmpPathString);
-              try (ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
-                writer.write(isEoF, offset, content);
-              }
-            } catch (Exception e) {
-              results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-              throw new WriteProcessException(e);
-            }
-            // TODO:[OBJECT] write file node wal
-            if (isEoF) {
-              File objectFile =
-                  FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativePathString);
-              try {
-                Files.move(
-                    objectTmpFile.toPath(),
-                    objectFile.toPath(),
-                    StandardCopyOption.REPLACE_EXISTING);
-              } catch (IOException e) {
-                results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-                throw new WriteProcessException(e);
-              }
-              byte[] filePathBytes = relativePathString.getBytes(StandardCharsets.UTF_8);
-              byte[] valueBytes = new byte[filePathBytes.length + Long.BYTES];
-              System.arraycopy(
-                  BytesUtils.longToBytes(objectFile.length()), 0, valueBytes, 0, Long.BYTES);
-              System.arraycopy(filePathBytes, 0, valueBytes, Long.BYTES, filePathBytes.length);
-            }
-
-            //            WALFlushListener walFlushListener;
-            //            try {
-            //              walFlushListener = walNode.log(workMemTable.getMemTableId(), fileNode);
-            //              if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE)
-            // {
-            //                throw walFlushListener.getCause();
-            //              }
-            //            } catch (Exception e) {
-            //              results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR,
-            // e.getMessage());
-            //              throw new WriteProcessException(e);
-            //            }
-          }
-        }
-      }
     }
   }
 }
