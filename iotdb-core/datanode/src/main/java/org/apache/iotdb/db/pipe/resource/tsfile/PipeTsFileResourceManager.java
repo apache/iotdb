@@ -76,7 +76,7 @@ public class PipeTsFileResourceManager {
    * @throws IOException when create hardlink or copy file failed
    */
   public File increaseFileReference(
-      final File file, final boolean isTsFile, final @Nonnull String pipeName) throws IOException {
+      final File file, final boolean isTsFile, final @Nullable String pipeName) throws IOException {
     // If the file is already a hardlink or copied file,
     // just increase reference count and return it
     segmentLock.lock(file);
@@ -123,7 +123,7 @@ public class PipeTsFileResourceManager {
   }
 
   private boolean increaseReferenceIfExists(
-      final File file, final boolean isTsFile, final @Nonnull String pipeName) {
+      final File file, final boolean isTsFile, final @Nullable String pipeName) {
     final String path = file.getPath();
     final PipeTsFileResource resource =
         hardlinkOrCopiedFileToPipeTsFileResourceMap
