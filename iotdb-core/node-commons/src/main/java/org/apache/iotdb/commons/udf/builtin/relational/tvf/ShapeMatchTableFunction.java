@@ -209,73 +209,73 @@ public class ShapeMatchTableFunction implements TableFunction {
       double time = input.getLong(0);
       double value = input.getDouble(1);
 
-      if (qetchAlgorthm.addPoint(new Point(time, value))) {
-        if (qetchAlgorthm.isRegex()) {
-          outputWindowRegex(
-              properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
-        } else {
-          outputWindow(
-              properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
-        }
+      qetchAlgorthm.addPoint(new Point(time, value));
+      if(qetchAlgorthm.hasMatchResult()){
+        outputWindow(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
+      }
+      if(qetchAlgorthm.hasRegexMatchResult()) {
+        outputWindowRegex(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
       }
     }
 
     @Override
     public void finish(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      if (qetchAlgorthm.closeNowDataSegment()) {
-        if (qetchAlgorthm.isRegex()) {
-          outputWindowRegex(
-              properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
-        } else {
-          outputWindow(
-              properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
-        }
+      qetchAlgorthm.closeNowDataSegment();
+      if(qetchAlgorthm.hasMatchResult()){
+        outputWindow(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
+      }
+      if(qetchAlgorthm.hasRegexMatchResult()) {
+        outputWindowRegex(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
       }
     }
 
     private void outputWindow(
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder,
-        List<MatchState> matchResult) {
+        MatchState matchResult) {
       // TODO fill the result to the output column
-      for (MatchState matchState : matchResult) {
-        int matchResultID = qetchAlgorthm.getMatchResultID();
-        for (Section section : matchState.getDataSectionList()) {
-          for (Point point : section.getPoints()) {
-            properColumnBuilders.get(0).writeLong((long) point.x);
-            properColumnBuilders.get(1).writeDouble(point.y);
-            properColumnBuilders.get(2).writeInt(matchResultID);
-            properColumnBuilders.get(3).writeDouble(matchState.getMatchValue());
-          }
+      int matchResultID = qetchAlgorthm.getMatchResultID();
+      for (Section section : matchResult.getDataSectionList()) {
+        for (Point point : section.getPoints()) {
+          properColumnBuilders.get(0).writeLong((long) point.x);
+          properColumnBuilders.get(1).writeDouble(point.y);
+          properColumnBuilders.get(2).writeInt(matchResultID);
+          properColumnBuilders.get(3).writeDouble(matchResult.getMatchValue());
         }
       }
+
       // after the process, the result of qetchAlgorthm will be empty
       qetchAlgorthm.matchResultClear();
+      if(qetchAlgorthm.checkNextMatchResult()) {
+        outputWindow(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getMatchResult());
+      }
     }
 
     private void outputWindowRegex(
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder,
-        List<RegexMatchState> matchResult) {
+        RegexMatchState matchResult) {
       // TODO fill the result to the output column
-      for (RegexMatchState matchState : matchResult) {
-        for (RegexMatchState.PathState pathState : matchState.getMatchResult()) {
-          int matchResultID = qetchAlgorthm.getMatchResultID();
-          int dataSectionIndex = pathState.getDataSectionIndex();
-          List<Section> dataSectionList = matchState.getDataSectionList();
-          for (int i = 0; i <= dataSectionIndex; i++) {
-            for (Point point : dataSectionList.get(i).getPoints()) {
-              properColumnBuilders.get(0).writeLong((long) point.x);
-              properColumnBuilders.get(1).writeDouble(point.y);
-              properColumnBuilders.get(2).writeInt(matchResultID);
-              properColumnBuilders.get(3).writeDouble(pathState.getMatchValue());
-            }
+      for (RegexMatchState.PathState pathState : matchResult.getMatchResult()) {
+        int matchResultID = qetchAlgorthm.getMatchResultID();
+        int dataSectionIndex = pathState.getDataSectionIndex();
+        List<Section> dataSectionList = matchResult.getDataSectionList();
+        for (int i = 0; i <= dataSectionIndex; i++) {
+          for (Point point : dataSectionList.get(i).getPoints()) {
+            properColumnBuilders.get(0).writeLong((long) point.x);
+            properColumnBuilders.get(1).writeDouble(point.y);
+            properColumnBuilders.get(2).writeInt(matchResultID);
+            properColumnBuilders.get(3).writeDouble(pathState.getMatchValue());
           }
         }
       }
+
       // after the process, the result of qetchAlgorthm will be empty
       qetchAlgorthm.matchResultClear();
+      if(qetchAlgorthm.checkNextRegexMatchResult()){
+        outputWindowRegex(properColumnBuilders, passThroughIndexBuilder, qetchAlgorthm.getRegexMatchResult());
+      }
     }
   }
 }

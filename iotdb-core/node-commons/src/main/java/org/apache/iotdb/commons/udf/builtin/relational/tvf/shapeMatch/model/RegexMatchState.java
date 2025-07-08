@@ -1,5 +1,6 @@
 package org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -78,11 +79,17 @@ public class RegexMatchState {
       if (pathState.getPatternSection().isFinal()) {
         calcMatchValue(pathState, smoothValue, threshold);
       }
+      if (section.isFinal()){
+        return true; // if the section is final, claim that the pathState is finished
+      }
+
       // trans to next state
       if (!pathState.getPatternSection().getNextSectionList().isEmpty()) {
         if (pathState.getPatternSection().getNextSectionList().size() == 1) {
-          pathState.nextState(patternSectionNow.getNextSectionList().get(0));
-          matchStateStack.push(pathState);
+          Section nextSection = pathState.getPatternSection().getNextSectionList().get(0);
+          PathState newPathState =
+              new PathState(pathState.getDataSectionIndex() + 1, nextSection, pathState);
+          matchStateStack.push(newPathState);
         } else {
           // copy the old pathState info and new dataSectionIndex, patternSection
           // loop from the last one, the first one can be the top of the stack

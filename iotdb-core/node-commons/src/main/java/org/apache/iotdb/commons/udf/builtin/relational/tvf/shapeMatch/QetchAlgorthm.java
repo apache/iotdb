@@ -6,6 +6,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.Poin
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.RegexMatchState;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.shapeMatch.model.Section;
 
+import javax.swing.text.StyledEditorKit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -45,10 +46,10 @@ public class QetchAlgorthm {
   private Double gap = (double) 0;
   int dataSectionIndex = 0;
 
-  private List<MatchState> matchResult =
-      new ArrayList<>(); // each one in it is a point to the start
-  private List<RegexMatchState> regexMatchResult =
-      new ArrayList<>(); // each one in it is a list of matchResult which has the same start section
+  private MatchState matchResult = null; // each one in it is a point to the start
+  private RegexMatchState regexMatchResult = null; // each one in it is a list of matchResult which has the same start section
+
+  private Queue<Section> sectionListForDelay = new LinkedList<>(); // only use for delay match
 
   public QetchAlgorthm() {}
 
@@ -82,7 +83,7 @@ public class QetchAlgorthm {
         Point point = new Point(piece);
         if (patternSegment == null) {
           if (numIndex >= 0) {
-            patternSegments.get(numIndex).addPoint(point);
+            patternSegments.get(numIndex).addPoint(new Point(piece));
           }
           patternSegment = new PatternSegment();
         }
@@ -100,11 +101,13 @@ public class QetchAlgorthm {
 
     // move the minX and minY to the (0,0)
     for (PatternSegment segment : patternSegments) {
-      List<Point> points = segment.getPoints();
-      for (Point point : points) {
-        System.out.println("x: " + point.x + " y: " + point.y);
-        point.setXY(point.x - minX, point.y - minY);
-        System.out.println("x: " + point.x + " y: " + point.y);
+      if(!segment.isConstantChar()){
+        List<Point> points = segment.getPoints();
+        for (Point point : points) {
+          System.out.println("x: " + point.x + " y: " + point.y);
+          point.setXY(point.x - minX, point.y - minY);
+          System.out.println("x: " + point.x + " y: " + point.y);
+        }
       }
     }
 
@@ -137,14 +140,18 @@ public class QetchAlgorthm {
   private void transDataSegment2Automation(List<PatternSegment> patternSegments) {
     // loop each dataSegment and trans them to sectionList
     Type = isRegex ? "shape" : Type;
+    int lastSegmentIndex = 0;
     for (int i = 0; i < patternSegments.size(); i++) {
       if (!patternSegments.get(i).isConstantChar()) {
         patternSegments.get(i).trans2SectionList(Type, smoothValue);
+        if(i > lastSegmentIndex){
+          lastSegmentIndex = i;
+        }
       }
     }
 
     // set the last section in the last dataSegment as the end section
-    PatternSegment lastSegment = patternSegments.get(patternSegments.size() - 1);
+    PatternSegment lastSegment = patternSegments.get(lastSegmentIndex);
     Section lastSection = lastSegment.getSections().get(lastSegment.getSections().size() - 1);
     lastSection.setIsFinal(true);
 
@@ -212,16 +219,24 @@ public class QetchAlgorthm {
   }
 
   public void matchResultClear() {
-    this.matchResult.clear();
-    this.regexMatchResult.clear();
+    this.matchResult = null;
+    this.regexMatchResult = null;
+  }
+
+  public Boolean hasMatchResult() {
+    return this.matchResult != null;
   }
 
   // use while the dataSegment is finished, and want to print out the result
-  public List<MatchState> getMatchResult() {
+  public MatchState getMatchResult() {
     return this.matchResult;
   }
 
-  public List<RegexMatchState> getRegexMatchResult() {
+  public Boolean hasRegexMatchResult() {
+    return this.isRegex && this.regexMatchResult != null;
+  }
+
+  public RegexMatchState getRegexMatchResult() {
     return this.regexMatchResult;
   }
 
@@ -236,7 +251,7 @@ public class QetchAlgorthm {
     // resultSectionList
     matchState.setPatternSectionNow(stateMachineStartSection);
     matchState.calcGlobalRadio();
-    while (true) {
+    while (!dataSectionQueue.isEmpty()) {
       // get the first state
       Section section = dataSectionQueue.poll();
       if (matchState.calcOneSectionMatchValue(section, smoothValue, threshold)) {
@@ -244,7 +259,7 @@ public class QetchAlgorthm {
       }
     }
     if (matchState.isFinish()) {
-      matchResult.add(matchState);
+      matchResult = matchState;
     }
   }
 
@@ -275,7 +290,7 @@ public class QetchAlgorthm {
     stateQueue = tempStateQueue;
   }
 
-  private Boolean addSectionInConstant(Section section) {
+  private void addSectionInConstant(Section section) {
     section.setId(dataSectionIndex++);
     dataSectionQueue.add(section);
 
@@ -286,20 +301,18 @@ public class QetchAlgorthm {
 
     double lastToThrowIndex = 0;
     if (stateQueue.isEmpty()) {
-      lastToThrowIndex = dataSectionIndex - 1;
+      lastToThrowIndex = dataSectionIndex;
     } else {
       lastToThrowIndex = stateQueue.peek().getStartSectionId();
     }
 
     // remove the section which is no need to release memory
-    while (!dataSectionQueue.isEmpty() && dataSectionQueue.peek().getId() <= lastToThrowIndex) {
+    while (!dataSectionQueue.isEmpty() && dataSectionQueue.peek().getId() < lastToThrowIndex) {
       dataSectionQueue.poll();
     }
-
-    return !matchResult.isEmpty();
   }
 
-  private Boolean addSectionInRegex(Section section) {
+  private void addSectionInRegex(Section section) {
     section.setId(dataSectionIndex++);
     dataSectionQueue.add(section);
 
@@ -316,8 +329,8 @@ public class QetchAlgorthm {
       dataSectionQueue.poll();
       if (!regexMatchState.getMatchResult().isEmpty()) {
         // TODO clean the variable which no need
-        regexMatchResult.add(regexMatchState);
-        return true;
+        regexMatchResult = regexMatchState;
+        return;
       }
       boolean isNext = true;
       while (!dataSectionQueue.isEmpty() && isNext) {
@@ -330,11 +343,11 @@ public class QetchAlgorthm {
               dataSection, heightLimit, widthLimit, smoothValue, threshold)) {
             if (!regexMatchState.getMatchResult().isEmpty()) {
               // TODO clean the variable which no need
-              regexMatchResult.add(regexMatchState);
+              regexMatchResult = regexMatchState;
             }
             dataSectionQueue.poll();
             if (!regexMatchState.getMatchResult().isEmpty()) {
-              return true;
+              return;
             }
             isNext = true;
             break;
@@ -342,10 +355,20 @@ public class QetchAlgorthm {
         }
       }
     }
+  }
+
+  public Boolean checkNextMatchResult(){
+    while(!sectionListForDelay.isEmpty()) {
+      Section section = sectionListForDelay.poll();
+      addSectionInConstant(section);
+      if (hasMatchResult()) {
+          return true;
+      }
+    }
     return false;
   }
 
-  private Boolean pipeGetRegexMatchResult() {
+  public Boolean checkNextRegexMatchResult() {
     boolean isNext = true;
     while (!dataSectionQueue.isEmpty() && isNext) {
       isNext = false;
@@ -356,8 +379,7 @@ public class QetchAlgorthm {
         if (regexMatchState.addSection(
             dataSection, heightLimit, widthLimit, smoothValue, threshold)) {
           if (!regexMatchState.getMatchResult().isEmpty()) {
-            // TODO clean the variable which no need
-            regexMatchResult.add(regexMatchState);
+            regexMatchResult = regexMatchState;
           }
           dataSectionQueue.poll();
           if (!regexMatchState.getMatchResult().isEmpty()) {
@@ -368,19 +390,30 @@ public class QetchAlgorthm {
         }
       }
     }
+    while (!sectionListForDelay.isEmpty()){
+        Section section = sectionListForDelay.poll();
+        addSectionInRegex(section);
+        if (!regexMatchState.getMatchResult().isEmpty()) {
+          return true;
+        }
+    }
     return false;
   }
 
-  private Boolean addSection(Section section) {
-    if (isRegex) {
-      return addSectionInRegex(section);
-    } else {
-      return addSectionInConstant(section);
+  private void addSection(Section section) {
+    if(hasMatchResult() || hasRegexMatchResult()){
+      sectionListForDelay.add(section);
+    }
+    else{
+      if (isRegex) {
+        addSectionInRegex(section);
+      } else {
+        addSectionInConstant(section);
+      }
     }
   }
 
-  private Boolean closeNowSection() {
-    boolean ans = false;
+  private void closeNowSection() {
     if (nowSection.getHeightBound() <= smoothValue) {
       nowSection.setSign(0);
     }
@@ -391,7 +424,7 @@ public class QetchAlgorthm {
       // the dataLastSection is no null, so need to check whether to concat
       if (dataLastSection.getSign() != 0) {
         if (dataLastLastSection != null) {
-          ans = ans || addSection(dataLastLastSection);
+          addSection(dataLastLastSection);
         }
         dataLastLastSection = dataLastSection;
         dataLastSection = nowSection;
@@ -413,7 +446,7 @@ public class QetchAlgorthm {
           // of A and C is same
           if (concatResult.size() == 3) {
             if (dataLastLastSection == null) {
-              ans = ans || addSection(concatResult.get(0));
+              addSection(concatResult.get(0));
               dataLastLastSection = concatResult.get(1);
               dataLastSection = concatResult.get(2);
             } else {
@@ -429,14 +462,14 @@ public class QetchAlgorthm {
                 } else {
                   // combine the AB
                   dataLastLastSection.combine(concatResult.get(0));
-                  ans = ans || addSection(dataLastLastSection);
+                  addSection(dataLastLastSection);
                   dataLastLastSection = concatResult.get(1);
                   dataLastSection = concatResult.get(2);
                 }
               } else {
                 // A,B sent to calc and move to C D
-                ans = ans || addSection(dataLastLastSection);
-                ans = ans || addSection(concatResult.get(0));
+                addSection(dataLastLastSection);
+                addSection(concatResult.get(0));
                 dataLastLastSection = concatResult.get(1);
                 dataLastSection = concatResult.get(2);
               }
@@ -465,7 +498,7 @@ public class QetchAlgorthm {
                   }
                 } else {
                   // A sent to calc and move to B C
-                  ans = ans || addSection(dataLastLastSection);
+                  addSection(dataLastLastSection);
                   dataLastLastSection = concatResult.get(0);
                   dataLastSection = concatResult.get(1);
                 }
@@ -476,7 +509,7 @@ public class QetchAlgorthm {
                   dataLastSection = concatResult.get(1);
                 } else {
                   // A is sent to calc and move to B C
-                  ans = ans || addSection(dataLastLastSection);
+                  addSection(dataLastLastSection);
                   dataLastLastSection = concatResult.get(0);
                   dataLastSection = concatResult.get(1);
                 }
@@ -507,7 +540,7 @@ public class QetchAlgorthm {
               }
             } else {
               // A is sent to calc and move to B C
-              ans = ans || addSection(dataLastLastSection);
+              addSection(dataLastLastSection);
               dataLastLastSection = dataLastSection;
               dataLastSection = nowSection;
             }
@@ -515,34 +548,35 @@ public class QetchAlgorthm {
         }
       }
     }
-
-    return ans;
   }
 
-  public Boolean closeNowDataSegment() {
-    Boolean ans = closeNowSection();
+  public void closeNowDataSegment() {
+    // close之后，last和lastlast至少有一个有数据
+    closeNowSection();
     if (dataLastLastSection != null && dataLastSection != null) {
       if (dataLastSection.getSign() == 0
           && dataLastSection.getPoints().size() <= lineSectionTolerance) {
         dataLastLastSection.combine(dataLastSection);
-        ans = ans || addSection(dataLastLastSection);
+        addSection(dataLastLastSection);
       } else {
-        ans = ans || addSection(dataLastLastSection);
-        ans = ans || addSection(dataLastSection);
+        addSection(dataLastLastSection);
+        dataLastSection.setIsFinal(true);
+        addSection(dataLastSection);
       }
     } else {
+      // 这里看起来是前后判断，实际上这两个是相互独立的，不会同时不为null
       if (dataLastLastSection != null) {
-        ans = ans || addSection(dataLastLastSection);
+        dataLastLastSection.setIsFinal(true);
+        addSection(dataLastLastSection);
       }
       if (dataLastSection != null) {
-        ans = ans || addSection(dataLastSection);
+        dataLastSection.setIsFinal(true);
+        addSection(dataLastSection);
       }
     }
-    return ans;
   }
 
-  public Boolean addPoint(Point point) {
-    Boolean ans = false;
+  public void addPoint(Point point) {
     if (lastPoint == null) {
       lastPoint = point;
     } else {
@@ -553,9 +587,9 @@ public class QetchAlgorthm {
         // different dataSegment
         if (Math.abs(point.x - lastPoint.x) > gapTolerance * this.gap) {
           lastPoint = point;
-          ans = ans || closeNowDataSegment();
+          closeNowDataSegment();
           environmentClear();
-          return ans;
+          return;
         }
       }
 
@@ -566,7 +600,7 @@ public class QetchAlgorthm {
         nowSection.addPoint(lastPoint);
       } else {
         if (sign != nowSection.getSign()) {
-          ans = ans || closeNowSection();
+          closeNowSection();
           nowSection = null;
           nowSection = new Section(sign);
           nowSection.addPoint(lastPoint);
@@ -575,7 +609,6 @@ public class QetchAlgorthm {
       nowSection.addPoint(point);
       lastPoint = point;
     }
-    return ans;
   }
 
   // variables getter and setter

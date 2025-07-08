@@ -165,7 +165,7 @@ public class MatchState {
 
     double shapeError = 0.0;
 
-    for (int i = 1; i < dataPointNum; i++) {
+    for (int i = 1; i <= dataPointNum; i++) {
       double pointHeight = getPointHeight(i, numRadio, patternPointNum);
 
       shapeError +=
