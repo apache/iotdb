@@ -424,7 +424,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    */
   private void applyModificationForAlignedChunkMetadataList(
       TsFileResource tsFileResource, List<AbstractAlignedChunkMetadata> alignedChunkMetadataList)
-      throws IllegalPathException {
+      throws IllegalPathException, IOException {
     if (alignedChunkMetadataList.isEmpty()) {
       // all the value chunks is empty chunk
       return;
@@ -475,6 +475,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       modificationForValueColumns.add(
           modificationList.isEmpty() ? Collections.emptyList() : modificationList);
     }
+
+    CompactionUtils.removeDeletedObjectFiles(
+        readerMap.get(tsFileResource),
+        alignedChunkMetadataList,
+        modificationForTimeColumn,
+        modificationForValueColumns);
 
     ModificationUtils.modifyAlignedChunkMetaData(
         alignedChunkMetadataList,

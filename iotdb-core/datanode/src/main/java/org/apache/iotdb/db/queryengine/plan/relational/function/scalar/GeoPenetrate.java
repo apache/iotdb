@@ -37,7 +37,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ReadObjectColumnTransformer.getObjectPathFromBinary;
+import static org.apache.iotdb.db.utils.ObjectTypeUtils.getObjectPathFromBinary;
 
 public class GeoPenetrate implements ScalarFunction {
 

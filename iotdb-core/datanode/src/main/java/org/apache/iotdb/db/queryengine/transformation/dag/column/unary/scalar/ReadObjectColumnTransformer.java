@@ -20,16 +20,14 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.commons.exception.ObjectFileNotExist;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
-import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
@@ -42,8 +40,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.Optional;
 
 public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
-
-  private static final TierManager TIER_MANAGER = TierManager.getInstance();
 
   private final Optional<FragmentInstanceContext> fragmentInstanceContext;
   private long offset = 0;
@@ -110,7 +106,7 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
   }
 
   private Binary readObject(Binary binary) {
-    File file = getObjectPathFromBinary(binary);
+    File file = ObjectTypeUtils.getObjectPathFromBinary(binary);
     long fileSize = file.length();
     if (offset >= fileSize) {
       throw new UnsupportedOperationException("offset is greater than object size");
@@ -129,16 +125,5 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
       throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     return new Binary(bytes);
-  }
-
-  public static File getObjectPathFromBinary(Binary binary) {
-    byte[] bytes = binary.getValues();
-    String relativeObjectFilePath =
-        new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET);
-    Optional<File> file = TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath);
-    if (!file.isPresent()) {
-      throw new ObjectFileNotExist(relativeObjectFilePath);
-    }
-    return file.get();
   }
 }
