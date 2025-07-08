@@ -114,23 +114,6 @@ public class FileUtils {
     }
   }
 
-  public static boolean deleteFileChildrenQuietly(final File file) {
-    if (!file.exists() || !file.isDirectory()) {
-      return false;
-    }
-
-    boolean result = true;
-    final File[] items = file.listFiles();
-    if (items != null) {
-      for (final File item : items) {
-        if (item.isFile()) {
-          result &= org.apache.commons.io.FileUtils.deleteQuietly(item);
-        }
-      }
-    }
-    return result;
-  }
-
   public static void deleteDirectoryAndEmptyParent(File folder) {
     deleteFileOrDirectory(folder);
     final File parentFolder = folder.getParentFile();
