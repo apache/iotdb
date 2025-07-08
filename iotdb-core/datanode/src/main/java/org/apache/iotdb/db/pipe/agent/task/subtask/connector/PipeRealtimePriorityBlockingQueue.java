@@ -335,19 +335,19 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public synchronized void clear() {
+  public void clear() {
     super.clear();
     tsfileInsertEventDeque.clear();
   }
 
   @Override
-  public synchronized void forEach(final Consumer<? super Event> action) {
+  public void forEach(final Consumer<? super Event> action) {
     super.forEach(action);
     tsfileInsertEventDeque.forEach(action);
   }
 
   @Override
-  public synchronized void discardAllEvents() {
+  public void discardAllEvents() {
     super.discardAllEvents();
     tsfileInsertEventDeque.removeIf(
         event -> {
@@ -362,7 +362,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
+  public void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
     super.discardEventsOfPipe(pipeNameToDrop, regionId);
     tsfileInsertEventDeque.removeIf(
         event -> {
