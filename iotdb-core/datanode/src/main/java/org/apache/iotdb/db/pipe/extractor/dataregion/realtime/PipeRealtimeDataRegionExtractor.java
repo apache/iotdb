@@ -20,9 +20,6 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.SegmentProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -34,11 +31,8 @@ import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
@@ -205,10 +199,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     pipeName = environment.getPipeName();
     dataRegionId = String.valueOf(environment.getRegionId());
     pipeTaskMeta = environment.getPipeTaskMeta();
-
-    if (pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex) {
-      pipeTaskMeta.updateProgressIndex(new SegmentProgressIndex());
-    }
 
     // Metrics related to TsFileEpoch are managed in PipeExtractorMetrics. These metrics are
     // indexed by the taskID of IoTDBDataRegionExtractor. To avoid PipeRealtimeDataRegionExtractor
@@ -405,63 +395,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  @Override
-  public Event supply() {
-    PipeRealtimeEvent realtimeEvent = getNextRealtimeEvent();
-
-    while (realtimeEvent != null) {
-      final EnrichedEvent innerEvent = realtimeEvent.getEvent();
-      if (innerEvent instanceof PipeTsFileInsertionEvent
-          || innerEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        bindOrUpdateProgressIndexForRealtimeEvent(realtimeEvent);
-      }
-
-      final Event suppliedEvent = doSupply(realtimeEvent);
-
-      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
-
-      if (suppliedEvent != null) {
-        return suppliedEvent;
-      }
-
-      realtimeEvent = getNextRealtimeEvent();
-    }
-
-    // means the pending queue is empty.
-    return null;
-  }
-
-  private PipeRealtimeEvent getNextRealtimeEvent() {
-    return (PipeRealtimeEvent) pendingQueue.directPoll();
-  }
-
-  // This may require some time thus we leave it for processor thread instead of writing thread
-  private boolean coarseFilterEvent(final PipeRealtimeEvent event) {
-    // 1. Check if time parsing is necessary. If not, it means that the timestamps of the data
-    // contained in this event are definitely within the time range [start time, end time].
-    // 2. Check if the event's data timestamps may intersect with the time range. If not, it means
-    // that the data timestamps of this event are definitely not within the time range.
-    // 3. Check if pattern parsing is necessary. If not, it means that the paths of the data
-    // contained in this event are definitely covered by the pattern.
-    // 4. Check if the event's data paths may intersect with the pattern. If not, it means that the
-    // data of this event is definitely not overlapped with the pattern.
-    if ((!event.shouldParseTime() || event.getEvent().mayEventTimeOverlappedWithTimeRange())
-        && (!event.shouldParsePattern() || event.getEvent().mayEventPathsOverlappedWithPattern())) {
-      if (sloppyTimeRange) {
-        // only skip parsing time for events whose data timestamps may intersect with the time range
-        event.skipParsingTime();
-      }
-      if (sloppyPattern) {
-        // only skip parsing pattern for events whose data paths may intersect with the pattern
-        event.skipParsingPattern();
-      }
-      return true;
-    }
-    return false;
-  }
-
-  protected abstract Event doSupply(final PipeRealtimeEvent realtimeEvent);
-
   protected Event supplyHeartbeat(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {
       return event.getEvent();
@@ -561,30 +494,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public final boolean isShouldTransferModFile() {
     return shouldTransferModFile;
-  }
-
-  private void bindOrUpdateProgressIndexForRealtimeEvent(final PipeRealtimeEvent event) {
-    if (PipeTsFileEpochProgressIndexKeeper.getInstance()
-        .isProgressIndexAfterOrEquals(
-            dataRegionId,
-            pipeName,
-            event.getTsFileEpoch().getFilePath(),
-            getProgressIndex4RealtimeEvent(event))) {
-      event.skipReportOnCommit();
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Pipe {} on data region {} skip commit of event {} because it was flushed prematurely.",
-            pipeName,
-            dataRegionId,
-            event.coreReportMessage());
-      }
-    }
-  }
-
-  private ProgressIndex getProgressIndex4RealtimeEvent(final PipeRealtimeEvent event) {
-    return event.getEvent() instanceof PipeTsFileInsertionEvent
-        ? ((PipeTsFileInsertionEvent) event.getEvent()).forceGetProgressIndex()
-        : event.getProgressIndex();
   }
 
   @Override
