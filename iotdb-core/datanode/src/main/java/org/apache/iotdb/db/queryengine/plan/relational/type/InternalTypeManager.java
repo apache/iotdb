@@ -140,8 +140,6 @@ public class InternalTypeManager implements TypeManager {
         return OBJECT;
       case STRING:
         return STRING;
-      case OBJECT:
-        return OBJECT;
       default:
         throw new IllegalArgumentException();
     }
