@@ -386,6 +386,8 @@ public enum PlanNodeType {
       case 2003:
         return RelationalDeleteDataNode.deserializeFromWAL(buffer);
       case 2004:
+        // TODO haonan only be called by follower, should call normal dserialize instead from
+        // deserializeFromWAL
         return FileNode.deserializeFromWAL(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
