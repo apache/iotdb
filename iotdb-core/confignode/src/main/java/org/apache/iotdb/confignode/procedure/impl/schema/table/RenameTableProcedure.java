@@ -27,8 +27,6 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan
 import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.RenameTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -63,7 +61,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
 
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final RenameTableState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -82,7 +80,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
         case COMMIT_RELEASE:
           LOGGER.info(
               "Commit release info of table {}.{} when renaming table", database, tableName);
-          commitRelease(env);
+          commitRelease(env, tableName);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized RenameTableState " + state));
@@ -121,7 +119,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
 
   @Override
   protected void preRelease(final ConfigNodeProcedureEnv env) {
-    super.preRelease(env);
+    super.preRelease(env, tableName);
     setNextState(RenameTableState.RENAME_TABLE);
   }
 
@@ -155,7 +153,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
         case PRE_RELEASE:
           LOGGER.info(
               "Start rollback pre release info of table {}.{}", database, table.getTableName());
-          rollbackPreRelease(env);
+          rollbackPreRelease(env, tableName);
           break;
       }
     } finally {

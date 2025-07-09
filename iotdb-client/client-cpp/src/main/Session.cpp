@@ -22,7 +22,9 @@
 #include <memory>
 #include <time.h>
 #include <future>
+#include <unordered_set>
 #include "NodesSupplier.h"
+#include "SessionDataSet.h"
 
 using namespace std;
 
@@ -57,10 +59,8 @@ TSDataType::TSDataType getTSDataTypeFromString(const string& str) {
         return TSDataType::BLOB;
     } else if (str == "STRING") {
         return TSDataType::STRING;
-    } else if (str == "NULLTYPE") {
-        return TSDataType::NULLTYPE;
     }
-    return TSDataType::INVALID_DATATYPE;
+    return TSDataType::UNKNOWN;
 }
 
 void Tablet::createColumns() {
@@ -404,200 +404,6 @@ bool SessionUtils::isTabletContainsSingleDevice(Tablet tablet) {
     return true;
 }
 
-int SessionDataSet::getFetchSize() {
-    return fetchSize;
-}
-
-void SessionDataSet::setFetchSize(int fetchSize) {
-    this->fetchSize = fetchSize;
-}
-
-vector<string> SessionDataSet::getColumnNames() { return this->columnNameList; }
-
-vector<string> SessionDataSet::getColumnTypeList() { return this->columnTypeList; }
-
-bool SessionDataSet::hasNext() {
-    if (hasCachedRecord) {
-        return true;
-    }
-    if (!tsQueryDataSetTimeBuffer.hasRemaining()) {
-        TSFetchResultsReq req;
-        req.__set_sessionId(sessionId);
-        req.__set_statement(sql);
-        req.__set_fetchSize(fetchSize);
-        req.__set_queryId(queryId);
-        req.__set_isAlign(true);
-        req.__set_timeout(-1);
-        try {
-            TSFetchResultsResp resp;
-            client->fetchResults(resp, req);
-            RpcUtils::verifySuccess(resp.status);
-
-            if (!resp.hasResultSet) {
-                return false;
-            }
-            else {
-                TSQueryDataSet* tsQueryDataSet = &(resp.queryDataSet);
-                tsQueryDataSetTimeBuffer.str = tsQueryDataSet->time;
-                tsQueryDataSetTimeBuffer.pos = 0;
-
-                valueBuffers.clear();
-                bitmapBuffers.clear();
-
-                for (size_t i = columnFieldStartIndex; i < columnNameList.size(); i++) {
-                    if (duplicateLocation.find(i) != duplicateLocation.end()) {
-                        continue;
-                    }
-                    std::string name = columnNameList[i];
-                    int valueIndex = columnMap[name];
-                    valueBuffers.emplace_back(new MyStringBuffer(tsQueryDataSet->valueList[valueIndex]));
-                    bitmapBuffers.emplace_back(new MyStringBuffer(tsQueryDataSet->bitmapList[valueIndex]));
-                }
-                rowsIndex = 0;
-            }
-        }
-        catch (const TTransportException& e) {
-            log_debug(e.what());
-            throw IoTDBConnectionException(e.what());
-        } catch (const IoTDBException& e) {
-            log_debug(e.what());
-            throw;
-        } catch (exception& e) {
-            throw IoTDBException(string("Cannot fetch result from server: ") + e.what());
-        }
-    }
-
-    constructOneRow();
-    hasCachedRecord = true;
-    return true;
-}
-
-void SessionDataSet::constructOneRow() {
-    vector<Field> outFields;
-    int loc = 0;
-    for (size_t i = columnFieldStartIndex; i < columnNameList.size(); i++) {
-        Field field;
-        if (duplicateLocation.find(i) != duplicateLocation.end()) {
-            field = outFields[duplicateLocation[i]];
-        }
-        else {
-            MyStringBuffer* bitmapBuffer = bitmapBuffers[loc].get();
-            // another new 8 row, should move the bitmap buffer position to next byte
-            if (rowsIndex % 8 == 0) {
-                currentBitmap[loc] = bitmapBuffer->getChar();
-            }
-
-            if (!isNull(loc, rowsIndex)) {
-                MyStringBuffer* valueBuffer = valueBuffers[loc].get();
-                TSDataType::TSDataType dataType = getTSDataTypeFromString(columnTypeList[i]);
-                field.dataType = dataType;
-                switch (dataType) {
-                case TSDataType::BOOLEAN: {
-                    bool booleanValue = valueBuffer->getBool();
-                    field.boolV = booleanValue;
-                    break;
-                }
-                case TSDataType::INT32: {
-                    int intValue = valueBuffer->getInt();
-                    field.intV = intValue;
-                    break;
-                }
-                case TSDataType::DATE: {
-                    boost::gregorian::date dateValue = valueBuffer->getDate();
-                    field.dateV = dateValue;
-                    break;
-                }
-                case TSDataType::TIMESTAMP:
-                case TSDataType::INT64: {
-                    int64_t longValue = valueBuffer->getInt64();
-                    field.longV = longValue;
-                    break;
-                }
-                case TSDataType::FLOAT: {
-                    float floatValue = valueBuffer->getFloat();
-                    field.floatV = floatValue;
-                    break;
-                }
-                case TSDataType::DOUBLE: {
-                    double doubleValue = valueBuffer->getDouble();
-                    field.doubleV = doubleValue;
-                    break;
-                }
-                case TSDataType::STRING:
-                case TSDataType::BLOB:
-                case TSDataType::TEXT: {
-                    string stringValue = valueBuffer->getString();
-                    field.stringV = stringValue;
-                    break;
-                }
-                default: {
-                    throw UnSupportedDataTypeException(
-                        string("Data type ") + columnTypeList[i] + " is not supported.");
-                }
-                }
-            }
-            else {
-                field.dataType = TSDataType::NULLTYPE;
-            }
-            loc++;
-        }
-        outFields.push_back(field);
-    }
-
-    if (!this->isIgnoreTimeStamp) {
-        rowRecord = RowRecord(tsQueryDataSetTimeBuffer.getInt64(), outFields);
-    }
-    else {
-        tsQueryDataSetTimeBuffer.getInt64();
-        rowRecord = RowRecord(outFields);
-    }
-    rowsIndex++;
-}
-
-bool SessionDataSet::isNull(int index, int rowNum) {
-    char bitmap = currentBitmap[index];
-    int shift = rowNum % 8;
-    return ((flag >> shift) & bitmap) == 0;
-}
-
-RowRecord* SessionDataSet::next() {
-    if (!hasCachedRecord) {
-        if (!hasNext()) {
-            return nullptr;
-        }
-    }
-
-    hasCachedRecord = false;
-    return &rowRecord;
-}
-
-void SessionDataSet::closeOperationHandle(bool forceClose) {
-    if ((!forceClose) && (!operationIsOpen)) {
-        return;
-    }
-    operationIsOpen = false;
-
-    TSCloseOperationReq closeReq;
-    closeReq.__set_sessionId(sessionId);
-    closeReq.__set_statementId(statementId);
-    closeReq.__set_queryId(queryId);
-    TSStatus tsStatus;
-    try {
-        client->closeOperation(tsStatus, closeReq);
-        RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const TTransportException& e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException& e) {
-        log_debug(e.what());
-        throw;
-    } catch (exception& e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
-}
-
 string MeasurementNode::serialize() const {
     MyStringBuffer buffer;
     buffer.putString(getName());
@@ -664,7 +470,7 @@ Session::~Session() {
 }
 
 void Session::removeBrokenSessionConnection(shared_ptr<SessionConnection> sessionConnection) {
-    if (enableRedirection) {
+    if (enableRedirection_) {
         this->endPointToSessionConnection.erase(sessionConnection->getEndPoint());
     }
 
@@ -855,8 +661,6 @@ Session::putValuesIntoBuffer(const vector<TSDataType::TSDataType>& types, const 
             buf.append(values[i], len);
             break;
         }
-        case TSDataType::NULLTYPE:
-            break;
         default:
             break;
         }
@@ -904,7 +708,7 @@ string Session::getVersionString(Version::Version version) {
 }
 
 void Session::initZoneId() {
-    if (!zoneId.empty()) {
+    if (!zoneId_.empty()) {
         return;
     }
 
@@ -918,29 +722,29 @@ void Session::initZoneId() {
 
     char zoneStr[32];
     strftime(zoneStr, sizeof(zoneStr), "%z", &tmv);
-    zoneId = zoneStr;
+    zoneId_ = zoneStr;
 }
 
 void Session::initNodesSupplier() {
     std::vector<TEndPoint> endPoints;
     TEndPoint endPoint;
-    endPoint.__set_ip(host);
-    endPoint.__set_port(rpcPort);
+    endPoint.__set_ip(host_);
+    endPoint.__set_port(rpcPort_);
     endPoints.emplace_back(endPoint);
-    if (enableAutoFetch) {
-        nodesSupplier = NodesSupplier::create(endPoints, username, password);
+    if (enableAutoFetch_) {
+        nodesSupplier_ = NodesSupplier::create(endPoints, username_, password_);
     }
     else {
-        nodesSupplier = make_shared<StaticNodesSupplier>(endPoints);
+        nodesSupplier_ = make_shared<StaticNodesSupplier>(endPoints);
     }
 }
 
 void Session::initDefaultSessionConnection() {
-    defaultEndPoint.__set_ip(host);
-    defaultEndPoint.__set_port(rpcPort);
-    defaultSessionConnection = make_shared<SessionConnection>(this, defaultEndPoint, zoneId, nodesSupplier, fetchSize,
+    defaultEndPoint_.__set_ip(host_);
+    defaultEndPoint_.__set_port(rpcPort_);
+    defaultSessionConnection_ = make_shared<SessionConnection>(this, defaultEndPoint_, zoneId_, nodesSupplier_, fetchSize_,
                                                               60, 500,
-                                                              sqlDialect, database);
+                                                              sqlDialect_, database_);
 }
 
 void Session::insertStringRecordsWithLeaderCache(vector<string> deviceIds, vector<int64_t> times,
@@ -1078,7 +882,7 @@ void Session::open(bool enableRPCCompression) {
 }
 
 void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
-    if (!isClosed) {
+    if (!isClosed_) {
         return;
     }
 
@@ -1089,21 +893,21 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
-    zoneId = defaultSessionConnection->zoneId;
+    zoneId_ = defaultSessionConnection_->zoneId;
 
-    if (enableRedirection) {
-        endPointToSessionConnection.insert(make_pair(defaultEndPoint, defaultSessionConnection));
+    if (enableRedirection_) {
+        endPointToSessionConnection.insert(make_pair(defaultEndPoint_, defaultSessionConnection_));
     }
 
-    isClosed = false;
+    isClosed_ = false;
 }
 
 
 void Session::close() {
-    if (isClosed) {
+    if (isClosed_) {
         return;
     }
-    isClosed = true;
+    isClosed_ = true;
 }
 
 
@@ -1122,10 +926,10 @@ void Session::insertRecord(const string& deviceId, int64_t time,
     catch (RedirectException& e) {
         handleRedirection(deviceId, e.endPoint);
     } catch (const IoTDBConnectionException& e) {
-        if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
+        if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
             deviceIdToEndpoint.erase(deviceId);
             try {
-                defaultSessionConnection->insertStringRecord(req);
+                defaultSessionConnection_->insertStringRecord(req);
             }
             catch (RedirectException& e) {
             }
@@ -1154,10 +958,10 @@ void Session::insertRecord(const string& deviceId, int64_t time,
     catch (RedirectException& e) {
         handleRedirection(deviceId, e.endPoint);
     } catch (const IoTDBConnectionException& e) {
-        if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
+        if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
             deviceIdToEndpoint.erase(deviceId);
             try {
-                defaultSessionConnection->insertRecord(req);
+                defaultSessionConnection_->insertRecord(req);
             }
             catch (RedirectException& e) {
             }
@@ -1183,10 +987,10 @@ void Session::insertAlignedRecord(const string& deviceId, int64_t time,
     catch (RedirectException& e) {
         handleRedirection(deviceId, e.endPoint);
     } catch (const IoTDBConnectionException& e) {
-        if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
+        if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
             deviceIdToEndpoint.erase(deviceId);
             try {
-                defaultSessionConnection->insertStringRecord(req);
+                defaultSessionConnection_->insertStringRecord(req);
             }
             catch (RedirectException& e) {
             }
@@ -1215,10 +1019,10 @@ void Session::insertAlignedRecord(const string& deviceId, int64_t time,
     catch (RedirectException& e) {
         handleRedirection(deviceId, e.endPoint);
     } catch (const IoTDBConnectionException& e) {
-        if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
+        if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
             deviceIdToEndpoint.erase(deviceId);
             try {
-                defaultSessionConnection->insertRecord(req);
+                defaultSessionConnection_->insertRecord(req);
             }
             catch (RedirectException& e) {
             }
@@ -1239,7 +1043,7 @@ void Session::insertRecords(const vector<string>& deviceIds,
         throw exception(e);
     }
 
-    if (enableRedirection) {
+    if (enableRedirection_) {
         insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, false);
     }
     else {
@@ -1250,7 +1054,7 @@ void Session::insertRecords(const vector<string>& deviceIds,
         request.__set_valuesList(valuesList);
         request.__set_isAligned(false);
         try {
-            defaultSessionConnection->insertStringRecords(request);
+            defaultSessionConnection_->insertStringRecords(request);
         }
         catch (RedirectException& e) {
         }
@@ -1268,7 +1072,7 @@ void Session::insertRecords(const vector<string>& deviceIds,
         throw exception(e);
     }
 
-    if (enableRedirection) {
+    if (enableRedirection_) {
         insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList, false);
     }
     else {
@@ -1285,7 +1089,7 @@ void Session::insertRecords(const vector<string>& deviceIds,
         request.__set_valuesList(bufferList);
         request.__set_isAligned(false);
         try {
-            defaultSessionConnection->insertRecords(request);
+            defaultSessionConnection_->insertRecords(request);
         }
         catch (RedirectException& e) {
         }
@@ -1302,7 +1106,7 @@ void Session::insertAlignedRecords(const vector<string>& deviceIds,
         throw exception(e);
     }
 
-    if (enableRedirection) {
+    if (enableRedirection_) {
         insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, true);
     }
     else {
@@ -1313,7 +1117,7 @@ void Session::insertAlignedRecords(const vector<string>& deviceIds,
         request.__set_valuesList(valuesList);
         request.__set_isAligned(true);
         try {
-            defaultSessionConnection->insertStringRecords(request);
+            defaultSessionConnection_->insertStringRecords(request);
         }
         catch (RedirectException& e) {
         }
@@ -1331,7 +1135,7 @@ void Session::insertAlignedRecords(const vector<string>& deviceIds,
         throw exception(e);
     }
 
-    if (enableRedirection) {
+    if (enableRedirection_) {
         insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList, true);
     }
     else {
@@ -1348,7 +1152,7 @@ void Session::insertAlignedRecords(const vector<string>& deviceIds,
         request.__set_valuesList(bufferList);
         request.__set_isAligned(false);
         try {
-            defaultSessionConnection->insertRecords(request);
+            defaultSessionConnection_->insertRecords(request);
         }
         catch (RedirectException& e) {
         }
@@ -1401,10 +1205,10 @@ void Session::insertRecordsOfOneDevice(const string& deviceId,
     catch (RedirectException& e) {
         handleRedirection(deviceId, e.endPoint);
     } catch (const IoTDBConnectionException& e) {
-        if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
+        if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
             deviceIdToEndpoint.erase(deviceId);
             try {
-                defaultSessionConnection->insertRecordsOfOneDevice(request);
+                defaultSessionConnection_->insertRecordsOfOneDevice(request);
             }
             catch (RedirectException& e) {
             }
@@ -1461,10 +1265,10 @@ void Session::insertAlignedRecordsOfOneDevice(const string& deviceId,
     catch (RedirectException& e) {
         handleRedirection(deviceId, e.endPoint);
     } catch (const IoTDBConnectionException& e) {
-        if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
+        if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
             deviceIdToEndpoint.erase(deviceId);
             try {
-                defaultSessionConnection->insertRecordsOfOneDevice(request);
+                defaultSessionConnection_->insertRecordsOfOneDevice(request);
             }
             catch (RedirectException& e) {
             }
@@ -1513,10 +1317,10 @@ void Session::insertTablet(TSInsertTabletReq request) {
     catch (RedirectException& e) {
         handleRedirection(deviceId, e.endPoint);
     } catch (const IoTDBConnectionException& e) {
-        if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
+        if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
             deviceIdToEndpoint.erase(deviceId);
             try {
-                defaultSessionConnection->insertTablet(request);
+                defaultSessionConnection_->insertTablet(request);
             }
             catch (RedirectException& e) {
             }
@@ -1536,7 +1340,7 @@ void Session::insertTablet(Tablet& tablet, bool sorted) {
 void Session::insertRelationalTablet(Tablet& tablet, bool sorted) {
     std::unordered_map<std::shared_ptr<SessionConnection>, Tablet> relationalTabletGroup;
     if (tableModelDeviceIdToEndpoint.empty()) {
-        relationalTabletGroup.insert(make_pair(defaultSessionConnection, tablet));
+        relationalTabletGroup.insert(make_pair(defaultSessionConnection_, tablet));
     }
     else if (SessionUtils::isTabletContainsSingleDevice(tablet)) {
         relationalTabletGroup.insert(make_pair(getSessionConnection(tablet.getDeviceID(0)), tablet));
@@ -1638,7 +1442,7 @@ void Session::insertRelationalTabletOnce(const std::unordered_map<std::shared_pt
             removeBrokenSessionConnection(connection);
             try {
                 TSStatus respStatus;
-                defaultSessionConnection->getSessionClient()->insertTablet(respStatus, request);
+                defaultSessionConnection_->getSessionClient()->insertTablet(respStatus, request);
                 RpcUtils::verifySuccess(respStatus);
             }
             catch (RedirectException& e) {
@@ -1736,7 +1540,7 @@ void Session::insertTablets(unordered_map<string, Tablet*>& tablets, bool sorted
     }
     auto beginIter = tablets.begin();
     bool isAligned = ((*beginIter).second)->isAligned;
-    if (enableRedirection) {
+    if (enableRedirection_) {
         insertTabletsWithLeaderCache(tablets, sorted, isAligned);
     }
     else {
@@ -1764,7 +1568,7 @@ void Session::insertTablets(unordered_map<string, Tablet*>& tablets, bool sorted
         request.__set_isAligned(isAligned);
         try {
             TSStatus respStatus;
-            defaultSessionConnection->insertTablets(request);
+            defaultSessionConnection_->insertTablets(request);
             RpcUtils::verifySuccess(respStatus);
         }
         catch (RedirectException& e) {
@@ -1796,7 +1600,7 @@ void Session::testInsertRecord(const string& deviceId, int64_t time, const vecto
     req.__set_values(values);
     TSStatus tsStatus;
     try {
-        defaultSessionConnection->testInsertStringRecord(req);
+        defaultSessionConnection_->testInsertStringRecord(req);
         RpcUtils::verifySuccess(tsStatus);
     }
     catch (const TTransportException& e) {
@@ -1823,7 +1627,7 @@ void Session::testInsertTablet(const Tablet& tablet) {
     request.__set_size(tablet.rowSize);
     try {
         TSStatus tsStatus;
-        defaultSessionConnection->testInsertTablet(request);
+        defaultSessionConnection_->testInsertTablet(request);
         RpcUtils::verifySuccess(tsStatus);
     }
     catch (const TTransportException& e) {
@@ -1855,7 +1659,7 @@ void Session::testInsertRecords(const vector<string>& deviceIds,
 
     try {
         TSStatus tsStatus;
-        defaultSessionConnection->getSessionClient()->insertStringRecords(tsStatus, request);
+        defaultSessionConnection_->getSessionClient()->insertStringRecords(tsStatus, request);
         RpcUtils::verifySuccess(tsStatus);
     }
     catch (const TTransportException& e) {
@@ -1877,7 +1681,7 @@ void Session::deleteTimeseries(const string& path) {
 }
 
 void Session::deleteTimeseries(const vector<string>& paths) {
-    defaultSessionConnection->deleteTimeseries(paths);
+    defaultSessionConnection_->deleteTimeseries(paths);
 }
 
 void Session::deleteData(const string& path, int64_t endTime) {
@@ -1895,11 +1699,11 @@ void Session::deleteData(const vector<string>& paths, int64_t startTime, int64_t
     req.__set_paths(paths);
     req.__set_startTime(startTime);
     req.__set_endTime(endTime);
-    defaultSessionConnection->deleteData(req);
+    defaultSessionConnection_->deleteData(req);
 }
 
 void Session::setStorageGroup(const string& storageGroupId) {
-    defaultSessionConnection->setStorageGroup(storageGroupId);
+    defaultSessionConnection_->setStorageGroup(storageGroupId);
 }
 
 void Session::deleteStorageGroup(const string& storageGroup) {
@@ -1909,7 +1713,7 @@ void Session::deleteStorageGroup(const string& storageGroup) {
 }
 
 void Session::deleteStorageGroups(const vector<string>& storageGroups) {
-    defaultSessionConnection->deleteStorageGroups(storageGroups);
+    defaultSessionConnection_->deleteStorageGroups(storageGroups);
 }
 
 void Session::createDatabase(const string& database) {
@@ -1963,7 +1767,7 @@ void Session::createTimeseries(const string& path,
     if (!measurementAlias.empty()) {
         req.__set_measurementAlias(measurementAlias);
     }
-    defaultSessionConnection->createTimeseries(req);
+    defaultSessionConnection_->createTimeseries(req);
 }
 
 void Session::createMultiTimeseries(const vector<string>& paths,
@@ -2012,7 +1816,7 @@ void Session::createMultiTimeseries(const vector<string>& paths,
         request.__set_measurementAliasList(*measurementAliasList);
     }
 
-    defaultSessionConnection->createMultiTimeseries(request);
+    defaultSessionConnection_->createMultiTimeseries(request);
 }
 
 void Session::createAlignedTimeseries(const std::string& deviceId,
@@ -2045,7 +1849,7 @@ void Session::createAlignedTimeseries(const std::string& deviceId,
     }
     request.__set_compressors(compressorsOrdinal);
 
-    defaultSessionConnection->createAlignedTimeseries(request);
+    defaultSessionConnection_->createAlignedTimeseries(request);
 }
 
 bool Session::checkTimeseriesExists(const string& path) {
@@ -2062,9 +1866,9 @@ bool Session::checkTimeseriesExists(const string& path) {
 }
 
 shared_ptr<SessionConnection> Session::getQuerySessionConnection() {
-    auto endPoint = nodesSupplier->getQueryEndPoint();
+    auto endPoint = nodesSupplier_->getQueryEndPoint();
     if (!endPoint.is_initialized() || endPointToSessionConnection.empty()) {
-        return defaultSessionConnection;
+        return defaultSessionConnection_;
     }
 
     auto it = endPointToSessionConnection.find(endPoint.value());
@@ -2074,8 +1878,8 @@ shared_ptr<SessionConnection> Session::getQuerySessionConnection() {
 
     shared_ptr<SessionConnection> newConnection;
     try {
-        newConnection = make_shared<SessionConnection>(this, endPoint.value(), zoneId, nodesSupplier,
-                                                       fetchSize, 60, 500, sqlDialect, database);
+        newConnection = make_shared<SessionConnection>(this, endPoint.value(), zoneId_, nodesSupplier_,
+                                                       fetchSize_, 60, 500, sqlDialect_, database_);
         endPointToSessionConnection.emplace(endPoint.value(), newConnection);
         return newConnection;
     }
@@ -2086,33 +1890,33 @@ shared_ptr<SessionConnection> Session::getQuerySessionConnection() {
 }
 
 shared_ptr<SessionConnection> Session::getSessionConnection(std::string deviceId) {
-    if (!enableRedirection ||
+    if (!enableRedirection_ ||
         deviceIdToEndpoint.find(deviceId) == deviceIdToEndpoint.end() ||
         endPointToSessionConnection.find(deviceIdToEndpoint[deviceId]) == endPointToSessionConnection.end()) {
-        return defaultSessionConnection;
+        return defaultSessionConnection_;
     }
     return endPointToSessionConnection.find(deviceIdToEndpoint[deviceId])->second;
 }
 
 shared_ptr<SessionConnection> Session::getSessionConnection(std::shared_ptr<storage::IDeviceID> deviceId) {
-    if (!enableRedirection ||
+    if (!enableRedirection_ ||
         tableModelDeviceIdToEndpoint.find(deviceId) == tableModelDeviceIdToEndpoint.end() ||
         endPointToSessionConnection.find(tableModelDeviceIdToEndpoint[deviceId]) == endPointToSessionConnection.end()) {
-        return defaultSessionConnection;
+        return defaultSessionConnection_;
     }
     return endPointToSessionConnection.find(tableModelDeviceIdToEndpoint[deviceId])->second;
 }
 
 string Session::getTimeZone() {
-    auto ret = defaultSessionConnection->getTimeZone();
+    auto ret = defaultSessionConnection_->getTimeZone();
     return ret.timeZone;
 }
 
 void Session::setTimeZone(const string& zoneId) {
     TSSetTimeZoneReq req;
-    req.__set_sessionId(defaultSessionConnection->sessionId);
+    req.__set_sessionId(defaultSessionConnection_->sessionId);
     req.__set_timeZone(zoneId);
-    defaultSessionConnection->setTimeZone(req);
+    defaultSessionConnection_->setTimeZone(req);
 }
 
 unique_ptr<SessionDataSet> Session::executeQueryStatement(const string& sql) {
@@ -2124,7 +1928,7 @@ unique_ptr<SessionDataSet> Session::executeQueryStatement(const string& sql, int
 }
 
 void Session::handleQueryRedirection(TEndPoint endPoint) {
-    if (!enableRedirection) return;
+    if (!enableRedirection_) return;
     shared_ptr<SessionConnection> newConnection;
     auto it = endPointToSessionConnection.find(endPoint);
     if (it != endPointToSessionConnection.end()) {
@@ -2132,8 +1936,8 @@ void Session::handleQueryRedirection(TEndPoint endPoint) {
     }
     else {
         try {
-            newConnection = make_shared<SessionConnection>(this, endPoint, zoneId, nodesSupplier,
-                                                           fetchSize, 60, 500, sqlDialect, database);
+            newConnection = make_shared<SessionConnection>(this, endPoint, zoneId_, nodesSupplier_,
+                                                           fetchSize_, 60, 500, sqlDialect_, database_);
 
             endPointToSessionConnection.emplace(endPoint, newConnection);
         }
@@ -2141,11 +1945,11 @@ void Session::handleQueryRedirection(TEndPoint endPoint) {
             throw IoTDBConnectionException(e.what());
         }
     }
-    defaultSessionConnection = newConnection;
+    defaultSessionConnection_ = newConnection;
 }
 
 void Session::handleRedirection(const std::string& deviceId, TEndPoint endPoint) {
-    if (!enableRedirection) return;
+    if (!enableRedirection_) return;
     if (endPoint.ip == "127.0.0.1") return;
     deviceIdToEndpoint[deviceId] = endPoint;
 
@@ -2156,8 +1960,8 @@ void Session::handleRedirection(const std::string& deviceId, TEndPoint endPoint)
     }
     else {
         try {
-            newConnection = make_shared<SessionConnection>(this, endPoint, zoneId, nodesSupplier,
-                                                           fetchSize, 60, 500, sqlDialect, database);
+            newConnection = make_shared<SessionConnection>(this, endPoint, zoneId_, nodesSupplier_,
+                                                           fetchSize_, 60, 500, sqlDialect_, database_);
             endPointToSessionConnection.emplace(endPoint, newConnection);
         }
         catch (exception& e) {
@@ -2168,7 +1972,7 @@ void Session::handleRedirection(const std::string& deviceId, TEndPoint endPoint)
 }
 
 void Session::handleRedirection(const std::shared_ptr<storage::IDeviceID>& deviceId, TEndPoint endPoint) {
-    if (!enableRedirection) return;
+    if (!enableRedirection_) return;
     if (endPoint.ip == "127.0.0.1") return;
     tableModelDeviceIdToEndpoint[deviceId] = endPoint;
 
@@ -2179,8 +1983,8 @@ void Session::handleRedirection(const std::shared_ptr<storage::IDeviceID>& devic
     }
     else {
         try {
-            newConnection = make_shared<SessionConnection>(this, endPoint, zoneId, nodesSupplier,
-                                                           fetchSize, 60, 500, sqlDialect, database);
+            newConnection = make_shared<SessionConnection>(this, endPoint, zoneId_, nodesSupplier_,
+                                                           fetchSize_, 60, 500, sqlDialect_, database_);
             endPointToSessionConnection.emplace(endPoint, newConnection);
         }
         catch (exception& e) {
@@ -2203,7 +2007,7 @@ std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const 
         log_warn("Session connection redirect exception: " + e.what());
         handleQueryRedirection(e.endPoint);
         try {
-            return defaultSessionConnection->executeQueryStatement(sql, timeoutInMs);
+            return defaultSessionConnection_->executeQueryStatement(sql, timeoutInMs);
         }
         catch (exception& e) {
             log_error("Exception while executing redirected query statement: %s", e.what());
@@ -2217,7 +2021,7 @@ std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const 
 
 void Session::executeNonQueryStatement(const string& sql) {
     try {
-        defaultSessionConnection->executeNonQueryStatement(sql);
+        defaultSessionConnection_->executeNonQueryStatement(sql);
     }
     catch (const exception& e) {
         throw IoTDBException(e.what());
@@ -2226,7 +2030,7 @@ void Session::executeNonQueryStatement(const string& sql) {
 
 unique_ptr<SessionDataSet>
 Session::executeRawDataQuery(const vector<string>& paths, int64_t startTime, int64_t endTime) {
-    return defaultSessionConnection->executeRawDataQuery(paths, startTime, endTime);
+    return defaultSessionConnection_->executeRawDataQuery(paths, startTime, endTime);
 }
 
 
@@ -2235,28 +2039,28 @@ unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string>& p
 }
 
 unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string>& paths, int64_t lastTime) {
-    return defaultSessionConnection->executeLastDataQuery(paths, lastTime);
+    return defaultSessionConnection_->executeLastDataQuery(paths, lastTime);
 }
 
 void Session::createSchemaTemplate(const Template& templ) {
     TSCreateSchemaTemplateReq req;
     req.__set_name(templ.getName());
     req.__set_serializedTemplate(templ.serialize());
-    defaultSessionConnection->createSchemaTemplate(req);
+    defaultSessionConnection_->createSchemaTemplate(req);
 }
 
 void Session::setSchemaTemplate(const string& template_name, const string& prefix_path) {
     TSSetSchemaTemplateReq req;
     req.__set_templateName(template_name);
     req.__set_prefixPath(prefix_path);
-    defaultSessionConnection->setSchemaTemplate(req);
+    defaultSessionConnection_->setSchemaTemplate(req);
 }
 
 void Session::unsetSchemaTemplate(const string& prefix_path, const string& template_name) {
     TSUnsetSchemaTemplateReq req;
     req.__set_templateName(template_name);
     req.__set_prefixPath(prefix_path);
-    defaultSessionConnection->unsetSchemaTemplate(req);
+    defaultSessionConnection_->unsetSchemaTemplate(req);
 }
 
 void Session::addAlignedMeasurementsInTemplate(const string& template_name, const vector<std::string>& measurements,
@@ -2289,7 +2093,7 @@ void Session::addAlignedMeasurementsInTemplate(const string& template_name, cons
     }
     req.__set_compressors(compressorsOrdinal);
 
-    defaultSessionConnection->appendSchemaTemplate(req);
+    defaultSessionConnection_->appendSchemaTemplate(req);
 }
 
 void Session::addAlignedMeasurementsInTemplate(const string& template_name, const string& measurement,
@@ -2332,7 +2136,7 @@ void Session::addUnalignedMeasurementsInTemplate(const string& template_name, co
     }
     req.__set_compressors(compressorsOrdinal);
 
-    defaultSessionConnection->appendSchemaTemplate(req);
+    defaultSessionConnection_->appendSchemaTemplate(req);
 }
 
 void Session::addUnalignedMeasurementsInTemplate(const string& template_name, const string& measurement,
@@ -2349,14 +2153,14 @@ void Session::deleteNodeInTemplate(const string& template_name, const string& pa
     TSPruneSchemaTemplateReq req;
     req.__set_name(template_name);
     req.__set_path(path);
-    defaultSessionConnection->pruneSchemaTemplate(req);
+    defaultSessionConnection_->pruneSchemaTemplate(req);
 }
 
 int Session::countMeasurementsInTemplate(const string& template_name) {
     TSQueryTemplateReq req;
     req.__set_name(template_name);
     req.__set_queryType(TemplateQueryType::COUNT_MEASUREMENTS);
-    TSQueryTemplateResp resp = defaultSessionConnection->querySchemaTemplate(req);
+    TSQueryTemplateResp resp = defaultSessionConnection_->querySchemaTemplate(req);
     return resp.count;
 }
 
@@ -2365,7 +2169,7 @@ bool Session::isMeasurementInTemplate(const string& template_name, const string&
     req.__set_name(template_name);
     req.__set_measurement(path);
     req.__set_queryType(TemplateQueryType::IS_MEASUREMENT);
-    TSQueryTemplateResp resp = defaultSessionConnection->querySchemaTemplate(req);
+    TSQueryTemplateResp resp = defaultSessionConnection_->querySchemaTemplate(req);
     return resp.result;
 }
 
@@ -2374,7 +2178,7 @@ bool Session::isPathExistInTemplate(const string& template_name, const string& p
     req.__set_name(template_name);
     req.__set_measurement(path);
     req.__set_queryType(TemplateQueryType::PATH_EXIST);
-    TSQueryTemplateResp resp = defaultSessionConnection->querySchemaTemplate(req);
+    TSQueryTemplateResp resp = defaultSessionConnection_->querySchemaTemplate(req);
     return resp.result;
 }
 
@@ -2383,7 +2187,7 @@ std::vector<std::string> Session::showMeasurementsInTemplate(const string& templ
     req.__set_name(template_name);
     req.__set_measurement("");
     req.__set_queryType(TemplateQueryType::SHOW_MEASUREMENTS);
-    TSQueryTemplateResp resp = defaultSessionConnection->querySchemaTemplate(req);
+    TSQueryTemplateResp resp = defaultSessionConnection_->querySchemaTemplate(req);
     return resp.measurements;
 }
 
@@ -2392,7 +2196,7 @@ std::vector<std::string> Session::showMeasurementsInTemplate(const string& templ
     req.__set_name(template_name);
     req.__set_measurement(pattern);
     req.__set_queryType(TemplateQueryType::SHOW_MEASUREMENTS);
-    TSQueryTemplateResp resp = defaultSessionConnection->querySchemaTemplate(req);
+    TSQueryTemplateResp resp = defaultSessionConnection_->querySchemaTemplate(req);
     return resp.measurements;
 }
 

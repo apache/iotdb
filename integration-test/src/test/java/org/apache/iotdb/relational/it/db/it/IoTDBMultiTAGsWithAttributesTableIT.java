@@ -41,7 +41,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinN
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.ONLY_SUPPORT_EQUI_JOIN;
 import static org.junit.Assert.fail;
 
 /** In this IT, table has more than one TAGs and Attributes. */
@@ -391,12 +390,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "l3,217,null,d2,1971-01-01T00:00:00.500Z,",
           "l3,245,t,d1,1971-04-26T17:46:40.020Z,",
           "l3,245,null,d2,1971-04-26T17:46:40.020Z,",
-          "l4,52,null,d2,1970-01-01T00:00:00.080Z,",
           "l4,52,null,d1,1970-01-01T00:00:00.080Z,",
-          "l4,61,null,d2,1971-01-01T00:00:01.000Z,",
+          "l4,52,null,d2,1970-01-01T00:00:00.080Z,",
           "l4,61,null,d1,1971-01-01T00:00:01.000Z,",
-          "l4,67,null,d2,1971-04-26T18:01:40.000Z,",
+          "l4,61,null,d2,1971-01-01T00:00:01.000Z,",
           "l4,67,null,d1,1971-04-26T18:01:40.000Z,",
+          "l4,67,null,d2,1971-04-26T18:01:40.000Z,",
           "l5,220,null,d1,1971-01-01T00:00:10.000Z,",
           "l5,220,null,d2,1971-01-01T00:00:10.000Z,",
           "l5,250,null,d1,1971-08-20T11:33:20.000Z,",
@@ -405,7 +404,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "l5,4662,null,d2,1970-01-01T00:00:00.100Z,",
         };
     tableResultSetEqualTest(
-        "select level,cast(num+floatNum as int32) as sum,attr1,device,time from table0 order by level asc, cast(num+floatNum as int32) asc, attr1 desc",
+        "select level,cast(num+floatNum as int32) as sum,attr1,device,time from table0 order by level asc, cast(num+floatNum as int32) asc, attr1 desc, device asc",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -2511,7 +2510,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   }
 
   @Test
-  public void asofJoinTest() {
+  public void asofInnerJoinTest() {
     expectedHeader = new String[] {"time", "device", "level", "time", "device", "level"};
     retArray =
         new String[] {
@@ -2626,8 +2625,133 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   }
 
   @Test
+  public void asofLeftJoinTest() {
+    expectedHeader = new String[] {"time", "device", "level", "time", "device", "level"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,null,null,null,",
+          "1971-01-01T00:00:00.000Z,d1,l1,1970-01-01T00:00:00.100Z,d1,l5,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,d999,null,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,null,l999,",
+          "1970-01-01T00:00:00.020Z,d1,l2,1970-01-01T00:00:00.010Z,d11,l11,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1971-01-01T00:00:00.000Z,d999,null,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1971-01-01T00:00:00.000Z,null,l999,",
+          "1971-04-26T17:46:40.000Z,d1,l2,1971-01-01T00:00:00.000Z,d1,l1,"
+        };
+    // test single join condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.time>table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '>=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.time>=table1.time+1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,null,null,null,",
+          "1971-01-01T00:00:00.000Z,d1,l1,1970-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1970-01-01T00:00:00.020Z,d1,l2,null,null,null,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1970-01-01T00:00:00.020Z,d1,l2,",
+          "1971-04-26T17:46:40.000Z,d1,l2,1970-01-01T00:00:00.020Z,d1,l2,",
+          "1970-01-01T00:00:00.040Z,d1,l3,null,null,null,",
+          "1971-01-01T00:00:00.500Z,d1,l3,1970-01-01T00:00:00.040Z,d1,l3,",
+          "1971-04-26T17:46:40.020Z,d1,l3,1970-01-01T00:00:00.040Z,d1,l3,",
+          "1970-01-01T00:00:00.080Z,d1,l4,null,null,null,"
+        };
+    // test multi join conditions
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time>table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '>=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time>=table1.time+1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,1970-01-01T00:00:00.010Z,d11,l11,",
+          "1971-01-01T00:00:00.000Z,d1,l1,null,null,null,",
+          "1971-01-01T00:01:40.000Z,d1,l1,null,null,null,",
+          "1970-01-01T00:00:00.020Z,d1,l2,1970-01-01T00:00:00.030Z,d11,l11,",
+          "1971-01-01T00:00:00.100Z,d1,l2,null,null,null,",
+          "1971-04-26T17:46:40.000Z,d1,l2,null,null,null,",
+          "1970-01-01T00:00:00.040Z,d1,l3,1970-01-01T00:00:00.080Z,d1,l4,",
+          "1971-01-01T00:00:00.500Z,d1,l3,null,null,null,",
+          "1971-04-26T17:46:40.020Z,d1,l3,null,null,null,",
+          "1970-01-01T00:00:00.080Z,d1,l4,1970-01-01T00:00:00.100Z,d1,l5,"
+        };
+    // test single join condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.time<table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '<=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.time<=table1.time-1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:00:00.000Z,d1,l1,null,null,null,",
+          "1971-01-01T00:01:40.000Z,d1,l1,null,null,null,",
+          "1970-01-01T00:00:00.020Z,d1,l2,null,null,null,",
+          "1971-01-01T00:00:00.100Z,d1,l2,null,null,null,",
+          "1971-04-26T17:46:40.000Z,d1,l2,null,null,null,",
+          "1970-01-01T00:00:00.040Z,d1,l3,null,null,null,",
+          "1971-01-01T00:00:00.500Z,d1,l3,null,null,null,",
+          "1971-04-26T17:46:40.020Z,d1,l3,null,null,null,",
+          "1970-01-01T00:00:00.080Z,d1,l4,null,null,null,"
+        };
+    // test multi join conditions
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time<table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '>=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time<=table1.time-1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void exceptionTest() {
-    String errMsg = TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + ONLY_SUPPORT_EQUI_JOIN;
+    String errMsg =
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + "Unsupported Join creteria";
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.num>t1.num", errMsg, DATABASE_NAME);
 
@@ -2647,6 +2771,47 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device OR t0.time=t1.time",
         errMsg,
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 t0 full join table1 t1 on t0.time=4000", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 t0 left join table1 t1 on t0.time=4000", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 t0 right join table1 t1 on t0.time=4000", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 asof (tolerance 1s) left join table1 on table0.time<=table1.time",
+        "Tolerance in ASOF JOIN only supports INNER type now",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 asof right join table1 on table0.time<=table1.time",
+        "ASOF JOIN does not support RIGHT type now",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 asof full join table1 on table0.time<=table1.time",
+        "ASOF JOIN does not support FULL type now",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void aggregationTableScanWithJoinTest() {
+    expectedHeader = new String[] {"date", "_col1", "date", "_col3"};
+    retArray = new String[] {"1970-01-01T00:00:00.000Z,2,1970-01-01T00:00:00.000Z,2,"};
+    // Join may rename the 'time' column, so we need to ensure the correctness of
+    // AggregationTableScan in this case
+    tableResultSetEqualTest(
+        "select * from ("
+            + "select date_bin(1ms,time) as date,count(*)from table0 group by date_bin(1ms,time)) t0 "
+            + "join ("
+            + "select date_bin(1ms,time) as date,count(*)from table1 where time=0 group by date_bin(1ms,time)) t1 "
+            + "on t0.date = t1.date",
+        expectedHeader,
+        retArray,
         DATABASE_NAME);
   }
 

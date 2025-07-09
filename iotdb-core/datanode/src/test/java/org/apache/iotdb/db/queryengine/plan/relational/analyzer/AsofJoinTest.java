@@ -275,8 +275,5 @@ public class AsofJoinTest {
     assertAnalyzeSemanticException(
         "select * from table1 asof (tolerance 1ms) join table2 on table1.tag1 = table2.tag1 and table1.time > table2.s1",
         "right child type of ASOF main JOIN expression must be TIMESTAMP: actual type INT64");
-    assertAnalyzeSemanticException(
-        "select * from table1 asof (tolerance 1ms) left join table2 on table1.time > table2.time",
-        "ASOF JOIN is only support INNER type now");
   }
 }

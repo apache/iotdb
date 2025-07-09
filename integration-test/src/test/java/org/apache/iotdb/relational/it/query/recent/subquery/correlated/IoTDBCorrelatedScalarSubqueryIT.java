@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -369,26 +370,28 @@ public class IoTDBCorrelatedScalarSubqueryIT {
 
   @Test
   public void testNonEqualityComparisonFilterInCorrelatedScalarSubquery() {
+    String errMsg =
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + "Unsupported Join creteria";
     // Legality check: Correlated subquery with Non-equality comparison is not support for now.
     tableAssertTestFail(
         "select s1 from table1 t1 where s1 > (select max(s1) from table3 t3 where t1.s1 > t3.s1)",
-        "For now, FullOuterJoin and LeftJoin only support EquiJoinClauses",
+        errMsg,
         DATABASE_NAME);
     tableAssertTestFail(
         "select s1 from table1 t1 where s1 > (select max(s1) from table3 t3 where t1.s1 >= t3.s1)",
-        "For now, FullOuterJoin and LeftJoin only support EquiJoinClauses",
+        errMsg,
         DATABASE_NAME);
     tableAssertTestFail(
         "select s1 from table1 t1 where s1 > (select max(s1) from table3 t3 where t1.s1 < t3.s1)",
-        "For now, FullOuterJoin and LeftJoin only support EquiJoinClauses",
+        errMsg,
         DATABASE_NAME);
     tableAssertTestFail(
         "select s1 from table1 t1 where s1 > (select max(s1) from table3 t3 where t1.s1 <= t3.s1)",
-        "For now, FullOuterJoin and LeftJoin only support EquiJoinClauses",
+        errMsg,
         DATABASE_NAME);
     tableAssertTestFail(
         "select s1 from table1 t1 where s1 > (select max(s1) from table3 t3 where t1.s1 != t3.s1)",
-        "For now, FullOuterJoin and LeftJoin only support EquiJoinClauses",
+        errMsg,
         DATABASE_NAME);
   }
 

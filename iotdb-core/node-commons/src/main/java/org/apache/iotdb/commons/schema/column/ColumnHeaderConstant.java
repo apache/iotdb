@@ -129,6 +129,7 @@ public class ColumnHeaderConstant {
   // column names for show subscriptions statement
   public static final String CONSUMER_GROUP_NAME = "ConsumerGroupName";
   public static final String SUBSCRIBED_CONSUMERS = "SubscribedConsumers";
+  public static final String SUBSCRIPTION_ID = "SubscriptionID";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
@@ -253,6 +254,19 @@ public class ColumnHeaderConstant {
   public static final String FUNCTION_TYPE_TABLE_MODEL = "function_type";
   public static final String CLASS_NAME_UDF_TABLE_MODEL = "class_name(udf)";
 
+  public static final String NODE_ID_TABLE_MODEL = "node_id";
+  public static final String NODE_TYPE_TABLE_MODEL = "node_type";
+  public static final String INTERNAL_PORT_TABLE_MODEL = "internal_port";
+  public static final String BUILD_INFO_TABLE_MODEL = "build_info";
+
+  public static final String CONFIG_CONSENSUS_PORT_TABLE_MODEL = "config_consensus_port";
+
+  public static final String DATA_REGION_NUM_TABLE_MODEL = "data_region_num";
+  public static final String SCHEMA_REGION_NUM_TABLE_MODEL = "schema_region_num";
+  public static final String MPP_PORT_TABLE_MODEL = "mpp_port";
+  public static final String SCHEMA_CONSENSUS_PORT_TABLE_MODEL = "schema_consensus_port";
+  public static final String DATA_CONSENSUS_PORT_TABLE_MODEL = "data_consensus_port";
+
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
   public static final String LIMIT = "Limit";
@@ -336,7 +350,7 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(DEVICE, TSDataType.TEXT), new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> showStorageGroupsColumnHeaders =
+  public static final List<ColumnHeader> showDatabasesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
@@ -344,7 +358,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TIME_PARTITION_ORIGIN, TSDataType.INT64),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
 
-  public static final List<ColumnHeader> showStorageGroupsDetailColumnHeaders =
+  public static final List<ColumnHeader> showDatabasesDetailColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
@@ -421,8 +435,8 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(NODE_ID, TSDataType.INT32),
           new ColumnHeader(STATUS, TSDataType.TEXT),
-          new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
-          new ColumnHeader(RPC_PORT, TSDataType.INT32));
+          new ColumnHeader(INTERNAL_ADDRESS, TSDataType.TEXT),
+          new ColumnHeader(INTERNAL_PORT, TSDataType.INT32));
 
   public static final List<ColumnHeader> showDataNodesColumnHeaders =
       ImmutableList.of(
@@ -535,6 +549,7 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showSubscriptionColumnHeaders =
       ImmutableList.of(
+          new ColumnHeader(SUBSCRIPTION_ID, TSDataType.TEXT),
           new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
           new ColumnHeader(CONSUMER_GROUP_NAME, TSDataType.TEXT),
           new ColumnHeader(SUBSCRIBED_CONSUMERS, TSDataType.TEXT));
@@ -597,9 +612,8 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(MODEL_ID, TSDataType.TEXT),
           new ColumnHeader(MODEL_TYPE, TSDataType.TEXT),
-          new ColumnHeader(STATE, TSDataType.TEXT),
-          new ColumnHeader(CONFIGS, TSDataType.TEXT),
-          new ColumnHeader(NOTES, TSDataType.TEXT));
+          new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT),
+          new ColumnHeader(STATE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showLogicalViewColumnHeaders =
       ImmutableList.of(

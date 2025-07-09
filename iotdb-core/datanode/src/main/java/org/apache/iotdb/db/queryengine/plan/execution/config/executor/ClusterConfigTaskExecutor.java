@@ -66,6 +66,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
@@ -106,6 +107,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
@@ -259,6 +261,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -339,6 +342,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -370,6 +374,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     private static final ClusterConfigTaskExecutor INSTANCE = new ClusterConfigTaskExecutor();
 
     private ClusterConfigTaskExecutorHolder() {}
+  }
+
+  private static final SettableFuture<ConfigTaskResult> SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
+
+  static {
+    SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE = SettableFuture.create();
+    SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE.setException(
+        new IoTDBException(
+            "Subscription not enabled, please set config `subscription_enabled` to true.",
+            TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR.getStatusCode()));
   }
 
   public static ClusterConfigTaskExecutor getInstance() {
@@ -1954,7 +1968,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Verify that Pipe is disabled if TSFile encryption is enabled
-    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+    if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+        && !Objects.equals(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            "org.apache.tsfile.encrypt.UNENCRYPTED")) {
       future.setException(
           new IoTDBException(
               String.format(
@@ -2385,6 +2402,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showSubscriptions(
       final ShowSubscriptionsStatement showSubscriptionsStatement) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
+    }
+
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     try (final ConfigNodeClient configNodeClient =
@@ -2418,8 +2439,39 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> dropSubscription(
+      final DropSubscriptionStatement dropSubscriptionStatement) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
+    }
+
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus tsStatus =
+          configNodeClient.dropSubscriptionById(
+              new TDropSubscriptionReq()
+                  .setSubsciptionId(dropSubscriptionStatement.getSubscriptionId())
+                  .setIfExistsCondition(dropSubscriptionStatement.hasIfExistsCondition())
+                  .setIsTableModel(dropSubscriptionStatement.isTableModel()));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> createTopic(
       final CreateTopicStatement createTopicStatement) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
+    }
+
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     final String topicName = createTopicStatement.getTopicName();
@@ -2486,6 +2538,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> dropTopic(final DropTopicStatement dropTopicStatement) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
+    }
+
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -2509,6 +2565,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showTopics(
       final ShowTopicsStatement showTopicsStatement) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
+    }
+
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3292,7 +3352,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       // convert model info list and buildTsBlock
-      ShowModelsTask.buildTsBlock(showModelResp.getModelInfoList(), future);
+      ShowModelsTask.buildTsBlock(showModelResp, future);
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
@@ -3302,24 +3362,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createTraining(
       String modelId,
-      String modelType,
       boolean isTableModel,
       Map<String, String> parameters,
-      boolean useAllData,
       List<List<Long>> timeRanges,
       String existingModelId,
-      @Nullable List<String> tableList,
-      @Nullable List<String> databaseList,
+      @Nullable String targetSql,
       @Nullable List<String> pathList) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TCreateTrainingReq req = new TCreateTrainingReq(modelId, modelType, isTableModel);
+      final TCreateTrainingReq req = new TCreateTrainingReq(modelId, isTableModel, existingModelId);
 
       if (isTableModel) {
         TDataSchemaForTable dataSchemaForTable = new TDataSchemaForTable();
-        dataSchemaForTable.setTableList(tableList);
-        dataSchemaForTable.setDatabaseList(databaseList);
+        dataSchemaForTable.setTargetSql(targetSql);
         req.setDataSchemaForTable(dataSchemaForTable);
       } else {
         TDataSchemaForTree dataSchemaForTree = new TDataSchemaForTree();
@@ -3327,9 +3383,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         req.setDataSchemaForTree(dataSchemaForTree);
       }
       req.setParameters(parameters);
-      req.setUseAllData(useAllData);
       req.setTimeRanges(timeRanges);
-      req.setExistingModelId(existingModelId);
       final TSStatus executionStatus = client.createTraining(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
@@ -3548,6 +3602,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             new IoTDBException(
                 String.format("Unknown database %s", database),
                 TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+        unsetDatabaseIfNotExist(useDB.getDatabaseId().getValue(), clientSession);
       }
     } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
@@ -3556,7 +3611,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB) {
+  public SettableFuture<ConfigTaskResult> dropDatabase(
+      final DropDB dropDB, final IClientSession session) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     final TDeleteDatabasesReq req =
         new TDeleteDatabasesReq(Collections.singletonList(dropDB.getDbName().getValue()))
@@ -3566,6 +3622,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus tsStatus = client.deleteDatabases(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        unsetDatabaseIfNotExist(dropDB.getDbName().getValue(), session);
       } else if (TSStatusCode.PATH_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
         if (dropDB.isExists()) {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -3578,6 +3635,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   String.format("Database %s doesn't exist", dropDB.getDbName().getValue()),
                   TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
         }
+        unsetDatabaseIfNotExist(dropDB.getDbName().getValue(), session);
       } else {
         LOGGER.warn(
             "Failed to execute delete database {} in config node, status is {}.",
@@ -3589,6 +3647,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  public static void unsetDatabaseIfNotExist(final String database, final IClientSession session) {
+    if (session != null) {
+      if (database.equals(session.getDatabaseName())) {
+        session.setDatabaseName(null);
+      }
+    }
   }
 
   @Override
@@ -3644,6 +3710,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   String.format("Database %s doesn't exist", databaseSchema.getName()),
                   TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
         }
+        unsetDatabaseIfNotExist(
+            databaseSchema.getName(), SessionManager.getInstance().getCurrSession());
       } else {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       }
@@ -4264,9 +4332,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   private String getTableErrorMessage(final TSStatus status, final String database) {
-    return status.code == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
-        ? String.format("Unknown database %s", PathUtils.unQualifyDatabaseName(database))
-        : status.getMessage();
+    if (status.code == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()) {
+      unsetDatabaseIfNotExist(database, SessionManager.getInstance().getCurrSession());
+      return String.format("Unknown database %s", PathUtils.unQualifyDatabaseName(database));
+    }
+    return status.getMessage();
   }
 
   public void handlePipeConfigClientExit(final String clientId) {

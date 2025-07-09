@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -91,6 +92,7 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
       compressors.add(
           PipeCompressorFactory.getCompressor(ReadWriteIOUtils.readByte(compressedBuffer)));
       uncompressedLengths.add(ReadWriteIOUtils.readInt(compressedBuffer));
+      checkDecompressedLength(uncompressedLengths.get(i));
     }
 
     byte[] body = new byte[compressedBuffer.remaining()];
@@ -108,6 +110,19 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
     decompressedReq.body = decompressedBuffer.slice();
 
     return decompressedReq;
+  }
+
+  /** This method is used to prevent decompression bomb attacks. */
+  private static void checkDecompressedLength(final int decompressedLength)
+      throws IllegalArgumentException {
+    final int maxDecompressedLength =
+        PipeConfig.getInstance().getPipeReceiverReqDecompressedMaxLengthInBytes();
+    if (decompressedLength < 0 || decompressedLength > maxDecompressedLength) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Decompressed length should be between 0 and %d, but got %d.",
+              maxDecompressedLength, decompressedLength));
+    }
   }
 
   /**

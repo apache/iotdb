@@ -110,4 +110,16 @@ public class SubscriptionTableSession extends AbstractSubscriptionSession
       throws IoTDBConnectionException, StatementExecutionException {
     return super.getSubscriptions(topicName);
   }
+
+  @Override
+  public void dropSubscription(final String subscriptionId)
+      throws IoTDBConnectionException, StatementExecutionException {
+    super.dropSubscription(subscriptionId);
+  }
+
+  @Override
+  public void dropSubscriptionIfExists(final String subscriptionId)
+      throws IoTDBConnectionException, StatementExecutionException {
+    super.dropSubscriptionIfExists(subscriptionId);
+  }
 }

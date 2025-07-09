@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.commons.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
-import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
+import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -174,9 +173,6 @@ public class CommonConfig {
   /** Disk Monitor. */
   private double diskSpaceWarningThreshold = 0.05;
 
-  /** Ip and port of target AI node. */
-  private TEndPoint targetAINodeEndPoint = new TEndPoint("127.0.0.1", 10810);
-
   /** Time partition origin in milliseconds. */
   private long timePartitionOrigin = 0;
 
@@ -199,6 +195,8 @@ public class CommonConfig {
 
   private String pipeHardlinkTsFileDirName = "tsfile";
 
+  private String pipeProgressIndexPersistDirName = "progress";
+
   private String pipeHardlinkWALDirName = "wal";
 
   private boolean pipeHardLinkWALEnabled = false;
@@ -207,6 +205,7 @@ public class CommonConfig {
 
   private int pipeRealTimeQueuePollTsFileThreshold = 10;
   private int pipeRealTimeQueuePollHistoricalTsFileThreshold = 3;
+  private int pipeRealTimeQueueMaxWaitingTsFileSize = 1;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
@@ -216,13 +215,16 @@ public class CommonConfig {
 
   private int pipeDataStructureTabletRowSize = 2048;
   private int pipeDataStructureTabletSizeInBytes = 2097152;
-  private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.4;
-  private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.4;
+  private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.2;
+  private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.2;
+  private double pipeDataStructureWalMemoryProportion = 0.3;
+  private double PipeDataStructureBatchMemoryProportion = 0.1;
   private double pipeTotalFloatingMemoryProportion = 0.2;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
-  private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 1000;
+  private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 50;
+
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
   private long pipeSubtaskExecutorForcedRestartIntervalMs = Long.MAX_VALUE;
 
@@ -232,7 +234,7 @@ public class CommonConfig {
 
   private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
   private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
-  private int pipeConnectorReadFileBufferSize = 8388608;
+  private int pipeConnectorReadFileBufferSize = 5242880; // 5MB
   private boolean isPipeConnectorReadFileBufferMemoryControlEnabled = false;
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
@@ -244,8 +246,11 @@ public class CommonConfig {
   private int pipeAsyncConnectorSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
   private int pipeAsyncConnectorMaxClientNumber =
-      Math.max(16, Runtime.getRuntime().availableProcessors() / 2);
+      Math.max(32, Runtime.getRuntime().availableProcessors() * 2);
+  private int pipeAsyncConnectorMaxTsFileClientNumber =
+      Math.max(16, Runtime.getRuntime().availableProcessors());
 
+  private double pipeSendTsFileRateLimitBytesPerSecond = 32 * MB;
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
   private int rateLimiterHotReloadCheckIntervalMs = 1000;
 
@@ -253,11 +258,14 @@ public class CommonConfig {
       (int) (RpcUtils.THRIFT_FRAME_MAX_SIZE * 0.8);
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
-  private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
+  private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 30;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
   private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 1;
   private boolean pipeAutoRestartEnabled = true;
+  private boolean pipeProgressIndexPersistEnabled = true;
+  private long pipeProgressIndexPersistCheckPointGap = 20;
+  private long pipeProgressIndexFlushIntervalMs = 20 * 1000L;
 
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
@@ -265,10 +273,12 @@ public class CommonConfig {
   private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
   private double pipeReceiverActualToEstimatedMemoryRatio = 3;
 
-  private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
-  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 5;
-  private int pipeMaxAllowedPinnedMemTableCount = 10; // per data region
-  private long pipeMaxAllowedLinkedTsFileCount = 300;
+  private int pipeReceiverReqDecompressedMaxLengthInBytes = 1073741824; // 1GB
+
+  private int pipeMaxAllowedHistoricalTsFilePerDataRegion = Integer.MAX_VALUE; // Deprecated
+  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = Integer.MAX_VALUE; // Deprecated
+  private int pipeMaxAllowedPinnedMemTableCount = Integer.MAX_VALUE; // per data region
+  private long pipeMaxAllowedLinkedTsFileCount = Long.MAX_VALUE; // Deprecated
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
   private long pipeStuckRestartMinIntervalMs = 5 * 60 * 1000L; // 5 minutes
@@ -276,6 +286,8 @@ public class CommonConfig {
   private long pipeFlushAfterLastTerminateSeconds = 30;
   private long pipeFlushAfterTerminateCount = 30;
   private long pipeStorageEngineFlushTimeIntervalMs = Long.MAX_VALUE;
+  private int pipeMaxAllowedRemainingInsertEventCountPerPipe = 10000;
+  private int pipeMaxAllowedTotalRemainingInsertEventCount = 50000;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
   private int pipeMetaReportMaxLogIntervalRounds = 36;
@@ -296,9 +308,15 @@ public class CommonConfig {
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
   private long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
-  private PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
-      PipeRemainingTimeRateAverageTime.MEAN;
+  private PipeRateAverage pipeRemainingTimeCommitRateAverageTime = PipeRateAverage.FIVE_MINUTES;
+  private double pipeRemainingInsertNodeCountEMAAlpha = 0.1;
   private double pipeTsFileScanParsingThreshold = 0.05;
+  private double pipeDynamicMemoryHistoryWeight = 0.5;
+  private double pipeDynamicMemoryAdjustmentThreshold = 0.05;
+  private double pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio = 0.1d;
+  private double pipeThresholdAllocationStrategyLowUsageThreshold = 0.2d;
+  private double pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold = 0.8d;
+  private boolean pipeTransferTsFileSync = false;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -307,13 +325,15 @@ public class CommonConfig {
   private boolean pipeEventReferenceTrackingEnabled = true;
   private long pipeEventReferenceEliminateIntervalSeconds = 10;
 
+  private boolean subscriptionEnabled = false;
+
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
   private int subscriptionSubtaskExecutorMaxThreadNum = 2;
 
-  private int subscriptionPrefetchTabletBatchMaxDelayInMs = 1000; // 1s
-  private long subscriptionPrefetchTabletBatchMaxSizeInBytes = 16 * MB;
-  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 5000; // 5s
-  private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 80 * MB;
+  private int subscriptionPrefetchTabletBatchMaxDelayInMs = 20;
+  private long subscriptionPrefetchTabletBatchMaxSizeInBytes = MB;
+  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 1000;
+  private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 2 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionDefaultTimeoutInMs = 10_000; // 10s
   private long subscriptionLaunchRetryIntervalMs = 1000;
@@ -642,14 +662,6 @@ public class CommonConfig {
     this.statusReason = statusReason;
   }
 
-  public TEndPoint getTargetAINodeEndPoint() {
-    return targetAINodeEndPoint;
-  }
-
-  public void setTargetAINodeEndPoint(TEndPoint targetAINodeEndPoint) {
-    this.targetAINodeEndPoint = targetAINodeEndPoint;
-  }
-
   public int getTTimePartitionSlotTransmitLimit() {
     return TTimePartitionSlotTransmitLimit;
   }
@@ -741,6 +753,18 @@ public class CommonConfig {
     }
     this.pipeHardlinkTsFileDirName = pipeTsFileDirName;
     logger.info("pipeHardlinkTsFileDirName is set to {}.", pipeTsFileDirName);
+  }
+
+  public String getPipeProgressIndexPersistDirName() {
+    return pipeProgressIndexPersistDirName;
+  }
+
+  public void setPipeProgressIndexPersistDirName(String pipeProgressIndexPersistDirName) {
+    if (Objects.equals(this.pipeProgressIndexPersistDirName, pipeProgressIndexPersistDirName)) {
+      return;
+    }
+    this.pipeProgressIndexPersistDirName = pipeProgressIndexPersistDirName;
+    logger.info("pipeProgressIndexPersistDir is set to {}.", pipeProgressIndexPersistDirName);
   }
 
   public String getPipeHardlinkWALDirName() {
@@ -836,6 +860,34 @@ public class CommonConfig {
     logger.info(
         "pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold is set to {}.",
         pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold);
+  }
+
+  public double getPipeDataStructureWalMemoryProportion() {
+    return pipeDataStructureWalMemoryProportion;
+  }
+
+  public void setPipeDataStructureWalMemoryProportion(double pipeDataStructureWalMemoryProportion) {
+    if (this.pipeDataStructureWalMemoryProportion == pipeDataStructureWalMemoryProportion) {
+      return;
+    }
+    this.pipeDataStructureWalMemoryProportion = pipeDataStructureWalMemoryProportion;
+    logger.info(
+        "pipeDataStructureWalMemoryProportion is set to {}.", pipeDataStructureWalMemoryProportion);
+  }
+
+  public double getPipeDataStructureBatchMemoryProportion() {
+    return PipeDataStructureBatchMemoryProportion;
+  }
+
+  public void setPipeDataStructureBatchMemoryProportion(
+      double PipeDataStructureBatchMemoryProportion) {
+    if (this.PipeDataStructureBatchMemoryProportion == PipeDataStructureBatchMemoryProportion) {
+      return;
+    }
+    this.PipeDataStructureBatchMemoryProportion = PipeDataStructureBatchMemoryProportion;
+    logger.info(
+        "PipeDataStructureBatchMemoryProportion is set to {}.",
+        PipeDataStructureBatchMemoryProportion);
   }
 
   public double getPipeTotalFloatingMemoryProportion() {
@@ -1074,6 +1126,20 @@ public class CommonConfig {
         "pipeAsyncConnectorMaxClientNumber is set to {}.", pipeAsyncConnectorMaxClientNumber);
   }
 
+  public int getPipeAsyncConnectorMaxTsFileClientNumber() {
+    return pipeAsyncConnectorMaxTsFileClientNumber;
+  }
+
+  public void setPipeAsyncConnectorMaxTsFileClientNumber(
+      int pipeAsyncConnectorMaxTsFileClientNumber) {
+    if (this.pipeAsyncConnectorMaxTsFileClientNumber == pipeAsyncConnectorMaxTsFileClientNumber) {
+      return;
+    }
+    this.pipeAsyncConnectorMaxTsFileClientNumber = pipeAsyncConnectorMaxTsFileClientNumber;
+    logger.info(
+        "pipeAsyncConnectorMaxClientNumber is set to {}.", pipeAsyncConnectorMaxTsFileClientNumber);
+  }
+
   public boolean isSeperatedPipeHeartbeatEnabled() {
     return isSeperatedPipeHeartbeatEnabled;
   }
@@ -1157,6 +1223,44 @@ public class CommonConfig {
     }
     this.pipeAutoRestartEnabled = pipeAutoRestartEnabled;
     logger.info("pipeAutoRestartEnabled is set to {}.", pipeAutoRestartEnabled);
+  }
+
+  public boolean isPipeProgressIndexPersistEnabled() {
+    return pipeProgressIndexPersistEnabled;
+  }
+
+  public void setPipeProgressIndexPersistEnabled(boolean pipeProgressIndexPersistEnabled) {
+    if (this.pipeProgressIndexPersistEnabled == pipeProgressIndexPersistEnabled) {
+      return;
+    }
+    this.pipeProgressIndexPersistEnabled = pipeProgressIndexPersistEnabled;
+    logger.info("pipeProgressIndexPersistEnabled is set to {}.", pipeProgressIndexPersistEnabled);
+  }
+
+  public long getPipeProgressIndexPersistCheckPointGap() {
+    return pipeProgressIndexPersistCheckPointGap;
+  }
+
+  public void setPipeProgressIndexPersistCheckPointGap(long pipeProgressIndexPersistCheckPointGap) {
+    if (this.pipeProgressIndexPersistCheckPointGap == pipeProgressIndexPersistCheckPointGap) {
+      return;
+    }
+    this.pipeProgressIndexPersistCheckPointGap = pipeProgressIndexPersistCheckPointGap;
+    logger.info(
+        "pipeProgressIndexPersistCheckPointGap is set to {}.",
+        pipeProgressIndexPersistCheckPointGap);
+  }
+
+  public long getPipeProgressIndexFlushIntervalMs() {
+    return pipeProgressIndexFlushIntervalMs;
+  }
+
+  public void setPipeProgressIndexFlushIntervalMs(long pipeProgressIndexFlushIntervalMs) {
+    if (this.pipeProgressIndexFlushIntervalMs == pipeProgressIndexFlushIntervalMs) {
+      return;
+    }
+    this.pipeProgressIndexFlushIntervalMs = pipeProgressIndexFlushIntervalMs;
+    logger.info("pipeProgressIndexFlushIntervalMs is set to {}.", pipeProgressIndexFlushIntervalMs);
   }
 
   public long getPipeConnectorRetryIntervalMs() {
@@ -1296,6 +1400,20 @@ public class CommonConfig {
         pipeRealTimeQueuePollHistoricalTsFileThreshold);
   }
 
+  public int getPipeRealTimeQueueMaxWaitingTsFileSize() {
+    return pipeRealTimeQueueMaxWaitingTsFileSize;
+  }
+
+  public void setPipeRealTimeQueueMaxWaitingTsFileSize(int pipeRealTimeQueueMaxWaitingTsFileSize) {
+    if (this.pipeRealTimeQueueMaxWaitingTsFileSize == pipeRealTimeQueueMaxWaitingTsFileSize) {
+      return;
+    }
+    this.pipeRealTimeQueueMaxWaitingTsFileSize = pipeRealTimeQueueMaxWaitingTsFileSize;
+    logger.info(
+        "pipeRealTimeQueueMaxWaitingTsFileSize is set to {}.",
+        pipeRealTimeQueueMaxWaitingTsFileSize);
+  }
+
   public void setPipeAirGapReceiverEnabled(boolean pipeAirGapReceiverEnabled) {
     if (pipeAirGapReceiverEnabled == this.pipeAirGapReceiverEnabled) {
       return;
@@ -1350,6 +1468,22 @@ public class CommonConfig {
 
   public double getPipeReceiverActualToEstimatedMemoryRatio() {
     return pipeReceiverActualToEstimatedMemoryRatio;
+  }
+
+  public void setPipeReceiverReqDecompressedMaxLengthInBytes(
+      int pipeReceiverReqDecompressedMaxLengthInBytes) {
+    if (this.pipeReceiverReqDecompressedMaxLengthInBytes
+        == pipeReceiverReqDecompressedMaxLengthInBytes) {
+      return;
+    }
+    this.pipeReceiverReqDecompressedMaxLengthInBytes = pipeReceiverReqDecompressedMaxLengthInBytes;
+    logger.info(
+        "pipeReceiverReqDecompressedMaxLengthInBytes is set to {}.",
+        pipeReceiverReqDecompressedMaxLengthInBytes);
+  }
+
+  public int getPipeReceiverReqDecompressedMaxLengthInBytes() {
+    return pipeReceiverReqDecompressedMaxLengthInBytes;
   }
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
@@ -1441,6 +1575,40 @@ public class CommonConfig {
 
   public long getPipeStorageEngineFlushTimeIntervalMs() {
     return pipeStorageEngineFlushTimeIntervalMs;
+  }
+
+  public int getPipeMaxAllowedRemainingInsertEventCountPerPipe() {
+    return pipeMaxAllowedRemainingInsertEventCountPerPipe;
+  }
+
+  public void setPipeMaxAllowedRemainingInsertEventCountPerPipe(
+      int pipeMaxAllowedRemainingInsertEventCountPerPipe) {
+    if (this.pipeMaxAllowedRemainingInsertEventCountPerPipe
+        == pipeMaxAllowedRemainingInsertEventCountPerPipe) {
+      return;
+    }
+    this.pipeMaxAllowedRemainingInsertEventCountPerPipe =
+        pipeMaxAllowedRemainingInsertEventCountPerPipe;
+    logger.info(
+        "pipeMaxAllowedRemainingInsertEventCount is set to {}",
+        pipeMaxAllowedRemainingInsertEventCountPerPipe);
+  }
+
+  public int getPipeMaxAllowedTotalRemainingInsertEventCount() {
+    return pipeMaxAllowedTotalRemainingInsertEventCount;
+  }
+
+  public void setPipeMaxAllowedTotalRemainingInsertEventCount(
+      int pipeMaxAllowedTotalRemainingInsertEventCount) {
+    if (this.pipeMaxAllowedTotalRemainingInsertEventCount
+        == pipeMaxAllowedTotalRemainingInsertEventCount) {
+      return;
+    }
+    this.pipeMaxAllowedTotalRemainingInsertEventCount =
+        pipeMaxAllowedTotalRemainingInsertEventCount;
+    logger.info(
+        "pipeMaxAllowedTotalRemainingInsertEventCount is set to {}",
+        pipeMaxAllowedTotalRemainingInsertEventCount);
   }
 
   public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
@@ -1742,12 +1910,12 @@ public class CommonConfig {
         pipeRemainingTimeCommitRateAutoSwitchSeconds);
   }
 
-  public PipeRemainingTimeRateAverageTime getPipeRemainingTimeCommitRateAverageTime() {
+  public PipeRateAverage getPipeRemainingTimeCommitRateAverageTime() {
     return pipeRemainingTimeCommitRateAverageTime;
   }
 
   public void setPipeRemainingTimeCommitRateAverageTime(
-      PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime) {
+      PipeRateAverage pipeRemainingTimeCommitRateAverageTime) {
     if (Objects.equals(
         this.pipeRemainingTimeCommitRateAverageTime, pipeRemainingTimeCommitRateAverageTime)) {
       return;
@@ -1756,6 +1924,21 @@ public class CommonConfig {
     logger.info(
         "pipeRemainingTimeCommitRateAverageTime is set to {}",
         pipeRemainingTimeCommitRateAverageTime);
+  }
+
+  public double getPipeRemainingInsertNodeCountEMAAlpha() {
+    return pipeRemainingInsertNodeCountEMAAlpha;
+  }
+
+  public void setPipeRemainingInsertNodeCountEMAAlpha(
+      final double pipeRemainingInsertNodeCountEMAAlpha) {
+    if (Objects.equals(
+        this.pipeRemainingInsertNodeCountEMAAlpha, pipeRemainingInsertNodeCountEMAAlpha)) {
+      return;
+    }
+    this.pipeRemainingInsertNodeCountEMAAlpha = pipeRemainingInsertNodeCountEMAAlpha;
+    logger.info(
+        "pipeRemainingInsertEventCountAverage is set to {}", pipeRemainingInsertNodeCountEMAAlpha);
   }
 
   public double getPipeTsFileScanParsingThreshold() {
@@ -1768,6 +1951,109 @@ public class CommonConfig {
     }
     this.pipeTsFileScanParsingThreshold = pipeTsFileScanParsingThreshold;
     logger.info("pipeTsFileScanParsingThreshold is set to {}", pipeTsFileScanParsingThreshold);
+  }
+
+  public double getPipeDynamicMemoryHistoryWeight() {
+    return pipeDynamicMemoryHistoryWeight;
+  }
+
+  public void setPipeDynamicMemoryHistoryWeight(double pipeDynamicMemoryHistoryWeight) {
+    if (this.pipeDynamicMemoryHistoryWeight == pipeDynamicMemoryHistoryWeight) {
+      return;
+    }
+    this.pipeDynamicMemoryHistoryWeight = pipeDynamicMemoryHistoryWeight;
+    logger.info("PipeDynamicMemoryHistoryWeight is set to {}", pipeDynamicMemoryHistoryWeight);
+  }
+
+  public double getPipeDynamicMemoryAdjustmentThreshold() {
+    return pipeDynamicMemoryAdjustmentThreshold;
+  }
+
+  public void setPipeDynamicMemoryAdjustmentThreshold(double pipeDynamicMemoryAdjustmentThreshold) {
+    if (this.pipeDynamicMemoryAdjustmentThreshold == pipeDynamicMemoryAdjustmentThreshold) {
+      return;
+    }
+    this.pipeDynamicMemoryAdjustmentThreshold = pipeDynamicMemoryAdjustmentThreshold;
+    logger.info(
+        "pipeDynamicMemoryAdjustmentThreshold is set to {}", pipeDynamicMemoryAdjustmentThreshold);
+  }
+
+  public double getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio() {
+    return pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio;
+  }
+
+  public void setPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio(
+      double pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio) {
+    if (this.pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio
+        == pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio) {
+      return;
+    }
+    this.pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio =
+        pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio;
+    logger.info(
+        "pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio is set to {}",
+        pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio);
+  }
+
+  public double getPipeThresholdAllocationStrategyLowUsageThreshold() {
+    return pipeThresholdAllocationStrategyLowUsageThreshold;
+  }
+
+  public void setPipeThresholdAllocationStrategyLowUsageThreshold(
+      double pipeThresholdAllocationStrategyLowUsageThreshold) {
+    if (this.pipeThresholdAllocationStrategyLowUsageThreshold
+        == pipeThresholdAllocationStrategyLowUsageThreshold) {
+      return;
+    }
+    this.pipeThresholdAllocationStrategyLowUsageThreshold =
+        pipeThresholdAllocationStrategyLowUsageThreshold;
+    logger.info(
+        "pipeMemoryBlockLowUsageThreshold is set to {}",
+        pipeThresholdAllocationStrategyLowUsageThreshold);
+  }
+
+  public double getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold() {
+    return pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold;
+  }
+
+  public void setPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold(
+      double pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold) {
+    if (this.pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold
+        == pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold) {
+      return;
+    }
+    this.pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold =
+        pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold;
+    logger.info(
+        "pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold is set to {}",
+        pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold);
+  }
+
+  public boolean getPipeTransferTsFileSync() {
+    return pipeTransferTsFileSync;
+  }
+
+  public void setPipeTransferTsFileSync(boolean pipeTransferTsFileSync) {
+    if (this.pipeTransferTsFileSync == pipeTransferTsFileSync) {
+      return;
+    }
+    this.pipeTransferTsFileSync = pipeTransferTsFileSync;
+    logger.info("pipeTransferTsFileSync is set to {}", pipeTransferTsFileSync);
+  }
+
+  public double getPipeSendTsFileRateLimitBytesPerSecond() {
+    return pipeSendTsFileRateLimitBytesPerSecond;
+  }
+
+  public void setPipeSendTsFileRateLimitBytesPerSecond(
+      double pipeSendTsFileRateLimitBytesPerSecond) {
+    if (this.pipeSendTsFileRateLimitBytesPerSecond == pipeSendTsFileRateLimitBytesPerSecond) {
+      return;
+    }
+    this.pipeSendTsFileRateLimitBytesPerSecond = pipeSendTsFileRateLimitBytesPerSecond;
+    logger.info(
+        "pipeSendTsFileRateLimitBytesPerSecond is set to {}",
+        pipeSendTsFileRateLimitBytesPerSecond);
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {
@@ -1886,6 +2172,14 @@ public class CommonConfig {
     logger.info(
         "pipeEventReferenceEliminateIntervalSeconds is set to {}",
         pipeEventReferenceEliminateIntervalSeconds);
+  }
+
+  public boolean getSubscriptionEnabled() {
+    return subscriptionEnabled;
+  }
+
+  public void setSubscriptionEnabled(boolean subscriptionEnabled) {
+    this.subscriptionEnabled = subscriptionEnabled;
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {

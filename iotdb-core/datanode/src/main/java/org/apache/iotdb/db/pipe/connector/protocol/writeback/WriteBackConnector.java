@@ -86,6 +86,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_USER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_SKIP_IF_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_USE_EVENT_USER_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.WRITE_BACK_CONNECTOR_SKIP_IF_DEFAULT_VALUE;
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
@@ -160,7 +161,7 @@ public class WriteBackConnector implements PipeConnector {
         parameters
             .getStringOrDefault(
                 Arrays.asList(CONNECTOR_SKIP_IF_KEY, SINK_SKIP_IF_KEY),
-                CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES)
+                WRITE_BACK_CONNECTOR_SKIP_IF_DEFAULT_VALUE)
             .trim();
     final Set<String> skipIfOptionSet =
         Arrays.stream(connectorSkipIfValue.split(","))

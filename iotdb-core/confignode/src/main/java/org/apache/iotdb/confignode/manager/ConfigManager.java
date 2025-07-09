@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -41,7 +42,6 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.client.ainode.AINodeClient;
 import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
-import org.apache.iotdb.commons.client.ainode.AINodeInfo;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -58,6 +58,7 @@ import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
@@ -136,6 +137,7 @@ import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
@@ -165,7 +167,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataSchemaForTable;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -180,6 +181,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
@@ -223,7 +225,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
@@ -243,7 +247,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
@@ -1887,11 +1890,38 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TShowDataNodes4InformationSchemaResp showDataNodes4InformationSchema() {
+    final TSStatus status = confirmLeader();
+    final TShowDataNodes4InformationSchemaResp resp = new TShowDataNodes4InformationSchemaResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.setDataNodesInfoList(
+              nodeManager.getRegisteredDataNodeInfoList4InformationSchema())
+          .setStatus(StatusUtils.OK);
+    } else {
+      return resp.setStatus(status);
+    }
+  }
+
+  @Override
   public TShowConfigNodesResp showConfigNodes() {
     TSStatus status = confirmLeader();
     TShowConfigNodesResp resp = new TShowConfigNodesResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return resp.setConfigNodesInfoList(nodeManager.getRegisteredConfigNodeInfoList())
+          .setStatus(StatusUtils.OK);
+    } else {
+      return resp.setStatus(status);
+    }
+  }
+
+  @Override
+  public TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema() {
+    final TSStatus status = confirmLeader();
+    final TShowConfigNodes4InformationSchemaResp resp =
+        new TShowConfigNodes4InformationSchemaResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.setConfigNodesInfoList(
+              nodeManager.getRegisteredConfigNodeInfo4InformationSchema())
           .setStatus(StatusUtils.OK);
     } else {
       return resp.setStatus(status);
@@ -2338,6 +2368,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus dropSubscriptionById(TDropSubscriptionReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().dropSubscription(req)
+        : status;
+  }
+
+  @Override
   public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -2601,10 +2639,6 @@ public class ConfigManager implements IManager {
 
   private List<IDataSchema> fetchSchemaForTreeModel(TCreateTrainingReq req) {
     List<IDataSchema> dataSchemaList = new ArrayList<>();
-    if (req.useAllData) {
-      dataSchemaList.add(new IDataSchema("root.**"));
-      return dataSchemaList;
-    }
     for (int i = 0; i < req.getDataSchemaForTree().getPathSize(); i++) {
       IDataSchema dataSchema = new IDataSchema(req.getDataSchemaForTree().getPath().get(i));
       dataSchema.setTimeRange(req.getTimeRanges().get(i));
@@ -2614,28 +2648,7 @@ public class ConfigManager implements IManager {
   }
 
   private List<IDataSchema> fetchSchemaForTableModel(TCreateTrainingReq req) {
-    List<IDataSchema> dataSchemaList = new ArrayList<>();
-    TDataSchemaForTable dataSchemaForTable = req.getDataSchemaForTable();
-    if (req.useAllData || !dataSchemaForTable.getDatabaseList().isEmpty()) {
-      List<String> databaseNameList = new ArrayList<>();
-      if (req.useAllData) {
-        TShowDatabaseResp resp = showDatabase(new TGetDatabaseReq());
-        databaseNameList.addAll(resp.getDatabaseInfoMap().keySet());
-      } else {
-        databaseNameList.addAll(dataSchemaForTable.getDatabaseList());
-      }
-
-      for (String database : databaseNameList) {
-        TShowTableResp resp = showTables(database, false);
-        for (TTableInfo tableInfo : resp.getTableInfoList()) {
-          dataSchemaList.add(new IDataSchema(database + DOT + tableInfo.tableName));
-        }
-      }
-    }
-    for (String tableName : dataSchemaForTable.getTableList()) {
-      dataSchemaList.add(new IDataSchema(dataSchemaForTable.curDatabase + DOT + tableName));
-    }
-    return dataSchemaList;
+    return Collections.singletonList(new IDataSchema(req.getDataSchemaForTable().getTargetSql()));
   }
 
   public TSStatus createTraining(TCreateTrainingReq req) {
@@ -2647,11 +2660,10 @@ public class ConfigManager implements IManager {
 
     TTrainingReq trainingReq = new TTrainingReq();
     trainingReq.setModelId(req.getModelId());
-    trainingReq.setModelType("timer_xl");
-    if (req.existingModelId != null) {
+    if (req.isSetExistingModelId()) {
       trainingReq.setExistingModelId(req.getExistingModelId());
     }
-    if (!req.parameters.isEmpty()) {
+    if (req.isSetParameters() && !req.getParameters().isEmpty()) {
       trainingReq.setParameters(req.getParameters());
     }
 
@@ -2672,8 +2684,11 @@ public class ConfigManager implements IManager {
       updateModelInfo(new TUpdateModelInfoReq(req.modelId, ModelStatus.TRAINING.ordinal()));
       trainingReq.setTargetDataSchema(dataSchema);
 
+      TAINodeInfo registeredAINode = getNodeManager().getRegisteredAINodeInfoList().get(0);
+      TEndPoint targetAINodeEndPoint =
+          new TEndPoint(registeredAINode.getInternalAddress(), registeredAINode.getInternalPort());
       try (AINodeClient client =
-          AINodeClientManager.getInstance().borrowClient(AINodeInfo.endPoint)) {
+          AINodeClientManager.getInstance().borrowClient(targetAINodeEndPoint)) {
         status = client.createTrainingTask(trainingReq);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new IllegalArgumentException(status.message);
@@ -2704,7 +2719,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? modelManager.showModel(req)
-        : new TShowModelResp(status, Collections.emptyList());
+        : new TShowModelResp(status);
   }
 
   @Override
@@ -2779,10 +2794,21 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createTableView(final TCreateTableViewReq req) {
-    TSStatus status = confirmLeader();
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       final Pair<String, TsTable> pair =
           TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
+      if (clusterSchemaManager
+              .getMatchedDatabaseSchemasByPrefix(
+                  new PartialPath(
+                      Arrays.copyOf(
+                          TreeViewSchema.getPrefixPattern(pair.getRight()).getNodes(),
+                          TreeViewSchema.getPrefixPattern(pair.getRight()).getNodeLength() - 1)))
+              .size()
+          > 1) {
+        return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+            .setMessage("Cannot specify view pattern to match more than one tree database.");
+      }
       return procedureManager.createTableView(pair.left, pair.right, req.isReplace());
     } else {
       return status;

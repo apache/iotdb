@@ -214,5 +214,20 @@ public class IoTDBPaginationTableViewIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1,",
+        };
+    tableResultSetEqualTest(
+        "select s1 from db order by time limit 1 offset 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select s1 from db order by device limit 1 offset 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 }

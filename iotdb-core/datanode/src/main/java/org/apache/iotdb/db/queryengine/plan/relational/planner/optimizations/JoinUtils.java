@@ -42,8 +42,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 public class JoinUtils {
-  public static final String ONLY_SUPPORT_EQUI_JOIN =
-      "For now, FullOuterJoin and LeftJoin only support EquiJoinClauses";
+  public static final String UNSUPPORTED_JOIN_CRITERIA =
+      "Unsupported Join creteria [%s] after predicate push down";
 
   private JoinUtils() {}
 

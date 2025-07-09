@@ -38,8 +38,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+
+import static org.apache.iotdb.db.storageengine.load.converter.LoadTreeStatementDataTypeConvertExecutionVisitor.getExecutorPool;
 
 public class LoadTableStatementDataTypeConvertExecutionVisitor
     extends AstVisitor<Optional<TSStatus>, String> {
@@ -71,6 +77,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
 
     LOGGER.info("Start data type conversion for LoadTsFileStatement: {}.", loadTsFileStatement);
 
+    final List<Future<TSStatus>> executionFutures = new ArrayList<>();
     // TODO: Use batch insert after Table model supports insertMultiTablets
     for (final File file : loadTsFileStatement.getTsFiles()) {
       try (final TsFileInsertionEventTableParser parser =
@@ -98,46 +105,30 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
                       .constructStatement(),
                   loadTsFileStatement.isConvertOnTypeMismatch());
 
-          TSStatus result;
-          try {
-            result =
-                statement.accept(
-                    LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
-                    statementExecutor.execute(statement, databaseName));
-
-            // Retry max 5 times if the write process is rejected
-            for (int i = 0;
-                i < 5
-                    && result.getCode()
-                        == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode();
-                i++) {
-              Thread.sleep(100L * (i + 1));
-              result =
-                  statement.accept(
-                      LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
-                      statementExecutor.execute(statement, databaseName));
-            }
-          } catch (final Exception e) {
-            if (e instanceof InterruptedException) {
-              Thread.currentThread().interrupt();
-            }
-            result = statement.accept(LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e);
-          }
-
-          if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-              || result.getCode()
-                  == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
-            LOGGER.warn(
-                "Failed to convert data type for LoadTsFileStatement: {}, status code is {}.",
-                loadTsFileStatement,
-                result.getCode());
-            return Optional.empty();
-          }
+          executionFutures.add(executeInsertTabletWithRetry(statement, databaseName));
         }
       } catch (final Exception e) {
         LOGGER.warn(
             "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
+        return Optional.empty();
+      }
+    }
+
+    for (final Future<TSStatus> future : executionFutures) {
+      try {
+        final TSStatus result = future.get();
+        if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+            || result.getCode()
+                == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
+          LOGGER.warn(
+              "Failed to convert data type for LoadTsFileStatement: {}, status code is {}.",
+              loadTsFileStatement,
+              result.getCode());
+          return Optional.empty();
+        }
+      } catch (ExecutionException | InterruptedException e) {
+        LOGGER.warn("Exception occurs when executing insertion during tablet conversion: ", e);
         return Optional.empty();
       }
     }
@@ -159,5 +150,40 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
         "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+  }
+
+  private Future<TSStatus> executeInsertTabletWithRetry(
+      final LoadConvertedInsertTabletStatement statement, final String databaseName) {
+    return getExecutorPool()
+        .submit(
+            () -> {
+              TSStatus result;
+              try {
+                result =
+                    statement.accept(
+                        LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
+                        statementExecutor.execute(statement, databaseName));
+
+                // Retry max 5 times if the write process is rejected
+                for (int i = 0;
+                    i < 5
+                        && result.getCode()
+                            == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode();
+                    i++) {
+                  Thread.sleep(100L * (i + 1));
+                  result =
+                      statement.accept(
+                          LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
+                          statementExecutor.execute(statement, databaseName));
+                }
+              } catch (final Exception e) {
+                if (e instanceof InterruptedException) {
+                  Thread.currentThread().interrupt();
+                }
+                result =
+                    statement.accept(LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e);
+              }
+              return result;
+            });
   }
 }

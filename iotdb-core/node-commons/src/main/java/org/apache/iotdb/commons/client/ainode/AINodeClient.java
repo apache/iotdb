@@ -28,6 +28,7 @@ import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelReq;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelResp;
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
 import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -158,6 +159,18 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     }
   }
 
+  public TShowModelsResp showModels() throws TException {
+    try {
+      return client.showModels();
+    } catch (TException e) {
+      logger.warn(
+          "Failed to connect to AINode from ConfigNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
+      throw new TException(MSG_CONNECTION_FAIL);
+    }
+  }
+
   public TInferenceResp inference(
       String modelId,
       TsBlock inputTsBlock,
@@ -199,7 +212,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       TSStatus tsStatus = new TSStatus(CAN_NOT_CONNECT_AINODE.getStatusCode());
       tsStatus.setMessage(
           String.format(
-              "Failed to connect to AINode from DataNode when executing %s: %s",
+              "Failed to connect to AINode when executing %s: %s",
               Thread.currentThread().getStackTrace()[1].getMethodName(), e.getMessage()));
       return new TForecastResp(tsStatus, ByteBuffer.allocate(0));
     }
@@ -210,7 +223,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       return client.createTrainingTask(req);
     } catch (TException e) {
       logger.warn(
-          "Failed to connect to AINode from DataNode when executing {}: {}",
+          "Failed to connect to AINode when executing {}: {}",
           Thread.currentThread().getStackTrace()[1].getMethodName(),
           e.getMessage());
       throw new TException(MSG_CONNECTION_FAIL);
@@ -219,7 +232,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   @Override
   public void close() throws Exception {
-    Optional.ofNullable(transport).ifPresent(TTransport::close);
+    clientManager.returnClient(endPoint, this);
   }
 
   @Override
@@ -248,7 +261,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     @Override
     public void destroyObject(TEndPoint tEndPoint, PooledObject<AINodeClient> pooledObject)
         throws Exception {
-      pooledObject.getObject().close();
+      pooledObject.getObject().invalidate();
     }
 
     @Override

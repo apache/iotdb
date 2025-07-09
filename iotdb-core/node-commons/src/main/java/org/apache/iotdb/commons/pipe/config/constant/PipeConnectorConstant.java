@@ -63,18 +63,20 @@ public class PipeConnectorConstant {
   public static final String SINK_IOTDB_BATCH_MODE_ENABLE_KEY = "sink.batch.enable";
   public static final boolean CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE = true;
 
-  public static final String CONNECTOR_IOTDB_BATCH_DELAY_KEY = "connector.batch.max-delay-seconds";
-  public static final String SINK_IOTDB_BATCH_DELAY_KEY = "sink.batch.max-delay-seconds";
+  public static final String CONNECTOR_IOTDB_BATCH_DELAY_SECONDS_KEY =
+      "connector.batch.max-delay-seconds";
+  public static final String SINK_IOTDB_BATCH_DELAY_SECONDS_KEY = "sink.batch.max-delay-seconds";
   public static final int CONNECTOR_IOTDB_PLAIN_BATCH_DELAY_DEFAULT_VALUE = 1;
   public static final int CONNECTOR_IOTDB_TS_FILE_BATCH_DELAY_DEFAULT_VALUE = 5;
 
   public static final String CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY = "connector.batch.max-delay-ms";
   public static final String SINK_IOTDB_BATCH_DELAY_MS_KEY = "sink.batch.max-delay-ms";
+  public static final int CONNECTOR_IOTDB_BATCH_DELAY_MS_DEFAULT_VALUE = 20;
 
   public static final String CONNECTOR_IOTDB_BATCH_SIZE_KEY = "connector.batch.size-bytes";
   public static final String SINK_IOTDB_BATCH_SIZE_KEY = "sink.batch.size-bytes";
-  public static final long CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE = 16 * MB;
-  public static final long CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE = 80 * MB;
+  public static final long CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE = MB;
+  public static final long CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE = 2 * MB;
 
   public static final String CONNECTOR_IOTDB_USER_KEY = "connector.user";
   public static final String SINK_IOTDB_USER_KEY = "sink.user";
@@ -218,6 +220,11 @@ public class PipeConnectorConstant {
   public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE = Zstd.minCompressionLevel();
   public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE = Zstd.maxCompressionLevel();
 
+  public static final String CONNECTOR_ENABLE_SEND_TSFILE_LIMIT =
+      "connector.enable-send-tsfile-limit";
+  public static final String SINK_ENABLE_SEND_TSFILE_LIMIT = "sink.enable-send-tsfile-limit";
+  public static final boolean CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE = false;
+
   public static final String CONNECTOR_RATE_LIMIT_KEY = "connector.rate-limit-bytes-per-second";
   public static final String SINK_RATE_LIMIT_KEY = "sink.rate-limit-bytes-per-second";
   public static final double CONNECTOR_RATE_LIMIT_DEFAULT_VALUE = -1;
@@ -254,9 +261,18 @@ public class PipeConnectorConstant {
   public static final String SINK_MARK_AS_PIPE_REQUEST_KEY = "sink.mark-as-pipe-request";
   public static final boolean CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE = true;
 
+  public static final String CONNECTOR_MARK_AS_GENERAL_WRITE_REQUEST_KEY =
+      "connector.mark-as-general-write-request";
+  public static final String SINK_MARK_AS_GENERAL_WRITE_REQUEST_KEY =
+      "sink.mark-as-general-write-request";
+  public static final boolean CONNECTOR_MARK_AS_GENERAL_WRITE_REQUEST_DEFAULT_VALUE = false;
+
   public static final String CONNECTOR_SKIP_IF_KEY = "connector.skipif";
   public static final String SINK_SKIP_IF_KEY = "sink.skipif";
   public static final String CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES = "no-privileges";
+  public static final String WRITE_BACK_CONNECTOR_SKIP_IF_DEFAULT_VALUE =
+      CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
+  public static final String IOTDB_CONNECTOR_SKIP_IF_DEFAULT_VALUE = "";
 
   public static final String CONNECTOR_OPC_DA_CLSID_KEY = "connector.opcda.clsid";
   public static final String SINK_OPC_DA_CLSID_KEY = "sink.opcda.clsid";

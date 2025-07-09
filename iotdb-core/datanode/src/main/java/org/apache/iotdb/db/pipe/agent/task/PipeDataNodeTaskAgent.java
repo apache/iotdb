@@ -699,7 +699,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 || mayWalSizeReachThrottleThreshold())) {
           // Extractors of this pipe may be stuck and is pinning too many MemTables.
           LOGGER.warn(
-              "Pipe {} needs to restart because too many memtables are pinned. mayMemTablePinnedCountReachDangerousThreshold: {}, mayWalSizeReachThrottleThreshold: {}",
+              "Pipe {} needs to restart because too many memTables are pinned or the WAL size is too large. mayMemTablePinnedCountReachDangerousThreshold: {}, mayWalSizeReachThrottleThreshold: {}",
               pipeMeta.getStaticMeta(),
               mayMemTablePinnedCountReachDangerousThreshold(),
               mayWalSizeReachThrottleThreshold());
@@ -737,10 +737,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
-    return PipeDataNodeResourceManager.wal().getPinnedWalCount()
-        >= 5
-            * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount()
-            * StorageEngine.getInstance().getDataRegionNumber();
+    return PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount() != Integer.MAX_VALUE
+        && PipeDataNodeResourceManager.wal().getPinnedWalCount()
+            >= 5
+                * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount()
+                * StorageEngine.getInstance().getDataRegionNumber();
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {
@@ -837,6 +838,30 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
               || extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_QUERY_VALUE);
     }
     return isSnapshotMode;
+  }
+
+  ///////////////////////// Shutdown Logic /////////////////////////
+
+  public void persistAllProgressIndexLocally() {
+    if (!PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()) {
+      LOGGER.info(
+          "Pipe progress index persist disabled. Skipping persist all progress index locally.");
+      return;
+    }
+    if (!tryReadLockWithTimeOut(10)) {
+      LOGGER.info("Failed to persist all progress index locally because of timeout.");
+      return;
+    }
+    try {
+      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        pipeMeta.getRuntimeMeta().persistProgressIndex();
+      }
+      LOGGER.info("Persist all progress index locally successfully.");
+    } catch (final Exception e) {
+      LOGGER.warn("Failed to record all progress index locally, because {}.", e.getMessage(), e);
+    } finally {
+      releaseReadLock();
+    }
   }
 
   ///////////////////////// Pipe Consensus /////////////////////////

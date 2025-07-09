@@ -203,6 +203,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateReg
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -1367,9 +1368,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitCreateModel(IoTDBSqlParser.CreateModelContext ctx) {
     if (ctx.modelName == null) {
       String modelId = ctx.modelId.getText();
-      String modelType = ctx.modelType.getText();
-      CreateTrainingStatement createTrainingStatement =
-          new CreateTrainingStatement(modelId, modelType);
+      CreateTrainingStatement createTrainingStatement = new CreateTrainingStatement(modelId);
       if (ctx.hparamPair() != null) {
         Map<String, String> parameterList = new HashMap<>();
         for (IoTDBSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {
@@ -2120,6 +2119,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           LoadTsFileConfigurator.validateParameters(key, value);
           loadTsFileAttributes.put(key, value);
         }
+        LoadTsFileConfigurator.validateSynonymParameters(loadTsFileAttributes);
 
         loadTsFileStatement.setLoadAttributes(loadTsFileAttributes);
         return loadTsFileStatement;
@@ -4129,6 +4129,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitDropSubscription(IoTDBSqlParser.DropSubscriptionContext ctx) {
+    final DropSubscriptionStatement dropSubscriptionStatement = new DropSubscriptionStatement();
+
+    if (ctx.subscriptionId != null) {
+      dropSubscriptionStatement.setSubscriptionId(parseIdentifier(ctx.subscriptionId.getText()));
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in DROP SUBSCRIPTION, please enter subscriptionId.");
+    }
+
+    dropSubscriptionStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
+
+    return dropSubscriptionStatement;
+  }
+
+  @Override
   public Statement visitGetRegionId(IoTDBSqlParser.GetRegionIdContext ctx) {
     TConsensusGroupType type =
         ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
@@ -4605,8 +4621,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreateTableView(final IoTDBSqlParser.CreateTableViewContext ctx) {
     if (true) {
-      throw new UnsupportedOperationException(
-          "The 'CreateTableView' is unsupported in tree sql-dialect.");
+      throw new SemanticException("The 'CreateTableView' is unsupported in tree sql-dialect.");
     }
     return new CreateTableViewStatement(
         new CreateView(

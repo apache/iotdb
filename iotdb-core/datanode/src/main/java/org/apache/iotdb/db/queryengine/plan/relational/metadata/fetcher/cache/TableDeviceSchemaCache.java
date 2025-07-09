@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
@@ -260,18 +261,40 @@ public class TableDeviceSchemaCache {
    * @param deviceId {@link IDeviceID}
    * @param measurements the fetched measurements
    * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
+   * @param invalidateNull when true invalidate cache entries where timeValuePairs[i] == null; when
+   *     false ignore cache entries where timeValuePairs[i] == null
+   */
+  public void updateLastCacheIfExists(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final TimeValuePair[] timeValuePairs,
+      boolean invalidateNull) {
+    dualKeyCache.update(
+        new TableId(database, deviceId.getTableName()),
+        deviceId,
+        null,
+        entry -> entry.tryUpdateLastCache(measurements, timeValuePairs, invalidateNull),
+        false);
+  }
+
+  /**
+   * Update the last cache in writing or the second push of last cache query. If a measurement is
+   * with all {@code null}s or is a tag/attribute column, its {@link TimeValuePair}[] shall be
+   * {@code null}. For correctness, this will put the cache lazily and only update the existing last
+   * caches of measurements.
+   *
+   * @param database the device's database, without "root"
+   * @param deviceId {@link IDeviceID}
+   * @param measurements the fetched measurements
+   * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
    */
   public void updateLastCacheIfExists(
       final String database,
       final IDeviceID deviceId,
       final String[] measurements,
       final TimeValuePair[] timeValuePairs) {
-    dualKeyCache.update(
-        new TableId(database, deviceId.getTableName()),
-        deviceId,
-        null,
-        entry -> entry.tryUpdateLastCache(measurements, timeValuePairs),
-        false);
+    updateLastCacheIfExists(database, deviceId, measurements, timeValuePairs, false);
   }
 
   /**
@@ -421,6 +444,11 @@ public class TableDeviceSchemaCache {
                         database2Use, isAligned, measurements, measurementSchemas)
                     + entry.tryUpdateLastCache(measurements, timeValuePairs),
         Objects.isNull(timeValuePairs));
+  }
+
+  public boolean getLastCache(
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> inputMap) {
+    return dualKeyCache.batchApply(inputMap, TableDeviceCacheEntry::updateInputMap);
   }
 
   // WARNING: This is not guaranteed to affect table model's cache

@@ -194,6 +194,7 @@ private:
     int64_t retryIntervalMs;
     std::string sqlDialect;
     std::string database;
+    int timeFactor = 1000;
 };
 
 template <typename T>

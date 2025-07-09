@@ -37,6 +37,7 @@ import org.apache.iotdb.common.rpc.thrift.TSettleReq;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -67,6 +68,7 @@ import org.apache.iotdb.commons.schema.view.ViewType;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -517,14 +519,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) {
-    final ProgressIndex progressIndex;
-    if (req.isSetProgressIndex()) {
-      progressIndex = ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex()));
+    final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap = new HashMap<>();
+    if (req.isSetTimePartition2ProgressIndex()) {
+      for (Map.Entry<TTimePartitionSlot, ByteBuffer> entry :
+          req.getTimePartition2ProgressIndex().entrySet()) {
+        timePartitionProgressIndexMap.put(
+            entry.getKey(), ProgressIndexType.deserializeFrom(entry.getValue()));
+      }
     } else {
-      // fallback to use local generated progress index for compatibility
-      progressIndex = PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad();
-      LOGGER.info(
-          "Use local generated load progress index {} for uuid {}.", progressIndex, req.uuid);
+      final TSStatus status = new TSStatus();
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setMessage("Load command requires time partition to progress index map");
+      return createTLoadResp(status);
     }
 
     return createTLoadResp(
@@ -533,7 +539,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 LoadTsFileScheduler.LoadCommand.values()[req.commandType],
                 req.uuid,
                 req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
-                progressIndex));
+                timePartitionProgressIndexMap));
   }
 
   @Override
@@ -581,10 +587,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       TreeDeviceSchemaCacheManager.getInstance().takeWriteLock();
       try {
         final String database = req.getFullPath();
-        // req.getFullPath() is a database path
-        ClusterTemplateManager.getInstance().invalid(database);
-        // clear table related cache
-        DataNodeTableCache.getInstance().invalid(database);
+        if (PathUtils.isTableModelDatabase(database)) {
+          // clear table related cache
+          DataNodeTableCache.getInstance().invalid(database);
+        } else {
+          ClusterTemplateManager.getInstance().invalid(database);
+        }
         tableDeviceSchemaCache.invalidate(database);
         LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -1232,6 +1240,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushTopicMetaResp pushTopicMeta(TPushTopicMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushTopicMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     final List<TopicMeta> topicMetas = new ArrayList<>();
     for (ByteBuffer byteBuffer : req.getTopicMetas()) {
       topicMetas.add(TopicMeta.deserialize(byteBuffer));
@@ -1255,6 +1268,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushTopicMetaResp pushSingleTopicMeta(TPushSingleTopicMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushTopicMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     try {
       final TPushTopicMetaRespExceptionMessage exceptionMessage;
       if (req.isSetTopicNameToDrop()) {
@@ -1283,6 +1301,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushTopicMetaResp pushMultiTopicMeta(TPushMultiTopicMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushTopicMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     boolean hasException = false;
     // If there is any exception, we use the size of exceptionMessages to record the fail index
     List<TPushTopicMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
@@ -1330,6 +1353,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushConsumerGroupMetaResp pushConsumerGroupMeta(TPushConsumerGroupMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushConsumerGroupMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     final List<ConsumerGroupMeta> consumerGroupMetas = new ArrayList<>();
     for (ByteBuffer byteBuffer : req.getConsumerGroupMetas()) {
       consumerGroupMetas.add(ConsumerGroupMeta.deserialize(byteBuffer));
@@ -1354,6 +1382,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(
       TPushSingleConsumerGroupMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushConsumerGroupMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     try {
       final TPushConsumerGroupMetaRespExceptionMessage exceptionMessage;
       if (req.isSetConsumerGroupNameToDrop()) {
@@ -1557,21 +1590,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus updateTable(final TUpdateTableReq req) {
     switch (TsTableInternalRPCType.getType(req.type)) {
       case PRE_UPDATE_TABLE:
-        Pair<String, TsTable> pair =
+        final Pair<String, TsTable> pair =
             TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
-        DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right);
+        DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right, req.oldName);
         break;
       case ROLLBACK_UPDATE_TABLE:
         DataNodeTableCache.getInstance()
             .rollbackUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo));
+                ReadWriteIOUtils.readString(req.tableInfo),
+                req.oldName);
         break;
       case COMMIT_UPDATE_TABLE:
         DataNodeTableCache.getInstance()
             .commitUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo));
+                ReadWriteIOUtils.readString(req.tableInfo),
+                req.oldName);
         break;
       default:
         LOGGER.warn("Unsupported type {} when updating table", req.type);

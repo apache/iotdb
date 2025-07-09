@@ -31,10 +31,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventBatch;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALInsertNodeCache;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -159,6 +161,8 @@ class PipeAgentLauncher {
     try (final ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetAllPipeInfoResp getAllPipeInfoResp = configNodeClient.getAllPipeInfo();
+      WALInsertNodeCache.init();
+      PipeTabletEventBatch.init();
       if (getAllPipeInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new StartupException("Failed to get pipe task meta from config node.");
       }

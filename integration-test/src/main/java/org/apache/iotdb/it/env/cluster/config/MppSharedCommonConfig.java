@@ -76,13 +76,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptFlag(boolean encryptFlag) {
-    cnConfig.setProperty("encrypt_flag", String.valueOf(encryptFlag));
-    dnConfig.setProperty("encrypt_flag", String.valueOf(encryptFlag));
-    return this;
-  }
-
-  @Override
   public CommonConfig setEncryptType(String encryptType) {
     cnConfig.setProperty("encrypt_type", encryptType);
     dnConfig.setProperty("encrypt_type", encryptType);
@@ -545,6 +538,32 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     dnConfig.setQueryMemoryProportion(queryMemoryProportion);
     cnConfig.setQueryMemoryProportion(queryMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    dnConfig.setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+        subscriptionPrefetchTsFileBatchMaxDelayInMs);
+    cnConfig.setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+        subscriptionPrefetchTsFileBatchMaxDelayInMs);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      int subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    dnConfig.setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+        subscriptionPrefetchTsFileBatchMaxSizeInBytes);
+    cnConfig.setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+        subscriptionPrefetchTsFileBatchMaxSizeInBytes);
+    return this;
+  }
+
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    dnConfig.setSubscriptionEnabled(subscriptionEnabled);
+    cnConfig.setSubscriptionEnabled(subscriptionEnabled);
     return this;
   }
 

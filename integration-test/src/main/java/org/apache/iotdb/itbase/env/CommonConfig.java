@@ -36,8 +36,6 @@ public interface CommonConfig {
 
   CommonConfig setCompressor(String compressor);
 
-  CommonConfig setEncryptFlag(boolean encryptFlag);
-
   CommonConfig setEncryptType(String encryptType);
 
   CommonConfig setEncryptKeyPath(String encryptKeyPath);
@@ -169,6 +167,14 @@ public interface CommonConfig {
       int pipeConnectorRequestSliceThresholdBytes);
 
   CommonConfig setQueryMemoryProportion(String queryMemoryProportion);
+
+  CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs);
+
+  CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      int subscriptionPrefetchTsFileBatchMaxSizeInBytes);
+
+  CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled);
 
   default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     return this;

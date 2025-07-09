@@ -309,6 +309,49 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
             TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
             TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
           });
+
+      // Alter pipe, skip if no privileges
+      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.execute("alter pipe testPipe modify sink ('skipif'='no-privileges')");
+      } catch (final SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      final String dbName2 = "test2";
+
+      // Write some data
+      if (!TableModelUtils.insertData(dbName2, tbName, 0, 100, senderEnv)) {
+        return;
+      }
+
+      // Shall not be transferred
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "count databases", "count,", Collections.singleton("2,"), (String) null);
+
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          "information_schema",
+          BaseEnv.TABLE_SQL_DIALECT,
+          receiverEnv,
+          "grant insert,create on database test2 to user testUser")) {
+        return;
+      }
+
+      if (!TableModelUtils.insertData(dbName2, tbName, 100, 200, senderEnv)) {
+        return;
+      }
+
+      // Will finally pass
+      TableModelUtils.assertCountData(
+          dbName2,
+          tbName,
+          100,
+          receiverEnv,
+          o -> {
+            TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+            TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          });
     }
   }
 }

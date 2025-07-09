@@ -32,6 +32,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class SubscriptionTableResp implements DataSet {
@@ -66,11 +67,14 @@ public class SubscriptionTableResp implements DataSet {
     final List<TShowSubscriptionInfo> showSubscriptionInfoList = new ArrayList<>();
 
     for (SubscriptionMeta subscriptionMeta : allSubscriptionMeta) {
-      showSubscriptionInfoList.add(
+      TShowSubscriptionInfo showSubscriptionInfo =
           new TShowSubscriptionInfo(
               subscriptionMeta.getTopicMeta().getTopicName(),
               subscriptionMeta.getConsumerGroupId(),
-              subscriptionMeta.getConsumerIds()));
+              subscriptionMeta.getConsumerIds());
+      Optional<Long> creationTime = subscriptionMeta.getCreationTime();
+      creationTime.ifPresent(showSubscriptionInfo::setCreationTime);
+      showSubscriptionInfoList.add(showSubscriptionInfo);
     }
     return new TShowSubscriptionResp(status).setSubscriptionInfoList(showSubscriptionInfoList);
   }

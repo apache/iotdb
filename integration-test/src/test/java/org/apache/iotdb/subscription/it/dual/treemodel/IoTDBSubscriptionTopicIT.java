@@ -860,7 +860,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 consumer.open();
                 consumer.subscribe(topicName);
 
-                while (!consumer.allSnapshotTopicMessagesHaveBeenConsumed()) {
+                while (!consumer.allTopicMessagesHaveBeenConsumed()) {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS); // poll and ignore
                 }

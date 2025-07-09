@@ -27,7 +27,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
-import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -251,21 +250,22 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private boolean checkBeforeAnalyzeFileByFile(IAnalysis analysis) {
-    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+    if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+        && !Objects.equals(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            "org.apache.tsfile.encrypt.UNENCRYPTED")) {
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.LOAD_FILE_ERROR,
-              "TSFile encryption is enabled, and the Load TSFile function is disabled"));
+              "TsFile encryption is enabled, and the Load TsFile function is disabled"));
       return false;
     }
 
     // check if the system is read only
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
-      return false;
+      LOGGER.info(
+          "LoadTsFileAnalyzer: Current datanode is read only, will try to convert to tablets and insert later.");
     }
 
     return true;
@@ -291,8 +291,16 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
 
       try {
-        if (Objects.nonNull(databaseForTableData)) {
-          loadTsFilesAsyncToTargetDir(new File(targetFilePath, databaseForTableData), tsFiles);
+        if (Objects.nonNull(databaseForTableData)
+            || (Objects.nonNull(context) && context.getDatabaseName().isPresent())) {
+          loadTsFilesAsyncToTargetDir(
+              new File(
+                  targetFilePath,
+                  databaseForTableData =
+                      Objects.nonNull(databaseForTableData)
+                          ? databaseForTableData
+                          : context.getDatabaseName().get()),
+              tsFiles);
         } else {
           loadTsFilesAsyncToTargetDir(new File(targetFilePath), tsFiles);
         }
@@ -514,10 +522,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
 
-      if (!tsFileResource.resourceFileExists()) {
-        TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
-        getOrCreateTreeSchemaVerifier().setCurrentTimeIndex(tsFileResource.getTimeIndex());
-      }
+      // Update time index no matter if resource file exists or not, because resource file may be
+      // untrusted
+      TsFileResourceUtils.updateTsFileResource(
+          device2TimeseriesMetadata,
+          tsFileResource,
+          IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad());
+      getOrCreateTreeSchemaVerifier().setCurrentTimeIndex(tsFileResource.getTimeIndex());
 
       if (isAutoCreateSchemaOrVerifySchemaEnabled) {
         getOrCreateTreeSchemaVerifier().autoCreateAndVerify(reader, device2TimeseriesMetadata);
@@ -573,10 +584,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
 
-      if (!tsFileResource.resourceFileExists()) {
-        TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
-        getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
-      }
+      // Update time index no matter if resource file exists or not, because resource file may be
+      // untrusted
+      TsFileResourceUtils.updateTsFileResource(
+          device2TimeseriesMetadata,
+          tsFileResource,
+          IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad());
+      getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
 
       for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
         getOrCreateTableSchemaCache().autoCreateAndVerify(deviceId);

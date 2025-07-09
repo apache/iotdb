@@ -95,6 +95,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
@@ -137,7 +138,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
@@ -626,8 +629,14 @@ public interface IManager {
   /** Show DataNodes. */
   TShowDataNodesResp showDataNodes();
 
+  /** Show DataNodes for information schema. */
+  TShowDataNodes4InformationSchemaResp showDataNodes4InformationSchema();
+
   /** Show ConfigNodes. */
   TShowConfigNodesResp showConfigNodes();
+
+  /** Show ConfigNodes for information schema. */
+  TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema();
 
   /**
    * Show StorageGroup.
@@ -791,6 +800,8 @@ public interface IManager {
   TSStatus createSubscription(TSubscribeReq req);
 
   TSStatus dropSubscription(TUnsubscribeReq req);
+
+  TSStatus dropSubscriptionById(TDropSubscriptionReq req);
 
   TShowSubscriptionResp showSubscription(TShowSubscriptionReq req);
 

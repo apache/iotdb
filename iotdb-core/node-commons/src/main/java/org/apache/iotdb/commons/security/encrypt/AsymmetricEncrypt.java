@@ -22,6 +22,25 @@ package org.apache.iotdb.commons.security.encrypt;
 public interface AsymmetricEncrypt {
 
   /**
+   * Defines cryptographic hash algorithms supported by the system. Each enum constant represents a
+   * specific message digest algorithm compatible with {@link java.security.MessageDigest}.
+   */
+  enum DigestAlgorithm {
+    MD5("MD5"),
+    SHA_256("SHA-256");
+
+    private final String algorithmName;
+
+    DigestAlgorithm(String algorithmName) {
+      this.algorithmName = algorithmName;
+    }
+
+    public String getAlgorithmName() {
+      return this.algorithmName;
+    }
+  }
+
+  /**
    * init some providerParameter
    *
    * @param providerParameters encrypt need some parameters
@@ -34,7 +53,7 @@ public interface AsymmetricEncrypt {
    * @param originPassword password to be crypt
    * @return encrypt password
    */
-  String encrypt(String originPassword);
+  String encrypt(String originPassword, DigestAlgorithm digestAlgorithm);
 
   /**
    * validate originPassword and encryptPassword
@@ -43,5 +62,5 @@ public interface AsymmetricEncrypt {
    * @param encryptPassword encrypt password
    * @return true if validate success
    */
-  boolean validate(String originPassword, String encryptPassword);
+  boolean validate(String originPassword, String encryptPassword, DigestAlgorithm digestAlgorithm);
 }
