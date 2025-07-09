@@ -15,10 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import random
+import multiprocessing
 from abc import ABC, abstractmethod
+from typing import Dict, List
 
-import numpy as np
 import pandas as pd
 import torch
 from iotdb.tsfile.utils.tsblock_serde import deserialize
@@ -29,8 +29,13 @@ from ainode.core.exception import (
     InvalidWindowArgumentError,
     runtime_error_extractor,
 )
+from ainode.core.inference.inference_request import InferenceRequest
+from ainode.core.inference.inference_request_pool import InferenceRequestPool
+from ainode.core.inference.strategy.timer_sundial_strategy import TimerSundialStrategy
+from ainode.core.inference.utils import _generate_req_id
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
+from ainode.core.model.sundial.configuration_sundial import SundialConfig
 from ainode.core.model.sundial.modeling_sundial import SundialForPrediction
 from ainode.core.model.timerxl.modeling_timer import TimerForPrediction
 from ainode.core.rpc.status import get_status
@@ -43,7 +48,6 @@ from ainode.thrift.ainode.ttypes import (
 )
 
 logger = Logger()
-FIX_SEED = 2021
 
 
 class InferenceStrategy(ABC):
@@ -122,8 +126,41 @@ class RegisteredStrategy(InferenceStrategy):
 
 
 class InferenceManager:
+    ACCELERATE_MODEL_ID = "sundial"
+    DEFAULT_DEVICE = "cpu"
+    # DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    DEFAULT_POOL_SIZE = (
+        1  # TODO: Remove these parameter by sampling model inference consumption
+    )
+
     def __init__(self, model_manager: ModelManager):
         self.model_manager = model_manager
+        # structure: {model_id: [(InferenceRequestPool, request_queue), ...]}
+        self.request_pool_map: Dict[
+            str, List[(InferenceRequestPool, multiprocessing.Queue)]
+        ] = {}
+        self.result_queue = multiprocessing.Queue()
+        self._init_inference_request_pool()
+
+    def _init_inference_request_pool(self):
+        """
+        Initialize the inference request pool for each model.
+        TODO: This is a temporary solution, we need a automatic algorithm to adjust the pool size for different models
+        """
+        self.request_pool_map[self.ACCELERATE_MODEL_ID] = []
+        for _ in range(self.DEFAULT_POOL_SIZE):
+            sundial_model = self.model_manager.load_model(
+                self.ACCELERATE_MODEL_ID, {}
+            ).to(self.DEFAULT_DEVICE)
+            sundial_config = SundialConfig()
+            request_queue = multiprocessing.Queue()
+            request_pool = InferenceRequestPool(
+                sundial_model, sundial_config, request_queue
+            )
+            request_pool.start()
+            self.request_pool_map[self.ACCELERATE_MODEL_ID].append(
+                (request_pool, request_queue)
+            )
 
     def _get_strategy(self, model_id, model):
         if isinstance(model, TimerForPrediction):
@@ -145,21 +182,33 @@ class InferenceManager:
     ):
         model_id = req.modelId
         logger.info(f"Start processing for {model_id}")
-        random.seed(FIX_SEED)
-        torch.manual_seed(FIX_SEED)
-        np.random.seed(FIX_SEED)
         try:
             raw = data_getter(req)
             full_data = deserializer(raw)
             inference_attrs = extract_attrs(req)
 
-            # load model
-            accel = str(inference_attrs.get("acceleration", "")).lower() == "true"
-            model = self.model_manager.load_model(model_id, inference_attrs, accel)
-
-            # inference by strategy
-            strategy = self._get_strategy(model_id, model)
-            outputs = strategy.infer(full_data, **inference_attrs)
+            if model_id == self.ACCELERATE_MODEL_ID and self.DEFAULT_POOL_SIZE > 0:
+                data = full_data[1][0]
+                if data.dtype.byteorder not in ("=", "|"):
+                    data = data.byteswap().newbyteorder()
+                inputs = torch.tensor(data).unsqueeze(0).float().to(self.DEFAULT_DEVICE)
+                infer_req = InferenceRequest(
+                    req_id=_generate_req_id(),
+                    inputs=inputs,
+                    strategy=TimerSundialStrategy(SundialConfig()),
+                    max_new_tokens=inference_attrs.get("predict_length", 96),
+                )
+                pool_idx = hash(infer_req.id) % len(self.request_pool_map[model_id])
+                self.request_pool_map[model_id][pool_idx][1].put(infer_req)
+                infer_req.wait_for_completion()
+                outputs = convert_to_binary(pd.DataFrame(infer_req.get_final_output()))
+            else:
+                # load model
+                accel = str(inference_attrs.get("acceleration", "")).lower() == "true"
+                model = self.model_manager.load_model(model_id, inference_attrs, accel)
+                # inference by strategy
+                strategy = self._get_strategy(model_id, model)
+                outputs = strategy.infer(full_data, **inference_attrs)
 
             # construct response
             status = get_status(TSStatusCode.SUCCESS_STATUS)
@@ -200,3 +249,12 @@ class InferenceManager:
             resp_cls=TInferenceResp,
             single_output=False,
         )
+
+    def shutdown(self):
+        for model_id, pools in self.request_pool_map.items():
+            for requestPool, requestQueue in pools:
+                requestPool.stop()
+                while not requestQueue.empty():
+                    requestQueue.get_nowait()
+                requestQueue.close()
+                requestQueue.join_thread()
