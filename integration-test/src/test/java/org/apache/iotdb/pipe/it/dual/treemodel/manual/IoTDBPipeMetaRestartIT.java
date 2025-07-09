@@ -103,7 +103,10 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualTreeModelManualIT {
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("20,"));
+        receiverEnv,
+        "count timeseries root.ln.**",
+        "count(timeseries),",
+        Collections.singleton("20,"));
   }
 
   @Test
@@ -163,6 +166,6 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualTreeModelManualIT {
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count databases", "count,", Collections.singleton("20,"));
+        receiverEnv, "count databases root.ln*", "count,", Collections.singleton("20,"));
   }
 }

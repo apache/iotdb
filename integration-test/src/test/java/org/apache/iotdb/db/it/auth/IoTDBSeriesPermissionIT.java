@@ -151,7 +151,7 @@ public class IoTDBSeriesPermissionIT {
         "test1",
         "test123123456");
     resultSetEqualTest(
-        "count timeseries",
+        "count timeseries root.test.**",
         countTimeSeriesColumnHeaders.stream()
             .map(ColumnHeader::getColumnName)
             .toArray(String[]::new),

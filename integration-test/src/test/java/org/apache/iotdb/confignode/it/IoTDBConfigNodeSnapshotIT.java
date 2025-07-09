@@ -83,7 +83,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBConfigNodeSnapshotIT {
-  private static final int testRatisSnapshotTriggerThreshold = 100;
+  private static final int testRatisSnapshotTriggerThreshold = 1000;
   private static final long testTimePartitionInterval = 86400;
 
   @Before

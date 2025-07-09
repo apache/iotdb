@@ -190,9 +190,19 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
           "Time,root.db.d1.s1,",
           Collections.singleton("2,2.0,"));
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("2,"));
+          receiverEnv,
+          "count timeseries root.db.**",
+          "count(timeseries),",
+          Collections.singleton("2,"));
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count databases", "count,", Collections.singleton("2,"));
+          receiverEnv,
+          "count timeseries root.ln.**",
+          "count(timeseries),",
+          Collections.singleton("0,"));
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count databases root.db", "count,", Collections.singleton("1,"));
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count databases root.ln", "count,", Collections.singleton("1,"));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -213,9 +223,19 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
           "Time,root.db.d1.s1,",
           Collections.singleton("2,2.0,"));
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("2,"));
+          receiverEnv,
+          "count timeseries root.ln0.**",
+          "count(timeseries),",
+          Collections.singleton("1,"));
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "count databases", "count,", Collections.singleton("2,"));
+          receiverEnv,
+          "count timeseries root.db.**",
+          "count(timeseries),",
+          Collections.singleton("1,"));
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "count databases root.ln0", "count,", Collections.singleton("1,"));
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "count databases root.db", "count,", Collections.singleton("1,"));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
@@ -226,9 +246,17 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
           "Time,root.db.d1.s1,",
           new HashSet<>(Arrays.asList("2,2.0,", "3,3.0,")));
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("3,"));
+          receiverEnv,
+          "count timeseries root.db.**",
+          "count(timeseries),",
+          Collections.singleton("3,"));
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count databases", "count,", Collections.singleton("3,"));
+          receiverEnv,
+          "count timeseries root.ln0.**",
+          "count(timeseries),",
+          Collections.singleton("0,"));
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count databases", "count,", Collections.singleton("4,"));
     }
   }
 
@@ -562,7 +590,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton(succeedNum.get() + ","));
     }
@@ -608,7 +636,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
 
@@ -623,7 +651,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Thread.sleep(5000);
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
     }

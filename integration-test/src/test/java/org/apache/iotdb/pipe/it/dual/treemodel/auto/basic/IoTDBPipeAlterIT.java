@@ -548,6 +548,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
 
     // Check database on receiver
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeSeries", "count(timeseries),", Collections.singleton("3,"));
+        receiverEnv,
+        "count timeSeries root.db.**",
+        "count(timeseries),",
+        Collections.singleton("3,"));
   }
 }

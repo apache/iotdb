@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -109,6 +110,9 @@ public class IoTDBAutoRegionGroupExtensionIT {
       boolean isAllRegionGroupDeleted = false;
       for (int retry = 0; retry < retryNum; retry++) {
         TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.SYSTEM_DATABASE));
         if (showRegionResp.getRegionInfoListSize() == 0) {
           isAllRegionGroupDeleted = true;
           break;
@@ -172,6 +176,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
     Map<String, Integer> databaseRegionCounter = new TreeMap<>();
     Map<Integer, Integer> dataNodeRegionCounter = new TreeMap<>();
     Map<String, Map<Integer, Integer>> databaseDataNodeRegionCounter = new TreeMap<>();
+    resp.getRegionInfoList().removeIf(r -> r.database.equals(SystemConstant.SYSTEM_DATABASE));
     resp.getRegionInfoList()
         .forEach(
             regionInfo -> {
@@ -193,6 +198,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
     // The maximal Region count - minimal Region count should be less than or equal to 1 for each
     // DataNode
     Assert.assertEquals(TEST_DATA_NODE_NUM, dataNodeRegionCounter.size());
+    System.out.println(databaseRegionCounter);
     Assert.assertTrue(
         dataNodeRegionCounter.values().stream().max(Integer::compareTo).orElse(0)
                 - dataNodeRegionCounter.values().stream().min(Integer::compareTo).orElse(0)

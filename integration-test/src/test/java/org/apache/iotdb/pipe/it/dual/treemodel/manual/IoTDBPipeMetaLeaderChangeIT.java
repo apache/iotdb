@@ -122,7 +122,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count databases", "count,", Collections.singleton("20,"));
+        receiverEnv, "count databases root.ln*", "count,", Collections.singleton("20,"));
   }
 
   @Test
@@ -206,6 +206,9 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
             "root.ln.wf01.GPS.status0,newAlias,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeSeries", "count(timeseries),", Collections.singleton("20,"));
+        receiverEnv,
+        "count timeSeries root.ln.**",
+        "count(timeseries),",
+        Collections.singleton("20,"));
   }
 }

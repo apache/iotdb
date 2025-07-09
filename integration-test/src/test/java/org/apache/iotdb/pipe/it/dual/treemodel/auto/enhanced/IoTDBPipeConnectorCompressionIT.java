@@ -308,7 +308,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualTreeModelAu
               .count());
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("3,"));
+          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("5,"));
     }
   }
 }

@@ -72,6 +72,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -180,7 +181,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"),
           handleFailure);
@@ -202,7 +203,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("8,"),
           handleFailure);

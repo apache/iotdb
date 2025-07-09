@@ -91,7 +91,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.emptyList(),
         "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -102,7 +102,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.emptyList(),
         "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)",
         "create timeSeries root.ln.wf01.wt01.status1(status) with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("3,"));
   }
@@ -113,7 +113,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.emptyList(),
         "create timeSeries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN",
         "create timeSeries root.ln.wf01.wt01.status1(status1) with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -124,7 +124,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.emptyList(),
         "insert into root.ln.wf01.wt01(time, status0) values(now(), false); flush;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -136,7 +136,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
         "ALTER timeSeries root.ln.wf01.wt01.status0 ADD TAGS tag3=v3;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -148,7 +148,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
         "ALTER timeSeries root.ln.wf01.wt01.status0 ADD ATTRIBUTES attr1=newV1;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -161,7 +161,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "ALTER timeSeries root.ln.wf01.wt01.status0 ADD ATTRIBUTES attr1=newV1;"),
         "ALTER timeSeries root.ln.wf01.wt01.status0 RENAME attr1 TO newAttr1;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -249,7 +249,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "set schema template t1 to root.sg1"),
         "create timeSeries using device template on root.sg1.d1",
         "create timeSeries using device template on root.sg1.d2",
-        "count timeSeries",
+        "count timeSeries root.sg1.**",
         "count(timeseries),",
         Collections.singleton("6,"));
   }

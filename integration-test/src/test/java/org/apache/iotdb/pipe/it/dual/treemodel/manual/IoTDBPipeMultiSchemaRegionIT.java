@@ -93,6 +93,14 @@ public class IoTDBPipeMultiSchemaRegionIT extends AbstractPipeDualTreeModelManua
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("4,"));
+        receiverEnv,
+        "count timeseries root.ln.**",
+        "count(timeseries),",
+        Collections.singleton("2,"));
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count timeseries root.sg.**",
+        "count(timeseries),",
+        Collections.singleton("2,"));
   }
 }
