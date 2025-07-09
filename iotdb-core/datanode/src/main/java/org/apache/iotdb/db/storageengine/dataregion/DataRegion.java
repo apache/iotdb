@@ -1838,6 +1838,7 @@ public class DataRegion implements IDataRegionForQuery {
             }
           });
       deleteAllSGFolders(TierManager.getInstance().getAllFilesFolders());
+      deleteAllObjectFiles(TierManager.getInstance().getAllObjectFileFolders());
       this.workSequenceTsFileProcessors.clear();
       this.workUnsequenceTsFileProcessors.clear();
       this.tsFileManager.clear();
@@ -1870,6 +1871,24 @@ public class DataRegion implements IDataRegionForQuery {
         if (dataRegionDataFolder.exists()) {
           org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
               dataRegionDataFolder);
+        }
+      }
+    }
+  }
+
+  private void deleteAllObjectFiles(List<String> folders) {
+    for (String objectFolder : folders) {
+      File dataRegionObjectFolder = fsFactory.getFile(objectFolder, dataRegionId);
+      if (FSUtils.getFSType(dataRegionObjectFolder) != FSType.LOCAL) {
+        try {
+          fsFactory.deleteDirectory(dataRegionObjectFolder.getPath());
+        } catch (IOException e) {
+          logger.error("Fail to delete data region object folder {}", dataRegionObjectFolder);
+        }
+      } else {
+        if (dataRegionObjectFolder.exists()) {
+          org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(
+              dataRegionObjectFolder);
         }
       }
     }
