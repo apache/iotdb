@@ -31,7 +31,7 @@ AINODE_CONF_POM_FILE_NAME = "pom.properties"
 AINODE_SYSTEM_FILE_NAME = "system.properties"
 # inference_rpc_address
 AINODE_INFERENCE_RPC_ADDRESS = "127.0.0.1"
-AINODE_INFERENCE_RPC_PORT = 10810
+AINODE_INFERENCE_RPC_PORT = 11810
 # AINode folder structure
 AINODE_MODELS_DIR = "data/ainode/models"
 AINODE_BUILTIN_MODELS_DIR = "data/ainode/models/weights"  # For built-in models, we only need to store their weights and config.
@@ -39,7 +39,7 @@ AINODE_SYSTEM_DIR = "data/ainode/system"
 AINODE_LOG_DIR = "logs/ainode"
 AINODE_THRIFT_COMPRESSION_ENABLED = False
 # use for node management
-AINODE_CLUSTER_NAME = "defaultCluster"
+AINODE_CLUSTER_NAME = "yongzaoCluster"
 AINODE_VERSION_INFO = "UNKNOWN"
 AINODE_BUILD_INFO = "UNKNOWN"
 AINODE_ROOT_DIR = os.path.dirname(
@@ -47,7 +47,7 @@ AINODE_ROOT_DIR = os.path.dirname(
 )
 # connect IoTDB cluster
 AINODE_CLUSTER_INGRESS_ADDRESS = "127.0.0.1"
-AINODE_CLUSTER_INGRESS_PORT = 6667
+AINODE_CLUSTER_INGRESS_PORT = 7667
 AINODE_CLUSTER_INGRESS_USERNAME = "root"
 AINODE_CLUSTER_INGRESS_PASSWORD = "root"
 AINODE_CLUSTER_INGRESS_TIME_ZONE = "UTC+8"
