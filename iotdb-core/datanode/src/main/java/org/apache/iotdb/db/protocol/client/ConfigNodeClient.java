@@ -1418,6 +1418,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         () -> client.createTableView(req), status -> !updateConfigNodeLeader(status));
   }
 
+  @Override
+  public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.pushHeartbeat(dataNodeId, resp), status -> !updateConfigNodeLeader(status));
+  }
+
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {
 
     public Factory(
