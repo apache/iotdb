@@ -49,6 +49,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
       final boolean shouldReportProgress) {
     super(
         tsFileResource,
+        null,
         bindIsWithMod(originalEvents),
         bindIsLoaded(originalEvents),
         bindIsGeneratedByHistoricalExtractor(originalEvents),

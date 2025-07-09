@@ -81,8 +81,9 @@ public class PipeTsFileResource implements AutoCloseable {
 
   @Override
   public synchronized void close() {
+    boolean successful = false;
     try {
-      Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
+      successful = Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
     } catch (final Exception e) {
       LOGGER.error(
           "PipeTsFileResource: Failed to delete tsfile {} when closing, because {}. Please MANUALLY delete it.",
@@ -91,6 +92,8 @@ public class PipeTsFileResource implements AutoCloseable {
           e);
     }
 
-    LOGGER.info("PipeTsFileResource: Closed tsfile {} and cleaned up.", hardlinkOrCopiedFile);
+    if (successful) {
+      LOGGER.info("PipeTsFileResource: Closed tsfile {} and cleaned up.", hardlinkOrCopiedFile);
+    }
   }
 }

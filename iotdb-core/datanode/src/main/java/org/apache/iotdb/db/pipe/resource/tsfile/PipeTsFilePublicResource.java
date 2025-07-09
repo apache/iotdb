@@ -39,20 +39,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class PipeTsFileMemResource extends PipeTsFileResource {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileMemResource.class);
+public class PipeTsFilePublicResource extends PipeTsFileResource {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFilePublicResource.class);
   public static final float MEMORY_SUFFICIENT_THRESHOLD = 0.7f;
   private PipeMemoryBlock allocatedMemoryBlock;
   private Map<IDeviceID, List<String>> deviceMeasurementsMap = null;
   private Map<IDeviceID, Boolean> deviceIsAlignedMap = null;
   private Map<String, TSDataType> measurementDataTypeMap = null;
 
-  public PipeTsFileMemResource() {
-    super(null);
+  public PipeTsFilePublicResource(File hardlinkOrCopiedFile) {
+    super(hardlinkOrCopiedFile);
   }
 
   @Override
   public void close() {
+    super.close();
+
     if (deviceMeasurementsMap != null) {
       deviceMeasurementsMap = null;
     }
