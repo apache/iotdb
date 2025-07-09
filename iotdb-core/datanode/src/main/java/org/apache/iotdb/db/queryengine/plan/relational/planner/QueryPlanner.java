@@ -752,7 +752,7 @@ public class QueryPlanner {
               .process(node.getFrom().orElse(null), null);
       return newPlanBuilder(relationPlan, analysis);
     } else {
-      throw new IllegalStateException("From clause must not by empty");
+      throw new SemanticException("From clause must not be empty");
     }
   }
 
