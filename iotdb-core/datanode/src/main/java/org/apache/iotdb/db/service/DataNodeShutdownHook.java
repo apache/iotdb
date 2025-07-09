@@ -127,9 +127,16 @@ public class DataNodeShutdownHook extends Thread {
     if (PipeDataNodeAgent.task().getPipeCount() != 0) {
       for (Map.Entry<String, PipeDataNodeRemainingEventAndTimeOperator> entry :
           PipeDataNodeSinglePipeMetrics.getInstance().remainingEventAndTimeOperatorMap.entrySet()) {
-        while (entry.getValue().getRemainingNonHeartbeatEvents() > 0) {
+        boolean timeout = false;
+        while (true) {
+          if (entry.getValue().getRemainingNonHeartbeatEvents() > 0) {
+            logger.info(
+                "Successfully waited for pipe {} to finish.", entry.getValue().getPipeName());
+            break;
+          }
           if (System.currentTimeMillis() - startTime
               > PipeConfig.getInstance().getPipeMaxWaitFinishTime()) {
+            timeout = true;
             break;
           }
           try {
@@ -138,6 +145,10 @@ public class DataNodeShutdownHook extends Thread {
             Thread.currentThread().interrupt();
             logger.info("Interrupted when waiting for pipe to finish");
           }
+        }
+        if (timeout) {
+          logger.info("Timed out when waiting for pipes to finish, will break");
+          break;
         }
       }
     }
