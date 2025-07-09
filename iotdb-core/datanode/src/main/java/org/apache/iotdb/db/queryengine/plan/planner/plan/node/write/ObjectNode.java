@@ -64,6 +64,10 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   private boolean isGeneratedByRemoteConsensusLeader;
 
+  private Long time = null;
+
+  private String table = null;
+
   public ObjectNode(boolean isEOF, long offset, byte[] content, String filePath) {
     super(new PlanNodeId(""));
     this.isEOF = isEOF;
@@ -79,6 +83,27 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     this.offset = offset;
     this.filePath = filePath;
     this.contentLength = contentLength;
+  }
+
+  public long getTimestamp() {
+    calculateTimeAndTableName();
+    return time;
+  }
+
+  public String getTable() {
+    calculateTimeAndTableName();
+    return table;
+  }
+
+  private void calculateTimeAndTableName() {
+    if (time != null && table != null) {
+      return;
+    }
+    File file = new File(filePath);
+    String fileName = new File(filePath).getName();
+    String timeStr = fileName.substring(0, fileName.length() - ".bin".length());
+    time = Long.parseLong(timeStr);
+    table = file.getParentFile().getParentFile().getParentFile().getParentFile().getName();
   }
 
   public boolean isEOF() {

@@ -168,10 +168,10 @@ public class TsFileNameGenerator {
     }
   }
 
-  public static String generateObjectFilePath(long time, IDeviceID iDeviceID) {
+  public static String generateObjectFilePath(int regionId, long time, IDeviceID iDeviceID) {
     String objectFileName = time + ".bin";
     Object[] segments = iDeviceID.getSegments();
-    StringBuilder relativePathString = new StringBuilder();
+    StringBuilder relativePathString = new StringBuilder(regionId + "").append(File.separator);
     for (Object segment : segments) {
       relativePathString.append(segment.toString().toLowerCase()).append(File.separator);
     }

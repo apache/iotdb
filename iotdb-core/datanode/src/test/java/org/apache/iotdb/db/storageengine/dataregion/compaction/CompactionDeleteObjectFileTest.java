@@ -20,7 +20,11 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
@@ -29,8 +33,11 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.After;
 import org.junit.Before;
@@ -57,6 +64,7 @@ public class CompactionDeleteObjectFileTest extends AbstractCompactionTest {
 
   @Test
   public void test1() throws IOException {
+    createTable("tsfile_table", 100);
     File dir = new File("/Users/shuww/Downloads/0708/1_副本");
     List<TsFileResource> resources = new ArrayList<>();
     for (File file : dir.listFiles()) {
@@ -64,6 +72,7 @@ public class CompactionDeleteObjectFileTest extends AbstractCompactionTest {
         continue;
       }
       TsFileResource resource = new TsFileResource(file);
+
       try (ModificationFile modificationFile = resource.getExclusiveModFile()) {
         modificationFile.write(
             new TableDeletionEntry(
@@ -72,15 +81,23 @@ public class CompactionDeleteObjectFileTest extends AbstractCompactionTest {
                     new IDPredicate.FullExactMatch(
                         new StringArrayDeviceID(new String[] {"tsfile_table", "1", "5", "3"})),
                     Arrays.asList("file")),
-                new TimeRange(1, 20)));
+                new TimeRange(-1, 0)));
+        modificationFile.write(
+            new TableDeletionEntry(
+                new DeletionPredicate(
+                    "tsfile_table",
+                    new IDPredicate.FullExactMatch(
+                        new StringArrayDeviceID(new String[] {"tsfile_table", "1", "5", "3"})),
+                    Arrays.asList("file")),
+                new TimeRange(2, 2)));
       }
       resource.deserialize();
       resources.add(resource);
     }
 
-    //    InnerSpaceCompactionTask task =
-    //        new InnerSpaceCompactionTask(
-    //            0, tsFileManager, resources, true, new ReadChunkCompactionPerformer(), 0);
+    //        InnerSpaceCompactionTask task =
+    //            new InnerSpaceCompactionTask(
+    //                0, tsFileManager, resources, true, new ReadChunkCompactionPerformer(), 0);
     SettleCompactionTask task =
         new SettleCompactionTask(
             0,
@@ -91,5 +108,15 @@ public class CompactionDeleteObjectFileTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             0);
     task.start();
+  }
+
+  public void createTable(String tableName, long ttl) {
+    TsTable tsTable = new TsTable(tableName);
+    tsTable.addColumnSchema(new TagColumnSchema("id_column", TSDataType.STRING));
+    tsTable.addColumnSchema(
+        new FieldColumnSchema("s1", TSDataType.STRING, TSEncoding.PLAIN, CompressionType.LZ4));
+    tsTable.addProp(TsTable.TTL_PROPERTY, ttl + "");
+    DataNodeTableCache.getInstance().preUpdateTable("Downloads", tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable("Downloads", tableName, null);
   }
 }
