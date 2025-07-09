@@ -259,7 +259,9 @@ public class LogicalPlanBuilder {
                   : null;
 
           PartialPath devicePath = selectedPath.getDevicePath();
-          devicePath.setIDeviceID(deviceId);
+          // For expression with view path, we do not use the deviceId in Map.Entry because it is a
+          // view device.
+          devicePath.setIDeviceID(selectedPath.getIDeviceID());
           long memCost =
               lastQueryNode.addDeviceLastQueryScanNode(
                   context.getQueryId().genPlanNodeId(),

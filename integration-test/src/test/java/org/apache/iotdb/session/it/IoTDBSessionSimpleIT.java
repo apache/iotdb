@@ -79,6 +79,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -2198,6 +2199,21 @@ public class IoTDBSessionSimpleIT {
         }
         Assert.assertEquals(tablet.getRowSize(), count);
       }
+    }
+  }
+
+  @Test
+  public void testInsertWrongTypeRecord() throws IoTDBConnectionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      assertThrows(
+          ClassCastException.class,
+          () ->
+              session.insertRecord(
+                  "root.db1.d1",
+                  0,
+                  Collections.singletonList("s1"),
+                  Collections.singletonList(TSDataType.INT32),
+                  Collections.singletonList(1L)));
     }
   }
 }

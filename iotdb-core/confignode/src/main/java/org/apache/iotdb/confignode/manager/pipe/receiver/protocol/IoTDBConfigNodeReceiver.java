@@ -1001,6 +1001,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
+  protected void markFileBaseDirStateAbnormal(String dir) {}
+
+  @Override
   protected String getSenderHost() {
     final IClientSession session = SESSION_MANAGER.getCurrSession();
     return session != null ? session.getClientAddress() : "unknown";

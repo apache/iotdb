@@ -612,6 +612,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Ordering timeseriesOrdering = analysis.getTimeseriesOrderingForLastQuery();
 
+    boolean hasAliasView = false;
     for (Expression selectExpression : selectExpressions) {
       for (Expression lastQuerySourceExpression :
           bindSchemaForExpression(selectExpression, schemaTree, context)) {
@@ -622,20 +623,31 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                   (timeSeriesOperand.isViewExpression()
                       ? timeSeriesOperand.getViewPath()
                       : timeSeriesOperand.getPath());
-          IDeviceID outputDevice =
+          IDeviceID actualDeviceID =
               ExpressionAnalyzer.getDeviceNameInSourceExpression(timeSeriesOperand);
+          IDeviceID outputDeviceID =
+              timeSeriesOperand.isViewExpression() ? outputPath.getIDeviceID() : actualDeviceID;
+          if (timeSeriesOperand.isViewExpression()) {
+            deviceExistViewSet.add(outputDeviceID);
+            if (!hasAliasView) {
+              allDeviceSet.addAll(outputPathToSourceExpressionMap.keySet());
+              hasAliasView = true;
+            }
+            allDeviceSet.add(actualDeviceID);
+          } else if (hasAliasView) {
+            allDeviceSet.add(actualDeviceID);
+          }
+          // If we use actual deviceId, it may overwrite other expression of same measurement in
+          // Map<String, Expression>.
           outputPathToSourceExpressionMap
               .computeIfAbsent(
-                  outputDevice,
+                  outputDeviceID,
                   k ->
                       timeseriesOrdering != null
                           ? new TreeMap<>(timeseriesOrdering.getStringComparator())
                           : new LinkedHashMap<>())
               .put(outputPath.getMeasurement(), timeSeriesOperand);
 
-          if (timeSeriesOperand.isViewExpression()) {
-            deviceExistViewSet.add(outputDevice);
-          }
         } else {
           lastQueryNonWritableViewSourceExpressionMap =
               lastQueryNonWritableViewSourceExpressionMap == null
@@ -653,7 +665,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     if (allDeviceSet.isEmpty()) {
       allDeviceSet = outputPathToSourceExpressionMap.keySet();
-    } else {
+    } else if (!hasAliasView) {
       allDeviceSet.addAll(outputPathToSourceExpressionMap.keySet());
     }
 

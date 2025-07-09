@@ -137,14 +137,14 @@
         <osgi.version>7.0.0</osgi.version>
         <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
         <powermock.version>2.0.9</powermock.version>
-        <ratis-thirdparty-misc.version>1.0.8</ratis-thirdparty-misc.version>
+        <ratis-thirdparty-misc.version>1.0.9</ratis-thirdparty-misc.version>
         <!--
       This is an unreleased version of a custom branch. The 8-character part after the version number
       This is an unreleased version of a custom branch. The 8-character part after the version number
       is for ensuring the SNAPSHOT will stay available. We should however have the Ratis folks do a
       new release soon, as releasing with this version is more than sub-ideal.
     -->
-        <ratis.version>3.2.0-3247c7f-SNAPSHOT</ratis.version>
+        <ratis.version>3.2.1</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor-netty.version>1.1.20</reactor-netty.version>
         <reactor.version>3.5.18</reactor.version>
@@ -175,7 +175,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.1.0-250616-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.1.0-250707-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -319,37 +319,37 @@
                 <version>${commons-io.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-server</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-server-api</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-common</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-client</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-grpc</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-proto</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-metrics-api</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
