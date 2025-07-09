@@ -1887,8 +1887,7 @@ public class DataRegion implements IDataRegionForQuery {
         }
       } else {
         if (dataRegionObjectFolder.exists()) {
-          org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(
-              dataRegionObjectFolder);
+          org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(dataRegionObjectFolder);
         }
       }
     }
