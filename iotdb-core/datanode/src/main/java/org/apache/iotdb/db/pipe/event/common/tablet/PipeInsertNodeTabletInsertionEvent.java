@@ -388,7 +388,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public String toString() {
     return String.format(
             "PipeInsertNodeTabletInsertionEvent{progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s, dataContainers=%s}",
-            progressIndex, insertNode.isAligned(), insertNode.isGeneratedByPipe(), dataContainers)
+            progressIndex,
+            Objects.nonNull(insertNode) ? insertNode.isAligned() : null,
+            Objects.nonNull(insertNode) ? insertNode.isGeneratedByPipe() : null,
+            dataContainers)
         + " - "
         + super.toString();
   }
@@ -397,7 +400,9 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public String coreReportMessage() {
     return String.format(
             "PipeInsertNodeTabletInsertionEvent{progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s}",
-            progressIndex, insertNode.isAligned(), insertNode.isGeneratedByPipe())
+            progressIndex,
+            Objects.nonNull(insertNode) ? insertNode.isAligned() : null,
+            Objects.nonNull(insertNode) ? insertNode.isGeneratedByPipe() : null)
         + " - "
         + super.coreReportMessage();
   }
