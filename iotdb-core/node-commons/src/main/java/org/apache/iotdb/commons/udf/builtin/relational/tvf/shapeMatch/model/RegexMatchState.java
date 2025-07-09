@@ -87,9 +87,14 @@ public class RegexMatchState {
       if (!pathState.getPatternSection().getNextSectionList().isEmpty()) {
         if (pathState.getPatternSection().getNextSectionList().size() == 1) {
           Section nextSection = pathState.getPatternSection().getNextSectionList().get(0);
-          PathState newPathState =
-              new PathState(pathState.getDataSectionIndex() + 1, nextSection, pathState);
-          matchStateStack.push(newPathState);
+          if(pathState.getPatternSection().isFinal()){ // 这里不能在之前的上面继续改，这里需要保留这个index，之后输出要用
+            PathState newPathState = new PathState(pathState.getDataSectionIndex() + 1, nextSection, pathState);
+            matchStateStack.push(newPathState);
+          }
+          else{
+            pathState.nextState(nextSection);
+            matchStateStack.push(pathState);
+          }
         } else {
           // copy the old pathState info and new dataSectionIndex, patternSection
           // loop from the last one, the first one can be the top of the stack
