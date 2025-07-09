@@ -33,7 +33,7 @@ from ainode.core.constant import (
     MODEL_CONFIG_FILE_IN_JSON,
     TSStatusCode,
 )
-from ainode.core.exception import ModelNotExistError
+from ainode.core.exception import BuiltInModelDeletionError, ModelNotExistError
 from ainode.core.log import Logger
 from ainode.core.model.built_in_model_factory import (
     download_ltsm_if_necessary,
@@ -220,12 +220,13 @@ class ModelStorage(object):
         configs, attributes = fetch_model_by_uri(
             uri, model_storage_path, config_storage_path
         )
-        self._model_info_map[model_id] = ModelInfo(
+        model_info = ModelInfo(
             model_id=model_id,
             model_type="",
             category=ModelCategory.USER_DEFINED,
             state=ModelStates.ACTIVE,
         )
+        self.register_built_in_model(model_info)
         return configs, attributes
 
     def delete_model(self, model_id: str) -> None:
@@ -235,11 +236,13 @@ class ModelStorage(object):
         Returns:
             None
         """
+        # check if the model is built-in
+        with self._lock_pool.get_lock(model_id).read_lock():
+            if self._is_built_in(model_id):
+                raise BuiltInModelDeletionError(model_id)
+
+        # delete the user-defined model
         storage_path = os.path.join(self._model_dir, f"{model_id}")
-        with self._lock_pool.get_lock(model_id).write_lock():
-            if os.path.exists(storage_path):
-                shutil.rmtree(storage_path)
-        storage_path = os.path.join(self._builtin_model_dir, f"{model_id}")
         with self._lock_pool.get_lock(model_id).write_lock():
             if os.path.exists(storage_path):
                 shutil.rmtree(storage_path)
