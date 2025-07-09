@@ -97,7 +97,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQ
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
@@ -196,10 +195,6 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitLastQueryScan(LastQueryScanNode node, C context) {
-    return visitSourceNode(node, context);
-  }
-
-  public R visitAlignedLastQueryScan(AlignedLastQueryScanNode node, C context) {
     return visitSourceNode(node, context);
   }
 

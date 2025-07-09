@@ -250,6 +250,7 @@ public class CommonConfig {
   private int pipeAsyncConnectorMaxTsFileClientNumber =
       Math.max(16, Runtime.getRuntime().availableProcessors());
 
+  private double pipeSendTsFileRateLimitBytesPerSecond = 32 * MB;
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
   private int rateLimiterHotReloadCheckIntervalMs = 1000;
 
@@ -329,9 +330,9 @@ public class CommonConfig {
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
   private int subscriptionSubtaskExecutorMaxThreadNum = 2;
 
-  private int subscriptionPrefetchTabletBatchMaxDelayInMs = 20; // 1s
+  private int subscriptionPrefetchTabletBatchMaxDelayInMs = 20;
   private long subscriptionPrefetchTabletBatchMaxSizeInBytes = MB;
-  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 1000; // 5s
+  private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 1000;
   private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 2 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionDefaultTimeoutInMs = 10_000; // 10s
@@ -2038,6 +2039,21 @@ public class CommonConfig {
     }
     this.pipeTransferTsFileSync = pipeTransferTsFileSync;
     logger.info("pipeTransferTsFileSync is set to {}", pipeTransferTsFileSync);
+  }
+
+  public double getPipeSendTsFileRateLimitBytesPerSecond() {
+    return pipeSendTsFileRateLimitBytesPerSecond;
+  }
+
+  public void setPipeSendTsFileRateLimitBytesPerSecond(
+      double pipeSendTsFileRateLimitBytesPerSecond) {
+    if (this.pipeSendTsFileRateLimitBytesPerSecond == pipeSendTsFileRateLimitBytesPerSecond) {
+      return;
+    }
+    this.pipeSendTsFileRateLimitBytesPerSecond = pipeSendTsFileRateLimitBytesPerSecond;
+    logger.info(
+        "pipeSendTsFileRateLimitBytesPerSecond is set to {}",
+        pipeSendTsFileRateLimitBytesPerSecond);
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {

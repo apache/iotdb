@@ -33,6 +33,7 @@ class BasicDatabaseForecastDataset(BasicDatabaseDataset):
         seq_len: int,
         input_token_len: int,
         output_token_len: int,
+        window_step: int,
     ):
         super().__init__(ip, port)
         # The number of the time series data points of the model input
@@ -42,3 +43,4 @@ class BasicDatabaseForecastDataset(BasicDatabaseDataset):
         # The number of the time series data points of the model output
         self.output_token_len = output_token_len
         self.token_num = self.seq_len // self.input_token_len
+        self.window_step = window_step

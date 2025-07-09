@@ -28,6 +28,8 @@ import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.subscription.it.Retry;
+import org.apache.iotdb.subscription.it.RetryRule;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
@@ -44,6 +46,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -63,6 +66,9 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionTreeRegressionConsumer.class})
 public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRegressionIT {
+
+  @Rule public RetryRule retryRule = new RetryRule();
+
   private static final String database = "root.test.OneConsumerMultiTopicsMix";
   private static final String database2 = "root.OneConsumerMultiTopicsMix";
   private static final String device = database + ".d_0";
@@ -110,6 +116,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
     subs.dropTopic(topicName2);
     dropDB(database);
     dropDB(database2);
+    schemaList.clear();
     super.tearDown();
   }
 
@@ -128,6 +135,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
     session_src.executeNonQueryStatement("flush");
   }
 
+  @Retry
   @Test
   public void do_test()
       throws InterruptedException,

@@ -179,6 +179,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (Objects.isNull(pollTimer)) {
       return SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs();
     }
+    // update timer before fetch remaining ms
+    pollTimer.update();
     return pollTimer.remainingMs();
   }
 
