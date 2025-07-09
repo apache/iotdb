@@ -30,6 +30,7 @@ from ainode.thrift.ainode.ttypes import (
     TInferenceResp,
     TRegisterModelReq,
     TRegisterModelResp,
+    TShowModelsReq,
     TShowModelsResp,
     TTrainingReq,
 )
@@ -58,8 +59,8 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def getAIHeartbeat(self, req: TAIHeartbeatReq) -> TAIHeartbeatResp:
         return ClusterManager.get_heart_beat(req)
 
-    def showModels(self) -> TShowModelsResp:
-        return self._model_manager.show_models()
+    def showModels(self, req: TShowModelsReq) -> TShowModelsResp:
+        return self._model_manager.show_models(req)
 
     def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
         pass

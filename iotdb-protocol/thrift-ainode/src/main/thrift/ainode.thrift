@@ -97,6 +97,10 @@ struct TForecastResp {
   2: required binary forecastResult
 }
 
+struct TShowModelsReq {
+  1: optional string modelId
+}
+
 struct TShowModelsResp {
   1: required common.TSStatus status
   2: optional list<string> modelIdList
@@ -108,7 +112,7 @@ struct TShowModelsResp {
 service IAINodeRPCService {
 
   // -------------- For Config Node --------------
-  TShowModelsResp showModels()
+  TShowModelsResp showModels(TShowModelsReq req)
 
   common.TSStatus deleteModel(TDeleteModelReq req)
 

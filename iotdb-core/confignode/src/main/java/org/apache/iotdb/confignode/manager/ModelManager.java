@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsReq;
 import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -105,7 +106,11 @@ public class ModelManager {
         new TEndPoint(registeredAINode.getInternalAddress(), registeredAINode.getInternalPort());
     try (AINodeClient client =
         AINodeClientManager.getInstance().borrowClient(targetAINodeEndPoint)) {
-      TShowModelsResp resp = client.showModels();
+      TShowModelsReq showModelsReq = new TShowModelsReq();
+      if (req.isSetModelId()) {
+        showModelsReq.setModelId(req.getModelId());
+      }
+      TShowModelsResp resp = client.showModels(showModelsReq);
       TShowModelResp res =
           new TShowModelResp().setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
       res.setModelIdList(resp.getModelIdList());
