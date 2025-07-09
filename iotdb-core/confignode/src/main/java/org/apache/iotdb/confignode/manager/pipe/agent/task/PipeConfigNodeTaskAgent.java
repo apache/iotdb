@@ -208,7 +208,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
-    LOGGER.info("Received pipe heartbeat request {} from config coordinator.", req.heartbeatId);
+    LOGGER.debug("Received pipe heartbeat request {} from config coordinator.", req.heartbeatId);
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();

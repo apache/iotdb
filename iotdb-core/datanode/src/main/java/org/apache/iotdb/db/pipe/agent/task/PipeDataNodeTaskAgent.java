@@ -471,7 +471,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
                 PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
                 pipeMetaKeeper.getPipeMetaCount());
-    LOGGER.info("Received pipe heartbeat request {} from config node.", req.heartbeatId);
+    LOGGER.debug("Received pipe heartbeat request {} from config node.", req.heartbeatId);
 
     final Set<Integer> dataRegionIds =
         StorageEngine.getInstance().getAllDataRegionIds().stream()
