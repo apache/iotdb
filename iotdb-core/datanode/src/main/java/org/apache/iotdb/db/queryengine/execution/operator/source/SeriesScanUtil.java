@@ -1096,14 +1096,18 @@ public class SeriesScanUtil implements Accountable {
      * Fill sequence TimeSeriesMetadata List until it is not empty
      */
     while (seqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextSeqResource()) {
-      unpackSeqTsFileResource();
+      if (!unpackSeqTsFileResource().isPresent()) {
+        return;
+      }
     }
 
     /*
      * Fill unSequence TimeSeriesMetadata Priority Queue until it is not empty
      */
     while (unSeqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextUnseqResource()) {
-      unpackUnseqTsFileResource();
+      if (!unpackUnseqTsFileResource().isPresent()) {
+        return;
+      }
     }
 
     /*
@@ -1210,7 +1214,7 @@ public class SeriesScanUtil implements Accountable {
     }
   }
 
-  private void unpackUnseqTsFileResource() throws IOException {
+  private Optional<ITimeSeriesMetadata> unpackUnseqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true), false);
     // skip if data type is mismatched which may be caused by delete
@@ -1218,6 +1222,7 @@ public class SeriesScanUtil implements Accountable {
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
     }
+    return Optional.ofNullable(timeseriesMetadata);
   }
 
   protected ITimeSeriesMetadata loadTimeSeriesMetadata(TsFileResource resource, boolean isSeq)
