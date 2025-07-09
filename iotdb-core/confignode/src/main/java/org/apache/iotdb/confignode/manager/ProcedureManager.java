@@ -2132,12 +2132,15 @@ public class ProcedureManager {
     for (Map.Entry<Long, Procedure<ConfigNodeProcedureEnv>> procedureEntry :
         procedures.entrySet()) {
       TProcedureInfo procedureInfo = new TProcedureInfo();
+      Procedure<ConfigNodeProcedureEnv> procedure = procedureEntry.getValue();
       procedureInfo.setProcId(procedureEntry.getKey());
-      procedureInfo.setState(procedureEntry.getValue().getState().name());
-      procedureInfo.setSubmittedTime(procedureEntry.getValue().getSubmittedTime());
-      procedureInfo.setLastUpdate(procedureEntry.getValue().getLastUpdate());
-      procedureInfo.setParentProcId(procedureEntry.getValue().getParentProcId());
-      procedureInfo.setClassName(procedureEntry.getValue().getClass().getName());
+      procedureInfo.setStatus(procedure.getState().name());
+      procedureInfo.setSubmittedTime(procedure.getSubmittedTime());
+      procedureInfo.setLastUpdate(procedure.getLastUpdate());
+      procedureInfo.setParentProcId(procedure.getParentProcId());
+      procedureInfo.setClassName(procedure.getClass().getName());
+      procedureInfo.setState(procedure.getCurrentStateForDisplay());
+      procedureInfo.setProgress(procedure.getProgressForDisplay());
       procedureInfoList.add(procedureInfo);
     }
     return procedureInfoList;

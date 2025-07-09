@@ -85,6 +85,7 @@ public class ColumnHeaderConstant {
   public static final String NODE_ID = "NodeID";
   public static final String NODE_TYPE = "NodeType";
   public static final String STATUS = "Status";
+  public static final String PROGRESS = "Progress";
   public static final String INTERNAL_ADDRESS = "InternalAddress";
   public static final String INTERNAL_PORT = "InternalPort";
   public static final String CONFIG_CONSENSUS_PORT = "ConfigConsensusPort";
@@ -446,7 +447,9 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showProceduresColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(PROC_ID, TSDataType.INT64),
+          new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(STATE, TSDataType.TEXT),
+          new ColumnHeader(PROGRESS, TSDataType.TEXT),
           new ColumnHeader(SUBMITTED_TIME, TSDataType.TEXT),
           new ColumnHeader(LAST_UPDATE, TSDataType.TEXT),
           new ColumnHeader(PARENT_PROC_ID, TSDataType.INT64),
