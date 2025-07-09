@@ -22,7 +22,9 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
@@ -59,6 +61,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -262,11 +265,21 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                 }
               });
 
-      CompactionUtils.removeDeletedObjectFiles(
-          readerCacheMap.get(resource),
-          alignedChunkMetadataList,
-          timeModifications,
-          valueModifications);
+      long ttlForTable =
+          deviceId.isTableModel()
+              ? DataNodeTTLCache.getInstance()
+                  .getTTLForTable(resource.getDatabaseName(), deviceId.getTableName())
+              : Long.MAX_VALUE;
+      if (ttlForTable != Long.MAX_VALUE) {
+        ModEntry ttlDeletion =
+            CompactionUtils.convertTtlToDeletion(
+                deviceId, CommonDateTimeUtils.currentTime() - ttlForTable);
+        CompactionUtils.removeDeletedObjectFiles(
+            readerCacheMap.get(resource),
+            alignedChunkMetadataList,
+            Collections.singletonList(ttlDeletion),
+            Collections.emptyList());
+      }
 
       // modify aligned chunk metadatas
       ModificationUtils.modifyAlignedChunkMetaData(
