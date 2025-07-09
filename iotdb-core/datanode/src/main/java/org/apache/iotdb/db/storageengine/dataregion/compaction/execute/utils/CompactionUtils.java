@@ -506,7 +506,7 @@ public class CompactionUtils {
         if (dataTypes[i] == TSDataType.OBJECT) {
           objectColumnIndexList.add(i);
           List<ModEntry> deletionInterval = ModificationUtils.sortAndMerge(valueMods.get(i));
-          objectColumnHasDeletion |= !deletionInterval.isEmpty();
+          objectColumnHasDeletion |= (!deletionInterval.isEmpty() || !timeMods.isEmpty());
           objectDeletionIntervalList.add(deletionInterval);
         }
       }
