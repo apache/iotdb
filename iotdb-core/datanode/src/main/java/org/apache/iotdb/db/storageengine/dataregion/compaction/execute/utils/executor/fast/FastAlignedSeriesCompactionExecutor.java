@@ -65,6 +65,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
 
@@ -274,11 +275,12 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         ModEntry ttlDeletion =
             CompactionUtils.convertTtlToDeletion(
                 deviceId, CommonDateTimeUtils.currentTime() - ttlForTable);
+        List<ModEntry> emptyList = Collections.emptyList();
         CompactionUtils.removeDeletedObjectFiles(
             readerCacheMap.get(resource),
             alignedChunkMetadataList,
             Collections.singletonList(ttlDeletion),
-            Collections.emptyList());
+            valueModifications.stream().map(v -> emptyList).collect(Collectors.toList()));
       }
 
       // modify aligned chunk metadatas

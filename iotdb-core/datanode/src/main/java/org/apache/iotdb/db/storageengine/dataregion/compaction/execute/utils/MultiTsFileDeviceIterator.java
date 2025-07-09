@@ -46,6 +46,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -477,11 +478,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
 
     if (ttlDeletion != null) {
+      List<ModEntry> emptyList = Collections.emptyList();
       CompactionUtils.removeDeletedObjectFiles(
           readerMap.get(tsFileResource),
           alignedChunkMetadataList,
           Collections.singletonList(ttlDeletion),
-          Collections.emptyList());
+          modificationForValueColumns.stream().map(v -> emptyList).collect(Collectors.toList()));
     }
 
     ModificationUtils.modifyAlignedChunkMetaData(
