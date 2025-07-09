@@ -21,6 +21,9 @@ from typing import Any
 import torch
 
 from ainode.core.inference.strategy.abstract_strategy import AbstractStrategy
+from ainode.core.log import Logger
+
+logger = Logger()
 
 
 class InferenceRequestState:
@@ -32,7 +35,7 @@ class InferenceRequestState:
 class InferenceRequest:
     def __init__(
         self,
-        req_id: int,
+        req_id: str,
         inputs: torch.Tensor,
         strategy: AbstractStrategy,
         max_new_tokens: int = 96,
@@ -41,7 +44,7 @@ class InferenceRequest:
         if inputs.ndim == 1:
             inputs = inputs.unsqueeze(0)
 
-        self.id = req_id
+        self.req_id = req_id
         self.inputs = inputs
         self.infer_kwargs = infer_kwargs
         self.strategy = strategy
@@ -59,9 +62,6 @@ class InferenceRequest:
             self.batch_size, max_new_tokens, device=device
         )  # shape: [self.batch_size, max_new_steps]
 
-        self._lock = threading.Lock()
-        self._condition = threading.Condition(self._lock)
-
     def mark_running(self):
         self.state = InferenceRequestState.RUNNING
 
@@ -75,34 +75,45 @@ class InferenceRequest:
         )
 
     def write_step_output(self, step_output: torch.Tensor):
-        with self._lock:
-            if step_output.ndim == 1:
-                step_output = step_output.unsqueeze(0)
+        if step_output.ndim == 1:
+            step_output = step_output.unsqueeze(0)
 
-            batch_size, step_size = step_output.shape
-            end_idx = self.cur_step_idx + step_size
+        batch_size, step_size = step_output.shape
+        end_idx = self.cur_step_idx + step_size
 
-            if end_idx > self.max_new_tokens:
-                self.output_tensor[:, self.cur_step_idx :] = step_output[
-                    :, : self.max_new_tokens - self.cur_step_idx
-                ]
-                self.cur_step_idx = self.max_new_tokens
-            else:
-                self.output_tensor[:, self.cur_step_idx : end_idx] = step_output
-                self.cur_step_idx = end_idx
+        if end_idx > self.max_new_tokens:
+            self.output_tensor[:, self.cur_step_idx :] = step_output[
+                :, : self.max_new_tokens - self.cur_step_idx
+            ]
+            self.cur_step_idx = self.max_new_tokens
+        else:
+            self.output_tensor[:, self.cur_step_idx : end_idx] = step_output
+            self.cur_step_idx = end_idx
 
-            if self.is_finished():
-                self.mark_finished()
+        if self.is_finished():
+            self.mark_finished()
 
     def get_final_output(self) -> torch.Tensor:
-        with self._lock:
-            return self.output_tensor[:, : self.cur_step_idx]
+        return self.output_tensor[:, : self.cur_step_idx]
 
-    def notify_completion(self):
+
+class InferenceRequestProxy:
+    """
+    Wrap the raw request for handling multiprocess processing.
+    """
+
+    def __init__(self, req_id: str):
+        self.req_id = req_id
+        self.result = None
+        self._lock = threading.Lock()
+        self._condition = threading.Condition(self._lock)
+
+    def set_result(self, result: Any):
         with self._lock:
+            self.result = result
             self._condition.notify_all()
 
     def wait_for_completion(self) -> Any:
         with self._lock:
-            while self.state != InferenceRequestState.FINISHED:
-                self._condition.wait()
+            self._condition.wait()
+            return self.result

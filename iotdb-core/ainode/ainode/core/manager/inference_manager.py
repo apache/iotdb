@@ -15,21 +15,27 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import multiprocessing
+import threading
+import time
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
 import pandas as pd
 import torch
+import torch.multiprocessing as mp
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 
+from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import TSStatusCode
 from ainode.core.exception import (
     InferenceModelInternalError,
     InvalidWindowArgumentError,
     runtime_error_extractor,
 )
-from ainode.core.inference.inference_request import InferenceRequest
+from ainode.core.inference.inference_request import (
+    InferenceRequest,
+    InferenceRequestProxy,
+)
 from ainode.core.inference.inference_request_pool import InferenceRequestPool
 from ainode.core.inference.strategy.timer_sundial_strategy import TimerSundialStrategy
 from ainode.core.inference.utils import _generate_req_id
@@ -130,44 +136,67 @@ class InferenceManager:
     DEFAULT_DEVICE = "cpu"
     # DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     DEFAULT_POOL_SIZE = (
-        1  # TODO: Remove these parameter by sampling model inference consumption
+        10  # TODO: Remove these parameter by sampling model inference consumption
     )
+    WAITING_INTERVAL_IN_MS = (
+        AINodeDescriptor().get_config().get_ain_inference_batch_interval_in_ms()
+    )  # How often to check for requests in the result queue
 
     def __init__(self, model_manager: ModelManager):
-        self.model_manager = model_manager
+        self._model_manager = model_manager
+        self._result_queue = mp.Queue()
+        self._result_wrapper_map = {}
+        self._result_wrapper_lock = threading.RLock()
         # structure: {model_id: [(InferenceRequestPool, request_queue), ...]}
-        self.request_pool_map: Dict[
-            str, List[(InferenceRequestPool, multiprocessing.Queue)]
-        ] = {}
-        self.result_queue = multiprocessing.Queue()
+        self._request_pool_map: Dict[str, List[(InferenceRequestPool, mp.Queue)]] = {}
+        self._stop_event = mp.Event()
         self._init_inference_request_pool()
+        self._result_handler_thread = threading.Thread(
+            target=self._handle_results, daemon=True
+        )
+        self._result_handler_thread.start()
 
     def _init_inference_request_pool(self):
         """
         Initialize the inference request pool for each model.
         TODO: This is a temporary solution, we need a automatic algorithm to adjust the pool size for different models
         """
-        self.request_pool_map[self.ACCELERATE_MODEL_ID] = []
-        for _ in range(self.DEFAULT_POOL_SIZE):
-            sundial_model = self.model_manager.load_model(
+        self._request_pool_map[self.ACCELERATE_MODEL_ID] = []
+        for idx in range(self.DEFAULT_POOL_SIZE):
+            sundial_model = self._model_manager.load_model(
                 self.ACCELERATE_MODEL_ID, {}
             ).to(self.DEFAULT_DEVICE)
             sundial_config = SundialConfig()
-            request_queue = multiprocessing.Queue()
+            request_queue = mp.Queue()
             request_pool = InferenceRequestPool(
-                sundial_model, sundial_config, request_queue
+                pool_id=idx,
+                model=sundial_model,
+                config=sundial_config,
+                request_queue=request_queue,
+                result_queue=self._result_queue,
             )
             request_pool.start()
-            self.request_pool_map[self.ACCELERATE_MODEL_ID].append(
+            self._request_pool_map[self.ACCELERATE_MODEL_ID].append(
                 (request_pool, request_queue)
             )
+
+    def _handle_results(self):
+        while not self._stop_event.is_set():
+            if self._result_queue.empty():
+                time.sleep(self.WAITING_INTERVAL_IN_MS / 1000)
+                continue
+            infer_req: InferenceRequest = self._result_queue.get()
+            with self._result_wrapper_lock:
+                self._result_wrapper_map[infer_req.req_id].set_result(
+                    infer_req.get_final_output()
+                )
 
     def _get_strategy(self, model_id, model):
         if isinstance(model, TimerForPrediction):
             return TimerXLStrategy(model)
         if isinstance(model, SundialForPrediction):
             return SundialStrategy(model)
-        if self.model_manager.model_storage._is_built_in_or_fine_tuned(model_id):
+        if self._model_manager.model_storage._is_built_in_or_fine_tuned(model_id):
             return BuiltInStrategy(model)
         return RegisteredStrategy(model)
 
@@ -181,13 +210,14 @@ class InferenceManager:
         single_output: bool,
     ):
         model_id = req.modelId
-        logger.info(f"Start processing for {model_id}")
         try:
             raw = data_getter(req)
             full_data = deserializer(raw)
             inference_attrs = extract_attrs(req)
 
             if model_id == self.ACCELERATE_MODEL_ID and self.DEFAULT_POOL_SIZE > 0:
+                # TODO: Logic in this branch shall handle all LTSM inferences
+                # TODO: TSBlock -> Tensor codes should be unified
                 data = full_data[1][0]
                 if data.dtype.byteorder not in ("=", "|"):
                     data = data.byteswap().newbyteorder()
@@ -198,14 +228,21 @@ class InferenceManager:
                     strategy=TimerSundialStrategy(SundialConfig()),
                     max_new_tokens=inference_attrs.get("predict_length", 96),
                 )
-                pool_idx = hash(infer_req.id) % len(self.request_pool_map[model_id])
-                self.request_pool_map[model_id][pool_idx][1].put(infer_req)
-                infer_req.wait_for_completion()
-                outputs = convert_to_binary(pd.DataFrame(infer_req.get_final_output()))
+                infer_proxy = InferenceRequestProxy(infer_req.req_id)
+                with self._result_wrapper_lock:
+                    self._result_wrapper_map[infer_req.req_id] = infer_proxy
+                pool_idx = hash(infer_req.req_id) % len(
+                    self._request_pool_map[model_id]
+                )
+                self._request_pool_map[model_id][pool_idx][1].put(infer_req)
+                outputs = infer_proxy.wait_for_completion()
+                outputs = convert_to_binary(pd.DataFrame(outputs[0]))
+                with self._result_wrapper_lock:
+                    del self._result_wrapper_map[infer_req.req_id]
             else:
                 # load model
                 accel = str(inference_attrs.get("acceleration", "")).lower() == "true"
-                model = self.model_manager.load_model(model_id, inference_attrs, accel)
+                model = self._model_manager.load_model(model_id, inference_attrs, accel)
                 # inference by strategy
                 strategy = self._get_strategy(model_id, model)
                 outputs = strategy.infer(full_data, **inference_attrs)
@@ -251,10 +288,13 @@ class InferenceManager:
         )
 
     def shutdown(self):
-        for model_id, pools in self.request_pool_map.items():
+        self._stop_event.set()
+        for model_id, pools in self._request_pool_map.items():
             for requestPool, requestQueue in pools:
                 requestPool.stop()
                 while not requestQueue.empty():
                     requestQueue.get_nowait()
                 requestQueue.close()
-                requestQueue.join_thread()
+        while not self._result_queue.empty():
+            self._result_queue.get_nowait()
+        self._result_queue.close()
