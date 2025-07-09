@@ -56,19 +56,16 @@ class ModelManager:
             )
         except InvalidUriError as e:
             logger.warning(e)
-            self.model_storage.delete_model(req.modelId)
             return TRegisterModelResp(
                 get_status(TSStatusCode.INVALID_URI_ERROR, e.message)
             )
         except BadConfigValueError as e:
             logger.warning(e)
-            self.model_storage.delete_model(req.modelId)
             return TRegisterModelResp(
                 get_status(TSStatusCode.INVALID_INFERENCE_CONFIG, e.message)
             )
         except YAMLError as e:
             logger.warning(e)
-            self.model_storage.delete_model(req.modelId)
             if hasattr(e, "problem_mark"):
                 mark = e.problem_mark
                 return TRegisterModelResp(
@@ -86,7 +83,6 @@ class ModelManager:
             )
         except Exception as e:
             logger.warning(e)
-            self.model_storage.delete_model(req.modelId)
             return TRegisterModelResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR))
 
     def delete_model(self, req: TDeleteModelReq) -> TSStatus:

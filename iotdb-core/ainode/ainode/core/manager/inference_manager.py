@@ -130,7 +130,7 @@ class InferenceManager:
             return TimerXLStrategy(model)
         if isinstance(model, SundialForPrediction):
             return SundialStrategy(model)
-        if self.model_manager.model_storage._is_built_in(model_id):
+        if self.model_manager.model_storage._is_built_in_or_fine_tuned(model_id):
             return BuiltInStrategy(model)
         return RegisteredStrategy(model)
 
