@@ -306,9 +306,6 @@ public class FragmentInstanceExecution {
 
             clearShuffleSinkHandle(newState);
 
-            // delete tmp file if exists
-            deleteTmpFile();
-
             // close the driver after sink is aborted or closed because in driver.close() it
             // will try to call ISink.setNoMoreTsBlocks()
             for (IDriver driver : drivers) {
@@ -319,6 +316,9 @@ public class FragmentInstanceExecution {
 
             // release file handlers
             context.releaseResourceWhenAllDriversAreClosed();
+
+            // delete tmp file if exists
+            deleteTmpFile();
 
             // release memory
             exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
