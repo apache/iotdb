@@ -79,7 +79,8 @@ public class PayloadFormatManager {
   }
 
   private static void buildMqttPluginMap() throws IOException {
-    ServiceLoader<PayloadFormatter> payloadFormatters = ServiceLoader.load(PayloadFormatter.class);
+    ServiceLoader<PayloadFormatter> payloadFormatters =
+        ServiceLoader.load(PayloadFormatter.class, PayloadFormatter.class.getClassLoader());
     for (PayloadFormatter formatter : payloadFormatters) {
       if (formatter == null) {
         logger.error("PayloadFormatManager(), formatter is null.");
@@ -90,7 +91,8 @@ public class PayloadFormatManager {
       mqttPayloadPluginMap.put(pluginName, formatter);
       logger.info("PayloadFormatManager(), find MQTT Payload Plugin {}.", pluginName);
     }
-
+    logger.warn(
+        "PayloadFormatManager(), found {} MQTT Payload Plugins.", mqttPayloadPluginMap.size());
     URL[] jarURLs = getPluginJarURLs(mqttDir);
     logger.debug("MQTT Plugin jarURLs: {}", Arrays.toString(jarURLs));
 
