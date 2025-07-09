@@ -30,6 +30,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
@@ -39,6 +40,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.List;
 
 public class TabletEncoder {
@@ -85,6 +87,8 @@ public class TabletEncoder {
           encodePlainBinary(tablet, j, baos);
         } else if (dataType == TSDataType.INT32) {
           encodePlainI32(tablet, j, baos);
+        } else if (dataType == TSDataType.DATE) {
+          encodePlainDate(tablet, j, baos);
         } else {
           SessionUtils.encodeValue(dataType, tablet, j, encoder, baos);
         }
@@ -119,6 +123,17 @@ public class TabletEncoder {
     try {
       for (int index = 0; index < tablet.getRowSize(); index++) {
         ReadWriteIOUtils.write(intValues[index], baos);
+      }
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private void encodePlainDate(Tablet tablet, int j, ByteArrayOutputStream baos) {
+    LocalDate[] dateValues = (LocalDate[]) tablet.getValues()[j];
+    try {
+      for (int index = 0; index < tablet.getRowSize(); index++) {
+        ReadWriteIOUtils.write(DateUtils.parseDateExpressionToInt(dateValues[index]), baos);
       }
     } catch (IOException e) {
       throw new IllegalStateException(e);

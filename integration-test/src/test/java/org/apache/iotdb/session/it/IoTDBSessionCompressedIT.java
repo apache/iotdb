@@ -41,6 +41,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -51,6 +52,7 @@ public class IoTDBSessionCompressedIT {
   private static ITableSession session2;
   private static ITableSession session3;
   private static ITableSession session4;
+  private static ITableSession session5;
 
   @BeforeClass
   public static void setUpClass() throws IoTDBConnectionException {
@@ -144,6 +146,16 @@ public class IoTDBSessionCompressedIT {
             .withDateEncoding(TSEncoding.RLE)
             .withTimeStampEncoding(TSEncoding.ZIGZAG)
             .build();
+    session5 =
+        new TableSessionBuilder()
+            .nodeUrls(nodeUrls)
+            .username(CommonDescriptor.getInstance().getConfig().getAdminName())
+            .password(CommonDescriptor.getInstance().getConfig().getAdminPassword())
+            .enableCompression(false)
+            .enableRedirection(true)
+            .enableAutoFetch(false)
+            .isCompressed(false)
+            .build();
   }
 
   @AfterClass
@@ -159,6 +171,9 @@ public class IoTDBSessionCompressedIT {
     }
     if (session4 != null) {
       session4.close();
+    }
+    if (session5 != null) {
+      session5.close();
     }
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
@@ -214,9 +229,15 @@ public class IoTDBSessionCompressedIT {
     schema.setCompressionType(CompressionType.SNAPPY);
     schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
+    schema = new MeasurementSchema();
+    schema.setMeasurementName("pressure8");
+    schema.setDataType(TSDataType.DATE);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
+    schemas.add(schema);
 
     long[] timestamp = new long[] {3L, 4L, 5L, 6L};
-    Object[] values = new Object[8];
+    Object[] values = new Object[9];
     values[0] = new int[] {1, 2, 8, 15};
     values[1] = new long[] {1L, 2L, 8L, 15L};
     values[2] = new float[] {1.1f, 1.2f, 8.8f, 15.5f};
@@ -243,7 +264,14 @@ public class IoTDBSessionCompressedIT {
           new Binary(new byte[] {(byte) 1}),
           new Binary(new byte[] {(byte) 56})
         };
-    BitMap[] partBitMap = new BitMap[8];
+    values[8] =
+        new LocalDate[] {
+          LocalDate.of(1999, 1, 1),
+          LocalDate.of(1999, 1, 2),
+          LocalDate.of(1999, 1, 3),
+          LocalDate.of(1999, 1, 4),
+        };
+    BitMap[] partBitMap = new BitMap[9];
 
     String tableName = "table_13";
     Tablet tablet = new Tablet(tableName, schemas, timestamp, values, partBitMap, 4);
@@ -253,12 +281,14 @@ public class IoTDBSessionCompressedIT {
     session2.executeNonQueryStatement("use dbTest_0");
     session3.executeNonQueryStatement("use dbTest_0");
     session4.executeNonQueryStatement("use dbTest_0");
+    session5.executeNonQueryStatement("use dbTest_0");
 
     // 1. insert
     session1.insert(tablet);
     session2.insert(tablet);
     session3.insert(tablet);
     session4.insert(tablet);
+    session5.insert(tablet);
 
     // 2. assert
     SessionDataSet sessionDataSet1 =
@@ -269,6 +299,8 @@ public class IoTDBSessionCompressedIT {
         session3.executeQueryStatement("select * from dbTest_0." + tableName);
     SessionDataSet sessionDataSet4 =
         session4.executeQueryStatement("select * from dbTest_0." + tableName);
+    SessionDataSet sessionDataSet5 =
+        session5.executeQueryStatement("select * from dbTest_0." + tableName);
 
     if (sessionDataSet1.hasNext()) {
       RowRecord next = sessionDataSet1.next();
@@ -308,6 +340,18 @@ public class IoTDBSessionCompressedIT {
     }
     if (sessionDataSet4.hasNext()) {
       RowRecord next = sessionDataSet4.next();
+      Assert.assertEquals(3L, next.getFields().get(0).getLongV());
+      Assert.assertEquals(1, next.getFields().get(1).getIntV());
+      Assert.assertEquals(1L, next.getFields().get(2).getLongV());
+      Assert.assertEquals(1.1f, next.getFields().get(3).getFloatV(), 0.01);
+      Assert.assertEquals(0.707, next.getFields().get(4).getDoubleV(), 0.01);
+      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(5).getBinaryV());
+      Assert.assertEquals(true, next.getFields().get(6).getBoolV());
+      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(7).getBinaryV());
+      Assert.assertEquals(new Binary(new byte[] {(byte) 32}), next.getFields().get(8).getBinaryV());
+    }
+    if (sessionDataSet5.hasNext()) {
+      RowRecord next = sessionDataSet5.next();
       Assert.assertEquals(3L, next.getFields().get(0).getLongV());
       Assert.assertEquals(1, next.getFields().get(1).getIntV());
       Assert.assertEquals(1L, next.getFields().get(2).getLongV());
