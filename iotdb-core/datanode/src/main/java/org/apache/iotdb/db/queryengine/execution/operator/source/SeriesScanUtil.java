@@ -1095,7 +1095,8 @@ public class SeriesScanUtil implements Accountable {
     /*
      * Fill sequence TimeSeriesMetadata List until it is not empty
      */
-    while (seqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextSeqResource()) {
+    if (seqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextSeqResource()) {
+      // Avoid exceeding the time slice when a series cannot be found
       if (!unpackSeqTsFileResource().isPresent()) {
         return;
       }
@@ -1104,7 +1105,8 @@ public class SeriesScanUtil implements Accountable {
     /*
      * Fill unSequence TimeSeriesMetadata Priority Queue until it is not empty
      */
-    while (unSeqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextUnseqResource()) {
+    if (unSeqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextUnseqResource()) {
+      // Avoid exceeding the time slice when a series cannot be found
       if (!unpackUnseqTsFileResource().isPresent()) {
         return;
       }
@@ -1221,8 +1223,10 @@ public class SeriesScanUtil implements Accountable {
     if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
+      return Optional.of(timeseriesMetadata);
+    } else {
+      return Optional.empty();
     }
-    return Optional.ofNullable(timeseriesMetadata);
   }
 
   protected ITimeSeriesMetadata loadTimeSeriesMetadata(TsFileResource resource, boolean isSeq)
