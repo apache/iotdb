@@ -1557,7 +1557,7 @@ public class Session implements ISession {
     request.setPrefixPath(prefixPath);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
-    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
+    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values, measurements);
     request.setValues(buffer);
     request.setIsAligned(isAligned);
     return request;
@@ -2498,7 +2498,8 @@ public class Session implements ISession {
     request.setPrefixPath(prefixPath);
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
-    List<ByteBuffer> buffersList = objectValuesListToByteBufferList(valuesList, typesList);
+    List<ByteBuffer> buffersList =
+        objectValuesListToByteBufferList(valuesList, typesList, measurementsList);
     request.setValuesList(buffersList);
     request.setIsAligned(isAligned);
     return request;
@@ -2572,11 +2573,14 @@ public class Session implements ISession {
   }
 
   private List<ByteBuffer> objectValuesListToByteBufferList(
-      List<List<Object>> valuesList, List<List<TSDataType>> typesList)
+      List<List<Object>> valuesList,
+      List<List<TSDataType>> typesList,
+      List<List<String>> measurementsList)
       throws IoTDBConnectionException {
     List<ByteBuffer> buffersList = new ArrayList<>();
     for (int i = 0; i < valuesList.size(); i++) {
-      ByteBuffer buffer = SessionUtils.getValueBuffer(typesList.get(i), valuesList.get(i));
+      ByteBuffer buffer =
+          SessionUtils.getValueBuffer(typesList.get(i), valuesList.get(i), measurementsList.get(i));
       buffersList.add(buffer);
     }
     return buffersList;
@@ -2652,7 +2656,8 @@ public class Session implements ISession {
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
     request.setIsAligned(isAligned);
-    List<ByteBuffer> buffersList = objectValuesListToByteBufferList(valuesList, typesList);
+    List<ByteBuffer> buffersList =
+        objectValuesListToByteBufferList(valuesList, typesList, measurementsList);
     request.setValuesList(buffersList);
     return request;
   }
@@ -2689,7 +2694,7 @@ public class Session implements ISession {
     request.addToPrefixPaths(deviceId);
     request.addToTimestamps(time);
     request.addToMeasurementsList(measurements);
-    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
+    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values, measurements);
     request.addToValuesList(buffer);
   }
 

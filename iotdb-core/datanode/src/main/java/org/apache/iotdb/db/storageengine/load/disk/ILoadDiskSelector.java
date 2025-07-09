@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.disk;
 
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 
 import java.io.File;
 
@@ -32,7 +33,7 @@ public interface ILoadDiskSelector {
       long filePartitionId,
       String tsfileName,
       int tierLevel)
-      throws DiskSpaceInsufficientException;
+      throws DiskSpaceInsufficientException, LoadFileException;
 
   enum LoadDiskSelectorType {
     MIN_IO_FIRST("MIN_IO_FIRST"),

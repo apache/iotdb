@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from typing import Callable
+from typing import Callable, Dict
 
 from torch import nn
 from yaml import YAMLError
@@ -33,6 +33,7 @@ from ainode.thrift.ainode.ttypes import (
     TDeleteModelReq,
     TRegisterModelReq,
     TRegisterModelResp,
+    TShowModelsReq,
     TShowModelsResp,
 )
 from ainode.thrift.common.ttypes import TSStatus
@@ -55,19 +56,16 @@ class ModelManager:
             )
         except InvalidUriError as e:
             logger.warning(e)
-            self.model_storage.delete_model(req.modelId)
             return TRegisterModelResp(
                 get_status(TSStatusCode.INVALID_URI_ERROR, e.message)
             )
         except BadConfigValueError as e:
             logger.warning(e)
-            self.model_storage.delete_model(req.modelId)
             return TRegisterModelResp(
                 get_status(TSStatusCode.INVALID_INFERENCE_CONFIG, e.message)
             )
         except YAMLError as e:
             logger.warning(e)
-            self.model_storage.delete_model(req.modelId)
             if hasattr(e, "problem_mark"):
                 mark = e.problem_mark
                 return TRegisterModelResp(
@@ -85,7 +83,6 @@ class ModelManager:
             )
         except Exception as e:
             logger.warning(e)
-            self.model_storage.delete_model(req.modelId)
             return TRegisterModelResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR))
 
     def delete_model(self, req: TDeleteModelReq) -> TSStatus:
@@ -97,13 +94,17 @@ class ModelManager:
             logger.warning(e)
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
 
-    def load_model(self, model_id: str, acceleration: bool = False) -> Callable:
+    def load_model(
+        self, model_id: str, inference_attrs: Dict[str, str], acceleration: bool = False
+    ) -> Callable:
         """
         Load the model with the given model_id.
         """
         logger.info(f"Load model {model_id}")
         try:
-            model = self.model_storage.load_model(model_id, acceleration)
+            model = self.model_storage.load_model(
+                model_id, inference_attrs, acceleration
+            )
             logger.info(f"Model {model_id} loaded")
             return model
         except Exception as e:
@@ -137,8 +138,8 @@ class ModelManager:
         """
         return self.model_storage.get_ckpt_path(model_id)
 
-    def show_models(self) -> TShowModelsResp:
-        return self.model_storage.show_models()
+    def show_models(self, req: TShowModelsReq) -> TShowModelsResp:
+        return self.model_storage.show_models(req)
 
     def register_built_in_model(self, model_info: ModelInfo):
         self.model_storage.register_built_in_model(model_info)

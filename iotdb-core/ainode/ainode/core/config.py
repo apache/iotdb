@@ -38,6 +38,7 @@ from ainode.core.constant import (
     AINODE_ROOT_DIR,
     AINODE_SYSTEM_DIR,
     AINODE_SYSTEM_FILE_NAME,
+    AINODE_TARGET_CONFIG_NODE_LIST,
     AINODE_THRIFT_COMPRESSION_ENABLED,
     AINODE_VERSION_INFO,
 )
@@ -73,7 +74,7 @@ class AINodeConfig(object):
         self._ain_model_storage_cache_size = 30
 
         # Target ConfigNode to be connected by AINode
-        self._ain_target_config_node_list: TEndPoint = TEndPoint("127.0.0.1", 10710)
+        self._ain_target_config_node_list: TEndPoint = AINODE_TARGET_CONFIG_NODE_LIST
 
         # use for node management
         self._ainode_id = 0

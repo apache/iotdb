@@ -390,12 +390,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "l3,217,null,d2,1971-01-01T00:00:00.500Z,",
           "l3,245,t,d1,1971-04-26T17:46:40.020Z,",
           "l3,245,null,d2,1971-04-26T17:46:40.020Z,",
-          "l4,52,null,d2,1970-01-01T00:00:00.080Z,",
           "l4,52,null,d1,1970-01-01T00:00:00.080Z,",
-          "l4,61,null,d2,1971-01-01T00:00:01.000Z,",
+          "l4,52,null,d2,1970-01-01T00:00:00.080Z,",
           "l4,61,null,d1,1971-01-01T00:00:01.000Z,",
-          "l4,67,null,d2,1971-04-26T18:01:40.000Z,",
+          "l4,61,null,d2,1971-01-01T00:00:01.000Z,",
           "l4,67,null,d1,1971-04-26T18:01:40.000Z,",
+          "l4,67,null,d2,1971-04-26T18:01:40.000Z,",
           "l5,220,null,d1,1971-01-01T00:00:10.000Z,",
           "l5,220,null,d2,1971-01-01T00:00:10.000Z,",
           "l5,250,null,d1,1971-08-20T11:33:20.000Z,",
@@ -404,7 +404,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "l5,4662,null,d2,1970-01-01T00:00:00.100Z,",
         };
     tableResultSetEqualTest(
-        "select level,cast(num+floatNum as int32) as sum,attr1,device,time from table0 order by level asc, cast(num+floatNum as int32) asc, attr1 desc",
+        "select level,cast(num+floatNum as int32) as sum,attr1,device,time from table0 order by level asc, cast(num+floatNum as int32) asc, attr1 desc, device asc",
         expectedHeader,
         retArray,
         DATABASE_NAME);
