@@ -70,6 +70,7 @@ public class CompressedTiffModelProcessor extends ModelProcessor {
         throw new RuntimeException("Failed to write data to tiff file: " + gdal.GetLastErrorMsg());
       }
       band.FlushCache();
+      dataset.FlushCache();
       return VsiGdalNative.vsiGetMemFileBuffer(filePath, true);
     } finally {
       if (dataset != null) {
