@@ -495,10 +495,18 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   protected void collectPipeMetaListInternal(
       final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
+    // If the heartbeatId == Long.MIN_VALUE then it's shutdown report and shall not be skipped
     if (PipeDataNodeAgent.runtime().isShutdown() && req.heartbeatId != Long.MIN_VALUE) {
       return;
     }
-    LOGGER.info("Received pipe heartbeat request {} from config node.", req.heartbeatId);
+    final Optional<Logger> logger =
+        PipeDataNodeResourceManager.log()
+            .schedule(
+                PipeDataNodeTaskAgent.class,
+                PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
+                PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
+                pipeMetaKeeper.getPipeMetaCount());
+    LOGGER.debug("Received pipe heartbeat request {} from config node.", req.heartbeatId);
 
     final Set<Integer> dataRegionIds =
         StorageEngine.getInstance().getAllDataRegionIds().stream()
@@ -510,13 +518,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
-      final Optional<Logger> logger =
-          PipeDataNodeResourceManager.log()
-              .schedule(
-                  PipeDataNodeTaskAgent.class,
-                  PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
-                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
-                  pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
 
@@ -552,7 +553,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                     remainingEventAndTime.getLeft(),
                     remainingEventAndTime.getRight()));
       }
-      LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
+      logger.ifPresent(l -> l.info("Reported {} pipe metas.", pipeMetaBinaryList.size()));
     } catch (final IOException | IllegalPathException e) {
       throw new TException(e);
     }
