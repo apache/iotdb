@@ -164,6 +164,11 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   }
 
   private void transferHeartbeatEvent(final PipeHeartbeatEvent event) {
+    // DO NOT call heartbeat or transfer after closed, or will cause connection leak
+    if (isClosed.get()) {
+      return;
+    }
+
     try {
       outputPipeConnector.heartbeat();
       outputPipeConnector.transfer(event);

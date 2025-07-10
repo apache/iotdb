@@ -198,7 +198,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   @Override
   public void heartbeat() throws Exception {
-    syncConnector.heartbeat();
+    if (!isClosed()) {
+      syncConnector.heartbeat();
+    }
   }
 
   @Override
