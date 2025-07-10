@@ -863,6 +863,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
               IoTDBDescriptor.getInstance().getConfig().getDataNodeId(), resp);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
         LOGGER.warn("Failed to persist progress index to configNode, status: {}", result);
+      } else {
+        LOGGER.info("Successfully persisted all pipe's info to configNode.");
       }
     } catch (final Exception e) {
       LOGGER.warn(e.getMessage());
