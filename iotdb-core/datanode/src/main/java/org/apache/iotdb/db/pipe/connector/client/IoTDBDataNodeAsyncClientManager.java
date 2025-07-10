@@ -347,7 +347,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
                   ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.remove(receiverAttributes);
               if (clientManager != null) {
                 try {
+                  LOGGER.warn("AsyncPipeDataTransferServiceClient closed. 1", new Exception());
                   clientManager.close();
+                  LOGGER.warn("AsyncPipeDataTransferServiceClient closed. 2", new Exception());
                 } catch (final Exception e) {
                   LOGGER.warn("Failed to close client manager.", e);
                 }
