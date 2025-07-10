@@ -40,6 +40,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.apache.tsfile.read.reader.chunk.ChunkReader.decryptAndUncompressPageData;
@@ -49,8 +51,24 @@ public class CompressedTsFileModelReader extends ModelReader {
 
   @Override
   public List<float[]> penetrate(String filePath, List<List<Integer>> startAndEndTimeArray) {
+    int pairSize = startAndEndTimeArray.size();
+    Integer[] indexes = new Integer[pairSize];
+    for (int i = 0; i < pairSize; i++) {
+      indexes[i] = i;
+    }
+    Arrays.sort(
+        indexes,
+        Comparator.comparingInt((Integer i) -> startAndEndTimeArray.get(i).get(0))
+            .thenComparingInt(i -> startAndEndTimeArray.get(i).get(1)));
+    List<List<Integer>> sorted = new ArrayList<>();
+
+    for (int sortedIndex = 0; sortedIndex < pairSize; sortedIndex++) {
+      int originalIndex = indexes[sortedIndex];
+      sorted.add(startAndEndTimeArray.get(originalIndex));
+    }
+
     try {
-      List<float[]> results = new ArrayList<>(startAndEndTimeArray.size());
+      List<float[]> results = new ArrayList<>(pairSize);
       int currentQueryIndex = 0;
       int currentResultSetIndex = 0;
       for (List<Integer> ints : startAndEndTimeArray) {
@@ -65,8 +83,8 @@ public class CompressedTsFileModelReader extends ModelReader {
           TimeRange timeRange =
               new TimeRange(chunkMetadata.getStartTime(), chunkMetadata.getEndTime());
           boolean overlap = false;
-          for (int i = currentQueryIndex; i < startAndEndTimeArray.size(); i++) {
-            List<Integer> startAndEnd = startAndEndTimeArray.get(i);
+          for (int i = currentQueryIndex; i < pairSize; i++) {
+            List<Integer> startAndEnd = sorted.get(i);
             if (timeRange.overlaps(new TimeRange(startAndEnd.get(0), startAndEnd.get(1)))) {
               overlap = true;
               break;
@@ -93,8 +111,8 @@ public class CompressedTsFileModelReader extends ModelReader {
             TimeRange pageTimeRange =
                 new TimeRange(pageHeader.getStartTime(), pageHeader.getEndTime());
             boolean pageOverlap = false;
-            for (int i = currentQueryIndex; i < startAndEndTimeArray.size(); i++) {
-              List<Integer> startAndEnd = startAndEndTimeArray.get(i);
+            for (int i = currentQueryIndex; i < pairSize; i++) {
+              List<Integer> startAndEnd = sorted.get(i);
               if (pageTimeRange.overlaps(new TimeRange(startAndEnd.get(0), startAndEnd.get(1)))) {
                 pageOverlap = true;
                 break;
@@ -122,18 +140,18 @@ public class CompressedTsFileModelReader extends ModelReader {
               uncompressedPageData.get(bitmap);
             }
             while (decoder.hasNext(uncompressedPageData)) {
-              float[] currentQueryResult = results.get(currentQueryIndex);
+              float[] currentQueryResult = results.get(indexes[currentQueryIndex]);
               if (currentResultSetIndex >= currentQueryResult.length) {
                 currentQueryIndex++;
                 currentResultSetIndex = 0;
               }
-              if (currentQueryIndex == startAndEndTimeArray.size()) {
+              if (currentQueryIndex == pairSize) {
                 return results;
               }
-              currentQueryResult = results.get(currentQueryIndex);
+              currentQueryResult = results.get(indexes[currentQueryIndex]);
               float v = decoder.readFloat(uncompressedPageData);
 
-              List<Integer> currentQueryStartAndEnd = startAndEndTimeArray.get(currentQueryIndex);
+              List<Integer> currentQueryStartAndEnd = sorted.get(currentQueryIndex);
               if (index >= currentQueryStartAndEnd.get(0)
                   && index <= currentQueryStartAndEnd.get(1)) {
                 currentQueryResult[currentResultSetIndex++] = v;
