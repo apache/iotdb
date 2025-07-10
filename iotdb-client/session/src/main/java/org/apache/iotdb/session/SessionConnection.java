@@ -65,6 +65,8 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TTableDeviceLeaderReq;
+import org.apache.iotdb.service.rpc.thrift.TTableDeviceLeaderResp;
 import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.thrift.TException;
@@ -1223,6 +1225,16 @@ public class SessionConnection {
             .getResult();
     RpcUtils.verifySuccess(execResp.getStatus());
     return execResp;
+  }
+
+  protected TTableDeviceLeaderResp fetchDeviceLeader(TTableDeviceLeaderReq req)
+      throws StatementExecutionException {
+    final TTableDeviceLeaderResp resp =
+        callWithRetryAndReconnect(
+                () -> client.fetchDeviceLeader(req), TTableDeviceLeaderResp::getStatus)
+            .getResult();
+    RpcUtils.verifySuccess(resp.getStatus());
+    return resp;
   }
 
   private <T> RetryResult<T> callWithReconnect(TFunction<T> supplier)

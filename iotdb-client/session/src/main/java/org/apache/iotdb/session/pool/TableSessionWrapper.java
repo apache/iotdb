@@ -23,12 +23,14 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TTableDeviceLeaderResp;
 import org.apache.iotdb.session.Session;
 
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -65,6 +67,13 @@ public class TableSessionWrapper implements ITableSession {
       session = null;
       throw e;
     }
+  }
+
+  @Override
+  public String getDeviceLeaderURL(String dbName, List<String> deviceId, long time)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TTableDeviceLeaderResp resp = session.fetchDeviceLeader(dbName, deviceId, time);
+    return resp.getIp() + ":" + resp.getPort();
   }
 
   @Override
