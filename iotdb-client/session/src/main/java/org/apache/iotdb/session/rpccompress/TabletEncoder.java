@@ -133,7 +133,11 @@ public class TabletEncoder {
     LocalDate[] dateValues = (LocalDate[]) tablet.getValues()[j];
     try {
       for (int index = 0; index < tablet.getRowSize(); index++) {
-        ReadWriteIOUtils.write(DateUtils.parseDateExpressionToInt(dateValues[index]), baos);
+        if (!tablet.isNull(index, j)) {
+          ReadWriteIOUtils.write(DateUtils.parseDateExpressionToInt(dateValues[index]), baos);
+        } else {
+          ReadWriteIOUtils.write(0, baos);
+        }
       }
     } catch (IOException e) {
       throw new IllegalStateException(e);
