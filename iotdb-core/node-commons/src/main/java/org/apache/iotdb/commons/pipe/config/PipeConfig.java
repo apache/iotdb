@@ -493,6 +493,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeSubtaskExecutorForcedRestartIntervalMs: {}",
         getPipeSubtaskExecutorForcedRestartIntervalMs());
+    LOGGER.info("PipeMaxWaitFinishTime: {}", getPipeMaxWaitFinishTime());
 
     LOGGER.info(
         "PipeExtractorAssignerDisruptorRingBufferSize: {}",

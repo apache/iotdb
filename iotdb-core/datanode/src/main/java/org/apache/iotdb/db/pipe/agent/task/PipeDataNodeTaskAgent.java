@@ -460,7 +460,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   protected void collectPipeMetaListInternal(
       final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
-    // If the heartbeat
+    // If the heartbeatId == Long.MIN_VALUE then it's shutdown report and shall not be skipped
     if (PipeDataNodeAgent.runtime().isShutdown() && req.heartbeatId != Long.MIN_VALUE) {
       return;
     }
@@ -608,7 +608,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     persistAllProgressIndex2ConfigNode();
   }
 
-  public void persistAllProgressIndex2ConfigNode() {
+  private void persistAllProgressIndex2ConfigNode() {
     try (final ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
