@@ -195,8 +195,8 @@ public class EnvUtils {
               Integer.parseInt(System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_DATA_NODE_NUM)));
         case SCALABLE_SINGLE_NODE_MODE:
           return new Pair<>(
-              Integer.parseInt(System.getProperty(SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_NUM)),
-              Integer.parseInt(System.getProperty(SCALABLE_SINGLE_NODE_MODE_DATA_NODE_NUM)));
+              Integer.parseInt(System.getProperty(SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_NUM, "1")),
+              Integer.parseInt(System.getProperty(SCALABLE_SINGLE_NODE_MODE_DATA_NODE_NUM, "1")));
         case HIGH_PERFORMANCE_MODE:
           return new Pair<>(
               Integer.parseInt(System.getProperty(HIGH_PERFORMANCE_MODE_CONFIG_NODE_NUM)),
