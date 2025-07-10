@@ -828,6 +828,9 @@ public class WALNode implements IWALNode {
             } else {
               tryToCollectInsertNodeAndBumpIndex.run();
             }
+            if (memorySize > config.getWalBufferSize()) {
+              tryToCollectInsertNodeAndBumpIndex.run();
+            }
             if (memorySize > config.getWalBufferSize() || hasCollectedSufficientData.get()) {
               break COLLECT_FILE_LOOP;
             }
