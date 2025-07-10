@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ClientManager<K, V> implements IClientManager<K, V> {
 
@@ -36,8 +37,14 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   private final GenericKeyedObjectPool<K, V> pool;
 
+  private final AtomicBoolean isClosed = new AtomicBoolean(false);
+
   ClientManager(IClientPoolFactory<K, V> factory) {
     pool = factory.createClientPool(this);
+  }
+
+  public boolean isClosed() {
+    return isClosed.get();
   }
 
   @TestOnly
@@ -47,7 +54,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   @Override
   public V borrowClient(K node) throws ClientManagerException {
-    if (node == null) {
+    if (node == null || isClosed.get()) {
       throw new BorrowNullClientManagerException();
     }
     try {
@@ -99,6 +106,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   @Override
   public void close() {
+    isClosed.set(true);
     pool.close();
     // we need to release tManagers for AsyncThriftClientFactory
     if (pool.getFactory() instanceof AsyncThriftClientFactory) {

@@ -116,6 +116,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
    */
   public void returnSelf() {
     if (shouldReturnSelf.get()) {
+      if (clientManager.isClosed()) {
+        this.close();
+        this.invalidateAll();
+      }
       clientManager.returnClient(endpoint, this);
       LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, returnSelf 1", id);
     }
