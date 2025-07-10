@@ -359,21 +359,21 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
           clusterConfigProperties.setProperty(
               CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_CONSENSUS)));
+                  System.getProperty(SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_CONSENSUS, "Ratis")));
           clusterConfigProperties.setProperty(
               SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(SCALABLE_SINGLE_NODE_MODE_SCHEMA_REGION_CONSENSUS)));
+                  System.getProperty(SCALABLE_SINGLE_NODE_MODE_SCHEMA_REGION_CONSENSUS, "Ratis")));
           clusterConfigProperties.setProperty(
               DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(SCALABLE_SINGLE_NODE_MODE_DATA_REGION_CONSENSUS)));
+                  System.getProperty(SCALABLE_SINGLE_NODE_MODE_DATA_REGION_CONSENSUS, "IoT")));
           clusterConfigProperties.setProperty(
               SCHEMA_REPLICATION_FACTOR,
-              System.getProperty(SCALABLE_SINGLE_NODE_MODE_SCHEMA_REGION_REPLICA_NUM));
+              System.getProperty(SCALABLE_SINGLE_NODE_MODE_SCHEMA_REGION_REPLICA_NUM, "1"));
           clusterConfigProperties.setProperty(
               DATA_REPLICATION_FACTOR,
-              System.getProperty(SCALABLE_SINGLE_NODE_MODE_DATA_REGION_REPLICA_NUM));
+              System.getProperty(SCALABLE_SINGLE_NODE_MODE_DATA_REGION_REPLICA_NUM, "1"));
           break;
         case HIGH_PERFORMANCE_MODE:
           clusterConfigProperties.setProperty(
@@ -419,21 +419,21 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
           clusterConfigProperties.setProperty(
               CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(PIPE_CONSENSUS_BATCH_MODE_CONFIG_NODE_CONSENSUS)));
+                  System.getProperty(PIPE_CONSENSUS_BATCH_MODE_CONFIG_NODE_CONSENSUS, "Ratis")));
           clusterConfigProperties.setProperty(
               SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(PIPE_CONSENSUS_BATCH_MODE_SCHEMA_REGION_CONSENSUS)));
+                  System.getProperty(PIPE_CONSENSUS_BATCH_MODE_SCHEMA_REGION_CONSENSUS, "Ratis")));
           clusterConfigProperties.setProperty(
               DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_CONSENSUS)));
+                  System.getProperty(PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_CONSENSUS, "IoTV2")));
           clusterConfigProperties.setProperty(
               SCHEMA_REPLICATION_FACTOR,
-              System.getProperty(PIPE_CONSENSUS_BATCH_MODE_SCHEMA_REGION_REPLICA_NUM));
+              System.getProperty(PIPE_CONSENSUS_BATCH_MODE_SCHEMA_REGION_REPLICA_NUM, "3"));
           clusterConfigProperties.setProperty(
               DATA_REPLICATION_FACTOR,
-              System.getProperty(PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_REPLICA_NUM));
+              System.getProperty(PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_REPLICA_NUM, "2"));
           // set mode
           clusterConfigProperties.setProperty(
               IOT_CONSENSUS_V2_MODE, ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE);
@@ -442,21 +442,21 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
           clusterConfigProperties.setProperty(
               CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(PIPE_CONSENSUS_STREAM_MODE_CONFIG_NODE_CONSENSUS)));
+                  System.getProperty(PIPE_CONSENSUS_STREAM_MODE_CONFIG_NODE_CONSENSUS, "Ratis")));
           clusterConfigProperties.setProperty(
               SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_CONSENSUS)));
+                  System.getProperty(PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_CONSENSUS, "Ratis")));
           clusterConfigProperties.setProperty(
               DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_CONSENSUS)));
+                  System.getProperty(PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_CONSENSUS, "IoTV2")));
           clusterConfigProperties.setProperty(
               SCHEMA_REPLICATION_FACTOR,
-              System.getProperty(PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_REPLICA_NUM));
+              System.getProperty(PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_REPLICA_NUM, "3"));
           clusterConfigProperties.setProperty(
               DATA_REPLICATION_FACTOR,
-              System.getProperty(PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_REPLICA_NUM));
+              System.getProperty(PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_REPLICA_NUM, "2"));
           // set mode
           clusterConfigProperties.setProperty(
               IOT_CONSENSUS_V2_MODE, ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE);

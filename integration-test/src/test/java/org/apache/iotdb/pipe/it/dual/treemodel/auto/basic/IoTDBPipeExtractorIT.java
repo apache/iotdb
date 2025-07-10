@@ -1054,6 +1054,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(count, showPipeResult.size());
       // for (TShowPipeInfo showPipeInfo : showPipeResult) {
       //   System.out.println(showPipeInfo);

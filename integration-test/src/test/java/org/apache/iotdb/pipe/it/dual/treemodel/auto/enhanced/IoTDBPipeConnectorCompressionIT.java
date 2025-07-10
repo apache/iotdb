@@ -301,6 +301,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualTreeModelAu
       }
 
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(
           3,
           showPipeResult.stream()

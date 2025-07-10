@@ -325,13 +325,13 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
       }
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** where time <= 1",
+          "select count(*) from root.db.** where time <= 1",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
           Collections.singleton("1,0,1,"),
           handleFailure);
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** where time >= 2",
+          "select count(*) from root.db.** where time >= 2",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
           Collections.singleton("2,1,0,"),
           handleFailure);
@@ -421,7 +421,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("2,"),
           handleFailure);
@@ -439,7 +439,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
           Collections.singleton("2,2,"),
           handleFailure);
@@ -756,7 +756,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** group by level=0",
+          "select count(*) from root.db.** group by level=0",
           "count(root.*.*.*),",
           Collections.singleton("4,"),
           handleFailure);

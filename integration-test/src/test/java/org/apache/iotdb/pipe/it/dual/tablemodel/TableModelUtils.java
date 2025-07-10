@@ -811,6 +811,9 @@ public class TableModelUtils {
       final ResultSet resultSet = statement.executeQuery("show pipes");
       int count = 0;
       while (resultSet.next()) {
+        if (resultSet.getString("ID").startsWith("__consensus")) {
+          continue;
+        }
         count++;
       }
       return count;
