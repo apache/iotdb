@@ -53,10 +53,11 @@ public interface ITableSession extends AutoCloseable {
    *
    * @param dbName the name of the database.
    * @param deviceId a list of string for constructing the specified deviceID.
+   * @param isSetTag a true indicating the deviceID is set, false otherwise.
    * @param time the time at which partition the device leader is queried.
    * @return the DataNode URL <ip:port> of the device leader as a String.
    */
-  String getDeviceLeaderURL(String dbName, List<String> deviceId, long time)
+  String getDeviceLeaderURL(String dbName, List<String> deviceId, List<Boolean> isSetTag, long time)
       throws IoTDBConnectionException, StatementExecutionException;
 
   /**

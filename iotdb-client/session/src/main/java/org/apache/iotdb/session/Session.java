@@ -2780,9 +2780,10 @@ public class Session implements ISession {
     }
   }
 
-  public TTableDeviceLeaderResp fetchDeviceLeader(String dbName, List<String> deviceId, long time)
+  public TTableDeviceLeaderResp fetchDeviceLeader(
+      String dbName, List<String> deviceId, List<Boolean> isSetTag, long time)
       throws IoTDBConnectionException, StatementExecutionException {
-    TTableDeviceLeaderReq req = new TTableDeviceLeaderReq(dbName, deviceId, time);
+    TTableDeviceLeaderReq req = new TTableDeviceLeaderReq(dbName, deviceId, isSetTag, time);
     return getDefaultSessionConnection().fetchDeviceLeader(req);
   }
 

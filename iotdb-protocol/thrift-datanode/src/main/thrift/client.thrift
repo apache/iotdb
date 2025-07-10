@@ -551,7 +551,8 @@ struct TSConnectionInfoResp {
 struct TTableDeviceLeaderReq {
   1: required string dbName
   2: required list<string> deviceId
-  3: required i64 time
+  3: required list<bool> isSetTag
+  4: required i64 time
 }
 
 struct TTableDeviceLeaderResp {

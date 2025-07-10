@@ -70,9 +70,10 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public String getDeviceLeaderURL(String dbName, List<String> deviceId, long time)
+  public String getDeviceLeaderURL(
+      String dbName, List<String> deviceId, List<Boolean> isSetTag, long time)
       throws IoTDBConnectionException, StatementExecutionException {
-    TTableDeviceLeaderResp resp = session.fetchDeviceLeader(dbName, deviceId, time);
+    TTableDeviceLeaderResp resp = session.fetchDeviceLeader(dbName, deviceId, isSetTag, time);
     return resp.getIp() + ":" + resp.getPort();
   }
 
