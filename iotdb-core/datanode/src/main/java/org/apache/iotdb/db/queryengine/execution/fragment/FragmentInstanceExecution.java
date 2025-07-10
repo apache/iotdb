@@ -288,7 +288,16 @@ public class FragmentInstanceExecution {
             staticsRemoved = true;
             statisticsLock.writeLock().unlock();
 
-            clearShuffleSinkHandle(newState);
+            // must clear shuffle sink handle before driver close
+            // because in failed state, if we can driver.close firstly, we will finally call
+            // sink.setNoMoreTsBlocks() which may mislead upstream that downstream normally ends
+            try {
+              clearShuffleSinkHandle(newState);
+            } catch (Throwable t) {
+              LOGGER.error(
+                  "Errors occurred while attempting to release sink, potentially leading to resource leakage.",
+                  t);
+            }
 
             // close the driver after sink is aborted or closed because in driver.close() it
             // will try to call ISink.setNoMoreTsBlocks()
@@ -301,14 +310,33 @@ public class FragmentInstanceExecution {
             // release file handlers
             context.releaseResourceWhenAllDriversAreClosed();
 
-            // delete tmp file if exists
-            deleteTmpFile();
+            try {
+              // delete tmp file if exists
+              deleteTmpFile();
+            } catch (Throwable t) {
+              LOGGER.error(
+                  "Errors occurred while attempting to delete tmp files, potentially leading to resource leakage.",
+                  t);
+            }
 
-            // release memory
-            exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
-                instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId(), true);
+            try {
+              // release memory
+              exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
+                  instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId(), true);
+            } catch (Throwable t) {
+              LOGGER.error(
+                  "Errors occurred while attempting to deRegister FI from Memory Pool, potentially leading to resource leakage, status is {}.",
+                  newState,
+                  t);
+            }
 
-            context.releaseMemoryReservationManager();
+            try {
+              context.releaseMemoryReservationManager();
+            } catch (Throwable t) {
+              LOGGER.error(
+                  "Errors occurred while attempting to release memory, potentially leading to resource leakage.",
+                  t);
+            }
 
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId, context.getFailureCause().orElse(null));
