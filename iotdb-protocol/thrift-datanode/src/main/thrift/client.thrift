@@ -548,6 +548,17 @@ struct TSConnectionInfoResp {
   1: required list<TSConnectionInfo> connectionInfoList
 }
 
+struct TTableDeviceLeaderReq {
+  1:required string dbName
+  2:required list<string> deviceId
+  3:required i64 time
+}
+
+struct TTableDeviceLeaderResp {
+  1:required string ip
+  2:required string port
+}
+
 service IClientRPCService {
 
   TSExecuteStatementResp executeQueryStatementV2(1:TSExecuteStatementReq req);
@@ -683,5 +694,7 @@ service IClientRPCService {
   TSConnectionInfoResp fetchAllConnectionsInfo();
 
   /** For other node's call */
-  common.TSStatus testConnectionEmptyRPC()
+  common.TSStatus testConnectionEmptyRPC();
+
+  TTableDeviceLeaderResp fetchDeviceLeader(TTableDeviceLeaderReq req);
 }
