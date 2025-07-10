@@ -1304,7 +1304,10 @@ public class DataRegion implements IDataRegionForQuery {
       InsertTabletNode insertTabletNode, TSStatus[] results, long[] infoForMetrics)
       throws OutOfTTLException {
     boolean noFailure;
-    int loc = insertTabletNode.checkTTL(results, getTTL(insertTabletNode));
+    int loc =
+        insertTabletNode.shouldCheckTTL()
+            ? insertTabletNode.checkTTL(results, getTTL(insertTabletNode))
+            : 0;
     noFailure = loc == 0;
     List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
         insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());
@@ -3048,12 +3051,6 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void writeObject(ObjectNode objectNode) throws Exception {
-    long ttl =
-        DataNodeTTLCache.getInstance().getTTLForTable(this.databaseName, objectNode.getTable());
-    long nodeTimestamp = objectNode.getTimestamp();
-    if (!CommonUtils.isAlive(nodeTimestamp, ttl)) {
-      throw new OutOfTTLException(nodeTimestamp, (CommonDateTimeUtils.currentTime() - ttl));
-    }
     writeLock("writeObject");
     try {
       String relativeTmpPathString = objectNode.getFilePath() + ".tmp";

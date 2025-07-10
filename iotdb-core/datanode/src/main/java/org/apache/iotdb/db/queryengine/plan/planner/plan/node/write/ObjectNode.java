@@ -38,6 +38,8 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -49,6 +51,8 @@ import java.util.List;
 import java.util.Optional;
 
 public class ObjectNode extends SearchNode implements WALEntryValue {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ObjectNode.class);
 
   private final boolean isEOF;
 
@@ -269,37 +273,50 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
       ReadWriteIOUtils.write(WALEntryType.OBJECT_FILE_NODE.getCode(), stream);
       ReadWriteIOUtils.write((long) TsFileProcessor.MEMTABLE_NOT_EXIST, stream);
       ReadWriteIOUtils.write(getType().getNodeType(), stream);
-      ReadWriteIOUtils.write(isEOF, stream);
-      ReadWriteIOUtils.write(offset, stream);
-      ReadWriteIOUtils.write(filePath, stream);
-      ReadWriteIOUtils.write(contentLength, stream);
       byte[] contents = new byte[contentLength];
-      Optional<File> objectFile = TierManager.getInstance().getAbsoluteObjectFilePath(filePath);
-      if (objectFile.isPresent()) {
-        try (RandomAccessFile raf = new RandomAccessFile(objectFile.get(), "r")) {
-          raf.seek(offset);
-          raf.read(contents);
-        } catch (IOException e) {
-          throw new RuntimeException(e);
+      boolean readSuccess = false;
+      for (int i = 0; i < 2; i++) {
+        Optional<File> objectFile = TierManager.getInstance().getAbsoluteObjectFilePath(filePath);
+        if (objectFile.isPresent()) {
+          try {
+            readContentFromFile(objectFile.get(), contents);
+            readSuccess = true;
+          } catch (IOException e) {
+            LOGGER.error("Error when read object file {}.", objectFile.get(), e);
+          }
+          if (readSuccess) {
+            break;
+          }
         }
-      } else {
         Optional<File> objectTmpFile =
             TierManager.getInstance().getAbsoluteObjectFilePath(filePath + ".tmp");
         if (objectTmpFile.isPresent()) {
-          try (RandomAccessFile raf = new RandomAccessFile(objectTmpFile.get(), "r")) {
-            raf.seek(offset);
-            raf.read(contents);
+          try {
+            readContentFromFile(objectTmpFile.get(), contents);
+            readSuccess = true;
           } catch (IOException e) {
-            throw new RuntimeException(e);
+            LOGGER.error("Error when read tmp object file {}.", objectTmpFile.get(), e);
           }
-        } else {
-          throw new ObjectFileNotExist(filePath);
+          if (readSuccess) {
+            break;
+          }
         }
       }
+      ReadWriteIOUtils.write(readSuccess && isEOF, stream);
+      ReadWriteIOUtils.write(offset, stream);
+      ReadWriteIOUtils.write(filePath, stream);
+      ReadWriteIOUtils.write(contentLength, stream);
       stream.write(contents);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
       throw new SerializationRunTimeException(e);
+    }
+  }
+
+  private void readContentFromFile(File file, byte[] contents) throws IOException {
+    try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
+      raf.seek(offset);
+      raf.read(contents);
     }
   }
 
@@ -310,7 +327,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   @Override
   public long getMemorySize() {
-    return content.length;
+    return contentLength;
   }
 
   @Override
