@@ -327,7 +327,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   @Override
   public long getMemorySize() {
-    return content.length;
+    return contentLength;
   }
 
   @Override

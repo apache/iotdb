@@ -739,6 +739,8 @@ public class WALNode implements IWALNode {
       AtomicBoolean notFirstFile = new AtomicBoolean(false);
       AtomicBoolean hasCollectedSufficientData = new AtomicBoolean(false);
 
+      long memorySize = 0;
+
       // try to collect current tmpNodes to insertNodes, return true if successfully collect an
       // insert node
       Runnable tryToCollectInsertNodeAndBumpIndex =
@@ -789,8 +791,10 @@ public class WALNode implements IWALNode {
                   tmpNodes
                       .get()
                       .add(new IoTConsensusRequest(((ObjectNode) walEntry.getValue()).serialize()));
+                  memorySize += ((ObjectNode) walEntry.getValue()).getMemorySize();
                 } else {
                   tmpNodes.get().add(new IoTConsensusRequest(buffer));
+                  memorySize += buffer.remaining();
                 }
               } else {
                 // currentWalEntryIndex > targetIndex
@@ -803,12 +807,28 @@ public class WALNode implements IWALNode {
                       currentWalEntryIndex);
                   nextSearchIndex = currentWalEntryIndex;
                 }
-                tmpNodes.get().add(new IoTConsensusRequest(buffer));
+                if (type == WALEntryType.OBJECT_FILE_NODE) {
+                  WALEntry walEntry =
+                      WALEntry.deserialize(
+                          new DataInputStream(new ByteArrayInputStream(buffer.array())));
+                  // only be called by leader read from wal
+                  // wal only has relativePath, offset, eof, length
+                  // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
+                  // content
+                  // need to add IoTConsensusRequest instead of ObjectNode
+                  tmpNodes
+                      .get()
+                      .add(new IoTConsensusRequest(((ObjectNode) walEntry.getValue()).serialize()));
+                  memorySize += ((ObjectNode) walEntry.getValue()).getMemorySize();
+                } else {
+                  tmpNodes.get().add(new IoTConsensusRequest(buffer));
+                  memorySize += buffer.remaining();
+                }
               }
             } else {
               tryToCollectInsertNodeAndBumpIndex.run();
             }
-            if (hasCollectedSufficientData.get()) {
+            if (memorySize > config.getWalBufferSize() || hasCollectedSufficientData.get()) {
               break COLLECT_FILE_LOOP;
             }
           }
