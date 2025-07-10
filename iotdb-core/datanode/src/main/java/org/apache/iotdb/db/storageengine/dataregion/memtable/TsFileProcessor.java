@@ -110,6 +110,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -186,6 +187,8 @@ public class TsFileProcessor {
 
   /** Total memtable size for mem control. */
   private long totalMemTableSize;
+
+  private final AtomicBoolean isTotallyGeneratedByPipe = new AtomicBoolean(true);
 
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE =
@@ -317,7 +320,7 @@ public class TsFileProcessor {
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
     if (!insertRowNode.isGeneratedByPipe()) {
-      workMemTable.markAsNotGeneratedByPipe();
+      markAsNotGeneratedByPipe();
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
@@ -415,7 +418,7 @@ public class TsFileProcessor {
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
     if (!insertRowsNode.isGeneratedByPipe()) {
-      workMemTable.markAsNotGeneratedByPipe();
+      markAsNotGeneratedByPipe();
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
@@ -530,7 +533,7 @@ public class TsFileProcessor {
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
     if (!insertTabletNode.isGeneratedByPipe()) {
-      workMemTable.markAsNotGeneratedByPipe();
+      markAsNotGeneratedByPipe();
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
@@ -1578,7 +1581,7 @@ public class TsFileProcessor {
             dataRegionInfo.getDataRegion().getDataRegionId(),
             tsFileResource,
             false,
-            workMemTable != null && workMemTable.isTotallyGeneratedByPipe());
+            isTotallyGeneratedByPipe());
 
     tsFileResource.serialize();
     FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
@@ -2169,5 +2172,13 @@ public class TsFileProcessor {
       logger.debug(
           "{}: {} release flushQueryLock", storageGroupName, tsFileResource.getTsFile().getName());
     }
+  }
+
+  private void markAsNotGeneratedByPipe() {
+    this.isTotallyGeneratedByPipe.set(false);
+  }
+
+  private boolean isTotallyGeneratedByPipe() {
+    return this.isTotallyGeneratedByPipe.get();
   }
 }
