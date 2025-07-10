@@ -42,15 +42,14 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
+public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeDataNodeRemainingEventAndTimeMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeSinglePipeMetrics.class);
 
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
-  private final Map<String, PipeDataNodeRemainingEventAndTimeOperator>
+  public final Map<String, PipeDataNodeRemainingEventAndTimeOperator>
       remainingEventAndTimeOperatorMap = new ConcurrentHashMap<>();
 
   private static Histogram PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM =
@@ -381,19 +380,19 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
   private static class PipeDataNodeRemainingEventAndTimeMetricsHolder {
 
-    private static final PipeDataNodeRemainingEventAndTimeMetrics INSTANCE =
-        new PipeDataNodeRemainingEventAndTimeMetrics();
+    private static final PipeDataNodeSinglePipeMetrics INSTANCE =
+        new PipeDataNodeSinglePipeMetrics();
 
     private PipeDataNodeRemainingEventAndTimeMetricsHolder() {
       // Empty constructor
     }
   }
 
-  public static PipeDataNodeRemainingEventAndTimeMetrics getInstance() {
+  public static PipeDataNodeSinglePipeMetrics getInstance() {
     return PipeDataNodeRemainingEventAndTimeMetricsHolder.INSTANCE;
   }
 
-  private PipeDataNodeRemainingEventAndTimeMetrics() {
+  private PipeDataNodeSinglePipeMetrics() {
     PipeEventCommitManager.getInstance().setCommitRateMarker(this::markRegionCommit);
   }
 }
