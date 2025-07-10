@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.rpc.model;
 
-import org.gdal.VsiGdalNative;
 import org.gdal.gdal.Band;
 import org.gdal.gdal.Dataset;
 import org.gdal.gdal.Driver;
@@ -28,6 +27,8 @@ import org.gdal.gdalconst.gdalconstConstants;
 
 public class CompressedTiffModelProcessor extends ModelProcessor {
   private static final Driver DRIVER;
+  private static final String VIRTUAL_FILE_PATH_PREFIX = "/vsimem";
+  private static final String VIRTUAL_FILE_PATH_SUFFIX = ".tif";
   // Specifying compression options
   private static String compressOption = "COMPRESS=LZW";
   // Specifying block x size options
@@ -46,7 +47,11 @@ public class CompressedTiffModelProcessor extends ModelProcessor {
   @Override
   public byte[] write(float[] values, int width, int height) {
     String virtualFilePath = getVirtualFilePath();
-    return write(virtualFilePath, values, width, height);
+    try {
+      return write(virtualFilePath, values, width, height);
+    } finally {
+      gdal.Unlink(virtualFilePath);
+    }
   }
 
   private byte[] write(String filePath, float[] values, int width, int height) {
@@ -71,7 +76,7 @@ public class CompressedTiffModelProcessor extends ModelProcessor {
       }
       band.FlushCache();
       dataset.FlushCache();
-      return VsiGdalNative.vsiGetMemFileBuffer(filePath, true);
+      return gdal.GetMemFileBuffer(filePath);
     } finally {
       if (dataset != null) {
         dataset.delete();
@@ -81,10 +86,13 @@ public class CompressedTiffModelProcessor extends ModelProcessor {
 
   @Override
   public float[] readAll(byte[] fileBytes) {
-    // TODO @spricoder
     String virtualFilePath = getVirtualFilePath();
-    VsiGdalNative.writeVsiMemFile(virtualFilePath, fileBytes);
-    return readAll(virtualFilePath);
+    try {
+      gdal.FileFromMemBuffer(virtualFilePath, fileBytes);
+      return readAll(virtualFilePath);
+    } finally {
+      gdal.Unlink(virtualFilePath);
+    }
   }
 
   @Override
@@ -110,6 +118,9 @@ public class CompressedTiffModelProcessor extends ModelProcessor {
   }
 
   private String getVirtualFilePath() {
-    return "";
+    long tid = Thread.currentThread().getId();
+    long timestamp = System.currentTimeMillis();
+    return String.format(
+        "%s/%d_%d%s", VIRTUAL_FILE_PATH_PREFIX, tid, timestamp, VIRTUAL_FILE_PATH_SUFFIX);
   }
 }
