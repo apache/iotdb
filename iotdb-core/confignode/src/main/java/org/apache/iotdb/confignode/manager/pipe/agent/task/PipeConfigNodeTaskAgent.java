@@ -205,21 +205,19 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     if (isShutdown() || !PipeConfigNodeAgent.runtime().isLeaderReady()) {
       return;
     }
-
-    LOGGER.info("Received pipe heartbeat request {} from config coordinator.", req.heartbeatId);
+    final Optional<Logger> logger =
+        PipeConfigNodeResourceManager.log()
+            .schedule(
+                PipeConfigNodeTaskAgent.class,
+                PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
+                PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
+                pipeMetaKeeper.getPipeMetaCount());
+    LOGGER.debug("Received pipe heartbeat request {} from config coordinator.", req.heartbeatId);
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
-      final Optional<Logger> logger =
-          PipeConfigNodeResourceManager.log()
-              .schedule(
-                  PipeConfigNodeTaskAgent.class,
-                  PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
-                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
-                  pipeMetaKeeper.getPipeMetaCount());
-
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
 
@@ -242,7 +240,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
                     remainingEventCount,
                     estimatedRemainingTime));
       }
-      LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
+      logger.ifPresent(l -> l.info("Reported {} pipe metas.", pipeMetaBinaryList.size()));
     } catch (final IOException e) {
       throw new TException(e);
     }
