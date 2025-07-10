@@ -433,6 +433,14 @@ public abstract class AbstractOperatePipeProcedureV2
       int dataNodeId = respEntry.getKey();
       TPushPipeMetaResp resp = respEntry.getValue();
 
+      if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_TIMEOUT.getStatusCode()) {
+        exceptionMessageBuilder.append(
+            String.format(
+                "DataNodeId: %s, Message: Timeout to wait for lock while processing pushPipeMeta on dataNodes.",
+                dataNodeId));
+        continue;
+      }
+
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
         if (!resp.isSetExceptionMessages()) {
           exceptionMessageBuilder.append(
