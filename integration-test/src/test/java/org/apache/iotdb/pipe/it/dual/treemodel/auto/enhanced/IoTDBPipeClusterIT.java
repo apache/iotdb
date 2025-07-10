@@ -596,8 +596,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
       // ensure at least one insert happens before adding node so that the time series can be
       // created
       if (TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv,
-          String.format("insert into root.db.d1(time, s1) values (%s, 1)", 0))) {
+          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", 0))) {
         succeedNum.incrementAndGet();
       }
       final Thread t =

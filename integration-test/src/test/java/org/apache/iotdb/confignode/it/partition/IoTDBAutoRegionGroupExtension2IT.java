@@ -148,7 +148,8 @@ public class IoTDBAutoRegionGroupExtension2IT {
 
       // Check DataRegionGroups
       TShowRegionResp resp = client.showRegion(new TShowRegionReq());
-      resp.getRegionInfoList().removeIf(r -> r.getDatabase().startsWith(SystemConstant.SYSTEM_DATABASE));
+      resp.getRegionInfoList()
+          .removeIf(r -> r.getDatabase().startsWith(SystemConstant.SYSTEM_DATABASE));
       Map<Integer, AtomicInteger> counter = new HashMap<>();
       resp.getRegionInfoList()
           .forEach(

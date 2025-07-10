@@ -339,15 +339,18 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
           clusterConfigProperties.setProperty(
               CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_CONSENSUS, "Simple")));
+                  System.getProperty(
+                      LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_CONSENSUS, "Simple")));
           clusterConfigProperties.setProperty(
               SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_CONSENSUS, "Simple")));
+                  System.getProperty(
+                      LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_CONSENSUS, "Simple")));
           clusterConfigProperties.setProperty(
               DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_DATA_REGION_CONSENSUS, "Simple")));
+                  System.getProperty(
+                      LIGHT_WEIGHT_STANDALONE_MODE_DATA_REGION_CONSENSUS, "Simple")));
           clusterConfigProperties.setProperty(
               SCHEMA_REPLICATION_FACTOR,
               System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_REPLICA_NUM, "1"));
