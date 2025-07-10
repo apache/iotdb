@@ -896,8 +896,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         // check device schema: is aligned or not
         final boolean isAlignedInTsFile = schemaCache.getDeviceIsAligned(device);
         final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
-        if (LOGGER.isDebugEnabled() && isAlignedInTsFile != isAlignedInIoTDB) {
-          LOGGER.debug(
+        if (LOGGER.isInfoEnabled() && isAlignedInTsFile != isAlignedInIoTDB) {
+          LOGGER.info(
               "Device {} in TsFile is {}, but in IoTDB is {}.",
               device,
               isAlignedInTsFile ? "aligned" : "not aligned",
@@ -919,8 +919,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           }
 
           // check datatype
-          if (LOGGER.isDebugEnabled() && !tsFileSchema.getType().equals(iotdbSchema.getType())) {
-            LOGGER.debug(
+          if (LOGGER.isInfoEnabled() && !tsFileSchema.getType().equals(iotdbSchema.getType())) {
+            LOGGER.info(
                 "Measurement {}{}{} datatype not match, TsFile: {}, IoTDB: {}",
                 device,
                 TsFileConstant.PATH_SEPARATOR,
