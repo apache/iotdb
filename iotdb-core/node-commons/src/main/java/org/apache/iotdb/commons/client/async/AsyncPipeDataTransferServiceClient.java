@@ -136,7 +136,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, timeout dynamically", id);
   }
 
-  private void close() {
+  public void close() {
     ___transport.close();
     ___currentMethod = null;
     LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, closed", id);

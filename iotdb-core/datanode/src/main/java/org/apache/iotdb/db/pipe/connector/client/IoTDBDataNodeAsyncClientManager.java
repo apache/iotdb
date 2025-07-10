@@ -300,6 +300,14 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       throw e;
     } finally {
       client.setShouldReturnSelf(true);
+      if (isClosed) {
+        try {
+          client.close();
+          client.invalidateAll();
+        } catch (final Exception e) {
+          LOGGER.warn("111");
+        }
+      }
       client.returnSelf();
     }
 

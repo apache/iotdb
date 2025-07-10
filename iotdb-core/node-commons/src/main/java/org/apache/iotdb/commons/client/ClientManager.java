@@ -64,6 +64,9 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
    * return of a client is automatic whenever a particular client is used.
    */
   public void returnClient(K node, V client) {
+    if (node == null) {
+      LOGGER.error("{} CAN NOT BE RETURNED", client, new Exception());
+    }
     Optional.ofNullable(node)
         .ifPresent(
             x -> {
@@ -73,6 +76,16 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
                 LOGGER.warn("Return client {} for node {} to pool failed.", client, node, e);
               }
             });
+    if (node != null) {
+      try {
+        pool.returnObject(node, client);
+      } catch (Exception e) {
+        LOGGER.warn("Return client {} for node {} to pool failed.", client, node, e);
+      }
+    } else if (client instanceof ThriftClient) {
+      ((ThriftClient) client).invalidateAll();
+      LOGGER.info("Client {} returned thrift client.", client);
+    }
   }
 
   @Override
