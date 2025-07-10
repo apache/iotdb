@@ -635,6 +635,11 @@ public class PipeDescriptor {
                 "pipe_threshold_allocation_strategy_high_usage_threshold",
                 String.valueOf(
                     config.getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold()))));
+
+    config.setPipeMaxWaitFinishTime(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_max_wait_finish_time", String.valueOf(config.getPipeMaxWaitFinishTime()))));
   }
 
   public static void loadPipeExternalConfig(

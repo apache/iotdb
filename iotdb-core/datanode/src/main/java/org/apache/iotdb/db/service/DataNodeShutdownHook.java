@@ -25,12 +25,15 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeOperator;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -43,6 +46,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 public class DataNodeShutdownHook extends Thread {
 
@@ -118,8 +123,37 @@ public class DataNodeShutdownHook extends Thread {
       triggerSnapshotForAllDataRegion();
     }
 
+    long startTime = System.currentTimeMillis();
+    if (PipeDataNodeAgent.task().getPipeCount() != 0) {
+      for (Map.Entry<String, PipeDataNodeRemainingEventAndTimeOperator> entry :
+          PipeDataNodeSinglePipeMetrics.getInstance().remainingEventAndTimeOperatorMap.entrySet()) {
+        boolean timeout = false;
+        while (true) {
+          if (entry.getValue().getRemainingNonHeartbeatEvents() > 0) {
+            logger.info(
+                "Successfully waited for pipe {} to finish.", entry.getValue().getPipeName());
+            break;
+          }
+          if (System.currentTimeMillis() - startTime
+              > PipeConfig.getInstance().getPipeMaxWaitFinishTime()) {
+            timeout = true;
+            break;
+          }
+          try {
+            Thread.sleep(100);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.info("Interrupted when waiting for pipe to finish");
+          }
+        }
+        if (timeout) {
+          logger.info("Timed out when waiting for pipes to finish, will break");
+          break;
+        }
+      }
+    }
     // Persist progress index before shutdown to accurate recovery after restart
-    PipeDataNodeAgent.task().persistAllProgressIndexLocally();
+    PipeDataNodeAgent.task().persistAllProgressIndex();
     // Shutdown all consensus pipe's receiver
     PipeDataNodeAgent.receiver().pipeConsensus().closeReceiverExecutor();
     // Shutdown pipe progressIndex background service

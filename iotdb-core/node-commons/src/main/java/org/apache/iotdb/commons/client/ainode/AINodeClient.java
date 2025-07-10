@@ -28,6 +28,7 @@ import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelReq;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelResp;
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsReq;
 import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
 import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
@@ -159,9 +160,9 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     }
   }
 
-  public TShowModelsResp showModels() throws TException {
+  public TShowModelsResp showModels(TShowModelsReq req) throws TException {
     try {
-      return client.showModels();
+      return client.showModels(req);
     } catch (TException e) {
       logger.warn(
           "Failed to connect to AINode from ConfigNode when executing {}: {}",
