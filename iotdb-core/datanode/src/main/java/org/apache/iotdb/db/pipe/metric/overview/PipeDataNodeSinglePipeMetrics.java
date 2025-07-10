@@ -55,7 +55,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   private static Histogram PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  private static Histogram PIPE_DATANODE_EVENT_TRANSFER_TIME_HISTOGRAM =
+  private static Histogram PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
@@ -69,7 +69,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "insert_node");
-    PIPE_DATANODE_EVENT_TRANSFER_TIME_HISTOGRAM =
+    PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM =
         metricService.getOrCreateHistogram(
             Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
@@ -306,7 +306,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
     operator.decreaseTsFileEventCount();
     operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-    PIPE_DATANODE_EVENT_TRANSFER_TIME_HISTOGRAM.update(transferTime);
+    PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
   }
 
   public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {
