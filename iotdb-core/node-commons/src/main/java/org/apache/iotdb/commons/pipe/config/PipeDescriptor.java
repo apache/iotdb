@@ -128,7 +128,7 @@ public class PipeDescriptor {
                 Integer.toString(config.getPipeAirGapReceiverPort()))));
 
     config.setPipeMetaReportMaxLogNumPerRound(
-        Integer.parseInt(
+        Double.parseDouble(
             properties.getProperty(
                 "pipe_meta_report_max_log_num_per_round",
                 String.valueOf(config.getPipeMetaReportMaxLogNumPerRound()))));
