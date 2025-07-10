@@ -206,6 +206,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
         try {
           Thread.sleep(20000);
+          LOGGER.error("sleep out 22", new Throwable());
         } catch (InterruptedException e) {
         }
 
@@ -229,6 +230,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     final TPipeTransferReq req = connector.compressIfNeeded(uncompressedReq);
     try {
       Thread.sleep(20000);
+      LOGGER.error("sleep out 33", new Throwable());
     } catch (InterruptedException e) {
     }
     pipeName2WeightMap.forEach(
@@ -250,6 +252,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   public void onComplete(final TPipeTransferResp response) {
     try {
       Thread.sleep(20000);
+      LOGGER.error("sleep out 44", new Throwable());
     } catch (InterruptedException e) {
     }
     try {
@@ -363,6 +366,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   public void onError(final Exception exception) {
     try {
       Thread.sleep(20000);
+      LOGGER.error("onError sleep out 1", new Throwable());
     } catch (InterruptedException e) {
     }
     try {
