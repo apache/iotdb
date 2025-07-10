@@ -3096,9 +3096,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TTableDeviceLeaderResp fetchDeviceLeader(TTableDeviceLeaderReq req) throws TException {
-    IDeviceID deviceID =
-        Factory.DEFAULT_FACTORY.create(
-            req.getDeviceId().toArray(new String[req.getDeviceIdSize()]));
+    int start_index = 0;
+    String[] trueSegments = new String[req.getIsSetTagSize()];
+    for (int i = 0; i < req.getIsSetTagSize(); i++) {
+      trueSegments[i] = req.getIsSetTag().get(i) ? req.getDeviceId().get(start_index++) : null;
+    }
+    IDeviceID deviceID = Factory.DEFAULT_FACTORY.create(trueSegments);
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(req.getTime());
     DataPartitionQueryParam queryParam =
         new DataPartitionQueryParam(deviceID, Collections.singletonList(timePartitionSlot));
