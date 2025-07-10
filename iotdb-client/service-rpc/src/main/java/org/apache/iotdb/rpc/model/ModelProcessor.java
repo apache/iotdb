@@ -46,12 +46,15 @@ public abstract class ModelProcessor {
    */
   public abstract float[] readAll(String filePath);
 
-  public static ModelProcessor getInstance(ModelProcessorType modelFileType) {
-    switch (modelFileType) {
-      case UNCOMPRESSED_TIFF:
-        return new UnCompressedTiffModelProcessor();
-      default:
-        return new CompressedTsFileModelProcessor();
+  public static ModelProcessor getInstance(String modelFileType) {
+    if (modelFileType.equalsIgnoreCase("COMPRESSED_TSFILE")) {
+      return new CompressedTsFileModelProcessor();
+    } else if (modelFileType.equalsIgnoreCase("UNCOMPRESSED_TIFF")) {
+      return new UnCompressedTiffModelProcessor();
+    } else if (modelFileType.equalsIgnoreCase("COMPRESSED_TIFF")) {
+      return new CompressedTiffModelProcessor();
+    } else {
+      throw new IllegalArgumentException("Unsupported model file type: " + modelFileType);
     }
   }
 }

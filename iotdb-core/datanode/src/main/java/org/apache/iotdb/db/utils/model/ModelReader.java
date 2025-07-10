@@ -44,6 +44,8 @@ public abstract class ModelReader {
       return new UnCompressedTiffModelReader();
     } else if (modelFileType.equalsIgnoreCase("COMPRESSED_TSFILE")) {
       return new CompressedTsFileModelReader();
+    } else if (modelFileType.equalsIgnoreCase("COMPRESSED_TIFF")) {
+      return new CompressedTiffModelReader();
     } else {
       throw new SemanticException("Unsupported model file type: " + modelFileType);
     }
