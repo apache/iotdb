@@ -288,6 +288,17 @@ public class FragmentInstanceExecution {
             staticsRemoved = true;
             statisticsLock.writeLock().unlock();
 
+            // must clear shuffle sink handle before driver close
+            // because in failed state, if we can driver.close firstly, we will finally call
+            // sink.setNoMoreTsBlocks() which may mislead upstream that downstream normally ends
+            try {
+              clearShuffleSinkHandle(newState);
+            } catch (Throwable t) {
+              LOGGER.error(
+                  "Errors occurred while attempting to release sink, potentially leading to resource leakage.",
+                  t);
+            }
+
             // close the driver after sink is aborted or closed because in driver.close() it
             // will try to call ISink.setNoMoreTsBlocks()
             for (IDriver driver : drivers) {
@@ -298,14 +309,6 @@ public class FragmentInstanceExecution {
 
             // release file handlers
             context.releaseResourceWhenAllDriversAreClosed();
-
-            try {
-              clearShuffleSinkHandle(newState);
-            } catch (Throwable t) {
-              LOGGER.error(
-                  "Errors occurred while attempting to release sink, potentially leading to resource leakage.",
-                  t);
-            }
 
             try {
               // delete tmp file if exists
