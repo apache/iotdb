@@ -320,7 +320,7 @@ public class TsFileProcessor {
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
     if (!insertRowNode.isGeneratedByPipe()) {
-      markAsNotGeneratedByPipe();
+      this.isTotallyGeneratedByPipe.set(false);
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
@@ -418,7 +418,7 @@ public class TsFileProcessor {
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
     if (!insertRowsNode.isGeneratedByPipe()) {
-      markAsNotGeneratedByPipe();
+      this.isTotallyGeneratedByPipe.set(false);
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
@@ -533,7 +533,7 @@ public class TsFileProcessor {
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
     if (!insertTabletNode.isGeneratedByPipe()) {
-      markAsNotGeneratedByPipe();
+      this.isTotallyGeneratedByPipe.set(false);
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
@@ -1581,7 +1581,7 @@ public class TsFileProcessor {
             dataRegionInfo.getDataRegion().getDataRegionId(),
             tsFileResource,
             false,
-            isTotallyGeneratedByPipe());
+            this.isTotallyGeneratedByPipe.get());
 
     tsFileResource.serialize();
     FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
@@ -2172,13 +2172,5 @@ public class TsFileProcessor {
       logger.debug(
           "{}: {} release flushQueryLock", storageGroupName, tsFileResource.getTsFile().getName());
     }
-  }
-
-  private void markAsNotGeneratedByPipe() {
-    this.isTotallyGeneratedByPipe.set(false);
-  }
-
-  private boolean isTotallyGeneratedByPipe() {
-    return this.isTotallyGeneratedByPipe.get();
   }
 }
