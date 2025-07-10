@@ -56,6 +56,8 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TTableDeviceLeaderReq;
+import org.apache.iotdb.service.rpc.thrift.TTableDeviceLeaderResp;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
@@ -2776,6 +2778,12 @@ public class Session implements ISession {
       } catch (RedirectException ignored) {
       }
     }
+  }
+
+  public TTableDeviceLeaderResp fetchDeviceLeader(String dbName, List<String> deviceId, long time)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TTableDeviceLeaderReq req = new TTableDeviceLeaderReq(dbName, deviceId, time);
+    return getDefaultSessionConnection().fetchDeviceLeader(req);
   }
 
   private void insertRelationalTabletWithLeaderCache(Tablet tablet)
