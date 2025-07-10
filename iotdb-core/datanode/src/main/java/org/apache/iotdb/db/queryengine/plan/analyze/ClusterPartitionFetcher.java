@@ -97,13 +97,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(final PathPatternTree patternTree) {
+  public SchemaPartition getSchemaPartition(final PathPatternTree patternTree, String userName) {
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
       final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
-          partitionCache.getDatabaseToDevice(deviceIDs, true, false, null);
+          partitionCache.getDatabaseToDevice(deviceIDs, true, false, userName);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         final TSchemaPartitionTableResp schemaPartitionTableResp =
@@ -124,6 +124,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(final PathPatternTree patternTree) {
+    return getSchemaPartition(patternTree, null);
   }
 
   @Override

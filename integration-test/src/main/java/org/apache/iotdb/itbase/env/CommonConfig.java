@@ -179,4 +179,6 @@ public interface CommonConfig {
   default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     return this;
   }
+
+  CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword);
 }

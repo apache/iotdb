@@ -72,6 +72,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -165,7 +166,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.user", "root");
-      connectorAttributes.put("connector.password", "root");
+      connectorAttributes.put("connector.password", "IoTDB@2017");
       connectorAttributes.put("connector.compressor", compressionTypes);
 
       final TSStatus status =
@@ -180,7 +181,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"),
           handleFailure);
@@ -202,7 +203,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("8,"),
           handleFailure);
@@ -329,6 +330,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
       }
 
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(
           3,
           showPipeResult.stream()

@@ -133,13 +133,13 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testTableCreateUserIdempotent() throws Exception {
-    testTableConfigIdempotent(Collections.emptyList(), "create user newUser 'password'");
+    testTableConfigIdempotent(Collections.emptyList(), "create user newUser 'password123456'");
   }
 
   @Test
   public void testTableDropUserIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create user newUser 'password'"), "drop user newUser");
+        Collections.singletonList("create user newUser 'password123456'"), "drop user newUser");
   }
 
   @Test
@@ -156,14 +156,14 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testTableAlterUserIdempotent3() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create user newUser 'password'"),
-        "alter user newUser set password 'passwd'");
+        Collections.singletonList("create user newUser 'password123456'"),
+        "alter user newUser set password 'passwd123456789'");
   }
 
   @Test
   public void testTableGrantRoleToUserIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Arrays.asList("create user newUser 'password'", "create role newRole"),
+        Arrays.asList("create user newUser 'password123456'", "create role newRole"),
         "grant role newRole to newUser");
   }
 
@@ -171,7 +171,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   public void testTableRevokeRoleFromUserIdempotent() throws Exception {
     testTableConfigIdempotent(
         Arrays.asList(
-            "create user newUser 'password'",
+            "create user newUser 'password123456'",
             "create role newRole",
             "grant role newRole to newUser"),
         "revoke role newRole from newUser");
@@ -180,7 +180,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testTableGrantIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create user newUser 'password'"),
+        Collections.singletonList("create user newUser 'password123456'"),
         "grant all to user newUser with grant option");
   }
 
@@ -188,7 +188,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   public void testTableRevokeIdempotent() throws Exception {
     testTableConfigIdempotent(
         Arrays.asList(
-            "create user newUser 'password'", "grant all to user newUser with grant option"),
+            "create user newUser 'password123456'", "grant all to user newUser with grant option"),
         "revoke all from user newUser");
   }
 

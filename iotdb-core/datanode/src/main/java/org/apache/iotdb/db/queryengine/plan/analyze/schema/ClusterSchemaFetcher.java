@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -310,7 +311,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
 
       if (!config.isAutoCreateSchemaEnabled()) {
-        return schemaTree;
+        // disable auto-create for non-system series
+        indexOfDevicesWithMissingMeasurements.removeIf(
+            i -> !devicePathList.get(i).startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY));
+        if (indexOfDevicesWithMissingMeasurements.isEmpty()) {
+          return schemaTree;
+        }
       }
 
       // Auto create the still missing schema and merge them into schemaTree

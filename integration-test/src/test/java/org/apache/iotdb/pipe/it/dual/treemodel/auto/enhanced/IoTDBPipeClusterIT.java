@@ -160,7 +160,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         TestUtils.assertDataEventuallyOnEnv(
             receiverEnv,
             nodeWrapper,
-            "select count(*) from root.**",
+            "select count(*) from root.db.**",
             "count(root.db.d1.s1),",
             Collections.singleton("2,"),
             600);
@@ -183,7 +183,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           nodeWrapper,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("3,"),
           600);
@@ -241,7 +241,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.user", "root");
-      connectorAttributes.put("connector.password", "root");
+      connectorAttributes.put("connector.password", "IoTDB@2017");
 
       final TSStatus status =
           client.createPipe(
@@ -255,7 +255,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
@@ -267,7 +267,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
     }
@@ -558,6 +558,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(30, showPipeResult.size());
     }
   }
@@ -591,11 +592,18 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       final AtomicInteger succeedNum = new AtomicInteger(0);
+
+      // ensure at least one insert happens before adding node so that the time series can be
+      // created
+      if (TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", 0))) {
+        succeedNum.incrementAndGet();
+      }
       final Thread t =
           new Thread(
               () -> {
                 try {
-                  for (int i = 0; i < 100; ++i) {
+                  for (int i = 1; i < 100; ++i) {
                     if (TestUtils.tryExecuteNonQueryWithRetry(
                         senderEnv,
                         String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
@@ -759,6 +767,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           Collections.singleton(succeedNum + ","));
 
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
     }
   }
@@ -813,7 +822,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select count(*) from root.**",
+        "select count(*) from root.db.**",
         "count(root.db.d1.s1),",
         Collections.singleton(succeedNum + ","));
   }
@@ -902,6 +911,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
@@ -974,9 +984,11 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(successCount.get(), showPipeResult.size());
       showPipeResult =
           client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(successCount.get(), showPipeResult.size());
     }
   }
@@ -1023,7 +1035,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("3,"));
 
@@ -1039,7 +1051,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("6,"));
     }

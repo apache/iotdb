@@ -221,7 +221,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
@@ -261,7 +261,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           senderEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
     }
@@ -302,7 +302,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
@@ -313,7 +313,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
 
@@ -328,7 +328,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
       Thread.sleep(5000);
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
     }
@@ -435,7 +435,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
@@ -460,10 +460,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
       }
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("2,"));
+          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("4,"));
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count databases", "count,", Collections.singleton("2,"));
+          receiverEnv, "count databases", "count,", Collections.singleton("3,"));
 
       // Test file mode
       extractorAttributes.put("source.inclusion", "data");

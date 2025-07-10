@@ -113,7 +113,7 @@ public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubsc
             .host(SRC_HOST)
             .port(SRC_PORT)
             .username("root")
-            .password("root")
+            .password("IoTDB@2017")
             .zoneId(ZoneId.of("Asia/Shanghai"))
             .build();
     session_dest =
@@ -121,7 +121,7 @@ public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubsc
             .host(DEST_HOST)
             .port(DEST_PORT)
             .username("root")
-            .password("root")
+            .password("IoTDB@2017")
             .zoneId(ZoneId.of("Asia/Shanghai"))
             .build();
     session_dest2 =
@@ -129,7 +129,7 @@ public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubsc
             .host(DEST_HOST2)
             .port(DEST_PORT2)
             .username("root")
-            .password("root")
+            .password("IoTDB@2017")
             .zoneId(ZoneId.of("Asia/Shanghai"))
             .build();
     session_src.open(false);

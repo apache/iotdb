@@ -1064,7 +1064,8 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                 currentTime[0] = System.currentTimeMillis();
               }
               TestUtils.assertSingleResultSetEqual(
-                  TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                  TestUtils.executeQueryWithRetry(
+                      statement, "select count(*) from root.topic*,root.cg*.**"),
                   expectedHeaderWithResult);
             });
       }

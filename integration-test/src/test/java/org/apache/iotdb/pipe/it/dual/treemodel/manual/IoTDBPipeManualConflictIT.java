@@ -126,7 +126,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
 
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,
-        "show timeseries",
+        "show timeseries root.ln.**",
         "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
         new HashSet<>(
             Arrays.asList(
@@ -134,12 +134,12 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
                 "root.ln.wf01.wt01.status1,null,root.ln,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,")));
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,
-        "select count(*) from root.** group by level=1",
+        "select count(*) from root.ln.** group by level=1",
         "count(root.ln.*.*.*),",
         Collections.singleton("2,"));
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "show timeseries",
+        "show timeseries root.ln.**",
         "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
         new HashSet<>(
             Arrays.asList(
@@ -147,7 +147,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
                 "root.ln.wf01.wt01.status1,null,root.ln,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,")));
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select count(*) from root.** group by level=1",
+        "select count(*) from root.ln.** group by level=1",
         "count(root.ln.*.*.*),",
         Collections.singleton("2,"));
   }
@@ -238,17 +238,23 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        senderEnv, "count timeseries", "count(timeseries),", Collections.singleton("6,"));
+        senderEnv,
+        "count timeseries root.sg1.**",
+        "count(timeseries),",
+        Collections.singleton("6,"));
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,
-        "select count(*) from root.** group by level=1",
+        "select count(*) from root.sg1.** group by level=1",
         "count(root.sg1.*.*),",
         Collections.singleton("6,"));
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("6,"));
+        receiverEnv,
+        "count timeseries root.sg1.**",
+        "count(timeseries),",
+        Collections.singleton("6,"));
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select count(*) from root.** group by level=1",
+        "select count(*) from root.sg1.** group by level=1",
         "count(root.sg1.*.*),",
         Collections.singleton("6,"));
   }

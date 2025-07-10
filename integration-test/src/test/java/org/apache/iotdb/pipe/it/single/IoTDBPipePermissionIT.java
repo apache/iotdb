@@ -168,7 +168,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
         BaseEnv.TABLE_SQL_DIALECT,
         env,
         Arrays.asList(
-            "create user thulab 'passwd'", "grant INSERT on test.test1 to user thulab"))) {
+            "create user thulab 'passwD@123456'", "grant INSERT on test.test1 to user thulab"))) {
       return;
     }
 
@@ -188,7 +188,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
           "create pipe a2b "
               + "with source ('database'='test1', 'table'='test1') "
               + "with processor('processor'='rename-database-processor', 'processor.new-db-name'='test') "
-              + "with sink ('sink'='write-back-sink', 'username'='thulab', 'password'='passwd')");
+              + "with sink ('sink'='write-back-sink', 'username'='thulab', 'password'='passwD@123456')");
     } catch (final SQLException e) {
       e.printStackTrace();
       fail("Create pipe without user shall succeed if use the current session");

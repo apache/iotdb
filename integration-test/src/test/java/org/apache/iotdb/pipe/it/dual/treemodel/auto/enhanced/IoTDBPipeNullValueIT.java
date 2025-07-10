@@ -256,7 +256,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select count(*) from root.**",
+        "select count(*) from root.sg.**",
         "count(root.sg.d1.s0),count(root.sg.d1.s1),",
         Collections.singleton("0,1,"));
   }

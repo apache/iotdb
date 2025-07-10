@@ -759,6 +759,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TPermissionInfoResp getUser(String userName) {
+    return configManager.getUser(userName);
+  }
+
+  @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
 

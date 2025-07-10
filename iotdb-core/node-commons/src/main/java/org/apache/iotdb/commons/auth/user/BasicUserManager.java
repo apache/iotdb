@@ -107,7 +107,12 @@ public abstract class BasicUserManager extends BasicRoleManager {
   public boolean createUser(
       String username, String password, boolean validCheck, boolean enableEncrypt)
       throws AuthException {
-    if (validCheck) {
+    if (validCheck && !CommonDescriptor.getInstance().getConfig().getAdminName().equals(username)) {
+      if (username.equals(password)
+          && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
+        throw new AuthException(
+            TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
+      }
       AuthUtils.validateUsername(username);
       if (enableEncrypt) {
         AuthUtils.validatePassword(password);
@@ -129,12 +134,12 @@ public abstract class BasicUserManager extends BasicRoleManager {
   }
 
   public boolean updateUserPassword(String username, String newPassword) throws AuthException {
-    try {
-      AuthUtils.validatePassword(newPassword);
-    } catch (AuthException e) {
-      LOGGER.debug("An illegal password detected ", e);
-      return false;
+    if (CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()
+        && username.equals(newPassword)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
     }
+    AuthUtils.validatePassword(newPassword);
 
     lock.writeLock(username);
     try {

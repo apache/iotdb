@@ -111,6 +111,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
@@ -230,9 +231,9 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
       expectedResSet.add(i + ",1.0,");
     }
     TestUtils.assertDataEventuallyOnEnv(
-        senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+        senderEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+        receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     TableModelUtils.assertData("test", "test", 0, 400, senderEnv, handleFailure);
     TableModelUtils.assertData("test", "test", 0, 400, receiverEnv, handleFailure);
 
@@ -265,9 +266,9 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
       expectedResSet.add(i + ",1.0,");
     }
     TestUtils.assertDataEventuallyOnEnv(
-        senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+        senderEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+        receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     TableModelUtils.assertData("test", "test", 0, 500, senderEnv, handleFailure);
     TableModelUtils.assertData("test", "test", 0, 500, receiverEnv, handleFailure);
   }

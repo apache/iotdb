@@ -133,7 +133,10 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("4,"));
+          receiverEnv,
+          "count timeseries root.db.**",
+          "count(timeseries),",
+          Collections.singleton("4,"));
     }
   }
 }

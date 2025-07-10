@@ -150,7 +150,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualTreeModelAu
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.user", "root");
-      connectorAttributes.put("connector.password", "root");
+      connectorAttributes.put("connector.password", "IoTDB@2017");
       connectorAttributes.put("connector.compressor", compressionTypes);
 
       final TSStatus status =
@@ -165,7 +165,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualTreeModelAu
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
 
@@ -184,7 +184,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualTreeModelAu
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("8,"));
     }
@@ -301,6 +301,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualTreeModelAu
       }
 
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(
           3,
           showPipeResult.stream()
@@ -308,7 +309,10 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualTreeModelAu
               .count());
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("3,"));
+          receiverEnv,
+          "count timeseries root.db.**",
+          "count(timeseries),",
+          Collections.singleton("3,"));
     }
   }
 }

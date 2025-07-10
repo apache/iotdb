@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -110,6 +111,9 @@ public class IoTDBMultiDBRegionGroupLeaderDistributionIT {
         Map<Integer, Integer> dataNodeLeaderCounter = new TreeMap<>();
         Map<String, Map<Integer, Integer>> databaseLeaderCounter = new TreeMap<>();
         TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY));
         showRegionResp
             .getRegionInfoList()
             .forEach(

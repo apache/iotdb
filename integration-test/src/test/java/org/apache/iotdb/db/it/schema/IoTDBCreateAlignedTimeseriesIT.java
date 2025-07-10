@@ -125,7 +125,7 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
     int count = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
+        ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
       while (resultSet.next()) {
         String ActualResult =
             resultSet.getString(ColumnHeaderConstant.TIMESERIES)

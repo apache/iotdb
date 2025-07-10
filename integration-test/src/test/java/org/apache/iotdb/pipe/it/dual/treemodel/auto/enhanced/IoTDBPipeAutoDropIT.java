@@ -97,7 +97,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
@@ -172,7 +172,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("3,"));
 

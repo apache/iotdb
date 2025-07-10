@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
@@ -435,7 +436,10 @@ public class IoTDBRegionOperationReliabilityITFramework {
     Map<Integer, Set<Integer>> regionMap = new HashMap<>();
     while (showRegionsResult.next()) {
       if (String.valueOf(TConsensusGroupType.DataRegion)
-          .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE))) {
+              .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE))
+          && !showRegionsResult
+              .getString(ColumnHeaderConstant.DATABASE)
+              .equals(SystemConstant.SYSTEM_DATABASE)) {
         int regionId = showRegionsResult.getInt(ColumnHeaderConstant.REGION_ID);
         int dataNodeId = showRegionsResult.getInt(ColumnHeaderConstant.DATA_NODE_ID);
         regionMap.computeIfAbsent(regionId, id -> new HashSet<>()).add(dataNodeId);
