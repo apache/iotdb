@@ -273,8 +273,8 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
       ReadWriteIOUtils.write(offset, stream);
       ReadWriteIOUtils.write(filePath, stream);
       ReadWriteIOUtils.write(contentLength, stream);
-      Optional<File> objectFile = TierManager.getInstance().getAbsoluteObjectFilePath(filePath);
       byte[] contents = new byte[contentLength];
+      Optional<File> objectFile = TierManager.getInstance().getAbsoluteObjectFilePath(filePath);
       if (objectFile.isPresent()) {
         try (RandomAccessFile raf = new RandomAccessFile(objectFile.get(), "r")) {
           raf.seek(offset);
@@ -283,7 +283,18 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
           throw new RuntimeException(e);
         }
       } else {
-        throw new ObjectFileNotExist(filePath);
+        Optional<File> objectTmpFile =
+            TierManager.getInstance().getAbsoluteObjectFilePath(filePath + ".tmp");
+        if (objectTmpFile.isPresent()) {
+          try (RandomAccessFile raf = new RandomAccessFile(objectTmpFile.get(), "r")) {
+            raf.seek(offset);
+            raf.read(contents);
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        } else {
+          throw new ObjectFileNotExist(filePath);
+        }
       }
       stream.write(contents);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());

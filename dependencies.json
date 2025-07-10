@@ -102,7 +102,7 @@
         "com.timecho.ratis:ratis-proto",
         "com.timecho.ratis:ratis-server",
         "com.timecho.ratis:ratis-server-api",
-        "org.apache.ratis:ratis-thirdparty-misc",
+        "org.apache.ratis:】-thirdparty-misc",
         "org.apache.thrift:libthrift",
         "org.apache.tsfile:common",
         "org.apache.tsfile:tsfile",
