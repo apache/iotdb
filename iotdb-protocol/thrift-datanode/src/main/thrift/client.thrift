@@ -549,14 +549,15 @@ struct TSConnectionInfoResp {
 }
 
 struct TTableDeviceLeaderReq {
-  1:required string dbName
-  2:required list<string> deviceId
-  3:required i64 time
+  1: required string dbName
+  2: required list<string> deviceId
+  3: required i64 time
 }
 
 struct TTableDeviceLeaderResp {
-  1:required string ip
-  2:required string port
+  1: required common.TSStatus status
+  2: required string ip
+  3: required string port
 }
 
 service IClientRPCService {

@@ -181,6 +181,8 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
+import org.apache.iotdb.service.rpc.thrift.TTableDeviceLeaderReq;
+import org.apache.iotdb.service.rpc.thrift.TTableDeviceLeaderResp;
 
 import io.airlift.units.Duration;
 import io.jsonwebtoken.lang.Strings;
@@ -3090,6 +3092,35 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus testConnectionEmptyRPC() throws TException {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TTableDeviceLeaderResp fetchDeviceLeader(TTableDeviceLeaderReq req) throws TException {
+    IDeviceID deviceID =
+        Factory.DEFAULT_FACTORY.create(
+            req.getDeviceId().toArray(new String[req.getDeviceIdSize()]));
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(req.getTime());
+    DataPartitionQueryParam queryParam =
+        new DataPartitionQueryParam(deviceID, Collections.singletonList(timePartitionSlot));
+    DataPartition dataPartition =
+        partitionFetcher.getDataPartition(
+            Collections.singletonMap(req.getDbName(), Collections.singletonList(queryParam)));
+    TRegionReplicaSet targetRegionReplicaSet =
+        dataPartition.getAllReplicaSets().stream().findFirst().orElse(null);
+    TEndPoint targetEndPoint =
+        targetRegionReplicaSet != null
+            ? targetRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint()
+            : null;
+    TTableDeviceLeaderResp resp = new TTableDeviceLeaderResp();
+    resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    if (targetEndPoint != null) {
+      resp.setIp(targetEndPoint.getIp());
+      resp.setPort(String.valueOf(targetEndPoint.getPort()));
+    } else {
+      resp.setIp("");
+      resp.setPort("");
+    }
+    return resp;
   }
 
   @Override
