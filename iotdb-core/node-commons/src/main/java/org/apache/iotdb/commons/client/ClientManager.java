@@ -67,15 +67,6 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
     if (node == null) {
       LOGGER.error("{} CAN NOT BE RETURNED", client, new Exception());
     }
-    Optional.ofNullable(node)
-        .ifPresent(
-            x -> {
-              try {
-                pool.returnObject(node, client);
-              } catch (Exception e) {
-                LOGGER.warn("Return client {} for node {} to pool failed.", client, node, e);
-              }
-            });
     if (node != null) {
       try {
         pool.returnObject(node, client);
