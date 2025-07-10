@@ -165,7 +165,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualTreeModelAu
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
 
@@ -184,7 +184,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualTreeModelAu
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("8,"));
     }
@@ -309,7 +309,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualTreeModelAu
               .count());
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("5,"));
+          receiverEnv, "count timeseries root.db.**", "count(timeseries),", Collections.singleton("3,"));
     }
   }
 }
