@@ -44,6 +44,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -76,6 +77,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertTabletReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -94,6 +96,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedTabletReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -103,6 +106,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertRecordsReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -137,6 +141,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertRecordReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -177,6 +182,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedRecordReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -225,6 +231,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedRecordsReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -253,6 +260,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertStringRecordsOfOneDeviceReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -281,6 +289,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedStringRecordsOfOneDeviceReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
