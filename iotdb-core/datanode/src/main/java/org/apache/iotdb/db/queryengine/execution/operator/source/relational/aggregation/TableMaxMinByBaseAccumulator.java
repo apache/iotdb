@@ -85,6 +85,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
       case STRING:
       case TEXT:
       case BLOB:
+      case OBJECT:
         addBinaryInput(arguments, mask);
         return;
       case BOOLEAN:
@@ -350,6 +351,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         columnBuilder.writeBinary(xResult.getBinary());
         break;
       case BOOLEAN:
@@ -383,6 +385,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           xResult.setBinary(xColumn.getBinary(xIndex));
           break;
         case BOOLEAN:
@@ -451,6 +454,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
       case STRING:
       case TEXT:
       case BLOB:
+      case OBJECT:
         int length = BytesUtils.bytesToInt(bytes, offset);
         offset += Integer.BYTES;
         Binary binaryMaxVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
@@ -494,6 +498,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           int length = BytesUtils.bytesToInt(bytes, offset);
           offset += Integer.BYTES;
           columnBuilder.writeBinary(new Binary(BytesUtils.subBytes(bytes, offset, length)));

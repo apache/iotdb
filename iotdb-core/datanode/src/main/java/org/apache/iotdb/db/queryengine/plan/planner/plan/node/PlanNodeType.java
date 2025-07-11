@@ -111,6 +111,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
@@ -315,6 +316,7 @@ public enum PlanNodeType {
   RELATIONAL_INSERT_ROW((short) 2001),
   RELATIONAL_INSERT_ROWS((short) 2002),
   RELATIONAL_DELETE_DATA((short) 2003),
+  OBJECT_FILE_NODE((short) 2004),
   ;
 
   public static final int BYTES = Short.BYTES;
@@ -358,6 +360,8 @@ public enum PlanNodeType {
         return RelationalInsertRowsNode.deserializeFromWAL(stream);
       case 2003:
         return RelationalDeleteDataNode.deserializeFromWAL(stream);
+      case 2004:
+        return ObjectNode.deserializeFromWAL(stream);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -384,6 +388,8 @@ public enum PlanNodeType {
         return RelationalInsertRowsNode.deserializeFromWAL(buffer);
       case 2003:
         return RelationalDeleteDataNode.deserializeFromWAL(buffer);
+      case 2004:
+        return ObjectNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -705,6 +711,8 @@ public enum PlanNodeType {
         return RelationalInsertRowsNode.deserialize(buffer);
       case 2003:
         return RelationalDeleteDataNode.deserialize(buffer);
+      case 2004:
+        return ObjectNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

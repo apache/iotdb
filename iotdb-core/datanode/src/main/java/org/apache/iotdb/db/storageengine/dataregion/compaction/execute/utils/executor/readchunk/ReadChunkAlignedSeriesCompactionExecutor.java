@@ -565,6 +565,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           size = pageLoader.getHeader().getUncompressedSize();
           break;
         default:

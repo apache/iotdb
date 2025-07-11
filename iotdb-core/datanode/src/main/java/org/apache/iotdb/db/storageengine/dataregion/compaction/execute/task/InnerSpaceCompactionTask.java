@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IInnerCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
@@ -389,6 +390,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     performer.setTargetFiles(filesView.targetFilesInPerformer);
     performer.setSummary(summary);
     performer.perform();
+    if (performer instanceof ReadPointCompactionPerformer) {
+      for (TsFileResource resource : filesView.sourceFilesInCompactionPerformer) {
+        CompactionUtils.removeDeletedObjectFiles(resource);
+      }
+    }
 
     prepareTargetFiles();
 

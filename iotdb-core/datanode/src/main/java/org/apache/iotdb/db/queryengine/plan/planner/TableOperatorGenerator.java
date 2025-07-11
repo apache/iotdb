@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannel
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
@@ -1338,13 +1339,15 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     ColumnTransformerBuilder visitor = new ColumnTransformerBuilder();
 
+    FragmentInstanceContext fragmentInstanceContext =
+        context.getDriverContext().getFragmentInstanceContext();
     ColumnTransformer filterOutputTransformer =
         predicate
             .map(
                 p -> {
                   ColumnTransformerBuilder.Context filterColumnTransformerContext =
                       new ColumnTransformerBuilder.Context(
-                          context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
+                          fragmentInstanceContext.getSessionInfo(),
                           filterLeafColumnTransformerList,
                           inputLocations,
                           filterExpressionColumnTransformerMap,
@@ -1353,7 +1356,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                           ImmutableList.of(),
                           0,
                           context.getTypeProvider(),
-                          metadata);
+                          metadata,
+                          fragmentInstanceContext);
 
                   return visitor.process(p, filterColumnTransformerContext);
                 })
@@ -1371,7 +1375,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     ColumnTransformerBuilder.Context projectColumnTransformerContext =
         new ColumnTransformerBuilder.Context(
-            context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
+            fragmentInstanceContext.getSessionInfo(),
             projectLeafColumnTransformerList,
             inputLocations,
             projectExpressionColumnTransformerMap,
@@ -1380,7 +1384,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             filterOutputDataTypes,
             inputLocations.size(),
             context.getTypeProvider(),
-            metadata);
+            metadata,
+            fragmentInstanceContext);
 
     for (Expression expression : projectExpressions) {
       projectOutputTransformerList.add(
@@ -2453,6 +2458,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     // In "count" we have to reuse filter operator per "next"
     final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
+    FragmentInstanceContext fragmentInstanceContext =
+        context.getDriverContext().getFragmentInstanceContext();
     return new SchemaCountOperator<>(
         node.getPlanNodeId(),
         context
@@ -2474,10 +2481,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                         .process(
                             node.getTagFuzzyPredicate(),
                             new ColumnTransformerBuilder.Context(
-                                context
-                                    .getDriverContext()
-                                    .getFragmentInstanceContext()
-                                    .getSessionInfo(),
+                                fragmentInstanceContext.getSessionInfo(),
                                 filterLeafColumnTransformerList,
                                 makeLayout(Collections.singletonList(node)),
                                 new HashMap<>(),
@@ -2486,7 +2490,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                                 ImmutableList.of(),
                                 0,
                                 context.getTypeProvider(),
-                                metadata)),
+                                metadata,
+                                fragmentInstanceContext)),
                     columnSchemaList,
                     database,
                     table)

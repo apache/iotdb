@@ -630,6 +630,7 @@ public class InsertNodeMemoryEstimator {
         case STRING:
         case TEXT:
         case BLOB:
+        case OBJECT:
           {
             size += getBinarySize((Binary[]) columns[i]);
             break;
