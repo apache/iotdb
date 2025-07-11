@@ -125,7 +125,6 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
       setTimeout(timeout);
       LOGGER.error("Failed to set timeout dynamically, set it statically", e);
     }
-    LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, timeout dynamically", id);
   }
 
   public void close() {
