@@ -222,6 +222,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
             : PipeTransferTsFilePieceReq.toTPipeTransferReq(
                 currentFile.getName(), position, payload);
     final TPipeTransferReq req = connector.compressIfNeeded(uncompressedReq);
+
     pipeName2WeightMap.forEach(
         (pipePair, weight) ->
             connector.rateLimitIfNeeded(
