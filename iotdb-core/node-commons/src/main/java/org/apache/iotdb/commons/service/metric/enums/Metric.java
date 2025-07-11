@@ -165,6 +165,7 @@ public enum Metric {
   PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
   PIPE_LINKED_TSFILE_SIZE("pipe_linked_tsfile_size"),
   PIPE_PHANTOM_REFERENCE_COUNT("pipe_phantom_reference_count"),
+  PIPE_TSFILE_SEND_DISK_IO("pipe_tsfile_send_disk_io"),
   PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE("pipe_async_connector_retry_event_queue_size"),
   PIPE_EVENT_COMMIT_QUEUE_SIZE("pipe_event_commit_queue_size"),
   PIPE_PROCEDURE("pipe_procedure"),
