@@ -22,7 +22,9 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.LbacIntegration;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -30,6 +32,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.read.common.TimeRange;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class DeleteDataStatement extends Statement {
@@ -50,15 +53,46 @@ public class DeleteDataStatement extends Statement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    // First check if user is super user
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
+
+    // Perform traditional RBAC permission check
     List<MeasurementPath> checkedPaths = getPaths();
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_DATA),
-        checkedPaths,
-        PrivilegeType.WRITE_DATA);
+    TSStatus rbacStatus =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkFullPathOrPatternListPermission(
+                userName, checkedPaths, PrivilegeType.WRITE_DATA),
+            checkedPaths,
+            PrivilegeType.WRITE_DATA);
+
+    // If RBAC check fails, return immediately
+    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return rbacStatus;
+    }
+
+    // Perform LBAC permission check
+    try {
+      // Extract device paths from measurement paths for LBAC write policy check
+      List<PartialPath> devicePaths = new ArrayList<>();
+      for (MeasurementPath measurementPath : checkedPaths) {
+        PartialPath devicePath = measurementPath.getDevicePath();
+        if (!devicePaths.contains(devicePath)) {
+          devicePaths.add(devicePath);
+        }
+      }
+      TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
+      if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return lbacStatus;
+      }
+    } catch (Exception e) {
+      // Reject access when LBAC check fails with exception
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage("LBAC permission check failed: " + e.getMessage());
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public List<MeasurementPath> getPathList() {

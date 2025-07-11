@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.LbacIntegration;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
@@ -195,15 +196,43 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    // First check if user is super user
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
+
+    // Perform traditional RBAC permission check
     List<PartialPath> checkedPaths = getPaths().stream().distinct().collect(Collectors.toList());
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_DATA),
-        checkedPaths,
-        PrivilegeType.WRITE_DATA);
+    TSStatus rbacStatus =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkFullPathOrPatternListPermission(
+                userName, checkedPaths, PrivilegeType.WRITE_DATA),
+            checkedPaths,
+            PrivilegeType.WRITE_DATA);
+
+    // If RBAC check fails, return immediately
+    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return rbacStatus;
+    }
+
+    // Perform LBAC permission check
+    try {
+      // Extract device paths for LBAC write policy check
+      List<PartialPath> devicePaths = new ArrayList<>();
+      if (devicePath != null) {
+        devicePaths.add(devicePath);
+      }
+      TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
+      if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return lbacStatus;
+      }
+    } catch (Exception e) {
+      // Reject access when LBAC check fails with exception
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage("LBAC permission check failed: " + e.getMessage());
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public abstract ISchemaValidation getSchemaValidation();
@@ -498,7 +527,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
         indexMapToLogicalViewList[realIndex] = i;
       }
     }
-    // construct map from device to measurements and record the index of its measurement
+    // construct map from device to measurements and record the index of its
+    // measurement
     // schema
     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
         new HashMap<>();
@@ -530,7 +560,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
             }
           });
     }
-    // check this map, ensure that all time series (measurements in each device) only appear once
+    // check this map, ensure that all time series (measurements in each device)
+    // only appear once
     validateMapFromDeviceToMeasurement(mapFromDeviceToMeasurementAndIndex);
     return mapFromDeviceToMeasurementAndIndex;
   }

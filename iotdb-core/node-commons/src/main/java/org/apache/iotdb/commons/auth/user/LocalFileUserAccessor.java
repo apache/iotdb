@@ -167,23 +167,29 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
               IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
         }
         user.setPrivilegeList(pathPrivilegeList);
-      } else {
-        assert (tag == VERSION);
+        // Old version: no LBAC fields, set to null
+        user.setLabelPolicyExpression(null);
+        user.setLabelPolicyScope(null);
+      } else if (tag == 1) {
+        // Version 1: format without LBAC fields
         user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         loadPrivileges(dataInputStream, user);
-        // Load label policy fields if available
-        try {
-          user.setLabelPolicyExpression(
-              IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
-          user.setLabelPolicyScope(
-              IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
-        } catch (Exception e) {
-          // For backward compatibility, if label policy fields are not present, set them
-          // to null
-          user.setLabelPolicyExpression(null);
-          user.setLabelPolicyScope(null);
-        }
+        // Version 1: no LBAC fields, set to null
+        user.setLabelPolicyExpression(null);
+        user.setLabelPolicyScope(null);
+      } else if (tag == VERSION) {
+        // Version 2: format with LBAC fields
+        user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+        user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+        // Load label policy fields after password but before privileges
+        user.setLabelPolicyExpression(
+            IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+        user.setLabelPolicyScope(
+            IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+        loadPrivileges(dataInputStream, user);
+      } else {
+        throw new IOException("Unsupported user file version: " + tag);
       }
 
       File roleOfUser = checkFileAvailable(entityName, "_role");

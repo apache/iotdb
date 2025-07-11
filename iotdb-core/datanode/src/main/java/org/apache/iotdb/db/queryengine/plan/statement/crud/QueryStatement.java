@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.LbacIntegration;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindow;
@@ -93,7 +94,8 @@ public class QueryStatement extends AuthorityInformationStatement {
   // row offset for result set. The default value is 0
   private long rowOffset = 0;
 
-  // series limit and offset for result set. The default value is 0, which means no limit
+  // series limit and offset for result set. The default value is 0, which means
+  // no limit
   private long seriesLimit = 0;
   // series offset for result set. The default value is 0
   private long seriesOffset = 0;
@@ -127,11 +129,13 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   private boolean isCountTimeAggregation = false;
 
-  // used for limit and offset push down optimizer, if we select all columns from aligned device, we
+  // used for limit and offset push down optimizer, if we select all columns from
+  // aligned device, we
   // can use statistics to skip
   private boolean lastLevelUseWildcard = false;
 
-  // used in limit/offset push down optimizer, if the result set is empty after pushing down in
+  // used in limit/offset push down optimizer, if the result set is empty after
+  // pushing down in
   // ASTVisitor,
   // we can skip the query
   private boolean isResultSetEmpty = false;
@@ -220,13 +224,32 @@ public class QueryStatement extends AuthorityInformationStatement {
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
     try {
+      // First check if user is super user
       if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+        // Perform traditional RBAC permission check
         this.authorityScope =
             AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA);
       }
     } catch (AuthException e) {
       return new TSStatus(e.getCode().getStatusCode());
     }
+
+    // Perform LBAC permission check (only for non-super users)
+    if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+      try {
+        // Get all paths involved in the query for LBAC read policy check
+        List<PartialPath> queryPaths = getPaths();
+        TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, queryPaths);
+        if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return lbacStatus;
+        }
+      } catch (Exception e) {
+        // Reject access when LBAC check fails with exception
+        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage("LBAC permission check failed: " + e.getMessage());
+      }
+    }
+
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -508,7 +531,7 @@ public class QueryStatement extends AuthorityInformationStatement {
     return orderByComponent.getExpressionSortItemList();
   }
 
-  //  update the sortItems with expressionSortItems
+  // update the sortItems with expressionSortItems
   public void updateSortItems(Set<Expression> orderByExpressions) {
     Expression[] sortItemExpressions = orderByExpressions.toArray(new Expression[0]);
     List<SortItem> sortItems = getSortItemList();
