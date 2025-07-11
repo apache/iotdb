@@ -498,8 +498,8 @@ public class IoTDBNestedQueryIT {
           Assert.assertEquals(i, rs.getInt(2));
           Assert.assertEquals(2 * i + 2.0D, rs.getDouble(3), 0.01);
           Assert.assertEquals(2 * i + 2.0D, rs.getDouble(4), 0.01);
-          Assert.assertEquals((i + 1) / 2, rs.getLong(5));
-          Assert.assertEquals(i / 2 + 0.5D, rs.getDouble(6), 0.01);
+          Assert.assertEquals(i / 2.0D + 0.5D, rs.getDouble(5), 0.01);
+          Assert.assertEquals((i / 2) + 1 / 2, rs.getDouble(6), 0.01);
         }
         Assert.assertFalse(rs.next());
       }
