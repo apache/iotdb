@@ -149,7 +149,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
   private void doTransfer(final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
       throws PipeException {
-    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = getClientManager().getClient();
 
     final TPipeTransferResp resp;
     try {
@@ -175,7 +175,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     final TSStatus status = resp.getStatus();
     // Send handshake req and then re-transfer the event
     if (status.getCode() == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
-      clientManager.sendHandshakeReq(clientAndStatus);
+      getClientManager().sendHandshakeReq(clientAndStatus);
     }
     // Only handle the failed statuses to avoid string format performance overhead
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -214,7 +214,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     final long creationTime = snapshotEvent.getCreationTime();
     final File snapshotFile = snapshotEvent.getSnapshotFile();
     final File templateFile = snapshotEvent.getTemplateFile();
-    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = getClientManager().getClient();
 
     // 1. Transfer snapshotFile, and template File if exists
     transferFilePieces(
@@ -265,7 +265,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     final TSStatus status = resp.getStatus();
     // Send handshake req and then re-transfer the event
     if (status.getCode() == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
-      clientManager.sendHandshakeReq(clientAndStatus);
+      getClientManager().sendHandshakeReq(clientAndStatus);
     }
     // Only handle the failed statuses to avoid string format performance overhead
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
