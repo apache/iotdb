@@ -317,8 +317,8 @@ public class TableDeviceSchemaFetcher {
                   .collect(Collectors.toList()));
         } else {
           idx1++;
-          if (idx2 >= tagSingleMatchPredicateNotInCache.size()
-              || i == tagSingleMatchPredicateNotInCache.get(idx2)) {
+          if (idx2 < tagSingleMatchPredicateNotInCache.size()
+              && i == tagSingleMatchPredicateNotInCache.get(idx2)) {
             tagPredicateForFetch.add(
                 index2FilterMapList.get(i).values().stream()
                     .flatMap(Collection::stream)
