@@ -287,6 +287,9 @@ public class CompactionUtils {
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources) {
     for (TsFileResource targetResource : targetResources) {
+      // Initial value
+      targetResource.setGeneratedByPipe(true);
+      targetResource.setGeneratedByPipeConsensus(true);
       for (TsFileResource unseqResource : unseqResources) {
         targetResource.updateProgressIndex(unseqResource.getMaxProgressIndex());
         targetResource.setGeneratedByPipe(
