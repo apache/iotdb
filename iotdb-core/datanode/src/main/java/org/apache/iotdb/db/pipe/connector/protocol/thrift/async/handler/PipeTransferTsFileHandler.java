@@ -204,12 +204,6 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                     client.getEndPoint(),
                     (long) (req.getBody().length * weight)));
 
-        try {
-          Thread.sleep(20000);
-          LOGGER.error("sleep out 22", new Throwable());
-        } catch (InterruptedException e) {
-        }
-
         if (!tryTransfer(client, req)) {
           return;
         }
@@ -228,11 +222,6 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
             : PipeTransferTsFilePieceReq.toTPipeTransferReq(
                 currentFile.getName(), position, payload);
     final TPipeTransferReq req = connector.compressIfNeeded(uncompressedReq);
-    try {
-      Thread.sleep(20000);
-      LOGGER.error("sleep out 33", new Throwable());
-    } catch (InterruptedException e) {
-    }
     pipeName2WeightMap.forEach(
         (pipePair, weight) ->
             connector.rateLimitIfNeeded(
@@ -250,11 +239,6 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   @Override
   public void onComplete(final TPipeTransferResp response) {
-    try {
-      Thread.sleep(20000);
-      LOGGER.error("sleep out 44", new Throwable());
-    } catch (InterruptedException e) {
-    }
     try {
       super.onComplete(response);
     } finally {
@@ -364,11 +348,6 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   @Override
   public void onError(final Exception exception) {
-    try {
-      Thread.sleep(20000);
-      LOGGER.error("onError sleep out 1", new Throwable());
-    } catch (InterruptedException e) {
-    }
     try {
       super.onError(exception);
     } finally {
