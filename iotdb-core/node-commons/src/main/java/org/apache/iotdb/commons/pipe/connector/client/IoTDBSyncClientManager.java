@@ -252,8 +252,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         LOGGER.info(
             "Handshake success. Target server ip: {}, port: {}",
             client.getIpAddress(),
-            client.getPort(),
-            new Exception("FIND ME HERE"));
+            client.getPort());
       }
     } catch (Exception e) {
       LOGGER.warn(

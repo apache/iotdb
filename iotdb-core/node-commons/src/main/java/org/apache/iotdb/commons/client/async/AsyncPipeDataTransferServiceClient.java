@@ -131,7 +131,6 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   public void close() {
     ___transport.close();
     ___currentMethod = null;
-    LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, closed", id);
   }
 
   private boolean isReady() {
@@ -205,14 +204,11 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
         final TEndPoint endPoint,
         final PooledObject<AsyncPipeDataTransferServiceClient> pooledObject) {
       pooledObject.getObject().close();
-      LOGGER.warn(
-          "AsyncPipeDataTransferServiceClient#Factory endpoint = {}, destroyObject", endPoint);
     }
 
     @Override
     public PooledObject<AsyncPipeDataTransferServiceClient> makeObject(final TEndPoint endPoint)
         throws Exception {
-      LOGGER.warn("AsyncPipeDataTransferServiceClient#Factory endpoint = {}, makeObject", endPoint);
       return new DefaultPooledObject<>(
           new AsyncPipeDataTransferServiceClient(
               thriftClientProperty,
@@ -225,8 +221,6 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     public boolean validateObject(
         final TEndPoint endPoint,
         final PooledObject<AsyncPipeDataTransferServiceClient> pooledObject) {
-      LOGGER.warn(
-          "AsyncPipeDataTransferServiceClient#Factory endpoint = {},   validateObject", endPoint);
       return pooledObject.getObject().isReady();
     }
   }
