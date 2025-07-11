@@ -50,6 +50,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.AdjustMaxReg
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetDatabaseSecurityLabelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
@@ -269,6 +270,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             currentSchema.getTTL());
       }
 
+      // Handle security label for LBAC support
+      if (alterSchema.isSetSecurityLabel()) {
+        currentSchema.setSecurityLabel(alterSchema.getSecurityLabel());
+        LOGGER.info(
+            "[SetSecurityLabel] The security label of Database: {} is set to: {}",
+            currentSchema.getName(),
+            alterSchema.getSecurityLabel());
+      }
+
       mTree
           .getDatabaseNodeByDatabasePath(partialPathName)
           .getAsMNode()
@@ -305,6 +315,58 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       result
           .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
           .setMessage("Database not exist: " + e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  /**
+   * Set database security label.
+   *
+   * @param plan SetDatabaseSecurityLabelPlan
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if the security label is set successfully
+   */
+  public TSStatus setDatabaseSecurityLabel(final SetDatabaseSecurityLabelPlan plan) {
+    final TSStatus result = new TSStatus();
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      final String databaseName = plan.getDatabasePath().getFullPath();
+      final PartialPath partialPathName = getQualifiedDatabasePartialPath(databaseName);
+
+      final boolean isTableModel = PathUtils.isTableModelDatabase(databaseName);
+      final ConfigMTree mTree = isTableModel ? tableModelMTree : treeModelMTree;
+
+      // Check if database exists
+      if (!mTree.isDatabaseAlreadySet(partialPathName)) {
+        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+        result.setMessage("Database [" + databaseName + "] does not exist");
+        return result;
+      }
+
+      // Get current database schema
+      final TDatabaseSchema currentSchema =
+          mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
+
+      // Set security label
+      currentSchema.setSecurityLabel(plan.getSecurityLabel().getLabels());
+
+      // Update the database schema
+      mTree
+          .getDatabaseNodeByDatabasePath(partialPathName)
+          .getAsMNode()
+          .setDatabaseSchema(currentSchema);
+
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
+      LOGGER.info(
+          "Successfully set security label for database: {}, labels: {}",
+          databaseName,
+          plan.getSecurityLabel().getLabels());
+
+    } catch (final MetadataException e) {
+      LOGGER.error("Failed to set database security label", e);
+      result.setCode(e.getErrorCode()).setMessage(e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
@@ -911,7 +973,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return resp;
   }
 
-  // Before execute this method, checkTemplateSettable method should be invoked first and the whole
+  // Before execute this method, checkTemplateSettable method should be invoked
+  // first and the whole
   // process must be synchronized
   public synchronized TSStatus setSchemaTemplate(
       final SetSchemaTemplatePlan setSchemaTemplatePlan) {

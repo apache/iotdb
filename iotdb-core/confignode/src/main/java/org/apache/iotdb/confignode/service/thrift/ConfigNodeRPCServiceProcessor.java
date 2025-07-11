@@ -156,6 +156,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
@@ -476,12 +478,89 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return resp;
   }
 
-  // TODO: 由于 TAlterDatabaseSecurityLabelReq 类型尚未完整实现，暂时注释掉此方法
-  // @Override
   @Override
   public TSStatus alterDatabaseSecurityLabel(final TAlterDatabaseSecurityLabelReq req) {
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("SECURITY_LABEL feature is not fully implemented yet");
+    try {
+      // Check if database exists
+      if (!configManager.getClusterSchemaManager().isDatabaseExist(req.getDatabasePath())) {
+        return new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+            .setMessage("Database [" + req.getDatabasePath() + "] does not exist");
+      }
+
+      // Get current database schema
+      TDatabaseSchema currentSchema =
+          configManager.getClusterSchemaManager().getDatabaseSchemaByName(req.getDatabasePath());
+
+      // Create a new schema with updated security label
+      TDatabaseSchema updatedSchema = new TDatabaseSchema(currentSchema);
+      updatedSchema.setSecurityLabel(req.getSecurityLabel());
+
+      // Use the existing alterDatabase mechanism to store the updated schema
+      DatabaseSchemaPlan alterPlan =
+          new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, updatedSchema);
+
+      TSStatus result = configManager.alterDatabase(alterPlan);
+
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            "Successfully set security label for database: {}, labels: {}",
+            req.getDatabasePath(),
+            req.getSecurityLabel());
+      } else {
+        LOGGER.error(
+            "Failed to set security label for database: {}, error: {}",
+            req.getDatabasePath(),
+            result.getMessage());
+      }
+
+      return result;
+
+    } catch (Exception e) {
+      LOGGER.error("Failed to alter database security label for: {}", req.getDatabasePath(), e);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage("Failed to alter database security label: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public TGetDatabaseSecurityLabelResp getDatabaseSecurityLabel(
+      final TGetDatabaseSecurityLabelReq req) {
+    TGetDatabaseSecurityLabelResp resp = new TGetDatabaseSecurityLabelResp();
+
+    try {
+      // Check if database exists
+      if (!configManager.getClusterSchemaManager().isDatabaseExist(req.getDatabasePath())) {
+        resp.setStatus(
+            new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                .setMessage("Database [" + req.getDatabasePath() + "] does not exist"));
+        return resp;
+      }
+
+      // Get the database schema which contains security labels
+      TDatabaseSchema databaseSchema =
+          configManager.getClusterSchemaManager().getDatabaseSchemaByName(req.getDatabasePath());
+
+      if (databaseSchema.isSetSecurityLabel() && databaseSchema.getSecurityLabel() != null) {
+        resp.setSecurityLabel(databaseSchema.getSecurityLabel());
+        resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+        LOGGER.info(
+            "Successfully retrieved security label for database: {}, labels: {}",
+            req.getDatabasePath(),
+            databaseSchema.getSecurityLabel());
+      } else {
+        // Database exists but has no security labels
+        resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+        LOGGER.debug("Database {} exists but has no security labels", req.getDatabasePath());
+      }
+
+    } catch (Exception e) {
+      LOGGER.error("Failed to get security label for database: {}", req.getDatabasePath(), e);
+      resp.setStatus(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage("Failed to get security label: " + e.getMessage()));
+    }
+
+    return resp;
   }
 
   @Override

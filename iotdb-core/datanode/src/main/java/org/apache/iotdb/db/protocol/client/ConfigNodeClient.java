@@ -115,6 +115,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
@@ -566,6 +568,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus alterDatabaseSecurityLabel(TAlterDatabaseSecurityLabelReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.alterDatabaseSecurityLabel(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TGetDatabaseSecurityLabelResp getDatabaseSecurityLabel(TGetDatabaseSecurityLabelReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getDatabaseSecurityLabel(req),
+        resp -> !updateConfigNodeLeader(resp.getStatus()));
   }
 
   @Override

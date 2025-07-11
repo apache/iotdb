@@ -74,6 +74,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetDatabaseSecurityLabelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
@@ -411,6 +412,9 @@ public class ConfigPlanExecutor {
         return partitionInfo.createDatabase((DatabaseSchemaPlan) physicalPlan);
       case AlterDatabase:
         return clusterSchemaInfo.alterDatabase((DatabaseSchemaPlan) physicalPlan);
+      case SetDatabaseSecurityLabel:
+        return clusterSchemaInfo.setDatabaseSecurityLabel(
+            (SetDatabaseSecurityLabelPlan) physicalPlan);
       case AdjustMaxRegionGroupNum:
         return clusterSchemaInfo.adjustMaxRegionGroupCount(
             (AdjustMaxRegionGroupNumPlan) physicalPlan);

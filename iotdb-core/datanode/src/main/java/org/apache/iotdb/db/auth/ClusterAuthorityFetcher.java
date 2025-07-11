@@ -649,6 +649,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         tPermissionInfoResp.getUserInfo().getPermissionInfo().getSysPriSet());
     user.setSysPriGrantOptInt(
         tPermissionInfoResp.getUserInfo().getPermissionInfo().getSysPriSetGrantOpt());
+    // Cache label policy fields for LBAC support
+    user.setLabelPolicyExpression(tPermissionInfoResp.getUserInfo().getLabelPolicyExpression());
+    user.setLabelPolicyScope(tPermissionInfoResp.getUserInfo().getLabelPolicyScope());
     try {
       user.loadTreePrivilegeInfo(privilegeList);
     } catch (MetadataException e) {

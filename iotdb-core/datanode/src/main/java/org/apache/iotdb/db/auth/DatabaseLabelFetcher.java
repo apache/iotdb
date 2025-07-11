@@ -19,9 +19,17 @@
 
 package org.apache.iotdb.db.auth;
 
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.SecurityLabel;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelResp;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -275,26 +283,58 @@ public class DatabaseLabelFetcher {
    */
   private static SecurityLabel getFromConfigNode(String databasePath) {
     try {
-      // TODO: Implement retrieval from ConfigNode
-      // This would use the ConfigNodeClient to query database metadata
       LOGGER.debug("Attempting to get security label from ConfigNode for: {}", databasePath);
 
-      // TODO: ConfigNodeClient integration - commented out until proper API is
-      // available
-      // ConfigNodeClient configNodeClient = new ConfigNodeClient();
-      // TGetDatabaseSecurityLabelReq req = new
-      // TGetDatabaseSecurityLabelReq(databasePath);
-      // TGetDatabaseSecurityLabelResp resp =
-      // configNodeClient.getDatabaseSecurityLabel(req);
-      // if (resp.getStatus().getCode() ==
-      // TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // return SecurityLabel.fromThrift(resp.getSecurityLabel());
-      // }
+      // Use ConfigNodeClient to query database security labels
+      try (ConfigNodeClient configNodeClient =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
-      // For now, return null since ConfigNode integration is not complete
-      return null;
+        // Create request for database security label
+        TGetDatabaseSecurityLabelReq req = new TGetDatabaseSecurityLabelReq(databasePath);
+
+        // Call ConfigNode to get database security label
+        TGetDatabaseSecurityLabelResp resp = configNodeClient.getDatabaseSecurityLabel(req);
+
+        LOGGER.debug(
+            "ConfigNode response for database {}: status={}",
+            databasePath,
+            resp.getStatus().getCode());
+
+        // Check if the request was successful
+        if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          Map<String, String> securityLabelMap = resp.getSecurityLabel();
+
+          if (securityLabelMap != null && !securityLabelMap.isEmpty()) {
+            LOGGER.debug(
+                "Found security labels for database {}: {}", databasePath, securityLabelMap);
+            // Convert Map to SecurityLabel object
+            SecurityLabel securityLabel = new SecurityLabel(securityLabelMap);
+            return securityLabel;
+          } else {
+            LOGGER.debug("Database {} has no security labels", databasePath);
+            return null;
+          }
+        } else {
+          LOGGER.warn(
+              "Failed to get security label from ConfigNode for database {}: {}",
+              databasePath,
+              resp.getStatus().getMessage());
+          return null;
+        }
+
+      } catch (ClientManagerException | TException e) {
+        LOGGER.error(
+            "Error communicating with ConfigNode for database {}: {}",
+            databasePath,
+            e.getMessage());
+        return null;
+      }
+
     } catch (Exception e) {
-      LOGGER.debug("Failed to get security label from ConfigNode for: {}", databasePath, e);
+      LOGGER.error(
+          "Unexpected error getting security label from ConfigNode for database {}: {}",
+          databasePath,
+          e.getMessage());
       return null;
     }
   }

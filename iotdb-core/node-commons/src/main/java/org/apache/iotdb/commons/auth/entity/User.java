@@ -138,6 +138,9 @@ public class User extends Role {
     resp.setPassword(password);
     resp.setIsOpenIdUser(isOpenIdUser);
     resp.setRoleSet(roleSet);
+    // Set label policy fields for LBAC support
+    resp.setLabelPolicyExpression(labelPolicyExpression);
+    resp.setLabelPolicyScope(labelPolicyScope);
     return resp;
   }
 

@@ -222,6 +222,15 @@ struct TAlterDatabaseSecurityLabelReq {
   2: required map<string, string> securityLabel
 }
 
+struct TGetDatabaseSecurityLabelReq {
+  1: required string databasePath
+}
+
+struct TGetDatabaseSecurityLabelResp {
+  1: required common.TSStatus status
+  2: optional map<string, string> securityLabel
+}
+
 // Schema
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
@@ -376,6 +385,8 @@ struct TUserResp {
   2: required string password
   3: required set<string> roleSet
   4: required bool isOpenIdUser
+  5: optional string labelPolicyExpression
+  6: optional string labelPolicyScope
 }
 
 struct TRoleResp {
@@ -1383,6 +1394,14 @@ service IConfigNodeRPCService {
    *         DATABASE_NOT_EXIST if the specified Database doesn't exist
    */
   common.TSStatus alterDatabaseSecurityLabel(TAlterDatabaseSecurityLabelReq req)
+
+  /**
+   * Get a Database's security label
+   *
+   * @return SUCCESS_STATUS if the specified Database's security label is retrieved successfully
+   *         DATABASE_NOT_EXIST if the specified Database doesn't exist
+   */
+  TGetDatabaseSecurityLabelResp getDatabaseSecurityLabel(TGetDatabaseSecurityLabelReq req)
 
   /**
    * Generate a DeleteDatabaseProcedure to delete a specified Database

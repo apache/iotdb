@@ -216,27 +216,58 @@ public class LbacPermissionChecker {
   }
 
   /**
-   * Get user's label policy for the specified operation type TODO: This should be implemented to
-   * retrieve from user metadata/attributes
+   * Get user's label policy for the specified operation type
    *
    * @param user the user
-   * @param operationType the operation type
+   * @param operationType the operation type (READ/WRITE)
    * @return label policy expression or null if none defined
    */
   private static String getUserLabelPolicy(
       User user, LbacOperationClassifier.OperationType operationType) {
-    // TODO: Implement retrieval of user label policies from user metadata
-    // This would depend on how user label policies are stored
-    // For now, return null indicating no policy
 
     LOGGER.debug(
         "Getting label policy for user: {} and operation: {}", user.getName(), operationType);
 
-    // Example: user.getAttributes().get("read_label_policy") or
-    // user.getAttributes().get("write_label_policy")
-    // or user.getLabelPolicy(operationType)
+    // Get the user's label policy expression from User object
+    String labelPolicyExpression = user.getLabelPolicyExpression();
+    String labelPolicyScope = user.getLabelPolicyScope();
 
-    return null;
+    LOGGER.debug(
+        "User {} has labelPolicyExpression: '{}', labelPolicyScope: '{}'",
+        user.getName(),
+        labelPolicyExpression,
+        labelPolicyScope);
+
+    // If no label policy expression is set, return null
+    if (labelPolicyExpression == null || labelPolicyExpression.trim().isEmpty()) {
+      LOGGER.debug("User {} has no label policy expression", user.getName());
+      return null;
+    }
+
+    // Check if the policy scope matches the operation type
+    if (labelPolicyScope != null) {
+      // Convert operation type to lowercase string for comparison
+      String operationString = operationType.name().toLowerCase();
+
+      // Policy scope should contain the operation type (e.g., "FOR WRITE", "FOR
+      // READ")
+      if (!labelPolicyScope.toLowerCase().contains(operationString)) {
+        LOGGER.debug(
+            "User {} label policy scope '{}' does not match operation type {}",
+            user.getName(),
+            labelPolicyScope,
+            operationType);
+        return null;
+      }
+    }
+
+    LOGGER.debug(
+        "User {} has matching label policy for {} operation: '{}'",
+        user.getName(),
+        operationType,
+        labelPolicyExpression);
+
+    return labelPolicyExpression;
   }
 
   /**
