@@ -53,6 +53,11 @@
             <artifactId>library-udf</artifactId>
             <version>2.0.5-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>library-pipe</artifactId>
+            <version>2.0.5-SNAPSHOT</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -74,6 +79,7 @@
                                 <descriptor>src/assembly/confignode.xml</descriptor>
                                 <descriptor>src/assembly/cli.xml</descriptor>
                                 <descriptor>src/assembly/library-udf.xml</descriptor>
+                                <descriptor>src/assembly/library-pipe.xml</descriptor>
                             </descriptors>
                             <finalName>apache-iotdb-${project.version}</finalName>
                         </configuration>
@@ -107,6 +113,7 @@
                                         <include>apache-iotdb-${project.version}-cli-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-confignode-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-library-udf-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-library-pipe-bin.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>
