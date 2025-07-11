@@ -29,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ClientManager<K, V> implements IClientManager<K, V> {
 
@@ -37,14 +36,8 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   private final GenericKeyedObjectPool<K, V> pool;
 
-  private final AtomicBoolean isClosed = new AtomicBoolean(false);
-
   ClientManager(IClientPoolFactory<K, V> factory) {
     pool = factory.createClientPool(this);
-  }
-
-  public boolean isClosed() {
-    return isClosed.get();
   }
 
   @TestOnly
@@ -54,7 +47,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   @Override
   public V borrowClient(K node) throws ClientManagerException {
-    if (node == null || isClosed.get()) {
+    if (node == null) {
       throw new BorrowNullClientManagerException();
     }
     try {
@@ -71,9 +64,6 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
    * return of a client is automatic whenever a particular client is used.
    */
   public void returnClient(K node, V client) {
-    if (node == null) {
-      LOGGER.error("{} CAN NOT BE RETURNED", client, new Exception());
-    }
     if (node != null) {
       try {
         pool.returnObject(node, client);
@@ -82,7 +72,10 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
       }
     } else if (client instanceof ThriftClient) {
       ((ThriftClient) client).invalidateAll();
-      LOGGER.info("Client {} returned thrift client.", client);
+      LOGGER.warn(
+          "Return client {} to pool failed because the node is null. "
+              + "This may cause resource leak, please check your code.",
+          client);
     }
   }
 
@@ -106,7 +99,6 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   @Override
   public void close() {
-    isClosed.set(true);
     pool.close();
     // we need to release tManagers for AsyncThriftClientFactory
     if (pool.getFactory() instanceof AsyncThriftClientFactory) {
