@@ -1162,6 +1162,8 @@ public class IoTDBConfig {
 
   private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
 
+  private long maxObjectSizeInByte = 4 * 1024 * 1024 * 1024L;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -4115,5 +4117,13 @@ public class IoTDBConfig {
 
   public void setCacheLastValuesMemoryBudgetInByte(long cacheLastValuesMemoryBudgetInByte) {
     this.cacheLastValuesMemoryBudgetInByte = cacheLastValuesMemoryBudgetInByte;
+  }
+
+  public long getMaxObjectSizeInByte() {
+    return maxObjectSizeInByte;
+  }
+
+  public void setMaxObjectSizeInByte(long maxObjectSizeInByte) {
+    this.maxObjectSizeInByte = maxObjectSizeInByte;
   }
 }

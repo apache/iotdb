@@ -76,6 +76,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
@@ -150,6 +151,7 @@ import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.ObjectWriter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -174,6 +176,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1301,7 +1304,10 @@ public class DataRegion implements IDataRegionForQuery {
       InsertTabletNode insertTabletNode, TSStatus[] results, long[] infoForMetrics)
       throws OutOfTTLException {
     boolean noFailure;
-    int loc = insertTabletNode.checkTTL(results, getTTL(insertTabletNode));
+    int loc =
+        insertTabletNode.shouldCheckTTL()
+            ? insertTabletNode.checkTTL(results, getTTL(insertTabletNode))
+            : 0;
     noFailure = loc == 0;
     List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
         insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());
@@ -1835,6 +1841,7 @@ public class DataRegion implements IDataRegionForQuery {
             }
           });
       deleteAllSGFolders(TierManager.getInstance().getAllFilesFolders());
+      deleteAllObjectFiles(TierManager.getInstance().getAllObjectFileFolders());
       this.workSequenceTsFileProcessors.clear();
       this.workUnsequenceTsFileProcessors.clear();
       this.tsFileManager.clear();
@@ -1867,6 +1874,23 @@ public class DataRegion implements IDataRegionForQuery {
         if (dataRegionDataFolder.exists()) {
           org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
               dataRegionDataFolder);
+        }
+      }
+    }
+  }
+
+  private void deleteAllObjectFiles(List<String> folders) {
+    for (String objectFolder : folders) {
+      File dataRegionObjectFolder = fsFactory.getFile(objectFolder, dataRegionId);
+      if (FSUtils.getFSType(dataRegionObjectFolder) != FSType.LOCAL) {
+        try {
+          fsFactory.deleteDirectory(dataRegionObjectFolder.getPath());
+        } catch (IOException e) {
+          logger.error("Fail to delete data region object folder {}", dataRegionObjectFolder);
+        }
+      } else {
+        if (dataRegionObjectFolder.exists()) {
+          org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(dataRegionObjectFolder);
         }
       }
     }
@@ -3022,6 +3046,43 @@ public class DataRegion implements IDataRegionForQuery {
       return 0;
     } finally {
       CompactionScheduler.exclusiveUnlockCompactionSelection();
+      writeUnlock();
+    }
+  }
+
+  public void writeObject(ObjectNode objectNode) throws Exception {
+    writeLock("writeObject");
+    try {
+      String relativeTmpPathString = objectNode.getFilePath() + ".tmp";
+      String objectFileDir = TierManager.getInstance().getNextFolderForObjectFile();
+      File objectTmpFile =
+          FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeTmpPathString);
+      try (ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
+        writer.write(
+            objectNode.isGeneratedByRemoteConsensusLeader(),
+            objectNode.getOffset(),
+            objectNode.getContent());
+      }
+      if (objectNode.isEOF()) {
+        File objectFile =
+            FSFactoryProducer.getFSFactory().getFile(objectFileDir, objectNode.getFilePath());
+        if (objectFile.exists()) {
+          String relativeBackPathString = objectNode.getFilePath() + ".back";
+          File objectBackFile =
+              FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeBackPathString);
+          Files.move(
+              objectFile.toPath(), objectBackFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          Files.move(
+              objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          Files.delete(objectBackFile.toPath());
+        } else {
+          Files.move(
+              objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+      }
+      getWALNode()
+          .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));
+    } finally {
       writeUnlock();
     }
   }

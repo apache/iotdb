@@ -348,6 +348,7 @@ public class AccumulatorFactory {
       case STRING:
         return new BinaryGroupedApproxMostFrequentAccumulator();
       case BLOB:
+      case OBJECT:
         return new BlobGroupedApproxMostFrequentAccumulator();
       default:
         throw new UnSupportedDataTypeException(
@@ -373,6 +374,7 @@ public class AccumulatorFactory {
       case STRING:
         return new BinaryApproxMostFrequentAccumulator();
       case BLOB:
+      case OBJECT:
         return new BlobApproxMostFrequentAccumulator();
       default:
         throw new UnSupportedDataTypeException(

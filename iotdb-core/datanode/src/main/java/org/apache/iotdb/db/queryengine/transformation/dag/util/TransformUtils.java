@@ -78,6 +78,7 @@ public class TransformUtils {
           return new BooleanColumn(1, Optional.empty(), new boolean[] {(boolean) value});
         case STRING:
         case BLOB:
+        case OBJECT:
         case DATE:
         case TIMESTAMP:
         default:
@@ -158,6 +159,7 @@ public class TransformUtils {
       case TIMESTAMP:
       case DATE:
       case BLOB:
+      case OBJECT:
       case STRING:
       default:
         throw new UnsupportedOperationException(

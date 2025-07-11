@@ -290,6 +290,7 @@ public class MemAlignedPageReader implements IPageReader {
             break;
           case TEXT:
           case BLOB:
+          case OBJECT:
           case STRING:
             for (int i = 0; i < tsBlock.getPositionCount(); i++) {
               valueStatistics[column].update(

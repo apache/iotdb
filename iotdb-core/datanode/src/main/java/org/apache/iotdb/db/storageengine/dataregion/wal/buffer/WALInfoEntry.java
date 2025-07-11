@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 
@@ -89,6 +90,7 @@ public class WALInfoEntry extends WALEntry {
       case RELATIONAL_DELETE_DATA_NODE:
       case MEMORY_TABLE_SNAPSHOT:
       case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+      case OBJECT_FILE_NODE:
         value.serializeToWAL(buffer);
         break;
       case MEMORY_TABLE_CHECKPOINT:
@@ -166,6 +168,8 @@ public class WALInfoEntry extends WALEntry {
       case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
       case MEMORY_TABLE_CHECKPOINT:
         return RamUsageEstimator.sizeOfObject(value);
+      case OBJECT_FILE_NODE:
+        return ((ObjectNode) value).serializedSize();
       default:
         throw new RuntimeException("Unsupported wal entry type " + type);
     }

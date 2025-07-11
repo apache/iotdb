@@ -189,6 +189,7 @@ public class SessionDataSet implements ISessionDataSet {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             field.setBinaryV(ioTDBRpcDataSet.getBinary(columnName));
             break;
           default:

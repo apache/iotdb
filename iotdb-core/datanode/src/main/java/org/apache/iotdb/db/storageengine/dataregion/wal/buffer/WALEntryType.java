@@ -45,6 +45,7 @@ public enum WALEntryType {
   /** {@link org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable} */
   MEMORY_TABLE_SNAPSHOT((byte) 10),
   RELATIONAL_DELETE_DATA_NODE((byte) 11),
+  OBJECT_FILE_NODE((byte) 12),
   // endregion
   // region signal entry type
   // signal wal buffer has been closed
@@ -71,7 +72,8 @@ public enum WALEntryType {
         || this == INSERT_ROW_NODE
         || this == INSERT_ROWS_NODE
         || this == DELETE_DATA_NODE
-        || this == RELATIONAL_DELETE_DATA_NODE;
+        || this == RELATIONAL_DELETE_DATA_NODE
+        || this == OBJECT_FILE_NODE;
   }
 
   public static WALEntryType valueOf(byte code) {

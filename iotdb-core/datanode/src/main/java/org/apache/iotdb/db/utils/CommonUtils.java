@@ -380,6 +380,7 @@ public class CommonUtils {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         valueColumn = new Binary[rowNum];
         break;
       case DATE:

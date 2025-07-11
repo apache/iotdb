@@ -76,12 +76,15 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
+import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,6 +92,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -105,6 +110,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -117,6 +123,8 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
+
+  private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   /**
    * a folder (system/databases/ by default) that persist system info. Each database will have a
@@ -154,6 +162,8 @@ public class StorageEngine implements IService {
   private int recoverDataRegionNum = 0;
 
   private final LoadTsFileManager loadTsFileManager = new LoadTsFileManager();
+
+  public final AtomicLong objectFileId = new AtomicLong(0);
 
   private StorageEngine() {}
 
@@ -231,6 +241,8 @@ public class StorageEngine implements IService {
   }
 
   private void asyncRecover(List<Future<Void>> futures) {
+    checkObjectFiles();
+
     Map<String, List<DataRegionId>> localDataRegionInfo = getLocalDataRegionInfo();
     localDataRegionInfo.values().forEach(list -> recoverDataRegionNum += list.size());
     readyDataRegionNum = new AtomicInteger(0);
@@ -1063,6 +1075,32 @@ public class StorageEngine implements IService {
   public static File getDataRegionSystemDir(String dataBaseName, String dataRegionId) {
     return SystemFileFactory.INSTANCE.getFile(
         systemDir + File.separator + dataBaseName, dataRegionId);
+  }
+
+  private void checkObjectFiles() {
+    List<String> folders = TierManager.getInstance().getAllObjectFileFolders();
+    for (String baseDir : folders) {
+      File fileFolder = fsFactory.getFile(baseDir);
+      try (Stream<Path> paths = Files.walk(fileFolder.toPath())) {
+        paths
+            .filter(Files::isRegularFile)
+            .filter(
+                path -> {
+                  String name = path.getFileName().toString();
+                  return name.endsWith(".bin.back");
+                })
+            .forEach(
+                path -> {
+                  try {
+                    Files.delete(path);
+                  } catch (IOException e) {
+                    LOGGER.error("Failed to delete: {} -> {}", path, e.getMessage());
+                  }
+                });
+      } catch (IOException e) {
+        LOGGER.error("Failed to check Object Files: {}", e.getMessage());
+      }
+    }
   }
 
   public Runnable executeCompactFileTimeIndexCache() {

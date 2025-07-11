@@ -201,6 +201,7 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
               columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE;
           memoryBinaryChunkSize[i] +=
@@ -300,6 +301,7 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           Binary valueT = ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
           vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.TEXT, valueT);
           break;
@@ -361,6 +363,7 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           columnValue.add(getPrimitiveArraysByType(TSDataType.TEXT));
           break;
         case FLOAT:
@@ -640,6 +643,7 @@ public abstract class AlignedTVList extends TVList {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         Binary[] valueT = (Binary[]) value;
         Binary[] cloneT = new Binary[valueT.length];
         System.arraycopy(valueT, 0, cloneT, 0, valueT.length);
@@ -834,6 +838,7 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           Binary[] arrayT = ((Binary[]) columnValues.get(arrayIndex));
           System.arraycopy(value[i], idx, arrayT, elementIndex, remaining);
 
@@ -1122,6 +1127,7 @@ public abstract class AlignedTVList extends TVList {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             valueBuilder.writeBinary(getBinaryByValueIndex(originRowIndex, columnIndex));
             break;
           default:
@@ -1199,6 +1205,7 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
             size += ReadWriteIOUtils.sizeToWrite(getBinaryByValueIndex(rowIdx, columnIndex));
           }
@@ -1259,6 +1266,7 @@ public abstract class AlignedTVList extends TVList {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             Binary valueT = ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
             // In some scenario, the Binary in AlignedTVList will be null if this field is empty in
             // current row. We need to handle this scenario to get rid of NPE. See the similar issue
@@ -1338,6 +1346,7 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           Binary[] binaryValues = new Binary[rowCount];
           for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
             binaryValues[rowIndex] = ReadWriteIOUtils.readBinary(stream);
@@ -1725,6 +1734,7 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           return TsPrimitiveType.getByType(
               TSDataType.TEXT, getBinaryByValueIndex(valueIndex, validColumnIndex));
         default:
@@ -1889,6 +1899,7 @@ public abstract class AlignedTVList extends TVList {
             case TEXT:
             case BLOB:
             case STRING:
+            case OBJECT:
               valueBuilder.writeBinary(getBinaryByValueIndex(originRowIndex, validColumnIndex));
               break;
             default:
@@ -2060,6 +2071,7 @@ public abstract class AlignedTVList extends TVList {
             case TEXT:
             case BLOB:
             case STRING:
+            case OBJECT:
               valueChunkWriter.write(
                   time,
                   isNull ? null : getBinaryByValueIndex(originRowIndex, validColumnIndex),

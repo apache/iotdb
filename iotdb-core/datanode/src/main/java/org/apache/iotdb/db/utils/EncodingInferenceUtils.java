@@ -51,6 +51,7 @@ public class EncodingInferenceUtils {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         return conf.getDefaultTextEncoding();
       default:
         throw new UnSupportedDataTypeException(

@@ -23,8 +23,11 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TTableDeviceLeaderResp;
 
 import org.apache.tsfile.write.record.Tablet;
+
+import java.util.List;
 
 public class TableSession implements ITableSession {
 
@@ -37,6 +40,14 @@ public class TableSession implements ITableSession {
   @Override
   public void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException {
     session.insertRelationalTablet(tablet);
+  }
+
+  @Override
+  public String getDeviceLeaderURL(
+      String dbName, List<String> deviceId, List<Boolean> isSetTag, long time)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TTableDeviceLeaderResp resp = session.fetchDeviceLeader(dbName, deviceId, isSetTag, time);
+    return resp.getIp() + ":" + resp.getPort();
   }
 
   @Override

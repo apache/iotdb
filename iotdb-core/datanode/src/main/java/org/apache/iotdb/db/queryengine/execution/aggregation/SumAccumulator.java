@@ -57,6 +57,7 @@ public class SumAccumulator implements Accumulator {
         return;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case TIMESTAMP:
       case DATE:

@@ -658,6 +658,7 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case DATE:
       case STRING:
       case BOOLEAN:

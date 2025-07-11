@@ -494,6 +494,9 @@ public class IoTDBRpcDataSet {
             .getColumn(tsBlockColumnIndex)
             .getBinary(tsBlockIndex)
             .getStringValue(TSFileConfig.STRING_CHARSET);
+      case OBJECT:
+        return BytesUtils.parseObjectByteArrayToString(
+            curTsBlock.getColumn(tsBlockColumnIndex).getBinary(tsBlockIndex).getValues());
       case BLOB:
         return BytesUtils.parseBlobByteArrayToString(
             curTsBlock.getColumn(tsBlockColumnIndex).getBinary(tsBlockIndex).getValues());
@@ -554,6 +557,9 @@ public class IoTDBRpcDataSet {
             .getColumn(index)
             .getBinary(tsBlockIndex)
             .getStringValue(TSFileConfig.STRING_CHARSET);
+      case OBJECT:
+        return BytesUtils.parseObjectByteArrayToString(
+            curTsBlock.getColumn(index).getBinary(tsBlockIndex).getValues());
       case BLOB:
         return BytesUtils.parseBlobByteArrayToString(
             curTsBlock.getColumn(index).getBinary(tsBlockIndex).getValues());

@@ -497,6 +497,7 @@ public class AggregateProcessor implements PipeProcessor {
                       timestamp, row.getString(index), outputMinReportIntervalMilliseconds);
               break;
             case BLOB:
+            case OBJECT:
               result =
                   state.updateWindows(
                       timestamp, row.getBinary(index), outputMinReportIntervalMilliseconds);
@@ -684,6 +685,7 @@ public class AggregateProcessor implements PipeProcessor {
                 break;
               case TEXT:
               case BLOB:
+              case OBJECT:
               case STRING:
                 valueColumns[columnIndex] = new Binary[distinctOutputs.size()];
                 break;
@@ -733,6 +735,7 @@ public class AggregateProcessor implements PipeProcessor {
                           TSFileConfig.STRING_CHARSET);
               break;
             case BLOB:
+            case OBJECT:
               ((Binary[]) valueColumns[columnIndex])[rowIndex] =
                   (Binary) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
               break;

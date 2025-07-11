@@ -64,6 +64,7 @@ public class MinValueAccumulator implements Accumulator {
         return;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -98,6 +99,7 @@ public class MinValueAccumulator implements Accumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -130,6 +132,7 @@ public class MinValueAccumulator implements Accumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -164,6 +167,7 @@ public class MinValueAccumulator implements Accumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -199,6 +203,7 @@ public class MinValueAccumulator implements Accumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -232,6 +237,7 @@ public class MinValueAccumulator implements Accumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(

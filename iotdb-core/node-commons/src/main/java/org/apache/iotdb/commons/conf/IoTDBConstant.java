@@ -248,6 +248,7 @@ public class IoTDBConstant {
   public static final String DATA_FOLDER_NAME = "data";
   public static final String SEQUENCE_FOLDER_NAME = "sequence";
   public static final String UNSEQUENCE_FOLDER_NAME = "unsequence";
+  public static final String OBJECT_FOLDER_NAME = "object";
   public static final String FILE_NAME_SEPARATOR = "-";
   public static final String CONSENSUS_FOLDER_NAME = "consensus";
   public static final String DATA_REGION_FOLDER_NAME = "data_region";

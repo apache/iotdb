@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.slf4j.Logger;
@@ -165,6 +166,20 @@ public class TsFileNameGenerator {
     } else {
       throw new IOException("tsfile file name format is incorrect:" + fileName);
     }
+  }
+
+  public static String generateObjectFilePath(int regionId, long time, IDeviceID iDeviceID) {
+    String objectFileName = time + ".bin";
+    Object[] segments = iDeviceID.getSegments();
+    StringBuilder relativePathString =
+        new StringBuilder(String.valueOf(regionId)).append(File.separator);
+    for (Object segment : segments) {
+      relativePathString
+          .append(segment == null ? "null" : segment.toString().toLowerCase())
+          .append(File.separator);
+    }
+    relativePathString.append(objectFileName);
+    return relativePathString.toString();
   }
 
   @TestOnly

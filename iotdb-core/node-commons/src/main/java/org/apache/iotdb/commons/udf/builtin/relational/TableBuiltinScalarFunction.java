@@ -67,6 +67,7 @@ public enum TableBuiltinScalarFunction {
   FORMAT("format"),
   GREATEST("greatest"),
   LEAST("least"),
+  READ_OBJECT("read_object"),
   ;
 
   private final String functionName;

@@ -92,6 +92,7 @@ public class ConstantInputReader implements LayerReader {
         cachedColumns[0] = new RunLengthEncodedColumn(booleanColumn, count);
         break;
       case BLOB:
+      case OBJECT:
       case STRING:
       case TIMESTAMP:
       case DATE:
