@@ -269,6 +269,45 @@ public class PipeDescriptor {
                 "pipe_total_floating_memory_proportion",
                 String.valueOf(config.getPipeTotalFloatingMemoryProportion()))));
 
+    config.setIsPipeEnableMemoryChecked(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_enable_memory_checked", String.valueOf(config.isPipeEnableMemoryChecked()))));
+    config.setPipeInsertNodeQueueMemory(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_insert_node_queue_memory",
+                String.valueOf(config.getPipeInsertNodeQueueMemory()))));
+    config.setPipeTsFileParserMemory(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_tsfile_parser_memory", String.valueOf(config.getPipeTsFileParserMemory()))));
+    config.setPipeSinkBatchMemoryInsertNode(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_sink_batch_memory_insert_node",
+                String.valueOf(config.getPipeSinkBatchMemoryInsertNode()))));
+    config.setPipeSinkBatchMemoryTsFile(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_sink_batch_memory_ts_file",
+                String.valueOf(config.getPipeSinkBatchMemoryTsFile()))));
+    config.setPipeSendTsFileReadBuffer(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_send_tsfile_read_buffer",
+                String.valueOf(config.getPipeSendTsFileReadBuffer()))));
+    config.setPipeReservedMemoryPercentage(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_reserved_memory_percentage",
+                String.valueOf(config.getPipeReservedMemoryPercentage()))));
+    config.setPipeMinimumReceiverMemory(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_minimum_receiver_memory",
+                String.valueOf(config.getPipeMinimumReceiverMemory()))));
+
     config.setPipeRealTimeQueuePollTsFileThreshold(
         Integer.parseInt(
             Optional.ofNullable(

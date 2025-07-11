@@ -659,4 +659,8 @@ public class PipeMemoryManager {
   public static long getTotalFloatingMemorySizeInBytes() {
     return (long) (TOTAL_MEMORY_SIZE_IN_BYTES * FLOATING_MEMORY_RATIO);
   }
+
+  public static long getTotalMemorySizeInBytes() {
+    return TOTAL_MEMORY_SIZE_IN_BYTES;
+  }
 }
