@@ -22,7 +22,9 @@ package org.apache.iotdb.db.pipe.metric.overview;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALInsertNodeCache;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingTimer;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -32,6 +34,7 @@ import org.slf4j.LoggerFactory;
 public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeWALInsertNodeCacheMetrics.class);
+  public Timer LoadWALTimer = new DoNothingTimer();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -41,17 +44,35 @@ public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
         Metric.PIPE_WAL_INSERT_NODE_CACHE_HIT_RATE.toString(),
         MetricLevel.IMPORTANT,
         WALInsertNodeCache.getInstance(),
-        WALInsertNodeCache::getCacheHitRate);
+        WALInsertNodeCache::getInsertNodeCacheHitRate);
     metricService.createAutoGauge(
         Metric.PIPE_WAL_INSERT_NODE_CACHE_HIT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         WALInsertNodeCache.getInstance(),
-        WALInsertNodeCache::getCacheHitCount);
+        WALInsertNodeCache::getInsertNodeCacheHitCount);
     metricService.createAutoGauge(
         Metric.PIPE_WAL_INSERT_NODE_CACHE_REQUEST_COUNT.toString(),
         MetricLevel.IMPORTANT,
         WALInsertNodeCache.getInstance(),
-        WALInsertNodeCache::getCacheRequestCount);
+        WALInsertNodeCache::getInsertNodeCacheRequestCount);
+    metricService.createAutoGauge(
+        Metric.PIPE_WAL_BUFFER_CACHE_HIT_RATE.toString(),
+        MetricLevel.IMPORTANT,
+        WALInsertNodeCache.getInstance(),
+        WALInsertNodeCache::getBufferCacheHitRate);
+    metricService.createAutoGauge(
+        Metric.PIPE_WAL_BUFFER_CACHE_HIT_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        WALInsertNodeCache.getInstance(),
+        WALInsertNodeCache::getBufferCacheHitCount);
+    metricService.createAutoGauge(
+        Metric.PIPE_WAL_BUFFER_CACHE_REQUEST_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        WALInsertNodeCache.getInstance(),
+        WALInsertNodeCache::getBufferCacheRequestCount);
+    LoadWALTimer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_LOAD_WAL_TIMER.toString(), MetricLevel.IMPORTANT);
   }
 
   @Override
@@ -62,6 +83,11 @@ public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE, Metric.PIPE_WAL_INSERT_NODE_CACHE_HIT_COUNT.toString());
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.PIPE_WAL_INSERT_NODE_CACHE_REQUEST_COUNT.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_WAL_BUFFER_CACHE_HIT_RATE.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_WAL_BUFFER_CACHE_HIT_COUNT.toString());
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.PIPE_WAL_BUFFER_CACHE_REQUEST_COUNT.toString());
+    metricService.remove(MetricType.TIMER, Metric.PIPE_LOAD_WAL_TIMER.toString());
   }
 
   //////////////////////////// singleton ////////////////////////////
