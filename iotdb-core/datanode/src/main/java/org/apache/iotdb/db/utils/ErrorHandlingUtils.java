@@ -111,7 +111,8 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
             || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()) {
+            || status.getCode() == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()
+            || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()) {
           LOGGER.info(message);
         } else {
           LOGGER.warn(message, e);
