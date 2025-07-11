@@ -299,15 +299,19 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       client.resetMethodStateIfStopped();
       throw e;
     } finally {
-      client.setShouldReturnSelf(true);
       if (isClosed) {
         try {
           client.close();
           client.invalidateAll();
         } catch (final Exception e) {
-          LOGGER.warn("111");
+          LOGGER.warn(
+              "Failed to close client {}:{} after handshake failure when the manager is closed.",
+              targetNodeUrl.getIp(),
+              targetNodeUrl.getPort(),
+              e);
         }
       }
+      client.setShouldReturnSelf(true);
       client.returnSelf();
     }
 

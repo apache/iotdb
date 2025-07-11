@@ -72,14 +72,12 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
-    LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, constructor", id);
   }
 
   @Override
   public void onComplete() {
     super.onComplete();
     returnSelf();
-    LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, onComplete", id);
   }
 
   @Override
@@ -87,22 +85,18 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     super.onError(e);
     ThriftClient.resolveException(e, this);
     returnSelf();
-    LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, onError", id, e);
   }
 
   @Override
   public void invalidate() {
     if (!hasError()) {
       super.onError(new Exception(String.format("This client %d has been invalidated", id)));
-      LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, invalidate 1", id);
     }
-    LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, invalidate 2", id, new Exception());
   }
 
   @Override
   public void invalidateAll() {
     clientManager.clear(endpoint);
-    LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, invalidateAll", id, new Exception());
   }
 
   @Override
@@ -116,14 +110,8 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
    */
   public void returnSelf() {
     if (shouldReturnSelf.get()) {
-      if (clientManager.isClosed()) {
-        this.close();
-        this.invalidateAll();
-      }
       clientManager.returnClient(endpoint, this);
-      LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, returnSelf 1", id);
     }
-    LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, returnSelf 2", id);
   }
 
   public void setShouldReturnSelf(final boolean shouldReturnSelf) {
@@ -179,13 +167,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
       if (___transport != null && ___transport.isOpen()) {
         ___transport.close();
         LOGGER.warn("Manually closing transport to prevent resource leakage.");
-        LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, resetMethodState 1", id);
       }
       ___currentMethod = null;
       LOGGER.info("Method state has been reset due to manager not running.");
-      LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, resetMethodState 2", id);
     }
-    LOGGER.warn("AsyncPipeDataTransferServiceClient id = {}, resetMethodState 3", id);
   }
 
   public String getIp() {

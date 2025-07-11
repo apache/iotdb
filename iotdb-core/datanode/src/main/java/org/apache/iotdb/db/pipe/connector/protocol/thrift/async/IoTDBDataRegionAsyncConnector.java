@@ -74,6 +74,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -431,15 +432,34 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private void transfer(final PipeTransferTsFileHandler pipeTransferTsFileHandler)
       throws Exception {
     transferTsFileCounter.incrementAndGet();
-    AsyncPipeDataTransferServiceClient client = null;
-    try {
-      client = transferTsFileClientManager.borrowClient();
-      pipeTransferTsFileHandler.transfer(transferTsFileClientManager, client);
-    } catch (final Exception ex) {
-      logOnClientException(client, ex);
-      pipeTransferTsFileHandler.onError(ex);
-    } finally {
-      transferTsFileCounter.decrementAndGet();
+    CompletableFuture<Void> completableFuture =
+        CompletableFuture.supplyAsync(
+            () -> {
+              AsyncPipeDataTransferServiceClient client = null;
+              try {
+                client = transferTsFileClientManager.borrowClient();
+                pipeTransferTsFileHandler.transfer(transferTsFileClientManager, client);
+              } catch (final Exception ex) {
+                logOnClientException(client, ex);
+                pipeTransferTsFileHandler.onError(ex);
+              } finally {
+                transferTsFileCounter.decrementAndGet();
+              }
+              return null;
+            },
+            executor);
+
+    if (PipeConfig.getInstance().isTransferTsFileSync()) {
+      try {
+        completableFuture.get();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.error("Transfer tsfile event asynchronously was interrupted.", e);
+        throw new PipeException("Transfer tsfile event asynchronously was interrupted.", e);
+      } catch (Exception e) {
+        LOGGER.error("Failed to transfer tsfile event asynchronously.", e);
+        throw e;
+      }
     }
   }
 
