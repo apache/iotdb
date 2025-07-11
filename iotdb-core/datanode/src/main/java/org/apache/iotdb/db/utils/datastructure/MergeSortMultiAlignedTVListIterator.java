@@ -272,6 +272,7 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
             break;
           case TEXT:
           case BLOB:
+          case OBJECT:
           case STRING:
             valueChunkWriter.write(
                 currentTime,

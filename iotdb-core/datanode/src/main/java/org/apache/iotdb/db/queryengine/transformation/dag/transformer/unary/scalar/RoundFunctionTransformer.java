@@ -67,6 +67,7 @@ public class RoundFunctionTransformer extends UnaryTransformer {
       case STRING:
       case TEXT:
       case BLOB:
+      case OBJECT:
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported source dataType: %s", layerReaderDataType));

@@ -66,6 +66,7 @@ import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
@@ -1078,6 +1079,20 @@ public class TableMetadataImpl implements Metadata {
                 functionName));
       }
       return BLOB;
+    } else if (TableBuiltinScalarFunction.READ_OBJECT
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.isEmpty()
+          || argumentTypes.size() > 3
+          || !isObjectType(argumentTypes.get(0))
+          || (argumentTypes.size() >= 2 && !isIntegerNumber(argumentTypes.get(1)))
+          || (argumentTypes.size() >= 3 && !isIntegerNumber(argumentTypes.get(2)))) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " must have at 1~3 arguments, and first argument must be OBJECT type, other arguments must be int32 or int64 type");
+      }
+      return BLOB;
     }
 
     // builtin aggregation function
@@ -1514,6 +1529,10 @@ public class TableMetadataImpl implements Metadata {
 
   public static boolean isCharType(Type type) {
     return TEXT.equals(type) || StringType.STRING.equals(type);
+  }
+
+  public static boolean isObjectType(Type type) {
+    return ObjectType.OBJECT.equals(type);
   }
 
   public static boolean isBlobType(Type type) {

@@ -1206,6 +1206,7 @@ public class IoTDBConfig {
   private ConcurrentHashMap<String, EncryptParameter> tsFileDBToEncryptMap =
       new ConcurrentHashMap<>(
           Collections.singletonMap("root.__audit", new EncryptParameter("UNENCRYPTED", null)));
+  private long maxObjectSizeInByte = 4 * 1024 * 1024 * 1024L;
 
   IoTDBConfig() {}
 
@@ -4325,5 +4326,13 @@ public class IoTDBConfig {
 
   public ConcurrentHashMap<String, EncryptParameter> getTSFileDBToEncryptMap() {
     return tsFileDBToEncryptMap;
+  }
+
+  public long getMaxObjectSizeInByte() {
+    return maxObjectSizeInByte;
+  }
+
+  public void setMaxObjectSizeInByte(long maxObjectSizeInByte) {
+    this.maxObjectSizeInByte = maxObjectSizeInByte;
   }
 }

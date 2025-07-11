@@ -111,6 +111,7 @@ public enum TableBuiltinScalarFunction {
   SPOOKY_HASH_V2_64("spooky_hash_v2_64"),
   LPAD("lpad"),
   RPAD("rpad"),
+  READ_OBJECT("read_object"),
   ;
 
   private final String functionName;

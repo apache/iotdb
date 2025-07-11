@@ -52,6 +52,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -160,7 +161,10 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
         // add into queue
         chunkMetadataQueue.add(
             new ChunkMetadataElement(
-                chunkMetadata, i == iChunkMetadataList.size() - 1, fileElement));
+                chunkMetadata,
+                i == iChunkMetadataList.size() - 1,
+                fileElement,
+                Collections.emptyList()));
       }
     }
   }
