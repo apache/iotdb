@@ -419,7 +419,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             },
             executor);
 
-    if (PipeConfig.getInstance().isTransferTsFileSync()) {
+    if (PipeConfig.getInstance().isTransferTsFileSync() || !isRealtimeFirst) {
       try {
         completableFuture.get();
       } catch (InterruptedException e) {
