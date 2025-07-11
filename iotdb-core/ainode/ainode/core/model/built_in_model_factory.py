@@ -103,7 +103,7 @@ def get_model_attributes(model_type: BuiltInModelType):
         attribute_map = naive_forecaster_attribute_map
     elif (
         model_type == BuiltInModelType.EXPONENTIAL_SMOOTHING
-        or model_type == BuiltInModelType.HOLTWINTERS.value
+        or model_type == BuiltInModelType.HOLTWINTERS
     ):
         attribute_map = exponential_smoothing_attribute_map
     elif model_type == BuiltInModelType.STL_FORECASTER:

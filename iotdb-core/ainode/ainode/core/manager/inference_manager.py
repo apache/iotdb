@@ -84,7 +84,7 @@ class SundialStrategy(InferenceStrategy):
 
 
 class BuiltInStrategy(InferenceStrategy):
-    def infer(self, full_data):
+    def infer(self, full_data, **_):
         data = pd.DataFrame(full_data[1]).T
         output = self.model.inference(data)
         df = pd.DataFrame(output)
@@ -92,7 +92,7 @@ class BuiltInStrategy(InferenceStrategy):
 
 
 class RegisteredStrategy(InferenceStrategy):
-    def infer(self, full_data, window_interval=None, window_step=None, **kwargs):
+    def infer(self, full_data, window_interval=None, window_step=None, **_):
         _, dataset, _, length = full_data
         if window_interval is None or window_step is None:
             window_interval = length
@@ -130,7 +130,7 @@ class InferenceManager:
             return TimerXLStrategy(model)
         if isinstance(model, SundialForPrediction):
             return SundialStrategy(model)
-        if self.model_manager.model_storage._is_built_in(model_id):
+        if self.model_manager.model_storage._is_built_in_or_fine_tuned(model_id):
             return BuiltInStrategy(model)
         return RegisteredStrategy(model)
 
@@ -159,7 +159,7 @@ class InferenceManager:
 
             # inference by strategy
             strategy = self._get_strategy(model_id, model)
-            outputs = strategy.infer(full_data)
+            outputs = strategy.infer(full_data, **inference_attrs)
 
             # construct response
             status = get_status(TSStatusCode.SUCCESS_STATUS)

@@ -44,6 +44,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.TimeUnit;
 
@@ -147,7 +148,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
       return;
     }
 
-    if (calculateAggregationResultForCurrentTimeRange()) {
+    Optional<Boolean> b = calculateAggregationResultForCurrentTimeRange();
+    if (b.isPresent() && b.get()) {
       timeIterator.resetCurTimeRange();
     }
   }

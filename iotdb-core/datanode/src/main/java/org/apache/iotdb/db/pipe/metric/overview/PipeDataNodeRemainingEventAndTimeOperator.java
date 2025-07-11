@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
+public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   // Calculate from schema region extractors directly for it requires less computation
   private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
@@ -105,6 +105,22 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   double getRemainingInsertEventSmoothingCount() {
     insertNodeEventCountEMA.update(insertNodeEventCount.get());
     return insertNodeEventCountEMA.insertNodeEMAValue;
+  }
+
+  public long getRemainingNonHeartbeatEvents() {
+    final long remainingEvents =
+        tsfileEventCount.get()
+            + rawTabletEventCount.get()
+            + insertNodeEventCount.get()
+            + schemaRegionExtractors.stream()
+                .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
+                .reduce(Long::sum)
+                .orElse(0L);
+
+    // There are cases where the indicator is negative. For example, after the Pipe is restarted,
+    // the Processor SubTask is still collecting Events, resulting in a negative count. This
+    // situation cannot be avoided because the Pipe may be restarted internally.
+    return remainingEvents >= 0 ? remainingEvents : 0;
   }
 
   long getRemainingEvents() {

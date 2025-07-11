@@ -436,7 +436,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
               AsyncPipeDataTransferServiceClient client = null;
               try {
                 client = transferTsFileClientManager.borrowClient();
-                pipeTransferTsFileHandler.transfer(clientManager, client);
+                pipeTransferTsFileHandler.transfer(transferTsFileClientManager, client);
               } catch (final Exception ex) {
                 logOnClientException(client, ex);
                 pipeTransferTsFileHandler.onError(ex);
