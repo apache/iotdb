@@ -351,6 +351,7 @@ public class SeriesScanUtil implements Accountable {
         }
       }
       initFirstChunkMetadata();
+      // filter chunk based on push-down conditions
       filterFirstChunkMetadata();
     }
     return Optional.of(firstChunkMetadata != null);

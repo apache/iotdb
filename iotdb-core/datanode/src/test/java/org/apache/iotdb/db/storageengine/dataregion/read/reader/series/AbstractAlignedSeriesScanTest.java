@@ -434,6 +434,4 @@ public abstract class AbstractAlignedSeriesScanTest {
     BloomFilterCache.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
   }
-
-  protected void assertWithOptionalReturnValue() {}
 }
