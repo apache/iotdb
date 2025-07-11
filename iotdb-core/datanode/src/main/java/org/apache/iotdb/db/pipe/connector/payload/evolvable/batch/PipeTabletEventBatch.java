@@ -129,10 +129,13 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     final long diff = System.currentTimeMillis() - firstEventProcessingTime;
     if (totalBufferSize >= getMaxBatchSizeInBytes() || diff >= maxDelayInMs) {
       allocatedMemoryBlock.updateCurrentMemoryEfficiencyAdjustMem((double) diff / maxDelayInMs);
+      recordMetric(diff, totalBufferSize);
       return true;
     }
     return false;
   }
+
+  protected abstract void recordMetric(final long timeInterval, final long bufferSize);
 
   private long getMaxBatchSizeInBytes() {
     return allocatedMemoryBlock.getMemoryUsageInBytes();

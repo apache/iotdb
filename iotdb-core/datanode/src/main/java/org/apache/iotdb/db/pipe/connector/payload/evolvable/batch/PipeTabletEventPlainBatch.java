@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -68,6 +69,12 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         (pipeName, bytesAccumulated) ->
             bytesAccumulated == null ? bufferSize : bytesAccumulated + bufferSize);
     return true;
+  }
+
+  @Override
+  protected void recordMetric(long timeInterval, long bufferSize) {
+    PipeDataRegionConnectorMetrics.tabletBatchTimeIntervalHistogram.update(timeInterval);
+    PipeDataRegionConnectorMetrics.tabletBatchSizeHistogram.update(bufferSize);
   }
 
   @Override
