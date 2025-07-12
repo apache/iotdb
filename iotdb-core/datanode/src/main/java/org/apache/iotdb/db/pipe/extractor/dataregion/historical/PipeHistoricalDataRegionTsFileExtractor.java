@@ -267,10 +267,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
-
-    // progressIndex is immutable in `updateToMinimumEqualOrIsAfterProgressIndex`, so data
-    // consistency in `environment.getPipeTaskMeta().getProgressIndex()` is ensured.
-    startIndex = environment.getPipeTaskMeta().restoreProgressIndex();
+    startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
     dataRegionId = environment.getRegionId();
     synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
