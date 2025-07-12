@@ -41,7 +41,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
-import java.util.function.Consumer;
 
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
@@ -221,9 +220,10 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         floatingMemoryUsageInByte * pipeCount >= totalFloatingMemorySizeInBytes;
     if (mayInsertNodeMemoryReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
       LOGGER.info(
-          "Pipe task {}@{} canNotUseTabletAnyMore(1): The memory usage of the insert node {} has reached the dangerous threshold {}",
+          "Pipe task {}@{} canNotUseTabletAnyMore(1) for tsFile {}: The memory usage of the insert node {} has reached the dangerous threshold {}",
           pipeName,
           dataRegionId,
+          event.getTsFileEpoch().getFilePath(),
           floatingMemoryUsageInByte * pipeCount,
           totalFloatingMemorySizeInBytes);
     }
@@ -258,9 +258,10 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                 >= PipeConfig.getInstance().getPipeMaxAllowedHistoricalTsFilePerDataRegion();
     if (isHistoricalTsFileEventCountExceededLimit && event.mayExtractorUseTablets(this)) {
       LOGGER.info(
-          "Pipe task {}@{} canNotUseTabletAnymoreDeprecated(1): The number of historical tsFile events {} has exceeded the limit {}",
+          "Pipe task {}@{} canNotUseTabletAnymoreDeprecated(1) for tsFile {}: The number of historical tsFile events {} has exceeded the limit {}",
           pipeName,
           dataRegionId,
+          event.getTsFileEpoch().getFilePath(),
           extractor.getHistoricalTsFileInsertionEventCount(),
           PipeConfig.getInstance().getPipeMaxAllowedHistoricalTsFilePerDataRegion());
     }
@@ -277,9 +278,10 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
             >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
     if (isRealtimeTsFileEventCountExceededLimit && event.mayExtractorUseTablets(this)) {
       LOGGER.info(
-          "Pipe task {}@{} canNotUseTabletAnymoreDeprecated(2): The number of realtime tsFile events {} has exceeded the limit {}",
+          "Pipe task {}@{} canNotUseTabletAnymoreDeprecated(2) for tsFile {}: The number of realtime tsFile events {} has exceeded the limit {}",
           pipeName,
           dataRegionId,
+          event.getTsFileEpoch().getFilePath(),
           pendingQueue.getTsFileInsertionEventCount(),
           PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
     }
@@ -295,9 +297,10 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
             >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
     if (mayTsFileLinkedCountReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
       LOGGER.info(
-          "Pipe task {}@{} canNotUseTabletAnymoreDeprecated(3): The number of linked tsFiles {} has reached the dangerous threshold {}",
+          "Pipe task {}@{} canNotUseTabletAnymoreDeprecated(3) for tsFile {}: The number of linked tsFiles {} has reached the dangerous threshold {}",
           pipeName,
           dataRegionId,
+          event.getTsFileEpoch().getFilePath(),
           PipeDataNodeResourceManager.tsfile().getLinkedTsFileCount(pipeName),
           PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount());
     }
