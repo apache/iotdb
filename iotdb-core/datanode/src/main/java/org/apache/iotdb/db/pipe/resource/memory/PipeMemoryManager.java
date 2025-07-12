@@ -657,4 +657,8 @@ public class PipeMemoryManager {
   public long getTotalFloatingMemorySizeInBytes() {
     return (long) (memoryBlock.getTotalMemorySizeInBytes() * FLOATING_MEMORY_RATIO);
   }
+
+  public long getTotalMemorySizeInBytes() {
+    return memoryBlock.getTotalMemorySizeInBytes();
+  }
 }

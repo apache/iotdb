@@ -467,6 +467,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
+    dnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);
+    cnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);
+    return this;
+  }
+
+  @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     dnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
     cnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
