@@ -62,8 +62,7 @@ public class PipeConfigNodeSubtaskExecutorTest {
                         BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName());
                   }
                 },
-                new PipeTaskMeta(
-                    MinimumProgressIndex.INSTANCE, Integer.MIN_VALUE, Integer.MIN_VALUE, false)));
+                new PipeTaskMeta(MinimumProgressIndex.INSTANCE, Integer.MIN_VALUE)));
   }
 
   @After

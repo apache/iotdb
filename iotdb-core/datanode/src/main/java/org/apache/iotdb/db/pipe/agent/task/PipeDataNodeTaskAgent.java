@@ -848,11 +848,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Shutdown Logic /////////////////////////
 
   public void persistAllProgressIndex() {
-    persistAllProgressIndexLocally();
-    persistAllProgressIndex2ConfigNode();
-  }
-
-  private void persistAllProgressIndex2ConfigNode() {
     try (final ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
@@ -868,28 +863,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       }
     } catch (final Exception e) {
       LOGGER.warn(e.getMessage());
-    }
-  }
-
-  private void persistAllProgressIndexLocally() {
-    if (!PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()) {
-      LOGGER.info(
-          "Pipe progress index persist disabled. Skipping persist all progress index locally.");
-      return;
-    }
-    if (!tryReadLockWithTimeOut(10)) {
-      LOGGER.info("Failed to persist all progress index locally because of timeout.");
-      return;
-    }
-    try {
-      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
-        pipeMeta.getRuntimeMeta().persistProgressIndex();
-      }
-      LOGGER.info("Persist all progress index locally successfully.");
-    } catch (final Exception e) {
-      LOGGER.warn("Failed to record all progress index locally, because {}.", e.getMessage(), e);
-    } finally {
-      releaseReadLock();
     }
   }
 
