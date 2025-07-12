@@ -220,23 +220,14 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     final boolean mayInsertNodeMemoryReachDangerousThreshold =
         floatingMemoryUsageInByte * pipeCount >= totalFloatingMemorySizeInBytes;
     if (mayInsertNodeMemoryReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
-      logByLogManager(
-          l ->
-              l.info(
-                  "Pipe task {}@{} canNotUseTabletAnyMore(1): The memory usage of the insert node {} has reached the dangerous threshold {}",
-                  pipeName,
-                  dataRegionId,
-                  floatingMemoryUsageInByte * pipeCount,
-                  totalFloatingMemorySizeInBytes));
+      LOGGER.info(
+          "Pipe task {}@{} canNotUseTabletAnyMore(1): The memory usage of the insert node {} has reached the dangerous threshold {}",
+          pipeName,
+          dataRegionId,
+          floatingMemoryUsageInByte * pipeCount,
+          totalFloatingMemorySizeInBytes);
     }
     return mayInsertNodeMemoryReachDangerousThreshold;
-  }
-
-  private void logByLogManager(final Consumer<Logger> infoFunction) {
-    PipeDataNodeResourceManager.log()
-        .schedule(
-            PipeRealtimeDataRegionHybridExtractor.class, getTaskID(), Integer.MAX_VALUE, 100, 1)
-        .ifPresent(infoFunction);
   }
 
   /**
