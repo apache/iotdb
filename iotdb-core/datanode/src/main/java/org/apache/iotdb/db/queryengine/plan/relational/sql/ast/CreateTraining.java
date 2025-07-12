@@ -72,20 +72,20 @@ public class CreateTraining extends Statement {
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(modelId, targetSql, existingModelId, parameters);
+  public boolean equals(Object o) {
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    CreateTraining that = (CreateTraining) o;
+    return Objects.equals(modelId, that.modelId)
+        && Objects.equals(targetSql, that.targetSql)
+        && Objects.equals(parameters, that.parameters)
+        && Objects.equals(existingModelId, that.existingModelId);
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof CreateTraining)) {
-      return false;
-    }
-    CreateTraining createTraining = (CreateTraining) obj;
-    return modelId.equals(createTraining.modelId)
-        && Objects.equals(existingModelId, createTraining.existingModelId)
-        && Objects.equals(parameters, createTraining.parameters)
-        && Objects.equals(targetSql, createTraining.targetSql);
+  public int hashCode() {
+    return Objects.hash(modelId, targetSql, parameters, existingModelId);
   }
 
   @Override
@@ -94,13 +94,14 @@ public class CreateTraining extends Statement {
         + "modelId='"
         + modelId
         + '\''
+        + ", targetSql='"
+        + targetSql
+        + '\''
         + ", parameters="
         + parameters
         + ", existingModelId='"
         + existingModelId
         + '\''
-        + ", targetSql='"
-        + targetSql
         + '}';
   }
 }

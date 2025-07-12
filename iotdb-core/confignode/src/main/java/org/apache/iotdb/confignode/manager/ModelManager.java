@@ -82,7 +82,7 @@ public class ModelManager {
 
   public TSStatus dropModel(TDropModelReq req) {
     if (modelInfo.checkModelType(req.getModelId()) != ModelType.USER_DEFINED) {
-      return new TSStatus(TSStatusCode.MODEL_EXIST_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.DROP_MODEL_ERROR.getStatusCode())
           .setMessage(String.format("Built-in model %s can't be removed", req.modelId));
     }
     if (!modelInfo.contain(req.modelId)) {
