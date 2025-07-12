@@ -93,21 +93,6 @@ public class PipeDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
-    config.setPipeProgressIndexPersistEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "pipe_progress_index_persist_enabled",
-                String.valueOf(config.isPipeProgressIndexPersistEnabled()))));
-    config.setPipeProgressIndexPersistCheckPointGap(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_progress_index_persist_check_point_gap",
-                String.valueOf(config.getPipeProgressIndexPersistCheckPointGap()))));
-    config.setPipeProgressIndexFlushIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_progress_index_flush_interval_ms",
-                String.valueOf(config.getPipeProgressIndexFlushIntervalMs()))));
 
     config.setPipeAirGapReceiverEnabled(
         Boolean.parseBoolean(

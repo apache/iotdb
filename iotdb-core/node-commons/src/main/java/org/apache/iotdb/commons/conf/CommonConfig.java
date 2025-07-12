@@ -199,8 +199,6 @@ public class CommonConfig {
 
   private String pipeHardlinkTsFileDirName = "tsfile";
 
-  private String pipeProgressIndexPersistDirName = "progress";
-
   private boolean pipeFileReceiverFsyncEnabled = true;
 
   private int pipeRealTimeQueuePollTsFileThreshold = 10;
@@ -290,9 +288,6 @@ public class CommonConfig {
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
   private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 1;
   private boolean pipeAutoRestartEnabled = true;
-  private boolean pipeProgressIndexPersistEnabled = true;
-  private long pipeProgressIndexPersistCheckPointGap = 20;
-  private long pipeProgressIndexFlushIntervalMs = 20 * 1000L;
 
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
@@ -759,18 +754,6 @@ public class CommonConfig {
     }
     this.pipeHardlinkTsFileDirName = pipeTsFileDirName;
     logger.info("pipeHardlinkTsFileDirName is set to {}.", pipeTsFileDirName);
-  }
-
-  public String getPipeProgressIndexPersistDirName() {
-    return pipeProgressIndexPersistDirName;
-  }
-
-  public void setPipeProgressIndexPersistDirName(String pipeProgressIndexPersistDirName) {
-    if (Objects.equals(this.pipeProgressIndexPersistDirName, pipeProgressIndexPersistDirName)) {
-      return;
-    }
-    this.pipeProgressIndexPersistDirName = pipeProgressIndexPersistDirName;
-    logger.info("pipeProgressIndexPersistDir is set to {}.", pipeProgressIndexPersistDirName);
   }
 
   public boolean getPipeFileReceiverFsyncEnabled() {
@@ -1288,44 +1271,6 @@ public class CommonConfig {
     }
     this.pipeAutoRestartEnabled = pipeAutoRestartEnabled;
     logger.info("pipeAutoRestartEnabled is set to {}.", pipeAutoRestartEnabled);
-  }
-
-  public boolean isPipeProgressIndexPersistEnabled() {
-    return pipeProgressIndexPersistEnabled;
-  }
-
-  public void setPipeProgressIndexPersistEnabled(boolean pipeProgressIndexPersistEnabled) {
-    if (this.pipeProgressIndexPersistEnabled == pipeProgressIndexPersistEnabled) {
-      return;
-    }
-    this.pipeProgressIndexPersistEnabled = pipeProgressIndexPersistEnabled;
-    logger.info("pipeProgressIndexPersistEnabled is set to {}.", pipeProgressIndexPersistEnabled);
-  }
-
-  public long getPipeProgressIndexPersistCheckPointGap() {
-    return pipeProgressIndexPersistCheckPointGap;
-  }
-
-  public void setPipeProgressIndexPersistCheckPointGap(long pipeProgressIndexPersistCheckPointGap) {
-    if (this.pipeProgressIndexPersistCheckPointGap == pipeProgressIndexPersistCheckPointGap) {
-      return;
-    }
-    this.pipeProgressIndexPersistCheckPointGap = pipeProgressIndexPersistCheckPointGap;
-    logger.info(
-        "pipeProgressIndexPersistCheckPointGap is set to {}.",
-        pipeProgressIndexPersistCheckPointGap);
-  }
-
-  public long getPipeProgressIndexFlushIntervalMs() {
-    return pipeProgressIndexFlushIntervalMs;
-  }
-
-  public void setPipeProgressIndexFlushIntervalMs(long pipeProgressIndexFlushIntervalMs) {
-    if (this.pipeProgressIndexFlushIntervalMs == pipeProgressIndexFlushIntervalMs) {
-      return;
-    }
-    this.pipeProgressIndexFlushIntervalMs = pipeProgressIndexFlushIntervalMs;
-    logger.info("pipeProgressIndexFlushIntervalMs is set to {}.", pipeProgressIndexFlushIntervalMs);
   }
 
   public long getPipeConnectorRetryIntervalMs() {

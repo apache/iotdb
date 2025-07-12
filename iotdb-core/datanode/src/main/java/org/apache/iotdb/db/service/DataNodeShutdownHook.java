@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -123,9 +122,6 @@ public class DataNodeShutdownHook extends Thread {
     }
     // Persist progress index before shutdown to accurate recovery after restart
     PipeDataNodeAgent.task().persistAllProgressIndex();
-
-    // Shutdown pipe progressIndex background service
-    PipePeriodicalJobExecutor.shutdownBackgroundService();
 
     // Actually stop all services started by the DataNode.
     // If we don't call this, services like the RestService are not stopped and I can't re-start
