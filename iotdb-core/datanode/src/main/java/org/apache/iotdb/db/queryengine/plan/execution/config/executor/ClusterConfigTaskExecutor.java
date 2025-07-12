@@ -250,7 +250,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -3300,13 +3299,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createModel(
-      final CreateModelStatement createModelStatement, final MPPQueryContext context) {
+  public SettableFuture<ConfigTaskResult> createModel(String modelId, String uri) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TCreateModelReq req =
-          new TCreateModelReq(createModelStatement.getModelName(), createModelStatement.getUri());
+      final TCreateModelReq req = new TCreateModelReq(modelId, uri);
       final TSStatus status = client.createModel(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         future.setException(new IoTDBException(status.message, status.code));
@@ -3320,11 +3317,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropModel(final String modelName) {
+  public SettableFuture<ConfigTaskResult> dropModel(final String modelId) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus executionStatus = client.dropModel(new TDropModelReq(modelName));
+      final TSStatus executionStatus = client.dropModel(new TDropModelReq(modelId));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
@@ -3337,13 +3334,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showModels(final String modelName) {
+  public SettableFuture<ConfigTaskResult> showModels(final String modelId) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TShowModelReq req = new TShowModelReq();
-      if (modelName != null) {
-        req.setModelId(modelName);
+      if (modelId != null) {
+        req.setModelId(modelId);
       }
       final TShowModelResp showModelResp = client.showModel(req);
       if (showModelResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

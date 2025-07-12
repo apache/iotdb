@@ -428,7 +428,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     // Get model metadata from configNode and do some check
-    String modelId = queryStatement.getModelName();
+    String modelId = queryStatement.getModelId();
     TSStatus status = modelFetcher.fetchModel(modelId, analysis);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new GetModelInfoException(status.getMessage());
