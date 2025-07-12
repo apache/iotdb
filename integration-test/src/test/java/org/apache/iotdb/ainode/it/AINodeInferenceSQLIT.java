@@ -66,19 +66,19 @@ public class AINodeInferenceSQLIT {
       };
 
   static String[] WRITE_SQL_IN_TABLE =
-          new String[] {
-                  "set configuration \"trusted_uri_pattern\"='.*'",
-                  "create model identity using uri \"" + EXAMPLE_MODEL_PATH + "\"",
-                  "CREATE DATABASE root",
-                  "CREATE TABLE root.AI (s0 FLOAT FIELD, s1 DOUBLE FIELD, s2 INT32 FIELD, s3 INT64 FIELD)",
-                  "insert into root.AI(time,s0,s1,s2,s3) values(1,1.0,2.0,3,4)",
-                  "insert into root.AI(time,s0,s1,s2,s3) values(2,2.0,3.0,4,5)",
-                  "insert into root.AI(time,s0,s1,s2,s3) values(3,3.0,4.0,5,6)",
-                  "insert into root.AI(time,s0,s1,s2,s3) values(4,4.0,5.0,6,7)",
-                  "insert into root.AI(time,s0,s1,s2,s3) values(5,5.0,6.0,7,8)",
-                  "insert into root.AI(time,s0,s1,s2,s3) values(6,6.0,7.0,8,9)",
-                  "insert into root.AI(time,s0,s1,s2,s3) values(7,7.0,8.0,9,10)",
-          };
+      new String[] {
+        "set configuration \"trusted_uri_pattern\"='.*'",
+        "create model identity using uri \"" + EXAMPLE_MODEL_PATH + "\"",
+        "CREATE DATABASE root",
+        "CREATE TABLE root.AI (s0 FLOAT FIELD, s1 DOUBLE FIELD, s2 INT32 FIELD, s3 INT64 FIELD)",
+        "insert into root.AI(time,s0,s1,s2,s3) values(1,1.0,2.0,3,4)",
+        "insert into root.AI(time,s0,s1,s2,s3) values(2,2.0,3.0,4,5)",
+        "insert into root.AI(time,s0,s1,s2,s3) values(3,3.0,4.0,5,6)",
+        "insert into root.AI(time,s0,s1,s2,s3) values(4,4.0,5.0,6,7)",
+        "insert into root.AI(time,s0,s1,s2,s3) values(5,5.0,6.0,7,8)",
+        "insert into root.AI(time,s0,s1,s2,s3) values(6,6.0,7.0,8,9)",
+        "insert into root.AI(time,s0,s1,s2,s3) values(7,7.0,8.0,9,10)",
+      };
 
   @BeforeClass
   public static void setUp() throws Exception {
