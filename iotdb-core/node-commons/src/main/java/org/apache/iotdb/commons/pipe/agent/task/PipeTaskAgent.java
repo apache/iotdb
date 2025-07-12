@@ -522,7 +522,6 @@ public abstract class PipeTaskAgent {
     // but the pipe task meta has not been cleaned up (in case of failure when executing
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
-    existedPipeMeta.getRuntimeMeta().onSetPipeDroppedOrStopped();
 
     // Drop pipe tasks
     final Map<Integer, PipeTask> pipeTasks =
@@ -564,7 +563,6 @@ public abstract class PipeTaskAgent {
     // but the pipe task meta has not been cleaned up (in case of failure when executing
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
-    existedPipeMeta.getRuntimeMeta().onSetPipeDroppedOrStopped();
 
     // Drop pipe tasks
     final Map<Integer, PipeTask> pipeTasks =
@@ -657,7 +655,6 @@ public abstract class PipeTaskAgent {
 
     // Set pipe meta status to STOPPED
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
-    existedPipeMeta.getRuntimeMeta().onSetPipeDroppedOrStopped();
   }
 
   ////////////////////////// Checker //////////////////////////
