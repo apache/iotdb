@@ -46,9 +46,6 @@ public class PipeDescriptor {
     config.setPipeHardlinkTsFileDirName(
         properties.getProperty(
             "pipe_hardlink_tsfile_dir_name", config.getPipeHardlinkTsFileDirName()));
-    config.setPipeProgressIndexPersistDirName(
-        properties.getProperty(
-            "pipe_progress_index_persist_dir_name", config.getPipeProgressIndexPersistDirName()));
     int pipeSubtaskExecutorMaxThreadNum =
         Integer.parseInt(
             properties.getProperty(
