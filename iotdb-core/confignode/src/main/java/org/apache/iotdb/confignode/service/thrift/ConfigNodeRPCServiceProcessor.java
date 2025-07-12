@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.SecurityLabel;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -64,6 +65,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetDatabaseSecurityLabelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
@@ -487,19 +489,15 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             .setMessage("Database [" + req.getDatabasePath() + "] does not exist");
       }
 
-      // Get current database schema
-      TDatabaseSchema currentSchema =
-          configManager.getClusterSchemaManager().getDatabaseSchemaByName(req.getDatabasePath());
+      // Create SecurityLabel from the request
+      SecurityLabel securityLabel = new SecurityLabel(req.getSecurityLabel());
 
-      // Create a new schema with updated security label
-      TDatabaseSchema updatedSchema = new TDatabaseSchema(currentSchema);
-      updatedSchema.setSecurityLabel(req.getSecurityLabel());
+      // Create SetDatabaseSecurityLabelPlan
+      SetDatabaseSecurityLabelPlan setSecurityLabelPlan =
+          new SetDatabaseSecurityLabelPlan(new PartialPath(req.getDatabasePath()), securityLabel);
 
-      // Use the existing alterDatabase mechanism to store the updated schema
-      DatabaseSchemaPlan alterPlan =
-          new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, updatedSchema);
-
-      TSStatus result = configManager.alterDatabase(alterPlan);
+      // Execute the plan through consensus
+      TSStatus result = configManager.getConsensusManager().write(setSecurityLabelPlan);
 
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info(

@@ -324,7 +324,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       "For delete statement, where clause can only contain time expressions, "
           + "value filter is not currently supported.";
 
-  private static final String GROUP_BY_COMMON_ONLY_ONE_MSG =
+  private static final String GROUP_BY_COMMON_ONLY_MSG =
       "Only one of group by time or group by variation/series/session can be supported at a time";
 
   private static final String LIMIT_CONFIGURATION_ENABLED_ERROR_MSG =
@@ -1461,7 +1461,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       for (IoTDBSqlParser.GroupByAttributeClauseContext groupByAttribute : groupByAttributes) {
         if (groupByAttribute.TIME() != null || groupByAttribute.interval != null) {
           if (groupByKeys.contains("COMMON")) {
-            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
+            throw new SemanticException(GROUP_BY_COMMON_ONLY_MSG);
           }
 
           groupByKeys.add("COMMON");
@@ -1482,7 +1482,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           queryStatement.setGroupByTagComponent(parseGroupByTagClause(groupByAttribute));
         } else if (groupByAttribute.VARIATION() != null) {
           if (groupByKeys.contains("COMMON")) {
-            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
+            throw new SemanticException(GROUP_BY_COMMON_ONLY_MSG);
           }
 
           groupByKeys.add("COMMON");
@@ -1490,7 +1490,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               parseGroupByClause(groupByAttribute, WindowType.VARIATION_WINDOW));
         } else if (groupByAttribute.CONDITION() != null) {
           if (groupByKeys.contains("COMMON")) {
-            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
+            throw new SemanticException(GROUP_BY_COMMON_ONLY_MSG);
           }
 
           groupByKeys.add("COMMON");
@@ -1498,7 +1498,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               parseGroupByClause(groupByAttribute, WindowType.CONDITION_WINDOW));
         } else if (groupByAttribute.SESSION() != null) {
           if (groupByKeys.contains("COMMON")) {
-            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
+            throw new SemanticException(GROUP_BY_COMMON_ONLY_MSG);
           }
 
           groupByKeys.add("COMMON");
@@ -1506,7 +1506,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               parseGroupByClause(groupByAttribute, WindowType.SESSION_WINDOW));
         } else if (groupByAttribute.COUNT() != null) {
           if (groupByKeys.contains("COMMON")) {
-            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
+            throw new SemanticException(GROUP_BY_COMMON_ONLY_MSG);
           }
 
           groupByKeys.add("COMMON");
@@ -2716,20 +2716,43 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       final IoTDBSqlParser.DatabaseAttributesClauseContext ctx) {
     for (final IoTDBSqlParser.DatabaseAttributeClauseContext attribute :
         ctx.databaseAttributeClause()) {
-      final IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey =
-          attribute.databaseAttributeKey();
-      if (attributeKey.TTL() != null) {
-        final long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setTtl(ttl);
-      } else if (attributeKey.TIME_PARTITION_INTERVAL() != null) {
-        final long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setTimePartitionInterval(timePartitionInterval);
-      } else if (attributeKey.SCHEMA_REGION_GROUP_NUM() != null) {
-        final int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setSchemaRegionGroupNum(schemaRegionGroupNum);
-      } else if (attributeKey.DATA_REGION_GROUP_NUM() != null) {
-        final int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setDataRegionGroupNum(dataRegionGroupNum);
+      // 判断分支类型：SECURITY_LABEL分支有SECURITY_LABEL关键字，否则为普通属性
+      if (attribute.getChild(0).getText().equalsIgnoreCase("SECURITY_LABEL")) {
+        // 处理安全标签
+        SecurityLabel securityLabel = new SecurityLabel();
+        // 第二个child是'(', 第三个child是securityLabelClause
+        IoTDBSqlParser.SecurityLabelClauseContext labelCtx =
+            (IoTDBSqlParser.SecurityLabelClauseContext) attribute.getChild(2);
+        if (labelCtx != null) {
+          for (IoTDBSqlParser.SecurityLabelPairContext pairCtx : labelCtx.securityLabelPair()) {
+            String key = parseIdentifier(pairCtx.key.getText());
+            String value;
+            if (pairCtx.value.getType() == IoTDBSqlParser.STRING_LITERAL) {
+              value = parseStringLiteral(pairCtx.value.getText());
+            } else {
+              value = pairCtx.value.getText();
+            }
+            securityLabel.setLabel(key, value);
+          }
+        }
+        databaseSchemaStatement.setSecurityLabel(securityLabel);
+      } else {
+        // 处理其他数据库属性
+        final IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey =
+            attribute.databaseAttributeKey();
+        if (attributeKey.TTL() != null) {
+          final long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+          databaseSchemaStatement.setTtl(ttl);
+        } else if (attributeKey.TIME_PARTITION_INTERVAL() != null) {
+          final long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+          databaseSchemaStatement.setTimePartitionInterval(timePartitionInterval);
+        } else if (attributeKey.SCHEMA_REGION_GROUP_NUM() != null) {
+          final int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+          databaseSchemaStatement.setSchemaRegionGroupNum(schemaRegionGroupNum);
+        } else if (attributeKey.DATA_REGION_GROUP_NUM() != null) {
+          final int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+          databaseSchemaStatement.setDataRegionGroupNum(dataRegionGroupNum);
+        }
       }
     }
   }
@@ -4214,7 +4237,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           throw new UnsupportedOperationException();
       }
     } else {
-      throw new SemanticException("Get region id statement‘ expression must be a time expression");
+      throw new SemanticException("Get region id statement' expression must be a time expression");
     }
     return getRegionIdStatement;
   }
