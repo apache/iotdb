@@ -203,9 +203,5 @@ public interface IMemTable extends WALEntryValue {
 
   void setDatabaseAndDataRegionId(String database, String dataRegionId);
 
-  void markAsNotGeneratedByPipe();
-
-  boolean isTotallyGeneratedByPipe();
-
   void updateMemtablePointCountMetric(InsertNode insertNode, int pointsInserted);
 }

@@ -459,7 +459,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
     testLoadTsFileWithoutVerify("async");
   }
 
-  @Test
   private void testLoadTsFileWithoutVerify(final String loadTsFileStrategy) throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 

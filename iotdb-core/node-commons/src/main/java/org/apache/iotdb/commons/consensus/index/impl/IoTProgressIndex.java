@@ -109,14 +109,18 @@ public class IoTProgressIndex extends ProgressIndex {
         return false;
       }
 
-      final IoTProgressIndex thisIoTProgressIndex = this;
       final IoTProgressIndex thatIoTProgressIndex = (IoTProgressIndex) progressIndex;
-      return thatIoTProgressIndex.peerId2SearchIndex.entrySet().stream()
-          .noneMatch(
-              entry ->
-                  !thisIoTProgressIndex.peerId2SearchIndex.containsKey(entry.getKey())
-                      || thisIoTProgressIndex.peerId2SearchIndex.get(entry.getKey())
-                          <= entry.getValue());
+      boolean isEquals = true;
+      for (final Map.Entry<Integer, Long> entry :
+          thatIoTProgressIndex.peerId2SearchIndex.entrySet()) {
+        if (!peerId2SearchIndex.containsKey(entry.getKey())
+            || peerId2SearchIndex.get(entry.getKey()) < entry.getValue()) {
+          return false;
+        } else if (peerId2SearchIndex.get(entry.getKey()) > entry.getValue()) {
+          isEquals = false;
+        }
+      }
+      return !isEquals;
     } finally {
       lock.readLock().unlock();
     }
@@ -199,15 +203,6 @@ public class IoTProgressIndex extends ProgressIndex {
     try {
       return new TotalOrderSumTuple(
           peerId2SearchIndex.values().stream().mapToLong(Long::longValue).sum());
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  public int getPeerId2SearchIndexSize() {
-    lock.readLock().lock();
-    try {
-      return peerId2SearchIndex.size();
     } finally {
       lock.readLock().unlock();
     }

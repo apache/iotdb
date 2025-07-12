@@ -24,7 +24,6 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeHeartbeatEventMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
-import org.apache.iotdb.db.pipe.metric.overview.PipeWALInsertNodeCacheMetrics;
 import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.metric.receiver.PipeDataNodeReceiverMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionConnectorMetrics;
@@ -47,7 +46,6 @@ public class PipeDataNodeMetrics implements IMetricSet {
     PipeProcessorMetrics.getInstance().bindTo(metricService);
     PipeDataRegionConnectorMetrics.getInstance().bindTo(metricService);
     PipeHeartbeatEventMetrics.getInstance().bindTo(metricService);
-    PipeWALInsertNodeCacheMetrics.getInstance().bindTo(metricService);
     PipeResourceMetrics.getInstance().bindTo(metricService);
     PipeEventCommitMetrics.getInstance().bindTo(metricService);
     PipeSchemaRegionListenerMetrics.getInstance().bindTo(metricService);
@@ -65,7 +63,6 @@ public class PipeDataNodeMetrics implements IMetricSet {
     PipeProcessorMetrics.getInstance().unbindFrom(metricService);
     PipeDataRegionConnectorMetrics.getInstance().unbindFrom(metricService);
     PipeHeartbeatEventMetrics.getInstance().unbindFrom(metricService);
-    PipeWALInsertNodeCacheMetrics.getInstance().unbindFrom(metricService);
     PipeResourceMetrics.getInstance().unbindFrom(metricService);
     PipeEventCommitMetrics.getInstance().unbindFrom(metricService);
     PipeSchemaRegionListenerMetrics.getInstance().unbindFrom(metricService);

@@ -71,7 +71,6 @@ public abstract class PipeTransferFileSealReqV1 extends TPipeTransferReq {
 
     version = req.version;
     type = req.type;
-    body = req.body;
 
     return this;
   }

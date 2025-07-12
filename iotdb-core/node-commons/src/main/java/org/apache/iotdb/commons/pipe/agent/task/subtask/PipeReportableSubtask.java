@@ -22,14 +22,20 @@ package org.apache.iotdb.commons.pipe.agent.task.subtask;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public abstract class PipeReportableSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeReportableSubtask.class);
+  // To ensure that high-priority tasks can obtain object locks first, a counter is now used to save
+  // the number of high-priority tasks.
+  protected final AtomicLong highPriorityLockTaskCount = new AtomicLong(0);
 
   protected PipeReportableSubtask(final String taskID, final long creationTime) {
     super(taskID, creationTime);
@@ -84,7 +90,14 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           throwable.getMessage(),
           throwable);
       try {
-        Thread.sleep(Math.min(1000L * retryCount.get(), 10000));
+        synchronized (highPriorityLockTaskCount) {
+          // The wait operation will release the highPriorityLockTaskCount lock, so there will be
+          // no deadlock.
+          if (highPriorityLockTaskCount.get() == 0) {
+            highPriorityLockTaskCount.wait(
+                retryCount.get() * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
+          }
+        }
       } catch (final InterruptedException e) {
         LOGGER.warn(
             "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
@@ -151,7 +164,14 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
         throwable.getMessage(),
         throwable);
     try {
-      Thread.sleep(Math.min(1000L * retryCount.get(), 10000));
+      synchronized (highPriorityLockTaskCount) {
+        // The wait operation will release the highPriorityLockTaskCount lock, so there will be
+        // no deadlock.
+        if (highPriorityLockTaskCount.get() == 0) {
+          highPriorityLockTaskCount.wait(
+              retryCount.get() * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
+        }
+      }
     } catch (final InterruptedException e) {
       LOGGER.warn(
           "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",

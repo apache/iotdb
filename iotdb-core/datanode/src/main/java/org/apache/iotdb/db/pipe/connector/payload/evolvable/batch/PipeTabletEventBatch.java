@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeDynamicMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockType;
 import org.apache.iotdb.db.pipe.resource.memory.PipeModelFixedMemoryBlock;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
@@ -47,7 +48,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   private long firstEventProcessingTime = Long.MIN_VALUE;
 
   protected long totalBufferSize = 0;
-  private final PipeModelFixedMemoryBlock allocatedMemoryBlock;
+  private final PipeDynamicMemoryBlock allocatedMemoryBlock;
 
   protected volatile boolean isClosed = false;
 
@@ -60,11 +61,9 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
     // limit in buffer size
     this.allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForModelFixedMemoryBlock(
-                requestMaxBatchSizeInBytes, PipeMemoryBlockType.BATCH);
+        pipeModelFixedMemoryBlock.registerPipeBatchMemoryBlock(requestMaxBatchSizeInBytes);
 
-    if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
+    if (getMaxBatchSizeInBytes() != allocatedMemoryBlock.getMemoryUsageInBytes()) {
       LOGGER.info(
           "PipeTabletEventBatch: the max batch size is adjusted from {} to {} due to the "
               + "memory restriction",
@@ -127,9 +126,16 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       throws WALPipeException, IOException;
 
   public boolean shouldEmit() {
-    return totalBufferSize >= getMaxBatchSizeInBytes()
-        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
+    final long diff = System.currentTimeMillis() - firstEventProcessingTime;
+    if (totalBufferSize >= getMaxBatchSizeInBytes() || diff >= maxDelayInMs) {
+      allocatedMemoryBlock.updateCurrentMemoryEfficiencyAdjustMem((double) diff / maxDelayInMs);
+      recordMetric(diff, totalBufferSize);
+      return true;
+    }
+    return false;
   }
+
+  protected abstract void recordMetric(final long timeInterval, final long bufferSize);
 
   private long getMaxBatchSizeInBytes() {
     return allocatedMemoryBlock.getMemoryUsageInBytes();
@@ -194,9 +200,22 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     }
 
     try {
-      pipeModelFixedMemoryBlock =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForModelFixedMemoryBlock(0L, PipeMemoryBlockType.BATCH);
+      long batchSize = PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfBatch();
+      for (long i = batchSize; i > 0; i = i / 2) {
+        try {
+          pipeModelFixedMemoryBlock =
+              PipeDataNodeResourceManager.memory()
+                  .forceAllocateForModelFixedMemoryBlock(i, PipeMemoryBlockType.BATCH);
+
+          LOGGER.info("pipe model fixed memory block initialized with size: {} bytes", i);
+          return;
+        } catch (Exception ignore) {
+          // ignore the exception and try to allocate a smaller size
+          LOGGER.info(
+              "pipe model fixed memory block initialized with size: {} bytes failed, try smaller size",
+              i);
+        }
+      }
     } catch (Exception e) {
       LOGGER.error("init pipe model fixed memory block failed", e);
       // If the allocation fails, we still need to create a default memory block to avoid NPE.

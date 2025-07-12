@@ -59,8 +59,6 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
   private Timer insertNodeTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer tsfileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
-  private final InsertNodeEMA insertNodeEventCountEMA = new InsertNodeEMA();
-
   private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
   private double lastSchemaRegionCommitSmoothingValue = Long.MAX_VALUE;
 
@@ -100,11 +98,6 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
 
   void decreaseHeartbeatEventCount() {
     heartbeatEventCount.decrementAndGet();
-  }
-
-  double getRemainingInsertEventSmoothingCount() {
-    insertNodeEventCountEMA.update(insertNodeEventCount.get());
-    return insertNodeEventCountEMA.insertNodeEMAValue;
   }
 
   public long getRemainingNonHeartbeatEvents() {
@@ -147,7 +140,7 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
    *
    * @return The estimated remaining time
    */
-  double getRemainingTime() {
+  public double getRemainingTime() {
     final PipeRateAverage pipeRemainingTimeCommitRateAverageTime =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
@@ -281,18 +274,5 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
     super.freezeRate(isStopPipe);
     dataRegionCommitMeter.set(null);
     schemaRegionCommitMeter.set(null);
-  }
-
-  private static class InsertNodeEMA {
-    private double insertNodeEMAValue;
-
-    public void update(final double newValue) {
-      final double alpha = PipeConfig.getInstance().getPipeRemainingInsertNodeCountEMAAlpha();
-      if (insertNodeEMAValue == 0) {
-        insertNodeEMAValue = newValue;
-      } else {
-        insertNodeEMAValue = alpha * newValue + (1 - alpha) * insertNodeEMAValue;
-      }
-    }
   }
 }

@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
+import javax.annotation.Nonnull;
 
 import java.util.Map;
 import java.util.Map.Entry;
@@ -28,39 +31,40 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeTsFileEpochProgressIndexKeeper {
 
-  // data region id -> (tsFile path, max progress index)
-  private final Map<String, Map<String, ProgressIndex>> progressIndexKeeper =
+  // data region id -> pipeName -> tsFile path -> max progress index
+  private final Map<String, Map<String, Map<String, TsFileResource>>> progressIndexKeeper =
       new ConcurrentHashMap<>();
 
-  public synchronized void updateProgressIndex(
-      final String dataRegionId, final String tsFileName, final ProgressIndex progressIndex) {
+  public synchronized void registerProgressIndex(
+      final String dataRegionId, final String pipeName, final TsFileResource resource) {
     progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
-        .compute(
-            tsFileName,
-            (k, v) ->
-                v == null
-                    ? progressIndex
-                    : v.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
+        .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
+        .putIfAbsent(resource.getTsFilePath(), resource);
   }
 
   public synchronized void eliminateProgressIndex(
-      final String dataRegionId, final String filePath) {
+      final String dataRegionId, final @Nonnull String pipeName, final String filePath) {
     progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
+        .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
         .remove(filePath);
   }
 
   public synchronized boolean isProgressIndexAfterOrEquals(
-      final String dataRegionId, final String tsFilePath, final ProgressIndex progressIndex) {
+      final String dataRegionId,
+      final String pipeName,
+      final String tsFilePath,
+      final ProgressIndex progressIndex) {
     return progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
+        .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
         .entrySet()
         .stream()
         .filter(entry -> !Objects.equals(entry.getKey(), tsFilePath))
         .map(Entry::getValue)
         .filter(Objects::nonNull)
-        .anyMatch(index -> !index.isAfter(progressIndex));
+        .anyMatch(resource -> !resource.getMaxProgressIndex().isAfter(progressIndex));
   }
 
   //////////////////////////// singleton ////////////////////////////

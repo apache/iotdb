@@ -128,7 +128,6 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
 
     sliceReq.version = transferReq.version;
     sliceReq.type = transferReq.type;
-    sliceReq.body = transferReq.body;
 
     return sliceReq;
   }

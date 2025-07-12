@@ -54,6 +54,7 @@ public class DataNodeSchemaLockManager {
       queryContext
           .getAcquiredLocks()
           .forEach(lockType -> locks[lockType.ordinal()].readLock().unlock());
+      queryContext.getAcquiredLocks().clear();
     }
   }
 

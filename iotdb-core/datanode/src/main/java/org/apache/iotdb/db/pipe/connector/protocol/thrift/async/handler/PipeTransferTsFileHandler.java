@@ -47,7 +47,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
@@ -78,8 +77,8 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private final boolean transferMod;
 
   private final int readFileBufferSize;
-  private final PipeTsFileMemoryBlock memoryBlock;
-  private final byte[] readBuffer;
+  private PipeTsFileMemoryBlock memoryBlock;
+  private byte[] readBuffer;
   private long position;
 
   private RandomAccessFile reader;
@@ -98,7 +97,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final File tsFile,
       final File modFile,
       final boolean transferMod)
-      throws FileNotFoundException, InterruptedException {
+      throws InterruptedException {
     super(connector);
 
     this.pipeName2WeightMap = pipeName2WeightMap;
@@ -124,19 +123,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
             Math.min(
                 PipeConfig.getInstance().getPipeConnectorReadFileBufferSize(),
                 transferMod ? Math.max(tsFile.length(), modFile.length()) : tsFile.length());
-    memoryBlock =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTsFileWithRetry(
-                PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()
-                    ? readFileBufferSize
-                    : 0);
-    readBuffer = new byte[readFileBufferSize];
     position = 0;
-
-    reader =
-        Objects.nonNull(modFile)
-            ? new RandomAccessFile(modFile, "r")
-            : new RandomAccessFile(tsFile, "r");
 
     isSealSignalSent = new AtomicBoolean(false);
   }
@@ -145,6 +132,24 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final IoTDBDataNodeAsyncClientManager clientManager,
       final AsyncPipeDataTransferServiceClient client)
       throws TException, IOException {
+    // Delay creation of resources to avoid OOM or too many open files
+    if (readBuffer == null) {
+      memoryBlock =
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTsFileWithRetry(
+                  PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()
+                      ? readFileBufferSize
+                      : 0);
+      readBuffer = new byte[readFileBufferSize];
+    }
+
+    if (reader == null) {
+      reader =
+          Objects.nonNull(modFile)
+              ? new RandomAccessFile(modFile, "r")
+              : new RandomAccessFile(tsFile, "r");
+    }
+
     this.clientManager = clientManager;
     this.client = client;
 
@@ -285,7 +290,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
               "Successfully transferred file {} (committer key={}, commit id={}, reference count={}).",
               tsFile,
               events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-              events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
+              events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()),
               referenceCount);
         } else {
           LOGGER.info(
@@ -350,7 +355,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
             "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
             tsFile,
             events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-            events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
+            events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()),
             exception);
       } else {
         LOGGER.warn(
@@ -427,7 +432,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   @Override
   public void close() {
     super.close();
-    memoryBlock.close();
+    if (memoryBlock != null) {
+      memoryBlock.close();
+    }
   }
 
   /**

@@ -82,7 +82,6 @@ public abstract class PipeTransferFilePieceReq extends TPipeTransferReq {
 
     version = transferReq.version;
     type = transferReq.type;
-    body = transferReq.body;
 
     return this;
   }

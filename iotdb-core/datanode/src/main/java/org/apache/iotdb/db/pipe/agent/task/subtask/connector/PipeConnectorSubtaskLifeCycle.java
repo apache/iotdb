@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.connector;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -65,6 +66,8 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     if (registeredTaskCount == 0) {
       executor.register(subtask);
       runningTaskCount = 0;
+
+      PipeDataNodeResourceManager.compaction().registerPipeConnectorSubtaskLifeCycle(this);
     }
 
     registeredTaskCount++;
@@ -152,5 +155,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
   @Override
   public synchronized void close() {
     executor.deregister(subtask.getTaskID());
+
+    PipeDataNodeResourceManager.compaction().deregisterPipeConnectorSubtaskLifeCycle(this);
   }
 }

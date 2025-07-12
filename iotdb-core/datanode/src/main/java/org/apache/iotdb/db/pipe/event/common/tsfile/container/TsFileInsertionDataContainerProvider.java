@@ -28,7 +28,8 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsert
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFilePublicResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
@@ -79,8 +80,8 @@ public class TsFileInsertionDataContainerProvider {
 
     // Use scan container to save memory
     if ((double) PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes()
-            / PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
-        > PipeTsFileResource.MEMORY_SUFFICIENT_THRESHOLD) {
+            / PipeMemoryManager.getTotalNonFloatingMemorySizeInBytes()
+        > PipeTsFilePublicResource.MEMORY_SUFFICIENT_THRESHOLD) {
       return new TsFileInsertionScanDataContainer(
           pipeName, creationTime, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
     }
