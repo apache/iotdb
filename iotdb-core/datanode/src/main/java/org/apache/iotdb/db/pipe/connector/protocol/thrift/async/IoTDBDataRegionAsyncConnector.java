@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -71,14 +73,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -100,13 +99,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private static final boolean isSplitTSFileBatchModeEnabled = true;
   private static final ExecutorService executor =
-      new ThreadPoolExecutor(
-          PipeConfig.getInstance().getPipeAsyncConnectorMaxTsFileClientNumber(),
-          PipeConfig.getInstance().getPipeAsyncConnectorMaxTsFileClientNumber(),
-          0L,
-          TimeUnit.MILLISECONDS,
-          new ArrayBlockingQueue<Runnable>(
-              10 * PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum()));
+      IoTDBThreadPoolFactory.newFixedThreadPool(
+          PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize(),
+          ThreadName.PIPE_TSFILE_ASYNC_SEND_POOL.getName());
 
   private final IoTDBDataRegionSyncConnector syncConnector = new IoTDBDataRegionSyncConnector();
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
@@ -548,7 +543,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
           polledEvent = retryEventQueue.poll();
         } else {
-          if (transferTsFileCounter.get() != 0) {
+          if (transferTsFileCounter.get()
+              >= PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize()) {
             return;
           }
           peekedEvent = retryTsFileQueue.peek();
