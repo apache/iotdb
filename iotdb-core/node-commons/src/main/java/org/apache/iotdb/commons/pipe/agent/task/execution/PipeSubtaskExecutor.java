@@ -49,12 +49,14 @@ public abstract class PipeSubtaskExecutor {
 
   private final int corePoolSize;
   private int runningSubtaskNumber;
+  private final String threadName;
 
   protected PipeSubtaskExecutor(
-      final int corePoolSize, final ThreadName threadName, final boolean disableLogInThreadPool) {
+      final int corePoolSize, final String threadName, final boolean disableLogInThreadPool) {
+    this.threadName = threadName;
     underlyingThreadPool =
         (WrappedThreadPoolExecutor)
-            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, threadName.getName());
+            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, threadName);
     if (disableLogInThreadPool) {
       underlyingThreadPool.disableErrorLog();
     }
@@ -171,7 +173,7 @@ public abstract class PipeSubtaskExecutor {
     // return getAvailableThreadCount() > 0;
   }
 
-  private int getAvailableThreadCount() {
-    return underlyingThreadPool.getCorePoolSize() - underlyingThreadPool.getActiveCount();
+  public String getThreadName() {
+    return threadName;
   }
 }

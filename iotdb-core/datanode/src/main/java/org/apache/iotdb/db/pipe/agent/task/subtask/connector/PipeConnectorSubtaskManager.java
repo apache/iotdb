@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 public class PipeConnectorSubtaskManager {
 
@@ -60,7 +61,7 @@ public class PipeConnectorSubtaskManager {
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
 
   public synchronized String register(
-      final PipeConnectorSubtaskExecutor executor,
+      final Supplier<? extends PipeConnectorSubtaskExecutor> executorSupplier,
       final PipeParameters pipeConnectorParameters,
       final PipeTaskConnectorRuntimeEnvironment environment) {
     final String connectorKey =
@@ -109,6 +110,8 @@ public class PipeConnectorSubtaskManager {
     environment.setAttributeSortedString(attributeSortedString);
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
+      final PipeConnectorSubtaskExecutor executor = executorSupplier.get();
+
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
@@ -169,6 +172,10 @@ public class PipeConnectorSubtaskManager {
         pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
       }
 
+      LOGGER.info(
+          "Pipe connector subtasks with attributes {} is bounded with connectorExecutor {}.",
+          attributeSortedString,
+          executor.getThreadName());
       attributeSortedString2SubtaskLifeCycleMap.put(
           attributeSortedString, pipeConnectorSubtaskLifeCycleList);
     }
@@ -192,10 +199,15 @@ public class PipeConnectorSubtaskManager {
 
     final List<PipeConnectorSubtaskLifeCycle> lifeCycles =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
+
+    // Shall not be empty
+    final PipeConnectorSubtaskExecutor executor = lifeCycles.get(0).executor;
+
     lifeCycles.removeIf(o -> o.deregister(pipeName, regionId));
 
     if (lifeCycles.isEmpty()) {
       attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
+      executor.shutdown();
     }
 
     PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, regionId);
