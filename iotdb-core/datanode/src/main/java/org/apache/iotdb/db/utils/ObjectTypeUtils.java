@@ -62,9 +62,8 @@ public class ObjectTypeUtils {
     if (!file.isPresent()) {
       return;
     }
-    File parentFile = file.get().getParentFile();
-    File tmpFile = new File(parentFile, file.get().getName().replace(".bin", ".tmp"));
-    File bakFile = new File(parentFile, file.get().getName().replace(".bin", ".bak"));
+    File tmpFile = new File(file.get().getPath() + ".tmp");
+    File bakFile = new File(file.get().getPath() + ".bak");
     logger.info("Remove object file {}", file.get().getAbsolutePath());
     for (int i = 0; i < 2; i++) {
       try {
