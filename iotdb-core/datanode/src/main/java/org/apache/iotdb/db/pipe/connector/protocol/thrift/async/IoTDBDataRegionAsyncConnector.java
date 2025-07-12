@@ -522,7 +522,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
     final long retryStartTime = System.currentTimeMillis();
     final int remainingEvents = retryEventQueue.size() + retryTsFileQueue.size();
-    while (!retryEventQueue.isEmpty() && !retryTsFileQueue.isEmpty()) {
+    while (!retryEventQueue.isEmpty() || !retryTsFileQueue.isEmpty()) {
       synchronized (this) {
         if (isClosed.get()) {
           return;
