@@ -1813,6 +1813,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (int i = 0; i < inputType.length; i++) {
       Expression inputExpression = outputExpressions.get(i).left;
       TSDataType inputDataType = analysis.getType(inputExpression);
+      boolean isExpressionNumeric = inputDataType.isNumeric();
+      boolean isModelNumeric = inputType[i].isNumeric();
+      if (isExpressionNumeric && isModelNumeric) {
+        // every model supports numeric by default
+        continue;
+      }
       if (inputDataType != inputType[i]) {
         throw new SemanticException(
             String.format(

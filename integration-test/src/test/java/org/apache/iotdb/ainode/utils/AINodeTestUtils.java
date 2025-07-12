@@ -104,5 +104,23 @@ public class AINodeTestUtils {
     public int hashCode() {
       return Objects.hash(modelId, modelType, category, state);
     }
+
+    @Override
+    public String toString() {
+      return "FakeModelInfo{"
+          + "modelId='"
+          + modelId
+          + '\''
+          + ", modelType='"
+          + modelType
+          + '\''
+          + ", category='"
+          + category
+          + '\''
+          + ", state='"
+          + state
+          + '\''
+          + '}';
+    }
   }
 }

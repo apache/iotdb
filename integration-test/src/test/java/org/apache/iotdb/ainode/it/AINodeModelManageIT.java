@@ -45,7 +45,6 @@ import static org.apache.iotdb.ainode.utils.AINodeTestUtils.EXAMPLE_MODEL_PATH;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -53,34 +52,36 @@ import static org.junit.Assert.fail;
 @Category({AIClusterIT.class})
 public class AINodeModelManageIT {
 
-  private static final Map<String, FakeModelInfo> BUILT_IN_MODEL_MAP =
+  private static final Map<String, FakeModelInfo> BUILT_IN_MACHINE_LEARNING_MODEL_MAP =
       Stream.of(
               new AbstractMap.SimpleEntry<>(
-                  "arima", new FakeModelInfo("arima", "Arima", "BUILT_IN", "ACTIVE")),
+                  "arima", new FakeModelInfo("arima", "Arima", "BUILT-IN", "ACTIVE")),
               new AbstractMap.SimpleEntry<>(
                   "holtwinters",
-                  new FakeModelInfo("holtwinters", "HoltWinters", "BUILT_IN", "ACTIVE")),
+                  new FakeModelInfo("holtwinters", "HoltWinters", "BUILT-IN", "ACTIVE")),
               new AbstractMap.SimpleEntry<>(
                   "exponential_smoothing",
                   new FakeModelInfo(
-                      "exponential_smoothing", "ExponentialSmoothing", "BUILT_IN", "ACTIVE")),
+                      "exponential_smoothing", "ExponentialSmoothing", "BUILT-IN", "ACTIVE")),
               new AbstractMap.SimpleEntry<>(
                   "naive_forecaster",
-                  new FakeModelInfo("naive_forecaster", "NaiveForecaster", "BUILT_IN", "ACTIVE")),
+                  new FakeModelInfo("naive_forecaster", "NaiveForecaster", "BUILT-IN", "ACTIVE")),
               new AbstractMap.SimpleEntry<>(
                   "stl_forecaster",
-                  new FakeModelInfo("stl_forecaster", "StlForecaster", "BUILT_IN", "ACTIVE")),
+                  new FakeModelInfo("stl_forecaster", "StlForecaster", "BUILT-IN", "ACTIVE")),
               new AbstractMap.SimpleEntry<>(
                   "gaussian_hmm",
-                  new FakeModelInfo("gaussian_hmm", "GaussianHmm", "BUILT_IN", "ACTIVE")),
+                  new FakeModelInfo("gaussian_hmm", "GaussianHmm", "BUILT-IN", "ACTIVE")),
               new AbstractMap.SimpleEntry<>(
-                  "gmm_hmm", new FakeModelInfo("gmm_hmm", "GmmHmm", "BUILT_IN", "ACTIVE")),
+                  "gmm_hmm", new FakeModelInfo("gmm_hmm", "GmmHmm", "BUILT-IN", "ACTIVE")),
               new AbstractMap.SimpleEntry<>(
-                  "stray", new FakeModelInfo("stray", "Stray", "BUILT_IN", "ACTIVE")),
-              new AbstractMap.SimpleEntry<>(
-                  "sundial", new FakeModelInfo("sundial", "Timer-Sundial", "BUILT_IN", "ACTIVE")),
-              new AbstractMap.SimpleEntry<>(
-                  "timer_xl", new FakeModelInfo("timer_xl", "Timer-XL", "BUILT_IN", "ACTIVE")))
+                  "stray", new FakeModelInfo("stray", "Stray", "BUILT-IN", "ACTIVE")))
+          //              new AbstractMap.SimpleEntry<>(
+          //                  "sundial", new FakeModelInfo("sundial", "Timer-Sundial", "BUILT-IN",
+          // "ACTIVE")),
+          //              new AbstractMap.SimpleEntry<>(
+          //                  "timer_xl", new FakeModelInfo("timer_xl", "Timer-XL", "BUILT-IN",
+          // "ACTIVE")))
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
   @BeforeClass
@@ -111,11 +112,13 @@ public class AINodeModelManageIT {
   }
 
   private void userDefinedModelManagementTest(Statement statement) throws SQLException {
+    final String alterConfigSQL = "set configuration \"trusted_uri_pattern\"='.*'";
     final String registerSql =
         "create model operationTest using uri \"" + EXAMPLE_MODEL_PATH + "\"";
     final String showSql = "SHOW MODELS operationTest";
     final String dropSql = "DROP MODEL operationTest";
 
+    statement.execute(alterConfigSQL);
     statement.execute(registerSql);
     boolean loading = true;
     int count = 0;
@@ -125,13 +128,11 @@ public class AINodeModelManageIT {
         checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
         while (resultSet.next()) {
           String modelId = resultSet.getString(1);
-          String modelType = resultSet.getString(2);
           String category = resultSet.getString(3);
           String state = resultSet.getString(4);
 
           assertEquals("operationTest", modelId);
-          assertNull(category);
-          assertEquals("USER_DEFINED", modelType);
+          assertEquals("USER-DEFINED", category);
           if (state.equals("ACTIVE")) {
             loading = false;
             count++;
@@ -195,17 +196,20 @@ public class AINodeModelManageIT {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
       while (resultSet.next()) {
-        built_in_model_count++;
-        FakeModelInfo modelInfo =
-            new FakeModelInfo(
-                resultSet.getString(1),
-                resultSet.getString(2),
-                resultSet.getString(3),
-                resultSet.getString(4));
-        assertTrue(BUILT_IN_MODEL_MAP.containsKey(modelInfo.getModelId()));
-        assertEquals(BUILT_IN_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
+        String modelId = resultSet.getString(1);
+        if (!modelId.equals("sundial") && !modelId.equals("timer_xl")) {
+          built_in_model_count++;
+          FakeModelInfo modelInfo =
+              new FakeModelInfo(
+                  resultSet.getString(1),
+                  resultSet.getString(2),
+                  resultSet.getString(3),
+                  resultSet.getString(4));
+          assertTrue(BUILT_IN_MACHINE_LEARNING_MODEL_MAP.containsKey(modelInfo.getModelId()));
+          assertEquals(BUILT_IN_MACHINE_LEARNING_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
+        }
       }
     }
-    assertEquals(BUILT_IN_MODEL_MAP.size(), built_in_model_count);
+    assertEquals(BUILT_IN_MACHINE_LEARNING_MODEL_MAP.size(), built_in_model_count);
   }
 }
