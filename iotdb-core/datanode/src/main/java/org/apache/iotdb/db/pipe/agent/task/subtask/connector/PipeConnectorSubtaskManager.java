@@ -208,6 +208,7 @@ public class PipeConnectorSubtaskManager {
     if (lifeCycles.isEmpty()) {
       attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
       executor.shutdown();
+      LOGGER.info("The executor {} has been successfully shutdown.", executor.getThreadName());
     }
 
     PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, regionId);
