@@ -150,32 +150,28 @@ public class PipeRealtimeExtractTest {
                   "1",
                   1,
                   Integer.parseInt(dataRegion1),
-                  new PipeTaskMeta(
-                      MinimumProgressIndex.INSTANCE, 1, Integer.parseInt(dataRegion1), false)));
+                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
       final PipeTaskRuntimeConfiguration configuration1 =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskExtractorRuntimeEnvironment(
                   "1",
                   1,
                   Integer.parseInt(dataRegion1),
-                  new PipeTaskMeta(
-                      MinimumProgressIndex.INSTANCE, 1, Integer.parseInt(dataRegion1), false)));
+                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
       final PipeTaskRuntimeConfiguration configuration2 =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskExtractorRuntimeEnvironment(
                   "1",
                   1,
                   Integer.parseInt(dataRegion2),
-                  new PipeTaskMeta(
-                      MinimumProgressIndex.INSTANCE, 1, Integer.parseInt(dataRegion2), false)));
+                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
       final PipeTaskRuntimeConfiguration configuration3 =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskExtractorRuntimeEnvironment(
                   "1",
                   1,
                   Integer.parseInt(dataRegion2),
-                  new PipeTaskMeta(
-                      MinimumProgressIndex.INSTANCE, 1, Integer.parseInt(dataRegion2), false)));
+                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
 
       // Some parameters of extractor are validated and initialized during the validation process.
       extractor0.validate(new PipeParameterValidator(parameters0));
