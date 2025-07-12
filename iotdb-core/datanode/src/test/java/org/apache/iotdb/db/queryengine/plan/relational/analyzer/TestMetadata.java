@@ -140,7 +140,8 @@ public class TestMetadata implements Metadata {
   @Override
   public boolean tableExists(final QualifiedObjectName name) {
     return name.getDatabaseName().equalsIgnoreCase(DB1)
-        && name.getObjectName().equalsIgnoreCase(TABLE1);
+        && (name.getObjectName().equalsIgnoreCase(TABLE1)
+            || name.getObjectName().equalsIgnoreCase(TABLE2));
   }
 
   @Override

@@ -61,7 +61,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.ColumnInjectOp
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.IntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
@@ -72,6 +71,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowA
 import org.apache.iotdb.db.queryengine.execution.operator.process.TagAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
@@ -259,7 +259,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
-import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
@@ -2327,7 +2326,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                IntoOperator.class.getSimpleName());
+                TreeIntoOperator.class.getSimpleName());
 
     IntoPathDescriptor intoPathDescriptor = node.getIntoPathDescriptor();
 
@@ -2342,7 +2341,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap =
         intoPathDescriptor.getTargetPathToDataTypeMap();
-    long statementSizePerLine = calculateStatementSizePerLine(targetPathToDataTypeMap);
+    long statementSizePerLine =
+        OperatorGeneratorUtil.calculateStatementSizePerLine(targetPathToDataTypeMap);
 
     List<Pair<String, PartialPath>> sourceTargetPathPairList =
         intoPathDescriptor.getSourceTargetPathPairList();
@@ -2356,7 +2356,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
     }
 
-    return new IntoOperator(
+    return new TreeIntoOperator(
         operatorContext,
         child,
         getInputColumnTypes(node, context.getTypeProvider()),
@@ -2403,7 +2403,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       deviceToTargetPathSourceInputLocationMap.put(
           sourceDevice, targetPathToSourceInputLocationMap);
       statementSizePerLine +=
-          calculateStatementSizePerLine(deviceToTargetPathDataTypeMap.get(sourceDevice));
+          OperatorGeneratorUtil.calculateStatementSizePerLine(
+              deviceToTargetPathDataTypeMap.get(sourceDevice));
     }
 
     return new DeviceViewIntoOperator(
@@ -2442,42 +2443,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             targetMeasurement, sourceColumnToInputLocationMap.get(sourceColumn));
       }
       targetPathToSourceInputLocationMap.put(targetDevice, measurementToInputLocationMap);
-    }
-  }
-
-  private long calculateStatementSizePerLine(
-      Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap) {
-    long maxStatementSize = Long.BYTES;
-    List<TSDataType> dataTypes =
-        targetPathToDataTypeMap.values().stream()
-            .flatMap(stringTSDataTypeMap -> stringTSDataTypeMap.values().stream())
-            .collect(Collectors.toList());
-    for (TSDataType dataType : dataTypes) {
-      maxStatementSize += getValueSizePerLine(dataType);
-    }
-    return maxStatementSize;
-  }
-
-  private static long getValueSizePerLine(TSDataType tsDataType) {
-    switch (tsDataType) {
-      case INT32:
-      case DATE:
-        return Integer.BYTES;
-      case INT64:
-      case TIMESTAMP:
-        return Long.BYTES;
-      case FLOAT:
-        return Float.BYTES;
-      case DOUBLE:
-        return Double.BYTES;
-      case BOOLEAN:
-        return Byte.BYTES;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return StatisticsManager.getInstance().getMaxBinarySizeInBytes();
-      default:
-        throw new UnsupportedOperationException(UNKNOWN_DATATYPE + tsDataType);
     }
   }
 

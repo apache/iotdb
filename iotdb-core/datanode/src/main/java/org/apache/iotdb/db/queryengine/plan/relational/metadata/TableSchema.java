@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -33,7 +34,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static com.google.common.collect.ImmutableList.toImmutableList;
 
 public class TableSchema {
 
@@ -54,6 +58,11 @@ public class TableSchema {
     return columns;
   }
 
+  public Map<String, ColumnSchema> getColumnSchemaMap() {
+    // return a map column name -> ColumnSchema
+    return columns.stream().collect(Collectors.toMap(ColumnSchema::getName, Function.identity()));
+  }
+
   public void setProps(final Map<String, String> props) {
     this.props = props;
   }
@@ -71,6 +80,20 @@ public class TableSchema {
                 column.getName().equals(columnName) && column.getColumnCategory() == columnCategory)
         .findAny()
         .orElse(null);
+  }
+
+  public ColumnSchema getColumn(final String columnName) {
+    List<ColumnSchema> columnScheme =
+        columns.stream()
+            .filter(column -> column.getName().equals(columnName))
+            .collect(toImmutableList());
+    if (columnScheme.isEmpty()) {
+      return null;
+    } else if (columnScheme.size() > 1) {
+      throw new SemanticException(
+          String.format("Columns in table shall not share the same name %s.", columnName));
+    }
+    return columnScheme.get(0);
   }
 
   /**
