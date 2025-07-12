@@ -820,4 +820,12 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
           .updateMetricsOnFinish(getProcType(), runtime, success);
     }
   }
+
+  public String getCurrentStateForDisplay() {
+    return "Not Implemented";
+  }
+
+  public String getProgressForDisplay() {
+    return "Progress Not Implemented";
+  }
 }
