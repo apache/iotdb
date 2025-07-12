@@ -110,7 +110,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private final IoTDBDataRegionSyncConnector syncConnector = new IoTDBDataRegionSyncConnector();
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
-  private final BlockingQueue<TsFileInsertionEvent> retryTSFileQueue = new LinkedBlockingQueue<>();
+  private final BlockingQueue<TsFileInsertionEvent> retryTsFileQueue = new LinkedBlockingQueue<>();
   private final PipeDataRegionEventCounter retryEventQueueEventCounter =
       new PipeDataRegionEventCounter();
 
@@ -506,7 +506,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    * @see PipeConnector#transfer(TsFileInsertionEvent) for more details.
    */
   private void transferQueuedEventsIfNecessary(final boolean forced) {
-    if ((retryEventQueue.isEmpty() && retryTSFileQueue.isEmpty())
+    if ((retryEventQueue.isEmpty() && retryTsFileQueue.isEmpty())
         || (!forced
             && retryEventQueueEventCounter.getTabletInsertionEventCount()
                 < PipeConfig.getInstance()
@@ -514,20 +514,20 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             && retryEventQueueEventCounter.getTsFileInsertionEventCount()
                 < PipeConfig.getInstance()
                     .getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold()
-            && retryEventQueue.size() + retryTSFileQueue.size()
+            && retryEventQueue.size() + retryTsFileQueue.size()
                 < PipeConfig.getInstance()
                     .getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold())) {
       return;
     }
 
     final long retryStartTime = System.currentTimeMillis();
-    final int remainingEvents = retryEventQueue.size() + retryTSFileQueue.size();
-    while (!retryEventQueue.isEmpty() && !retryTSFileQueue.isEmpty()) {
+    final int remainingEvents = retryEventQueue.size() + retryTsFileQueue.size();
+    while (!retryEventQueue.isEmpty() && !retryTsFileQueue.isEmpty()) {
       synchronized (this) {
         if (isClosed.get()) {
           return;
         }
-        if (retryEventQueue.isEmpty() && retryTSFileQueue.isEmpty()) {
+        if (retryEventQueue.isEmpty() && retryTsFileQueue.isEmpty()) {
           break;
         }
 
@@ -551,11 +551,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
           if (transferTsFileCounter.get() != 0) {
             return;
           }
-          peekedEvent = retryTSFileQueue.peek();
-
+          peekedEvent = retryTsFileQueue.peek();
           retryTransfer((PipeTsFileInsertionEvent) peekedEvent);
-
-          polledEvent = retryTSFileQueue.poll();
+          polledEvent = retryTsFileQueue.poll();
         }
 
         retryEventQueueEventCounter.decreaseEventCount(polledEvent);
@@ -580,16 +578,16 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             && retryEventQueueEventCounter.getTsFileInsertionEventCount()
                 < PipeConfig.getInstance()
                     .getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold()
-            && retryEventQueue.size() + retryTSFileQueue.size()
+            && retryEventQueue.size() + retryTsFileQueue.size()
                 < PipeConfig.getInstance()
                     .getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold()) {
           return;
         }
 
-        if (remainingEvents <= retryEventQueue.size() + retryTSFileQueue.size()) {
+        if (remainingEvents <= retryEventQueue.size() + retryTsFileQueue.size()) {
           throw new PipeException(
               "Failed to retry transferring events in the retry queue. Remaining events: "
-                  + (retryEventQueue.size() + retryTSFileQueue.size())
+                  + (retryEventQueue.size() + retryTsFileQueue.size())
                   + " (tablet events: "
                   + retryEventQueueEventCounter.getTabletInsertionEventCount()
                   + ", tsfile events: "
@@ -668,7 +666,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
 
     if (event instanceof PipeTsFileInsertionEvent) {
-      retryTSFileQueue.offer((PipeTsFileInsertionEvent) event);
+      retryTsFileQueue.offer((PipeTsFileInsertionEvent) event);
       retryEventQueueEventCounter.increaseEventCount(event);
     } else {
       retryEventQueue.offer(event);
@@ -715,7 +713,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
           return false;
         });
 
-    retryTSFileQueue.removeIf(
+    retryTsFileQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
               && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())
@@ -769,9 +767,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   public synchronized void clearRetryEventsReferenceCount() {
-    while (!retryEventQueue.isEmpty() || !retryTSFileQueue.isEmpty()) {
+    while (!retryEventQueue.isEmpty() || !retryTsFileQueue.isEmpty()) {
       final Event event =
-          retryTSFileQueue.isEmpty() ? retryEventQueue.poll() : retryTSFileQueue.poll();
+          retryTsFileQueue.isEmpty() ? retryEventQueue.poll() : retryTsFileQueue.poll();
       retryEventQueueEventCounter.decreaseEventCount(event);
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
@@ -782,7 +780,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   //////////////////////// APIs provided for metric framework ////////////////////////
 
   public int getRetryEventQueueSize() {
-    return retryEventQueue.size() + retryTSFileQueue.size();
+    return retryEventQueue.size() + retryTsFileQueue.size();
   }
 
   public int getBatchSize() {

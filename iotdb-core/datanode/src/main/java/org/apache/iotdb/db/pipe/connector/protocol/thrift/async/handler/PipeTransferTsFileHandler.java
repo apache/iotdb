@@ -134,7 +134,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       throws TException, IOException {
     // Delay creation of resources to avoid OOM or too many open files
     if (readBuffer == null) {
-      PipeDataNodeResourceManager.memory()
+      memoryBlock = PipeDataNodeResourceManager.memory()
           .forceAllocateForTsFileWithRetry(
               PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()
                   ? readFileBufferSize
