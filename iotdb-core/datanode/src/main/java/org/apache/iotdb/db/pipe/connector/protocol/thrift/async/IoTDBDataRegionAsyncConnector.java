@@ -21,8 +21,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -76,7 +74,6 @@ import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -98,10 +95,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       "Exception occurred while sending to receiver %s:%s.";
 
   private static final boolean isSplitTSFileBatchModeEnabled = true;
-  private static final ExecutorService executor =
-      IoTDBThreadPoolFactory.newFixedThreadPool(
-          PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize(),
-          ThreadName.PIPE_TSFILE_ASYNC_SEND_POOL.getName());
 
   private final IoTDBDataRegionSyncConnector syncConnector = new IoTDBDataRegionSyncConnector();
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
@@ -421,7 +414,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
               }
               return null;
             },
-            executor);
+            transferTsFileClientManager.getExecutor());
 
     if (PipeConfig.getInstance().isTransferTsFileSync() || !isRealtimeFirst) {
       try {
