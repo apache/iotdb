@@ -17,27 +17,48 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import java.util.List;
+import java.util.Objects;
 
-import com.google.common.util.concurrent.ListenableFuture;
-
-public class CreateModelTask implements IConfigTask {
+public class DropModel extends Statement {
 
   private final String modelId;
-  private final String uri;
 
-  public CreateModelTask(String modelId, String uri) {
+  public DropModel(String modelId) {
+    super(null);
     this.modelId = modelId;
-    this.uri = uri;
+  }
+
+  public String getModelId() {
+    return modelId;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
-      throws InterruptedException {
-    return configTaskExecutor.createModel(modelId, uri);
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitDropModel(this, context);
+  }
+
+  @Override
+  public List<? extends Node> getChildren() {
+    return null;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (o == null || getClass() != o.getClass()) return false;
+    DropModel dropModel = (DropModel) o;
+    return Objects.equals(modelId, dropModel.modelId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(modelId);
+  }
+
+  @Override
+  public String toString() {
+    return "DropModel{" + "modelId='" + modelId + '\'' + '}';
   }
 }
