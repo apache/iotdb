@@ -300,7 +300,7 @@ public class IoTDBMinByIT {
             "min_by(root.db.d1.x5, -cos(sin(root.db.d1.y2 / 10)))",
             "min_by(REPLACE(root.db.d1.x6, '3', '4'), -cos(sin(root.db.d1.y2 / 10)))",
           };
-      String[] retArray = new String[] {"1.0,2.0,3.0,3.0,false,4,"};
+      String[] retArray = new String[] {"0.0,1.3333333333333333,2.0,2.0,false,2,"};
       String y = "-cos(sin(y2 / 10))";
       resultSetEqualTest(
           String.format(
@@ -330,7 +330,8 @@ public class IoTDBMinByIT {
           };
       String[] retArray =
           new String[] {
-            "root.db.d1,1.0,2.0,3.0,3.0,false,4,", "root.db.d2,1.0,2.0,3.0,3.0,false,4,"
+            "root.db.d1,0.0,1.3333333333333333,2.0,2.0,false,2,",
+            "root.db.d2,0.0,1.3333333333333333,2.0,2.0,false,2,"
           };
       String y = "-cos(sin(y2 / 10))";
       resultSetEqualTest(
