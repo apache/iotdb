@@ -68,7 +68,6 @@ public class SerdeUtils {
       ReadWriteIOUtils.write(compressionType.serialize(), res);
       ReadWriteIOUtils.write((int) valueSize, res);
       res.put(compressedValue);
-      System.out.println("compression ratio: " + compressedValue.length * 1.0 / valueSize);
       return res.array();
     }
   }
