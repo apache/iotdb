@@ -40,7 +40,7 @@ public class SerdeUtils {
       count += array.length;
     }
     // compress type + uncompress size + content
-    long valueSize = count * Float.SIZE;
+    long valueSize = count * Float.BYTES;
     long size = Byte.BYTES + Integer.BYTES + valueSize;
     if (size > Integer.MAX_VALUE) {
       throw new IllegalArgumentException("Read object size is too large (size > 2G)");
@@ -65,9 +65,10 @@ public class SerdeUtils {
       }
       ByteBuffer res = ByteBuffer.allocate((int) compressedSize);
 
-      ReadWriteIOUtils.write(compressionType.serialize(), byteBuffer);
-      ReadWriteIOUtils.write((int) valueSize, byteBuffer);
+      ReadWriteIOUtils.write(compressionType.serialize(), res);
+      ReadWriteIOUtils.write((int) valueSize, res);
       res.put(compressedValue);
+      System.out.println("compression ratio: " + compressedValue.length * 1.0 / valueSize);
       return res.array();
     }
   }
