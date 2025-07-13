@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.scalar;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.utils.model.ModelReader;
+import org.apache.iotdb.rpc.SerdeUtils;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
@@ -29,11 +30,10 @@ import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.File;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,13 +41,18 @@ import static org.apache.iotdb.db.utils.ObjectTypeUtils.getObjectPathFromBinary;
 
 public class GeoPenetrate implements ScalarFunction {
 
+  private static final CompressionType DEFAULT_COMPRESSOR = CompressionType.LZ4;
+
   private ModelReader reader;
   private List<List<Integer>> startAndEndTimeArray;
+  private CompressionType compressionType;
 
   @Override
   public ScalarFunctionAnalysis analyze(FunctionArguments arguments)
       throws UDFArgumentNotValidException {
-    if (arguments.getArgumentsSize() != 2 && arguments.getArgumentsSize() != 3) {
+    if (arguments.getArgumentsSize() != 2
+        && arguments.getArgumentsSize() != 3
+        && arguments.getArgumentsSize() != 4) {
       throw new UDFArgumentNotValidException(
           "function requires 2 or 3 arguments, current parameters' size is "
               + arguments.getArgumentsSize());
@@ -60,8 +65,12 @@ public class GeoPenetrate implements ScalarFunction {
       throw new UDFArgumentNotValidException("function's second parameter type should be STRING");
     }
 
-    if (arguments.getArgumentsSize() == 3 && arguments.getDataType(1) != Type.STRING) {
+    if (arguments.getArgumentsSize() >= 3 && arguments.getDataType(2) != Type.STRING) {
       throw new UDFArgumentNotValidException("function's third parameter type should be STRING");
+    }
+
+    if (arguments.getArgumentsSize() == 4 && arguments.getDataType(3) != Type.STRING) {
+      throw new UDFArgumentNotValidException("function's fourth parameter type should be STRING");
     }
 
     return new ScalarFunctionAnalysis.Builder().outputDataType(Type.BLOB).build();
@@ -72,12 +81,18 @@ public class GeoPenetrate implements ScalarFunction {
     if (arguments.getArgumentsSize() == 2) {
       reader = ModelReader.getDefaultInstance();
     }
+    if (arguments.getArgumentsSize() <= 3) {
+      compressionType = DEFAULT_COMPRESSOR;
+    }
   }
 
   @Override
   public Object evaluate(Record input) throws UDFException {
     if (reader == null) {
       reader = ModelReader.getInstance(input.getString(2));
+    }
+    if (compressionType == null) {
+      compressionType = CompressionType.valueOf(input.getString(3));
     }
     if (startAndEndTimeArray == null) {
       startAndEndTimeArray = getStartAndEndTimeArray(input.getString(1));
@@ -87,17 +102,12 @@ public class GeoPenetrate implements ScalarFunction {
     } else {
       File objectPath = getObjectPathFromBinary(input.getBinary(0));
       List<float[]> res = reader.penetrate(objectPath.getAbsolutePath(), startAndEndTimeArray);
-      int count = 0;
-      for (float[] array : res) {
-        count += array.length;
+
+      try {
+        return new Binary(SerdeUtils.serialize(res, compressionType));
+      } catch (Exception e) {
+        throw new SemanticException("Failed to serialize value.");
       }
-      ByteBuffer byteBuffer = ByteBuffer.allocate(count * Float.BYTES);
-      for (float[] array : res) {
-        for (float value : array) {
-          ReadWriteIOUtils.write(value, byteBuffer);
-        }
-      }
-      return new Binary(byteBuffer.array());
     }
   }
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
@@ -109,11 +110,11 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
     File file = ObjectTypeUtils.getObjectPathFromBinary(binary);
     long fileSize = file.length();
     if (offset >= fileSize) {
-      throw new UnsupportedOperationException("offset is greater than object size");
+      throw new SemanticException("offset is greater than object size");
     }
     long actualReadSize = Math.min(length < 0 ? fileSize : length, fileSize - offset);
     if (actualReadSize > Integer.MAX_VALUE) {
-      throw new UnsupportedOperationException("Read object size is too large (size > 2G)");
+      throw new SemanticException("Read object size is too large (size > 2G)");
     }
     fragmentInstanceContext.ifPresent(
         context -> context.getMemoryReservationContext().reserveMemoryCumulatively(actualReadSize));
