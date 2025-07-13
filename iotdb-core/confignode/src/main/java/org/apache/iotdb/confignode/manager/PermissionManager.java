@@ -30,7 +30,10 @@ import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -138,7 +141,16 @@ public class PermissionManager {
     return authorInfo.checkRoleOfUser(username, rolename);
   }
 
+
   public TPermissionInfoResp getUser(String username) throws AuthException {
     return authorInfo.getUser(username);
+
+
+  public TShowUserLabelPolicyResp showUserLabelPolicy(TShowUserLabelPolicyReq req) {
+    return authorInfo.showUserLabelPolicy(req);
+  }
+
+  public TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req) {
+    return authorInfo.dropUserLabelPolicy(req);
   }
 }

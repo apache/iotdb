@@ -112,6 +112,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
@@ -152,6 +153,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
@@ -220,6 +223,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrent
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentSqlDialectTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentTimestampTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowUserLabelPolicyTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowVersionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
@@ -254,6 +258,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowUserLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -1581,6 +1587,38 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showCurrentTimestamp() {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ShowCurrentTimestampTask.buildTsBlock(future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showUserLabelPolicy(
+      String username, ShowUserLabelPolicyStatement.LabelPolicyScope scope) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      // Build request parameters
+      final TShowUserLabelPolicyReq req = new TShowUserLabelPolicyReq();
+      if (username != null) {
+        req.setUsername(username);
+      }
+      req.setScope(scope.name());
+
+      // Send request to ConfigNode
+      final TShowUserLabelPolicyResp resp = configNodeClient.showUserLabelPolicy(req);
+
+      // Process response
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.getCode()) {
+        LOGGER.warn(
+            "Failed to execute show user label policy in config node, status is {}.", resp.status);
+        future.setException(new IoTDBException(resp.status.message, resp.status.code));
+      } else {
+        // Build result
+        ShowUserLabelPolicyTask.buildTsBlock(username, scope, future);
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
     return future;
   }
 
@@ -4411,5 +4449,35 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (final Exception e) {
       LOGGER.warn("Failed to handlePipeConfigClientExit.", e);
     }
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterUserLabelPolicy(
+      String username, ShowUserLabelPolicyStatement.LabelPolicyScope scope) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      // Build request parameters
+      final TDropUserLabelPolicyReq req = new TDropUserLabelPolicyReq();
+      req.setUsername(username);
+      req.setScope(scope.name());
+
+      // Send request to ConfigNode
+      final TSStatus status = configNodeClient.dropUserLabelPolicy(req);
+
+      // Process response
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+        LOGGER.warn(
+            "Failed to execute drop user label policy in config node, status is {}.", status);
+        future.setException(new IoTDBException(status.message, status.code));
+      } else {
+        // Build result
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
   }
 }

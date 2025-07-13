@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTim
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -75,6 +76,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStateme
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
@@ -696,6 +698,16 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowCurrentUser(ShowCurrentUserStatement showCurrentUserStatement, C context) {
     return visitStatement(showCurrentUserStatement, context);
+  }
+
+  public R visitShowUserLabelPolicy(
+      ShowUserLabelPolicyStatement showUserLabelPolicyStatement, C context) {
+    return visitStatement(showUserLabelPolicyStatement, context);
+  }
+
+  public R visitAlterUserLabelPolicy(
+      AlterUserLabelPolicyStatement alterUserLabelPolicyStatement, C context) {
+    return visitStatement(alterUserLabelPolicyStatement, context);
   }
 
   public R visitCreateTraining(CreateTrainingStatement createTrainingStatement, C context) {

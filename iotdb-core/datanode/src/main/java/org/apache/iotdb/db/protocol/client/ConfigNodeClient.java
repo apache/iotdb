@@ -106,6 +106,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
@@ -154,6 +155,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
@@ -175,6 +177,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
@@ -1444,10 +1448,29 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+
   public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp)
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.pushHeartbeat(dataNodeId, resp), status -> !updateConfigNodeLeader(status));
+
+  public TShowUserLabelPolicyResp showUserLabelPolicy(TShowUserLabelPolicyReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showUserLabelPolicy(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.dropUserLabelPolicy(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus showClusterInfo(TShowClusterInfoReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showClusterInfo(req), status -> !updateConfigNodeLeader(status));
+
   }
 
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {

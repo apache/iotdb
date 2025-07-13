@@ -208,6 +208,14 @@ public interface IAuthorizer extends SnapshotProcessor {
   User getUser(String username) throws AuthException;
 
   /**
+   * Check if a user exists.
+   *
+   * @param username the name of the user.
+   * @return True if the user exists, false otherwise.
+   */
+  boolean hasUser(String username);
+
+  /**
    * get all user
    *
    * @return key-> userName, value->user
@@ -253,4 +261,13 @@ public interface IAuthorizer extends SnapshotProcessor {
    */
   void updateUserLabelPolicy(String username, String labelPolicyExpression, String labelPolicyScope)
       throws AuthException;
+
+  /**
+   * Drop label policy for a user.
+   *
+   * @param username The username of the user
+   * @param labelPolicyScope The label policy scope to drop (READ, WRITE, READ,WRITE)
+   * @throws AuthException If the user does not exist
+   */
+  void dropUserLabelPolicy(String username, String labelPolicyScope) throws AuthException;
 }

@@ -144,6 +144,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -183,6 +184,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStateme
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
@@ -2462,10 +2464,30 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Alter Password
   @Override
   public Statement visitAlterUser(IoTDBSqlParser.AlterUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorType.UPDATE_USER);
-    authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
-    authorStatement.setNewPassword(parseStringLiteral(ctx.password.getText()));
-    return authorStatement;
+    if (ctx.password != null) {
+      // Handle password change
+      AuthorStatement authorStatement = new AuthorStatement(AuthorType.UPDATE_USER);
+      authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
+      authorStatement.setNewPassword(parseStringLiteral(ctx.password.getText()));
+      return authorStatement;
+    } else if (ctx.LABEL_POLICY() != null) {
+      // Handle dropping label policy
+      String username = parseIdentifier(ctx.userNameForLabel.getText());
+      String scopeText = ctx.labelPolicyScope().getText();
+
+      // Convert scope text to LabelPolicyScope enum
+      ShowUserLabelPolicyStatement.LabelPolicyScope scope;
+      if (scopeText.equalsIgnoreCase("READ")) {
+        scope = ShowUserLabelPolicyStatement.LabelPolicyScope.READ;
+      } else if (scopeText.equalsIgnoreCase("WRITE")) {
+        scope = ShowUserLabelPolicyStatement.LabelPolicyScope.WRITE;
+      } else {
+        scope = ShowUserLabelPolicyStatement.LabelPolicyScope.READ_WRITE;
+      }
+
+      return new AlterUserLabelPolicyStatement(username, scope);
+    }
+    throw new SemanticException("Invalid ALTER USER statement");
   }
 
   // Grant User Privileges
@@ -4808,5 +4830,28 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowCurrentUser(IoTDBSqlParser.ShowCurrentUserContext ctx) {
     return new ShowCurrentUserStatement();
+  }
+
+  @Override
+  public Statement visitShowUserLabelPolicy(IoTDBSqlParser.ShowUserLabelPolicyContext ctx) {
+    ShowUserLabelPolicyStatement statement = new ShowUserLabelPolicyStatement();
+
+    // Parse username (optional)
+    if (ctx.userName != null) {
+      statement.setUsername(ctx.userName.getText());
+    }
+
+    // Parse scope
+    if (ctx.labelPolicyScope() != null) {
+      if (ctx.labelPolicyScope().READ() != null && ctx.labelPolicyScope().WRITE() != null) {
+        statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.READ_WRITE);
+      } else if (ctx.labelPolicyScope().READ() != null) {
+        statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.READ);
+      } else if (ctx.labelPolicyScope().WRITE() != null) {
+        statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.WRITE);
+      }
+    }
+
+    return statement;
   }
 }

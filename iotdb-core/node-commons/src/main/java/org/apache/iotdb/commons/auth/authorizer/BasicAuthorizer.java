@@ -203,6 +203,48 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
+  public void dropUserLabelPolicy(String username, String labelPolicyScope) throws AuthException {
+    User user = userManager.getEntity(username);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
+    }
+
+    // Check if the user has any label policy set
+    String currentScope = user.getLabelPolicyScope();
+    if (currentScope == null || currentScope.isEmpty()) {
+      // No label policy to drop
+      return;
+    }
+
+    // Check if we're dropping both READ and WRITE policies
+    boolean isReadWrite =
+        (labelPolicyScope.toUpperCase().contains("READ")
+            && labelPolicyScope.toUpperCase().contains("WRITE"));
+
+    // If dropping all policies or the only policy
+    if (isReadWrite || labelPolicyScope.equals(currentScope)) {
+      // Clear both expression and scope
+      user.setLabelPolicyExpression(null);
+      user.setLabelPolicyScope(null);
+    }
+    // If dropping READ from READ,WRITE
+    else if (labelPolicyScope.equals("READ")
+        && currentScope.toUpperCase().contains("READ")
+        && currentScope.toUpperCase().contains("WRITE")) {
+      user.setLabelPolicyScope("WRITE");
+    }
+    // If dropping WRITE from READ,WRITE
+    else if (labelPolicyScope.equals("WRITE")
+        && currentScope.toUpperCase().contains("READ")
+        && currentScope.toUpperCase().contains("WRITE")) {
+      user.setLabelPolicyScope("READ");
+    }
+
+    userManager.updateUser(user);
+  }
+
+  @Override
   public void deleteUser(String username) throws AuthException {
     checkAdmin(username, "Default administrator cannot be deleted");
     if (!userManager.deleteEntity(username)) {
@@ -295,7 +337,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
-    // the role may be deleted before it ts granted to the user, so a double check is necessary.
+    // the role may be deleted before it ts granted to the user, so a double check
+    // is necessary.
     userManager.grantRoleToUser(roleName, userName);
     role = roleManager.getEntity(roleName);
     if (role == null) {
@@ -492,6 +535,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public User getUser(String username) throws AuthException {
     return userManager.getEntity(username);
+  }
+
+  @Override
+  public boolean hasUser(String username) {
+    return userManager.getEntity(username) != null;
   }
 
   @Override

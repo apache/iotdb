@@ -64,6 +64,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowUserLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -420,6 +422,12 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showCurrentDatabase(@Nullable String currentDatabase);
 
   SettableFuture<ConfigTaskResult> showCurrentTimestamp();
+
+  SettableFuture<ConfigTaskResult> showUserLabelPolicy(
+      String username, ShowUserLabelPolicyStatement.LabelPolicyScope scope);
+
+  SettableFuture<ConfigTaskResult> alterUserLabelPolicy(
+      String username, ShowUserLabelPolicyStatement.LabelPolicyScope scope);
 
   // =============================== AI =========================================
   SettableFuture<ConfigTaskResult> createModel(String modelId, String uri);

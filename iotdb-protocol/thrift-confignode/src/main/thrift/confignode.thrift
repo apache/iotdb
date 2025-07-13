@@ -1146,10 +1146,33 @@ struct TShowThrottleReq {
   1: optional string userName;
 }
 
+// ====================================================
+// Show User Label Policy
+// ====================================================
+struct TShowUserLabelPolicyReq {
+  1: optional string username
+  2: required string scope
+}
 
-// ====================================================
+struct TShowUserLabelPolicyResp {
+  1: required common.TSStatus status
+  2: optional list<TUserLabelPolicyInfo> userLabelPolicyList
+}
+
+struct TDropUserLabelPolicyReq {
+  1: required string username
+  2: required string scope
+}
+
+struct TUserLabelPolicyInfo {
+  1: required string username
+  2: required string scope
+  3: optional string policyExpression
+}
+
+// ======================================================
 // Activation
-// ====================================================
+// ======================================================
 struct TLicenseContentResp {
     1: required common.TSStatus status
     2: optional common.TLicense licenseContent
@@ -1159,9 +1182,9 @@ enum TActivationControl {
   ALL_LICENSE_FILE_DELETED
 }
 
-// ====================================================
+// ======================================================
 // AINode
-// ====================================================
+// ======================================================
 
 struct TAINodeConfigurationResp {
   1: required common.TSStatus status
@@ -1275,6 +1298,15 @@ struct TTableInfo {
 struct TCreateTableViewReq {
     1: required binary tableInfo
     2: required bool replace
+}
+
+// ======================================================
+// Cluster Info
+// ======================================================
+
+// Define the TShowClusterInfoReq struct
+struct TShowClusterInfoReq {
+  1: optional bool verbose
 }
 
 service IConfigNodeRPCService {
@@ -2055,6 +2087,15 @@ service IConfigNodeRPCService {
   common.TSStatus pushHeartbeat(i32 dataNodeId, common.TPipeHeartbeatResp resp)
 
   // ======================================================
+  // Show User Label Policy
+  // ======================================================
+  /** Show user label policy */
+  TShowUserLabelPolicyResp showUserLabelPolicy(TShowUserLabelPolicyReq req)
+
+  /** Drop user label policy */
+  common.TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req)
+
+  // ======================================================
   // Table Or View
   // ======================================================
 
@@ -2077,5 +2118,7 @@ service IConfigNodeRPCService {
   // Table view
 
   common.TSStatus createTableView(TCreateTableViewReq req)
+
+  common.TSStatus showClusterInfo(TShowClusterInfoReq req)
 }
 

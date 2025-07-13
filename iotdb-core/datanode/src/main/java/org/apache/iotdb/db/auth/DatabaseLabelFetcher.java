@@ -27,12 +27,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -265,10 +268,38 @@ public class DatabaseLabelFetcher {
    */
   private static SecurityLabel getFromLocalSchema(String databasePath) {
     try {
-      // TODO: Implement retrieval from local schema engine
-      // This will depend on how security labels are stored in the schema
       LOGGER.debug("Attempting to get security label from local schema for: {}", databasePath);
+
+      // 在IoTDB架构中，数据库的安全标签信息存储在ConfigNode中，
+      // 而不是在DataNode的本地schema引擎中。DataNode的schema引擎
+      // 主要负责存储时间序列的元数据，而数据库级别的信息（包括安全标签）
+      // 由ConfigNode管理。
+
+      // 检查数据库是否存在
+      SchemaEngine schemaEngine = SchemaEngine.getInstance();
+      if (schemaEngine == null) {
+        LOGGER.debug("SchemaEngine not initialized for database: {}", databasePath);
+        return null;
+      }
+
+      // 检查数据库是否在本地schema引擎中存在
+      // 注意：这里只是检查数据库是否存在，实际的安全标签需要从ConfigNode获取
+      Collection<ISchemaRegion> schemaRegions = schemaEngine.getAllSchemaRegions();
+      if (schemaRegions != null) {
+        for (ISchemaRegion schemaRegion : schemaRegions) {
+          if (schemaRegion.getDatabaseFullPath().equals(databasePath)) {
+            LOGGER.debug(
+                "Database {} exists in local schema engine, but security labels are stored in ConfigNode",
+                databasePath);
+            // 数据库存在，但安全标签需要从ConfigNode获取
+            return null;
+          }
+        }
+      }
+
+      LOGGER.debug("Database {} not found in local schema engine", databasePath);
       return null;
+
     } catch (Exception e) {
       LOGGER.debug("Failed to get security label from local schema for: {}", databasePath, e);
       return null;

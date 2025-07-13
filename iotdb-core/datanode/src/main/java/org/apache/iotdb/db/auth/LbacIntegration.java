@@ -29,7 +29,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowUserLabelPolicyTask;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowUserLabelPolicyStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -188,6 +190,117 @@ public class LbacIntegration {
       LOGGER.error("Error performing LBAC check", e);
       return LbacPermissionChecker.LbacCheckResult.deny(
           "Internal error during LBAC policy evaluation: " + e.getMessage());
+    }
+  }
+
+  /**
+   * Get user label policies for the specified user and scope.
+   *
+   * @param username The username to get policies for
+   * @param scope The scope (READ, WRITE, or READ_WRITE)
+   * @return List of user label policy information
+   */
+  public static List<ShowUserLabelPolicyTask.UserLabelPolicyInfo> getUserLabelPolicies(
+      String username, ShowUserLabelPolicyStatement.LabelPolicyScope scope) {
+
+    LOGGER.debug("Getting user label policies for user: {} with scope: {}", username, scope);
+
+    List<ShowUserLabelPolicyTask.UserLabelPolicyInfo> policies = new ArrayList<>();
+
+    try {
+      // Try to get label policies from ConfigNode
+      try (ConfigNodeClient configNodeClient =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+        // Build request
+        org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq req =
+            new org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq();
+        if (username != null) {
+          req.setUsername(username);
+        }
+        req.setScope(scope.name());
+
+        // Send request to ConfigNode
+        org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp resp =
+            configNodeClient.showUserLabelPolicy(req);
+
+        // Process response
+        if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          // If there are policy data, add them to the result list
+          if (resp.isSetUserLabelPolicyList() && resp.getUserLabelPolicyListSize() > 0) {
+            for (int i = 0; i < resp.getUserLabelPolicyListSize(); i++) {
+              String user = resp.getUserLabelPolicyList().get(i).getUsername();
+              String policyScope = resp.getUserLabelPolicyList().get(i).getScope();
+              String policyExpression = resp.getUserLabelPolicyList().get(i).getPolicyExpression();
+
+              ShowUserLabelPolicyStatement.LabelPolicyScope labelScope =
+                  ShowUserLabelPolicyStatement.LabelPolicyScope.valueOf(policyScope);
+
+              ShowUserLabelPolicyTask.UserLabelPolicyInfo policyInfo =
+                  new ShowUserLabelPolicyTask.UserLabelPolicyInfo(
+                      user, labelScope, policyExpression);
+              policies.add(policyInfo);
+            }
+          }
+          LOGGER.debug("Retrieved {} label policies for user: {}", policies.size(), username);
+        } else {
+          LOGGER.warn(
+              "Failed to get label policies from ConfigNode: {}", resp.getStatus().getMessage());
+        }
+      } catch (ClientManagerException | TException e) {
+        LOGGER.error("Error connecting to ConfigNode for label policies: {}", e.getMessage());
+      }
+    } catch (Exception e) {
+      LOGGER.error("Error retrieving user label policies for user: {}", username, e);
+    }
+
+    return policies;
+  }
+
+  /**
+   * Drop user label policy for the specified user and scope.
+   *
+   * @param username The username to drop policy for
+   * @param scope The scope (READ, WRITE, or READ_WRITE)
+   * @throws Exception If there is an error dropping the policy
+   */
+  public static void dropUserLabelPolicy(
+      String username, ShowUserLabelPolicyStatement.LabelPolicyScope scope) throws Exception {
+
+    LOGGER.debug("Dropping user label policy for user: {} with scope: {}", username, scope);
+
+    try {
+      // Try to drop label policy via ConfigNode
+      try (ConfigNodeClient configNodeClient =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+        // Build request
+        org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq req =
+            new org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq();
+        req.setUsername(username);
+        req.setScope(scope.name());
+
+        // Send request to ConfigNode
+        TSStatus status = configNodeClient.dropUserLabelPolicy(req);
+
+        // Process response
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          LOGGER.debug(
+              "Successfully dropped label policy for user: {} with scope: {}", username, scope);
+        } else {
+          String errorMsg = "Failed to drop label policy from ConfigNode: " + status.getMessage();
+          LOGGER.error(errorMsg);
+          throw new Exception(errorMsg);
+        }
+      } catch (ClientManagerException | TException e) {
+        String errorMsg =
+            "Error connecting to ConfigNode for dropping label policy: " + e.getMessage();
+        LOGGER.error(errorMsg);
+        throw new Exception(errorMsg);
+      }
+    } catch (Exception e) {
+      LOGGER.error("Error dropping user label policy for user: {}", username, e);
+      throw e;
     }
   }
 }

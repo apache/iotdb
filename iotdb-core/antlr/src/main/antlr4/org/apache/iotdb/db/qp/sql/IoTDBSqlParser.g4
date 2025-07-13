@@ -82,7 +82,7 @@ dmlStatement
 dclStatement
     : createUser | createRole | alterUser | grantUser | grantRole | grantRoleToUser
     | revokeUser |  revokeRole | revokeRoleFromUser | dropUser | dropRole
-    | listUser | listRole | listPrivilegesUser | listPrivilegesRole
+    | listUser | listRole | listPrivilegesUser | listPrivilegesRole | showUserLabelPolicy
     ;
 
 utilityStatement
@@ -1051,6 +1051,7 @@ createRole
 // Alter Password
 alterUser
     : ALTER USER userName=usernameWithRoot SET PASSWORD password=STRING_LITERAL
+    | ALTER USER userNameForLabel=identifier DROP LABEL_POLICY FOR labelPolicyScope
     ;
 
 // Grant User Privileges
@@ -1121,6 +1122,12 @@ listPrivilegesRole
 privileges
     : privilegeValue (COMMA privilegeValue)*
     ;
+
+// Show User Label Policy
+showUserLabelPolicy
+    : SHOW USER (userName=identifier)? LABEL_POLICY FOR labelPolicyScope
+    ;
+
 
 privilegeValue
     : ALL
@@ -1539,6 +1546,7 @@ labelPolicyScope
     : READ
     | WRITE
     | READ COMMA WRITE
+     | WRITE COMMA READ
     ;
 
 policyExpression

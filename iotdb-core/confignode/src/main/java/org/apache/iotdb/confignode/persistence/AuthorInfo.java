@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
@@ -47,8 +48,12 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUserLabelPolicyInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -729,5 +734,133 @@ public class AuthorInfo implements SnapshotProcessor {
     result.setUserInfo(tUserResp);
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     return result;
+  }
+
+  public TShowUserLabelPolicyResp showUserLabelPolicy(TShowUserLabelPolicyReq req) {
+    TShowUserLabelPolicyResp resp = new TShowUserLabelPolicyResp();
+    try {
+      List<TUserLabelPolicyInfo> userLabelPolicyList = new ArrayList<>();
+
+      String username = req.getUsername();
+      String scope = req.getScope();
+      // Check if scope contains both READ and WRITE regardless of order
+      boolean isReadWrite =
+          "READ_WRITE".equals(scope) || (scope.contains("READ") && scope.contains("WRITE"));
+
+      if (username != null && !username.isEmpty()) {
+        // Show label policy for a specific user
+        if (!authorizer.hasUser(username)) {
+          resp.setStatus(
+              RpcUtils.getStatus(
+                  TSStatusCode.USER_NOT_EXIST.getStatusCode(),
+                  String.format("User [%s] does not exist.", username)));
+          return resp;
+        }
+
+        User user = authorizer.getUser(username);
+        String policyExpression = user.getLabelPolicyExpression();
+        String policyScope = user.getLabelPolicyScope();
+
+        if (policyScope != null && policyExpression != null) {
+          if (isReadWrite) {
+            // For READ_WRITE scope, check both READ and WRITE policies
+            if (policyScope.toUpperCase().contains("READ")) {
+              TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
+              readPolicyInfo.setUsername(username);
+              readPolicyInfo.setScope("READ");
+              readPolicyInfo.setPolicyExpression(policyExpression);
+              userLabelPolicyList.add(readPolicyInfo);
+            }
+
+            if (policyScope.toUpperCase().contains("WRITE")) {
+              TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
+              writePolicyInfo.setUsername(username);
+              writePolicyInfo.setScope("WRITE");
+              writePolicyInfo.setPolicyExpression(policyExpression);
+              userLabelPolicyList.add(writePolicyInfo);
+            }
+          } else if (policyScope.toUpperCase().contains(scope.toUpperCase())) {
+            // For single scope (READ or WRITE)
+            TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+            policyInfo.setUsername(username);
+            policyInfo.setScope(scope);
+            policyInfo.setPolicyExpression(policyExpression);
+            userLabelPolicyList.add(policyInfo);
+          }
+        }
+      } else {
+        // Show label policy for all users
+        for (String user : authorizer.listAllUsers()) {
+          User userObj = authorizer.getUser(user);
+          String policyExpression = userObj.getLabelPolicyExpression();
+          String policyScope = userObj.getLabelPolicyScope();
+
+          if (policyScope != null && policyExpression != null) {
+            if (isReadWrite) {
+              // For READ_WRITE scope, check both READ and WRITE policies
+              if (policyScope.toUpperCase().contains("READ")) {
+                TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
+                readPolicyInfo.setUsername(user);
+                readPolicyInfo.setScope("READ");
+                readPolicyInfo.setPolicyExpression(policyExpression);
+                userLabelPolicyList.add(readPolicyInfo);
+              }
+
+              if (policyScope.toUpperCase().contains("WRITE")) {
+                TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
+                writePolicyInfo.setUsername(user);
+                writePolicyInfo.setScope("WRITE");
+                writePolicyInfo.setPolicyExpression(policyExpression);
+                userLabelPolicyList.add(writePolicyInfo);
+              }
+            } else if (policyScope.toUpperCase().contains(scope.toUpperCase())) {
+              // For single scope (READ or WRITE)
+              TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+              policyInfo.setUsername(user);
+              policyInfo.setScope(scope);
+              policyInfo.setPolicyExpression(policyExpression);
+              userLabelPolicyList.add(policyInfo);
+            }
+          }
+        }
+      }
+
+      resp.setUserLabelPolicyList(userLabelPolicyList);
+      resp.setStatus(StatusUtils.OK);
+    } catch (AuthException e) {
+      resp.setStatus(
+          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getMessage()));
+    }
+    return resp;
+  }
+
+  public TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req) {
+    try {
+      String username = req.getUsername();
+      String scope = req.getScope();
+      // Check if scope contains both READ and WRITE regardless of order
+      boolean isReadWrite =
+          "READ_WRITE".equals(scope) || (scope.contains("READ") && scope.contains("WRITE"));
+
+      if (!authorizer.hasUser(username)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.USER_NOT_EXIST.getStatusCode(),
+            String.format("User [%s] does not exist.", username));
+      }
+
+      if (isReadWrite) {
+        // Drop both READ and WRITE policies
+        authorizer.dropUserLabelPolicy(username, "READ");
+        authorizer.dropUserLabelPolicy(username, "WRITE");
+      } else {
+        // Drop single scope policy
+        authorizer.dropUserLabelPolicy(username, scope);
+      }
+
+      return StatusUtils.OK;
+    } catch (AuthException e) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getMessage());
+    }
   }
 }

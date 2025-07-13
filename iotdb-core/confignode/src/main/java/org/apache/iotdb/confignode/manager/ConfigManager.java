@@ -184,6 +184,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
@@ -242,6 +243,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
@@ -410,7 +413,8 @@ public class ConfigManager implements IManager {
 
     // 1. keep PipeManager initialization before LoadManager initialization, because
     // LoadManager will register PipeManager as a listener.
-    // 2. keep RetryFailedTasksThread initialization after LoadManager initialization,
+    // 2. keep RetryFailedTasksThread initialization after LoadManager
+    // initialization,
     // because RetryFailedTasksThread will keep a reference of LoadManager.
     setLoadManager();
 
@@ -448,8 +452,10 @@ public class ConfigManager implements IManager {
   public DataSet getSystemConfiguration() {
     TSStatus status = confirmLeader();
     ConfigurationResp dataSet;
-    // Notice: The Seed-ConfigNode must also have the privilege to give system configuration.
-    // Otherwise, the IoTDB-cluster will not have the ability to restart from scratch.
+    // Notice: The Seed-ConfigNode must also have the privilege to give system
+    // configuration.
+    // Otherwise, the IoTDB-cluster will not have the ability to restart from
+    // scratch.
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || ConfigNodeDescriptor.getInstance().isSeedConfigNode()
         || SystemPropertiesUtils.isSeedConfigNode()) {
@@ -1497,7 +1503,8 @@ public class ConfigManager implements IManager {
         if (consensusManager.get() == null || !consensusManager.get().isInitialized()) {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMS);
         } else {
-          // When add non Seed-ConfigNode to the ConfigNodeGroup, the parameter should be emptyList
+          // When add non Seed-ConfigNode to the ConfigNodeGroup, the parameter should be
+          // emptyList
           consensusManager.get().createPeerForConsensusGroup(Collections.emptyList());
           return StatusUtils.OK;
         }
@@ -2223,7 +2230,8 @@ public class ConfigManager implements IManager {
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           failedStatus.add(status);
         }
-        // 3. create database whatever the delete database operation is successful or not
+        // 3. create database whatever the delete database operation is successful or
+        // not
         for (TDatabaseSchema databaseSchema : deleteDatabaseSchemas) {
           status =
               clusterSchemaManager.setDatabase(
@@ -2797,6 +2805,24 @@ public class ConfigManager implements IManager {
         : new TThrottleQuotaResp(status);
   }
 
+  public TShowUserLabelPolicyResp showUserLabelPolicy(TShowUserLabelPolicyReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return permissionManager.showUserLabelPolicy(req);
+    } else {
+      return new TShowUserLabelPolicyResp(status);
+    }
+  }
+
+  public TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return permissionManager.dropUserLabelPolicy(req);
+    } else {
+      return status;
+    }
+  }
+
   @Override
   public TSStatus createTable(final ByteBuffer tableInfo) {
     final TSStatus status = confirmLeader();
@@ -2964,5 +2990,14 @@ public class ConfigManager implements IManager {
     resp.setStatus(status);
     resp.setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
     return resp;
+  }
+
+  public TSStatus showClusterInfo(org.apache.iotdb.confignode.rpc.thrift.TShowClusterInfoReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return RpcUtils.SUCCESS_STATUS;
+    } else {
+      return status;
+    }
   }
 }

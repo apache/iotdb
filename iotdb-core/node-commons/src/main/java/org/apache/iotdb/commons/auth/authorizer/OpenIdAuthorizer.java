@@ -172,7 +172,8 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     String iotdbUsername = getUsername(claims);
     if (!super.listAllUsers().contains(iotdbUsername)) {
       logger.info("User {} logs in for first time, storing it locally!", iotdbUsername);
-      // We give the user a random password so that no one could hijack them via local login
+      // We give the user a random password so that no one could hijack them via local
+      // login
       super.createUserWithoutCheck(iotdbUsername, UUID.randomUUID().toString());
     }
     // Always store claims and user
@@ -261,5 +262,10 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   @Override
   public void updateUserPassword(String userName, String newPassword) {
     throwUnsupportedOperationException();
+  }
+
+  @Override
+  public boolean hasUser(String username) {
+    return super.hasUser(username);
   }
 }
