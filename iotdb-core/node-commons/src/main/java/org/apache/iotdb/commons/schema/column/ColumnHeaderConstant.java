@@ -559,7 +559,7 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(SOURCE_COLUMN, TSDataType.TEXT),
           new ColumnHeader(TARGET_TIMESERIES, TSDataType.TEXT),
-          new ColumnHeader(WRITTEN, TSDataType.INT32));
+          new ColumnHeader(WRITTEN, TSDataType.INT64));
 
   public static final List<ColumnHeader> selectIntoAlignByDeviceColumnHeaders =
       ImmutableList.of(
