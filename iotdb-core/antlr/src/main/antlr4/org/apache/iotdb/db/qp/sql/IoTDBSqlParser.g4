@@ -147,7 +147,7 @@ securityLabelPair
 // ---- Show Databases
 showDatabases
     : SHOW (STORAGE GROUP | DATABASES) DETAILS? prefixPath?
-    |SHOW DATABASE prefixPath? SECURITY_LABEL
+    |SHOW DATABASES prefixPath? SECURITY_LABEL
     ;
 
 // ---- Count Databases

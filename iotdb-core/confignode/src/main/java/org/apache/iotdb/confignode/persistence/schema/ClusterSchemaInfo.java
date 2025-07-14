@@ -348,8 +348,19 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final TDatabaseSchema currentSchema =
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
 
-      // Set security label
-      currentSchema.setSecurityLabel(plan.getSecurityLabel().getLabels());
+      // Set or clear security label
+      if (plan.getSecurityLabel() != null && !plan.getSecurityLabel().getLabels().isEmpty()) {
+        // Set security label
+        currentSchema.setSecurityLabel(plan.getSecurityLabel().getLabels());
+        LOGGER.info(
+            "Successfully set security label for database: {}, labels: {}",
+            databaseName,
+            plan.getSecurityLabel().getLabels());
+      } else {
+        // Clear security label (drop operation)
+        currentSchema.setSecurityLabel(null);
+        LOGGER.info("Successfully dropped security label for database: {}", databaseName);
+      }
 
       // Update the database schema
       mTree
@@ -358,11 +369,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .setDatabaseSchema(currentSchema);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-
-      LOGGER.info(
-          "Successfully set security label for database: {}, labels: {}",
-          databaseName,
-          plan.getSecurityLabel().getLabels());
 
     } catch (final MetadataException e) {
       LOGGER.error("Failed to set database security label", e);

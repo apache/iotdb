@@ -488,11 +488,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      // Handle null security label (drop operation)
+      Map<String, String> securityLabels = new java.util.HashMap<>();
+      if (alterDatabaseSecurityLabelStatement.getSecurityLabel() != null) {
+        securityLabels = alterDatabaseSecurityLabelStatement.getSecurityLabel().getLabels();
+      }
+
       // 构建请求参数，将数据库路径和安全标签传递给 ConfigNode
       final TAlterDatabaseSecurityLabelReq req =
-          new TAlterDatabaseSecurityLabelReq(
-              alterDatabaseSecurityLabelStatement.getDatabasePath().getFullPath(),
-              alterDatabaseSecurityLabelStatement.getSecurityLabel().getLabels());
+          new TAlterDatabaseSecurityLabelReq()
+              .setDatabasePath(alterDatabaseSecurityLabelStatement.getDatabasePath().getFullPath())
+              .setSecurityLabel(securityLabels);
 
       // 发送请求到 ConfigNode
       final TSStatus tsStatus = configNodeClient.alterDatabaseSecurityLabel(req);
@@ -523,7 +530,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         // 查询安全标签，支持全量和单个
         String dbPath = null;
         if (showDatabaseStatement.getPathPattern() != null
-            && !showDatabaseStatement.getPathPattern().getFullPath().equals("root")) {
+            && !showDatabaseStatement.getPathPattern().getFullPath().equals("root")
+            && !showDatabaseStatement.getPathPattern().getFullPath().equals("root.**")) {
           dbPath = showDatabaseStatement.getPathPattern().getFullPath();
         }
         LOGGER.info(
@@ -537,7 +545,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelResp resp =
             client.getDatabaseSecurityLabel(req);
         LOGGER.info("Received response from ConfigNode: {}", resp);
-        // 构造 TSBlock，处理 null 的情况
+
+        // Check response status first
+        if (resp.getStatus() != null
+            && resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          // If ConfigNode returned an error, throw exception
+          future.setException(
+              new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode()));
+          return future;
+        }
+
+        // Construct TSBlock, handle null case
         Map<String, String> securityLabelMap = resp.getSecurityLabel();
         if (securityLabelMap == null) {
           securityLabelMap = new java.util.HashMap<>();

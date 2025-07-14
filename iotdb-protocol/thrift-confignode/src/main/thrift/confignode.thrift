@@ -219,7 +219,7 @@ struct TDatabaseSchema {
 
 struct TAlterDatabaseSecurityLabelReq {
   1: required string databasePath
-  2: required map<string, string> securityLabel
+  2: optional map<string, string> securityLabel
 }
 
 struct TGetDatabaseSecurityLabelReq {
