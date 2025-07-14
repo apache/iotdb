@@ -573,7 +573,7 @@ public class TableDeviceSchemaFetcher {
       deviceEntryList.add(deviceEntry);
       // Only cache those exact device query
       // Fetch paths is null iff there are fuzzy queries related to id columns
-      if (false && Objects.nonNull(statement.getPartitionKeyList())) {
+      if (Objects.nonNull(statement.getPartitionKeyList())) {
         cache.putAttributes(statement.getDatabase(), deviceID, attributeMap);
       }
     }
