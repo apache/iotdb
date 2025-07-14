@@ -29,9 +29,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -59,11 +57,10 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
   private static final AtomicInteger toRepairTsFileNum = new AtomicInteger(0);
 
   // Usage: --expected true|false --dirs <dir1> <dir2> ...
-  // TODO: support validating and repairing specific time partition directories
   public static void main(String[] args) throws IOException {
     parseCommandLineArgs(args);
-    final Map<String, List<File>> partitionDirs = findAllPartitionDirs();
-    partitionDirs.entrySet().parallelStream()
+    final List<File> partitionDirs = findAllPartitionDirs();
+    partitionDirs.parallelStream()
         .forEach(
             TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool
                 ::validateAndRepairTsFileResourcesInPartition);
@@ -113,104 +110,77 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
     LOGGER.info("------------------------------------------------------\n");
   }
 
-  private static Map<String, List<File>> findAllPartitionDirs() {
-    final Map<String, List<File>> partitionMap = new HashMap<>();
-
+  private static List<File> findAllPartitionDirs() {
+    final List<File> partitionDirs = new ArrayList<>();
     for (final File dataDir : dataDirs) {
-      if (!dataDir.exists() || !dataDir.isDirectory()) {
-        LOGGER.info("{} is not a valid directory", dataDir.getAbsolutePath());
-        continue;
+      if (dataDir.exists() && dataDir.isDirectory()) {
+        partitionDirs.addAll(findLeafDirectories(dataDir));
       }
+    }
+    return partitionDirs;
+  }
 
-      for (final File seqOrUnseqDataDir : Objects.requireNonNull(dataDir.listFiles())) {
-        if (!(seqOrUnseqDataDir.isDirectory()
-            && (seqOrUnseqDataDir.getName().equals("sequence")
-                || seqOrUnseqDataDir.getName().equals("unsequence")))) {
-          LOGGER.info(
-              "{} is not a sequence or unsequence directory", seqOrUnseqDataDir.getAbsolutePath());
-          continue;
-        }
+  public static List<File> findLeafDirectories(File dir) {
+    List<File> leafDirectories = new ArrayList<>();
 
-        for (final File sg : Objects.requireNonNull(seqOrUnseqDataDir.listFiles())) {
-          if (!sg.isDirectory()) {
-            LOGGER.info("{} is not a valid directory", sg.getAbsolutePath());
-            continue;
-          }
+    File[] files = dir.listFiles();
 
-          for (final File dataRegionDir : Objects.requireNonNull(sg.listFiles())) {
-            if (!dataRegionDir.isDirectory()) {
-              LOGGER.info("{} is not a valid directory", dataRegionDir.getAbsolutePath());
-              continue;
-            }
+    if (files == null || files.length == 0) {
+      leafDirectories.add(dir);
+      return leafDirectories;
+    }
 
-            for (final File timePartitionDir : Objects.requireNonNull(dataRegionDir.listFiles())) {
-              if (!timePartitionDir.isDirectory()) {
-                LOGGER.info("{} is not a valid directory", timePartitionDir.getAbsolutePath());
-                continue;
-              }
-
-              final String partitionKey =
-                  calculateTimePartitionKey(
-                      sg.getName(), dataRegionDir.getName(), timePartitionDir.getName());
-              final List<File> partitionDirs =
-                  partitionMap.computeIfAbsent(partitionKey, v -> new ArrayList<>());
-              partitionDirs.add(timePartitionDir);
-            }
-          }
-        }
+    for (File file : files) {
+      if (file.isDirectory()) {
+        leafDirectories.addAll(findLeafDirectories(file));
       }
     }
 
-    return partitionMap;
+    if (leafDirectories.isEmpty()) {
+      leafDirectories.add(dir);
+    }
+
+    return leafDirectories;
   }
 
-  private static String calculateTimePartitionKey(
-      final String storageGroup, final String dataRegion, final String timePartition) {
-    return storageGroup + "-" + dataRegion + "-" + timePartition;
-  }
-
-  private static void validateAndRepairTsFileResourcesInPartition(
-      final Map.Entry<String, List<File>> partitionEntry) {
-    final String partitionName = partitionEntry.getKey();
-    final List<File> partitionDirs = partitionEntry.getValue();
-
+  private static void validateAndRepairTsFileResourcesInPartition(final File partitionDir) {
     final AtomicInteger totalResources = new AtomicInteger();
     final AtomicInteger toRepairResources = new AtomicInteger();
 
-    for (final File partitionDir : partitionDirs) {
-      try {
-        final List<TsFileResource> resources =
-            loadAllTsFileResources(Collections.singletonList(partitionDir));
-        totalResources.addAndGet(resources.size());
+    try {
+      final List<TsFileResource> resources =
+          loadAllTsFileResources(Collections.singletonList(partitionDir));
+      totalResources.addAndGet(resources.size());
 
-        for (final TsFileResource resource : resources) {
-          try {
-            if (validateAndRepairSingleTsFileResource(resource)) {
-              toRepairResources.incrementAndGet();
-            }
-          } catch (final Exception e) {
-            // Continue processing other resources even if one fails
-            LOGGER.warn(
-                "Error validating or repairing resource {}: {}",
-                resource.getTsFile().getAbsolutePath(),
-                e.getMessage(),
-                e);
+      for (final TsFileResource resource : resources) {
+        try {
+          if (validateAndRepairSingleTsFileResource(resource)) {
+            toRepairResources.incrementAndGet();
           }
+        } catch (final Exception e) {
+          // Continue processing other resources even if one fails
+          LOGGER.warn(
+              "Error validating or repairing resource {}: {}",
+              resource.getTsFile().getAbsolutePath(),
+              e.getMessage(),
+              e);
         }
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Error loading resources from partition {}: {}",
-            partitionDir.getAbsolutePath(),
-            e.getMessage(),
-            e);
       }
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Error loading resources from partition {}: {}",
+          partitionDir.getAbsolutePath(),
+          e.getMessage(),
+          e);
     }
 
     totalTsFileNum.addAndGet(totalResources.get());
     toRepairTsFileNum.addAndGet(toRepairResources.get());
-    System.out.printf(
-        "TimePartition %s has %d total resources, %d to repair resources. Process completed.\n",
-        partitionName, totalResources.get(), toRepairResources.get());
+    LOGGER.info(
+        "TimePartition {} has {} total resources, {} to repair resources. Process completed.\n",
+        partitionDir,
+        totalResources.get(),
+        toRepairResources.get());
   }
 
   private static List<TsFileResource> loadAllTsFileResources(List<File> timePartitionDirs)
@@ -285,7 +255,7 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
     LOGGER.info("\n------------------------------------------------------");
     LOGGER.info("Validation and repair completed. Statistics:");
     LOGGER.info(
-        "Total time taken: {} ms, total TsFile resources: {}, to repair TsFile resources: {}",
+        "Total time taken: {} ms, total TsFile resources: {}, repaired TsFile resources: {}",
         System.currentTimeMillis() - runtime.get(),
         totalTsFileNum.get(),
         toRepairTsFileNum.get());
