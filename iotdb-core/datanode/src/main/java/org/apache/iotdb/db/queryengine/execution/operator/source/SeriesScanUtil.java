@@ -36,7 +36,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityM
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.CommonUtils;
 
-import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -49,7 +48,6 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.TsBlockUtil;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -1305,18 +1303,6 @@ public class SeriesScanUtil implements Accountable {
         TsBlock tsBlock = data.getAllSatisfiedData();
         if (!ascending) {
           tsBlock.reverse();
-        }
-        StringBuilder tsBlockBuilder = new StringBuilder();
-        for (Column column : tsBlock.getAllColumns()) {
-          tsBlockBuilder.append("[");
-          for (int i = 0; i < column.getPositionCount(); i++) {
-            if (column instanceof TimeColumn) {
-              tsBlockBuilder.append(column.getLong(i)).append(",");
-            } else {
-              tsBlockBuilder.append(column.getTsPrimitiveType(i)).append(",");
-            }
-          }
-          tsBlockBuilder.append("] ");
         }
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug("[getAllSatisfiedPageData] TsBlock:{}", CommonUtils.toString(tsBlock));
