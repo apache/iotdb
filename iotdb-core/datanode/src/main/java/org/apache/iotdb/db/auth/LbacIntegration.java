@@ -194,6 +194,22 @@ public class LbacIntegration {
   }
 
   /**
+   * Gets a ConfigNodeClient instance.
+   *
+   * @return A ConfigNodeClient instance
+   * @throws Exception If an error occurs during client acquisition
+   */
+  private static ConfigNodeClient getConfigNodeClient() throws Exception {
+    try {
+      return ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID);
+    } catch (ClientManagerException e) {
+      String errorMsg = "Error connecting to ConfigNode: " + e.getMessage();
+      LOGGER.error(errorMsg);
+      throw new Exception(errorMsg);
+    }
+  }
+
+  /**
    * Get user label policies for the specified user and scope.
    *
    * @param username The username to get policies for
@@ -258,49 +274,51 @@ public class LbacIntegration {
   }
 
   /**
-   * Drop user label policy for the specified user and scope.
+   * Drops a user's label policy.
    *
-   * @param username The username to drop policy for
-   * @param scope The scope (READ, WRITE, or READ_WRITE)
-   * @throws Exception If there is an error dropping the policy
+   * @param username The username of the user
+   * @param scope The scope of the label policy to drop
+   * @throws Exception If an error occurs during the operation
    */
   public static void dropUserLabelPolicy(
       String username, ShowUserLabelPolicyStatement.LabelPolicyScope scope) throws Exception {
+    org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq req =
+        new org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq();
+    req.setUsername(username);
+    req.setScope(scope.toString());
 
-    LOGGER.debug("Dropping user label policy for user: {} with scope: {}", username, scope);
+    TSStatus status = getConfigNodeClient().dropUserLabelPolicy(req);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new Exception(
+          String.format(
+              "Failed to drop user label policy for user %s, scope %s: %s",
+              username, scope, status));
+    }
+  }
 
-    try {
-      // Try to drop label policy via ConfigNode
-      try (ConfigNodeClient configNodeClient =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+  /**
+   * Sets or updates a user's label policy.
+   *
+   * @param username The username of the user
+   * @param policyExpression The label policy expression
+   * @param scope The scope of the label policy
+   * @throws Exception If an error occurs during the operation
+   */
+  public static void setUserLabelPolicy(
+      String username, String policyExpression, ShowUserLabelPolicyStatement.LabelPolicyScope scope)
+      throws Exception {
+    org.apache.iotdb.confignode.rpc.thrift.TSetUserLabelPolicyReq req =
+        new org.apache.iotdb.confignode.rpc.thrift.TSetUserLabelPolicyReq();
+    req.setUsername(username);
+    req.setPolicyExpression(policyExpression);
+    req.setScope(scope.toString());
 
-        // Build request
-        org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq req =
-            new org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq();
-        req.setUsername(username);
-        req.setScope(scope.name());
-
-        // Send request to ConfigNode
-        TSStatus status = configNodeClient.dropUserLabelPolicy(req);
-
-        // Process response
-        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.debug(
-              "Successfully dropped label policy for user: {} with scope: {}", username, scope);
-        } else {
-          String errorMsg = "Failed to drop label policy from ConfigNode: " + status.getMessage();
-          LOGGER.error(errorMsg);
-          throw new Exception(errorMsg);
-        }
-      } catch (ClientManagerException | TException e) {
-        String errorMsg =
-            "Error connecting to ConfigNode for dropping label policy: " + e.getMessage();
-        LOGGER.error(errorMsg);
-        throw new Exception(errorMsg);
-      }
-    } catch (Exception e) {
-      LOGGER.error("Error dropping user label policy for user: {}", username, e);
-      throw e;
+    TSStatus status = getConfigNodeClient().setUserLabelPolicy(req);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new Exception(
+          String.format(
+              "Failed to set user label policy for user %s, scope %s: %s",
+              username, scope, status));
     }
   }
 }

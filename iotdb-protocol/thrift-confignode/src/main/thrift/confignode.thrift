@@ -387,6 +387,8 @@ struct TUserResp {
   4: required bool isOpenIdUser
   5: optional string labelPolicyExpression
   6: optional string labelPolicyScope
+  7: optional string readLabelPolicyExpression
+  8: optional string writeLabelPolicyExpression
 }
 
 struct TRoleResp {
@@ -1146,9 +1148,9 @@ struct TShowThrottleReq {
   1: optional string userName;
 }
 
-// ====================================================
+// ======================================================
 // Show User Label Policy
-// ====================================================
+// ======================================================
 struct TShowUserLabelPolicyReq {
   1: optional string username
   2: required string scope
@@ -1156,7 +1158,13 @@ struct TShowUserLabelPolicyReq {
 
 struct TShowUserLabelPolicyResp {
   1: required common.TSStatus status
-  2: optional list<TUserLabelPolicyInfo> userLabelPolicyList
+  2: required list<TUserLabelPolicyInfo> userLabelPolicyList
+}
+
+struct TUserLabelPolicyInfo {
+  1: required string username
+  2: required string scope
+  3: optional string policyExpression
 }
 
 struct TDropUserLabelPolicyReq {
@@ -1164,10 +1172,10 @@ struct TDropUserLabelPolicyReq {
   2: required string scope
 }
 
-struct TUserLabelPolicyInfo {
+struct TSetUserLabelPolicyReq {
   1: required string username
-  2: required string scope
-  3: optional string policyExpression
+  2: required string policyExpression
+  3: required string scope
 }
 
 // ======================================================
@@ -2094,6 +2102,9 @@ service IConfigNodeRPCService {
 
   /** Drop user label policy */
   common.TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req)
+
+  /** Set user label policy */
+  common.TSStatus setUserLabelPolicy(TSetUserLabelPolicyReq req)
 
   // ======================================================
   // Table Or View

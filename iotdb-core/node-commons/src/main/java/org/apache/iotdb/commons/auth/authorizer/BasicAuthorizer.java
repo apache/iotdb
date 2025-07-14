@@ -184,8 +184,40 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
     }
-    user.setLabelPolicyExpression(labelPolicyExpression);
-    user.setLabelPolicyScope(labelPolicyScope);
+
+    // Check if we're updating both READ and WRITE policies
+    boolean isReadWrite =
+        labelPolicyScope.toUpperCase().contains("READ")
+            && labelPolicyScope.toUpperCase().contains("WRITE");
+    boolean isReadOnly =
+        labelPolicyScope.toUpperCase().contains("READ")
+            && !labelPolicyScope.toUpperCase().contains("WRITE");
+    boolean isWriteOnly =
+        !labelPolicyScope.toUpperCase().contains("READ")
+            && labelPolicyScope.toUpperCase().contains("WRITE");
+
+    // Update the specific policy fields
+    if (isReadWrite) {
+      // Update both READ and WRITE policies
+      user.setReadLabelPolicyExpression(labelPolicyExpression);
+      user.setWriteLabelPolicyExpression(labelPolicyExpression);
+      // For backward compatibility
+      user.setLabelPolicyExpression(labelPolicyExpression);
+      user.setLabelPolicyScope("READ,WRITE");
+    } else if (isReadOnly) {
+      // Update only READ policy
+      user.setReadLabelPolicyExpression(labelPolicyExpression);
+      // For backward compatibility
+      user.setLabelPolicyExpression(labelPolicyExpression);
+      user.setLabelPolicyScope("READ");
+    } else if (isWriteOnly) {
+      // Update only WRITE policy
+      user.setWriteLabelPolicyExpression(labelPolicyExpression);
+      // For backward compatibility
+      user.setLabelPolicyExpression(labelPolicyExpression);
+      user.setLabelPolicyScope("WRITE");
+    }
+
     userManager.updateUser(user);
   }
 
@@ -210,35 +242,51 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
     }
 
-    // Check if the user has any label policy set
-    String currentScope = user.getLabelPolicyScope();
-    if (currentScope == null || currentScope.isEmpty()) {
-      // No label policy to drop
-      return;
-    }
-
-    // Check if we're dropping both READ and WRITE policies
+    // Check what policies we're dropping
     boolean isReadWrite =
-        (labelPolicyScope.toUpperCase().contains("READ")
-            && labelPolicyScope.toUpperCase().contains("WRITE"));
+        labelPolicyScope.toUpperCase().contains("READ")
+            && labelPolicyScope.toUpperCase().contains("WRITE");
+    boolean isReadOnly =
+        labelPolicyScope.toUpperCase().contains("READ")
+            && !labelPolicyScope.toUpperCase().contains("WRITE");
+    boolean isWriteOnly =
+        !labelPolicyScope.toUpperCase().contains("READ")
+            && labelPolicyScope.toUpperCase().contains("WRITE");
 
-    // If dropping all policies or the only policy
-    if (isReadWrite || labelPolicyScope.equals(currentScope)) {
-      // Clear both expression and scope
+    // Drop the specific policy fields
+    if (isReadWrite) {
+      // Drop both READ and WRITE policies
+      user.setReadLabelPolicyExpression(null);
+      user.setWriteLabelPolicyExpression(null);
+      // For backward compatibility
       user.setLabelPolicyExpression(null);
       user.setLabelPolicyScope(null);
-    }
-    // If dropping READ from READ,WRITE
-    else if (labelPolicyScope.equals("READ")
-        && currentScope.toUpperCase().contains("READ")
-        && currentScope.toUpperCase().contains("WRITE")) {
-      user.setLabelPolicyScope("WRITE");
-    }
-    // If dropping WRITE from READ,WRITE
-    else if (labelPolicyScope.equals("WRITE")
-        && currentScope.toUpperCase().contains("READ")
-        && currentScope.toUpperCase().contains("WRITE")) {
-      user.setLabelPolicyScope("READ");
+    } else if (isReadOnly) {
+      // Drop only READ policy
+      user.setReadLabelPolicyExpression(null);
+      // For backward compatibility
+      if (user.getWriteLabelPolicyExpression() != null) {
+        // Keep WRITE policy
+        user.setLabelPolicyExpression(user.getWriteLabelPolicyExpression());
+        user.setLabelPolicyScope("WRITE");
+      } else {
+        // No WRITE policy, clear everything
+        user.setLabelPolicyExpression(null);
+        user.setLabelPolicyScope(null);
+      }
+    } else if (isWriteOnly) {
+      // Drop only WRITE policy
+      user.setWriteLabelPolicyExpression(null);
+      // For backward compatibility
+      if (user.getReadLabelPolicyExpression() != null) {
+        // Keep READ policy
+        user.setLabelPolicyExpression(user.getReadLabelPolicyExpression());
+        user.setLabelPolicyScope("READ");
+      } else {
+        // No READ policy, clear everything
+        user.setLabelPolicyExpression(null);
+        user.setLabelPolicyScope(null);
+      }
     }
 
     userManager.updateUser(user);

@@ -85,6 +85,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.view.Delet
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.view.RenameLogicalViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.AlterUserLabelPolicyTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.SetSqlDialectTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.SetUserLabelPolicyTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentSqlDialectTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowUserLabelPolicyTask;
@@ -138,6 +139,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
@@ -861,5 +863,11 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitAlterUserLabelPolicy(
       AlterUserLabelPolicyStatement statement, MPPQueryContext context) {
     return new AlterUserLabelPolicyTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitSetUserLabelPolicy(
+      SetUserLabelPolicyStatement statement, MPPQueryContext context) {
+    return new SetUserLabelPolicyTask(statement);
   }
 }

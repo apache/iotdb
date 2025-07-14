@@ -46,6 +46,12 @@ public class User extends Role {
   // Policy scope, value is READ, WRITE or READ,WRITE
   private String labelPolicyScope;
 
+  // Label policy expression for READ scope
+  private String readLabelPolicyExpression;
+
+  // Label policy expression for WRITE scope
+  private String writeLabelPolicyExpression;
+
   public User() {
     // empty constructor
   }
@@ -116,6 +122,42 @@ public class User extends Role {
     this.labelPolicyScope = labelPolicyScope;
   }
 
+  /**
+   * Get READ label policy expression.
+   *
+   * @return READ label policy expression
+   */
+  public String getReadLabelPolicyExpression() {
+    return readLabelPolicyExpression;
+  }
+
+  /**
+   * Set READ label policy expression.
+   *
+   * @param readLabelPolicyExpression READ policy expression string
+   */
+  public void setReadLabelPolicyExpression(String readLabelPolicyExpression) {
+    this.readLabelPolicyExpression = readLabelPolicyExpression;
+  }
+
+  /**
+   * Get WRITE label policy expression.
+   *
+   * @return WRITE label policy expression
+   */
+  public String getWriteLabelPolicyExpression() {
+    return writeLabelPolicyExpression;
+  }
+
+  /**
+   * Set WRITE label policy expression.
+   *
+   * @param writeLabelPolicyExpression WRITE policy expression string
+   */
+  public void setWriteLabelPolicyExpression(String writeLabelPolicyExpression) {
+    this.writeLabelPolicyExpression = writeLabelPolicyExpression;
+  }
+
   public String getPassword() {
     return password;
   }
@@ -141,6 +183,9 @@ public class User extends Role {
     // Set label policy fields for LBAC support
     resp.setLabelPolicyExpression(labelPolicyExpression);
     resp.setLabelPolicyScope(labelPolicyScope);
+    // Set new read/write label policy fields
+    resp.setReadLabelPolicyExpression(readLabelPolicyExpression);
+    resp.setWriteLabelPolicyExpression(writeLabelPolicyExpression);
     return resp;
   }
 
@@ -164,7 +209,9 @@ public class User extends Role {
         && Objects.equals(password, user.password)
         && Objects.equals(isOpenIdUser, user.isOpenIdUser)
         && Objects.equals(labelPolicyExpression, user.labelPolicyExpression)
-        && Objects.equals(labelPolicyScope, user.labelPolicyScope);
+        && Objects.equals(labelPolicyScope, user.labelPolicyScope)
+        && Objects.equals(readLabelPolicyExpression, user.readLabelPolicyExpression)
+        && Objects.equals(writeLabelPolicyExpression, user.writeLabelPolicyExpression);
   }
 
   @Override
@@ -177,7 +224,9 @@ public class User extends Role {
         roleSet,
         isOpenIdUser,
         labelPolicyExpression,
-        labelPolicyScope);
+        labelPolicyScope,
+        readLabelPolicyExpression,
+        writeLabelPolicyExpression);
   }
 
   @Override
@@ -190,6 +239,10 @@ public class User extends Role {
 
     SerializeUtils.serialize(labelPolicyExpression, dataOutputStream);
     SerializeUtils.serialize(labelPolicyScope, dataOutputStream);
+
+    // Serialize the new fields
+    SerializeUtils.serialize(readLabelPolicyExpression, dataOutputStream);
+    SerializeUtils.serialize(writeLabelPolicyExpression, dataOutputStream);
 
     try {
       dataOutputStream.writeInt(super.getSysPrivilege().size());
@@ -218,6 +271,11 @@ public class User extends Role {
     password = SerializeUtils.deserializeString(buffer);
     labelPolicyExpression = SerializeUtils.deserializeString(buffer);
     labelPolicyScope = SerializeUtils.deserializeString(buffer);
+
+    // Deserialize the new fields
+    readLabelPolicyExpression = SerializeUtils.deserializeString(buffer);
+    writeLabelPolicyExpression = SerializeUtils.deserializeString(buffer);
+
     int systemPriSize = buffer.getInt();
     Set<PrivilegeType> sysPri = new HashSet<>();
     for (int i = 0; i < systemPriSize; i++) {

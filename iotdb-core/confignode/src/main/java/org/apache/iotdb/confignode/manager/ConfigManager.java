@@ -223,6 +223,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -2810,7 +2811,9 @@ public class ConfigManager implements IManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.showUserLabelPolicy(req);
     } else {
-      return new TShowUserLabelPolicyResp(status);
+      TShowUserLabelPolicyResp resp = new TShowUserLabelPolicyResp();
+      resp.setStatus(status);
+      return resp;
     }
   }
 
@@ -2818,6 +2821,15 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.dropUserLabelPolicy(req);
+    } else {
+      return status;
+    }
+  }
+
+  public TSStatus setUserLabelPolicy(TSetUserLabelPolicyReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return permissionManager.setUserLabelPolicy(req);
     } else {
       return status;
     }
@@ -2995,6 +3007,7 @@ public class ConfigManager implements IManager {
   public TSStatus showClusterInfo(org.apache.iotdb.confignode.rpc.thrift.TShowClusterInfoReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // 这里实现集群信息显示逻辑
       return RpcUtils.SUCCESS_STATUS;
     } else {
       return status;

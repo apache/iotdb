@@ -1040,7 +1040,8 @@ deleteStatement
 // Create User
 createUser
     : CREATE USER userName=identifier password=STRING_LITERAL
-    (WITH LABEL_POLICY  policyExpression FOR labelPolicyScope)?
+    (WITH LABEL_POLICY readPolicyExpression=policyExpression FOR READ)?
+    (WITH LABEL_POLICY writePolicyExpression=policyExpression FOR WRITE)?
     ;
 
 // Create Role
@@ -1052,6 +1053,8 @@ createRole
 alterUser
     : ALTER USER userName=usernameWithRoot SET PASSWORD password=STRING_LITERAL
     | ALTER USER userNameForLabel=identifier DROP LABEL_POLICY FOR labelPolicyScope
+    | ALTER USER userNameForLabel=identifier SET LABEL_POLICY readPolicyExpression=policyExpression FOR READ
+    | ALTER USER userNameForLabel=identifier SET LABEL_POLICY writePolicyExpression=policyExpression FOR WRITE
     ;
 
 // Grant User Privileges
@@ -1449,28 +1452,28 @@ operator_or
     | OPERATOR_BITWISE_OR
     | OPERATOR_LOGICAL_OR
     ;
-    
+
 operator_not
     : NOT
     | OPERATOR_NOT
     ;
-    
+
 operator_contains
     : CONTAINS
     ;
-    
+
 operator_between
     : BETWEEN
     ;
-    
+
 operator_is
     : IS
     ;
-    
+
 operator_in
     : IN
     ;
-    
+
 null_literal
     : NULL
     ;
@@ -1541,12 +1544,11 @@ signedIntegerLiteral
 
 // Policy expression rules
 
-
 labelPolicyScope
     : READ
     | WRITE
     | READ COMMA WRITE
-     | WRITE COMMA READ
+    | WRITE COMMA READ
     ;
 
 policyExpression

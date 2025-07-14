@@ -169,6 +169,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
@@ -2442,13 +2443,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.CREATE_USER);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     authorStatement.setPassWord(parseStringLiteral(ctx.password.getText()));
-    // Parse label policy if present
-    if (ctx.policyExpression() != null && ctx.labelPolicyScope() != null) {
-      // Set label policy expression, e.g. env="prod" and region="cn"
-      authorStatement.setLabelPolicyExpression(ctx.policyExpression().getText());
-      // Set label policy scope, value is READ, WRITE or READ,WRITE
-      authorStatement.setLabelPolicyScope(ctx.labelPolicyScope().getText());
+
+    // Parse read label policy if present
+    if (ctx.readPolicyExpression != null) {
+      // Set read label policy expression
+      authorStatement.setReadLabelPolicyExpression(ctx.readPolicyExpression.getText());
     }
+
+    // Parse write label policy if present
+    if (ctx.writePolicyExpression != null) {
+      // Set write label policy expression
+      authorStatement.setWriteLabelPolicyExpression(ctx.writePolicyExpression.getText());
+    }
+
     return authorStatement;
   }
 
@@ -2470,11 +2477,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
       authorStatement.setNewPassword(parseStringLiteral(ctx.password.getText()));
       return authorStatement;
-    } else if (ctx.LABEL_POLICY() != null) {
+    } else if (ctx.DROP() != null && ctx.LABEL_POLICY() != null) {
       // Handle dropping label policy
       String username = parseIdentifier(ctx.userNameForLabel.getText());
       String scopeText = ctx.labelPolicyScope().getText();
-
       // Convert scope text to LabelPolicyScope enum
       ShowUserLabelPolicyStatement.LabelPolicyScope scope;
       if (scopeText.equalsIgnoreCase("READ")) {
@@ -2484,8 +2490,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       } else {
         scope = ShowUserLabelPolicyStatement.LabelPolicyScope.READ_WRITE;
       }
-
       return new AlterUserLabelPolicyStatement(username, scope);
+    } else if (ctx.SET() != null && ctx.LABEL_POLICY() != null) {
+      // Handle setting label policy for READ independently
+      if (ctx.readPolicyExpression != null) {
+        String username = parseIdentifier(ctx.userNameForLabel.getText());
+        String readPolicyExpression = ctx.readPolicyExpression.getText();
+        // Only set READ policy
+        return new SetUserLabelPolicyStatement(
+            username, readPolicyExpression, ShowUserLabelPolicyStatement.LabelPolicyScope.READ);
+      }
+      // Handle setting label policy for WRITE independently
+      if (ctx.writePolicyExpression != null) {
+        String username = parseIdentifier(ctx.userNameForLabel.getText());
+        String writePolicyExpression = ctx.writePolicyExpression.getText();
+        // Only set WRITE policy
+        return new SetUserLabelPolicyStatement(
+            username, writePolicyExpression, ShowUserLabelPolicyStatement.LabelPolicyScope.WRITE);
+      }
     }
     throw new SemanticException("Invalid ALTER USER statement");
   }

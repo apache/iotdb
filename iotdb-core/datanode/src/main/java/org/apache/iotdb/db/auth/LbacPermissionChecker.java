@@ -228,12 +228,31 @@ public class LbacPermissionChecker {
     LOGGER.debug(
         "Getting label policy for user: {} and operation: {}", user.getName(), operationType);
 
-    // Get the user's label policy expression from User object
+    // Check for specific read/write policy expressions first
+    if (operationType == LbacOperationClassifier.OperationType.READ) {
+      // Check for read-specific policy
+      String readPolicyExpression = user.getReadLabelPolicyExpression();
+      if (readPolicyExpression != null && !readPolicyExpression.trim().isEmpty()) {
+        LOGGER.debug(
+            "User {} has specific READ label policy: '{}'", user.getName(), readPolicyExpression);
+        return readPolicyExpression;
+      }
+    } else if (operationType == LbacOperationClassifier.OperationType.WRITE) {
+      // Check for write-specific policy
+      String writePolicyExpression = user.getWriteLabelPolicyExpression();
+      if (writePolicyExpression != null && !writePolicyExpression.trim().isEmpty()) {
+        LOGGER.debug(
+            "User {} has specific WRITE label policy: '{}'", user.getName(), writePolicyExpression);
+        return writePolicyExpression;
+      }
+    }
+
+    // Fall back to legacy fields for backward compatibility
     String labelPolicyExpression = user.getLabelPolicyExpression();
     String labelPolicyScope = user.getLabelPolicyScope();
 
     LOGGER.debug(
-        "User {} has labelPolicyExpression: '{}', labelPolicyScope: '{}'",
+        "User {} has legacy labelPolicyExpression: '{}', labelPolicyScope: '{}'",
         user.getName(),
         labelPolicyExpression,
         labelPolicyScope);
@@ -253,7 +272,7 @@ public class LbacPermissionChecker {
       // READ")
       if (!labelPolicyScope.toLowerCase().contains(operationString)) {
         LOGGER.debug(
-            "User {} label policy scope '{}' does not match operation type {}",
+            "User {} legacy label policy scope '{}' does not match operation type {}",
             user.getName(),
             labelPolicyScope,
             operationType);
@@ -262,7 +281,7 @@ public class LbacPermissionChecker {
     }
 
     LOGGER.debug(
-        "User {} has matching label policy for {} operation: '{}'",
+        "User {} has matching legacy label policy for {} operation: '{}'",
         user.getName(),
         operationType,
         labelPolicyExpression);

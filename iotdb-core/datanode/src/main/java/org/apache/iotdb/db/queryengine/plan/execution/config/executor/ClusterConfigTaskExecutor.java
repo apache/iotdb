@@ -133,6 +133,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -4470,6 +4471,39 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         LOGGER.warn(
             "Failed to execute drop user label policy in config node, status is {}.", status);
+        future.setException(new IoTDBException(status.message, status.code));
+      } else {
+        // Build result
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setUserLabelPolicy(
+      String username,
+      String policyExpression,
+      ShowUserLabelPolicyStatement.LabelPolicyScope scope) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      // Build request parameters
+      final TSetUserLabelPolicyReq req = new TSetUserLabelPolicyReq();
+      req.setUsername(username);
+      req.setPolicyExpression(policyExpression);
+      req.setScope(scope.name());
+
+      // Send request to ConfigNode
+      final TSStatus status = configNodeClient.setUserLabelPolicy(req);
+
+      // Process response
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+        LOGGER.warn(
+            "Failed to execute set user label policy in config node, status is {}.", status);
         future.setException(new IoTDBException(status.message, status.code));
       } else {
         // Build result

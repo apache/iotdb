@@ -51,6 +51,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserLabelPolicyInfo;
@@ -758,32 +759,85 @@ public class AuthorInfo implements SnapshotProcessor {
         }
 
         User user = authorizer.getUser(username);
+        // Get both read and write policy expressions
+        String readPolicyExpression = user.getReadLabelPolicyExpression();
+        String writePolicyExpression = user.getWriteLabelPolicyExpression();
+        // For backward compatibility
         String policyExpression = user.getLabelPolicyExpression();
         String policyScope = user.getLabelPolicyScope();
 
-        if (policyScope != null && policyExpression != null) {
-          if (isReadWrite) {
-            // For READ_WRITE scope, check both READ and WRITE policies
-            if (policyScope.toUpperCase().contains("READ")) {
-              TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
-              readPolicyInfo.setUsername(username);
-              readPolicyInfo.setScope("READ");
-              readPolicyInfo.setPolicyExpression(policyExpression);
-              userLabelPolicyList.add(readPolicyInfo);
-            }
+        if (isReadWrite) {
+          // For READ_WRITE scope, check both READ and WRITE policies
+          if (readPolicyExpression != null) {
+            // Use new read policy field if available
+            TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
+            readPolicyInfo.setUsername(username);
+            readPolicyInfo.setScope("READ");
+            readPolicyInfo.setPolicyExpression(readPolicyExpression);
+            userLabelPolicyList.add(readPolicyInfo);
+          } else if (policyScope != null
+              && policyExpression != null
+              && policyScope.toUpperCase().contains("READ")) {
+            // Fallback to old field for backward compatibility
+            TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
+            readPolicyInfo.setUsername(username);
+            readPolicyInfo.setScope("READ");
+            readPolicyInfo.setPolicyExpression(policyExpression);
+            userLabelPolicyList.add(readPolicyInfo);
+          }
 
-            if (policyScope.toUpperCase().contains("WRITE")) {
-              TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
-              writePolicyInfo.setUsername(username);
-              writePolicyInfo.setScope("WRITE");
-              writePolicyInfo.setPolicyExpression(policyExpression);
-              userLabelPolicyList.add(writePolicyInfo);
-            }
-          } else if (policyScope.toUpperCase().contains(scope.toUpperCase())) {
-            // For single scope (READ or WRITE)
+          if (writePolicyExpression != null) {
+            // Use new write policy field if available
+            TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
+            writePolicyInfo.setUsername(username);
+            writePolicyInfo.setScope("WRITE");
+            writePolicyInfo.setPolicyExpression(writePolicyExpression);
+            userLabelPolicyList.add(writePolicyInfo);
+          } else if (policyScope != null
+              && policyExpression != null
+              && policyScope.toUpperCase().contains("WRITE")) {
+            // Fallback to old field for backward compatibility
+            TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
+            writePolicyInfo.setUsername(username);
+            writePolicyInfo.setScope("WRITE");
+            writePolicyInfo.setPolicyExpression(policyExpression);
+            userLabelPolicyList.add(writePolicyInfo);
+          }
+        } else if (scope.toUpperCase().contains("READ")) {
+          // For READ scope only
+          if (readPolicyExpression != null) {
+            // Use new read policy field if available
             TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
             policyInfo.setUsername(username);
-            policyInfo.setScope(scope);
+            policyInfo.setScope("READ");
+            policyInfo.setPolicyExpression(readPolicyExpression);
+            userLabelPolicyList.add(policyInfo);
+          } else if (policyScope != null
+              && policyExpression != null
+              && policyScope.toUpperCase().contains("READ")) {
+            // Fallback to old field for backward compatibility
+            TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+            policyInfo.setUsername(username);
+            policyInfo.setScope("READ");
+            policyInfo.setPolicyExpression(policyExpression);
+            userLabelPolicyList.add(policyInfo);
+          }
+        } else if (scope.toUpperCase().contains("WRITE")) {
+          // For WRITE scope only
+          if (writePolicyExpression != null) {
+            // Use new write policy field if available
+            TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+            policyInfo.setUsername(username);
+            policyInfo.setScope("WRITE");
+            policyInfo.setPolicyExpression(writePolicyExpression);
+            userLabelPolicyList.add(policyInfo);
+          } else if (policyScope != null
+              && policyExpression != null
+              && policyScope.toUpperCase().contains("WRITE")) {
+            // Fallback to old field for backward compatibility
+            TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+            policyInfo.setUsername(username);
+            policyInfo.setScope("WRITE");
             policyInfo.setPolicyExpression(policyExpression);
             userLabelPolicyList.add(policyInfo);
           }
@@ -792,32 +846,85 @@ public class AuthorInfo implements SnapshotProcessor {
         // Show label policy for all users
         for (String user : authorizer.listAllUsers()) {
           User userObj = authorizer.getUser(user);
+          // Get both read and write policy expressions
+          String readPolicyExpression = userObj.getReadLabelPolicyExpression();
+          String writePolicyExpression = userObj.getWriteLabelPolicyExpression();
+          // For backward compatibility
           String policyExpression = userObj.getLabelPolicyExpression();
           String policyScope = userObj.getLabelPolicyScope();
 
-          if (policyScope != null && policyExpression != null) {
-            if (isReadWrite) {
-              // For READ_WRITE scope, check both READ and WRITE policies
-              if (policyScope.toUpperCase().contains("READ")) {
-                TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
-                readPolicyInfo.setUsername(user);
-                readPolicyInfo.setScope("READ");
-                readPolicyInfo.setPolicyExpression(policyExpression);
-                userLabelPolicyList.add(readPolicyInfo);
-              }
+          if (isReadWrite) {
+            // For READ_WRITE scope, check both READ and WRITE policies
+            if (readPolicyExpression != null) {
+              // Use new read policy field if available
+              TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
+              readPolicyInfo.setUsername(user);
+              readPolicyInfo.setScope("READ");
+              readPolicyInfo.setPolicyExpression(readPolicyExpression);
+              userLabelPolicyList.add(readPolicyInfo);
+            } else if (policyScope != null
+                && policyExpression != null
+                && policyScope.toUpperCase().contains("READ")) {
+              // Fallback to old field for backward compatibility
+              TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
+              readPolicyInfo.setUsername(user);
+              readPolicyInfo.setScope("READ");
+              readPolicyInfo.setPolicyExpression(policyExpression);
+              userLabelPolicyList.add(readPolicyInfo);
+            }
 
-              if (policyScope.toUpperCase().contains("WRITE")) {
-                TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
-                writePolicyInfo.setUsername(user);
-                writePolicyInfo.setScope("WRITE");
-                writePolicyInfo.setPolicyExpression(policyExpression);
-                userLabelPolicyList.add(writePolicyInfo);
-              }
-            } else if (policyScope.toUpperCase().contains(scope.toUpperCase())) {
-              // For single scope (READ or WRITE)
+            if (writePolicyExpression != null) {
+              // Use new write policy field if available
+              TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
+              writePolicyInfo.setUsername(user);
+              writePolicyInfo.setScope("WRITE");
+              writePolicyInfo.setPolicyExpression(writePolicyExpression);
+              userLabelPolicyList.add(writePolicyInfo);
+            } else if (policyScope != null
+                && policyExpression != null
+                && policyScope.toUpperCase().contains("WRITE")) {
+              // Fallback to old field for backward compatibility
+              TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
+              writePolicyInfo.setUsername(user);
+              writePolicyInfo.setScope("WRITE");
+              writePolicyInfo.setPolicyExpression(policyExpression);
+              userLabelPolicyList.add(writePolicyInfo);
+            }
+          } else if (scope.toUpperCase().contains("READ")) {
+            // For READ scope only
+            if (readPolicyExpression != null) {
+              // Use new read policy field if available
               TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
               policyInfo.setUsername(user);
-              policyInfo.setScope(scope);
+              policyInfo.setScope("READ");
+              policyInfo.setPolicyExpression(readPolicyExpression);
+              userLabelPolicyList.add(policyInfo);
+            } else if (policyScope != null
+                && policyExpression != null
+                && policyScope.toUpperCase().contains("READ")) {
+              // Fallback to old field for backward compatibility
+              TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+              policyInfo.setUsername(user);
+              policyInfo.setScope("READ");
+              policyInfo.setPolicyExpression(policyExpression);
+              userLabelPolicyList.add(policyInfo);
+            }
+          } else if (scope.toUpperCase().contains("WRITE")) {
+            // For WRITE scope only
+            if (writePolicyExpression != null) {
+              // Use new write policy field if available
+              TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+              policyInfo.setUsername(user);
+              policyInfo.setScope("WRITE");
+              policyInfo.setPolicyExpression(writePolicyExpression);
+              userLabelPolicyList.add(policyInfo);
+            } else if (policyScope != null
+                && policyExpression != null
+                && policyScope.toUpperCase().contains("WRITE")) {
+              // Fallback to old field for backward compatibility
+              TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+              policyInfo.setUsername(user);
+              policyInfo.setScope("WRITE");
               policyInfo.setPolicyExpression(policyExpression);
               userLabelPolicyList.add(policyInfo);
             }
@@ -840,7 +947,8 @@ public class AuthorInfo implements SnapshotProcessor {
       String scope = req.getScope();
       // Check if scope contains both READ and WRITE regardless of order
       boolean isReadWrite =
-          "READ_WRITE".equals(scope) || (scope.contains("READ") && scope.contains("WRITE"));
+          "READ_WRITE".equals(scope)
+              || (scope.toUpperCase().contains("READ") && scope.toUpperCase().contains("WRITE"));
 
       if (!authorizer.hasUser(username)) {
         return RpcUtils.getStatus(
@@ -853,11 +961,43 @@ public class AuthorInfo implements SnapshotProcessor {
         authorizer.dropUserLabelPolicy(username, "READ");
         authorizer.dropUserLabelPolicy(username, "WRITE");
       } else {
-        // Drop single scope policy
+        // Drop single policy
         authorizer.dropUserLabelPolicy(username, scope);
       }
 
-      return StatusUtils.OK;
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (AuthException e) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getMessage());
+    }
+  }
+
+  public TSStatus setUserLabelPolicy(TSetUserLabelPolicyReq req) {
+    try {
+      String username = req.getUsername();
+      String policyExpression = req.getPolicyExpression();
+      String scope = req.getScope();
+      // Check if scope contains both READ and WRITE regardless of order
+      boolean isReadWrite =
+          "READ_WRITE".equals(scope)
+              || (scope.toUpperCase().contains("READ") && scope.toUpperCase().contains("WRITE"));
+
+      if (!authorizer.hasUser(username)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.USER_NOT_EXIST.getStatusCode(),
+            String.format("User [%s] does not exist.", username));
+      }
+
+      if (isReadWrite) {
+        // Set both READ and WRITE policies
+        authorizer.setUserLabelPolicy(username, policyExpression, "READ");
+        authorizer.setUserLabelPolicy(username, policyExpression, "WRITE");
+      } else {
+        // Set single policy
+        authorizer.setUserLabelPolicy(username, policyExpression, scope);
+      }
+
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (AuthException e) {
       return RpcUtils.getStatus(
           TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getMessage());

@@ -196,6 +196,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterInfoReq;
@@ -1531,7 +1532,22 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req) throws TException {
-    return configManager.dropUserLabelPolicy(req);
+    try {
+      return configManager.getPermissionManager().dropUserLabelPolicy(req);
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when drop user label policy", e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus setUserLabelPolicy(TSetUserLabelPolicyReq req) throws TException {
+    try {
+      return configManager.getPermissionManager().setUserLabelPolicy(req);
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when set user label policy", e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
   }
 
   @Override

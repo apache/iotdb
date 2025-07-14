@@ -61,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
@@ -708,6 +709,11 @@ public abstract class StatementVisitor<R, C> {
   public R visitAlterUserLabelPolicy(
       AlterUserLabelPolicyStatement alterUserLabelPolicyStatement, C context) {
     return visitStatement(alterUserLabelPolicyStatement, context);
+  }
+
+  public R visitSetUserLabelPolicy(
+      SetUserLabelPolicyStatement setUserLabelPolicyStatement, C context) {
+    return visitStatement(setUserLabelPolicyStatement, context);
   }
 
   public R visitCreateTraining(CreateTrainingStatement createTrainingStatement, C context) {

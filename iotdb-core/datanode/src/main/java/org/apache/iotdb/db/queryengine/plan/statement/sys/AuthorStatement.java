@@ -50,6 +50,8 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private boolean grantOpt;
   private String labelPolicyExpression;
   private String labelPolicyScope;
+  private String readLabelPolicyExpression;
+  private String writeLabelPolicyExpression;
 
   /**
    * Constructor with AuthorType.
@@ -104,6 +106,9 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         break;
       case LIST_ROLE:
         this.setType(StatementType.LIST_ROLE);
+        break;
+      case DROP_USER_LABEL_POLICY:
+        this.setType(StatementType.MODIFY_PASSWORD); // 重用MODIFY_PASSWORD类型，因为也是修改用户属性
         break;
       default:
         throw new IllegalArgumentException("Unknown authorType: " + authorType);
@@ -197,6 +202,22 @@ public class AuthorStatement extends Statement implements IConfigStatement {
     this.labelPolicyScope = labelPolicyScope;
   }
 
+  public String getReadLabelPolicyExpression() {
+    return readLabelPolicyExpression;
+  }
+
+  public void setReadLabelPolicyExpression(String readLabelPolicyExpression) {
+    this.readLabelPolicyExpression = readLabelPolicyExpression;
+  }
+
+  public String getWriteLabelPolicyExpression() {
+    return writeLabelPolicyExpression;
+  }
+
+  public void setWriteLabelPolicyExpression(String writeLabelPolicyExpression) {
+    this.writeLabelPolicyExpression = writeLabelPolicyExpression;
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitAuthor(this, context);
@@ -217,6 +238,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case REVOKE_ROLE:
       case REVOKE_USER_ROLE:
       case UPDATE_USER:
+      case DROP_USER_LABEL_POLICY:
         queryType = QueryType.WRITE;
         break;
       case LIST_USER:

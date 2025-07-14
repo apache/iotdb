@@ -153,6 +153,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterInfoReq;
@@ -1464,6 +1465,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.dropUserLabelPolicy(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus setUserLabelPolicy(TSetUserLabelPolicyReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.setUserLabelPolicy(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -152,5 +153,9 @@ public class PermissionManager {
 
   public TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req) {
     return authorInfo.dropUserLabelPolicy(req);
+  }
+
+  public TSStatus setUserLabelPolicy(TSetUserLabelPolicyReq req) {
+    return authorInfo.setUserLabelPolicy(req);
   }
 }

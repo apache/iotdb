@@ -429,6 +429,11 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> alterUserLabelPolicy(
       String username, ShowUserLabelPolicyStatement.LabelPolicyScope scope);
 
+  SettableFuture<ConfigTaskResult> setUserLabelPolicy(
+      String username,
+      String policyExpression,
+      ShowUserLabelPolicyStatement.LabelPolicyScope scope);
+
   // =============================== AI =========================================
   SettableFuture<ConfigTaskResult> createModel(String modelId, String uri);
 
