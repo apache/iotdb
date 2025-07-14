@@ -177,7 +177,7 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
     totalTsFileNum.addAndGet(totalResources.get());
     toRepairTsFileNum.addAndGet(toRepairResources.get());
     LOGGER.info(
-        "TimePartition {} has {} total resources, {} to repair resources. Process completed.\n",
+        "TimePartition {} has {} total resources, {} to repair resources. Process completed.",
         partitionDir,
         totalResources.get(),
         toRepairResources.get());
