@@ -153,6 +153,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveAINode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveConfigNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
@@ -1444,6 +1445,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       RelationalSqlParser.RemoveConfigNodeStatementContext ctx) {
     Integer nodeId = Integer.parseInt(ctx.INTEGER_VALUE().getText());
     return new RemoveConfigNode(nodeId);
+  }
+
+  @Override
+  public Node visitRemoveAINodeStatement(RelationalSqlParser.RemoveAINodeStatementContext ctx) {
+    return new RemoveAINode();
   }
 
   @Override

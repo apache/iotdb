@@ -126,6 +126,7 @@ statement
     | removeRegionStatement
     | removeDataNodeStatement
     | removeConfigNodeStatement
+    | removeAINodeStatement
 
     // Admin Statement
     | showVariablesStatement
@@ -589,6 +590,10 @@ removeDataNodeStatement
 
 removeConfigNodeStatement
     : REMOVE CONFIGNODE configNodeId=INTEGER_VALUE
+    ;
+
+removeAINodeStatement
+    : REMOVE AINODE (aiNodeId=INTEGER_VALUE)?
     ;
 
 // ------------------------------------------- Admin Statement ---------------------------------------------------------
@@ -1372,6 +1377,7 @@ ABSENT: 'ABSENT';
 ADD: 'ADD';
 ADMIN: 'ADMIN';
 AFTER: 'AFTER';
+AINODE: 'AINODE';
 AINODES: 'AINODES';
 ALL: 'ALL';
 ALTER: 'ALTER';

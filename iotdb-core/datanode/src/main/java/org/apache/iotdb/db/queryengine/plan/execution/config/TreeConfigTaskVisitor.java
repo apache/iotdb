@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropTrigge
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetSeriesSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetTimeSlotListTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveAINodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveConfigNodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveDataNodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.SetTTLTask;
@@ -125,6 +126,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
@@ -711,6 +713,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitRemoveConfigNode(
       RemoveConfigNodeStatement removeConfigNodeStatement, MPPQueryContext context) {
     return new RemoveConfigNodeTask(removeConfigNodeStatement);
+  }
+
+  @Override
+  public IConfigTask visitRemoveAINode(
+      RemoveAINodeStatement removeAINodeStatement, MPPQueryContext context) {
+    return new RemoveAINodeTask(removeAINodeStatement);
   }
 
   @Override
