@@ -385,7 +385,6 @@ public class IoTDBRestServiceIT {
   @Test
   public void insertAndQuery() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    insertDate();
     rightInsertTablet(httpClient);
     query(httpClient);
     queryGroupByLevel(httpClient);
@@ -717,7 +716,7 @@ public class IoTDBRestServiceIT {
         errorInsertRecords(httpClient, json, hp);
       }
     }
-
+    insertDate();
     try {
       httpClient.close();
     } catch (IOException e) {
