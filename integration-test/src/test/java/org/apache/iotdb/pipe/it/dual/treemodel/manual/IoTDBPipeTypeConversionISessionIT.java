@@ -378,7 +378,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         String.format(
             "create timeseries root.test.%s.%s with datatype=%s,encoding=PLAIN",
             diff, measurementID, dataType);
-    TestUtils.tryExecuteNonQueriesWithRetry(env, Collections.singletonList(timeSeriesCreation), null);
+    TestUtils.tryExecuteNonQueriesWithRetry(
+        env, Collections.singletonList(timeSeriesCreation), null);
   }
 
   private void createDataPipe(String diff, boolean isTSFile) {

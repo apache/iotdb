@@ -90,7 +90,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testSourcePermission() {
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "create user `thulab` 'passwD@123456'", null)) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(
+        senderEnv, "create user `thulab` 'passwD@123456'", null)) {
       return;
     }
 
@@ -218,7 +219,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         "test",
         BaseEnv.TABLE_SQL_DIALECT,
         senderEnv,
-        Arrays.asList("grant SELECT on any to user thulab", "start pipe a2b"), null)) {
+        Arrays.asList("grant SELECT on any to user thulab", "start pipe a2b"),
+        null)) {
       return;
     }
 
@@ -297,7 +299,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           "information_schema",
           BaseEnv.TABLE_SQL_DIALECT,
           receiverEnv,
-          "grant insert,create on database test to user testUser", null)) {
+          "grant insert,create on database test to user testUser",
+          null)) {
         return;
       }
 
@@ -336,7 +339,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           "information_schema",
           BaseEnv.TABLE_SQL_DIALECT,
           receiverEnv,
-          "grant insert,create on database test2 to user testUser", null)) {
+          "grant insert,create on database test2 to user testUser",
+          null)) {
         return;
       }
 

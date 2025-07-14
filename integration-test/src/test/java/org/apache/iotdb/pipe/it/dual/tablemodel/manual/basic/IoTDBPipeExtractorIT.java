@@ -133,7 +133,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (1, 10)",
               "insert into root.db2.d1 (time, at1) values (1, 20)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -168,7 +169,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (2, 11)",
               "insert into root.db2.d1 (time, at1) values (2, 21)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -224,7 +226,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
               "insert into root.db.d2 (time, at1) values (1, 20)",
               "insert into root.db.d3 (time, at1) values (1, 30)",
               "insert into root.db.d4 (time, at1) values (1, 40)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -307,7 +310,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
               "insert into root.db.d1 (time, at1) values (2, 11)",
               "insert into root.db.d2 (time, at1) values (2, 21)",
               "insert into root.db.d3 (time, at1) values (2, 31)",
-              "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"), null)) {
+              "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"),
+          null)) {
         return;
       }
 
@@ -368,7 +372,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -384,7 +389,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
       }
 
       // wait for flush to complete
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList("flush"), null)) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Collections.singletonList("flush"), null)) {
         return;
       }
       Thread.sleep(10000);
@@ -473,7 +479,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (6, 6), (7, 7), (8, 8), (9, 9), (10, 10)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -525,7 +532,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.db.d3 (time, at1)"
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
       TableModelUtils.createDataBaseAndTable(senderEnv, "test3", "test");
@@ -549,7 +557,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.db.d4 (time, at1)"
                   + " values (6, 6), (7, 7), (8, 8), (9, 9), (10, 10)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -593,7 +602,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -702,7 +712,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
               "insert into root.db.d1 (time, at1, at2)" + " values (1, 1, 2), (2, 3, 4)",
               // TsFile 2, not extracted because pattern not overlapped
               "insert into root.db1.d1 (time, at1, at2)" + " values (1, 1, 2), (2, 3, 4)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -710,8 +721,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
           senderEnv,
           Arrays.asList(
               // TsFile 3, not extracted because time range not overlapped
-              "insert into root.db.d1 (time, at1, at2)" + " values (3, 1, 2), (4, 3, 4)",
-              "flush"), null)) {
+              "insert into root.db.d1 (time, at1, at2)" + " values (3, 1, 2), (4, 3, 4)", "flush"),
+          null)) {
         return;
       }
 
@@ -721,7 +732,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
       }
 
       // wait for flush to complete
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList("flush"), null)) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Collections.singletonList("flush"), null)) {
         return;
       }
       Thread.sleep(10000);
@@ -816,8 +828,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1 (time, at1, at2)" + " values (1, 1, 2), (3, 3, 4)",
-              "flush"), null)) {
+              "insert into root.db.d1 (time, at1, at2)" + " values (1, 1, 2), (3, 3, 4)", "flush"),
+          null)) {
         return;
       }
 
@@ -830,7 +842,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.db.d1 (time, at1)" + " values (5, 1), (16, 3)",
               "insert into root.db.d1 (time, at1, at2)" + " values (5, 1, 2), (6, 3, 4)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 

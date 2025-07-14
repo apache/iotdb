@@ -185,7 +185,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
         null,
         "table",
         env,
-        Arrays.asList("create database if not exists test", "use test", tableCreation), null);
+        Arrays.asList("create database if not exists test", "use test", tableCreation),
+        null);
   }
 
   private void createDataPipe(boolean isTSFile) {

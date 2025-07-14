@@ -101,7 +101,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
             "create user `thulab` 'passwd123456'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant WRITE, READ, MANAGE_DATABASE, MANAGE_USER on root.** to role `admin`"), null)) {
+            "grant WRITE, READ, MANAGE_DATABASE, MANAGE_USER on root.** to role `admin`"),
+        null)) {
       return;
     }
 
@@ -117,7 +118,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
               "create user user 'passwd123456'",
               "create timeseries root.ln.wf02.wt01.temperature with datatype=INT64,encoding=PLAIN",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-              "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)"), null)) {
+              "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)"),
+          null)) {
         fail();
         return;
       }
@@ -178,7 +180,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
             "create user `thulab` 'passwd123456'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant READ, MANAGE_DATABASE on root.ln.** to role `admin`"), null)) {
+            "grant READ, MANAGE_DATABASE on root.ln.** to role `admin`"),
+        null)) {
       return;
     }
 
@@ -193,7 +196,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
           Arrays.asList(
               "create user someUser 'passwd'",
               "create database root.noPermission",
-              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"), null)) {
+              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"),
+          null)) {
         fail();
         return;
       }

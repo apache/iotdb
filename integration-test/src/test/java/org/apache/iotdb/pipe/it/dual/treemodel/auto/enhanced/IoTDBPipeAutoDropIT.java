@@ -69,7 +69,9 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Collections.singletonList("insert into root.db.d1(time, s1) values (1, 1)"), null)) {
+          senderEnv,
+          Collections.singletonList("insert into root.db.d1(time, s1) values (1, 1)"),
+          null)) {
         return;
       }
       awaitUntilFlush(senderEnv);
@@ -142,7 +144,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Collections.singletonList(
-              "insert into root.db.d1(time, s1) values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)"), null)) {
+              "insert into root.db.d1(time, s1) values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)"),
+          null)) {
         return;
       }
       awaitUntilFlush(senderEnv);

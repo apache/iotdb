@@ -79,7 +79,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -113,7 +114,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -162,7 +164,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -197,7 +200,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -229,7 +233,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (4, 1)",
               "insert into root.vehicle.d0(time, s1) values (3, 1), (0, 1)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -284,7 +289,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -369,7 +375,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -403,7 +410,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -421,7 +429,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (4, 1)",
               "insert into root.vehicle.d0(time, s1) values (3, 1), (0, 1)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -723,7 +732,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -766,7 +776,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
           Arrays.asList(
               "create timeSeries root.vehicle.d0.s1 int32",
               "insert into root.vehicle.d0(time, s1) values (2, 1)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 

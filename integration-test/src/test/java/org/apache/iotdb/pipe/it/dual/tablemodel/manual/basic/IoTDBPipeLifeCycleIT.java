@@ -152,7 +152,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       }
 
       // wait for flush to complete
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList("flush"), null)) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Collections.singletonList("flush"), null)) {
         return;
       }
       Thread.sleep(10000);

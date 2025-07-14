@@ -89,7 +89,8 @@ public class IoTDBPipeConnectorParallelIT extends AbstractPipeDualTreeModelAutoI
               "insert into root.sg1.d1(time, s1) values (1, 2)",
               "insert into root.sg1.d1(time, s1) values (2, 3)",
               "insert into root.sg1.d1(time, s1) values (3, 4)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 

@@ -164,7 +164,8 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
           senderEnv,
           String.format(
               "create timeSeries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
-              i), null)) {
+              i),
+          null)) {
         return;
       }
     }

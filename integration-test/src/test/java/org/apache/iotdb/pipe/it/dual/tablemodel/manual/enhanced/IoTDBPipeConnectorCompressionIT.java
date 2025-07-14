@@ -146,7 +146,8 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
           Arrays.asList(
               "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
               "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -195,7 +196,8 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
               "insert into root.db.d1(time, s1) values (6, 6)",
               "insert into root.db.d1(time, s1) values (7, 7)",
               "insert into root.db.d1(time, s1) values (8, 8)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -235,7 +237,8 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
               "insert into root.db.d1(time, s3) values (1, 1)",
               "insert into root.db.d1(time, s4) values (1, 1)",
               "insert into root.db.d1(time, s5) values (1, 1)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 

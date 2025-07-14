@@ -65,7 +65,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -96,7 +97,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -131,7 +133,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -164,7 +167,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -193,7 +197,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (4, 1)",
               "insert into root.vehicle.d0(time, s1) values (3, 1), (0, 1)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -244,7 +249,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -332,7 +338,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.ln.wf01.wt02(time, int32, boolean) values (20000, 123, false)",
               // For pattern parse
               "insert into root.ln.wf01.wt11(time, redundant_data) values (20000, -1)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -384,7 +391,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -416,7 +424,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -445,7 +454,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (4, 1)",
               "insert into root.vehicle.d0(time, s1) values (3, 1), (0, 1)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -481,7 +491,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"), null)) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null)) {
         return;
       }
 
@@ -517,7 +528,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "create timeSeries root.vehicle.d0.s1 int32",
               "insert into root.vehicle.d0(time, s1) values (2, 1)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 

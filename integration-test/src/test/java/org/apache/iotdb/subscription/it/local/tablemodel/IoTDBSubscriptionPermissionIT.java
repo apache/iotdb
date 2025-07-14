@@ -165,8 +165,8 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
     // create user
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         EnvFactory.getEnv(),
-        Arrays.asList(
-            "create user `thulab` 'passwd123456'", "create user `hacker` 'qwerty123456'"), null)) {
+        Arrays.asList("create user `thulab` 'passwd123456'", "create user `hacker` 'qwerty123456'"),
+        null)) {
       return;
     }
 
@@ -274,8 +274,8 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
     // create user
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         EnvFactory.getEnv(),
-        Arrays.asList(
-            "create user `thulab` 'passwd123456'", "create user `hacker` 'qwerty123456'"), null)) {
+        Arrays.asList("create user `thulab` 'passwd123456'", "create user `hacker` 'qwerty123456'"),
+        null)) {
       return;
     }
 

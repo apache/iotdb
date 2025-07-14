@@ -248,7 +248,8 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
         null,
         BaseEnv.TABLE_SQL_DIALECT,
         env,
-        Arrays.asList("create database if not exists test", "use test", timeSeriesCreationQuery), null);
+        Arrays.asList("create database if not exists test", "use test", timeSeriesCreationQuery),
+        null);
   }
 
   private void createDataPipe() {
@@ -299,35 +300,40 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForString(testData, sourceType.name(), targetType.name()), null);
+            createInsertStatementsForString(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case TIMESTAMP:
         TestUtils.tryExecuteNonQueriesWithRetry(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForTimestamp(testData, sourceType.name(), targetType.name()), null);
+            createInsertStatementsForTimestamp(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case DATE:
         TestUtils.tryExecuteNonQueriesWithRetry(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForLocalDate(testData, sourceType.name(), targetType.name()), null);
+            createInsertStatementsForLocalDate(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case BLOB:
         TestUtils.tryExecuteNonQueriesWithRetry(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForBlob(testData, sourceType.name(), targetType.name()), null);
+            createInsertStatementsForBlob(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       default:
         TestUtils.tryExecuteNonQueriesWithRetry(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForNumeric(testData, sourceType.name(), targetType.name()), null);
+            createInsertStatementsForNumeric(testData, sourceType.name(), targetType.name()),
+            null);
     }
   }
 

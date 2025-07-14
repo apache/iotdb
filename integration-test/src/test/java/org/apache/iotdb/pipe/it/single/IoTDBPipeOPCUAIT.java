@@ -99,7 +99,8 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
           "test",
           BaseEnv.TABLE_SQL_DIALECT,
           env,
-          "insert into test (s0, s1, s2) values (1, 1, 1)", null)) {
+          "insert into test (s0, s1, s2) values (1, 1, 1)",
+          null)) {
         return;
       }
 

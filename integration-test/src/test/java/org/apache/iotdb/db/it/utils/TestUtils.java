@@ -845,13 +845,18 @@ public class TestUtils {
     }
   }
 
-  public static boolean tryExecuteNonQueryWithRetry(BaseEnv env, String sql, Connection defaultConnection) {
+  public static boolean tryExecuteNonQueryWithRetry(
+      BaseEnv env, String sql, Connection defaultConnection) {
     return tryExecuteNonQueryWithRetry(
         env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, defaultConnection);
   }
 
   public static boolean tryExecuteNonQueryWithRetry(
-      String dataBaseName, String sqlDialect, BaseEnv env, String sql, Connection defaultConnection) {
+      String dataBaseName,
+      String sqlDialect,
+      BaseEnv env,
+      String sql,
+      Connection defaultConnection) {
     return tryExecuteNonQueryWithRetry(
         env,
         sql,
@@ -864,7 +869,8 @@ public class TestUtils {
 
   public static boolean tryExecuteNonQueryWithRetry(
       BaseEnv env, String sql, String userName, String password, Connection defaultConnection) {
-    return tryExecuteNonQueriesWithRetry(env, Collections.singletonList(sql), userName, password, defaultConnection);
+    return tryExecuteNonQueriesWithRetry(
+        env, Collections.singletonList(sql), userName, password, defaultConnection);
   }
 
   public static boolean tryExecuteNonQueryWithRetry(
@@ -876,10 +882,17 @@ public class TestUtils {
       String sqlDialect,
       Connection defaultConnection) {
     return tryExecuteNonQueriesWithRetry(
-        env, Collections.singletonList(sql), userName, password, dataBaseName, sqlDialect, defaultConnection);
+        env,
+        Collections.singletonList(sql),
+        userName,
+        password,
+        dataBaseName,
+        sqlDialect,
+        defaultConnection);
   }
 
-  public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList, Connection defaultConnection) {
+  public static boolean tryExecuteNonQueriesWithRetry(
+      BaseEnv env, List<String> sqlList, Connection defaultConnection) {
     return tryExecuteNonQueriesWithRetry(
         env,
         sqlList,
@@ -891,7 +904,11 @@ public class TestUtils {
   }
 
   public static boolean tryExecuteNonQueriesWithRetry(
-      String dataBase, String sqlDialect, BaseEnv env, List<String> sqlList, Connection defaultConnection) {
+      String dataBase,
+      String sqlDialect,
+      BaseEnv env,
+      List<String> sqlList,
+      Connection defaultConnection) {
     return tryExecuteNonQueriesWithRetry(
         env,
         sqlList,
@@ -905,8 +922,13 @@ public class TestUtils {
   // This method will not throw failure given that a failure is encountered.
   // Instead, it returns a flag to indicate the result of the execution.
   public static boolean tryExecuteNonQueriesWithRetry(
-      BaseEnv env, List<String> sqlList, String userName, String password, Connection defaultConnection) {
-    return tryExecuteNonQueriesWithRetry(env, sqlList, userName, password, null, TREE_SQL_DIALECT, defaultConnection);
+      BaseEnv env,
+      List<String> sqlList,
+      String userName,
+      String password,
+      Connection defaultConnection) {
+    return tryExecuteNonQueriesWithRetry(
+        env, sqlList, userName, password, null, TREE_SQL_DIALECT, defaultConnection);
   }
 
   public static boolean tryExecuteNonQueriesWithRetry(
@@ -923,26 +945,27 @@ public class TestUtils {
     Statement statement = null;
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
       try {
-          // create a new connection if default is not provided or the previous is broken
-          if (connectionToUse == null) {
-            localConnection = env.getConnection(
-                userName,
-                password,
-                BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
-                    ? BaseEnv.TABLE_SQL_DIALECT
-                    : TREE_SQL_DIALECT);
-            connectionToUse = localConnection;
-          }
-          if (statement == null) {
-            statement = connectionToUse.createStatement();
-          }
-          if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && dataBase != null) {
-            statement.execute("use " + dataBase);
-          }
-          for (int i = lastIndex; i < sqlList.size(); ++i) {
-            lastIndex = i;
-            statement.execute(sqlList.get(i));
-          }
+        // create a new connection if default is not provided or the previous is broken
+        if (connectionToUse == null) {
+          localConnection =
+              env.getConnection(
+                  userName,
+                  password,
+                  BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
+                      ? BaseEnv.TABLE_SQL_DIALECT
+                      : TREE_SQL_DIALECT);
+          connectionToUse = localConnection;
+        }
+        if (statement == null) {
+          statement = connectionToUse.createStatement();
+        }
+        if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && dataBase != null) {
+          statement.execute("use " + dataBase);
+        }
+        for (int i = lastIndex; i < sqlList.size(); ++i) {
+          lastIndex = i;
+          statement.execute(sqlList.get(i));
+        }
         return true;
       } catch (SQLException e) {
         // the default connection should be closed by the upper level

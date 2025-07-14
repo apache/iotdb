@@ -191,7 +191,8 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
                   ? Collections.singletonList(
                       "insert into root.sg.d1(time, s0, s1) aligned values (3, null, 25.34)")
                   : Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"), null)) {
+                      "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"),
+              null)) {
             fail();
           }
           // All null
@@ -201,7 +202,8 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
                   ? Collections.singletonList(
                       "insert into root.sg.d1(time, s0, s1) aligned values (4, null, null)")
                   : Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) values (4, null, null)"), null)) {
+                      "insert into root.sg.d1(time, s0, s1) values (4, null, null)"),
+              null)) {
             fail();
           }
         });

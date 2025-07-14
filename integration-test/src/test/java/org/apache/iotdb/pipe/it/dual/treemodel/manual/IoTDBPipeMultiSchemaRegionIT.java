@@ -55,7 +55,8 @@ public class IoTDBPipeMultiSchemaRegionIT extends AbstractPipeDualTreeModelManua
           senderEnv,
           Arrays.asList(
               "create timeseries root.ln.wf01.GPS.status0 with datatype=BOOLEAN,encoding=PLAIN",
-              "create timeseries root.sg.wf01.GPS.status0 with datatype=BOOLEAN,encoding=PLAIN"), null)) {
+              "create timeseries root.sg.wf01.GPS.status0 with datatype=BOOLEAN,encoding=PLAIN"),
+          null)) {
         return;
       }
 
@@ -88,7 +89,8 @@ public class IoTDBPipeMultiSchemaRegionIT extends AbstractPipeDualTreeModelManua
         senderEnv,
         Arrays.asList(
             "create timeseries root.ln.wf01.GPS.status1 with datatype=BOOLEAN,encoding=PLAIN",
-            "create timeseries root.sg.wf01.GPS.status1 with datatype=BOOLEAN,encoding=PLAIN"), null)) {
+            "create timeseries root.sg.wf01.GPS.status1 with datatype=BOOLEAN,encoding=PLAIN"),
+        null)) {
       return;
     }
 

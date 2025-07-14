@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.pipe.it.dual.treemodel.manual;
 
-import java.sql.Connection;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -34,6 +33,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -80,7 +80,8 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualTreeModelManualIT {
           senderEnv,
           String.format(
               "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
-              i), null)) {
+              i),
+          null)) {
         return;
       }
     }
@@ -98,7 +99,8 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualTreeModelManualIT {
           senderEnv,
           String.format(
               "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
-              i), null)) {
+              i),
+          null)) {
         return;
       }
     }

@@ -181,7 +181,9 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
       }
       for (int i = 200; i < 300; ++i) {
         if (!TestUtils.tryExecuteNonQueryWithRetry(
-            receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn)) {
+            receiverEnv,
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
+            conn)) {
           return;
         }
       }
@@ -224,7 +226,9 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
       // insertion on receiver
       for (int i = 300; i < 400; ++i) {
         if (!TestUtils.tryExecuteNonQueryWithRetry(
-            receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn)) {
+            receiverEnv,
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
+            conn)) {
           return;
         }
       }
@@ -265,7 +269,9 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
       // insertion on receiver
       for (int i = 400; i < 500; ++i) {
         if (!TestUtils.tryExecuteNonQueryWithRetry(
-            receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn)) {
+            receiverEnv,
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
+            conn)) {
           return;
         }
       }

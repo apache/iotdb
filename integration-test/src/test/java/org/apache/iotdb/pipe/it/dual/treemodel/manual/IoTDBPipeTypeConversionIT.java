@@ -277,27 +277,32 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualTreeModelManualIT
       case TEXT:
         TestUtils.tryExecuteNonQueriesWithRetry(
             senderEnv,
-            createInsertStatementsForString(testData, sourceType.name(), targetType.name()), null);
+            createInsertStatementsForString(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case TIMESTAMP:
         TestUtils.tryExecuteNonQueriesWithRetry(
             senderEnv,
-            createInsertStatementsForTimestamp(testData, sourceType.name(), targetType.name()), null);
+            createInsertStatementsForTimestamp(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case DATE:
         TestUtils.tryExecuteNonQueriesWithRetry(
             senderEnv,
-            createInsertStatementsForLocalDate(testData, sourceType.name(), targetType.name()), null);
+            createInsertStatementsForLocalDate(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case BLOB:
         TestUtils.tryExecuteNonQueriesWithRetry(
             senderEnv,
-            createInsertStatementsForBlob(testData, sourceType.name(), targetType.name()), null);
+            createInsertStatementsForBlob(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       default:
         TestUtils.tryExecuteNonQueriesWithRetry(
             senderEnv,
-            createInsertStatementsForNumeric(testData, sourceType.name(), targetType.name()), null);
+            createInsertStatementsForNumeric(testData, sourceType.name(), targetType.name()),
+            null);
     }
   }
 

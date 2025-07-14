@@ -81,7 +81,8 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
               // banned
               "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "ALTER timeseries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
-              "ALTER timeseries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4"), null)) {
+              "ALTER timeseries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4"),
+          null)) {
         return;
       }
 
@@ -95,7 +96,8 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.ln.wf01.wt01(time, status) values(now(), false)", "flush"), null)) {
+              "insert into root.ln.wf01.wt01(time, status) values(now(), false)", "flush"),
+          null)) {
         return;
       }
 
@@ -181,7 +183,8 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
           Arrays.asList(
               "create user `ln_write_user` 'write_pwd123456'",
               "grant manage_database,manage_user,manage_role,use_trigger,use_udf,use_cq,use_pipe on root.** to USER ln_write_user with grant option",
-              "GRANT READ_DATA, WRITE_DATA ON root.** TO USER ln_write_user;"), null)) {
+              "GRANT READ_DATA, WRITE_DATA ON root.** TO USER ln_write_user;"),
+          null)) {
         return;
       }
 
@@ -240,7 +243,8 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
           Arrays.asList(
               "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "insert into root.ln.wf01.wt01(time, status) values(0, true)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -251,7 +255,8 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
           Arrays.asList(
               "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
               "insert into root.ln.wf01.wt01(time, status1) values(0, true)",
-              "flush"), null)) {
+              "flush"),
+          null)) {
         return;
       }
 
