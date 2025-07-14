@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.tools.validate;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -194,19 +193,9 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
       throws IOException {
     final List<TsFileResource> resources = new ArrayList<>();
 
-    for (File timePartitionDir : timePartitionDirs) {
-      for (File tsfile : Objects.requireNonNull(timePartitionDir.listFiles())) {
-        String filePath = tsfile.getAbsolutePath();
-        // has compaction log
-        if (filePath.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX)
-            || filePath.endsWith(CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX)) {
-          System.out.println(
-              "Time partition "
-                  + timePartitionDir.getName()
-                  + " is skipped because a compaction is not finished");
-          return Collections.emptyList();
-        }
-
+    for (final File timePartitionDir : timePartitionDirs) {
+      for (final File tsfile : Objects.requireNonNull(timePartitionDir.listFiles())) {
+        final String filePath = tsfile.getAbsolutePath();
         if (!filePath.endsWith(TsFileConstant.TSFILE_SUFFIX) || !tsfile.isFile()) {
           continue;
         }
