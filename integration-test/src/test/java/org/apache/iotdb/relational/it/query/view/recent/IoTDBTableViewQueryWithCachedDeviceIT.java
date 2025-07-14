@@ -27,8 +27,6 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.TableSessionBuilder;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -65,21 +63,6 @@ public class IoTDBTableViewQueryWithCachedDeviceIT {
     "USE " + DATABASE_NAME,
     "CREATE VIEW view1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD) as root.db.battery.**",
   };
-
-  public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException {
-    try (ISession session = new Session.Builder().build()) {
-      session.open();
-      for (String sql : createTreeNonAlignedDataSqls) {
-        session.executeNonQueryStatement(sql);
-      }
-    }
-    try (ITableSession session = new TableSessionBuilder().build()) {
-      for (String createTableSql : createTableSqls) {
-        session.executeNonQueryStatement(createTableSql);
-      }
-    }
-  }
 
   @Before
   public void setUp() throws Exception {
