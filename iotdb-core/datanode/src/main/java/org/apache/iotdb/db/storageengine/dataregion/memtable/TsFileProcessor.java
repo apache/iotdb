@@ -1140,6 +1140,7 @@ public class TsFileProcessor {
       // we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
+      tsFileResource.setGeneratedByPipe(isTotallyGeneratedByPipe.get());
 
       try {
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
@@ -1580,8 +1581,7 @@ public class TsFileProcessor {
         .listenToTsFile(
             dataRegionInfo.getDataRegion().getDataRegionId(),
             tsFileResource,
-            false,
-            this.isTotallyGeneratedByPipe.get());
+            false);
 
     tsFileResource.serialize();
     FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);

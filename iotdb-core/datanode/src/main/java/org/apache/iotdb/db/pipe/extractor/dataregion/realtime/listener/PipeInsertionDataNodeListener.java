@@ -96,9 +96,7 @@ public class PipeInsertionDataNodeListener {
   public void listenToTsFile(
       final String dataRegionId,
       final TsFileResource tsFileResource,
-      final boolean isLoaded,
-      final boolean isGeneratedByPipe) {
-    tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
+      final boolean isLoaded) {
     // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
     // because extractors may use tsfile events when some exceptions occur in the
     // insert nodes listening process.
