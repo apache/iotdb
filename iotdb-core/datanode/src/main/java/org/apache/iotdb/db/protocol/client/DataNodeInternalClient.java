@@ -115,7 +115,7 @@ public class DataNodeInternalClient {
     }
   }
 
-  public TSStatus insertRelationalTablets(InsertTabletStatement statement) {
+  public TSStatus insertRelationalTablet(InsertTabletStatement statement) {
     long startTime = System.nanoTime();
     try {
       // call the coordinator
