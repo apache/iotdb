@@ -26,6 +26,7 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -65,6 +66,17 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
   }
 
   private static void parseCommandLineArgs(final String[] args) {
+    final Set<String> argSet =
+        new ConcurrentSkipListSet<>(
+            args.length > 0 ? Arrays.asList(args) : Collections.emptyList());
+    if (args.length == 0
+        || argSet.contains("--help")
+        || argSet.contains("-h")
+        || !(argSet.contains("--expected") && argSet.contains("--dirs"))) {
+      System.out.println(USAGE);
+      System.exit(1);
+    }
+
     for (int i = 0; i < args.length; i++) {
       if ("--expected".equals(args[i]) && i + 1 < args.length) {
         expectedMark.set(Boolean.parseBoolean(args[++i]));
@@ -88,6 +100,7 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
       System.exit(1);
     }
 
+    System.out.println("\n------------------------------------------------------");
     System.out.println("Expected mark: " + expectedMark.get());
     System.out.println("Data directories: ");
     for (File dir : dataDirs) {
@@ -97,6 +110,7 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
         System.exit(1);
       }
     }
+    System.out.println("------------------------------------------------------\n");
   }
 
   private static Map<String, List<File>> findAllPartitionDirs() {
@@ -171,12 +185,19 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
         totalResources.addAndGet(resources.size());
 
         for (final TsFileResource resource : resources) {
-          if (validateAndRepairSingleTsFileResource(resource)) {
-            toRepairResources.incrementAndGet();
+          try {
+            if (validateAndRepairSingleTsFileResource(resource)) {
+              toRepairResources.incrementAndGet();
+            }
+          } catch (final Exception e) {
+            System.out.printf(
+                "Error validating or repairing resource %s: %s%n",
+                resource.getTsFile().getAbsolutePath(), e.getMessage());
+            // Continue processing other resources even if one fails
           }
         }
       } catch (final Exception e) {
-        System.err.printf(
+        System.out.printf(
             "Error loading resources from partition %s: %s%n",
             partitionDir.getAbsolutePath(), e.getMessage());
       }
