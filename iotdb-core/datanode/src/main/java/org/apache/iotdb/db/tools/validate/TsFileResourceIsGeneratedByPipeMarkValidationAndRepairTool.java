@@ -101,13 +101,13 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
       System.exit(1);
     }
 
-    LOGGER.info("\n------------------------------------------------------");
+    LOGGER.info("------------------------------------------------------");
     LOGGER.info("Expected mark: {}", expectedMark.get());
     LOGGER.info("Data directories: ");
     for (File dir : dataDirs) {
       LOGGER.info("  {}", dir.getAbsolutePath());
     }
-    LOGGER.info("------------------------------------------------------\n");
+    LOGGER.info("------------------------------------------------------");
   }
 
   private static List<File> findAllPartitionDirs() {
@@ -252,7 +252,7 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
   }
 
   private static void printStatistics() {
-    LOGGER.info("\n------------------------------------------------------");
+    LOGGER.info("------------------------------------------------------");
     LOGGER.info("Validation and repair completed. Statistics:");
     LOGGER.info(
         "Total time taken: {} ms, total TsFile resources: {}, repaired TsFile resources: {}",
