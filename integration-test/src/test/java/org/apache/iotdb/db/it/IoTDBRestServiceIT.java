@@ -385,7 +385,7 @@ public class IoTDBRestServiceIT {
   @Test
   public void insertAndQuery() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    //
+    insertDate();
     rightInsertTablet(httpClient);
     query(httpClient);
     queryGroupByLevel(httpClient);
@@ -2123,7 +2123,6 @@ public class IoTDBRestServiceIT {
     Assert.assertEquals(values3, valuesResult.get(2));
   }
 
-  @Test
   public void insertDate() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     HttpPost httpPost2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");

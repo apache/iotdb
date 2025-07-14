@@ -147,6 +147,7 @@ public class IoTDBRestServiceIT {
     testQuery();
     testQuery1();
     testQuery2();
+    inertDateAndBlob();
   }
 
   public void testQuery() {
@@ -351,7 +352,6 @@ public class IoTDBRestServiceIT {
     }
   }
 
-  @Test
   public void inertDateAndBlob() {
     RestUtils.nonQuery(httpClient, port, sqlHandler("", "create database test"));
     String sql = "CREATE TABLE tt (time TIMESTAMP TIME,d Blob FIELD,e date FIELD)";
