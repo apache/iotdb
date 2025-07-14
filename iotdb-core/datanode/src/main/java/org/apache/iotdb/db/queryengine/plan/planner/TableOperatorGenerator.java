@@ -635,7 +635,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 pushDownOffsetAndLimitToLeftChildSeriesScanOperator
                     || pushDownOffsetAndLimitAfterInnerJoinOperator
                     || isSingleColumn;
-            for (Symbol symbol : measurementSchemaIndex2Symbols) {
+            for (int i = 0; i < measurementSchemaIndex2Symbols.size(); i++) {
+              Symbol symbol = measurementSchemaIndex2Symbols.get(i);
               List<Expression> pushDownPredicatesForCurrentMeasurement =
                   pushDownConjunctsForEachMeasurement.get(symbol);
               Expression pushDownPredicateForCurrentMeasurement =
@@ -649,7 +650,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               builder.withGlobalTimeFilter(timeFilter == null ? null : timeFilter.copy());
               builder
                   .withIsTableViewForTreeModel(true)
-                  .withAllSensors(new HashSet<>(measurementColumnNames));
+                  .withAllSensors(Collections.singleton(measurementColumnNames.get(i)));
               if (pushDownPredicateForCurrentMeasurement != null) {
                 builder.withPushDownFilter(
                     convertPredicateToFilter(
