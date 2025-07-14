@@ -119,7 +119,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
               "delete from root.db.d1.s3 where time >= 1 and time <= 3",
               "delete from root.db.d3.** where time <= 2",
               "delete from root.db.d4.** where time >= 1 and time <= 3",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 

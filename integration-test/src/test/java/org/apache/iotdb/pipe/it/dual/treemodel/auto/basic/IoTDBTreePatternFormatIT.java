@@ -66,7 +66,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
               "insert into root.db.d2(time, s) values (1, 1)",
-              "insert into root.db2.d1(time, s) values (1, 1)"))) {
+              "insert into root.db2.d1(time, s) values (1, 1)"), null)) {
         return;
       }
       awaitUntilFlush(senderEnv);
@@ -119,7 +119,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
               "insert into root.db.d2(time, s) values (1, 1)",
-              "insert into root.db2.d1(time, s) values (1, 1)"))) {
+              "insert into root.db2.d1(time, s) values (1, 1)"), null)) {
         return;
       }
       awaitUntilFlush(senderEnv);
@@ -174,7 +174,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
               "insert into root.db.d2(time, s) values (1, 1)",
-              "insert into root.db2.d1(time, s) values (1, 1)"))) {
+              "insert into root.db2.d1(time, s) values (1, 1)"), null)) {
         return;
       }
       awaitUntilFlush(senderEnv);

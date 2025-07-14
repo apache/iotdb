@@ -191,7 +191,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
                   ? Collections.singletonList(
                       "insert into root.sg.d1(time, s0, s1) aligned values (3, null, 25.34)")
                   : Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"))) {
+                      "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"), null)) {
             fail();
           }
           // All null
@@ -201,7 +201,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
                   ? Collections.singletonList(
                       "insert into root.sg.d1(time, s0, s1) aligned values (4, null, null)")
                   : Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) values (4, null, null)"))) {
+                      "insert into root.sg.d1(time, s0, s1) values (4, null, null)"), null)) {
             fail();
           }
         });
@@ -240,17 +240,17 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
     }
 
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        receiverEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL)) {
+        receiverEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL, null)) {
       fail();
     }
 
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        senderEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL)) {
+        senderEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL, null)) {
       fail();
     }
 
     INSERT_NULL_VALUE_MAP.get(insertType).accept(isAligned);
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
       fail();
     }
 

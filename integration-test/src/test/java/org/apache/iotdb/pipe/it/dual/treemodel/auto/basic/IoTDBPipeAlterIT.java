@@ -501,7 +501,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
         senderEnv,
         Arrays.asList(
             "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)",
-            "flush"))) {
+            "flush"), null)) {
       fail();
     }
 
@@ -528,7 +528,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
         senderEnv,
         Arrays.asList(
             "insert into root.db.d2 (time, at1) values (11000, 1), (11500, 2), (12000, 3), (12500, 4), (13000, 5)",
-            "flush"))) {
+            "flush"), null)) {
       fail();
     }
 
@@ -537,7 +537,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
         senderEnv,
         Arrays.asList(
             "insert into root.db.d1 (time, at1) values (11000, 1), (11500, 2), (12000, 3), (12500, 4), (13000, 5)",
-            "flush"))) {
+            "flush"), null)) {
       fail();
     }
 
@@ -553,7 +553,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
 
     // Create database on sender
     if (!TestUtils.tryExecuteNonQueryWithRetry(
-        senderEnv, "create timeSeries root.db.d2.at2 int32")) {
+        senderEnv, "create timeSeries root.db.d2.at2 int32", null)) {
       fail();
     }
 

@@ -111,7 +111,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
               "create timeseries using schema template on root.db.wf01.wt01",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               // Insert large timestamp to avoid deletion by ttl
-              "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
+              "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"), null)) {
         return;
       }
       awaitUntilFlush(senderEnv);
@@ -163,7 +163,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
           Collections.singleton("1800000000000,23.0,true,"));
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "create timeseries using schema template on root.ln.wf01.wt02")) {
+          senderEnv, "create timeseries using schema template on root.ln.wf01.wt02", null)) {
         return;
       }
 
@@ -202,7 +202,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
               "create timeseries using schema template on root.ln.wf01.wt01",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               // Insert large timestamp to avoid deletion by ttl
-              "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
+              "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"), null)) {
         return;
       }
 
@@ -265,7 +265,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.ln.**", "Time", Collections.emptySet());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "CREATE ROLE test")) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "CREATE ROLE test", null)) {
         return;
       }
 
@@ -294,7 +294,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
           Arrays.asList(
               "create database root.sg",
               "create timeseries root.sg.a.b int32",
-              "create aligned timeseries root.sg.`apache|timecho-tag-attr`.d1(s1 INT32 tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2), s2 DOUBLE tags(tag3=v3, tag4=v4) attributes(attr3=v3, attr4=v4))"))) {
+              "create aligned timeseries root.sg.`apache|timecho-tag-attr`.d1(s1 INT32 tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2), s2 DOUBLE tags(tag3=v3, tag4=v4) attributes(attr3=v3, attr4=v4))"), null)) {
         return;
       }
 

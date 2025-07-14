@@ -439,7 +439,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.aligned.`1(TS)` (time, s_float) aligned values (now(), 0.5)",
               "insert into root.aligned.6TS.`6` ("
                   + "time, `s_float(1)`, `s_int(1)`, `s_double(1)`, `s_long(1)`, `s_text(1)`, `s_bool(1)`) "
-                  + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)"))) {
+                  + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)"), null)) {
         return;
       }
 
@@ -489,7 +489,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
         // and is skipped flush when the pipe starts. In this case, the "waitForTsFileClose()"
         // may not return until a flush is executed, namely the data transfer relies
         // on a flush operation.
-        if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
           return;
         }
         assertTimeseriesCountOnReceiver(receiverEnv, expectedTimeseriesCount.get(i));
@@ -556,7 +556,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (1, 10)",
               "insert into root.db2.d1 (time, at1) values (1, 20)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 
@@ -581,7 +581,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (2, 11)",
               "insert into root.db2.d1 (time, at1) values (2, 21)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 
@@ -619,7 +619,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.db.d2 (time, at1) values (1, 20)",
               "insert into root.db.d3 (time, at1) values (1, 30)",
               "insert into root.db.d4 (time, at1) values (1, 40)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 
@@ -675,7 +675,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.db.d1 (time, at1) values (2, 11)",
               "insert into root.db.d2 (time, at1) values (2, 21)",
               "insert into root.db.d3 (time, at1) values (2, 31)",
-              "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"))) {
+              "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"), null)) {
         return;
       }
 
@@ -708,7 +708,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 
@@ -778,7 +778,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (6000, 6), (7000, 7), (8000, 8), (9000, 9), (10000, 10)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 
@@ -814,7 +814,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d3 (time, at1)"
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 
@@ -830,7 +830,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d4 (time, at1)"
                   + " values (6000, 6), (7000, 7), (8000, 8), (9000, 9), (10000, 10)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 
@@ -858,7 +858,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 
@@ -926,7 +926,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.db.d1 (time, at1, at2)" + " values (1000, 1, 2), (2000, 3, 4)",
               // TsFile 2, not extracted because pattern not overlapped
               "insert into root.db1.d1 (time, at1, at2)" + " values (1000, 1, 2), (2000, 3, 4)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 
@@ -935,7 +935,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               // TsFile 3, not extracted because time range not overlapped
               "insert into root.db.d1 (time, at1, at2)" + " values (3000, 1, 2), (4000, 3, 4)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 
@@ -1008,7 +1008,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1, at2)" + " values (1000, 1, 2), (3000, 3, 4)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 
@@ -1016,7 +1016,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
           senderEnv,
           Arrays.asList(
               "insert into root.db1.d1 (time, at1, at2)" + " values (1000, 1, 2), (3000, 3, 4)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 
@@ -1025,7 +1025,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d1 (time, at1)" + " values (5000, 1), (16000, 3)",
               "insert into root.db.d1 (time, at1, at2)" + " values (5001, 1, 2), (6001, 3, 4)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
 

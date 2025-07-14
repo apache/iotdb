@@ -1113,7 +1113,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
           String.format(
               "insert into root.%s.topic1(time, s) values (%s, 1)", consumerGroupId, timestamp);
       LOGGER.info(sql);
-      return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
+      return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql, null);
     }
 
     if ("root.topic2.s".equals(columnName)) {
@@ -1121,7 +1121,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
           String.format(
               "insert into root.%s.topic2(time, s) values (%s, 3)", consumerGroupId, timestamp);
       LOGGER.info(sql);
-      return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
+      return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql, null);
     }
 
     LOGGER.warn("unexpected column name: {}", columnName);

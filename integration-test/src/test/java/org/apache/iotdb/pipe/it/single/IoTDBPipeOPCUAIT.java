@@ -46,7 +46,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
-          env, "insert into root.db.d1(time, s1) values (1, 1)")) {
+          env, "insert into root.db.d1(time, s1) values (1, 1)", null)) {
         return;
       }
 
@@ -99,7 +99,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
           "test",
           BaseEnv.TABLE_SQL_DIALECT,
           env,
-          "insert into test (s0, s1, s2) values (1, 1, 1)")) {
+          "insert into test (s0, s1, s2) values (1, 1, 1)", null)) {
         return;
       }
 

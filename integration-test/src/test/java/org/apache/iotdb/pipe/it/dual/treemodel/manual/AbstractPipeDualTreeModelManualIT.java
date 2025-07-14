@@ -83,7 +83,7 @@ public abstract class AbstractPipeDualTreeModelManualIT {
         .pollInterval(2, TimeUnit.SECONDS)
         .until(
             () -> {
-              if (!TestUtils.tryExecuteNonQueryWithRetry(env, "flush")) {
+              if (!TestUtils.tryExecuteNonQueryWithRetry(env, "flush", null)) {
                 return false;
               }
               return env.getDataNodeWrapperList().stream()

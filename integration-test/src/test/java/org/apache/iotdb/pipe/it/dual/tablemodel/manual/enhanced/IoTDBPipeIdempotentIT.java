@@ -243,18 +243,18 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
     }
 
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, beforeSqlList)) {
+        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, beforeSqlList, null)) {
       return;
     }
 
     if (!TestUtils.tryExecuteNonQueryWithRetry(
-        database, BaseEnv.TABLE_SQL_DIALECT, receiverEnv, testSql)) {
+        database, BaseEnv.TABLE_SQL_DIALECT, receiverEnv, testSql, null)) {
       return;
     }
 
     // Create an idempotent conflict
     if (!TestUtils.tryExecuteNonQueryWithRetry(
-        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, testSql)) {
+        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, testSql, null)) {
       return;
     }
 

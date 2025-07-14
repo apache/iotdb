@@ -113,7 +113,7 @@ public class TableModelUtils {
     }
     list.add("flush");
     return TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list);
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
   public static boolean insertData(
@@ -164,7 +164,7 @@ public class TableModelUtils {
               i));
     }
     return TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list);
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
   public static boolean insertDataNotThrowError(
@@ -181,7 +181,7 @@ public class TableModelUtils {
               tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     return TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list);
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
 
   public static boolean insertData(
@@ -247,7 +247,7 @@ public class TableModelUtils {
     list.add(
         String.format("delete from %s where time >= %s and time <= %s", tableName, start, end));
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null)) {
       fail();
     }
   }

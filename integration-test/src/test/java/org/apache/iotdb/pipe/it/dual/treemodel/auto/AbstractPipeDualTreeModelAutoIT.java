@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.pipe.it.dual.treemodel.auto;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
@@ -85,7 +87,7 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
         .pollInterval(2, TimeUnit.SECONDS)
         .until(
             () -> {
-              if (!TestUtils.tryExecuteNonQueryWithRetry(env, "flush")) {
+              if (!TestUtils.tryExecuteNonQueryWithRetry(env, "flush", null)) {
                 return false;
               }
               return env.getDataNodeWrapperList().stream()

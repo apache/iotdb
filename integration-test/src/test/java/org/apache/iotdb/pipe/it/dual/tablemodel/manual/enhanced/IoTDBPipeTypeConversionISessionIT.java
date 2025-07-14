@@ -185,7 +185,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
         null,
         "table",
         env,
-        Arrays.asList("create database if not exists test", "use test", tableCreation));
+        Arrays.asList("create database if not exists test", "use test", tableCreation), null);
   }
 
   private void createDataPipe(boolean isTSFile) {
@@ -200,7 +200,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
             receiverEnv.getPort(),
             isTSFile ? "tsfile" : "tablet");
     TestUtils.tryExecuteNonQueriesWithRetry(
-        null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql));
+        null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql), null);
   }
 
   private void validateResultSet(

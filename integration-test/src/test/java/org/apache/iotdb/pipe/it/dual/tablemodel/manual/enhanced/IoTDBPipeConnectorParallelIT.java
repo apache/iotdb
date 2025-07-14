@@ -100,7 +100,7 @@ public class IoTDBPipeConnectorParallelIT extends AbstractPipeTableModelDualManu
               "insert into root.sg1.d1(time, s1) values (1, 2)",
               "insert into root.sg1.d1(time, s1) values (2, 3)",
               "insert into root.sg1.d1(time, s1) values (3, 4)",
-              "flush"))) {
+              "flush"), null)) {
         return;
       }
       TableModelUtils.insertData("test", "test", 100, 200, senderEnv);

@@ -111,7 +111,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
         Arrays.asList(
             "create timeseries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
             "insert into root.ln.wf01.wt01(time, status0) values(now(), false);",
-            "flush"))) {
+            "flush"), null)) {
       return;
     }
 
@@ -120,7 +120,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
         Arrays.asList(
             "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
             "insert into root.ln.wf01.wt01(time, status1) values(now(), true);",
-            "flush"))) {
+            "flush"), null)) {
       return;
     }
 
@@ -224,7 +224,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
             "set device template t1 to root.sg1",
             "create timeseries using device template on root.sg1.d1",
             "insert into root.sg1.d1(time, s1, s2, s3) values(0, 1, 2, 3);",
-            "flush"))) {
+            "flush"), null)) {
       return;
     }
 
@@ -233,7 +233,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
         Arrays.asList(
             "create timeseries using device template on root.sg1.d2",
             "insert into root.sg1.d2(time, s1, s2, s3) values(0, 1, 2, 3);",
-            "flush"))) {
+            "flush"), null)) {
       return;
     }
 
