@@ -50,20 +50,21 @@ public class ObjectTypeUtils {
     return file.get();
   }
 
-  public static Optional<File> getNullableObjectPathFromBinary(Binary binary) {
+  public static Optional<File> getNullableObjectPathFromBinary(
+      Binary binary, boolean needTempFile) {
     byte[] bytes = binary.getValues();
     String relativeObjectFilePath =
         new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET);
-    return TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath);
+    return TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath, needTempFile);
   }
 
   public static void deleteObjectPathFromBinary(Binary binary) {
-    Optional<File> file = ObjectTypeUtils.getNullableObjectPathFromBinary(binary);
+    Optional<File> file = ObjectTypeUtils.getNullableObjectPathFromBinary(binary, true);
     if (!file.isPresent()) {
       return;
     }
     File tmpFile = new File(file.get().getPath() + ".tmp");
-    File bakFile = new File(file.get().getPath() + ".bak");
+    File bakFile = new File(file.get().getPath() + ".back");
     logger.info("Remove object file {}", file.get().getAbsolutePath());
     for (int i = 0; i < 2; i++) {
       try {
