@@ -39,6 +39,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -51,6 +52,7 @@ import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -280,7 +282,8 @@ public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubsc
 
   public void check_count2(int expect_count, String sql, String msg)
       throws IoTDBConnectionException, StatementExecutionException {
-    assertEquals(getCount(session_dest2, sql), expect_count, "Query count:" + msg);
+    long count = getCount(session_dest2, sql);
+    assertEquals(count, expect_count, "Query count:" + msg);
   }
 
   public void consume_data(SubscriptionTreePullConsumer consumer, Session session)
@@ -300,6 +303,16 @@ public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubsc
         for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
             it.hasNext(); ) {
           final Tablet tablet = it.next();
+          LOGGER.info(
+              "Inserting a tablet, device {}, times {}, measurements {}",
+              tablet.getDeviceId(),
+              Arrays.stream(tablet.getTimestamps())
+                  .boxed()
+                  .collect(Collectors.toList())
+                  .subList(0, tablet.getRowSize()),
+              tablet.getSchemas().stream()
+                  .map(IMeasurementSchema::getMeasurementName)
+                  .collect(Collectors.toList()));
           session.insertTablet(tablet);
         }
       }

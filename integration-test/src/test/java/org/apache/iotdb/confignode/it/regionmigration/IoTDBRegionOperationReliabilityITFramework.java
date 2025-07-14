@@ -610,13 +610,16 @@ public class IoTDBRegionOperationReliabilityITFramework {
   private static void checkRegionFileClear(int dataNode) {
     File originalRegionDir = new File(buildRegionDirPath(dataNode));
     Assert.assertTrue(originalRegionDir.isDirectory());
+    File[] files = originalRegionDir.listFiles();
     try {
-      Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
+      int length = Objects.requireNonNull(files).length;
+      // the node may still have a region of the system database
+      Assert.assertTrue(length == 0 || length == 1 && files[0].getName().equals("1_1"));
     } catch (AssertionError e) {
       LOGGER.error(
           "Original DataNode {} region file not clear, these files is still remain: {}",
           dataNode,
-          Arrays.toString(originalRegionDir.listFiles()));
+          Arrays.toString(files));
       throw e;
     }
     LOGGER.info("Original DataNode {} region file clear", dataNode);

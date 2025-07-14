@@ -315,7 +315,7 @@ public class IoTDBClusterNodeGetterIT {
 
         TimeUnit.SECONDS.sleep(1);
       }
-      fail("Remove DataNode failed");
+      fail("Remove DataNode failed, last showDataNodesResp: " + showDataNodesResp);
     }
   }
 }
