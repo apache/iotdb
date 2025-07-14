@@ -63,7 +63,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSort
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TreeIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
@@ -144,6 +143,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -346,6 +346,9 @@ import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
 
   private final Metadata metadata;
+
+  private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
+      DataNodeDevicePathCache.getInstance();
 
   public TableOperatorGenerator(Metadata metadata) {
     this.metadata = metadata;
@@ -3573,11 +3576,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TreeIntoOperator.class.getSimpleName());
+                TableIntoOperator.class.getSimpleName());
 
     try {
-      String tableName = node.getTable();
-      PartialPath devicePath = new PartialPath(tableName);
+      PartialPath tableName = DEVICE_PATH_CACHE.getPartialPath(node.getTable());
 
       Map<String, TSDataType> tsDataTypeMap = new LinkedHashMap<>();
       Map<String, InputLocation> inputLocationMap = new LinkedHashMap<>();
@@ -3613,7 +3615,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           operatorContext,
           child,
           node.getDatabase(),
-          devicePath,
+          tableName,
           inputColumnTypes,
           inputColumnCategories,
           inputLocationMap,

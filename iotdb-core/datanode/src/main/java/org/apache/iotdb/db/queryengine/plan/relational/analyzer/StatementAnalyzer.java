@@ -598,7 +598,7 @@ public class StatementAnalyzer {
     }
 
     private boolean containsAnyFieldColumn(
-        List<String> insertColumns, Map<String, ColumnSchema> columnSchemaMap) {
+        Set<String> insertColumns, Map<String, ColumnSchema> columnSchemaMap) {
       for (String column : insertColumns) {
         if (columnSchemaMap.containsKey(column)
             && columnSchemaMap.get(column).getColumnCategory() == TsTableColumnCategory.FIELD) {
@@ -651,16 +651,16 @@ public class StatementAnalyzer {
               .collect(toImmutableList());
       analysis.registerTable(insert.getTable(), tableSchema, targetTable);
 
-      List<String> tableColumns =
-          columns.stream().map(ColumnSchema::getName).collect(toImmutableList());
+      Set<String> tableColumns =
+          columns.stream().map(ColumnSchema::getName).collect(toImmutableSet());
 
-      List<String> insertColumns;
+      Set<String> insertColumns;
       if (insert.getColumns().isPresent()) {
         insertColumns =
             insert.getColumns().get().stream()
                 .map(Identifier::getValue)
                 .map(column -> column.toLowerCase(ENGLISH))
-                .collect(toImmutableList());
+                .collect(toImmutableSet());
         Set<String> columnNames = new HashSet<>();
         for (String insertColumn : insertColumns) {
           if (!tableColumns.contains(insertColumn)) {

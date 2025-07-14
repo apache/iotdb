@@ -144,7 +144,7 @@ public class TableIntoOperator extends AbstractIntoOperator {
     }
     writeOperationFuture =
         Futures.submit(
-            () -> client.insertRelationalTablets(insertTabletStatement), writeOperationExecutor);
+            () -> client.insertRelationalTablet(insertTabletStatement), writeOperationExecutor);
   }
 
   private TsBlock constructResultTsBlock() {
