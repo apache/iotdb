@@ -128,26 +128,6 @@ public class TableModelSessionPoolExample {
         tablet.reset();
       }
 
-      // query device leader
-      List<Boolean> isSetTag = Arrays.asList(true, true, false, true);
-      String correctURL =
-          session.getDeviceLeaderURL("test2", Arrays.asList("test1", "1", "3"), isSetTag, 66);
-      System.out.println("Correct device leader URL: " + correctURL);
-      String errorDbURL =
-          session.getDeviceLeaderURL("test3", Arrays.asList("test1", "1", "3"), isSetTag, 66);
-      System.out.println("Error dbName device leader URL: " + errorDbURL);
-      String errorDeviceURL =
-          session.getDeviceLeaderURL("test2", Arrays.asList("test1", "3", "1"), isSetTag, 66);
-      System.out.println("Error deviceId device leader URL: " + errorDeviceURL);
-      List<Boolean> falseTagList = Arrays.asList(false, true, true, true);
-      String errorTagURL =
-          session.getDeviceLeaderURL("test2", Arrays.asList("test1", "1", "3"), falseTagList, 66);
-      System.out.println("Error tag device leader URL: " + errorTagURL);
-      String errorTimeURL =
-          session.getDeviceLeaderURL(
-              "test2", Arrays.asList("test1", "1", "3"), isSetTag, 6666666666666666L);
-      System.out.println("Error time device leader URL: " + errorTimeURL);
-
       // query table data
       try (SessionDataSet dataSet =
           session.executeQueryStatement(

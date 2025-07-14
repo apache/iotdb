@@ -254,10 +254,20 @@ public class TierManager {
   }
 
   public Optional<File> getAbsoluteObjectFilePath(String filePath) {
+    return getAbsoluteObjectFilePath(filePath, false);
+  }
+
+  public Optional<File> getAbsoluteObjectFilePath(String filePath, boolean needTempFile) {
     for (String objectDir : objectDirs) {
       File objectFile = FSFactoryProducer.getFSFactory().getFile(objectDir, filePath);
       if (objectFile.exists()) {
         return Optional.of(objectFile);
+      }
+      if (needTempFile) {
+        if (new File(objectFile.getPath() + ".tmp").exists()
+            || new File(objectFile.getPath() + ".back").exists()) {
+          return Optional.of(objectFile);
+        }
       }
     }
     return Optional.empty();
