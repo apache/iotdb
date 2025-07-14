@@ -139,9 +139,13 @@ public class TableModelSessionPoolExample {
       String correctURL =
           session.getDeviceLeaderURL("test2", Arrays.asList("test1", "1", "3"), isSetTag, 66);
       System.out.println("Correct device leader URL: " + correctURL);
-      String errorDbURL =
-          session.getDeviceLeaderURL("test3", Arrays.asList("test1", "1", "3"), isSetTag, 66);
-      System.out.println("Error dbName device leader URL: " + errorDbURL);
+      try {
+        String errorDbURL =
+                session.getDeviceLeaderURL("test3", Arrays.asList("test1", "1", "3"), isSetTag, 66);
+        System.out.println("Error dbName device leader URL: " + errorDbURL);
+      } catch (StatementExecutionException e) {
+        System.out.println(e.getMessage());
+      }
       String errorDeviceURL =
           session.getDeviceLeaderURL("test2", Arrays.asList("test1", "3", "1"), isSetTag, 66);
       System.out.println("Error deviceId device leader URL: " + errorDeviceURL);

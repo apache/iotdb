@@ -48,6 +48,7 @@ import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -3101,25 +3102,34 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     for (int i = 0; i < req.getIsSetTagSize(); i++) {
       trueSegments[i] = req.getIsSetTag().get(i) ? req.getDeviceId().get(start_index++) : null;
     }
+    TTableDeviceLeaderResp resp = new TTableDeviceLeaderResp();
+    resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     IDeviceID deviceID = Factory.DEFAULT_FACTORY.create(trueSegments);
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(req.getTime());
     DataPartitionQueryParam queryParam =
         new DataPartitionQueryParam(deviceID, Collections.singletonList(timePartitionSlot));
-    DataPartition dataPartition =
-        partitionFetcher.getDataPartition(
-            Collections.singletonMap(req.getDbName(), Collections.singletonList(queryParam)));
-    TRegionReplicaSet targetRegionReplicaSet =
-        dataPartition.getAllReplicaSets().stream().findFirst().orElse(null);
-    TEndPoint targetEndPoint =
-        targetRegionReplicaSet != null
-            ? targetRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint()
-            : null;
-    TTableDeviceLeaderResp resp = new TTableDeviceLeaderResp();
-    resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    if (targetEndPoint != null) {
-      resp.setIp(targetEndPoint.getIp());
-      resp.setPort(String.valueOf(targetEndPoint.getPort()));
-    } else {
+    try {
+      DataPartition dataPartition =
+          partitionFetcher.getOrCreateDataPartition(
+              Collections.singletonMap(req.getDbName(), Collections.singletonList(queryParam)));
+      TRegionReplicaSet targetRegionReplicaSet =
+          dataPartition.getAllReplicaSets().stream().findFirst().orElse(null);
+      TEndPoint targetEndPoint =
+          targetRegionReplicaSet != null
+              ? targetRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint()
+              : null;
+      if (targetEndPoint != null) {
+        resp.setIp(targetEndPoint.getIp());
+        resp.setPort(String.valueOf(targetEndPoint.getPort()));
+      } else {
+        resp.setIp("");
+        resp.setPort("");
+      }
+    } catch (StatementAnalyzeException e) {
+      resp.setStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.EXECUTE_STATEMENT_ERROR,
+              "Failed to fetch device leader: " + e.getMessage()));
       resp.setIp("");
       resp.setPort("");
     }
