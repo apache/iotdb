@@ -149,6 +149,7 @@ public abstract class AbstractTraverseDevice extends Statement {
             attributeColumns,
             context,
             new AtomicBoolean(false),
+            true,
             true);
   }
 

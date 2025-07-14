@@ -205,6 +205,7 @@ public class TableDeviceSchemaFetcher {
         attributeColumns,
         queryContext,
         mayContainDuplicateDevice,
+        false,
         false)) {
       fetchMissingDeviceSchemaForQuery(
           database, tableInstance, attributeColumns, statement, deviceEntryMap, queryContext);
@@ -232,7 +233,8 @@ public class TableDeviceSchemaFetcher {
       final List<String> attributeColumns,
       final MPPQueryContext queryContext,
       final AtomicBoolean mayContainDuplicateDevice,
-      final boolean isDirectDeviceQuery) {
+      final boolean isDirectDeviceQuery,
+      final boolean fetchAllIfSomeDeviceNotInCache) {
     final Pair<List<Expression>, List<Expression>> separatedExpression =
         SchemaPredicateUtil.separateTagDeterminedPredicate(
             expressionList, tableInstance, queryContext, isDirectDeviceQuery);
@@ -307,24 +309,33 @@ public class TableDeviceSchemaFetcher {
               index2FilterMapList.size()
                   - tagSingleMatchIndexList.size()
                   + tagSingleMatchPredicateNotInCache.size());
-      int idx1 = 0;
-      int idx2 = 0;
-      for (int i = 0; i < index2FilterMapList.size(); i++) {
-        if (idx1 >= tagSingleMatchIndexList.size() || i != tagSingleMatchIndexList.get(idx1)) {
-          tagPredicateForFetch.add(
-              index2FilterMapList.get(i).values().stream()
-                  .flatMap(Collection::stream)
-                  .collect(Collectors.toList()));
-        } else {
-          idx1++;
-          if (idx2 < tagSingleMatchPredicateNotInCache.size()
-              && i == tagSingleMatchPredicateNotInCache.get(idx2)) {
+      if (!fetchAllIfSomeDeviceNotInCache) {
+        int idx1 = 0;
+        int idx2 = 0;
+        for (int i = 0; i < index2FilterMapList.size(); i++) {
+          if (idx1 >= tagSingleMatchIndexList.size() || i != tagSingleMatchIndexList.get(idx1)) {
             tagPredicateForFetch.add(
                 index2FilterMapList.get(i).values().stream()
                     .flatMap(Collection::stream)
                     .collect(Collectors.toList()));
-            idx2++;
+          } else {
+            idx1++;
+            if (idx2 < tagSingleMatchPredicateNotInCache.size()
+                && i == tagSingleMatchPredicateNotInCache.get(idx2)) {
+              tagPredicateForFetch.add(
+                  index2FilterMapList.get(i).values().stream()
+                      .flatMap(Collection::stream)
+                      .collect(Collectors.toList()));
+              idx2++;
+            }
           }
+        }
+      } else {
+        for (Map<Integer, List<SchemaFilter>> integerListMap : index2FilterMapList) {
+          tagPredicateForFetch.add(
+              integerListMap.values().stream()
+                  .flatMap(Collection::stream)
+                  .collect(Collectors.toList()));
         }
       }
       statement.setTagDeterminedFilterList(tagPredicateForFetch);
@@ -562,7 +573,7 @@ public class TableDeviceSchemaFetcher {
       deviceEntryList.add(deviceEntry);
       // Only cache those exact device query
       // Fetch paths is null iff there are fuzzy queries related to id columns
-      if (Objects.nonNull(statement.getPartitionKeyList())) {
+      if (false && Objects.nonNull(statement.getPartitionKeyList())) {
         cache.putAttributes(statement.getDatabase(), deviceID, attributeMap);
       }
     }
