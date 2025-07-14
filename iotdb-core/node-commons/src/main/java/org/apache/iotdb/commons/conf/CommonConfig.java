@@ -208,7 +208,8 @@ public class CommonConfig {
   private int pipeRealTimeQueueMaxWaitingTsFileSize = 1;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
-  private int pipeSubtaskExecutorMaxThreadNum = 5;
+  private int pipeSubtaskExecutorMaxThreadNum =
+      Math.max(5, Runtime.getRuntime().availableProcessors() / 2);
 
   private int pipeDataStructureTabletRowSize = 2048;
   private int pipeDataStructureTabletSizeInBytes = 2097152;

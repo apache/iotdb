@@ -173,9 +173,10 @@ public class PipeConnectorSubtaskManager {
       }
 
       LOGGER.info(
-          "Pipe connector subtasks with attributes {} is bounded with connectorExecutor {}.",
+          "Pipe connector subtasks with attributes {} is bounded with connectorExecutor {} and callbackExecutor {}.",
           attributeSortedString,
-          executor.getThreadName());
+          executor.getWorkingThreadName(),
+          executor.getCallbackThreadName());
       attributeSortedString2SubtaskLifeCycleMap.put(
           attributeSortedString, pipeConnectorSubtaskLifeCycleList);
     }
@@ -208,7 +209,10 @@ public class PipeConnectorSubtaskManager {
     if (lifeCycles.isEmpty()) {
       attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
       executor.shutdown();
-      LOGGER.info("The executor {} has been successfully shutdown.", executor.getThreadName());
+      LOGGER.info(
+          "The executor {} and {} has been successfully shutdown.",
+          executor.getWorkingThreadName(),
+          executor.getCallbackThreadName());
     }
 
     PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, regionId);
