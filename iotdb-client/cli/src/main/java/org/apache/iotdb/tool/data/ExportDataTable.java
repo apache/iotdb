@@ -243,9 +243,6 @@ public class ExportDataTable extends AbstractExportData {
       int i = 0;
       while (i++ < linesPerFile) {
         RowRecord rowRecord = sessionDataSet.next();
-        if (rowRecord.getTimestamp() != 0) {
-          csvPrinterWrapper.print(timeTrans(rowRecord.getTimestamp()));
-        }
         rowRecord
             .getFields()
             .forEach(
@@ -255,6 +252,8 @@ public class ExportDataTable extends AbstractExportData {
                     if ((field.getDataType() == TSDataType.TEXT
                         || field.getDataType() == TSDataType.STRING)) {
                       fieldStringValue = "\"" + fieldStringValue + "\"";
+                    } else if (field.getDataType() == TSDataType.TIMESTAMP) {
+                      fieldStringValue = timeTrans(field.getLongV());
                     }
                     csvPrinterWrapper.print(fieldStringValue);
                   } else {
