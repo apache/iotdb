@@ -43,7 +43,7 @@ public class RequestValidationHandler {
     Objects.requireNonNull(insertTabletRequest.getTable(), "table should not be null");
     Objects.requireNonNull(insertTabletRequest.getColumnNames(), "column_names should not be null");
     Objects.requireNonNull(
-        insertTabletRequest.getColumnCategories(), "column_catogories should not be null");
+        insertTabletRequest.getColumnCategories(), "column_categories should not be null");
     Objects.requireNonNull(insertTabletRequest.getDataTypes(), "data_types should not be null");
     Objects.requireNonNull(insertTabletRequest.getTimestamps(), "timestamps should not be null");
     Objects.requireNonNull(insertTabletRequest.getValues(), "values should not be null");
@@ -52,11 +52,11 @@ public class RequestValidationHandler {
     if (insertTabletRequest.getColumnCategories().size() == 0
         || insertTabletRequest.getColumnCategories().size()
             != insertTabletRequest.getColumnNames().size()) {
-      errorMessages.add("column_names and column_catogories should have the same size");
+      errorMessages.add("column_names and column_categories should have the same size");
     }
     if (insertTabletRequest.getColumnCategories().size()
         != insertTabletRequest.getDataTypes().size()) {
-      errorMessages.add("column_catogories and data_types should have the same size");
+      errorMessages.add("column_categories and data_types should have the same size");
     }
     if (insertTabletRequest.getTimestamps().size() != insertTabletRequest.getValues().size()) {
       errorMessages.add("values and timestamps should have the same size");
