@@ -3106,11 +3106,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(initSize);
       for (int i = 0; i < initSize; i++) {
         TimeValuePair timeValuePair = cachedLastValueAndPathList.get(i).left;
-        LastQueryUtil.appendLastValue(
+        LastQueryUtil.appendLastValueRespectBlob(
             builder,
             timeValuePair.getTimestamp(),
             cachedLastValueAndPathList.get(i).right,
-            timeValuePair.getValue().getStringValue(),
+            timeValuePair.getValue(),
             timeValuePair.getValue().getDataType().name());
       }
       OperatorContext operatorContext =
@@ -3133,11 +3133,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(initSize);
       for (int i = 0; i < initSize; i++) {
         TimeValuePair timeValuePair = cachedLastValueAndPathList.get(i).left;
-        LastQueryUtil.appendLastValue(
+        LastQueryUtil.appendLastValueRespectBlob(
             builder,
             timeValuePair.getTimestamp(),
             cachedLastValueAndPathList.get(i).right,
-            timeValuePair.getValue().getStringValue(),
+            timeValuePair.getValue(),
             timeValuePair.getValue().getDataType().name());
       }
 
