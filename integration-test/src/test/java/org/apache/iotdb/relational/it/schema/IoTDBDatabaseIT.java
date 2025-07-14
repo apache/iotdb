@@ -585,7 +585,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery(
               "select * from information_schema.keywords where reserved > 0 limit 1"),
           "word,reserved,",
-          Collections.singleton("AINODES,1,"));
+          Collections.singleton("AINODE,1,"));
     }
 
     try (final Connection connection =
