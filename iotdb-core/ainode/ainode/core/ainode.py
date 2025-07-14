@@ -33,7 +33,6 @@ from ainode.thrift.common.ttypes import (
     TAINodeLocation,
     TEndPoint,
     TNodeResource,
-    TSStatus,
 )
 from ainode.thrift.confignode.ttypes import TNodeVersionInfo
 
