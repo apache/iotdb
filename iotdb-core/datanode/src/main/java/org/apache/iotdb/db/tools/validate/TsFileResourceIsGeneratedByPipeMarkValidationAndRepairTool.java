@@ -233,7 +233,7 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
       repairSingleTsFileResource(resource);
 
       LOGGER.info(
-          "Marked TsFileResource as{} in resource: {}",
+          "Marked TsFileResource as {} in resource: {}",
           expectedMark.get(),
           resource.getTsFile().getAbsolutePath());
     } catch (final Exception e) {
