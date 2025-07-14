@@ -517,20 +517,47 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showDatabase(
       final ShowDatabaseStatement showDatabaseStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    // Construct request using statement
-    final List<String> databasePathPattern =
-        Arrays.asList(showDatabaseStatement.getPathPattern().getNodes());
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      // Send request to some API server
-      final TGetDatabaseReq req =
-          new TGetDatabaseReq(
-                  databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize())
-              .setIsTableModel(false);
-      final TShowDatabaseResp resp = client.showDatabase(req);
-      // build TSBlock
-      showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
-    } catch (final IOException | ClientManagerException | TException e) {
+      if (showDatabaseStatement.isShowSecurityLabel()) {
+        // 查询安全标签，支持全量和单个
+        String dbPath = null;
+        if (showDatabaseStatement.getPathPattern() != null
+            && !showDatabaseStatement.getPathPattern().getFullPath().equals("root")) {
+          dbPath = showDatabaseStatement.getPathPattern().getFullPath();
+        }
+        LOGGER.info(
+            "Show database security label - dbPath: {}, pathPattern: {}, isShowSecurityLabel: {}",
+            dbPath,
+            showDatabaseStatement.getPathPattern(),
+            showDatabaseStatement.isShowSecurityLabel());
+        org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelReq req =
+            new org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelReq(dbPath);
+        LOGGER.info("Sending request to ConfigNode: {}", req);
+        org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelResp resp =
+            client.getDatabaseSecurityLabel(req);
+        LOGGER.info("Received response from ConfigNode: {}", resp);
+        // 构造 TSBlock，处理 null 的情况
+        Map<String, String> securityLabelMap = resp.getSecurityLabel();
+        if (securityLabelMap == null) {
+          securityLabelMap = new java.util.HashMap<>();
+          LOGGER.warn("Security label map is null, using empty map");
+        }
+        LOGGER.info("Security label response: {}", securityLabelMap);
+        LOGGER.info("Security label map size: {}", securityLabelMap.size());
+        showDatabaseStatement.buildTSBlockFromSecurityLabel(securityLabelMap, future);
+      } else {
+        // 走原有逻辑
+        final List<String> databasePathPattern =
+            java.util.Arrays.asList(showDatabaseStatement.getPathPattern().getNodes());
+        org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq req =
+            new org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq(
+                    databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize())
+                .setIsTableModel(false);
+        org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp resp = client.showDatabase(req);
+        showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
+      }
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;

@@ -251,6 +251,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Iface {
@@ -530,29 +531,104 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TGetDatabaseSecurityLabelResp resp = new TGetDatabaseSecurityLabelResp();
 
     try {
+      String dbPath = req.getDatabasePath();
+      if (dbPath == null || dbPath.trim().isEmpty()) {
+        // Query security labels for all databases
+        // Get databases directly from clusterSchemaManager without filtering by
+        // isDatabaseExist
+        List<String> allDatabaseNames =
+            configManager.getClusterSchemaManager().getDatabaseNames(null);
+        LOGGER.info("All databases from clusterSchemaManager: {}", allDatabaseNames);
+
+        // Also try to get all databases from schema info directly
+        List<String> allDatabasesFromSchema =
+            configManager.getClusterSchemaManager().getDatabaseNames(null);
+        LOGGER.info("All databases from schema info (filtered): {}", allDatabasesFromSchema);
+
+        // Note: PartitionManager doesn't have getPartitionInfo() method
+        // We can only check individual database existence in partition info
+
+        // Check each database's existence in both schema and partition
+        for (String db : allDatabasesFromSchema) {
+          boolean existsInSchema = configManager.getClusterSchemaManager().isDatabaseExist(db);
+          boolean existsInPartition = configManager.getPartitionManager().isDatabaseExist(db);
+          LOGGER.info(
+              "Database {}: exists in schema={}, exists in partition={}",
+              db,
+              existsInSchema,
+              existsInPartition);
+        }
+
+        Map<String, String> allLabels = new java.util.HashMap<>();
+        for (String db : allDatabaseNames) {
+          try {
+            TDatabaseSchema schema =
+                configManager.getClusterSchemaManager().getDatabaseSchemaByName(db);
+            LOGGER.info("Database schema for {}: {}", db, schema);
+            if (schema.isSetSecurityLabel() && schema.getSecurityLabel() != null) {
+              // Convert map to string representation
+              Map<String, String> securityLabelMap = schema.getSecurityLabel();
+              String securityLabel = "";
+              if (!securityLabelMap.isEmpty()) {
+                securityLabel =
+                    securityLabelMap.entrySet().stream()
+                        .map(labelEntry -> labelEntry.getKey() + ":" + labelEntry.getValue())
+                        .collect(Collectors.joining(","));
+              }
+              allLabels.put(db, securityLabel);
+              LOGGER.info("Database {} has security label: {}", db, securityLabel);
+            } else {
+              allLabels.put(db, "");
+              LOGGER.info("Database {} has no security label", db);
+            }
+          } catch (Exception e) {
+            LOGGER.warn("Failed to get security label for database: {}", db, e);
+            allLabels.put(db, "");
+          }
+        }
+        resp.setSecurityLabel(allLabels);
+        resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+        LOGGER.info("Successfully retrieved security labels for all databases: {}", allLabels);
+        return resp;
+      }
+
       // Check if database exists
-      if (!configManager.getClusterSchemaManager().isDatabaseExist(req.getDatabasePath())) {
+      if (!configManager.getClusterSchemaManager().isDatabaseExist(dbPath)) {
         resp.setStatus(
             new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-                .setMessage("Database [" + req.getDatabasePath() + "] does not exist"));
+                .setMessage("Database [" + dbPath + "] does not exist"));
         return resp;
       }
 
       // Get the database schema which contains security labels
       TDatabaseSchema databaseSchema =
-          configManager.getClusterSchemaManager().getDatabaseSchemaByName(req.getDatabasePath());
+          configManager.getClusterSchemaManager().getDatabaseSchemaByName(dbPath);
 
       if (databaseSchema.isSetSecurityLabel() && databaseSchema.getSecurityLabel() != null) {
-        resp.setSecurityLabel(databaseSchema.getSecurityLabel());
+        // Convert map to string representation
+        Map<String, String> securityLabelMap = databaseSchema.getSecurityLabel();
+        String securityLabel = "";
+        if (!securityLabelMap.isEmpty()) {
+          securityLabel =
+              securityLabelMap.entrySet().stream()
+                  .map(labelEntry -> labelEntry.getKey() + ":" + labelEntry.getValue())
+                  .collect(Collectors.joining(","));
+        }
+        java.util.Map<String, String> labelMap = new java.util.HashMap<>();
+        labelMap.put(dbPath, securityLabel);
+        resp.setSecurityLabel(labelMap);
         resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
         LOGGER.info(
             "Successfully retrieved security label for database: {}, labels: {}",
-            req.getDatabasePath(),
-            databaseSchema.getSecurityLabel());
+            dbPath,
+            securityLabel);
       } else {
         // Database exists but has no security labels
+        java.util.Map<String, String> labelMap = new java.util.HashMap<>();
+        labelMap.put(dbPath, "");
+        resp.setSecurityLabel(labelMap);
         resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-        LOGGER.debug("Database {} exists but has no security labels", req.getDatabasePath());
+        LOGGER.debug("Database {} exists but has no security labels", dbPath);
       }
 
     } catch (Exception e) {

@@ -751,7 +751,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitShowDatabases(IoTDBSqlParser.ShowDatabasesContext ctx) {
     ShowDatabaseStatement showDatabaseStatement;
 
-    // Parse prefixPath
+    // 解析路径
     if (ctx.prefixPath() != null) {
       showDatabaseStatement = new ShowDatabaseStatement(parsePrefixPath(ctx.prefixPath()));
     } else {
@@ -759,7 +759,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           new ShowDatabaseStatement(new PartialPath(SqlConstant.getSingleRootArray()));
     }
 
-    // Is detailed
+    // 处理 SHOW DATABASE ... SECURITY_LABEL
+    if (ctx.SECURITY_LABEL() != null) {
+      showDatabaseStatement.setShowSecurityLabel(true);
+    }
+
+    // 处理 SHOW DATABASES DETAILS
     showDatabaseStatement.setDetailed(ctx.DETAILS() != null);
 
     return showDatabaseStatement;

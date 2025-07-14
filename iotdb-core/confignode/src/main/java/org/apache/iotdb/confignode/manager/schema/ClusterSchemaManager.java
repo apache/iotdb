@@ -400,6 +400,11 @@ public class ClusterSchemaManager {
         continue;
       }
 
+      // Set security label information
+      if (databaseSchema.isSetSecurityLabel() && databaseSchema.getSecurityLabel() != null) {
+        databaseInfo.setSecurityLabel(databaseSchema.getSecurityLabel());
+      }
+
       infoMap.put(database, databaseInfo);
     }
 
@@ -578,7 +583,8 @@ public class ClusterSchemaManager {
                     // The maxRegionGroupNum of the current Database is expected to be:
                     // (resourceWeight * resource) / (createdDatabaseNum * replicationFactor)
                     resourceWeight * resource / (databaseNum * replicationFactor)),
-            // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
+            // The maxRegionGroupNum should be great or equal to the
+            // allocatedRegionGroupCount
             allocatedRegionGroupCount));
   }
 

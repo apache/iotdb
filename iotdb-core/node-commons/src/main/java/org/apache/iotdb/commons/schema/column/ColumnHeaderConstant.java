@@ -710,4 +710,10 @@ public class ColumnHeaderConstant {
           new ColumnHeader("Username", TSDataType.STRING),
           new ColumnHeader("Scope", TSDataType.STRING),
           new ColumnHeader("Policy", TSDataType.STRING));
+
+  // Column headers for showing database security labels
+  public static final List<ColumnHeader> SHOW_DATABASE_SECURITY_LABEL_COLUMN_HEADERS =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader("SecurityLabel", TSDataType.TEXT));
 }

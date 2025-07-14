@@ -710,6 +710,7 @@ struct TDatabaseInfo {
   10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
+  13: optional map<string, string> securityLabel
 }
 
 struct TGetDatabaseReq {
