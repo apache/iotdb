@@ -984,11 +984,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               device2MeasurementLastEntry.getValue().entrySet()) {
             final TimeValuePair tvPair = measurementLastEntry.getValue().getRight();
             if (tvPair != TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
-              LastQueryUtil.appendLastValue(
+              LastQueryUtil.appendLastValueRespectBlob(
                   builder,
                   tvPair.getTimestamp(),
                   deviceWithSeparator + measurementLastEntry.getKey(),
-                  tvPair.getValue().getStringValue(),
+                  tvPair.getValue(),
                   measurementLastEntry.getValue().getLeft().name());
             }
           }
@@ -1119,11 +1119,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             }
           } else {
             // we don't consider TTL
-            LastQueryUtil.appendLastValue(
+            LastQueryUtil.appendLastValueRespectBlob(
                 builder,
                 timeValuePair.getTimestamp(),
                 new Binary(fullPath.getFullPath(), TSFileConfig.STRING_CHARSET),
-                timeValuePair.getValue().getStringValue(),
+                timeValuePair.getValue(),
                 timeValuePair.getValue().getDataType().name());
           }
         }
