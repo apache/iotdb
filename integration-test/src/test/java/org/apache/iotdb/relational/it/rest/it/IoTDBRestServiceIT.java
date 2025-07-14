@@ -350,4 +350,26 @@ public class IoTDBRestServiceIT {
       RestUtils.nonQuery(httpClient, port, jsonObject.toString());
     }
   }
+
+  @Test
+  public void inertDateAndBlob() {
+    RestUtils.nonQuery(httpClient, port, sqlHandler("", "create database test"));
+    String sql = "CREATE TABLE tt (time TIMESTAMP TIME,d Blob FIELD,e date FIELD)";
+    JsonObject result = RestUtils.nonQuery(httpClient, port, sqlHandler("test", sql));
+
+    assertEquals(200, Integer.parseInt(result.get("code").toString()));
+    String insertSql = "insert into tt(time,e,d) values(1,'2025-07-14',X'cafebabe')";
+    result = RestUtils.nonQuery(httpClient, port, sqlHandler("test", insertSql));
+    System.out.println(result);
+    assertEquals(200, Integer.parseInt(result.get("code").toString()));
+
+    JsonObject queryResult =
+        RestUtils.query(httpClient, port, sqlHandler("test", "select time,e,d from tt"));
+    JsonArray jsonArray = queryResult.get("values").getAsJsonArray();
+    System.out.println(jsonArray);
+    JsonArray jsonArray1 = jsonArray.get(0).getAsJsonArray();
+    assertEquals(1, jsonArray1.get(0).getAsInt());
+    assertEquals("2025-07-14", jsonArray1.get(1).getAsString());
+    assertEquals("0xcafebabe", jsonArray1.get(2).getAsString());
+  }
 }
