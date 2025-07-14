@@ -22,6 +22,7 @@ package org.apache.iotdb.db.tools.validate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,6 +40,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
+
+  private static final Logger LOGGER =
+      org.slf4j.LoggerFactory.getLogger(
+          TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool.class);
 
   private static final String USAGE =
       "Usage: --expected true|false --dirs <dir1> <dir2> ...\n"
@@ -73,7 +78,7 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
         || argSet.contains("--help")
         || argSet.contains("-h")
         || !(argSet.contains("--expected") && argSet.contains("--dirs"))) {
-      System.out.println(USAGE);
+      LOGGER.info(USAGE);
       System.exit(1);
     }
 
@@ -87,30 +92,25 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
         }
         i--;
       } else {
-        System.out.println("Unknown argument: " + args[i]);
-        System.out.println(USAGE);
+        LOGGER.info("Unknown argument: {}", args[i]);
+        LOGGER.info(USAGE);
         // Exit if an unknown argument is encountered
         System.exit(1);
       }
     }
 
     if (dataDirs.isEmpty()) {
-      System.out.println(
-          "No data directories provided. Please specify with --dirs <dir1> <dir2> ...");
+      LOGGER.info("No data directories provided. Please specify with --dirs <dir1> <dir2> ...");
       System.exit(1);
     }
 
-    System.out.println("\n------------------------------------------------------");
-    System.out.println("Expected mark: " + expectedMark.get());
-    System.out.println("Data directories: ");
+    LOGGER.info("\n------------------------------------------------------");
+    LOGGER.info("Expected mark: {}", expectedMark.get());
+    LOGGER.info("Data directories: ");
     for (File dir : dataDirs) {
-      System.out.println("  " + dir.getAbsolutePath());
-      if (!dir.exists() || !dir.isDirectory()) {
-        System.out.println("Invalid directory: " + dir.getAbsolutePath());
-        System.exit(1);
-      }
+      LOGGER.info("  {}", dir.getAbsolutePath());
     }
-    System.out.println("------------------------------------------------------\n");
+    LOGGER.info("------------------------------------------------------\n");
   }
 
   private static Map<String, List<File>> findAllPartitionDirs() {
@@ -118,7 +118,7 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
 
     for (final File dataDir : dataDirs) {
       if (!dataDir.exists() || !dataDir.isDirectory()) {
-        System.out.println(dataDir.getAbsolutePath() + " is not a valid directory");
+        LOGGER.info("{} is not a valid directory", dataDir.getAbsolutePath());
         continue;
       }
 
@@ -126,27 +126,26 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
         if (!(seqOrUnseqDataDir.isDirectory()
             && (seqOrUnseqDataDir.getName().equals("sequence")
                 || seqOrUnseqDataDir.getName().equals("unsequence")))) {
-          System.out.println(
-              seqOrUnseqDataDir.getAbsolutePath() + " is not a sequence or unsequence directory");
+          LOGGER.info(
+              "{} is not a sequence or unsequence directory", seqOrUnseqDataDir.getAbsolutePath());
           continue;
         }
 
         for (final File sg : Objects.requireNonNull(seqOrUnseqDataDir.listFiles())) {
           if (!sg.isDirectory()) {
-            System.out.println(sg.getAbsolutePath() + " is not a valid directory");
+            LOGGER.info("{} is not a valid directory", sg.getAbsolutePath());
             continue;
           }
 
           for (final File dataRegionDir : Objects.requireNonNull(sg.listFiles())) {
             if (!dataRegionDir.isDirectory()) {
-              System.out.println(dataRegionDir.getAbsolutePath() + " is not a valid directory");
+              LOGGER.info("{} is not a valid directory", dataRegionDir.getAbsolutePath());
               continue;
             }
 
             for (final File timePartitionDir : Objects.requireNonNull(dataRegionDir.listFiles())) {
               if (!timePartitionDir.isDirectory()) {
-                System.out.println(
-                    timePartitionDir.getAbsolutePath() + " is not a valid directory");
+                LOGGER.info("{} is not a valid directory", timePartitionDir.getAbsolutePath());
                 continue;
               }
 
@@ -190,16 +189,20 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
               toRepairResources.incrementAndGet();
             }
           } catch (final Exception e) {
-            System.out.printf(
-                "Error validating or repairing resource %s: %s%n",
-                resource.getTsFile().getAbsolutePath(), e.getMessage());
             // Continue processing other resources even if one fails
+            LOGGER.warn(
+                "Error validating or repairing resource {}: {}",
+                resource.getTsFile().getAbsolutePath(),
+                e.getMessage(),
+                e);
           }
         }
       } catch (final Exception e) {
-        System.out.printf(
-            "Error loading resources from partition %s: %s%n",
-            partitionDir.getAbsolutePath(), e.getMessage());
+        LOGGER.warn(
+            "Error loading resources from partition {}: {}",
+            partitionDir.getAbsolutePath(),
+            e.getMessage(),
+            e);
       }
     }
 
@@ -223,8 +226,8 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
         String resourcePath = tsfile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX;
 
         if (!new File(resourcePath).exists()) {
-          System.out.println(
-              tsfile.getAbsolutePath() + " is skipped because resource file is not exist.");
+          LOGGER.info(
+              "{} is skipped because resource file is not exist.", tsfile.getAbsolutePath());
           continue;
         }
 
@@ -250,28 +253,24 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
       return false;
     }
 
-    System.out.println(
-        "Repairing TsFileResource: "
-            + resource.getTsFile().getAbsolutePath()
-            + ", expected mark: "
-            + expectedMark.get()
-            + ", actual mark: "
-            + resource.isGeneratedByPipe());
+    LOGGER.info(
+        "Repairing TsFileResource: {}, expected mark: {}, actual mark: {}",
+        resource.getTsFile().getAbsolutePath(),
+        expectedMark.get(),
+        resource.isGeneratedByPipe());
 
     try {
       repairSingleTsFileResource(resource);
 
-      System.out.println(
-          "Marked TsFileResource as"
-              + expectedMark.get()
-              + " in resource: "
-              + resource.getTsFile().getAbsolutePath());
+      LOGGER.info(
+          "Marked TsFileResource as{} in resource: {}",
+          expectedMark.get(),
+          resource.getTsFile().getAbsolutePath());
     } catch (final Exception e) {
-      System.out.println(
-          "ERROR: Failed to repair TsFileResource: "
-              + resource.getTsFile().getAbsolutePath()
-              + ", error: "
-              + e.getMessage());
+      LOGGER.warn(
+          "ERROR: Failed to repair TsFileResource: {}, error: {}",
+          resource.getTsFile().getAbsolutePath(),
+          e.getMessage());
     }
 
     return true;
@@ -283,14 +282,12 @@ public class TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool {
   }
 
   private static void printStatistics() {
-    System.out.println("\n------------------------------------------------------");
-    System.out.println("Validation and repair completed. Statistics:");
-    System.out.println(
-        "Total time taken: "
-            + (System.currentTimeMillis() - runtime.get())
-            + " ms, total TsFile resources: "
-            + totalTsFileNum.get()
-            + ", to repair TsFile resources: "
-            + toRepairTsFileNum.get());
+    LOGGER.info("\n------------------------------------------------------");
+    LOGGER.info("Validation and repair completed. Statistics:");
+    LOGGER.info(
+        "Total time taken: {} ms, total TsFile resources: {}, to repair TsFile resources: {}",
+        System.currentTimeMillis() - runtime.get(),
+        totalTsFileNum.get(),
+        toRepairTsFileNum.get());
   }
 }
