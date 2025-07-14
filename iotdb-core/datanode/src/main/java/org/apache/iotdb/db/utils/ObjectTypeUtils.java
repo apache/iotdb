@@ -68,15 +68,9 @@ public class ObjectTypeUtils {
     logger.info("Remove object file {}", file.get().getAbsolutePath());
     for (int i = 0; i < 2; i++) {
       try {
-        if (Files.deleteIfExists(file.get().toPath())) {
-          return;
-        }
-        if (Files.deleteIfExists(tmpFile.toPath())) {
-          return;
-        }
-        if (Files.deleteIfExists(bakFile.toPath())) {
-          return;
-        }
+        Files.deleteIfExists(file.get().toPath());
+        Files.deleteIfExists(tmpFile.toPath());
+        Files.deleteIfExists(bakFile.toPath());
       } catch (IOException e) {
         logger.error("Failed to remove object file {}", file.get().getAbsolutePath(), e);
       }
