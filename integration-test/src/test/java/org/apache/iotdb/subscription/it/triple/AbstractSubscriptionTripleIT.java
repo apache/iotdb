@@ -76,6 +76,10 @@ public abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionI
         .getConfig()
         .getCommonConfig()
         .setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(32 * 1024);
+
+    sender.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
+    receiver1.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
+    receiver2.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
   }
 
   @Override
