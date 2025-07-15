@@ -59,8 +59,8 @@ public class SeriesScanLimitOffsetPushDownTest extends AbstractSeriesScanTest {
   public void testSkipFile() throws IllegalPathException, IOException {
     SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 10, Ordering.ASC);
 
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
@@ -71,16 +71,16 @@ public class SeriesScanLimitOffsetPushDownTest extends AbstractSeriesScanTest {
     }
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
-    Assert.assertFalse(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, false);
   }
 
   @Test
   public void testSkipChunk() throws IllegalPathException, IOException {
     SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 20, Ordering.ASC);
 
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
@@ -91,16 +91,16 @@ public class SeriesScanLimitOffsetPushDownTest extends AbstractSeriesScanTest {
     }
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
-    Assert.assertFalse(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, false);
   }
 
   @Test
   public void testSkipPage() throws IllegalPathException, IOException {
     SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 30, Ordering.ASC);
 
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
@@ -111,16 +111,16 @@ public class SeriesScanLimitOffsetPushDownTest extends AbstractSeriesScanTest {
     }
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
-    Assert.assertFalse(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, false);
   }
 
   @Test
   public void testSkipPoint1() throws IllegalPathException, IOException {
     SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 45, Ordering.ASC);
 
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
@@ -134,7 +134,7 @@ public class SeriesScanLimitOffsetPushDownTest extends AbstractSeriesScanTest {
       Assert.assertEquals(expectedTime++, tsBlock.getTimeByIndex(i));
     }
 
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
     tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(5, tsBlock.getPositionCount());
@@ -143,16 +143,16 @@ public class SeriesScanLimitOffsetPushDownTest extends AbstractSeriesScanTest {
     }
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
-    Assert.assertFalse(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, false);
   }
 
   @Test
   public void testSkipPoint2() throws IllegalPathException, IOException {
     SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 55, Ordering.ASC);
 
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
@@ -170,16 +170,16 @@ public class SeriesScanLimitOffsetPushDownTest extends AbstractSeriesScanTest {
     }
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
-    Assert.assertFalse(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, false);
   }
 
   @Test
   public void testSkipPointDesc1() throws IllegalPathException, IOException {
     SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 5, Ordering.DESC);
 
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
@@ -200,16 +200,16 @@ public class SeriesScanLimitOffsetPushDownTest extends AbstractSeriesScanTest {
     }
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
-    Assert.assertFalse(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, false);
   }
 
   @Test
   public void testSkipPointDesc2() throws IllegalPathException, IOException {
     SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 25, Ordering.DESC);
 
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
@@ -222,7 +222,7 @@ public class SeriesScanLimitOffsetPushDownTest extends AbstractSeriesScanTest {
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
 
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     tsBlock = seriesScanUtil.nextPage();
@@ -243,7 +243,7 @@ public class SeriesScanLimitOffsetPushDownTest extends AbstractSeriesScanTest {
     }
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
-    Assert.assertFalse(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, false);
   }
 }
