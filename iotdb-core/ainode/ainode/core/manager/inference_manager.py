@@ -136,7 +136,7 @@ class InferenceManager:
     DEFAULT_DEVICE = "cpu"
     # DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     DEFAULT_POOL_SIZE = (
-        10  # TODO: Remove these parameter by sampling model inference consumption
+        0  # TODO: Remove these parameter by sampling model inference consumption
     )
     WAITING_INTERVAL_IN_MS = (
         AINodeDescriptor().get_config().get_ain_inference_batch_interval_in_ms()
