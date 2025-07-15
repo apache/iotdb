@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.connector.util.PipeTabletEventSorter;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -179,6 +180,12 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           event.getClass());
     }
     return true;
+  }
+
+  @Override
+  protected void recordMetric(long timeInterval, long bufferSize) {
+    PipeDataRegionConnectorMetrics.tsFileBatchTimeIntervalHistogram.update(timeInterval);
+    PipeDataRegionConnectorMetrics.tsFileBatchSizeHistogram.update(bufferSize);
   }
 
   private void bufferTablet(

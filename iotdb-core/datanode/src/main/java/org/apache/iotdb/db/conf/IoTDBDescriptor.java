@@ -955,6 +955,10 @@ public class IoTDBDescriptor {
     }
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
+    conf.setPipeTaskThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_task_thread_count", Integer.toString(conf.getPipeTaskThreadCount()).trim())));
 
     // At the same time, set TSFileConfig
     List<FSType> fsTypes = new ArrayList<>();
@@ -1090,6 +1094,11 @@ public class IoTDBDescriptor {
     conf.setDataNodeSchemaCacheEvictionPolicy(
         properties.getProperty(
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
+
+    conf.setSchemaThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_thread_count", Integer.toString(conf.getSchemaThreadCount()))));
 
     loadIoTConsensusProps(properties);
     loadPipeConsensusProps(properties);
@@ -2386,11 +2395,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_tablet_conversion_batch_memory_size_in_bytes",
                 String.valueOf(conf.getLoadTsFileTabletConversionBatchMemorySizeInBytes()))));
-    conf.setLoadTsFileTabletConversionThreadCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "load_tsfile_tablet_conversion_thread_count",
-                String.valueOf(conf.getLoadTsFileTabletConversionThreadCount()))));
     conf.setLoadChunkMetadataMemorySizeInBytes(
         Long.parseLong(
             Optional.ofNullable(

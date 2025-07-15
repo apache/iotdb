@@ -27,7 +27,6 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeDataR
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -95,11 +94,7 @@ public class PipeInsertionDataNodeListener {
   //////////////////////////// listen to events ////////////////////////////
 
   public void listenToTsFile(
-      final String dataRegionId,
-      final TsFileResource tsFileResource,
-      final boolean isLoaded,
-      final boolean isGeneratedByPipe) {
-    tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
+      final String dataRegionId, final TsFileResource tsFileResource, final boolean isLoaded) {
     // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
     // because extractors may use tsfile events when some exceptions occur in the
     // insert nodes listening process.
@@ -116,10 +111,7 @@ public class PipeInsertionDataNodeListener {
   }
 
   public void listenToInsertNode(
-      String dataRegionId,
-      WALEntryHandler walEntryHandler,
-      InsertNode insertNode,
-      TsFileResource tsFileResource) {
+      String dataRegionId, InsertNode insertNode, TsFileResource tsFileResource) {
     if (listenToInsertNodeExtractorCount.get() == 0) {
       return;
     }
@@ -132,7 +124,7 @@ public class PipeInsertionDataNodeListener {
     }
 
     assigner.publishToAssign(
-        PipeRealtimeEventFactory.createRealtimeEvent(walEntryHandler, insertNode, tsFileResource));
+        PipeRealtimeEventFactory.createRealtimeEvent(insertNode, tsFileResource));
   }
 
   public void listenToHeartbeat(boolean shouldPrintMessage) {

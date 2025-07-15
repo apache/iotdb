@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.pipe.metric.overview;
 
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -54,7 +55,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   private static Histogram PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  private static Histogram PIPE_DATANODE_EVENT_TRANSFER_TIME_HISTOGRAM =
+  private static Histogram PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
@@ -68,7 +69,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "insert_node");
-    PIPE_DATANODE_EVENT_TRANSFER_TIME_HISTOGRAM =
+    PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM =
         metricService.getOrCreateHistogram(
             Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
@@ -103,6 +104,35 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
 
+    // Resources
+    metricService.createAutoGauge(
+        Metric.PIPE_FLOATING_MEMORY_USAGE.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeAgent.task(),
+        a -> a.getFloatingMemoryUsageInByte(operator.getPipeName()),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.createAutoGauge(
+        Metric.PIPE_LINKED_TSFILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.tsfile(),
+        a -> a.getLinkedTsFileCount(operator.getPipeName()),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.createAutoGauge(
+        Metric.PIPE_LINKED_TSFILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.tsfile(),
+        a -> a.getTotalLinkedTsFileSize(operator.getPipeName()),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+
     operator.setInsertNodeTransferTimer(
         metricService.getOrCreateTimer(
             Metric.PIPE_INSERT_NODE_EVENT_TRANSFER_TIME.toString(),
@@ -116,31 +146,6 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             operator.getPipeName()));
-  }
-
-  public boolean mayRemainingInsertEventExceedLimit(final String pipeID) {
-    if (Objects.isNull(metricService)) {
-      return true;
-    }
-
-    if (remainingEventAndTimeOperatorMap.values().stream()
-            .map(PipeDataNodeRemainingEventAndTimeOperator::getRemainingInsertEventSmoothingCount)
-            .reduce(0d, Double::sum)
-        > PipeConfig.getInstance().getPipeMaxAllowedTotalRemainingInsertEventCount()) {
-      return true;
-    }
-
-    final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.get(pipeID);
-    if (Objects.isNull(operator)) {
-      LOGGER.warn(
-          "Failed to get remaining insert event, RemainingEventAndTimeOperator({}) does not exist, will degrade anyway",
-          pipeID);
-      return true;
-    }
-
-    return operator.getRemainingInsertEventSmoothingCount()
-        > PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCountPerPipe();
   }
 
   @Override
@@ -180,6 +185,27 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_FLOATING_MEMORY_USAGE.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_LINKED_TSFILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_LINKED_TSFILE_SIZE.toString(),
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -280,7 +306,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
     operator.decreaseTsFileEventCount();
     operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-    PIPE_DATANODE_EVENT_TRANSFER_TIME_HISTOGRAM.update(transferTime);
+    PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
   }
 
   public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {

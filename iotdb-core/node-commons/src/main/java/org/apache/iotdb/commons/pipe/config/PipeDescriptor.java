@@ -46,13 +46,6 @@ public class PipeDescriptor {
     config.setPipeHardlinkTsFileDirName(
         properties.getProperty(
             "pipe_hardlink_tsfile_dir_name", config.getPipeHardlinkTsFileDirName()));
-    config.setPipeHardlinkWALDirName(
-        properties.getProperty("pipe_hardlink_wal_dir_name", config.getPipeHardlinkWALDirName()));
-    config.setPipeHardLinkWALEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "pipe_hardlink_wal_enabled",
-                Boolean.toString(config.getPipeHardLinkWALEnabled()))));
     int pipeSubtaskExecutorMaxThreadNum =
         Integer.parseInt(
             properties.getProperty(
@@ -129,17 +122,6 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_tsfile_pin_max_log_interval_rounds",
                 String.valueOf(config.getPipeTsFilePinMaxLogIntervalRounds()))));
-    config.setPipeWalPinMaxLogNumPerRound(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_wal_pin_max_log_num_per_round",
-                String.valueOf(config.getPipeWalPinMaxLogNumPerRound()))));
-    config.setPipeWalPinMaxLogIntervalRounds(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_wal_pin_max_log_interval_rounds",
-                String.valueOf(config.getPipeWalPinMaxLogIntervalRounds()))));
-
     config.setPipeMemoryManagementEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -199,14 +181,7 @@ public class PipeDescriptor {
                 .trim()));
   }
 
-  public static void loadPipeInternalConfig(CommonConfig config, TrimProperties properties)
-      throws IOException {
-    config.setPipeNonForwardingEventsProgressReportInterval(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_non_forwarding_events_progress_report_interval",
-                Integer.toString(config.getPipeNonForwardingEventsProgressReportInterval()))));
-
+  public static void loadPipeInternalConfig(CommonConfig config, TrimProperties properties) {
     config.setPipeFileReceiverFsyncEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -235,11 +210,6 @@ public class PipeDescriptor {
                 "pipe_data_structure_ts_file_memory_block_allocation_reject_threshold",
                 String.valueOf(
                     config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()))));
-    config.setPipeDataStructureWalMemoryProportion(
-        Double.parseDouble(
-            properties.getProperty(
-                "pipe_data_structure_wal_memory_proportion",
-                String.valueOf(config.getPipeDataStructureWalMemoryProportion()))));
     config.setPipeDataStructureBatchMemoryProportion(
         Double.parseDouble(
             properties.getProperty(
@@ -250,6 +220,45 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_total_floating_memory_proportion",
                 String.valueOf(config.getPipeTotalFloatingMemoryProportion()))));
+
+    config.setIsPipeEnableMemoryChecked(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_enable_memory_checked", String.valueOf(config.isPipeEnableMemoryChecked()))));
+    config.setPipeInsertNodeQueueMemory(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_insert_node_queue_memory",
+                String.valueOf(config.getPipeInsertNodeQueueMemory()))));
+    config.setPipeTsFileParserMemory(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_tsfile_parser_memory", String.valueOf(config.getPipeTsFileParserMemory()))));
+    config.setPipeSinkBatchMemoryInsertNode(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_sink_batch_memory_insert_node",
+                String.valueOf(config.getPipeSinkBatchMemoryInsertNode()))));
+    config.setPipeSinkBatchMemoryTsFile(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_sink_batch_memory_ts_file",
+                String.valueOf(config.getPipeSinkBatchMemoryTsFile()))));
+    config.setPipeSendTsFileReadBuffer(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_send_tsfile_read_buffer",
+                String.valueOf(config.getPipeSendTsFileReadBuffer()))));
+    config.setPipeReservedMemoryPercentage(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_reserved_memory_percentage",
+                String.valueOf(config.getPipeReservedMemoryPercentage()))));
+    config.setPipeMinimumReceiverMemory(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_minimum_receiver_memory",
+                String.valueOf(config.getPipeMinimumReceiverMemory()))));
 
     config.setPipeRealTimeQueuePollTsFileThreshold(
         Integer.parseInt(
@@ -312,9 +321,10 @@ public class PipeDescriptor {
                         String.valueOf(
                             config
                                 .getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes())))));
+
     config.setPipeExtractorMatcherCacheSize(
         Integer.parseInt(
-            Optional.ofNullable(properties.getProperty("pipe_source_matcher_cache_size"))
+            Optional.ofNullable(properties.getProperty("pipe_extractor_matcher_cache_size"))
                 .orElse(
                     properties.getProperty(
                         "pipe_extractor_matcher_cache_size",
@@ -433,61 +443,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
                 String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
-    config.setPipeMaxAllowedPinnedMemTableCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_max_allowed_pinned_memtable_count",
-                String.valueOf(config.getPipeMaxAllowedPinnedMemTableCount()))));
     config.setPipeMaxAllowedLinkedTsFileCount(
         Long.parseLong(
             properties.getProperty(
                 "pipe_max_allowed_linked_tsfile_count",
                 String.valueOf(config.getPipeMaxAllowedLinkedTsFileCount()))));
-    config.setPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage(
-        Float.parseFloat(
-            properties.getProperty(
-                "pipe_max_allowed_linked_deleted_tsfile_disk_usage_percentage",
-                String.valueOf(config.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage()))));
-    config.setPipeStuckRestartIntervalSeconds(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_stuck_restart_interval_seconds",
-                String.valueOf(config.getPipeStuckRestartIntervalSeconds()))));
-    config.setPipeMaxAllowedRemainingInsertEventCountPerPipe(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_max_allowed_remaining_insert_event_count_per_pipe",
-                String.valueOf(config.getPipeMaxAllowedRemainingInsertEventCountPerPipe()))));
-    config.setPipeMaxAllowedTotalRemainingInsertEventCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_max_allowed_total_remaining_insert_event_count",
-                String.valueOf(config.getPipeMaxAllowedTotalRemainingInsertEventCount()))));
-    config.setPipeStuckRestartMinIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_stuck_restart_min_interval_ms",
-                String.valueOf(config.getPipeStuckRestartMinIntervalMs()))));
-    config.setPipeFlushAfterLastTerminateSeconds(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_flush_after_last_terminate_seconds",
-                String.valueOf(config.getPipeFlushAfterLastTerminateSeconds()))));
-    config.setPipeFlushAfterTerminateCount(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_flush_after_terminate_count",
-                String.valueOf(config.getPipeFlushAfterTerminateCount()))));
-    config.setPipeEpochKeepTsFileAfterStuckRestartEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "pipe_epoch_keep_tsfile_after_stuck_restart_enabled",
-                String.valueOf(config.isPipeEpochKeepTsFileAfterStuckRestartEnabled()))));
-    config.setPipeStorageEngineFlushTimeIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_storage_engine_flush_time_interval_ms",
-                String.valueOf(config.getPipeStorageEngineFlushTimeIntervalMs()))));
 
     config.setPipeMemoryAllocateMaxRetries(
         Integer.parseInt(
