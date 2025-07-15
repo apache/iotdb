@@ -3047,9 +3047,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         }
       } else { //  cached last value is satisfied, put it into LastCacheScanOperator
         if (node.getOutputViewPath() != null) {
-          context.addCachedLastValue(timeValuePair, node.getOutputViewPath());
+          context.addCachedLastValue(
+              timeValuePair, node.getOutputViewPath(), node.getOutputViewPathType());
         } else {
-          context.addCachedLastValue(timeValuePair, measurementPath.getFullPath());
+          context.addCachedLastValue(
+              timeValuePair, measurementPath.getFullPath(), measurementSchema.getType());
         }
       }
     }
