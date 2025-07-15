@@ -26,10 +26,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
-import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -45,9 +45,6 @@ public class IntoNode extends SingleChildProcessNode {
   private final String table;
   private final List<ColumnSchema> columns;
   private final Symbol rowCountSymbol;
-
-  public static final String ROWS = "Rows";
-  public static final Type ROWS_TYPE = LongType.INT64;
 
   public IntoNode(
       PlanNodeId id,
@@ -155,7 +152,7 @@ public class IntoNode extends SingleChildProcessNode {
   }
 
   public List<Type> getOutputType() {
-    return ImmutableList.of(ROWS_TYPE);
+    return ImmutableList.of(Insert.ROWS_TYPE);
   }
 
   public String getDatabase() {

@@ -326,7 +326,7 @@ public class TableLogicalPlanner {
             targetTable.getDatabaseName(),
             table.getName().getSuffix(),
             tableColumns,
-            symbolAllocator.newSymbol(IntoNode.ROWS, IntoNode.ROWS_TYPE));
+            symbolAllocator.newSymbol(Insert.ROWS, Insert.ROWS_TYPE));
     return new RelationPlan(
         intoNode, analysis.getRootScope(), intoNode.getOutputSymbols(), Optional.empty());
   }

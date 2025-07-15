@@ -219,7 +219,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
 import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
@@ -709,7 +708,7 @@ public class StatementAnalyzer {
       }
 
       return createAndAssignScope(
-          insert, scope, Field.newUnqualified("rows", LongType.INT64, TsTableColumnCategory.FIELD));
+          insert, scope, Field.newUnqualified(Insert.ROWS, Insert.ROWS_TYPE, Insert.ROWS_CATEGORY));
     }
 
     @Override
