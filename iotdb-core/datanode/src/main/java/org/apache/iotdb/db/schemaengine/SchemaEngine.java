@@ -221,7 +221,7 @@ public class SchemaEngine {
     }
   }
 
-  public void clear() {
+  public synchronized void clear() {
     schemaRegionLoader.clear();
 
     // clearSchemaResource will shut down release and flush task in PBTree mode, which must be
@@ -239,6 +239,7 @@ public class SchemaEngine {
       }
       schemaRegionMap.clear();
       schemaRegionMap = null;
+      logger.info("clear schema region map.");
     }
     // SchemaMetric should be cleared lastly
     if (schemaMetricManager != null) {
@@ -261,7 +262,10 @@ public class SchemaEngine {
 
   public synchronized void createSchemaRegion(
       final String storageGroup, final SchemaRegionId schemaRegionId) throws MetadataException {
-    final ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+    if (this.schemaRegionMap == null) {
+      throw new MetadataException("Peer is shutting down now.");
+    }
+    final ISchemaRegion schemaRegion = this.schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
       if (schemaRegion.getDatabaseFullPath().equals(storageGroup)) {
         return;
@@ -273,7 +277,7 @@ public class SchemaEngine {
                 schemaRegionId, schemaRegion.getDatabaseFullPath(), storageGroup));
       }
     }
-    schemaRegionMap.put(
+    this.schemaRegionMap.put(
         schemaRegionId, createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId));
   }
 
