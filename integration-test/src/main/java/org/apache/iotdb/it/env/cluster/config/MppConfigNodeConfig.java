@@ -67,4 +67,10 @@ public class MppConfigNodeConfig extends MppBaseConfig implements ConfigNodeConf
     properties.setProperty("metric_prometheus_reporter_password", password);
     return this;
   }
+
+  @Override
+  public ConfigNodeConfig setEnableAutoLeaderBalanceForIotConsensus(boolean enable) {
+    properties.setProperty("enable_auto_leader_balance_for_iot_consensus", String.valueOf(enable));
+    return this;
+  }
 }

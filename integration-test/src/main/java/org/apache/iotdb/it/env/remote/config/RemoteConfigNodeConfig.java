@@ -38,4 +38,9 @@ public class RemoteConfigNodeConfig implements ConfigNodeConfig {
   public ConfigNodeConfig setMetricPrometheusReporterPassword(String password) {
     return this;
   }
+
+  @Override
+  public ConfigNodeConfig setEnableAutoLeaderBalanceForIotConsensus(boolean enable) {
+    return this;
+  }
 }

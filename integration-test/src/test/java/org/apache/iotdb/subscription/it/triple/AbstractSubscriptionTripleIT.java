@@ -76,6 +76,10 @@ public abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionI
         .getConfig()
         .getCommonConfig()
         .setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(32 * 1024);
+
+    sender.getConfig().getConfigNodeConfig().setEnableAutoLeaderBalanceForIotConsensus(false);
+    receiver1.getConfig().getConfigNodeConfig().setEnableAutoLeaderBalanceForIotConsensus(false);
+    receiver2.getConfig().getConfigNodeConfig().setEnableAutoLeaderBalanceForIotConsensus(false);
   }
 
   @Override
