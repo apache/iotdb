@@ -647,9 +647,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               SeriesScanOptions.Builder builder = new SeriesScanOptions.Builder();
               // time filter may be stateful, so we need to copy it
               builder.withGlobalTimeFilter(timeFilter == null ? null : timeFilter.copy());
-              builder
-                  .withIsTableViewForTreeModel(true)
-                  .withAllSensors(new HashSet<>(measurementColumnNames));
+              builder.withIsTableViewForTreeModel(true).withAllSensors(allSensors);
               if (pushDownPredicateForCurrentMeasurement != null) {
                 builder.withPushDownFilter(
                     convertPredicateToFilter(
