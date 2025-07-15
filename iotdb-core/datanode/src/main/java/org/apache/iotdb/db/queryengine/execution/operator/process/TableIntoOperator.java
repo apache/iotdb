@@ -111,10 +111,15 @@ public class TableIntoOperator extends AbstractIntoOperator {
 
   @Override
   public long ramBytesUsed() {
+    System.out.println("***********************");
+    System.out.println("INSTANCE_SIZE: " + INSTANCE_SIZE);
+    System.out.println(
+        "insertTabletStatementGenerator: " + insertTabletStatementGenerator.ramBytesUsed());
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(targetTable);
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(targetTable)
+        + insertTabletStatementGenerator.ramBytesUsed();
   }
 
   private boolean insertTabletInternally(boolean needCheck) {

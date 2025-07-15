@@ -28,8 +28,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Map;
@@ -38,11 +37,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 
 public class TableInsertTabletStatementGenerator extends InsertTabletStatementGenerator {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TableInsertTabletStatementGenerator.class);
 
   private final String databaseName;
   private final AtomicLong writtenCounter;
   private final int timeColumnIndex;
-  private final List<TsTableColumnCategory> tsTableColumnCategories;
+  private final TsTableColumnCategory[] tsTableColumnCategories;
 
   public TableInsertTabletStatementGenerator(
       String databaseName,
@@ -50,7 +51,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
       Map<String, InputLocation> measurementToInputLocationMap,
       Map<String, TSDataType> measurementToDataTypeMap,
       List<Type> sourceTypeConvertors,
-      List<TsTableColumnCategory> tsTableColumnCategories,
+      List<TsTableColumnCategory> tsTableColumnCategoryList,
       boolean isAligned,
       int rowLimit) {
     super(
@@ -61,12 +62,12 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
             .filter(entry -> !entry.getKey().equalsIgnoreCase(TIME_COLUMN_NAME))
             .map(Map.Entry::getValue)
             .toArray(InputLocation[]::new),
-        sourceTypeConvertors,
+        sourceTypeConvertors.toArray(new Type[0]),
         isAligned,
         rowLimit);
     this.databaseName = databaseName;
     this.writtenCounter = new AtomicLong(0);
-    this.tsTableColumnCategories = tsTableColumnCategories;
+    this.tsTableColumnCategories = tsTableColumnCategoryList.toArray(new TsTableColumnCategory[0]);
     this.timeColumnIndex =
         measurementToInputLocationMap.get(TIME_COLUMN_NAME).getValueColumnIndex();
     this.initialize();
@@ -79,7 +80,6 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
       for (int i = 0; i < measurements.length; ++i) {
         int valueColumnIndex = inputLocations[i].getValueColumnIndex();
         Column valueColumn = tsBlock.getValueColumns()[valueColumnIndex];
-        Type sourceTypeConvertor = sourceTypeConvertors.get(i);
 
         // if the value is NULL
         if (valueColumn.isNull(lastReadIndex)) {
@@ -88,40 +88,8 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
         }
 
         bitMaps[i].unmark(rowCount);
-        switch (dataTypes[i]) {
-          case INT32:
-          case DATE:
-            ((int[]) columns[i])[rowCount] = sourceTypeConvertor.getInt(valueColumn, lastReadIndex);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            ((long[]) columns[i])[rowCount] =
-                sourceTypeConvertor.getLong(valueColumn, lastReadIndex);
-            break;
-          case FLOAT:
-            ((float[]) columns[i])[rowCount] =
-                sourceTypeConvertor.getFloat(valueColumn, lastReadIndex);
-            break;
-          case DOUBLE:
-            ((double[]) columns[i])[rowCount] =
-                sourceTypeConvertor.getDouble(valueColumn, lastReadIndex);
-            break;
-          case BOOLEAN:
-            ((boolean[]) columns[i])[rowCount] =
-                sourceTypeConvertor.getBoolean(valueColumn, lastReadIndex);
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            ((Binary[]) columns[i])[rowCount] =
-                sourceTypeConvertor.getBinary(valueColumn, lastReadIndex);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format(
-                    "data type %s is not supported when convert data at client",
-                    valueColumn.getDataType()));
-        }
+        processColumn(
+            valueColumn, columns[i], dataTypes[i], sourceTypeConvertors[i], lastReadIndex);
       }
 
       writtenCounter.getAndIncrement();
@@ -134,12 +102,12 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
     return lastReadIndex;
   }
 
+  @Override
   public InsertTabletStatement constructInsertTabletStatement() {
     InsertTabletStatement insertTabletStatement = super.constructInsertTabletStatement();
     insertTabletStatement.setDatabaseName(databaseName);
     insertTabletStatement.setWriteToTable(true);
-    insertTabletStatement.setColumnCategories(
-        tsTableColumnCategories.toArray(new TsTableColumnCategory[0]));
+    insertTabletStatement.setColumnCategories(tsTableColumnCategories);
     return insertTabletStatement;
   }
 
@@ -151,5 +119,15 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
   @Override
   public long getWrittenCount(String measurement) {
     throw new UnsupportedOperationException("getWrittenCount(measurement) is not supported");
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + super.ramBytesUsed()
+        + Integer.BYTES // timeColumnIndex
+        + RamUsageEstimator.sizeOf(databaseName)
+        + RamUsageEstimator.shallowSizeOf(writtenCounter)
+        + RamUsageEstimator.shallowSizeOf(tsTableColumnCategories);
   }
 }

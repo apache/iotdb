@@ -26,8 +26,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +34,9 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGenerator {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TableInsertTabletStatementGenerator.class);
+
   private final Map<String, AtomicLong> writtenCounter;
 
   public TreeInsertTabletStatementGenerator(
@@ -49,7 +51,7 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
         measurementToInputLocationMap.keySet().toArray(new String[0]),
         measurementToDataTypeMap.values().toArray(new TSDataType[0]),
         measurementToInputLocationMap.values().toArray(new InputLocation[0]),
-        sourceTypeConvertors,
+        sourceTypeConvertors.toArray(new Type[0]),
         isAligned,
         rowLimit);
     this.writtenCounter = new HashMap<>();
@@ -67,7 +69,6 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
       for (int i = 0; i < measurements.length; ++i) {
         int valueColumnIndex = inputLocations[i].getValueColumnIndex();
         Column valueColumn = tsBlock.getValueColumns()[valueColumnIndex];
-        Type sourceTypeConvertor = sourceTypeConvertors.get(valueColumnIndex);
 
         // if the value is NULL
         if (valueColumn.isNull(lastReadIndex)) {
@@ -77,40 +78,12 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
 
         bitMaps[i].unmark(rowCount);
         writtenCounter.get(measurements[i]).getAndIncrement();
-        switch (dataTypes[i]) {
-          case INT32:
-          case DATE:
-            ((int[]) columns[i])[rowCount] = sourceTypeConvertor.getInt(valueColumn, lastReadIndex);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            ((long[]) columns[i])[rowCount] =
-                sourceTypeConvertor.getLong(valueColumn, lastReadIndex);
-            break;
-          case FLOAT:
-            ((float[]) columns[i])[rowCount] =
-                sourceTypeConvertor.getFloat(valueColumn, lastReadIndex);
-            break;
-          case DOUBLE:
-            ((double[]) columns[i])[rowCount] =
-                sourceTypeConvertor.getDouble(valueColumn, lastReadIndex);
-            break;
-          case BOOLEAN:
-            ((boolean[]) columns[i])[rowCount] =
-                sourceTypeConvertor.getBoolean(valueColumn, lastReadIndex);
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            ((Binary[]) columns[i])[rowCount] =
-                sourceTypeConvertor.getBinary(valueColumn, lastReadIndex);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format(
-                    "data type %s is not supported when convert data at client",
-                    valueColumn.getDataType()));
-        }
+        processColumn(
+            valueColumn,
+            columns[i],
+            dataTypes[i],
+            sourceTypeConvertors[valueColumnIndex],
+            lastReadIndex);
       }
 
       ++rowCount;
@@ -133,5 +106,10 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
       return -1;
     }
     return writtenCounter.get(measurement).get();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + super.ramBytesUsed() + RamUsageEstimator.sizeOfMap(writtenCounter);
   }
 }

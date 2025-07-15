@@ -137,6 +137,11 @@ public class TreeIntoOperator extends AbstractTreeIntoOperator {
                     pair ->
                         RamUsageEstimator.sizeOf(pair.left)
                             + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(pair.right))
+                .sum())
+        + (insertTabletStatementGenerators == null
+            ? 0
+            : insertTabletStatementGenerators.stream()
+                .mapToLong(InsertTabletStatementGenerator::ramBytesUsed)
                 .sum());
   }
 }
