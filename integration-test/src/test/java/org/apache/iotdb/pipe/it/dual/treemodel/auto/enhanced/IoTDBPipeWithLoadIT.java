@@ -114,7 +114,18 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.db.d2 (time, s1) values (1, 1), (3, 3)",
               "insert into root.db.d3 (time, s1) values (1, 1), (3, 3)",
               "insert into root.db.d4 (time, s1) values (1, 1), (3, 3)",
-              "flush",
+              "flush"),
+          null)) {
+        return;
+      }
+      // adding new devices may create a new region, and thus trigger leader re-balancing
+      // the old leader may not have synced data to the new leader, and the result is that
+      // the following deletions performed on the new leader can not delete anything
+      // wait for a while to increase the chance that data has been synced to the new leader
+      Thread.sleep(5000);
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
               "delete from root.db.d1.s2 where time <= 2",
               "delete from root.db.d1.s3 where time >= 1 and time <= 3",
               "delete from root.db.d3.** where time <= 2",

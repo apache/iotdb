@@ -40,13 +40,17 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /***
  * If autoCommit is set to false, not using commit to submit consumption progress will lead to repeated consumption;
@@ -67,6 +71,9 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
   private String pattern = device + ".**";
   private static SubscriptionTreePullConsumer consumer;
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBTestAutoCommitFalseDataSetPullConsumerIT.class);
 
   @Override
   @Before
@@ -120,11 +127,7 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
   }
 
   private void consume_data_noCommit(SubscriptionTreePullConsumer consumer, Session session)
-      throws InterruptedException,
-          TException,
-          IOException,
-          StatementExecutionException,
-          IoTDBConnectionException {
+      throws InterruptedException, StatementExecutionException, IoTDBConnectionException {
     while (true) {
       Thread.sleep(1000);
       List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
@@ -135,6 +138,16 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
         for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
             it.hasNext(); ) {
           final Tablet tablet = it.next();
+          LOGGER.info(
+              "Inserting a tablet, device {}, times {}, measurements {}",
+              tablet.getDeviceId(),
+              Arrays.stream(tablet.getTimestamps())
+                  .boxed()
+                  .collect(Collectors.toList())
+                  .subList(0, tablet.getRowSize()),
+              tablet.getSchemas().stream()
+                  .map(IMeasurementSchema::getMeasurementName)
+                  .collect(Collectors.toList()));
           session.insertTablet(tablet);
           System.out.println(
               FORMAT.format(new Date()) + " consume data no commit:" + tablet.getRowSize());

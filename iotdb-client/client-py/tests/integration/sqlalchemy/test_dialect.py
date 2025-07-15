@@ -44,17 +44,13 @@ def print_message(message):
 
 
 def test_dialect():
-    password = urlquote("IoTDB@2017")
+
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
-        url = (
-            "iotdb://root:"
-            + password
-            + "@"
-            + db.get_container_host_ip()
-            + ":"
-            + db.get_exposed_port(6667)
-        )
+        password = urlquote("IoTDB@2017")
+        host = db.get_container_host_ip()
+        port = db.get_exposed_port(6667)
+        url = f'iotdb://root:{password}@{host}:{port}'
         registry.register("iotdb", "iotdb.sqlalchemy.IoTDBDialect", "IoTDBDialect")
         eng = create_engine(url)
 

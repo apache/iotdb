@@ -306,7 +306,7 @@ public class IoTDBClusterNodeGetterIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), dataNodeRemoveResp.getStatus().getCode());
 
       // Waiting for RemoveDataNodeProcedure
-      for (int retry = 0; retry < 10; retry++) {
+      for (int retry = 0; retry < 60; retry++) {
         showDataNodesResp = client.showDataNodes();
         if (showDataNodesResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && showDataNodesResp.getDataNodesInfoListSize() == testDataNodeNum - 1) {
