@@ -168,7 +168,8 @@ public class TsFileNameGenerator {
     }
   }
 
-  public static String generateObjectFilePath(int regionId, long time, IDeviceID iDeviceID) {
+  public static String generateObjectFilePath(
+      int regionId, long time, IDeviceID iDeviceID, String measurement) {
     String objectFileName = time + ".bin";
     Object[] segments = iDeviceID.getSegments();
     StringBuilder relativePathString =
@@ -178,6 +179,7 @@ public class TsFileNameGenerator {
           .append(segment == null ? "null" : segment.toString().toLowerCase())
           .append(File.separator);
     }
+    relativePathString.append(measurement).append(File.separator);
     relativePathString.append(objectFileName);
     return relativePathString.toString();
   }

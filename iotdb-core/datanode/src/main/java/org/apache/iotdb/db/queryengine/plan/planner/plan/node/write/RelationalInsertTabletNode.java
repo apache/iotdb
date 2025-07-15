@@ -474,7 +474,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
       String relativePath =
           TsFileNameGenerator.generateObjectFilePath(
-              entry.getKey().getRegionId().getId(), times[j], getDeviceID(j));
+              entry.getKey().getRegionId().getId(), times[j], getDeviceID(j), measurements[column]);
       ObjectNode objectNode = new ObjectNode(isEoF, offset, content, relativePath);
       objectNode.setDataRegionReplicaSet(entry.getKey());
       result.add(objectNode);
