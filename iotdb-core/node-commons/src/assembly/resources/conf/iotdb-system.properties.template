@@ -1670,11 +1670,6 @@ author_cache_expire_time=30
 # If you want to allow all URIs, you can specify it as .*
 trusted_uri_pattern=file:.*
 
-# Whether to enable the with-grant-option in grant statement.
-# EffectiveMode: first_start
-# Datatype: boolean
-enable_grant_option=true
-
 ####################
 ### UDF Configuration
 ####################

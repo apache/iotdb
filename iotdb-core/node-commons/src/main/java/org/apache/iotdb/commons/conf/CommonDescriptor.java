@@ -91,7 +91,7 @@ public class CommonDescriptor {
             config.getEncryptDecryptProviderParameter()));
 
     config.setEnableGrantOpt(
-        Boolean.parseBoolean(properties.getProperty("enable_grant_opt", String.valueOf("false"))));
+        Boolean.parseBoolean(properties.getProperty("enable_grant_opt", String.valueOf("true"))));
 
     String[] tierTTLStr = new String[config.getTierTTLInMs().length];
     for (int i = 0; i < tierTTLStr.length; ++i) {
