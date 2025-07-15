@@ -28,7 +28,7 @@ from ainode.core.exception import (
 from ainode.core.log import Logger
 from ainode.core.model.model_info import BuiltInModelType, ModelInfo, ModelStates
 from ainode.core.model.model_storage import ModelStorage
-from ainode.core.util.status import get_status
+from ainode.core.rpc.status import get_status
 from ainode.thrift.ainode.ttypes import (
     TDeleteModelReq,
     TRegisterModelReq,

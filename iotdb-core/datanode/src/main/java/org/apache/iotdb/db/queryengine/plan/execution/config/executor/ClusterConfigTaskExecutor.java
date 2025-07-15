@@ -74,6 +74,7 @@ import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -243,6 +244,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
@@ -3151,6 +3153,35 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return future;
     }
 
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> removeAINode(
+      RemoveAINodeStatement removeAINodeStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    LOGGER.info("Starting to remove AINode");
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TShowClusterResp showClusterResp = configNodeClient.showCluster();
+      if (showClusterResp.getAiNodeListSize() < 1) {
+        LOGGER.error("Remove AINode failed because there is no AINode in the cluster.");
+        future.setException(
+            new IOException("Remove AINode failed because there is no AINode in the cluster."));
+        return future;
+      }
+      TSStatus status = configNodeClient.removeAINode(new TAINodeRemoveReq());
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IOException("Remove AINode failed: " + status.getMessage()));
+        return future;
+      } else {
+        LOGGER.info("AINode in the cluster is removed.");
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+      return future;
+    }
     return future;
   }
 
