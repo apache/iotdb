@@ -217,6 +217,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAsyncConnectorMaxTsFileClientNumber();
   }
 
+  public double getPipeSendTsFileRateLimitBytesPerSecond() {
+    return COMMON_CONFIG.getPipeSendTsFileRateLimitBytesPerSecond();
+  }
+
   public double getPipeAllConnectorsRateLimitBytesPerSecond() {
     return COMMON_CONFIG.getPipeAllSinksRateLimitBytesPerSecond();
   }
@@ -537,6 +541,8 @@ public class PipeConfig {
         "PipeAsyncConnectorMaxTsFileClientNumber: {}",
         getPipeAsyncConnectorMaxTsFileClientNumber());
 
+    LOGGER.info(
+        "PipeSendTsFileRateLimitBytesPerSecond: {}", getPipeSendTsFileRateLimitBytesPerSecond());
     LOGGER.info(
         "PipeAllConnectorsRateLimitBytesPerSecond: {}",
         getPipeAllConnectorsRateLimitBytesPerSecond());
