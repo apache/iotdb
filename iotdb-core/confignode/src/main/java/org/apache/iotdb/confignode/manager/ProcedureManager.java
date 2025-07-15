@@ -2060,6 +2060,7 @@ public class ProcedureManager {
       final @Nonnull String database,
       final TsTable table,
       final String tableName,
+      final String newName,
       final String queryId,
       final ProcedureType thisType) {
     ProcedureType type;
@@ -2095,8 +2096,6 @@ public class ProcedureManager {
         case DROP_TABLE_PROCEDURE:
         case DROP_VIEW_PROCEDURE:
         case DELETE_DEVICES_PROCEDURE:
-        case RENAME_TABLE_PROCEDURE:
-        case RENAME_VIEW_PROCEDURE:
           final AbstractAlterOrDropTableProcedure<?> alterTableProcedure =
               (AbstractAlterOrDropTableProcedure<?>) procedure;
           if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {
@@ -2106,6 +2105,20 @@ public class ProcedureManager {
           if (database.equals(alterTableProcedure.getDatabase())
               && (Objects.isNull(tableName)
                   || Objects.equals(tableName, alterTableProcedure.getTableName()))) {
+            return new Pair<>(-1L, true);
+          }
+          break;
+        case RENAME_TABLE_PROCEDURE:
+        case RENAME_VIEW_PROCEDURE:
+          final RenameTableProcedure renameTableProcedure = (RenameTableProcedure) procedure;
+          if (type == thisType && queryId.equals(renameTableProcedure.getQueryId())) {
+            return new Pair<>(procedure.getProcId(), false);
+          }
+          // tableName == null indicates delete database procedure
+          if (database.equals(renameTableProcedure.getDatabase())
+              && (Objects.isNull(tableName)
+                  || Objects.equals(tableName, renameTableProcedure.getTableName())
+                  || Objects.equals(tableName, renameTableProcedure.getNewName()))) {
             return new Pair<>(-1L, true);
           }
           break;
