@@ -82,6 +82,8 @@ public abstract class PipeTransferTrackableHandler
     if (connector.isClosed()) {
       clearEventsReferenceCount();
       connector.eliminateHandler(this);
+      client.setShouldReturnSelf(true);
+      client.returnSelf();
       return false;
     }
     doTransfer(client, req);

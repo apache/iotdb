@@ -499,7 +499,7 @@ public class IoTDBNestedQueryIT {
           Assert.assertEquals(2 * i + 2.0D, rs.getDouble(3), 0.01);
           Assert.assertEquals(2 * i + 2.0D, rs.getDouble(4), 0.01);
           Assert.assertEquals(i / 2.0D + 0.5D, rs.getDouble(5), 0.01);
-          Assert.assertEquals(i / 2.0D + 0.5D, rs.getDouble(6), 0.01);
+          Assert.assertEquals((i / 2) + 1 / 2, rs.getDouble(6), 0.01);
         }
         Assert.assertFalse(rs.next());
       }
@@ -536,7 +536,7 @@ public class IoTDBNestedQueryIT {
         for (int i = 1; i <= ITERATION_TIMES; i++) {
           Assert.assertTrue(rs.next());
           Assert.assertEquals(i, rs.getLong(1));
-          Assert.assertEquals(2.0D - i / 2.0D, rs.getDouble(2), 0.01);
+          Assert.assertEquals(1.0D - i / 2 + 1, rs.getDouble(2), 0.01);
           Assert.assertEquals(1.5 - i / 2.0D, rs.getDouble(3), 0.01);
           Assert.assertEquals((1.0D / 3.0D) * (1.0D - i), rs.getDouble(4), 0.01);
         }

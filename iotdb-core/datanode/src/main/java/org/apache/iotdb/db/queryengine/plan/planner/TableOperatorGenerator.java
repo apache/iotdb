@@ -375,13 +375,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             localInstanceId.toThrift(),
             node.getPlanNodeId().getId(),
             context.getInstanceContext());
-    sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
-    context.getDriverContext().setSink(sinkHandle);
 
     if (node.getChildren().size() == 1) {
       Operator child = node.getChildren().get(0).accept(this, context);
       List<Operator> children = new ArrayList<>(1);
       children.add(child);
+      sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
+      context.getDriverContext().setSink(sinkHandle);
       return new IdentitySinkOperator(
           operatorContext, children, downStreamChannelIndex, sinkHandle);
     } else {
@@ -647,9 +647,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               SeriesScanOptions.Builder builder = new SeriesScanOptions.Builder();
               // time filter may be stateful, so we need to copy it
               builder.withGlobalTimeFilter(timeFilter == null ? null : timeFilter.copy());
-              builder
-                  .withIsTableViewForTreeModel(true)
-                  .withAllSensors(new HashSet<>(measurementColumnNames));
+              builder.withIsTableViewForTreeModel(true).withAllSensors(allSensors);
               if (pushDownPredicateForCurrentMeasurement != null) {
                 builder.withPushDownFilter(
                     convertPredicateToFilter(

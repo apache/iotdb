@@ -40,7 +40,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataParti
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -339,10 +338,9 @@ public interface IManager {
   /**
    * Remove AINode.
    *
-   * @param removeAINodePlan RemoveAINodePlan
    * @return AINodeToStatusResp
    */
-  TSStatus removeAINode(RemoveAINodePlan removeAINodePlan);
+  TSStatus removeAINode();
 
   /**
    * Report that the specified DataNode will be shutdown.

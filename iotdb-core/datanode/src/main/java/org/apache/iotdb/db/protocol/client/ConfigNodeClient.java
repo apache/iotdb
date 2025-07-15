@@ -502,7 +502,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus removeAINode(TAINodeRemoveReq req) throws TException {
-    throw new UnsupportedOperationException(UNSUPPORTED_INVOCATION);
+    return executeRemoteCallWithRetry(
+        () -> client.removeAINode(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

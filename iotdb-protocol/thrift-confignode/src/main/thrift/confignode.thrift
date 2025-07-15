@@ -1172,7 +1172,7 @@ struct TAINodeRestartResp{
 }
 
 struct TAINodeRemoveReq{
-  1: required common.TAINodeLocation aiNodeLocation
+  1: optional common.TAINodeLocation aiNodeLocation
 }
 
 // ====================================================

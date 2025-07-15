@@ -428,7 +428,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     // Get model metadata from configNode and do some check
-    String modelId = queryStatement.getModelName();
+    String modelId = queryStatement.getModelId();
     TSStatus status = modelFetcher.fetchModel(modelId, analysis);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new GetModelInfoException(status.getMessage());
@@ -1813,6 +1813,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (int i = 0; i < inputType.length; i++) {
       Expression inputExpression = outputExpressions.get(i).left;
       TSDataType inputDataType = analysis.getType(inputExpression);
+      boolean isExpressionNumeric = inputDataType.isNumeric();
+      boolean isModelNumeric = inputType[i].isNumeric();
+      if (isExpressionNumeric && isModelNumeric) {
+        // every model supports numeric by default
+        continue;
+      }
       if (inputDataType != inputType[i]) {
         throw new SemanticException(
             String.format(

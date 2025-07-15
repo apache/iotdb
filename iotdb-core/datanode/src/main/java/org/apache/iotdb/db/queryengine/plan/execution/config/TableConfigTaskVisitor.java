@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateFunc
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreatePipePluginTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropFunctionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropPipePluginTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveAINodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveConfigNodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveDataNodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterIdTask;
@@ -52,7 +53,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFuncti
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTrainingTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.DropModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
@@ -123,6 +126,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -136,6 +140,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
@@ -154,6 +159,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveAINode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveConfigNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
@@ -194,6 +200,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefiniti
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
@@ -427,6 +434,16 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final RemoveConfigNodeStatement treeStatement =
         new RemoveConfigNodeStatement(removeConfigNode.getNodeId());
     return new RemoveConfigNodeTask(treeStatement);
+  }
+
+  @Override
+  protected IConfigTask visitRemoveAINode(
+      final RemoveAINode removeAINode, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    // As the implementation is identical, we'll simply translate to the
+    // corresponding tree-model variant and execute that.
+    return new RemoveAINodeTask(new RemoveAINodeStatement());
   }
 
   @Override
@@ -1363,7 +1380,26 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
+  protected IConfigTask visitCreateModel(CreateModel node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    String uri = node.getUri();
+    if (uri != null && ExecutableManager.isUriTrusted(uri)) {
+      // user specified uri and that uri is trusted
+      return new CreateModelTask(node.getModelId(), uri);
+    }
+    // user specified uri and that uri is not trusted
+    throw new SemanticException(getUnTrustedUriErrorMsg(uri));
+  }
+
+  @Override
   protected IConfigTask visitShowModels(ShowModels node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
     return new ShowModelsTask(node.getModelId());
+  }
+
+  @Override
+  protected IConfigTask visitDropModel(DropModel node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new DropModelTask(node.getModelId());
   }
 }
