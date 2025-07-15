@@ -110,10 +110,6 @@ public class PipeRuntimeMeta {
     return status;
   }
 
-  public void onSetPipeDroppedOrStopped() {
-    consensusGroupId2TaskMetaMap.values().forEach(PipeTaskMeta::cancelPersistProgressIndexFuture);
-  }
-
   public ConcurrentMap<Integer, PipeTaskMeta> getConsensusGroupId2TaskMetaMap() {
     return consensusGroupId2TaskMetaMap;
   }
@@ -200,9 +196,7 @@ public class PipeRuntimeMeta {
     for (int i = 0; i < size; ++i) {
       final int taskIndex = ReadWriteIOUtils.readInt(inputStream);
       pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
-          taskIndex,
-          PipeTaskMeta.deserialize(
-              PipeRuntimeMetaVersion.VERSION_1, inputStream, taskIndex, false));
+          taskIndex, PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_1, inputStream));
     }
 
     return pipeRuntimeMeta;
@@ -217,9 +211,7 @@ public class PipeRuntimeMeta {
     for (int i = 0; i < size; ++i) {
       final int taskIndex = ReadWriteIOUtils.readInt(inputStream);
       pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
-          taskIndex,
-          PipeTaskMeta.deserialize(
-              PipeRuntimeMetaVersion.VERSION_2, inputStream, taskIndex, false));
+          taskIndex, PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_2, inputStream));
     }
 
     size = ReadWriteIOUtils.readInt(inputStream);
@@ -235,20 +227,15 @@ public class PipeRuntimeMeta {
     return pipeRuntimeMeta;
   }
 
-  public static PipeRuntimeMeta deserialize(ByteBuffer byteBuffer) {
-    return deserialize(byteBuffer, false);
-  }
-
-  public static PipeRuntimeMeta deserialize(
-      final ByteBuffer byteBuffer, final boolean needPersist) {
+  public static PipeRuntimeMeta deserialize(final ByteBuffer byteBuffer) {
     final byte pipeRuntimeVersionByte = ReadWriteIOUtils.readByte(byteBuffer);
     final PipeRuntimeMetaVersion pipeRuntimeMetaVersion =
         PipeRuntimeMetaVersion.deserialize(pipeRuntimeVersionByte);
     switch (pipeRuntimeMetaVersion) {
       case VERSION_1:
-        return deserializeVersion1(byteBuffer, pipeRuntimeVersionByte, needPersist);
+        return deserializeVersion1(byteBuffer, pipeRuntimeVersionByte);
       case VERSION_2:
-        return deserializeVersion2(byteBuffer, needPersist);
+        return deserializeVersion2(byteBuffer);
       default:
         throw new UnsupportedOperationException(
             "Unknown pipe runtime meta version: " + pipeRuntimeMetaVersion.getVersion());
@@ -256,7 +243,7 @@ public class PipeRuntimeMeta {
   }
 
   private static PipeRuntimeMeta deserializeVersion1(
-      ByteBuffer byteBuffer, byte pipeRuntimeVersionByte, final boolean needPersist) {
+      ByteBuffer byteBuffer, byte pipeRuntimeVersionByte) {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(pipeRuntimeVersionByte));
@@ -265,16 +252,13 @@ public class PipeRuntimeMeta {
     for (int i = 0; i < size; ++i) {
       final int taskIndex = ReadWriteIOUtils.readInt(byteBuffer);
       pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
-          taskIndex,
-          PipeTaskMeta.deserialize(
-              PipeRuntimeMetaVersion.VERSION_1, byteBuffer, taskIndex, needPersist));
+          taskIndex, PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_1, byteBuffer));
     }
 
     return pipeRuntimeMeta;
   }
 
-  public static PipeRuntimeMeta deserializeVersion2(
-      ByteBuffer byteBuffer, final boolean needPersist) {
+  public static PipeRuntimeMeta deserializeVersion2(ByteBuffer byteBuffer) {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(byteBuffer)));
@@ -283,9 +267,7 @@ public class PipeRuntimeMeta {
     for (int i = 0; i < size; ++i) {
       final int taskIndex = ReadWriteIOUtils.readInt(byteBuffer);
       pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
-          taskIndex,
-          PipeTaskMeta.deserialize(
-              PipeRuntimeMetaVersion.VERSION_2, byteBuffer, taskIndex, needPersist));
+          taskIndex, PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_2, byteBuffer));
     }
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
