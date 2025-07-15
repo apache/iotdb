@@ -1898,12 +1898,12 @@ public class MergeTreeSortOperatorTest {
 
     @Override
     public boolean isQuery() {
-      return false;
+      return true;
     }
 
     @Override
     public QueryType getQueryType() {
-      return null;
+      return QueryType.READ;
     }
 
     @Override
