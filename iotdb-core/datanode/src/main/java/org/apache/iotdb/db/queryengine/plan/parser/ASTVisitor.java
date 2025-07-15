@@ -2451,14 +2451,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     // Parse read label policy if present
     if (ctx.readPolicyExpression != null) {
-      // Set read label policy expression
-      authorStatement.setReadLabelPolicyExpression(ctx.readPolicyExpression.getText());
+      // Parse the policy expression content
+      String readPolicyExpression = parsePolicyExpression(ctx.readPolicyExpression);
+      authorStatement.setReadLabelPolicyExpression(readPolicyExpression);
     }
 
     // Parse write label policy if present
     if (ctx.writePolicyExpression != null) {
-      // Set write label policy expression
-      authorStatement.setWriteLabelPolicyExpression(ctx.writePolicyExpression.getText());
+      // Parse the policy expression content
+      String writePolicyExpression = parsePolicyExpression(ctx.writePolicyExpression);
+      authorStatement.setWriteLabelPolicyExpression(writePolicyExpression);
     }
 
     return authorStatement;
@@ -4880,5 +4882,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     return statement;
+  }
+
+  /**
+   * Parse policy expression and return the string representation
+   *
+   * @param ctx The policy expression context
+   * @return The string representation of the policy expression
+   */
+  private String parsePolicyExpression(IoTDBSqlParser.PolicyExpressionContext ctx) {
+    if (ctx == null) {
+      return null;
+    }
+    // Return the text representation of the policy expression
+    return ctx.getText();
   }
 }

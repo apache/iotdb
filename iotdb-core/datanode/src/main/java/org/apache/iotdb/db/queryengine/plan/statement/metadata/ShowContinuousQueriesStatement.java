@@ -56,11 +56,25 @@ public class ShowContinuousQueriesStatement extends ShowStatement implements ICo
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    // Check RBAC permissions first
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ),
-        PrivilegeType.USE_CQ);
+    TSStatus rbacStatus =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ),
+            PrivilegeType.USE_CQ);
+    // Check RBAC permission result
+    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return rbacStatus;
+    }
+    // Add LBAC check for read operation
+    List<PartialPath> devicePaths = getPaths();
+    TSStatus lbacStatus =
+        org.apache.iotdb.db.auth.LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
+    if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return lbacStatus;
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }

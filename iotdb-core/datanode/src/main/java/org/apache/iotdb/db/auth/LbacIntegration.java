@@ -66,6 +66,14 @@ public class LbacIntegration {
         userName,
         statement.getClass().getSimpleName());
 
+    // Check if this is a database-related operation that should be subject to LBAC
+    if (!LbacOperationClassifier.isLbacRelevantOperation(statement)) {
+      LOGGER.warn(
+          "Statement {} is not a database-related operation for LBAC, skipping LBAC check",
+          statement.getClass().getSimpleName());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
     try {
       // Step 1: Get user information
       LOGGER.warn("Step 1: Getting user by name: {}", userName);

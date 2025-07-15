@@ -43,10 +43,12 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
 
   private String cqId;
 
-  // The query execution time interval, default value is group_by_interval in group by clause.
+  // The query execution time interval, default value is group_by_interval in
+  // group by clause.
   private long everyInterval;
 
-  // A date that represents the execution time of a certain cq task, default value is 0.
+  // A date that represents the execution time of a certain cq task, default value
+  // is 0.
   private long boundaryTime = 0;
 
   // The start time of each query execution, default value is every_interval
@@ -55,7 +57,8 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
   // The end time of each query execution, default value is 0.
   private long endTimeOffset = 0;
 
-  // Specify how we deal with the cq task whose previous time interval execution is not finished
+  // Specify how we deal with the cq task whose previous time interval execution
+  // is not finished
   // while the next execution time has reached, default value is BLOCKED.
   private TimeoutPolicy timeoutPolicy = TimeoutPolicy.BLOCKED;
 
@@ -169,12 +172,26 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    // Check RBAC permissions first
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ),
-        PrivilegeType.USE_CQ);
+    TSStatus rbacStatus =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ),
+            PrivilegeType.USE_CQ);
+    // Check RBAC permission result
+    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return rbacStatus;
+    }
+    // Add LBAC check for write operation
+    List<PartialPath> devicePaths = getPaths();
+    TSStatus lbacStatus =
+        org.apache.iotdb.db.auth.LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
+    if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return lbacStatus;
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

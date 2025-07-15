@@ -26,19 +26,20 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * Operation classifier for determining whether SQL statements are READ or WRITE operations. Based
- * on section 2.8 of the LBAC requirements document.
+ * Operation classifier for determining whether SQL statements are READ, WRITE, or BOTH operations.
+ * Only database-related operations are classified for LBAC (Label-Based Access Control). Based on
+ * section 2.8 of the LBAC requirements document.
  */
 public class LbacOperationClassifier {
 
-  /** Enum for operation types */
+  /** Operation types for LBAC classification */
   public enum OperationType {
-    READ,
-    WRITE,
+    READ, // Read-only operations
+    WRITE, // Write-only operations
     BOTH // Some complex operations may involve both read and write
   }
 
-  /** Set of Statement types that are considered WRITE operations */
+  /** Set of Statement types that are considered WRITE operations (Database-related only) */
   private static final Set<StatementType> WRITE_OPERATIONS =
       EnumSet.of(
           // Data insertion operations
@@ -47,7 +48,6 @@ public class LbacOperationClassifier {
           StatementType.BATCH_INSERT_ROWS,
           StatementType.BATCH_INSERT_ONE_DEVICE,
           StatementType.MULTI_BATCH_INSERT,
-          StatementType.SELECT_INTO,
 
           // Database/storage group management operations
           StatementType.STORAGE_GROUP_SCHEMA,
@@ -87,75 +87,10 @@ public class LbacOperationClassifier {
           StatementType.DELETE_LOGICAL_VIEW,
           StatementType.RENAME_LOGICAL_VIEW,
 
-          // Trigger operations
-          StatementType.CREATE_TRIGGER,
-          StatementType.DROP_TRIGGER,
-
-          // Function operations
-          StatementType.CREATE_FUNCTION,
-          StatementType.DROP_FUNCTION,
-
-          // Pipe operations
-          StatementType.CREATE_PIPE,
-          StatementType.ALTER_PIPE,
-          StatementType.START_PIPE,
-          StatementType.STOP_PIPE,
-          StatementType.DROP_PIPE,
-          StatementType.CREATE_PIPESINK,
-          StatementType.DROP_PIPESINK,
-          StatementType.CREATE_PIPEPLUGIN,
-          StatementType.DROP_PIPEPLUGIN,
-
-          // Topic and subscription operations
-          StatementType.CREATE_TOPIC,
-          StatementType.DROP_TOPIC,
-          StatementType.DROP_SUBSCRIPTION,
-
-          // Continuous query operations
-          StatementType.CREATE_CONTINUOUS_QUERY,
-          StatementType.DROP_CONTINUOUS_QUERY,
-
-          // System management operations
-          StatementType.TTL,
-          StatementType.FLUSH,
-          StatementType.MERGE,
-          StatementType.FULL_MERGE,
-          StatementType.CLEAR_CACHE,
-          StatementType.LOAD_CONFIGURATION,
-          StatementType.CREATE_SCHEMA_SNAPSHOT,
-          StatementType.SET_SPACE_QUOTA,
-          StatementType.SET_THROTTLE_QUOTA,
-          StatementType.SET_CONFIGURATION,
-          StatementType.SET_SYSTEM_MODE,
-          StatementType.START_REPAIR_DATA,
-          StatementType.STOP_REPAIR_DATA,
-          StatementType.SETTLE,
-
-          // Data loading operations
-          StatementType.LOAD_DATA,
-          StatementType.LOAD_FILES,
-          StatementType.REMOVE_FILE,
-          StatementType.UNLOAD_FILE,
-
-          // User and role management operations
-          StatementType.CREATE_USER,
-          StatementType.DELETE_USER,
-          StatementType.MODIFY_PASSWORD,
-          StatementType.GRANT_USER_PRIVILEGE,
-          StatementType.REVOKE_USER_PRIVILEGE,
-          StatementType.GRANT_USER_ROLE,
-          StatementType.REVOKE_USER_ROLE,
-          StatementType.CREATE_ROLE,
-          StatementType.DELETE_ROLE,
-          StatementType.GRANT_ROLE_PRIVILEGE,
-          StatementType.REVOKE_ROLE_PRIVILEGE,
-          StatementType.GRANT_WATERMARK_EMBEDDING,
-          StatementType.REVOKE_WATERMARK_EMBEDDING,
-
-          // Security label operations
+          // Security label operations (Database-related)
           StatementType.ALTER_DATABASE_SECURITY_LABEL);
 
-  /** Set of Statement types that are considered READ operations */
+  /** Set of Statement types that are considered READ operations (Database-related only) */
   private static final Set<StatementType> READ_OPERATIONS =
       EnumSet.of(
           // Data query operations
@@ -169,65 +104,92 @@ public class LbacOperationClassifier {
           StatementType.UDTF,
           StatementType.COUNT,
 
-          // Metadata query operations
+          // Metadata query operations (Database-related)
           StatementType.SHOW,
-          StatementType.SHOW_MERGE_STATUS,
-          StatementType.SHOW_QUERIES,
-          StatementType.SHOW_QUERY_RESOURCE,
           StatementType.SHOW_SCHEMA_TEMPLATE,
           StatementType.SHOW_NODES_IN_SCHEMA_TEMPLATE,
           StatementType.SHOW_PATH_SET_SCHEMA_TEMPLATE,
           StatementType.SHOW_PATH_USING_SCHEMA_TEMPLATE,
-          StatementType.SHOW_TRIGGERS,
-          StatementType.SHOW_PIPES,
-          StatementType.SHOW_PIPEPLUGINS,
-          StatementType.SHOW_TOPICS,
-          StatementType.SHOW_SUBSCRIPTIONS,
-          StatementType.SHOW_CONTINUOUS_QUERIES,
-          StatementType.SHOW_SPACE_QUOTA,
-          StatementType.SHOW_THROTTLE_QUOTA,
-
-          // User and role query operations
-          StatementType.LIST_USER,
-          StatementType.LIST_ROLE,
-          StatementType.LIST_USER_PRIVILEGE,
-          StatementType.LIST_ROLE_PRIVILEGE,
-          StatementType.LIST_USER_ROLES,
-          StatementType.LIST_ROLE_USERS,
+          StatementType.SHOW_DATABASE_SECURITY_LABEL,
 
           // Schema fetch operations
-          StatementType.FETCH_SCHEMA);
+          StatementType.FETCH_SCHEMA,
+
+          // Index query operations
+          StatementType.QUERY_INDEX);
+
+  /** Set of Statement types that involve both READ and WRITE operations */
+  private static final Set<StatementType> BOTH_OPERATIONS =
+      EnumSet.of(
+          // SELECT INTO operation - reads from source and writes to target
+          StatementType.SELECT_INTO);
 
   /** Private constructor - utility class should not be instantiated */
   private LbacOperationClassifier() {
-    // empty constructor
+    // Utility class
   }
 
   /**
-   * Classify the given Statement as READ, WRITE, or BOTH operation
+   * Classify the given Statement as READ, WRITE, or BOTH operation. Only database-related
+   * operations are classified for LBAC.
    *
    * @param statement SQL statement to classify
-   * @return operation type (READ/WRITE/BOTH)
+   * @return operation type (READ/WRITE/BOTH) or null if not a database-related operation
    */
   public static OperationType classifyOperation(Statement statement) {
     if (statement == null) {
-      throw new IllegalArgumentException("Statement cannot be null");
+      return null;
     }
 
     StatementType statementType = statement.getType();
+    if (statementType == null) {
+      return classifySpecialCases(statement, StatementType.NULL);
+    }
 
-    // First check if it's explicitly a write operation
+    // Check if this is a database-related operation for LBAC
+    if (!isLbacRelevantOperation(statement)) {
+      return null; // Not subject to LBAC
+    }
+
+    // Check BOTH operations first (most specific)
+    if (BOTH_OPERATIONS.contains(statementType)) {
+      return OperationType.BOTH;
+    }
+
+    // Check WRITE operations
     if (WRITE_OPERATIONS.contains(statementType)) {
       return OperationType.WRITE;
     }
 
-    // Then check if it's explicitly a read operation
+    // Check READ operations
     if (READ_OPERATIONS.contains(statementType)) {
       return OperationType.READ;
     }
 
-    // Handle special cases with specific logic
+    // Handle special cases
     return classifySpecialCases(statement, statementType);
+  }
+
+  /**
+   * Check if the given statement is a database-related operation that should be subject to LBAC.
+   *
+   * @param statement SQL statement to check
+   * @return true if it's a database-related operation for LBAC, false otherwise
+   */
+  public static boolean isLbacRelevantOperation(Statement statement) {
+    if (statement == null) {
+      return false;
+    }
+
+    StatementType statementType = statement.getType();
+    if (statementType == null) {
+      return false;
+    }
+
+    // Check if the statement type is in any of our database-related operation sets
+    return READ_OPERATIONS.contains(statementType)
+        || WRITE_OPERATIONS.contains(statementType)
+        || BOTH_OPERATIONS.contains(statementType);
   }
 
   /**
@@ -240,71 +202,13 @@ public class LbacOperationClassifier {
   private static OperationType classifySpecialCases(
       Statement statement, StatementType statementType) {
     switch (statementType) {
-        // Index operations: treat as write operations for simplicity
-      case CREATE_INDEX:
-      case DROP_INDEX:
-        return OperationType.WRITE;
-
-        // Query index: treat as read operation
-      case QUERY_INDEX:
+        // NULL type: treat as read operation for safety
+      case NULL:
         return OperationType.READ;
 
-        // System operations: treat as write operations
-      case KILL:
-      case TRACING:
-        return OperationType.WRITE;
-
-        // Tree node operations: treat as write operations
-      case MNODE:
-      case MEASUREMENT_MNODE:
-      case STORAGE_GROUP_MNODE:
-      case AUTO_CREATE_DEVICE_MNODE:
-        return OperationType.WRITE;
-
-        // Author operations: treat as write operations
-      case AUTHOR:
-        return OperationType.WRITE;
-
-        // Pipe enriched operations: treat as write operations
-      case PIPE_ENRICHED:
-        return OperationType.WRITE;
-
-        // Default case: if cannot be clearly classified, return BOTH for caller to handle
+        // Default case: treat as write operation for safety
       default:
-        return OperationType.BOTH;
+        return OperationType.WRITE;
     }
-  }
-
-  /**
-   * Check if the operation is a read operation
-   *
-   * @param statement SQL statement to check
-   * @return true if it's a read operation, false otherwise
-   */
-  public static boolean isReadOperation(Statement statement) {
-    OperationType type = classifyOperation(statement);
-    return type == OperationType.READ;
-  }
-
-  /**
-   * Check if the operation is a write operation
-   *
-   * @param statement SQL statement to check
-   * @return true if it's a write operation, false otherwise
-   */
-  public static boolean isWriteOperation(Statement statement) {
-    OperationType type = classifyOperation(statement);
-    return type == OperationType.WRITE;
-  }
-
-  /**
-   * Check if the operation involves both read and write
-   *
-   * @param statement SQL statement to check
-   * @return true if it involves both read and write operations, false otherwise
-   */
-  public static boolean isBothOperation(Statement statement) {
-    OperationType type = classifyOperation(statement);
-    return type == OperationType.BOTH;
   }
 }

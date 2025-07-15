@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.LbacIntegration;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -53,15 +54,30 @@ public class DeleteTimeSeriesStatement extends Statement implements IConfigState
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    // Check RBAC permissions first
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     List<PartialPath> checkedPaths = getPaths();
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
-        checkedPaths,
-        PrivilegeType.WRITE_SCHEMA);
+    TSStatus rbacStatus =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkFullPathOrPatternListPermission(
+                userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+            checkedPaths,
+            PrivilegeType.WRITE_SCHEMA);
+
+    // Check RBAC permission result
+    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return rbacStatus;
+    }
+
+    // Add LBAC check for write operation
+    TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, checkedPaths);
+    if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return lbacStatus;
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public List<PartialPath> getPathPatternList() {

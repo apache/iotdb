@@ -42,6 +42,10 @@ public class AuthorTreePlan extends AuthorPlan {
   private String labelPolicyExpression;
   // Policy scope, value is READ, WRITE or READ,WRITE
   private String labelPolicyScope;
+  // Label policy expression for READ scope
+  private String readLabelPolicyExpression;
+  // Label policy expression for WRITE scope
+  private String writeLabelPolicyExpression;
 
   public AuthorTreePlan(final ConfigPhysicalPlanType type) {
     super(type);
@@ -119,6 +123,22 @@ public class AuthorTreePlan extends AuthorPlan {
     this.labelPolicyScope = labelPolicyScope;
   }
 
+  public String getReadLabelPolicyExpression() {
+    return readLabelPolicyExpression;
+  }
+
+  public void setReadLabelPolicyExpression(String readLabelPolicyExpression) {
+    this.readLabelPolicyExpression = readLabelPolicyExpression;
+  }
+
+  public String getWriteLabelPolicyExpression() {
+    return writeLabelPolicyExpression;
+  }
+
+  public void setWriteLabelPolicyExpression(String writeLabelPolicyExpression) {
+    this.writeLabelPolicyExpression = writeLabelPolicyExpression;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), permissions, nodeNameList);
@@ -150,6 +170,8 @@ public class AuthorTreePlan extends AuthorPlan {
     BasicStructureSerDeUtil.write(newPassword, stream);
     BasicStructureSerDeUtil.write(labelPolicyExpression, stream);
     BasicStructureSerDeUtil.write(labelPolicyScope, stream);
+    BasicStructureSerDeUtil.write(readLabelPolicyExpression, stream);
+    BasicStructureSerDeUtil.write(writeLabelPolicyExpression, stream);
     if (permissions == null) {
       stream.write((byte) 0);
     } else {
@@ -174,6 +196,8 @@ public class AuthorTreePlan extends AuthorPlan {
     newPassword = BasicStructureSerDeUtil.readString(buffer);
     labelPolicyExpression = BasicStructureSerDeUtil.readString(buffer);
     labelPolicyScope = BasicStructureSerDeUtil.readString(buffer);
+    readLabelPolicyExpression = BasicStructureSerDeUtil.readString(buffer);
+    writeLabelPolicyExpression = BasicStructureSerDeUtil.readString(buffer);
     if (buffer.get() == (byte) 0) {
       this.permissions = null;
     } else {

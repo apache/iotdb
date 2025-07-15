@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -336,15 +337,32 @@ public class DatabaseLabelFetcher {
           Map<String, String> securityLabelMap = resp.getSecurityLabel();
 
           if (securityLabelMap != null && !securityLabelMap.isEmpty()) {
-            LOGGER.debug(
-                "Found security labels for database {}: {}", databasePath, securityLabelMap);
-            // Convert Map to SecurityLabel object
-            SecurityLabel securityLabel = new SecurityLabel(securityLabelMap);
-            return securityLabel;
-          } else {
-            LOGGER.debug("Database {} has no security labels", databasePath);
-            return null;
+            // ConfigNode returns format: {"databasePath": "key1:value1,key2:value2"}
+            // We need to extract the label string and parse it
+            String labelString = securityLabelMap.get(databasePath);
+            if (labelString != null && !labelString.trim().isEmpty()) {
+              LOGGER.debug("Found security labels for database {}: {}", databasePath, labelString);
+
+              // Parse the label string format: "key1:value1,key2:value2"
+              Map<String, String> parsedLabels = new HashMap<>();
+              String[] labelPairs = labelString.split(",");
+              for (String pair : labelPairs) {
+                String[] keyValue = pair.split(":", 2);
+                if (keyValue.length == 2) {
+                  parsedLabels.put(keyValue[0].trim(), keyValue[1].trim());
+                }
+              }
+
+              if (!parsedLabels.isEmpty()) {
+                // Convert Map to SecurityLabel object
+                SecurityLabel securityLabel = new SecurityLabel(parsedLabels);
+                return securityLabel;
+              }
+            }
           }
+
+          LOGGER.debug("Database {} has no security labels", databasePath);
+          return null;
         } else {
           LOGGER.warn(
               "Failed to get security label from ConfigNode for database {}: {}",

@@ -26,9 +26,12 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.LbacIntegration;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import java.util.List;
 
 public class CountTimeSeriesStatement extends CountStatement {
 
@@ -62,6 +65,8 @@ public class CountTimeSeriesStatement extends CountStatement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    // Check RBAC permissions first
+    TSStatus rbacStatus;
     if (hasTimeCondition()) {
       try {
         if (!AuthorityChecker.SUPER_USER.equals(userName)) {
@@ -73,10 +78,24 @@ public class CountTimeSeriesStatement extends CountStatement {
       } catch (AuthException e) {
         return new TSStatus(e.getCode().getStatusCode());
       }
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      rbacStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
-      return super.checkPermissionBeforeProcess(userName);
+      rbacStatus = super.checkPermissionBeforeProcess(userName);
     }
+
+    // Check RBAC permission result
+    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return rbacStatus;
+    }
+
+    // Add LBAC check for read operation
+    List<PartialPath> devicePaths = getPaths();
+    TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
+    if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return lbacStatus;
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

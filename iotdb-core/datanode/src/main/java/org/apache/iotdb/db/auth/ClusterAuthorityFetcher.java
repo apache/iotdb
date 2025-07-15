@@ -705,6 +705,13 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     if (authorStatement.getLabelPolicyScope() != null) {
       req.setLabelPolicyScope(authorStatement.getLabelPolicyScope());
     }
+    // Set read/write label policy fields if present
+    if (authorStatement.getReadLabelPolicyExpression() != null) {
+      req.setReadLabelPolicyExpression(authorStatement.getReadLabelPolicyExpression());
+    }
+    if (authorStatement.getWriteLabelPolicyExpression() != null) {
+      req.setWriteLabelPolicyExpression(authorStatement.getWriteLabelPolicyExpression());
+    }
 
     return req;
   }

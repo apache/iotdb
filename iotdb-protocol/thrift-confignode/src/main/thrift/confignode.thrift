@@ -360,6 +360,8 @@ struct TAuthorizerReq {
   8: required binary nodeNameList
   9: optional string labelPolicyExpression
   10: optional string labelPolicyScope
+  11: optional string readLabelPolicyExpression
+  12: optional string writeLabelPolicyExpression
 }
 
 struct TAuthorizerRelationalReq {

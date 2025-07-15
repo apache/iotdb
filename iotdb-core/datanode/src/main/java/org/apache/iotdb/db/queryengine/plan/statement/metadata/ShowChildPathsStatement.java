@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.LbacIntegration;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
@@ -40,6 +43,26 @@ public class ShowChildPathsStatement extends ShowStatement {
 
   public PartialPath getPartialPath() {
     return partialPath;
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    // Check RBAC permissions first
+    TSStatus rbacStatus = super.checkPermissionBeforeProcess(userName);
+
+    // Check RBAC permission result
+    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return rbacStatus;
+    }
+
+    // Add LBAC check for read operation
+    List<PartialPath> devicePaths = getPaths();
+    TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
+    if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return lbacStatus;
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

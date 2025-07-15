@@ -269,28 +269,54 @@ public class LabelPolicyEvaluator {
       String labelValue, String operator, String expectedValue, boolean isNumeric) {
     try {
       if (isNumeric) {
-        // Numeric comparison
-        double labelNum = Double.parseDouble(labelValue);
-        double expectedNum = Double.parseDouble(expectedValue);
+        // Numeric comparison - ensure both values are numeric
+        try {
+          double labelNum = Double.parseDouble(labelValue);
+          double expectedNum = Double.parseDouble(expectedValue);
 
-        switch (operator) {
-          case "=":
-            return Double.compare(labelNum, expectedNum) == 0;
-          case "!=":
-            return Double.compare(labelNum, expectedNum) != 0;
-          case ">":
-            return labelNum > expectedNum;
-          case "<":
-            return labelNum < expectedNum;
-          case ">=":
-            return labelNum >= expectedNum;
-          case "<=":
-            return labelNum <= expectedNum;
-          default:
-            throw new IllegalArgumentException("Unsupported numeric operator: " + operator);
+          switch (operator) {
+            case "=":
+              return Double.compare(labelNum, expectedNum) == 0;
+            case "!=":
+              return Double.compare(labelNum, expectedNum) != 0;
+            case ">":
+              return labelNum > expectedNum;
+            case "<":
+              return labelNum < expectedNum;
+            case ">=":
+              return labelNum >= expectedNum;
+            case "<=":
+              return labelNum <= expectedNum;
+            default:
+              throw new IllegalArgumentException("Unsupported numeric operator: " + operator);
+          }
+        } catch (NumberFormatException e) {
+          // If label value cannot be parsed as numeric, but policy expects numeric
+          LOGGER.error(
+              "Type mismatch: Policy expects numeric value '{}' but database label '{}' is not numeric",
+              expectedValue,
+              labelValue);
+          throw new IllegalArgumentException(
+              String.format(
+                  "Type mismatch: Cannot compare numeric policy value '%s' with non-numeric database label '%s'",
+                  expectedValue, labelValue));
         }
       } else {
-        // String comparison
+        // String comparison - ensure both values are strings
+        // Check if label value looks like a number but policy expects string
+        try {
+          Double.parseDouble(labelValue);
+          // If label value is numeric but policy expects string, this might be
+          // intentional
+          // (e.g., comparing "123" as string vs 123 as number)
+          LOGGER.debug(
+              "String comparison: Policy expects string value '{}' but database label '{}' is numeric",
+              expectedValue,
+              labelValue);
+        } catch (NumberFormatException e) {
+          // Label value is not numeric, which is fine for string comparison
+        }
+
         switch (operator) {
           case "=":
             return labelValue.equals(expectedValue);

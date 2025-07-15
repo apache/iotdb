@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.LbacIntegration;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
@@ -314,7 +317,33 @@ public class LoadTsFileStatement extends Statement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // no need to check here, it will be checked in process phase
+    // Check if super user
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+    // For LoadTsFile, we need to check write permissions for the target database
+    // The actual paths will be determined during processing, so we check basic
+    // write schema permission
+    List<PartialPath> checkedPaths = getPaths();
+    TSStatus rbacStatus =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkFullPathOrPatternListPermission(
+                userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
+            checkedPaths,
+            PrivilegeType.WRITE_SCHEMA);
+
+    // Check RBAC permission result
+    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return rbacStatus;
+    }
+
+    // Add LBAC check for write operation
+    TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, checkedPaths);
+    if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return lbacStatus;
+    }
+
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

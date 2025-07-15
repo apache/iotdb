@@ -195,6 +195,8 @@ public class AuthorInfo implements SnapshotProcessor {
     List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
     String labelPolicyExpression = authorPlan.getLabelPolicyExpression();
     String labelPolicyScope = authorPlan.getLabelPolicyScope();
+    String readLabelPolicyExpression = authorPlan.getReadLabelPolicyExpression();
+    String writeLabelPolicyExpression = authorPlan.getWriteLabelPolicyExpression();
 
     try {
       switch (authorType) {
@@ -211,12 +213,28 @@ public class AuthorInfo implements SnapshotProcessor {
           if (labelPolicyExpression != null || labelPolicyScope != null) {
             authorizer.setUserLabelPolicy(userName, labelPolicyExpression, labelPolicyScope);
           }
+          // Set read label policy if present
+          if (readLabelPolicyExpression != null) {
+            authorizer.setUserLabelPolicy(userName, readLabelPolicyExpression, "READ");
+          }
+          // Set write label policy if present
+          if (writeLabelPolicyExpression != null) {
+            authorizer.setUserLabelPolicy(userName, writeLabelPolicyExpression, "WRITE");
+          }
           break;
         case CreateUserWithRawPassword:
           authorizer.createUserWithRawPassword(userName, password);
           // Set label policy if present
           if (labelPolicyExpression != null || labelPolicyScope != null) {
             authorizer.setUserLabelPolicy(userName, labelPolicyExpression, labelPolicyScope);
+          }
+          // Set read label policy if present
+          if (readLabelPolicyExpression != null) {
+            authorizer.setUserLabelPolicy(userName, readLabelPolicyExpression, "READ");
+          }
+          // Set write label policy if present
+          if (writeLabelPolicyExpression != null) {
+            authorizer.setUserLabelPolicy(userName, writeLabelPolicyExpression, "WRITE");
           }
           break;
         case CreateRole:

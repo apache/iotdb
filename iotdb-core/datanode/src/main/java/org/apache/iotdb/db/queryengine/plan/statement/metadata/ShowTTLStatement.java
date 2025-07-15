@@ -45,6 +45,27 @@ public class ShowTTLStatement extends ShowStatement implements IConfigStatement 
     return pathPatterns;
   }
 
+  // Add LBAC check for TTL show operation
+  @Override
+  public org.apache.iotdb.common.rpc.thrift.TSStatus checkPermissionBeforeProcess(String userName) {
+    // Check RBAC permissions first
+    org.apache.iotdb.common.rpc.thrift.TSStatus rbacStatus =
+        super.checkPermissionBeforeProcess(userName);
+    // Check RBAC permission result
+    if (rbacStatus.getCode() != org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return rbacStatus;
+    }
+    // Add LBAC check for read operation
+    java.util.List<org.apache.iotdb.commons.path.PartialPath> devicePaths = getPaths();
+    org.apache.iotdb.common.rpc.thrift.TSStatus lbacStatus =
+        org.apache.iotdb.db.auth.LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
+    if (lbacStatus.getCode() != org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return lbacStatus;
+    }
+    return new org.apache.iotdb.common.rpc.thrift.TSStatus(
+        org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
   public void addPathPatterns(PartialPath pathPattern) {
     pathPatterns.add(pathPattern);
   }
