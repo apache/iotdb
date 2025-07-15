@@ -16,29 +16,19 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-FROM ubuntu:22.04
+FROM python:3.12-slim-bullseye
 ARG version=2.0.5-SNAPSHOT
 ARG target=apache-iotdb-${version}-ainode-bin
 
-# replace source when necessary
-RUN sed -i 's/archive.ubuntu.com/mirrors.ustc.edu.cn/g' /etc/apt/sources.list && \
-    sed -i 's/security.ubuntu.com/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
-# 更新包索引并安装必要的依赖
-RUN apt-get update && \
-    apt-get install -y software-properties-common && \
-    add-apt-repository -y ppa:deadsnakes/ppa && \
-    apt-get update
-# 安装Python 3.12和pip
-RUN apt-get install -y python3.12 python3.12-dev python3.12-distutils && \
-    apt-get install -y curl && \
-    curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
-    python3.12 get-pip.py && \
-    rm get-pip.py
+# replace deb source when necessary
+# RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list && \
+    # sed -i 's|security.debian.org/debian-security|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list
 
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+# replace pip source when necessary
+# RUN pip config set global.index-url https://mirrors.ustc.edu.cn/pypi/web/simple
 
 RUN apt update \
-  && apt install lsof dos2unix procps unzip dumb-init wget inetutils-ping gcc -y \
+  && apt install lsof dos2unix procps unzip dumb-init wget inetutils-ping libopenblas-dev liblapack-dev gfortran gcc g++ -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
   && apt clean -y
@@ -46,7 +36,6 @@ RUN apt update \
 COPY target/${target}.zip /
 RUN cd / && unzip ${target}.zip \
   && rm ${target}.zip \
-#  && mv ${target} iotdb
   && mv apache-iotdb-${version}-ainode-bin ainode
 
 ENV IOTDB_AINODE_HOME=/ainode VERSION=${version}
@@ -58,12 +47,15 @@ COPY DockerCompose/entrypoint.sh .
 RUN chmod +x *.sh && dos2unix *.sh \
   && dos2unix ${IOTDB_AINODE_HOME}/conf/*.sh
 
+# use huggingface mirrors when necessary
+ARG hf_web=huggingface.co
+# ARG hf_web=hf-mirror.com
 RUN mkdir -p ${IOTDB_AINODE_HOME}/data/ainode/models/weights/sundial && \
     mkdir -p ${IOTDB_AINODE_HOME}/data/ainode/models/weights/timer_xl
-RUN wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/sundial/config.json https://huggingface.co/thuml/sundial-base-128m/resolve/main/config.json && \
-    wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/sundial/model.safetensors https://huggingface.co/thuml/sundial-base-128m/resolve/main/model.safetensors
-RUN wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/timer_xl/config.json https://huggingface.co/thuml/timer-base-84m/resolve/main/config.json && \
-    wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/timer_xl/model.safetensors https://huggingface.co/thuml/timer-base-84m/resolve/main/model.safetensors
+RUN wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/sundial/config.json https://${hf_web}/thuml/sundial-base-128m/resolve/main/config.json && \
+    wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/sundial/model.safetensors https://${hf_web}/thuml/sundial-base-128m/resolve/main/model.safetensors
+RUN wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/timer_xl/config.json https://${hf_web}/thuml/timer-base-84m/resolve/main/config.json && \
+    wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/timer_xl/model.safetensors https://${hf_web}/thuml/timer-base-84m/resolve/main/model.safetensors
 
 EXPOSE 10810
 VOLUME $IOTDB_AINODE_HOME/data
@@ -71,9 +63,8 @@ VOLUME $IOTDB_AINODE_HOME/logs
 
 ENV PATH="${IOTDB_AINODE_HOME}/sbin/:${IOTDB_AINODE_HOME}/tools/:${PATH}"
 
-RUN bash start-ainode.sh
+RUN bash start-ainode.sh || true
+RUN rm -r ${IOTDB_AINODE_HOME}/logs/*
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 CMD ["bash", "-c", "entrypoint.sh ainode"]
-
-LABEL build_date="$build_date" maintainer="$maintainer" version="$version" commit_id="$commit_id"
