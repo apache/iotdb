@@ -115,8 +115,8 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
   }
 
   protected void appendLastValueToTsBlockBuilder(long lastTime, TsPrimitiveType lastValue) {
-    LastQueryUtil.appendLastValue(
-        tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue.getStringValue(), dataType);
+    LastQueryUtil.appendLastValueRespectBlob(
+        tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue, dataType);
   }
 
   @Override

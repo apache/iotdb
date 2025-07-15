@@ -24,8 +24,8 @@ from thrift.transport import TSocket, TTransport
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import TSStatusCode
 from ainode.core.log import Logger
+from ainode.core.rpc.status import verify_success
 from ainode.core.util.decorator import singleton
-from ainode.core.util.status import verify_success
 from ainode.thrift.common.ttypes import (
     TAINodeConfiguration,
     TAINodeLocation,

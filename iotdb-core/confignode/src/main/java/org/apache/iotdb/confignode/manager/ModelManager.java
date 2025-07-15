@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsReq;
 import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -81,7 +82,7 @@ public class ModelManager {
 
   public TSStatus dropModel(TDropModelReq req) {
     if (modelInfo.checkModelType(req.getModelId()) != ModelType.USER_DEFINED) {
-      return new TSStatus(TSStatusCode.MODEL_EXIST_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.DROP_MODEL_ERROR.getStatusCode())
           .setMessage(String.format("Built-in model %s can't be removed", req.modelId));
     }
     if (!modelInfo.contain(req.modelId)) {
@@ -105,7 +106,11 @@ public class ModelManager {
         new TEndPoint(registeredAINode.getInternalAddress(), registeredAINode.getInternalPort());
     try (AINodeClient client =
         AINodeClientManager.getInstance().borrowClient(targetAINodeEndPoint)) {
-      TShowModelsResp resp = client.showModels();
+      TShowModelsReq showModelsReq = new TShowModelsReq();
+      if (req.isSetModelId()) {
+        showModelsReq.setModelId(req.getModelId());
+      }
+      TShowModelsResp resp = client.showModels(showModelsReq);
       TShowModelResp res =
           new TShowModelResp().setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
       res.setModelIdList(resp.getModelIdList());

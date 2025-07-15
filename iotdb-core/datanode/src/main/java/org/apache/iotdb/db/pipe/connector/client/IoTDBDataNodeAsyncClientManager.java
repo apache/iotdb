@@ -299,6 +299,18 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       client.resetMethodStateIfStopped();
       throw e;
     } finally {
+      if (isClosed) {
+        try {
+          client.close();
+          client.invalidateAll();
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to close client {}:{} after handshake failure when the manager is closed.",
+              targetNodeUrl.getIp(),
+              targetNodeUrl.getPort(),
+              e);
+        }
+      }
       client.setShouldReturnSelf(true);
       client.returnSelf();
     }
@@ -348,8 +360,14 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
               if (clientManager != null) {
                 try {
                   clientManager.close();
+                  LOGGER.info(
+                      "Closed AsyncPipeDataTransferServiceClientManager for receiver attributes: {}",
+                      receiverAttributes);
                 } catch (final Exception e) {
-                  LOGGER.warn("Failed to close client manager.", e);
+                  LOGGER.warn(
+                      "Failed to close AsyncPipeDataTransferServiceClientManager for receiver attributes: {}",
+                      receiverAttributes,
+                      e);
                 }
               }
               return null;

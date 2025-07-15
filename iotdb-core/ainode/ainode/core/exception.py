@@ -96,6 +96,11 @@ class BuiltInModelNotSupportError(_BaseError):
         self.message = "Built-in model not support: {0}".format(msg)
 
 
+class BuiltInModelDeletionError(_BaseError):
+    def __init__(self, model_id: str):
+        self.message = "Cannot delete built-in model: {0}".format(model_id)
+
+
 class WrongAttributeTypeError(_BaseError):
     def __init__(self, attribute_name: str, expected_type: str):
         self.message = "Wrong type for attribute: {0}, expected: {1}".format(

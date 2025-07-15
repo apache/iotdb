@@ -411,11 +411,25 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   }
 
   private void returnClientIfNecessary() {
-    if (client != null) {
-      client.setShouldReturnSelf(true);
-      client.returnSelf();
-      client = null;
+    if (client == null) {
+      return;
     }
+
+    if (connector.isClosed()) {
+      try {
+        client.close();
+        client.invalidateAll();
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Failed to close or invalidate client when connector is closed. Client: {}, Exception: {}",
+            client,
+            e.getMessage(),
+            e);
+      }
+    }
+    client.setShouldReturnSelf(true);
+    client.returnSelf();
+    client = null;
   }
 
   @Override

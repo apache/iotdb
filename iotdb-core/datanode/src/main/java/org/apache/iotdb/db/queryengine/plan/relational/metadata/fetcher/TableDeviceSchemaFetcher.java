@@ -307,24 +307,33 @@ public class TableDeviceSchemaFetcher {
               index2FilterMapList.size()
                   - tagSingleMatchIndexList.size()
                   + tagSingleMatchPredicateNotInCache.size());
-      int idx1 = 0;
-      int idx2 = 0;
-      for (int i = 0; i < index2FilterMapList.size(); i++) {
-        if (idx1 >= tagSingleMatchIndexList.size() || i != tagSingleMatchIndexList.get(idx1)) {
-          tagPredicateForFetch.add(
-              index2FilterMapList.get(i).values().stream()
-                  .flatMap(Collection::stream)
-                  .collect(Collectors.toList()));
-        } else {
-          idx1++;
-          if (idx2 >= tagSingleMatchPredicateNotInCache.size()
-              || i == tagSingleMatchPredicateNotInCache.get(idx2)) {
+      if (!isDirectDeviceQuery) {
+        int idx1 = 0;
+        int idx2 = 0;
+        for (int i = 0; i < index2FilterMapList.size(); i++) {
+          if (idx1 >= tagSingleMatchIndexList.size() || i != tagSingleMatchIndexList.get(idx1)) {
             tagPredicateForFetch.add(
                 index2FilterMapList.get(i).values().stream()
                     .flatMap(Collection::stream)
                     .collect(Collectors.toList()));
-            idx2++;
+          } else {
+            idx1++;
+            if (idx2 < tagSingleMatchPredicateNotInCache.size()
+                && i == tagSingleMatchPredicateNotInCache.get(idx2)) {
+              tagPredicateForFetch.add(
+                  index2FilterMapList.get(i).values().stream()
+                      .flatMap(Collection::stream)
+                      .collect(Collectors.toList()));
+              idx2++;
+            }
           }
+        }
+      } else {
+        for (Map<Integer, List<SchemaFilter>> integerListMap : index2FilterMapList) {
+          tagPredicateForFetch.add(
+              integerListMap.values().stream()
+                  .flatMap(Collection::stream)
+                  .collect(Collectors.toList()));
         }
       }
       statement.setTagDeterminedFilterList(tagPredicateForFetch);
