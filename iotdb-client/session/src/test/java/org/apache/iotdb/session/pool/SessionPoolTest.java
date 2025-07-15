@@ -125,7 +125,7 @@ public class SessionPoolTest {
     assertEquals(1, pool.getFetchSize());
     assertEquals(2, pool.getWaitToGetSessionTimeoutInMs());
     assertTrue(pool.isEnableRedirection());
-    assertTrue(pool.isEnableCompression());
+    assertTrue(pool.isEnableThriftCompression());
     assertEquals(3, pool.getConnectionTimeoutInMs());
     assertEquals(ZoneOffset.UTC, pool.getZoneId());
     assertEquals(Version.V_1_0, pool.getVersion());
@@ -157,7 +157,7 @@ public class SessionPoolTest {
     assertEquals(1, pool.getFetchSize());
     assertEquals(2, pool.getWaitToGetSessionTimeoutInMs());
     assertTrue(pool.isEnableRedirection());
-    assertTrue(pool.isEnableCompression());
+    assertTrue(pool.isEnableThriftCompression());
     assertEquals(3, pool.getConnectionTimeoutInMs());
     assertEquals(ZoneOffset.UTC, pool.getZoneId());
     assertEquals(Version.V_1_0, pool.getVersion());

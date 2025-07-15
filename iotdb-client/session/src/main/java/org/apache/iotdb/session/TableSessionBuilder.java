@@ -247,7 +247,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
    * @defaultValue false
    */
   public TableSessionBuilder enableCompression(boolean enableCompression) {
-    this.enableCompression = enableCompression;
+    this.isCompressed = enableCompression;
     return this;
   }
 
@@ -263,8 +263,8 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
     return this;
   }
 
-  public TableSessionBuilder isCompressed(Boolean isCompressed) {
-    this.isCompressed = isCompressed;
+  public TableSessionBuilder enableCompaction(boolean enableCompaction) {
+    this.isCompacted = enableCompaction;
     return this;
   }
 
@@ -385,7 +385,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
     newSession.enableRPCCompression = isCompressed;
 
     try {
-      newSession.open(enableCompression, connectionTimeoutInMs);
+      newSession.open(isCompacted, connectionTimeoutInMs);
     } catch (IoTDBConnectionException e) {
       newSession.close();
       throw e;

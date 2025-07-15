@@ -138,6 +138,7 @@ public class Session implements ISession {
    */
   private long queryTimeoutInMs = -1;
 
+  protected boolean enableRPCCompaction;
   protected boolean enableRPCCompression;
   protected int connectionTimeoutInMs;
   protected ZoneId zoneId;
@@ -453,6 +454,7 @@ public class Session implements ISession {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
       this.enableQueryRedirection = builder.enableRedirection;
     }
+    this.enableRPCCompaction = builder.isCompacted;
     this.enableRPCCompression = builder.isCompressed;
     this.compressionType = builder.compressionType;
     this.columnEncodersMap = builder.columnEncodersMap;
@@ -502,12 +504,12 @@ public class Session implements ISession {
   }
 
   @Override
-  public synchronized void open(boolean enableRPCCompression) throws IoTDBConnectionException {
-    open(enableRPCCompression, SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+  public synchronized void open(boolean enableRPCCompaction) throws IoTDBConnectionException {
+    open(enableRPCCompaction, SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   @Override
-  public synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
+  public synchronized void open(boolean enableRPCCompaction, int connectionTimeoutInMs)
       throws IoTDBConnectionException {
     if (!isClosed) {
       return;
@@ -537,13 +539,12 @@ public class Session implements ISession {
               useSSL,
               trustStore,
               trustStorePwd,
-              enableRPCCompression,
+              enableRPCCompaction,
               version.toString());
     } else {
       this.availableNodes = new DummyNodesSupplier(getNodeUrls());
     }
 
-    this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
     getDefaultSessionConnection().setEnableRedirect(enableQueryRedirection);
@@ -4232,6 +4233,14 @@ public class Session implements ISession {
     this.defaultSessionConnection = defaultSessionConnection;
   }
 
+  public boolean isEnableRPCCompaction() {
+    return enableRPCCompaction;
+  }
+
+  public void setEnableRPCCompaction(boolean enableRPCCompaction) {
+    this.enableRPCCompaction = enableRPCCompaction;
+  }
+
   public static class Builder extends AbstractSessionBuilder {
 
     public Builder host(String host) {
@@ -4261,6 +4270,16 @@ public class Session implements ISession {
 
     public Builder zoneId(ZoneId zoneId) {
       this.zoneId = zoneId;
+      return this;
+    }
+
+    public Builder isCompressed(boolean isCompressed) {
+      this.isCompressed = isCompressed;
+      return this;
+    }
+
+    public Builder isCompacted(boolean isCompacted) {
+      this.isCompacted = isCompacted;
       return this;
     }
 
