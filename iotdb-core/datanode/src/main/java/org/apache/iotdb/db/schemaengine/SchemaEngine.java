@@ -239,6 +239,7 @@ public class SchemaEngine {
       }
       schemaRegionMap.clear();
       schemaRegionMap = null;
+      logger.info("clear schema region map.");
     }
     // SchemaMetric should be cleared lastly
     if (schemaMetricManager != null) {
