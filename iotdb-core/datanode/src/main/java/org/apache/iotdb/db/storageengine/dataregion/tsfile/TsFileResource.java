@@ -165,7 +165,7 @@ public class TsFileResource {
    */
   private TsFileResource originTsFileResource;
 
-  private AtomicReference<ProgressIndex> maxProgressIndex = new AtomicReference<>();
+  private final AtomicReference<ProgressIndex> maxProgressIndex = new AtomicReference<>();
 
   /** used to prevent circular replication in PipeConsensus */
   private volatile boolean isGeneratedByPipeConsensus = false;
@@ -1197,7 +1197,7 @@ public class TsFileResource {
       return;
     }
 
-    if (maxProgressIndex.compareAndSet(null, progressIndex)) {
+    if (!maxProgressIndex.compareAndSet(null, progressIndex)) {
       maxProgressIndex.get().updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
     }
   }
