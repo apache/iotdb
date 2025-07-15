@@ -65,8 +65,8 @@ public abstract class AbstractTreeIntoOperator extends AbstractIntoOperator {
               targetDevice,
               entry.getValue(),
               targetPathToDataTypeMap.get(targetDevice),
-              targetDeviceToAlignedMap.get(targetDevice.toString()),
               sourceTypeConvertors,
+              targetDeviceToAlignedMap.get(targetDevice.toString()),
               maxRowNumberInStatement);
       insertTabletStatementGenerators.add(generator);
     }

@@ -46,26 +46,26 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
 
   public TableInsertTabletStatementGenerator(
       String databaseName,
-      PartialPath devicePath,
+      PartialPath targetTable,
       Map<String, InputLocation> measurementToInputLocationMap,
       Map<String, TSDataType> measurementToDataTypeMap,
-      Boolean isAligned,
       List<Type> sourceTypeConvertors,
       List<TsTableColumnCategory> tsTableColumnCategories,
+      boolean isAligned,
       int rowLimit) {
-    this.databaseName = databaseName;
-    this.devicePath = devicePath;
-    this.isAligned = isAligned;
-    this.measurements = measurementToDataTypeMap.keySet().toArray(new String[0]);
-    this.dataTypes = measurementToDataTypeMap.values().toArray(new TSDataType[0]);
-    this.inputLocations =
+    super(
+        targetTable,
+        measurementToDataTypeMap.keySet().toArray(new String[0]),
+        measurementToDataTypeMap.values().toArray(new TSDataType[0]),
         measurementToInputLocationMap.entrySet().stream()
             .filter(entry -> !entry.getKey().equalsIgnoreCase(TIME_COLUMN_NAME))
             .map(Map.Entry::getValue)
-            .toArray(InputLocation[]::new);
+            .toArray(InputLocation[]::new),
+        sourceTypeConvertors,
+        isAligned,
+        rowLimit);
+    this.databaseName = databaseName;
     this.writtenCounter = new AtomicLong(0);
-    this.sourceTypeConvertors = sourceTypeConvertors;
-    this.rowLimit = rowLimit;
     this.tsTableColumnCategories = tsTableColumnCategories;
     this.timeColumnIndex =
         measurementToInputLocationMap.get(TIME_COLUMN_NAME).getValueColumnIndex();

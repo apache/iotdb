@@ -49,31 +49,31 @@ public class TableIntoOperator extends AbstractIntoOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableIntoOperator.class);
 
-  private final PartialPath targetDevice;
+  private final PartialPath targetTable;
 
   public TableIntoOperator(
       OperatorContext operatorContext,
       Operator child,
       String databaseName,
-      PartialPath targetDevice,
+      PartialPath targetTable,
       List<TSDataType> inputColumnTypes,
       List<TsTableColumnCategory> inputColumnCategories,
       Map<String, InputLocation> measurementToInputLocationMap,
       Map<String, TSDataType> measurementToDataTypeMap,
-      Boolean isAligned,
+      boolean isAligned,
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
     super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
-    this.targetDevice = targetDevice;
+    this.targetTable = targetTable;
     insertTabletStatementGenerator =
         new TableInsertTabletStatementGenerator(
             databaseName,
-            targetDevice,
+            targetTable,
             measurementToInputLocationMap,
             measurementToDataTypeMap,
-            isAligned,
             typeConvertors,
             inputColumnCategories,
+            isAligned,
             maxRowNumberInStatement);
   }
 
@@ -114,7 +114,7 @@ public class TableIntoOperator extends AbstractIntoOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(targetDevice);
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(targetTable);
   }
 
   private boolean insertTabletInternally(boolean needCheck) {

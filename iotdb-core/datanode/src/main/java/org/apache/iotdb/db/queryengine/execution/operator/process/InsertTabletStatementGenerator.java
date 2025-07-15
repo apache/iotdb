@@ -34,13 +34,13 @@ import java.util.Arrays;
 import java.util.List;
 
 public abstract class InsertTabletStatementGenerator {
-  protected int rowLimit;
-
-  protected PartialPath devicePath;
-  protected boolean isAligned;
-  protected String[] measurements;
-  protected TSDataType[] dataTypes;
-  protected InputLocation[] inputLocations;
+  protected final int rowLimit;
+  protected final PartialPath devicePath;
+  protected final boolean isAligned;
+  protected final String[] measurements;
+  protected final TSDataType[] dataTypes;
+  protected final InputLocation[] inputLocations;
+  protected final List<Type> sourceTypeConvertors;
 
   protected int rowCount = 0;
 
@@ -48,7 +48,22 @@ public abstract class InsertTabletStatementGenerator {
   protected Object[] columns;
   protected BitMap[] bitMaps;
 
-  protected List<Type> sourceTypeConvertors;
+  public InsertTabletStatementGenerator(
+      PartialPath devicePath,
+      String[] measurements,
+      TSDataType[] dataTypes,
+      InputLocation[] inputLocations,
+      List<Type> sourceTypeConvertors,
+      boolean isAligned,
+      int rowLimit) {
+    this.devicePath = devicePath;
+    this.measurements = measurements;
+    this.dataTypes = dataTypes;
+    this.inputLocations = inputLocations;
+    this.sourceTypeConvertors = sourceTypeConvertors;
+    this.isAligned = isAligned;
+    this.rowLimit = rowLimit;
+  }
 
   public void reset() {
     this.rowCount = 0;
