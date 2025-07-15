@@ -257,6 +257,8 @@ public class LogicalPlanBuilder {
               sourceExpression.isViewExpression()
                   ? sourceExpression.getViewPath().getFullPath()
                   : null;
+          TSDataType outputViewPathType =
+              outputViewPath == null ? null : selectedPath.getSeriesType();
 
           PartialPath devicePath = selectedPath.getDevicePath();
           // For expression with view path, we do not use the deviceId in Map.Entry because it is a
@@ -268,7 +270,8 @@ public class LogicalPlanBuilder {
                   devicePath,
                   selectedPath.isUnderAlignedEntity(),
                   Collections.singletonList(selectedPath.getMeasurementSchema()),
-                  outputViewPath);
+                  outputViewPath,
+                  outputViewPathType);
           this.context.reserveMemoryForFrontEnd(memCost);
         }
       } else {
@@ -291,6 +294,7 @@ public class LogicalPlanBuilder {
                 devicePath,
                 aligned,
                 measurementSchemas,
+                null,
                 null);
         this.context.reserveMemoryForFrontEnd(memCost);
       }
