@@ -20,27 +20,30 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Arrays;
-import java.util.List;
 
-public abstract class InsertTabletStatementGenerator {
+public abstract class InsertTabletStatementGenerator implements Accountable {
   protected final int rowLimit;
   protected final PartialPath devicePath;
   protected final boolean isAligned;
   protected final String[] measurements;
   protected final TSDataType[] dataTypes;
   protected final InputLocation[] inputLocations;
-  protected final List<Type> sourceTypeConvertors;
+  protected final Type[] sourceTypeConvertors;
 
   protected int rowCount = 0;
 
@@ -53,7 +56,7 @@ public abstract class InsertTabletStatementGenerator {
       String[] measurements,
       TSDataType[] dataTypes,
       InputLocation[] inputLocations,
-      List<Type> sourceTypeConvertors,
+      Type[] sourceTypeConvertors,
       boolean isAligned,
       int rowLimit) {
     this.devicePath = devicePath;
@@ -205,9 +208,105 @@ public abstract class InsertTabletStatementGenerator {
     return devicePath.toString();
   }
 
+  @Override
+  public long ramBytesUsed() {
+    return Integer.BYTES * 2 // rowLimit + rowCount
+        + Byte.BYTES // isAligned
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(devicePath)
+        + RamUsageEstimator.sizeOf(measurements)
+        + RamUsageEstimator.shallowSizeOf(dataTypes)
+        + RamUsageEstimator.shallowSizeOf(inputLocations)
+        + RamUsageEstimator.shallowSizeOf(sourceTypeConvertors)
+        + RamUsageEstimator.sizeOf(times)
+        + getColumnsBytes() // columns
+        + getBitMapsBytes(); // bitMaps
+  }
+
   public abstract long getWrittenCount();
 
   public abstract long getWrittenCount(String measurement);
 
   public abstract int processTsBlock(TsBlock tsBlock, int lastReadIndex);
+
+  protected void processColumn(
+      Column valueColumn,
+      Object columns,
+      TSDataType dataType,
+      Type sourceTypeConvertor,
+      int rowIndex) {
+    switch (dataType) {
+      case INT32:
+      case DATE:
+        ((int[]) columns)[rowCount] = sourceTypeConvertor.getInt(valueColumn, rowIndex);
+        break;
+      case INT64:
+      case TIMESTAMP:
+        ((long[]) columns)[rowCount] = sourceTypeConvertor.getLong(valueColumn, rowIndex);
+        break;
+      case FLOAT:
+        ((float[]) columns)[rowCount] = sourceTypeConvertor.getFloat(valueColumn, rowIndex);
+        break;
+      case DOUBLE:
+        ((double[]) columns)[rowCount] = sourceTypeConvertor.getDouble(valueColumn, rowIndex);
+        break;
+      case BOOLEAN:
+        ((boolean[]) columns)[rowCount] = sourceTypeConvertor.getBoolean(valueColumn, rowIndex);
+        break;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        ((Binary[]) columns)[rowCount] = sourceTypeConvertor.getBinary(valueColumn, rowIndex);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format(
+                "data type %s is not supported when convert data at client",
+                valueColumn.getDataType()));
+    }
+  }
+
+  private long getBitMapsBytes() {
+    if (bitMaps == null) {
+      return 0;
+    }
+    return Arrays.stream(bitMaps).mapToLong(x -> BitMap.getSizeOfBytes(x.getSize())).sum();
+  }
+
+  private long getColumnsBytes() {
+    if (columns == null) {
+      return 0;
+    }
+    long bytes = 0L;
+    for (int i = 0; i < columns.length; i++) {
+      switch (dataTypes[i]) {
+        case INT32:
+        case DATE:
+          bytes += RamUsageEstimator.sizeOf((int[]) columns[i]);
+          break;
+        case INT64:
+        case TIMESTAMP:
+          bytes += RamUsageEstimator.sizeOf((long[]) columns[i]);
+          break;
+        case FLOAT:
+          bytes += RamUsageEstimator.sizeOf((float[]) columns[i]);
+          break;
+        case DOUBLE:
+          bytes += RamUsageEstimator.sizeOf((double[]) columns[i]);
+          break;
+        case BOOLEAN:
+          bytes += RamUsageEstimator.sizeOf((boolean[]) columns[i]);
+          break;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          bytes += RamUsageEstimator.sizeOf((Binary[]) columns[i]);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format(
+                  "data type %s is not supported when convert data at client", dataTypes[i]));
+      }
+    }
+    return bytes;
+  }
 }

@@ -86,7 +86,8 @@ public class IoTDBInsertQueryIT {
         .getConfig()
         .getCommonConfig()
         .setPartitionInterval(1000)
-        .setMemtableSizeThreshold(10000);
+        .setMemtableSizeThreshold(10000)
+        .setSelectIntoInsertTabletPlanRowLimit(1000);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
