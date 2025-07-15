@@ -165,7 +165,7 @@ public class TsFileResource {
    */
   private TsFileResource originTsFileResource;
 
-  private ProgressIndex maxProgressIndex;
+  private AtomicReference<ProgressIndex> maxProgressIndex = new AtomicReference<>();
 
   /** used to prevent circular replication in PipeConsensus */
   private volatile boolean isGeneratedByPipeConsensus = false;
@@ -267,9 +267,9 @@ public class TsFileResource {
       ReadWriteIOUtils.write((String) null, outputStream);
     }
 
-    if (maxProgressIndex != null) {
+    if (maxProgressIndex.get() != null) {
       TsFileResourceBlockType.PROGRESS_INDEX.serialize(outputStream);
-      maxProgressIndex.serialize(outputStream);
+      maxProgressIndex.get().serialize(outputStream);
     } else {
       TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
     }
@@ -301,7 +301,7 @@ public class TsFileResource {
             TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
         switch (blockType) {
           case PROGRESS_INDEX:
-            maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+            maxProgressIndex.set(ProgressIndexType.deserializeFrom(inputStream));
             break;
           case PIPE_MARK:
             isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
@@ -1197,10 +1197,9 @@ public class TsFileResource {
       return;
     }
 
-    maxProgressIndex =
-        (maxProgressIndex == null
-            ? progressIndex
-            : maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
+    if (maxProgressIndex.compareAndSet(null, progressIndex)) {
+      maxProgressIndex.get().updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
+    }
   }
 
   public void setProgressIndex(ProgressIndex progressIndex) {
@@ -1208,11 +1207,12 @@ public class TsFileResource {
       return;
     }
 
-    maxProgressIndex = progressIndex;
+    maxProgressIndex.set(progressIndex);
   }
 
   public ProgressIndex getMaxProgressIndex() {
-    return maxProgressIndex == null ? MinimumProgressIndex.INSTANCE : maxProgressIndex;
+    final ProgressIndex index = maxProgressIndex.get();
+    return index == null ? MinimumProgressIndex.INSTANCE : index;
   }
 
   public boolean isEmpty() {
