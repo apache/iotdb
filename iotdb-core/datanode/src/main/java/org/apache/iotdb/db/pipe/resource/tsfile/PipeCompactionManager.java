@@ -57,7 +57,6 @@ public class PipeCompactionManager {
 
     for (final PipeConnectorSubtaskLifeCycle lifeCycle : pipeConnectorSubtaskLifeCycles) {
       final UnboundedBlockingPendingQueue<Event> pendingQueue = lifeCycle.getPendingQueue();
-      // TODO: support non realtime priority blocking queue
       if (pendingQueue instanceof PipeRealtimePriorityBlockingQueue) {
         final PipeRealtimePriorityBlockingQueue realtimePriorityBlockingQueue =
             (PipeRealtimePriorityBlockingQueue) pendingQueue;

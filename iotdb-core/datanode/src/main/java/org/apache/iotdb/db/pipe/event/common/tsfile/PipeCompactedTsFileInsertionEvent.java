@@ -74,7 +74,6 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
 
     // init fields of EnrichedEvent
     this.committerKey = committerKey;
-    // TODO pipe consensus: handle rebootTimes
     isPatternParsed = bindIsPatternParsed(originalEvents);
     isTimeParsed = bindIsTimeParsed(originalEvents);
     this.shouldReportOnCommit = shouldReportProgress;
