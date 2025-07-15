@@ -51,6 +51,7 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableDeviceChunkMetadata;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
@@ -75,8 +76,6 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
   protected final IMeasurementSchema timeColumnMeasurementSchema;
   protected final Map<String, IMeasurementSchema> measurementSchemaMap;
   protected final boolean ignoreAllNullRows;
-  // the data type of the current series
-  private TSDataType dataType;
 
   @SuppressWarnings("squid:S107")
   public FastAlignedSeriesCompactionExecutor(
@@ -171,14 +170,9 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
 
       // put aligned chunk metadatas into queue
       for (int i = 0; i < alignedChunkMetadataList.size(); i++) {
-        AbstractAlignedChunkMetadata chunkMetadata = alignedChunkMetadataList.get(i);
-        chunkMetadata.getDataType();
-        if (dataType != null && chunkMetadata.getDataType() != dataType) {
-          chunkMetadata.setNewType(dataType);
-        }
         chunkMetadataQueue.add(
             new ChunkMetadataElement(
-                chunkMetadata,
+                alignedChunkMetadataList.get(i),
                 i == alignedChunkMetadataList.size() - 1,
                 fileElement));
       }
@@ -278,6 +272,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
 
   private boolean isValueChunkDataTypeMatchSchema(
       List<IChunkMetadata> chunkMetadataListOfOneValueColumn) {
+    boolean isMatch = false;
     for (IChunkMetadata chunkMetadata : chunkMetadataListOfOneValueColumn) {
       if (chunkMetadata == null) {
         continue;
@@ -288,12 +283,10 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         if (schema.getType() != chunkMetadata.getDataType()) {
           chunkMetadata.setNewType(schema.getType());
         }
-        return true;
-      } else {
-        return false;
+        isMatch = true;
       }
     }
-    return true;
+    return isMatch;
   }
 
   /**
@@ -380,6 +373,13 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                 .rewrite(
                     ((ChunkMetadata) valueChunkMetadata).getNewType(), chunkMetadataElement.chunk);
         valueChunks.add(chunk);
+
+        ChunkMetadata chunkMetadata = (ChunkMetadata) valueChunkMetadata;
+        chunkMetadata.setTsDataType(valueChunkMetadata.getNewType());
+        Statistics<?> statistics = Statistics.getStatsByType(valueChunkMetadata.getNewType());
+        statistics.mergeStatistics(chunkMetadataElement.chunk.getChunkStatistic());
+        chunkMetadata.setStatistics(statistics);
+        chunkMetadataElement.chunkMetadata = chunkMetadata;
       } else {
         valueChunks.add(readChunk(reader, (ChunkMetadata) valueChunkMetadata));
       }
@@ -447,9 +447,5 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         (AbstractAlignedChunkMetadata) pageElement.getChunkMetadataElement().chunkMetadata;
     return AlignedSeriesBatchCompactionUtils.calculateAlignedPageModifiedStatus(
         startTime, endTime, alignedChunkMetadata, ignoreAllNullRows);
-  }
-
-  public void setType(TSDataType dataType) {
-    this.dataType = dataType;
   }
 }
