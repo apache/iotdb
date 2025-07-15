@@ -160,6 +160,21 @@ public class IoTDBThreadPoolFactory {
         poolName);
   }
 
+  public static ExecutorService newSingleThreadExecutor(
+      String poolName, RejectedExecutionHandler handler) {
+    logger.info(NEW_SINGLE_THREAD_POOL_LOGGER_FORMAT, poolName);
+    return new WrappedSingleThreadExecutorService(
+        new ThreadPoolExecutor(
+            1,
+            1,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(),
+            new IoTThreadFactory(poolName),
+            handler),
+        poolName);
+  }
+
   /**
    * see {@link Executors#newCachedThreadPool(java.util.concurrent.ThreadFactory)}.
    *

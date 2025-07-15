@@ -110,6 +110,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -186,6 +187,8 @@ public class TsFileProcessor {
 
   /** Total memtable size for mem control. */
   private long totalMemTableSize;
+
+  private final AtomicBoolean isTotallyGeneratedByPipe = new AtomicBoolean(true);
 
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE =
@@ -317,14 +320,11 @@ public class TsFileProcessor {
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
     if (!insertRowNode.isGeneratedByPipe()) {
-      workMemTable.markAsNotGeneratedByPipe();
+      this.isTotallyGeneratedByPipe.set(false);
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
-            walFlushListener.getWalEntryHandler(),
-            insertRowNode,
-            tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionId(), insertRowNode, tsFileResource);
 
     int pointInserted;
     if (insertRowNode.isAligned()) {
@@ -418,14 +418,11 @@ public class TsFileProcessor {
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
     if (!insertRowsNode.isGeneratedByPipe()) {
-      workMemTable.markAsNotGeneratedByPipe();
+      this.isTotallyGeneratedByPipe.set(false);
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
-            walFlushListener.getWalEntryHandler(),
-            insertRowsNode,
-            tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionId(), insertRowsNode, tsFileResource);
 
     int pointInserted = 0;
     for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
@@ -536,14 +533,11 @@ public class TsFileProcessor {
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
     if (!insertTabletNode.isGeneratedByPipe()) {
-      workMemTable.markAsNotGeneratedByPipe();
+      this.isTotallyGeneratedByPipe.set(false);
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
-            walFlushListener.getWalEntryHandler(),
-            insertTabletNode,
-            tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionId(), insertTabletNode, tsFileResource);
 
     int pointInserted;
     try {
@@ -1146,15 +1140,9 @@ public class TsFileProcessor {
       // we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
+      tsFileResource.setGeneratedByPipe(isTotallyGeneratedByPipe.get());
 
       try {
-        PipeInsertionDataNodeListener.getInstance()
-            .listenToTsFile(
-                dataRegionInfo.getDataRegion().getDataRegionId(),
-                tsFileResource,
-                false,
-                tmpMemTable.isTotallyGeneratedByPipe());
-
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
@@ -1586,6 +1574,12 @@ public class TsFileProcessor {
       logger.debug("Start to end file {}", tsFileResource);
     }
     writer.endFile();
+
+    // Listen after "endFile" to avoid unnecessary waiting for tsFile close
+    // before resource serialization to avoid missing hardlink after restart
+    PipeInsertionDataNodeListener.getInstance()
+        .listenToTsFile(dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource, false);
+
     tsFileResource.serialize();
     FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
     if (logger.isDebugEnabled()) {

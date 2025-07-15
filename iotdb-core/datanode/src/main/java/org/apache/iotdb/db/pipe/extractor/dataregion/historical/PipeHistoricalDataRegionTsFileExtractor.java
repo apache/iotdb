@@ -33,9 +33,9 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -57,10 +57,10 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -93,9 +93,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileExtractor.class);
-
-  private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
-  private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
   private String pipeName;
   private long creationTime;
@@ -219,17 +216,14 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     try {
       historicalDataExtractionStartTime =
-          isHistoricalExtractorEnabled
-                  && parameters.hasAnyAttributes(
-                      EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY)
+          parameters.hasAnyAttributes(
+                  EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY)
               ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
                   parameters.getStringByKeys(
                       EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY))
               : Long.MIN_VALUE;
       historicalDataExtractionEndTime =
-          isHistoricalExtractorEnabled
-                  && parameters.hasAnyAttributes(
-                      EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY)
+          parameters.hasAnyAttributes(EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY)
               ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
                   parameters.getStringByKeys(
                       EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY))
@@ -273,10 +267,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     startIndex = environment.getPipeTaskMeta().restoreProgressIndex();
 
     dataRegionId = environment.getRegionId();
-    synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
-      DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.putIfAbsent(dataRegionId, 0L);
-    }
-
     pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
 
     final DataRegion dataRegion =
@@ -299,34 +289,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             // can not be listened by PipeRealtimeDataRegionExtractor, and should be extracted by
             // PipeHistoricalDataRegionExtractor from implementation perspective.
             : environment.getCreationTime();
-
-    // Only invoke flushDataRegionAllTsFiles() when the pipe runs in the realtime only mode.
-    // realtime only mode -> (historicalDataExtractionTimeLowerBound != Long.MIN_VALUE)
-    //
-    // Ensure that all data in the data region is flushed to disk before extracting data.
-    // This ensures the generation time of all newly generated TsFiles (realtime data) after the
-    // invocation of flushDataRegionAllTsFiles() is later than the creationTime of the pipe
-    // (historicalDataExtractionTimeLowerBound).
-    //
-    // Note that: the generation time of the TsFile is the time when the TsFile is created, not
-    // the time when the data is flushed to the TsFile.
-    //
-    // Then we can use the generation time of the TsFile to determine whether the data in the
-    // TsFile should be extracted by comparing the generation time of the TsFile with the
-    // historicalDataExtractionTimeLowerBound when starting the pipe in realtime only mode.
-    //
-    // If we don't invoke flushDataRegionAllTsFiles() in the realtime only mode, the data generated
-    // between the creation time of the pipe the time when the pipe starts will be lost.
-    if (historicalDataExtractionTimeLowerBound != Long.MIN_VALUE) {
-      synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
-        final long lastFlushedByPipeTime =
-            DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
-        if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
-          flushDataRegionAllTsFiles();
-          DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(dataRegionId, System.currentTimeMillis());
-        }
-      }
-    }
 
     shouldTransferModFile =
         parameters.getBooleanOrDefault(
@@ -357,24 +319,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
   }
 
-  private void flushDataRegionAllTsFiles() {
-    final DataRegion dataRegion =
-        StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
-    if (Objects.isNull(dataRegion)) {
-      return;
-    }
-
-    dataRegion.writeLock("Pipe: create historical TsFile extractor");
-    try {
-      dataRegion.syncCloseAllWorkingTsFileProcessors();
-    } finally {
-      dataRegion.writeUnlock();
-    }
-  }
-
   @Override
   public synchronized void start() {
-    if (!shouldExtractInsertion) {
+    if (!shouldExtractInsertion || !isHistoricalExtractorEnabled) {
       hasBeenStarted = true;
       return;
     }
@@ -406,48 +353,29 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       // consensus pipe, and the lastFlushed timestamp is not updated here.
       if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
         dataRegion.syncCloseAllWorkingTsFileProcessors();
-        LOGGER.info(
-            "Pipe {}@{}: finish to flush data region, took {} ms",
-            pipeName,
-            dataRegionId,
-            System.currentTimeMillis() - startHistoricalExtractionTime);
       } else {
-        synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
-          final long lastFlushedByPipeTime =
-              DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
-          if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
-            dataRegion.syncCloseAllWorkingTsFileProcessors();
-            DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(
-                dataRegionId, System.currentTimeMillis());
-            LOGGER.info(
-                "Pipe {}@{}: finish to flush data region, took {} ms",
-                pipeName,
-                dataRegionId,
-                System.currentTimeMillis() - startHistoricalExtractionTime);
-          } else {
-            LOGGER.info(
-                "Pipe {}@{}: skip to flush data region, last flushed time {} ms ago",
-                pipeName,
-                dataRegionId,
-                System.currentTimeMillis() - lastFlushedByPipeTime);
-          }
-        }
+        dataRegion.asyncCloseAllWorkingTsFileProcessors();
       }
+      LOGGER.info(
+          "Pipe {}@{}: finish to flush data region, took {} ms",
+          pipeName,
+          dataRegionId,
+          System.currentTimeMillis() - startHistoricalExtractionTime);
 
       final TsFileManager tsFileManager = dataRegion.getTsFileManager();
       tsFileManager.readLock();
       try {
         final int originalSequenceTsFileCount = tsFileManager.size(true);
-        final int originalUnsequenceTsFileCount = tsFileManager.size(false);
+        final int originalUnSequenceTsFileCount = tsFileManager.size(false);
         final List<TsFileResource> resourceList =
-            new ArrayList<>(originalSequenceTsFileCount + originalUnsequenceTsFileCount);
+            new ArrayList<>(originalSequenceTsFileCount + originalUnSequenceTsFileCount);
         LOGGER.info(
             "Pipe {}@{}: start to extract historical TsFile, original sequence file count {}, "
-                + "original unsequence file count {}, start progress index {}",
+                + "original unSequence file count {}, start progress index {}",
             pipeName,
             dataRegionId,
             originalSequenceTsFileCount,
-            originalUnsequenceTsFileCount,
+            originalUnSequenceTsFileCount,
             startIndex);
 
         final Collection<TsFileResource> sequenceTsFileResources =
@@ -460,9 +388,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             // not transfer pipe requests.
                             && (!resource.isGeneratedByPipe() || isForwardingPipeRequests)
                             && (
-                            // Some resource may not be closed due to the control of
-                            // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                            // If the tsFile is not already marked closing, it is not captured by
+                            // the pipe realtime module. Thus, we can wait for the realtime sync
+                            // module to handle this, to avoid blocking the pipe sync process.
                             !resource.isClosed()
+                                    && Optional.ofNullable(resource.getProcessor())
+                                        .map(TsFileProcessor::alreadyMarkedClosing)
+                                        .orElse(true)
                                 || mayTsFileContainUnprocessedData(resource)
                                     && isTsFileResourceOverlappedWithTimeRange(resource)
                                     && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
@@ -470,7 +402,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 .collect(Collectors.toList());
         resourceList.addAll(sequenceTsFileResources);
 
-        final Collection<TsFileResource> unsequenceTsFileResources =
+        final Collection<TsFileResource> unSequenceTsFileResources =
             tsFileManager.getTsFileList(false).stream()
                 .filter(
                     resource ->
@@ -480,15 +412,19 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             // not transfer pipe requests.
                             && (!resource.isGeneratedByPipe() || isForwardingPipeRequests)
                             && (
-                            // Some resource may not be closed due to the control of
-                            // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                            // If the tsFile is not already marked closing, it is not captured by
+                            // the pipe realtime module. Thus, we can wait for the realtime sync
+                            // module to handle this, to avoid blocking the pipe sync process.
                             !resource.isClosed()
+                                    && Optional.ofNullable(resource.getProcessor())
+                                        .map(TsFileProcessor::alreadyMarkedClosing)
+                                        .orElse(true)
                                 || mayTsFileContainUnprocessedData(resource)
                                     && isTsFileResourceOverlappedWithTimeRange(resource)
                                     && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
                                     && mayTsFileResourceOverlappedWithPattern(resource)))
                 .collect(Collectors.toList());
-        resourceList.addAll(unsequenceTsFileResources);
+        resourceList.addAll(unSequenceTsFileResources);
 
         resourceList.removeIf(
             resource -> {
@@ -496,7 +432,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
               // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
               try {
                 PipeDataNodeResourceManager.tsfile()
-                    .pinTsFileResource(resource, shouldTransferModFile);
+                    .pinTsFileResource(resource, shouldTransferModFile, pipeName);
                 return false;
               } catch (final IOException e) {
                 LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
@@ -518,10 +454,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             dataRegionId,
             sequenceTsFileResources.size(),
             originalSequenceTsFileCount,
-            unsequenceTsFileResources.size(),
-            originalUnsequenceTsFileCount,
+            unSequenceTsFileResources.size(),
+            originalUnSequenceTsFileCount,
             resourceList.size(),
-            originalSequenceTsFileCount + originalUnsequenceTsFileCount,
+            originalSequenceTsFileCount + originalUnSequenceTsFileCount,
             System.currentTimeMillis() - startHistoricalExtractionTime);
       } finally {
         tsFileManager.readUnlock();
@@ -540,8 +476,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     if (startIndex instanceof StateProgressIndex) {
       startIndex = ((StateProgressIndex) startIndex).getInnerProgressIndex();
     }
-    return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
-        && !startIndex.equals(resource.getMaxProgressIndexAfterClose());
+    return !startIndex.isAfter(resource.getMaxProgressIndex())
+        && !startIndex.equals(resource.getMaxProgressIndex());
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
@@ -549,9 +485,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     try {
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
           PipeDataNodeResourceManager.tsfile()
-              .getDeviceIsAlignedMapFromCache(
-                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
-                  false);
+              .getDeviceIsAlignedMapFromCache(resource.getTsFile(), false);
       deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
     } catch (final IOException e) {
@@ -609,6 +543,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
 
     final TsFileResource resource = pendingQueue.poll();
+
     if (resource == null) {
       final PipeTerminateEvent terminateEvent =
           new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
@@ -627,6 +562,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             resource,
+            null,
             shouldTransferModFile,
             false,
             true,
@@ -657,7 +593,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       return isReferenceCountIncreased ? event : null;
     } finally {
       try {
-        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
+        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
       } catch (final IOException e) {
         LOGGER.warn(
             "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
@@ -687,7 +623,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       pendingQueue.forEach(
           resource -> {
             try {
-              PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
+              PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
             } catch (final IOException e) {
               LOGGER.warn(
                   "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",

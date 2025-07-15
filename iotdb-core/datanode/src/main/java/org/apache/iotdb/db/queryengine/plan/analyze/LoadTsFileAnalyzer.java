@@ -405,7 +405,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     final long startTime = System.nanoTime();
     try {
       final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-          new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+          new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
 
       final TSStatus status =
           loadTsFileDataTypeConverter
@@ -530,7 +530,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+        new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
     final TSStatus status =
         loadTsFileStatement.isConvertOnTypeMismatch()
             ? loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileStatement).orElse(null)
@@ -897,13 +897,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         // check device schema: is aligned or not
         final boolean isAlignedInTsFile = schemaCache.getDeviceIsAligned(device);
         final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
-        if (isAlignedInTsFile != isAlignedInIoTDB) {
-          throw new LoadAnalyzeException(
-              String.format(
-                  "Device %s in TsFile is %s, but in IoTDB is %s.",
-                  device,
-                  isAlignedInTsFile ? "aligned" : "not aligned",
-                  isAlignedInIoTDB ? "aligned" : "not aligned"));
+        if (LOGGER.isInfoEnabled() && isAlignedInTsFile != isAlignedInIoTDB) {
+          LOGGER.info(
+              "Device {} in TsFile is {}, but in IoTDB is {}.",
+              device,
+              isAlignedInTsFile ? "aligned" : "not aligned",
+              isAlignedInIoTDB ? "aligned" : "not aligned");
         }
 
         // check timeseries schema
@@ -921,15 +920,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           }
 
           // check datatype
-          if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
-            throw new LoadAnalyzeTypeMismatchException(
-                String.format(
-                    "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",
-                    device,
-                    TsFileConstant.PATH_SEPARATOR,
-                    iotdbSchema.getMeasurementId(),
-                    tsFileSchema.getType(),
-                    iotdbSchema.getType()));
+          if (LOGGER.isInfoEnabled() && !tsFileSchema.getType().equals(iotdbSchema.getType())) {
+            LOGGER.info(
+                "Measurement {}{}{} datatype not match, TsFile: {}, IoTDB: {}",
+                device,
+                TsFileConstant.PATH_SEPARATOR,
+                iotdbSchema.getMeasurementId(),
+                tsFileSchema.getType(),
+                iotdbSchema.getType());
           }
 
           // check encoding

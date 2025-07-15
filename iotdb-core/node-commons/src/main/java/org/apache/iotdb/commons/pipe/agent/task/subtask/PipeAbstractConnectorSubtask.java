@@ -34,15 +34,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeAbstractConnectorSubtask.class);
-
-  // To ensure that high-priority tasks can obtain object locks first, a counter is now used to save
-  // the number of high-priority tasks.
-  protected final AtomicLong highPriorityLockTaskCount = new AtomicLong(0);
 
   // For output (transfer events to the target system in connector)
   protected PipeConnector outputPipeConnector;
