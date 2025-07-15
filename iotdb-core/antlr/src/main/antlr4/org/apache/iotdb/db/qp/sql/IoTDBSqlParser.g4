@@ -64,7 +64,7 @@ ddlStatement
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
     | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode
-    | verifyConnection
+    | verifyConnection | showProcedures
     // AINode
     | showAINodes | createModel | dropModel | showModels | callInference
     // Quota
@@ -494,6 +494,11 @@ showConfigNodes
 // ---- Show AI Nodes
 showAINodes
     : SHOW AINODES
+    ;
+
+// ---- Show Procedures
+showProcedures
+    : SHOW PROCEDURES
     ;
 
 // ---- Show Cluster Id

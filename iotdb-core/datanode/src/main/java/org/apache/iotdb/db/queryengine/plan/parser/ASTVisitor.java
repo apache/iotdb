@@ -178,6 +178,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowProcedureStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
@@ -3626,6 +3627,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowAINodes(IoTDBSqlParser.ShowAINodesContext ctx) {
     return new ShowAINodesStatement();
+  }
+
+  @Override
+  public Statement visitShowProcedures(IoTDBSqlParser.ShowProceduresContext ctx) {
+    return new ShowProcedureStatement();
   }
 
   // device template

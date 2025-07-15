@@ -143,6 +143,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TProcedureInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
@@ -174,6 +175,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -2121,6 +2123,27 @@ public class ProcedureManager {
       }
     }
     return new Pair<>(-1L, false);
+  }
+
+  public List<TProcedureInfo> getProcedureInfoList() {
+    List<TProcedureInfo> procedureInfoList = new ArrayList<>();
+    ConcurrentHashMap<Long, Procedure<ConfigNodeProcedureEnv>> procedures =
+        this.getExecutor().getProcedures();
+    for (Map.Entry<Long, Procedure<ConfigNodeProcedureEnv>> procedureEntry :
+        procedures.entrySet()) {
+      TProcedureInfo procedureInfo = new TProcedureInfo();
+      Procedure<ConfigNodeProcedureEnv> procedure = procedureEntry.getValue();
+      procedureInfo.setProcId(procedureEntry.getKey());
+      procedureInfo.setStatus(procedure.getState().name());
+      procedureInfo.setSubmittedTime(procedure.getSubmittedTime());
+      procedureInfo.setLastUpdate(procedure.getLastUpdate());
+      procedureInfo.setParentProcId(procedure.getParentProcId());
+      procedureInfo.setClassName(procedure.getClass().getName());
+      procedureInfo.setState(procedure.getCurrentStateForDisplay());
+      procedureInfo.setProgress(procedure.getProgressForDisplay());
+      procedureInfoList.add(procedureInfo);
+    }
+    return procedureInfoList;
   }
 
   // ======================================================
