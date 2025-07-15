@@ -168,10 +168,10 @@ public class TsFileResource {
   private ProgressIndex maxProgressIndex;
 
   /** used to prevent circular replication in PipeConsensus */
-  private boolean isGeneratedByPipeConsensus = false;
+  private volatile boolean isGeneratedByPipeConsensus = false;
 
   /** used to prevent circular replication in Pipe */
-  private boolean isGeneratedByPipe = false;
+  private volatile boolean isGeneratedByPipe = false;
 
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
