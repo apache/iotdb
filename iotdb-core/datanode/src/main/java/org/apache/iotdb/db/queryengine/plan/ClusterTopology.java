@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
@@ -71,12 +72,18 @@ public class ClusterTopology {
     }
     final List<TRegionReplicaSet> allSets =
         input.stream().map(Map.Entry::getKey).collect(Collectors.toList());
-    final List<TRegionReplicaSet> candidates = getReachableCandidates(allSets);
+    final List<TRegionReplicaSet> candidates =
+        getReachableCandidates(
+            allSets.stream().filter(TRegionReplicaSet::isSetRegionId).collect(Collectors.toList()));
     final Map<TConsensusGroupId, TRegionReplicaSet> newMap = new HashMap<>();
     candidates.forEach(set -> newMap.put(set.getRegionId(), set));
     final Map<TRegionReplicaSet, T> candidateMap = new HashMap<>();
     for (final Map.Entry<TRegionReplicaSet, T> entry : input) {
       final TConsensusGroupId gid = entry.getKey().getRegionId();
+      if (gid == null) {
+        candidateMap.put(DataPartition.NOT_ASSIGNED, entry.getValue());
+        continue;
+      }
       final TRegionReplicaSet replicaSet = newMap.get(gid);
       if (replicaSet != null) {
         candidateMap.put(replicaSet, entry.getValue());

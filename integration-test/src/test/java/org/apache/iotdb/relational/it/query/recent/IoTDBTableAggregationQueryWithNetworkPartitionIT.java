@@ -30,6 +30,7 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -50,7 +51,7 @@ public class IoTDBTableAggregationQueryWithNetworkPartitionIT {
 
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
   private static final String IoTConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
-  private static final int testReplicationFactor = 3;
+  private static final int testReplicationFactor = 1;
   private static final long testTimePartitionInterval = 604800000;
   private static final int testDataRegionGroupPerDatabase = 4;
   protected static final String DATABASE_NAME = "test";
@@ -60,6 +61,7 @@ public class IoTDBTableAggregationQueryWithNetworkPartitionIT {
         "USE " + DATABASE_NAME,
         "CREATE TABLE table1(device STRING TAG, s1 INT32 FIELD)",
         "INSERT INTO table1 (time, device, s1) VALUES (1, 'd1', '1')",
+        "INSERT INTO table1 (time, device, s1) VALUES (-1, 'd2', '1')",
       };
 
   @BeforeClass
@@ -79,8 +81,13 @@ public class IoTDBTableAggregationQueryWithNetworkPartitionIT {
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDownAfterClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    ensureAllDataNodeRunning();
   }
 
   @Test
@@ -90,9 +97,6 @@ public class IoTDBTableAggregationQueryWithNetworkPartitionIT {
       SessionDataSet sessionDataSet =
           session.executeQueryStatement(
               "select count(s1) from table1 where device = 'd1' and time < -1 group by device");
-      while (sessionDataSet.hasNext()) {
-        sessionDataSet.next();
-      }
       Assert.assertFalse(sessionDataSet.hasNext());
     }
     EnvFactory.getEnv().shutdownAllDataNodes();
@@ -120,10 +124,63 @@ public class IoTDBTableAggregationQueryWithNetworkPartitionIT {
       SessionDataSet sessionDataSet =
           session.executeQueryStatement(
               "select count(s1) from table1 where device = 'd1' and time < -1 group by device");
+      Assert.assertFalse(sessionDataSet.hasNext());
+    }
+  }
+
+  @Test
+  public void test2() throws IoTDBConnectionException, StatementExecutionException, SQLException {
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement(
+              "select device, count(s1) from table1 where (device = 'd1' or device = 'd2') and time < -1 group by device");
+      Assert.assertFalse(sessionDataSet.hasNext());
+    }
+    EnvFactory.getEnv().shutdownAllDataNodes();
+    List<DataNodeWrapper> dataNodeWrapperList = EnvFactory.getEnv().getDataNodeWrapperList();
+    for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Collections.singletonList(dataNodeWrapper),
+              Collections.singletonList(NodeStatus.Unknown));
+    }
+
+    List<String> otherNodes = new ArrayList<>();
+    for (int i = 1; i < dataNodeWrapperList.size(); i++) {
+      EnvFactory.getEnv().startDataNode(i);
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Collections.singletonList(dataNodeWrapperList.get(i)),
+              Collections.singletonList(NodeStatus.Running));
+      DataNodeWrapper dataNodeWrapper = dataNodeWrapperList.get(i);
+      otherNodes.add(dataNodeWrapper.getIpAndPortString());
+    }
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection(otherNodes)) {
+      session.executeNonQueryStatement("use " + DATABASE_NAME);
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement(
+              "select device, count(s1) from table1 where (device = 'd1' or device = 'd2') and time <= -1 group by device");
+      int count = 0;
       while (sessionDataSet.hasNext()) {
         sessionDataSet.next();
+        count++;
       }
-      Assert.assertFalse(sessionDataSet.hasNext());
+      Assert.assertEquals(1, count);
+    }
+  }
+
+  private void ensureAllDataNodeRunning() {
+    for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      if (dataNodeWrapper.isAlive()) {
+        continue;
+      }
+      dataNodeWrapper.start();
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Collections.singletonList(dataNodeWrapper),
+              Collections.singletonList(NodeStatus.Running));
     }
   }
 }
