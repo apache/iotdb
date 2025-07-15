@@ -36,19 +36,22 @@ trap 'on_stop' SIGTERM SIGKILL SIGQUIT
 replace-conf-from-env.sh
 
 case "$1" in
-   datanode)
-       exec start-datanode.sh
-       ;;
-   confignode)
-       exec start-confignode.sh
-       ;;
-   all)
-       start-confignode.sh > /dev/null 2>&1 &
-       sleep 5
-       exec start-datanode.sh
-       ;;
-   *)
-       echo "bad parameter!"
-       exit -1
-       ;;
+    datanode)
+        exec start-datanode.sh
+        ;;
+    confignode)
+        exec start-confignode.sh
+        ;;
+    ainode)
+        exec start-ainode.sh
+        ;;
+    all)
+        start-confignode.sh > /dev/null 2>&1 &
+        sleep 5
+        exec start-datanode.sh
+        ;;
+    *)
+        echo "bad parameter!"
+        exit -1
+        ;;
 esac
