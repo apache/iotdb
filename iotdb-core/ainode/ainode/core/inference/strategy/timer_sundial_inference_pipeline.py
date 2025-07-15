@@ -19,11 +19,13 @@
 import torch
 
 from ainode.core.exception import InferenceModelInternalError
-from ainode.core.inference.strategy.abstract_strategy import AbstractStrategy
+from ainode.core.inference.strategy.abstract_inference_pipeline import (
+    AbstractInferencePipeline,
+)
 from ainode.core.model.sundial.configuration_sundial import SundialConfig
 
 
-class TimerSundialStrategy(AbstractStrategy):
+class TimerSundialInferencePipeline(AbstractInferencePipeline):
     """
     Strategy for Timer-Sundial model inference.
     """

@@ -20,7 +20,9 @@ from typing import Any
 
 import torch
 
-from ainode.core.inference.strategy.abstract_strategy import AbstractStrategy
+from ainode.core.inference.strategy.abstract_inference_pipeline import (
+    AbstractInferencePipeline,
+)
 from ainode.core.log import Logger
 
 logger = Logger()
@@ -37,7 +39,7 @@ class InferenceRequest:
         self,
         req_id: str,
         inputs: torch.Tensor,
-        strategy: AbstractStrategy,
+        inference_pipeline: AbstractInferencePipeline,
         max_new_tokens: int = 96,
         **infer_kwargs,
     ):
@@ -47,7 +49,7 @@ class InferenceRequest:
         self.req_id = req_id
         self.inputs = inputs
         self.infer_kwargs = infer_kwargs
-        self.strategy = strategy
+        self.inference_pipeline = inference_pipeline
         self.max_new_tokens = (
             max_new_tokens  # Number of time series data points to generate
         )

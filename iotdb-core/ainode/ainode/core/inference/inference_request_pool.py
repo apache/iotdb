@@ -79,7 +79,7 @@ class InferenceRequestPool(mp.Process):
             return
         request: InferenceRequest = self._waiting_queue.get()
         # TODO: Check memory size before activating requests
-        request.inputs = request.strategy.preprocess_inputs(request.inputs)
+        request.inputs = request.inference_pipeline.preprocess_inputs(request.inputs)
         request.mark_running()
         logger.debug(
             f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is activated with inputs shape {request.inputs.shape}"
@@ -104,9 +104,9 @@ class InferenceRequestPool(mp.Process):
             revin=True,
         )
         request.write_step_output(output[0].mean(dim=0))
-        request.strategy.post_decode()
+        request.inference_pipeline.post_decode()
         if request.is_finished():
-            request.strategy.post_inference()
+            request.inference_pipeline.post_inference()
             logger.debug(
                 f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is finished"
             )

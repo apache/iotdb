@@ -37,7 +37,9 @@ from ainode.core.inference.inference_request import (
     InferenceRequestProxy,
 )
 from ainode.core.inference.inference_request_pool import InferenceRequestPool
-from ainode.core.inference.strategy.timer_sundial_strategy import TimerSundialStrategy
+from ainode.core.inference.strategy.timer_sundial_inference_pipeline import (
+    TimerSundialInferencePipeline,
+)
 from ainode.core.inference.utils import _generate_req_id
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
@@ -225,7 +227,7 @@ class InferenceManager:
                 infer_req = InferenceRequest(
                     req_id=_generate_req_id(),
                     inputs=inputs,
-                    strategy=TimerSundialStrategy(SundialConfig()),
+                    inference_pipeline=TimerSundialInferencePipeline(SundialConfig()),
                     max_new_tokens=inference_attrs.get("predict_length", 96),
                 )
                 infer_proxy = InferenceRequestProxy(infer_req.req_id)

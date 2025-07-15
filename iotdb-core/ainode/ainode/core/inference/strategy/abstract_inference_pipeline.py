@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 import torch
 
 
-class AbstractStrategy(ABC):
+class AbstractInferencePipeline(ABC):
     """
     Abstract assistance strategy class for model inference.
     This class shall define the interface process for specific model.
