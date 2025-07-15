@@ -36,6 +36,8 @@ class BuiltInModelType(Enum):
     TIMER_XL = "Timer-XL"
     # sundial
     SUNDIAL = "Timer-Sundial"
+    # google timesfm
+    TIMESFM = "TimesFM"
 
     @classmethod
     def values(cls) -> List[str]:
@@ -87,6 +89,7 @@ class ModelInfo:
 TIMER_REPO_ID = {
     BuiltInModelType.TIMER_XL: "thuml/timer-base-84m",
     BuiltInModelType.SUNDIAL: "thuml/sundial-base-128m",
+    BuiltInModelType.TIMESFM: "google/timesfm-2.0-500m-pytorch",
 }
 
 # Built-in machine learning models, they can be employed directly
@@ -157,4 +160,10 @@ BUILT_IN_LTSM_MAP = {
         category=ModelCategory.BUILT_IN,
         state=ModelStates.LOADING,
     ),
+    "timesfm": ModelInfo(
+        model_id="timesfm",
+        model_type=BuiltInModelType.TIMESFM.value,
+        category=ModelCategory.BUILT_IN,
+        state=ModelStates.LOADING,
+    )
 }

@@ -47,6 +47,7 @@ from ainode.core.log import Logger
 from ainode.core.model.model_info import TIMER_REPO_ID, BuiltInModelType
 from ainode.core.model.sundial import modeling_sundial
 from ainode.core.model.timerxl import modeling_timer
+from ainode.core.model.timesfm import modeling_timesfm
 
 logger = Logger()
 
@@ -118,6 +119,8 @@ def get_model_attributes(model_type: BuiltInModelType):
         attribute_map = timerxl_attribute_map
     elif model_type == BuiltInModelType.SUNDIAL:
         attribute_map = sundial_attribute_map
+    elif model_type == BuiltInModelType.TIME_SFM:
+        attribute_map = timesfm_attribute_map
     else:
         raise BuiltInModelNotSupportError(model_type.value)
     return attribute_map
@@ -160,6 +163,8 @@ def fetch_built_in_model(
         model = modeling_timer.TimerForPrediction.from_pretrained(model_dir)
     elif model_type == BuiltInModelType.SUNDIAL:
         model = modeling_sundial.SundialForPrediction.from_pretrained(model_dir)
+    elif model_type == BuiltInModelType.TIMESFM:
+        model = modeling_timesfm.TimesFmForPrediction.from_pretrained(model_dir)
     else:
         raise BuiltInModelNotSupportError(model_type.value)
 
@@ -570,6 +575,168 @@ timerxl_attribute_map = {
             AINodeDescriptor().get_config().get_ain_models_dir(),
             "weights",
             "timerxl",
+            "model.safetensors",
+        ),
+        value_choices=[""],
+    ),
+}
+
+timesfm_attribute_map = {
+    AttributeName.PATCH_LENGTH.value: IntAttribute(
+        name=AttributeName.PATCH_LENGTH.value,
+        default_value=32,
+        default_low=1,
+        default_high=256,
+    ),
+
+    AttributeName.CONTEXT_LENGTH.value: IntAttribute(
+        name=AttributeName.CONTEXT_LENGTH.value,
+        default_value=2048,
+        default_low=32,
+        default_high=8192,
+    ),
+    
+    AttributeName.HORIZON_LENGTH.value: IntAttribute(
+        name=AttributeName.HORIZON_LENGTH.value,
+        default_value=128,
+        default_low=1,
+        default_high=1024,
+    ),
+    
+    AttributeName.HIDDEN_SIZE.value: IntAttribute(
+        name=AttributeName.HIDDEN_SIZE.value,
+        default_value=1280,
+        default_low=128,
+        default_high=4096,
+    ),
+    
+    AttributeName.INTERMEDIATE_SIZE.value: IntAttribute(
+        name=AttributeName.INTERMEDIATE_SIZE.value,
+        default_value=1280,
+        default_low=128,
+        default_high=8192,
+    ),
+    
+    AttributeName.NUM_HIDDEN_LAYERS.value: IntAttribute(
+        name=AttributeName.NUM_HIDDEN_LAYERS.value,
+        default_value=50,
+        default_low=1,
+        default_high=100,
+    ),
+    
+    AttributeName.NUM_ATTENTION_HEADS.value: IntAttribute(
+        name=AttributeName.NUM_ATTENTION_HEADS.value,
+        default_value=16,
+        default_low=1,
+        default_high=64,
+    ),
+    
+    AttributeName.HEAD_DIM.value: IntAttribute(
+        name=AttributeName.HEAD_DIM.value,
+        default_value=80,
+        default_low=32,
+        default_high=256,
+    ),
+    
+    AttributeName.FREQ_SIZE.value: IntAttribute(
+        name=AttributeName.FREQ_SIZE.value,
+        default_value=3,
+        default_low=1,
+        default_high=10,
+    ),
+    
+    AttributeName.USE_POSITIONAL_EMBEDDING.value: BooleanAttribute(
+        name=AttributeName.USE_POSITIONAL_EMBEDDING.value,
+        default_value=False,
+    ),
+    
+    AttributeName.MIN_TIMESCALE.value: IntAttribute(
+        name=AttributeName.MIN_TIMESCALE.value,
+        default_value=1,
+        default_low=1,
+        default_high=100,
+    ),
+    
+    AttributeName.MAX_TIMESCALE.value: IntAttribute(
+        name=AttributeName.MAX_TIMESCALE.value,
+        default_value=10000,
+        default_low=1000,
+        default_high=100000,
+    ),
+    
+    AttributeName.ATTENTION_DROPOUT.value: FloatAttribute(
+        name=AttributeName.ATTENTION_DROPOUT.value,
+        default_value=0.0,
+        default_low=0.0,
+        default_high=0.5,
+    ),
+    
+    AttributeName.INITIALIZER_RANGE.value: FloatAttribute(
+        name=AttributeName.INITIALIZER_RANGE.value,
+        default_value=0.02,
+        default_low=0.001,
+        default_high=0.1,
+    ),
+    
+    AttributeName.RMS_NORM_EPS.value: FloatAttribute(
+        name=AttributeName.RMS_NORM_EPS.value,
+        default_value=1e-06,
+        default_low=1e-10,
+        default_high=1e-03,
+    ),
+    
+    AttributeName.PAD_VAL.value: FloatAttribute(
+        name=AttributeName.PAD_VAL.value,
+        default_value=1123581321.0,
+        default_low=0.0,
+        default_high=1e12,
+    ),
+    
+    AttributeName.TOLERANCE.value: FloatAttribute(
+        name=AttributeName.TOLERANCE.value,
+        default_value=1e-06,
+        default_low=1e-10,
+        default_high=1e-03,
+    ),
+    
+    AttributeName.QUANTILES.value: ListAttribute(
+        name=AttributeName.QUANTILES.value,
+        default_value=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+        value_type=float
+    ),
+    
+    AttributeName.INPUT_TOKEN_LEN.value: IntAttribute(
+        name=AttributeName.INPUT_TOKEN_LEN.value,
+        default_value=32, 
+        default_low=1,
+        default_high=256,
+    ),
+    
+    AttributeName.OUTPUT_TOKEN_LENS.value: ListAttribute(
+        name=AttributeName.OUTPUT_TOKEN_LENS.value,
+        default_value=[128],  
+        value_type=int
+    ),
+    
+    AttributeName.MAX_POSITION_EMBEDDINGS.value: IntAttribute(
+        name=AttributeName.MAX_POSITION_EMBEDDINGS.value,
+        default_value=2048,  
+        default_low=32,
+        default_high=8192,
+    ),
+    
+    AttributeName.USE_CACHE.value: BooleanAttribute(
+        name=AttributeName.USE_CACHE.value,
+        default_value=True,
+    ),
+    
+    AttributeName.CKPT_PATH.value: StringAttribute(
+        name=AttributeName.CKPT_PATH.value,
+        default_value=os.path.join(
+            os.getcwd(),
+            AINodeDescriptor().get_config().get_ain_models_dir(),
+            "weights",
+            "timesfm",
             "model.safetensors",
         ),
         value_choices=[""],
