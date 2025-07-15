@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -441,6 +442,10 @@ public abstract class EnrichedEvent implements Event {
 
   public CommitterKey getCommitterKey() {
     return committerKey;
+  }
+
+  public boolean hasMultipleCommitIds() {
+    return false;
   }
 
   public long getCommitId() {

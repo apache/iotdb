@@ -20,14 +20,13 @@
 package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.session.IClientSession;
-import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
@@ -40,7 +39,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.ZoneId;
 import java.util.Optional;
 
 public class LoadTsFileDataTypeConverter {
@@ -55,6 +53,7 @@ public class LoadTsFileDataTypeConverter {
       STATEMENT_EXCEPTION_VISITOR = new LoadConvertedInsertTabletStatementExceptionVisitor();
 
   private final boolean isGeneratedByPipe;
+  private final MPPQueryContext context;
 
   private final SqlParser relationalSqlParser = new SqlParser();
   private final LoadTableStatementDataTypeConvertExecutionVisitor
@@ -64,7 +63,9 @@ public class LoadTsFileDataTypeConverter {
       treeStatementDataTypeConvertExecutionVisitor =
           new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
 
-  public LoadTsFileDataTypeConverter(final boolean isGeneratedByPipe) {
+  public LoadTsFileDataTypeConverter(
+      final MPPQueryContext context, final boolean isGeneratedByPipe) {
+    this.context = context;
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
@@ -113,6 +114,7 @@ public class LoadTsFileDataTypeConverter {
   }
 
   public Optional<TSStatus> convertForTreeModel(final LoadTsFileStatement loadTsFileTreeStatement) {
+    DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     try {
       return loadTsFileTreeStatement.accept(treeStatementDataTypeConvertExecutionVisitor, null);
     } catch (Exception e) {
@@ -120,36 +122,24 @@ public class LoadTsFileDataTypeConverter {
           "Failed to convert data types for tree model statement {}.", loadTsFileTreeStatement, e);
       return Optional.of(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+    } finally {
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
     }
   }
 
   private TSStatus executeForTreeModel(final Statement statement) {
-    final IClientSession session =
-        new InternalClientSession(
-            String.format(
-                "%s_%s",
-                LoadTsFileDataTypeConverter.class.getSimpleName(),
-                Thread.currentThread().getName()));
-    session.setUsername(AuthorityChecker.SUPER_USER);
-    session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-    session.setZoneId(ZoneId.systemDefault());
-
-    SESSION_MANAGER.registerSession(session);
-    try {
-      return Coordinator.getInstance()
-          .executeForTreeModel(
-              isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
-              SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfo(session),
-              "",
-              ClusterPartitionFetcher.getInstance(),
-              ClusterSchemaFetcher.getInstance(),
-              IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-              false)
-          .status;
-    } finally {
-      SESSION_MANAGER.removeCurrSession();
-    }
+    return Coordinator.getInstance()
+        .executeForTreeModel(
+            isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
+            SESSION_MANAGER.requestQueryId(),
+            SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+            "",
+            ClusterPartitionFetcher.getInstance(),
+            ClusterSchemaFetcher.getInstance(),
+            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+            false)
+        .status;
   }
 
   public boolean isSuccessful(final TSStatus status) {

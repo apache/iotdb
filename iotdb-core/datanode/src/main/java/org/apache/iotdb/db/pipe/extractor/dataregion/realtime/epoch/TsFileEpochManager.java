@@ -57,7 +57,7 @@ public class TsFileEpochManager {
         filePath,
         path -> {
           LOGGER.info("TsFileEpoch not found for TsFile {}, creating a new one", path);
-          return new TsFileEpoch(path);
+          return new TsFileEpoch(resource);
         });
 
     final TsFileEpoch epoch = filePath2Epoch.remove(filePath);
@@ -76,7 +76,7 @@ public class TsFileEpochManager {
   public PipeRealtimeEvent bindPipeInsertNodeTabletInsertionEvent(
       PipeInsertNodeTabletInsertionEvent event, InsertNode node, TsFileResource resource) {
     final TsFileEpoch epoch =
-        filePath2Epoch.computeIfAbsent(resource.getTsFilePath(), TsFileEpoch::new);
+        filePath2Epoch.computeIfAbsent(resource.getTsFilePath(), k -> new TsFileEpoch(resource));
     epoch.updateInsertNodeMinTime(node.getMinTime());
     return new PipeRealtimeEvent(
         event,

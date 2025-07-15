@@ -40,6 +40,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -821,6 +822,7 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  @Ignore("Load with conversion is currently banned")
   public void testLoadWithConvertOnTypeMismatchForTreeModel() throws Exception {
 
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =

@@ -30,17 +30,23 @@ import com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public abstract class PipeSubtaskExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskExecutor.class);
 
-  private static final ExecutorService subtaskCallbackListeningExecutor =
+  private static final ExecutorService globalSubtaskCallbackListeningExecutor =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
           ThreadName.PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL.getName());
+
+  private final ExecutorService subtaskCallbackListeningExecutor;
 
   protected final WrappedThreadPoolExecutor underlyingThreadPool;
   protected final ListeningExecutorService subtaskWorkerThreadPoolExecutor;
@@ -49,16 +55,38 @@ public abstract class PipeSubtaskExecutor {
 
   private final int corePoolSize;
   private int runningSubtaskNumber;
+  private final String workingThreadName;
+  private final String callbackThreadName;
 
   protected PipeSubtaskExecutor(
-      final int corePoolSize, final ThreadName threadName, final boolean disableLogInThreadPool) {
+      final int corePoolSize,
+      final String workingThreadName,
+      final boolean disableLogInThreadPool) {
+    this(corePoolSize, workingThreadName, null, disableLogInThreadPool);
+  }
+
+  protected PipeSubtaskExecutor(
+      final int corePoolSize,
+      final String workingThreadName,
+      final @Nullable String callbackThreadName,
+      final boolean disableLogInThreadPool) {
+    this.workingThreadName = workingThreadName;
+    this.callbackThreadName =
+        Objects.nonNull(callbackThreadName)
+            ? callbackThreadName
+            : ThreadName.PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL.getName();
     underlyingThreadPool =
         (WrappedThreadPoolExecutor)
-            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, threadName.getName());
+            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, workingThreadName);
     if (disableLogInThreadPool) {
       underlyingThreadPool.disableErrorLog();
     }
     subtaskWorkerThreadPoolExecutor = MoreExecutors.listeningDecorator(underlyingThreadPool);
+    subtaskCallbackListeningExecutor =
+        Objects.nonNull(callbackThreadName)
+            ? IoTDBThreadPoolFactory.newSingleThreadExecutor(
+                callbackThreadName, new ThreadPoolExecutor.DiscardPolicy())
+            : globalSubtaskCallbackListeningExecutor;
 
     registeredIdSubtaskMapper = new ConcurrentHashMap<>();
 
@@ -151,6 +179,9 @@ public abstract class PipeSubtaskExecutor {
     }
 
     subtaskWorkerThreadPoolExecutor.shutdown();
+    if (subtaskCallbackListeningExecutor != globalSubtaskCallbackListeningExecutor) {
+      subtaskCallbackListeningExecutor.shutdown();
+    }
   }
 
   public final boolean isShutdown() {
@@ -171,7 +202,11 @@ public abstract class PipeSubtaskExecutor {
     // return getAvailableThreadCount() > 0;
   }
 
-  private int getAvailableThreadCount() {
-    return underlyingThreadPool.getCorePoolSize() - underlyingThreadPool.getActiveCount();
+  public String getWorkingThreadName() {
+    return workingThreadName;
+  }
+
+  public String getCallbackThreadName() {
+    return callbackThreadName;
   }
 }

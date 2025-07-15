@@ -314,7 +314,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
     final InsertNode insertNode =
-        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+        pipeInsertNodeTabletInsertionEvent.getInsertNode();
     final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
     final TPipeConsensusTransferReq pipeConsensusTransferReq =
         Objects.isNull(insertNode)

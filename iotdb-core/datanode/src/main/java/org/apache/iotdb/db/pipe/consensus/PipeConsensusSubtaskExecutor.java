@@ -22,11 +22,15 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class PipeConsensusSubtaskExecutor extends PipeConnectorSubtaskExecutor {
+
+  private static final AtomicInteger id = new AtomicInteger(0);
 
   public PipeConsensusSubtaskExecutor() {
     super(
         PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
-        ThreadName.PIPE_CONSENSUS_EXECUTOR_POOL);
+        ThreadName.PIPE_CONSENSUS_EXECUTOR_POOL + "-" + id.getAndIncrement());
   }
 }
