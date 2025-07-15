@@ -51,7 +51,7 @@ public class IoTDBTableAggregationQueryWithNetworkPartitionIT {
 
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
   private static final String IoTConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
-  private static final int testReplicationFactor = 1;
+  private static final int testReplicationFactor = 3;
   private static final long testTimePartitionInterval = 604800000;
   private static final int testDataRegionGroupPerDatabase = 4;
   protected static final String DATABASE_NAME = "test";
