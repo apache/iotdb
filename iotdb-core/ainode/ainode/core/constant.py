@@ -21,6 +21,8 @@ import os
 from enum import Enum
 from typing import List
 
+from ainode.thrift.common.ttypes import TEndPoint
+
 AINODE_CONF_DIRECTORY_NAME = "conf"
 AINODE_ROOT_CONF_DIRECTORY_NAME = "conf"
 AINODE_CONF_FILE_NAME = "iotdb-ainode.properties"
@@ -30,6 +32,7 @@ AINODE_SYSTEM_FILE_NAME = "system.properties"
 # inference_rpc_address
 AINODE_INFERENCE_RPC_ADDRESS = "127.0.0.1"
 AINODE_INFERENCE_RPC_PORT = 10810
+# AINode folder structure
 AINODE_MODELS_DIR = "data/ainode/models"
 AINODE_BUILTIN_MODELS_DIR = "data/ainode/models/weights"  # For built-in models, we only need to store their weights and config.
 AINODE_SYSTEM_DIR = "data/ainode/system"
@@ -42,6 +45,13 @@ AINODE_BUILD_INFO = "UNKNOWN"
 AINODE_ROOT_DIR = os.path.dirname(
     os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 )
+# connect IoTDB cluster
+AINODE_CLUSTER_INGRESS_ADDRESS = "127.0.0.1"
+AINODE_CLUSTER_INGRESS_PORT = 6667
+AINODE_CLUSTER_INGRESS_USERNAME = "root"
+AINODE_CLUSTER_INGRESS_PASSWORD = "root"
+AINODE_CLUSTER_INGRESS_TIME_ZONE = "UTC+8"
+AINODE_TARGET_CONFIG_NODE_LIST = TEndPoint("127.0.0.1", 10710)
 
 # AINode log
 AINODE_LOG_FILE_NAMES = [
@@ -55,6 +65,8 @@ AINODE_LOG_FILE_LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING, logging.
 TRIAL_ID_PREFIX = "__trial_"
 DEFAULT_TRIAL_ID = TRIAL_ID_PREFIX + "0"
 
+MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"
+MODEL_CONFIG_FILE_IN_JSON = "config.json"
 DEFAULT_MODEL_FILE_NAME = "model.pt"
 DEFAULT_CONFIG_FILE_NAME = "config.yaml"
 DEFAULT_CHUNK_SIZE = 8192
@@ -63,12 +75,6 @@ DEFAULT_RECONNECT_TIMEOUT = 20
 DEFAULT_RECONNECT_TIMES = 3
 
 STD_LEVEL = logging.INFO
-
-
-TIMER_REPO_ID = {
-    "_timerxl": "thuml/timer-base-84m",
-    "_sundial": "thuml/sundial-base-128m",
-}
 
 
 class TSStatusCode(Enum):
@@ -142,43 +148,6 @@ class ModelInputName(Enum):
     TIME_STAMP_X = "time_stamp_x"
     TIME_STAMP_Y = "time_stamp_y"
     DEC_INP = "dec_inp"
-
-
-class BuiltInModelType(Enum):
-    # forecast models
-    ARIMA = "_arima"
-    HOLTWINTERS = "_holtwinters"
-    EXPONENTIAL_SMOOTHING = "_exponentialsmoothing"
-    NAIVE_FORECASTER = "_naiveforecaster"
-    STL_FORECASTER = "_stlforecaster"
-
-    # anomaly detection models
-    GAUSSIAN_HMM = "_gaussianhmm"
-    GMM_HMM = "_gmmhmm"
-    STRAY = "_stray"
-
-    # timerxl
-    TIMER_XL = "_timerxl"
-
-    # sundial
-    SUNDIAL = "_sundial"
-
-    @classmethod
-    def values(cls) -> List[str]:
-        values = []
-        for item in list(cls):
-            values.append(item.value)
-        return values
-
-    @staticmethod
-    def is_built_in_model(model_id: str) -> bool:
-        """
-        Check if the model ID corresponds to a built-in model.
-        """
-        # TODO: Unify this ugly hard code
-        if "timerxl" in model_id or "sundial" in model_id:
-            return True
-        return model_id in BuiltInModelType.values()
 
 
 class AttributeName(Enum):

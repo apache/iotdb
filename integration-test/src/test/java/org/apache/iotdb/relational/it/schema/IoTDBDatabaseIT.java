@@ -56,6 +56,8 @@ public class IoTDBDatabaseIT {
 
   @Before
   public void setUp() throws Exception {
+    // enable subscription
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSubscriptionEnabled(true);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -571,19 +573,6 @@ public class IoTDBDatabaseIT {
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "select model_id from information_schema.models where model_type = 'BUILT_IN_FORECAST'"),
-          "model_id,",
-          new HashSet<>(
-              Arrays.asList(
-                  "_STLForecaster,",
-                  "_NaiveForecaster,",
-                  "_sundial,",
-                  "_HoltWinters,",
-                  "_ExponentialSmoothing,",
-                  "_ARIMA,")));
-
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery(
               "select distinct(function_type) from information_schema.functions"),
           "function_type,",
           new HashSet<>(
@@ -596,7 +585,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery(
               "select * from information_schema.keywords where reserved > 0 limit 1"),
           "word,reserved,",
-          Collections.singleton("AINODES,1,"));
+          Collections.singleton("AINODE,1,"));
     }
 
     try (final Connection connection =
@@ -696,19 +685,6 @@ public class IoTDBDatabaseIT {
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "select model_id from information_schema.models where model_type = 'BUILT_IN_FORECAST'"),
-          "model_id,",
-          new HashSet<>(
-              Arrays.asList(
-                  "_sundial,",
-                  "_STLForecaster,",
-                  "_NaiveForecaster,",
-                  "_HoltWinters,",
-                  "_ARIMA,",
-                  "_ExponentialSmoothing,")));
-
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery(
               "select distinct(function_type) from information_schema.functions"),
           "function_type,",
           new HashSet<>(
@@ -727,7 +703,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery(
               "select * from information_schema.keywords where reserved > 0 limit 1"),
           "word,reserved,",
-          Collections.singleton("AINODES,1,"));
+          Collections.singleton("AINODE,1,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select distinct(status) from information_schema.nodes"),

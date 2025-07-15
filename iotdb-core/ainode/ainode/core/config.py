@@ -20,6 +20,11 @@ import os
 from ainode.core.constant import (
     AINODE_BUILD_INFO,
     AINODE_BUILTIN_MODELS_DIR,
+    AINODE_CLUSTER_INGRESS_ADDRESS,
+    AINODE_CLUSTER_INGRESS_PASSWORD,
+    AINODE_CLUSTER_INGRESS_PORT,
+    AINODE_CLUSTER_INGRESS_TIME_ZONE,
+    AINODE_CLUSTER_INGRESS_USERNAME,
     AINODE_CLUSTER_NAME,
     AINODE_CONF_DIRECTORY_NAME,
     AINODE_CONF_FILE_NAME,
@@ -33,6 +38,7 @@ from ainode.core.constant import (
     AINODE_ROOT_DIR,
     AINODE_SYSTEM_DIR,
     AINODE_SYSTEM_FILE_NAME,
+    AINODE_TARGET_CONFIG_NODE_LIST,
     AINODE_THRIFT_COMPRESSION_ENABLED,
     AINODE_VERSION_INFO,
 )
@@ -68,11 +74,18 @@ class AINodeConfig(object):
         self._ain_model_storage_cache_size = 30
 
         # Target ConfigNode to be connected by AINode
-        self._ain_target_config_node_list: TEndPoint = TEndPoint("127.0.0.1", 10710)
+        self._ain_target_config_node_list: TEndPoint = AINODE_TARGET_CONFIG_NODE_LIST
 
         # use for node management
         self._ainode_id = 0
         self._cluster_name = AINODE_CLUSTER_NAME
+
+        # connect IoTDB cluster
+        self._ain_cluster_ingress_address = AINODE_CLUSTER_INGRESS_ADDRESS
+        self._ain_cluster_ingress_port = AINODE_CLUSTER_INGRESS_PORT
+        self._ain_cluster_ingress_username = AINODE_CLUSTER_INGRESS_USERNAME
+        self._ain_cluster_ingress_password = AINODE_CLUSTER_INGRESS_PASSWORD
+        self._ain_cluster_ingress_time_zone = AINODE_CLUSTER_INGRESS_TIME_ZONE
 
         self._version_info = AINODE_VERSION_INFO
         self._build_info = AINODE_BUILD_INFO
@@ -162,6 +175,42 @@ class AINodeConfig(object):
             ain_target_config_node_list
         )
 
+    def get_ain_cluster_ingress_address(self) -> str:
+        return self._ain_cluster_ingress_address
+
+    def set_ain_cluster_ingress_address(self, ain_cluster_ingress_address: str) -> None:
+        self._ain_cluster_ingress_address = ain_cluster_ingress_address
+
+    def get_ain_cluster_ingress_port(self) -> int:
+        return self._ain_cluster_ingress_port
+
+    def set_ain_cluster_ingress_port(self, ain_cluster_ingress_port: int) -> None:
+        self._ain_cluster_ingress_port = ain_cluster_ingress_port
+
+    def get_ain_cluster_ingress_username(self) -> str:
+        return self._ain_cluster_ingress_username
+
+    def set_ain_cluster_ingress_username(
+        self, ain_cluster_ingress_username: str
+    ) -> None:
+        self._ain_cluster_ingress_username = ain_cluster_ingress_username
+
+    def get_ain_cluster_ingress_password(self) -> str:
+        return self._ain_cluster_ingress_password
+
+    def set_ain_cluster_ingress_password(
+        self, ain_cluster_ingress_password: str
+    ) -> None:
+        self._ain_cluster_ingress_password = ain_cluster_ingress_password
+
+    def get_ain_cluster_ingress_time_zone(self) -> str:
+        return self._ain_cluster_ingress_time_zone
+
+    def set_ain_cluster_ingress_time_zone(
+        self, ain_cluster_ingress_time_zone: str
+    ) -> None:
+        self._ain_cluster_ingress_time_zone = ain_cluster_ingress_time_zone
+
 
 @singleton
 class AINodeDescriptor(object):
@@ -246,8 +295,30 @@ class AINodeDescriptor(object):
             if "ain_logs_dir" in config_keys:
                 log_dir = file_configs["ain_logs_dir"]
                 self._config.set_ain_logs_dir(log_dir)
-                Logger(log_dir=log_dir).info(
-                    f"Successfully load config from {conf_file}."
+
+            if "ain_cluster_ingress_address" in config_keys:
+                self._config.set_ain_cluster_ingress_address(
+                    file_configs["ain_cluster_ingress_address"]
+                )
+
+            if "ain_cluster_ingress_port" in config_keys:
+                self._config.set_ain_cluster_ingress_port(
+                    int(file_configs["ain_cluster_ingress_port"])
+                )
+
+            if "ain_cluster_ingress_username" in config_keys:
+                self._config.set_ain_cluster_ingress_username(
+                    file_configs["ain_cluster_ingress_username"]
+                )
+
+            if "ain_cluster_ingress_password" in config_keys:
+                self._config.set_ain_cluster_ingress_password(
+                    file_configs["ain_cluster_ingress_password"]
+                )
+
+            if "ain_cluster_ingress_time_zone" in config_keys:
+                self._config.set_ain_cluster_ingress_time_zone(
+                    file_configs["ain_cluster_ingress_time_zone"]
                 )
 
         except BadNodeUrlError:

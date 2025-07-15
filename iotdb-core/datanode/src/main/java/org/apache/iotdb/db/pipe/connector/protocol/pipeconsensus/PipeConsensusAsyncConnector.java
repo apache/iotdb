@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.client.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
-import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -39,7 +38,6 @@ import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusDeleteEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletInsertNodeEventHandler;
@@ -48,6 +46,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusDeleteNodeReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.metric.PipeConsensusConnectorMetrics;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -726,16 +725,12 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
   }
 
   @Override
-  public long getConsensusPipeCommitProgress() {
-    return PipeEventCommitManager.getInstance()
-        .getGivenConsensusPipeCommitId(
-            consensusPipeName,
-            PipeDataNodeAgent.task().getPipeCreationTime(consensusPipeName),
-            consensusGroupId);
+  public long getLeaderReplicateProgress() {
+    return ReplicateProgressDataNodeManager.getReplicateIndexForIoTV2(consensusPipeName);
   }
 
   @Override
-  public long getConsensusPipeReplicateProgress() {
+  public long getFollowerApplyProgress() {
     return currentReplicateProgress;
   }
 

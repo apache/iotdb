@@ -37,7 +37,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionLogExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionTsFileExtractor;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -341,15 +341,19 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
             EXTRACTOR_END_TIME_KEY)
         && parameters.hasAnyAttributes(
             EXTRACTOR_HISTORY_ENABLE_KEY,
-            EXTRACTOR_REALTIME_ENABLE_KEY,
             SOURCE_HISTORY_ENABLE_KEY,
-            SOURCE_REALTIME_ENABLE_KEY)) {
+            SOURCE_HISTORY_START_TIME_KEY,
+            EXTRACTOR_HISTORY_START_TIME_KEY,
+            SOURCE_HISTORY_END_TIME_KEY,
+            EXTRACTOR_HISTORY_END_TIME_KEY)) {
       LOGGER.warn(
-          "When {}, {}, {} or {} is specified, specifying {}, {}, {} and {} is invalid.",
+          "When {}, {}, {} or {} is specified, specifying {}, {}, {}, {}, {} and {} is invalid.",
           SOURCE_START_TIME_KEY,
           EXTRACTOR_START_TIME_KEY,
           SOURCE_END_TIME_KEY,
           EXTRACTOR_END_TIME_KEY,
+          SOURCE_HISTORY_ENABLE_KEY,
+          EXTRACTOR_HISTORY_ENABLE_KEY,
           SOURCE_HISTORY_START_TIME_KEY,
           EXTRACTOR_HISTORY_START_TIME_KEY,
           SOURCE_HISTORY_END_TIME_KEY,
@@ -582,7 +586,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     // register metric after generating taskID
     PipeDataRegionExtractorMetrics.getInstance().register(this);
     PipeTsFileToTabletsMetrics.getInstance().register(this);
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().register(this);
+    PipeDataNodeSinglePipeMetrics.getInstance().register(this);
   }
 
   @Override

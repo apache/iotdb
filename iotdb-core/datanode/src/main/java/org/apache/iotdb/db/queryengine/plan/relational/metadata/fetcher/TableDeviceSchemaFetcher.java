@@ -147,7 +147,10 @@ public class TableDeviceSchemaFetcher {
           throw AsyncSendPlanNodeHandler.needRetry(e)
               ? new IoTDBRuntimeException(
                   e.getCause(), TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode())
-              : new RuntimeException("Fetch Table Device Schema failed. ", e);
+              : new IoTDBRuntimeException(
+                  String.format("Fetch Table Device Schema failed because %s", e.getMessage()),
+                  e.getErrorCode(),
+                  e.isUserException());
         }
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           break;
@@ -304,24 +307,33 @@ public class TableDeviceSchemaFetcher {
               index2FilterMapList.size()
                   - tagSingleMatchIndexList.size()
                   + tagSingleMatchPredicateNotInCache.size());
-      int idx1 = 0;
-      int idx2 = 0;
-      for (int i = 0; i < index2FilterMapList.size(); i++) {
-        if (idx1 >= tagSingleMatchIndexList.size() || i != tagSingleMatchIndexList.get(idx1)) {
-          tagPredicateForFetch.add(
-              index2FilterMapList.get(i).values().stream()
-                  .flatMap(Collection::stream)
-                  .collect(Collectors.toList()));
-        } else {
-          idx1++;
-          if (idx2 >= tagSingleMatchPredicateNotInCache.size()
-              || i == tagSingleMatchPredicateNotInCache.get(idx2)) {
+      if (!isDirectDeviceQuery) {
+        int idx1 = 0;
+        int idx2 = 0;
+        for (int i = 0; i < index2FilterMapList.size(); i++) {
+          if (idx1 >= tagSingleMatchIndexList.size() || i != tagSingleMatchIndexList.get(idx1)) {
             tagPredicateForFetch.add(
                 index2FilterMapList.get(i).values().stream()
                     .flatMap(Collection::stream)
                     .collect(Collectors.toList()));
-            idx2++;
+          } else {
+            idx1++;
+            if (idx2 < tagSingleMatchPredicateNotInCache.size()
+                && i == tagSingleMatchPredicateNotInCache.get(idx2)) {
+              tagPredicateForFetch.add(
+                  index2FilterMapList.get(i).values().stream()
+                      .flatMap(Collection::stream)
+                      .collect(Collectors.toList()));
+              idx2++;
+            }
           }
+        }
+      } else {
+        for (Map<Integer, List<SchemaFilter>> integerListMap : index2FilterMapList) {
+          tagPredicateForFetch.add(
+              integerListMap.values().stream()
+                  .flatMap(Collection::stream)
+                  .collect(Collectors.toList()));
         }
       }
       statement.setTagDeterminedFilterList(tagPredicateForFetch);
@@ -476,16 +488,16 @@ public class TableDeviceSchemaFetcher {
                   : mppQueryContext.getSession(),
               String.format(
                   "fetch device for query %s : %s",
-                  mppQueryContext.getQueryId(), mppQueryContext.getSql()),
+                  mppQueryContext == null ? "unknown" : mppQueryContext.getQueryId(),
+                  mppQueryContext == null ? "unknown" : mppQueryContext.getSql()),
               LocalExecutionPlanner.getInstance().metadata,
               mppQueryContext.getTimeOut()
                   - (System.currentTimeMillis() - mppQueryContext.getStartTime()),
               false);
 
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException(
-            new IoTDBException(
-                executionResult.status.getMessage(), executionResult.status.getCode()));
+        throw new IoTDBRuntimeException(
+            executionResult.status.getMessage(), executionResult.status.getCode());
       }
 
       final List<ColumnHeader> columnHeaderList =
@@ -497,7 +509,10 @@ public class TableDeviceSchemaFetcher {
           tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
         } catch (final IoTDBException e) {
           t = e;
-          throw new RuntimeException("Fetch Table Device Schema failed. ", e);
+          throw new IoTDBRuntimeException(
+              String.format("Fetch Table Device Schema failed because %s", e.getMessage()),
+              e.getErrorCode(),
+              e.isUserException());
         }
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           break;

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.connector.limiter.TsFileSendRateLimiter;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
@@ -34,11 +35,14 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -51,7 +55,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Objects;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_ENABLE_SEND_TSFILE_LIMIT;
 
 @TreeModel
 @TableModel
@@ -59,6 +68,20 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBDataRegionAirGapConnector.class);
+
+  private boolean enableSendTsFileLimit;
+
+  @Override
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
+      throws Exception {
+    super.customize(parameters, configuration);
+
+    enableSendTsFileLimit =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(SINK_ENABLE_SEND_TSFILE_LIMIT, CONNECTOR_ENABLE_SEND_TSFILE_LIMIT),
+            CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE);
+  }
 
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
@@ -353,6 +376,14 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       } else {
         LOGGER.info("Successfully transferred file {}.", tsFile);
       }
+    }
+  }
+
+  @Override
+  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
+    PipeResourceMetrics.getInstance().recordDiskIO(requiredBytes);
+    if (enableSendTsFileLimit) {
+      TsFileSendRateLimiter.getInstance().acquire(requiredBytes);
     }
   }
 

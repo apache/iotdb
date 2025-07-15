@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.agent.task;
 
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -49,10 +51,13 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
@@ -63,10 +68,10 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.thrift.TException;
@@ -322,13 +327,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   protected void thawRate(final String pipeName, final long creationTime) {
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().thawRate(pipeName + "_" + creationTime);
+    PipeDataNodeSinglePipeMetrics.getInstance().thawRate(pipeName + "_" + creationTime);
   }
 
   @Override
   protected void freezeRate(final String pipeName, final long creationTime) {
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-        .freezeRate(pipeName + "_" + creationTime);
+    PipeDataNodeSinglePipeMetrics.getInstance().freezeRate(pipeName + "_" + creationTime);
   }
 
   @Override
@@ -339,7 +343,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     final String taskId = pipeName + "_" + creationTime;
     PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
+    PipeDataNodeSinglePipeMetrics.getInstance().deregister(taskId);
 
     return true;
   }
@@ -367,7 +371,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
       final String taskId = pipeName + "_" + creationTime;
       PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
+      PipeDataNodeSinglePipeMetrics.getInstance().deregister(taskId);
       // When the pipe contains no pipe tasks, there is no corresponding prefetching queue for the
       // subscribed pipe, so the subscription needs to be manually marked as completed.
       if (!hasPipeTasks && PipeStaticMeta.isSubscriptionPipe(pipeName)) {
@@ -412,6 +416,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     if (PipeDataNodeAgent.runtime().isShutdown()) {
       return;
     }
+    final Optional<Logger> logger =
+        PipeDataNodeResourceManager.log()
+            .schedule(
+                PipeDataNodeTaskAgent.class,
+                PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
+                PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
+                pipeMetaKeeper.getPipeMetaCount());
 
     final Set<Integer> dataRegionIds =
         StorageEngine.getInstance().getAllDataRegionIds().stream()
@@ -423,13 +434,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
-      final Optional<Logger> logger =
-          PipeDataNodeResourceManager.log()
-              .schedule(
-                  PipeDataNodeTaskAgent.class,
-                  PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
-                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
-                  pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
 
@@ -461,7 +465,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
         final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
         final Pair<Long, Double> remainingEventAndTime =
-            PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            PipeDataNodeSinglePipeMetrics.getInstance()
                 .getRemainingEventAndTime(staticMeta.getPipeName(), staticMeta.getCreationTime());
         pipeCompletedList.add(isCompleted);
         pipeRemainingEventCountList.add(remainingEventAndTime.getLeft());
@@ -476,7 +480,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                     remainingEventAndTime.getLeft(),
                     remainingEventAndTime.getRight()));
       }
-      LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
+      logger.ifPresent(l -> l.info("Reported {} pipe metas.", pipeMetaBinaryList.size()));
     } catch (final IOException | IllegalPathException e) {
       throw new TException(e);
     }
@@ -491,10 +495,18 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   protected void collectPipeMetaListInternal(
       final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
-    if (PipeDataNodeAgent.runtime().isShutdown()) {
+    // If the heartbeatId == Long.MIN_VALUE then it's shutdown report and shall not be skipped
+    if (PipeDataNodeAgent.runtime().isShutdown() && req.heartbeatId != Long.MIN_VALUE) {
       return;
     }
-    LOGGER.info("Received pipe heartbeat request {} from config node.", req.heartbeatId);
+    final Optional<Logger> logger =
+        PipeDataNodeResourceManager.log()
+            .schedule(
+                PipeDataNodeTaskAgent.class,
+                PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
+                PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
+                pipeMetaKeeper.getPipeMetaCount());
+    LOGGER.debug("Received pipe heartbeat request {} from config node.", req.heartbeatId);
 
     final Set<Integer> dataRegionIds =
         StorageEngine.getInstance().getAllDataRegionIds().stream()
@@ -506,13 +518,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
-      final Optional<Logger> logger =
-          PipeDataNodeResourceManager.log()
-              .schedule(
-                  PipeDataNodeTaskAgent.class,
-                  PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
-                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
-                  pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
 
@@ -533,7 +538,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
         final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
         final Pair<Long, Double> remainingEventAndTime =
-            PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            PipeDataNodeSinglePipeMetrics.getInstance()
                 .getRemainingEventAndTime(staticMeta.getPipeName(), staticMeta.getCreationTime());
         pipeCompletedList.add(isCompleted);
         pipeRemainingEventCountList.add(remainingEventAndTime.getLeft());
@@ -548,7 +553,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                     remainingEventAndTime.getLeft(),
                     remainingEventAndTime.getRight()));
       }
-      LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
+      logger.ifPresent(l -> l.info("Reported {} pipe metas.", pipeMetaBinaryList.size()));
     } catch (final IOException | IllegalPathException e) {
       throw new TException(e);
     }
@@ -842,25 +847,22 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   ///////////////////////// Shutdown Logic /////////////////////////
 
-  public void persistAllProgressIndexLocally() {
-    if (!PipeConfig.getInstance().isPipeProgressIndexPersistEnabled()) {
-      LOGGER.info(
-          "Pipe progress index persist disabled. Skipping persist all progress index locally.");
-      return;
-    }
-    if (!tryReadLockWithTimeOut(10)) {
-      LOGGER.info("Failed to persist all progress index locally because of timeout.");
-      return;
-    }
-    try {
-      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
-        pipeMeta.getRuntimeMeta().persistProgressIndex();
+  public void persistAllProgressIndex() {
+    try (final ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      final TPipeHeartbeatResp resp = new TPipeHeartbeatResp();
+      collectPipeMetaList(new TPipeHeartbeatReq(Long.MIN_VALUE), resp);
+      final TSStatus result =
+          configNodeClient.pushHeartbeat(
+              IoTDBDescriptor.getInstance().getConfig().getDataNodeId(), resp);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
+        LOGGER.warn("Failed to persist progress index to configNode, status: {}", result);
+      } else {
+        LOGGER.info("Successfully persisted all pipe's info to configNode.");
       }
-      LOGGER.info("Persist all progress index locally successfully.");
     } catch (final Exception e) {
-      LOGGER.warn("Failed to record all progress index locally, because {}.", e.getMessage(), e);
-    } finally {
-      releaseReadLock();
+      LOGGER.warn(e.getMessage());
     }
   }
 

@@ -509,6 +509,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
+  protected void markFileBaseDirStateAbnormal(String dir) {
+    folderManager.updateFolderState(dir, FolderManager.FolderState.ABNORMAL);
+  }
+
+  @Override
   protected String getSenderHost() {
     final IClientSession session = SESSION_MANAGER.getCurrSession();
     return session != null ? session.getClientAddress() : "unknown";

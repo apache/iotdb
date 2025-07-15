@@ -176,9 +176,9 @@ public class AnalyzeTest {
           new DatasetHeader(
               Arrays.asList(
                   new ColumnHeader("root.sg.d1.s1", TSDataType.INT32, null),
-                  new ColumnHeader("root.sg.d1.s1 / 2", TSDataType.DOUBLE, null),
+                  new ColumnHeader("root.sg.d1.s1 / 2", TSDataType.INT64, null),
                   new ColumnHeader("root.sg.d1.s1 * 3", TSDataType.DOUBLE, null),
-                  new ColumnHeader("root.sg.d1.s1 % 4", TSDataType.DOUBLE, null),
+                  new ColumnHeader("root.sg.d1.s1 % 4", TSDataType.INT64, null),
                   new ColumnHeader("root.sg.d1.s1 - 5", TSDataType.DOUBLE, null)),
               false));
       alignByTimeAnalysisEqualTest(actualAnalysis, expectedAnalysis);

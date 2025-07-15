@@ -268,6 +268,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Expressio
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowFunctions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.BasisType.TABLE;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.TIMECOL_PARAMETER_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTimestampType;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression.getQualifiedName;
@@ -4786,13 +4787,9 @@ public class StatementAnalyzer {
       if (TableBuiltinTableFunction.FORECAST.getFunctionName().equalsIgnoreCase(functionName)) {
         String timeColumn =
             (String)
-                argumentSpecificationsByName
-                    .get(ForecastTableFunction.TIMECOL_PARAMETER_NAME)
-                    .getDefaultValue()
-                    .get();
+                argumentSpecificationsByName.get(TIMECOL_PARAMETER_NAME).getDefaultValue().get();
         for (TableFunctionArgument argument : arguments) {
-          if (ForecastTableFunction.TIMECOL_PARAMETER_NAME.equalsIgnoreCase(
-              argument.getName().get().getValue())) {
+          if (TIMECOL_PARAMETER_NAME.equalsIgnoreCase(argument.getName().get().getValue())) {
             if (argument.getValue() instanceof StringLiteral) {
               timeColumn = ((StringLiteral) argument.getValue()).getValue();
             }
@@ -4811,8 +4808,7 @@ public class StatementAnalyzer {
         int position = -1;
         String timeColumn = null;
         for (int i = 0, size = parameterSpecifications.size(); i < size; i++) {
-          if (ForecastTableFunction.TIMECOL_PARAMETER_NAME.equalsIgnoreCase(
-              parameterSpecifications.get(i).getName())) {
+          if (TIMECOL_PARAMETER_NAME.equalsIgnoreCase(parameterSpecifications.get(i).getName())) {
             position = i;
             timeColumn = (String) parameterSpecifications.get(i).getDefaultValue().get();
             break;
@@ -4833,6 +4829,10 @@ public class StatementAnalyzer {
     // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
     private void tryUpdateOrderByForForecast(
         List<TableFunctionArgument> arguments, String timeColumn) {
+      if (timeColumn == null || timeColumn.isEmpty()) {
+        throw new SemanticException(
+            String.format("%s should never be null or empty.", TIMECOL_PARAMETER_NAME));
+      }
       for (TableFunctionArgument argument : arguments) {
         if (argument.getValue() instanceof TableFunctionTableArgument) {
           TableFunctionTableArgument input = (TableFunctionTableArgument) argument.getValue();
@@ -4841,7 +4841,7 @@ public class StatementAnalyzer {
                 new OrderBy(
                     Collections.singletonList(
                         new SortItem(
-                            new Identifier(timeColumn),
+                            new Identifier(timeColumn.toLowerCase(ENGLISH)),
                             SortItem.Ordering.ASCENDING,
                             SortItem.NullOrdering.FIRST))));
           }

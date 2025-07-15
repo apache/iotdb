@@ -542,6 +542,32 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    dnConfig.setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+        subscriptionPrefetchTsFileBatchMaxDelayInMs);
+    cnConfig.setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+        subscriptionPrefetchTsFileBatchMaxDelayInMs);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      int subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    dnConfig.setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+        subscriptionPrefetchTsFileBatchMaxSizeInBytes);
+    cnConfig.setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+        subscriptionPrefetchTsFileBatchMaxSizeInBytes);
+    return this;
+  }
+
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    dnConfig.setSubscriptionEnabled(subscriptionEnabled);
+    cnConfig.setSubscriptionEnabled(subscriptionEnabled);
+    return this;
+  }
+
+  @Override
   public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     dnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
     cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);

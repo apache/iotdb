@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TLoadSample;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSender;
 import org.apache.iotdb.common.rpc.thrift.TServiceType;
@@ -68,6 +69,7 @@ import org.apache.iotdb.commons.schema.view.ViewType;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -243,7 +245,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
@@ -1239,6 +1240,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushTopicMetaResp pushTopicMeta(TPushTopicMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushTopicMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     final List<TopicMeta> topicMetas = new ArrayList<>();
     for (ByteBuffer byteBuffer : req.getTopicMetas()) {
       topicMetas.add(TopicMeta.deserialize(byteBuffer));
@@ -1262,6 +1268,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushTopicMetaResp pushSingleTopicMeta(TPushSingleTopicMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushTopicMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     try {
       final TPushTopicMetaRespExceptionMessage exceptionMessage;
       if (req.isSetTopicNameToDrop()) {
@@ -1290,6 +1301,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushTopicMetaResp pushMultiTopicMeta(TPushMultiTopicMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushTopicMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     boolean hasException = false;
     // If there is any exception, we use the size of exceptionMessages to record the fail index
     List<TPushTopicMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
@@ -1337,6 +1353,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushConsumerGroupMetaResp pushConsumerGroupMeta(TPushConsumerGroupMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushConsumerGroupMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     final List<ConsumerGroupMeta> consumerGroupMetas = new ArrayList<>();
     for (ByteBuffer byteBuffer : req.getConsumerGroupMetas()) {
       consumerGroupMetas.add(ConsumerGroupMeta.deserialize(byteBuffer));
@@ -1361,6 +1382,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(
       TPushSingleConsumerGroupMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushConsumerGroupMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     try {
       final TPushConsumerGroupMetaRespExceptionMessage exceptionMessage;
       if (req.isSetConsumerGroupNameToDrop()) {

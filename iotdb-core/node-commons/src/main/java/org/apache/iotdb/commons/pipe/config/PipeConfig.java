@@ -46,22 +46,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeHardlinkTsFileDirName();
   }
 
-  public String getPipeProgressIndexPersistDirName() {
-    return COMMON_CONFIG.getPipeProgressIndexPersistDirName();
-  }
-
-  public boolean isPipeProgressIndexPersistEnabled() {
-    return COMMON_CONFIG.isPipeProgressIndexPersistEnabled();
-  }
-
-  public long getPipeProgressIndexPersistCheckPointGap() {
-    return COMMON_CONFIG.getPipeProgressIndexPersistCheckPointGap();
-  }
-
-  public long getPipeProgressIndexFlushIntervalMs() {
-    return COMMON_CONFIG.getPipeProgressIndexFlushIntervalMs();
-  }
-
   public String getPipeHardlinkWALDirName() {
     return COMMON_CONFIG.getPipeHardlinkWALDirName();
   }
@@ -147,6 +131,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSubtaskExecutorForcedRestartIntervalMs();
   }
 
+  public long getPipeMaxWaitFinishTime() {
+    return COMMON_CONFIG.getPipeMaxWaitFinishTime();
+  }
+
   /////////////////////////////// Extractor ///////////////////////////////
 
   public int getPipeExtractorAssignerDisruptorRingBufferSize() {
@@ -213,6 +201,10 @@ public class PipeConfig {
 
   public int getPipeAsyncConnectorMaxTsFileClientNumber() {
     return COMMON_CONFIG.getPipeAsyncConnectorMaxTsFileClientNumber();
+  }
+
+  public double getPipeSendTsFileRateLimitBytesPerSecond() {
+    return COMMON_CONFIG.getPipeSendTsFileRateLimitBytesPerSecond();
   }
 
   public double getPipeAllConnectorsRateLimitBytesPerSecond() {
@@ -389,7 +381,7 @@ public class PipeConfig {
 
   /////////////////////////////// Logger ///////////////////////////////
 
-  public int getPipeMetaReportMaxLogNumPerRound() {
+  public double getPipeMetaReportMaxLogNumPerRound() {
     return COMMON_CONFIG.getPipeMetaReportMaxLogNumPerRound();
   }
 
@@ -478,11 +470,6 @@ public class PipeConfig {
 
     LOGGER.info("PipeHardlinkBaseDirName: {}", getPipeHardlinkBaseDirName());
     LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());
-    LOGGER.info("PipeProgressIndexPersistDirName: {}", getPipeProgressIndexPersistDirName());
-    LOGGER.info("PipeProgressIndexPersistEnabled: {}", isPipeProgressIndexPersistEnabled());
-    LOGGER.info(
-        "PipeProgressIndexPersistCheckPointGap: {}", getPipeProgressIndexPersistCheckPointGap());
-    LOGGER.info("PipeProgressIndexFlushIntervalMs: {}", getPipeProgressIndexFlushIntervalMs());
     LOGGER.info("PipeHardlinkWALDirName: {}", getPipeHardlinkWALDirName());
     LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
     LOGGER.info("PipeFileReceiverFsyncEnabled: {}", getPipeFileReceiverFsyncEnabled());
@@ -519,6 +506,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeSubtaskExecutorForcedRestartIntervalMs: {}",
         getPipeSubtaskExecutorForcedRestartIntervalMs());
+    LOGGER.info("PipeMaxWaitFinishTime: {}", getPipeMaxWaitFinishTime());
 
     LOGGER.info(
         "PipeExtractorAssignerDisruptorRingBufferSize: {}",
@@ -586,6 +574,8 @@ public class PipeConfig {
         "PipeAsyncConnectorMaxTsFileClientNumber: {}",
         getPipeAsyncConnectorMaxTsFileClientNumber());
 
+    LOGGER.info(
+        "PipeSendTsFileRateLimitBytesPerSecond: {}", getPipeSendTsFileRateLimitBytesPerSecond());
     LOGGER.info(
         "PipeAllConnectorsRateLimitBytesPerSecond: {}",
         getPipeAllConnectorsRateLimitBytesPerSecond());

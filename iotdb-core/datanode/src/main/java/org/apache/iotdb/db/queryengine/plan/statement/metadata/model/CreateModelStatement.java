@@ -34,7 +34,7 @@ import java.util.List;
 
 public class CreateModelStatement extends Statement implements IConfigStatement {
 
-  private String modelName;
+  private String modelId;
 
   private String uri;
 
@@ -46,16 +46,16 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
     return uri;
   }
 
-  public String getModelName() {
-    return modelName;
+  public String getModelId() {
+    return modelId;
   }
 
   public void setUri(String uri) {
     this.uri = uri;
   }
 
-  public void setModelName(String modelName) {
-    this.modelName = modelName;
+  public void setModelId(String modelId) {
+    this.modelId = modelId;
   }
 
   @Override

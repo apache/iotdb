@@ -35,6 +35,9 @@ public class MaxDiskUsableSpaceFirstStrategy extends DirectoryStrategy {
 
     for (int i = 0; i < folders.size(); i++) {
       String folder = folders.get(i);
+      if (isUnavailableFolder(folder)) {
+        continue;
+      }
       if (!JVMCommonUtils.hasSpace(folder)) {
         continue;
       }

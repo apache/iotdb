@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropTrigge
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetSeriesSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetTimeSlotListTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveAINodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveConfigNodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveDataNodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.SetTTLTask;
@@ -125,6 +126,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
@@ -714,6 +716,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
+  public IConfigTask visitRemoveAINode(
+      RemoveAINodeStatement removeAINodeStatement, MPPQueryContext context) {
+    return new RemoveAINodeTask(removeAINodeStatement);
+  }
+
+  @Override
   public IConfigTask visitCreateContinuousQuery(
       CreateContinuousQueryStatement createContinuousQueryStatement, MPPQueryContext context) {
     return new CreateContinuousQueryTask(createContinuousQueryStatement, context);
@@ -765,26 +773,26 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreateModel(
       CreateModelStatement createModelStatement, MPPQueryContext context) {
-    if (createModelStatement.getUri() != null && isUriTrusted(createModelStatement.getUri())) {
-      // 1. user specified uri and that uri is trusted
-      // 2. user doesn't specify uri
-      return new CreateModelTask(createModelStatement, context);
+    String uri = createModelStatement.getUri();
+    if (uri != null && isUriTrusted(uri)) {
+      // user specified uri and that uri is trusted
+      return new CreateModelTask(createModelStatement.getModelId(), uri);
     } else {
       // user specified uri and that uri is not trusted
-      throw new SemanticException(getUnTrustedUriErrorMsg(createModelStatement.getUri()));
+      throw new SemanticException(getUnTrustedUriErrorMsg(uri));
     }
   }
 
   @Override
   public IConfigTask visitDropModel(
       DropModelStatement dropModelStatement, MPPQueryContext context) {
-    return new DropModelTask(dropModelStatement.getModelName());
+    return new DropModelTask(dropModelStatement.getModelId());
   }
 
   @Override
   public IConfigTask visitShowModels(
       ShowModelsStatement showModelsStatement, MPPQueryContext context) {
-    return new ShowModelsTask(showModelsStatement.getModelName());
+    return new ShowModelsTask(showModelsStatement.getModelId());
   }
 
   @Override
@@ -808,9 +816,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     }
     return new CreateTrainingTask(
         createTrainingStatement.getModelId(),
-        createTrainingStatement.getModelType(),
         createTrainingStatement.getParameters(),
-        false,
         createTrainingStatement.getTargetTimeRanges(),
         createTrainingStatement.getExistingModelId(),
         targetPathPatterns);

@@ -31,7 +31,7 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -238,8 +238,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
   private boolean mayRemainingInsertNodeEventExceedLimit(final PipeRealtimeEvent event) {
     final boolean mayRemainingInsertEventExceedLimit =
-        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .mayRemainingInsertEventExceedLimit(pipeID);
+        PipeDataNodeSinglePipeMetrics.getInstance().mayRemainingInsertEventExceedLimit(pipeID);
     if (mayRemainingInsertEventExceedLimit && event.mayExtractorUseTablets(this)) {
       logByLogManager(
           l ->

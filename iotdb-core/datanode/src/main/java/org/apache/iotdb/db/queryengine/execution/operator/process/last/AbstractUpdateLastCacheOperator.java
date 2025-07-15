@@ -64,12 +64,15 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected String databaseName;
 
+  protected boolean deviceInMultiRegion;
+
   protected AbstractUpdateLastCacheOperator(
       final OperatorContext operatorContext,
       final Operator child,
       final TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       final boolean needUpdateCache,
-      final boolean needUpdateNullEntry) {
+      final boolean needUpdateNullEntry,
+      final boolean deviceInMultiRegion) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.lastCache = treeDeviceSchemaCacheManager;
@@ -78,6 +81,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
     this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);
     this.dataNodeQueryContext =
         operatorContext.getDriverContext().getFragmentInstanceContext().getDataNodeQueryContext();
+    this.deviceInMultiRegion = deviceInMultiRegion;
   }
 
   @Override
@@ -106,7 +110,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
       return;
     }
     try {
-      dataNodeQueryContext.lock();
+      dataNodeQueryContext.lock(deviceInMultiRegion);
       final Pair<AtomicInteger, TimeValuePair> seriesScanInfo =
           dataNodeQueryContext.getSeriesScanInfo(fullPath);
 
@@ -115,6 +119,20 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
         return;
       }
 
+      if (!deviceInMultiRegion) {
+        lastCache.updateLastCacheIfExists(
+            getDatabaseName(),
+            fullPath.getIDeviceID(),
+            new String[] {fullPath.getMeasurement()},
+            new TimeValuePair[] {
+              Objects.nonNull(value)
+                  ? new TimeValuePair(time, value)
+                  : needUpdateNullEntry ? TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR : null
+            },
+            fullPath.isUnderAlignedEntity(),
+            new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
+        return;
+      }
       // update cache in DataNodeQueryContext
       if (seriesScanInfo.right == null || time > seriesScanInfo.right.getTimestamp()) {
         if (Objects.nonNull(value)) {
@@ -135,7 +153,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
             new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
       }
     } finally {
-      dataNodeQueryContext.unLock();
+      dataNodeQueryContext.unLock(deviceInMultiRegion);
     }
   }
 

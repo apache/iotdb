@@ -88,11 +88,6 @@ public final class PartitionExecutor {
     peerGroupComparator = new RowComparator(sortDataTypes);
     sortedColumns = partition.getSortedColumnList(sortChannels);
 
-    // Reset functions for new partition
-    for (WindowFunction windowFunction : windowFunctions) {
-      windowFunction.reset();
-    }
-
     currentPosition = partitionStart;
     needPeerGroup =
         windowFunctions.stream().anyMatch(WindowFunction::needPeerGroup)
@@ -196,6 +191,12 @@ public final class PartitionExecutor {
         && peerGroupComparator.equalColumnLists(
             sortedColumns, peerGroupStart - partitionStart, peerGroupEnd - partitionStart)) {
       peerGroupEnd++;
+    }
+  }
+
+  public void resetWindowFunctions() {
+    for (WindowFunction windowFunction : windowFunctions) {
+      windowFunction.reset();
     }
   }
 }
