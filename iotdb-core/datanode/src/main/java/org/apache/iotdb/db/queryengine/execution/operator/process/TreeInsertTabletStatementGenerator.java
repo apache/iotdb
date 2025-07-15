@@ -38,23 +38,24 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
   private final Map<String, AtomicLong> writtenCounter;
 
   public TreeInsertTabletStatementGenerator(
-      PartialPath devicePath,
+      PartialPath targetDevice,
       Map<String, InputLocation> measurementToInputLocationMap,
       Map<String, TSDataType> measurementToDataTypeMap,
-      Boolean isAligned,
       List<Type> sourceTypeConvertors,
+      boolean isAligned,
       int rowLimit) {
-    this.devicePath = devicePath;
-    this.isAligned = isAligned;
-    this.measurements = measurementToInputLocationMap.keySet().toArray(new String[0]);
-    this.dataTypes = measurementToDataTypeMap.values().toArray(new TSDataType[0]);
-    this.inputLocations = measurementToInputLocationMap.values().toArray(new InputLocation[0]);
+    super(
+        targetDevice,
+        measurementToInputLocationMap.keySet().toArray(new String[0]),
+        measurementToDataTypeMap.values().toArray(new TSDataType[0]),
+        measurementToInputLocationMap.values().toArray(new InputLocation[0]),
+        sourceTypeConvertors,
+        isAligned,
+        rowLimit);
     this.writtenCounter = new HashMap<>();
     for (String measurement : measurements) {
       writtenCounter.put(measurement, new AtomicLong(0));
     }
-    this.sourceTypeConvertors = sourceTypeConvertors;
-    this.rowLimit = rowLimit;
     this.reset();
   }
 

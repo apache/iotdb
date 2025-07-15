@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -3579,13 +3578,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 TableIntoOperator.class.getSimpleName());
 
     try {
-      PartialPath tableName = DEVICE_PATH_CACHE.getPartialPath(node.getTable());
+      PartialPath targetTable = DEVICE_PATH_CACHE.getPartialPath(node.getTable());
 
       Map<String, TSDataType> tsDataTypeMap = new LinkedHashMap<>();
       Map<String, InputLocation> inputLocationMap = new LinkedHashMap<>();
       List<TSDataType> inputColumnTypes = new ArrayList<>();
       List<TsTableColumnCategory> inputColumnCategories = new ArrayList<>();
-      List<Pair<String, PartialPath>> sourceTargetPathPairList = new ArrayList<>();
 
       List<ColumnSchema> inputColumns = node.getColumns();
       for (int i = 0; i < inputColumns.size(); i++) {
@@ -3601,21 +3599,16 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         tsDataTypeMap.put(columnName, columnType);
         inputColumnTypes.add(columnType);
         inputColumnCategories.add(columnCategory);
-        sourceTargetPathPairList.add(
-            new Pair<>(
-                columnName,
-                new MeasurementPath(String.format("%s.%s", tableName, columnName), columnType)));
       }
 
       long statementSizePerLine =
-          OperatorGeneratorUtil.calculateStatementSizePerLine(
-              new ArrayList<>(tsDataTypeMap.values()));
+          OperatorGeneratorUtil.calculateStatementSizePerLine(inputColumnTypes);
 
       return new TableIntoOperator(
           operatorContext,
           child,
           node.getDatabase(),
-          tableName,
+          targetTable,
           inputColumnTypes,
           inputColumnCategories,
           inputLocationMap,
@@ -3623,8 +3616,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           true,
           FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
           statementSizePerLine);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException(e);
     }
   }
 
