@@ -205,7 +205,6 @@ public class TableDeviceSchemaFetcher {
         attributeColumns,
         queryContext,
         mayContainDuplicateDevice,
-        false,
         false)) {
       fetchMissingDeviceSchemaForQuery(
           database, tableInstance, attributeColumns, statement, deviceEntryMap, queryContext);
@@ -233,8 +232,7 @@ public class TableDeviceSchemaFetcher {
       final List<String> attributeColumns,
       final MPPQueryContext queryContext,
       final AtomicBoolean mayContainDuplicateDevice,
-      final boolean isDirectDeviceQuery,
-      final boolean fetchAllIfSomeDeviceNotInCache) {
+      final boolean isDirectDeviceQuery) {
     final Pair<List<Expression>, List<Expression>> separatedExpression =
         SchemaPredicateUtil.separateTagDeterminedPredicate(
             expressionList, tableInstance, queryContext, isDirectDeviceQuery);
@@ -309,7 +307,7 @@ public class TableDeviceSchemaFetcher {
               index2FilterMapList.size()
                   - tagSingleMatchIndexList.size()
                   + tagSingleMatchPredicateNotInCache.size());
-      if (!fetchAllIfSomeDeviceNotInCache) {
+      if (!isDirectDeviceQuery) {
         int idx1 = 0;
         int idx2 = 0;
         for (int i = 0; i < index2FilterMapList.size(); i++) {
