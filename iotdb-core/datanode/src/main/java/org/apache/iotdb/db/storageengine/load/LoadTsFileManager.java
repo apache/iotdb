@@ -505,6 +505,7 @@ public class LoadTsFileManager {
 
         final DataRegion dataRegion = entry.getKey().getDataRegion();
         final TsFileResource tsFileResource = dataPartition2Resource.get(entry.getKey());
+        tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
         endTsFileResource(
             writer,
             tsFileResource,

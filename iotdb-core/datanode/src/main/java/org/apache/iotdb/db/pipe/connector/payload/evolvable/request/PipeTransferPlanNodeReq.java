@@ -66,7 +66,6 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
 
     planNodeReq.version = transferReq.version;
     planNodeReq.type = transferReq.type;
-    planNodeReq.body = transferReq.body;
 
     return planNodeReq;
   }
