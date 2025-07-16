@@ -498,6 +498,10 @@ MIGRATE
     : M I G R A T E
     ;
 
+AINODE
+    : A I N O D E
+    ;
+
 AINODES
     : A I N O D E S
     ;

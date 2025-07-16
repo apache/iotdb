@@ -164,6 +164,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
@@ -4291,6 +4292,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     List<Integer> nodeIds =
         Collections.singletonList(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     return new RemoveDataNodeStatement(nodeIds);
+  }
+
+  @Override
+  public Statement visitRemoveAINode(IoTDBSqlParser.RemoveAINodeContext ctx) {
+    return new RemoveAINodeStatement();
   }
 
   @Override

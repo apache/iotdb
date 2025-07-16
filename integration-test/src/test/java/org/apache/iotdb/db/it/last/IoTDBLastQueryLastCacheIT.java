@@ -183,7 +183,7 @@ public class IoTDBLastQueryLastCacheIT {
   }
 
   @Test
-  public void testLastQuerySortWithBlobType() {
+  public void testLastQueryWithBlobType() {
     String[] expectedHeader =
         new String[] {TIMESTAMP_STR, TIMESERIES_STR, VALUE_STR, DATA_TYPE_STR};
     String[] retArray =

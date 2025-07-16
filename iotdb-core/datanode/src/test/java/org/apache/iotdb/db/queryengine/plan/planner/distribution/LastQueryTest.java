@@ -198,6 +198,7 @@ public class LastQueryTest {
           selectPath.getDevicePath(),
           selectPath.isUnderAlignedEntity(),
           Collections.singletonList(selectPath.getMeasurementSchema()),
+          null,
           null);
     }
 
