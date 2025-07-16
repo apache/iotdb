@@ -31,7 +31,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.read.common.RowRecord;
 import org.awaitility.Awaitility;
 import org.junit.Assert;
@@ -56,6 +55,22 @@ import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliabilityITFramework {
   private static final String RECONSTRUCT_FORMAT = "reconstruct region %d on %d";
   private static Logger LOGGER = LoggerFactory.getLogger(IoTDBRegionReconstructForIoTV1IT.class);
+
+  private boolean deleteTsFiles(File file) {
+    if (file.isDirectory()) {
+      File[] files = file.listFiles();
+      if (files != null) {
+        for (File f : files) {
+          if (!deleteTsFiles(f)) {
+            return false;
+          }
+        }
+      }
+    } else if (file.getName().endsWith(".tsfile")) {
+      return file.delete();
+    }
+    return true;
+  }
 
   @Test
   public void normal1C3DTest() throws Exception {
@@ -110,7 +125,11 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
                   .get()
                   .getDataPath());
 
-      FileUtils.deleteQuietly(dataDirToBeReconstructed);
+      if (!deleteTsFiles(dataDirToBeReconstructed)) {
+        statement.execute(FLUSH_COMMAND);
+        deleteTsFiles(dataDirToBeReconstructed);
+      }
+
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
       // now, the query should throw exception
