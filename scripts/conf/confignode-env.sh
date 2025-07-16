@@ -197,6 +197,7 @@ if [ -z $JAVA ] ; then
     exit 1;
 fi
 
+JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
 # Determine the sort of JVM we'll be running on.
 java_ver_output=`"$JAVA" -version 2>&1`
 jvmver=`echo "$java_ver_output" | grep '[openjdk|java] version' | awk -F'"' 'NR==1 {print $2}' | cut -d\- -f1`

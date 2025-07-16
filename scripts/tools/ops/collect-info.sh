@@ -217,6 +217,7 @@ mkdir -p $IOTDB_HOME/$COLLECTION_DIR/logs
           echo Unable to find java executable. Check JAVA_HOME and PATH environment variables.  > /dev/stderr
           exit 1;
       fi
+      JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
       java -version 2>&1
     fi
 } >> "$COLLECTION_FILE"

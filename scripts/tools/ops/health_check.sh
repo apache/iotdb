@@ -372,6 +372,8 @@ system_settings_check() {
   fi
 }
 
+JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
+
 if [ -n "$operate" ]; then
     if [ "$operate" == "local" ]; then
         system_settings_pre_check
