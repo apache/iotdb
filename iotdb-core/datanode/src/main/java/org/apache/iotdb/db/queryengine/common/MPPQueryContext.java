@@ -28,6 +28,10 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -36,6 +40,7 @@ import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -385,5 +390,43 @@ public class MPPQueryContext {
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  // TODO temporary for plan cache will be optimized
+  List<Expression> metaDataExpressionList;
+  List<String> attributeColumns;
+  List<Literal> literalList;
+  Map<Symbol, ColumnSchema> assignments;
+
+  public void setAssignments(Map<Symbol, ColumnSchema> assignments) {
+    this.assignments = assignments;
+  }
+
+  public void setAttributeColumns(List<String> attributeColumns) {
+    this.attributeColumns = attributeColumns;
+  }
+
+  public void setMetaDataExpressionList(List<Expression> metaDataExpressionList) {
+    this.metaDataExpressionList = metaDataExpressionList;
+  }
+
+  public void setLiteralList(List<Literal> literalList) {
+    this.literalList = literalList;
+  }
+
+  public Map<Symbol, ColumnSchema> getAssignments() {
+    return assignments;
+  }
+
+  public List<Expression> getMetaDataExpressionList() {
+    return metaDataExpressionList;
+  }
+
+  public List<String> getAttributeColumns() {
+    return attributeColumns;
+  }
+
+  public List<Literal> getLiteralList() {
+    return literalList;
   }
 }

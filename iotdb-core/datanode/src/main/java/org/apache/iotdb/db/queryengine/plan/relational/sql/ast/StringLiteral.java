@@ -32,8 +32,8 @@ import static java.util.Objects.requireNonNull;
 
 public class StringLiteral extends Literal {
 
-  private final String value;
-  private final int length;
+  private String value;
+  private int length;
 
   public StringLiteral(String value) {
     super(null);
@@ -108,5 +108,12 @@ public class StringLiteral extends Literal {
   @Override
   public Object getTsValue() {
     return new Binary(value.getBytes(StandardCharsets.UTF_8));
+  }
+
+  @Override
+  public void replace(Literal literal) {
+    StringLiteral stringLiteral = (StringLiteral) literal;
+    this.value = stringLiteral.getValue();
+    this.length = stringLiteral.length();
   }
 }
