@@ -66,6 +66,8 @@ total 215M
 -rw-r--r-- 1 root root 329K  7 15 17:12 apache-iotdb-2.0.5-SNAPSHOT-ainode-bin.zip
 ```
 
+To avoid mannually copy these files, you can run our `do-docker-build.sh` with argument `-b`.
+
 # How to run IoTDB server 
 
 Actually, we maintain a repo on dockerhub, so that you can get the docker image directly.
@@ -82,9 +84,15 @@ docker run -d --name iotdb -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555
 Since 1.0.0, see [offical documents.](https://iotdb.apache.org/UserGuide/Master/QuickStart/WayToGetIoTDB.html)
 
 # How to register AINode to IoTDB cluster
+
+## Register AINode to the existing IoTDB cluster
+Please download `docker-compose-ainode.yml` in `docker/src/main/DockerCompose` first. After replace the correct IoTDB cluster configurations, run
 ```shell
-docker run -d --name iotdb-ainode -p 10810:10810 apache/iotdb:<version>
+docker compose -f docker-compose-ainode.yml up -d
 ```
+
+## Quick start
+We provide `docker-compose-cluster-1c1d1a.yml` in `docker/src/main/DockerCompose`. Downloading this yaml file, both standalone and ainode docker first. Subsequently, you can easily obtain a IoTDB cluster, which consists of a ConfigNode, a DataNode and a AINode, in your local machine.
 
 ## Port description
 
