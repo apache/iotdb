@@ -322,7 +322,8 @@ public class DatabaseLabelFetcher {
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
         // Create request for database security label
-        TGetDatabaseSecurityLabelReq req = new TGetDatabaseSecurityLabelReq(databasePath);
+        TGetDatabaseSecurityLabelReq req = new TGetDatabaseSecurityLabelReq();
+        req.setDatabasePath(databasePath);
 
         // Call ConfigNode to get database security label
         TGetDatabaseSecurityLabelResp resp = configNodeClient.getDatabaseSecurityLabel(req);

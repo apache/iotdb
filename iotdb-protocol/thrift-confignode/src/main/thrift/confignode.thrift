@@ -223,7 +223,7 @@ struct TAlterDatabaseSecurityLabelReq {
 }
 
 struct TGetDatabaseSecurityLabelReq {
-  1: required string databasePath
+  1: optional string databasePath
 }
 
 struct TGetDatabaseSecurityLabelResp {

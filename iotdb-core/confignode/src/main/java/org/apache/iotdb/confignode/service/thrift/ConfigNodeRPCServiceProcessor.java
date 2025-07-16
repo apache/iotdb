@@ -247,11 +247,11 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Iface {
@@ -540,95 +540,30 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
       // If dbPath is null or empty, return all databases' security labels
       if (dbPath == null || dbPath.trim().isEmpty()) {
-        // Query all database names
-        List<String> allDatabaseNames =
-            configManager.getClusterSchemaManager().getDatabaseNames(null);
-        Map<String, String> allLabels = new java.util.HashMap<>();
-
-        LOGGER.info("Querying security labels for all databases: {}", allDatabaseNames);
-
-        for (String db : allDatabaseNames) {
-          try {
-            // Get database schema which contains security labels
-            TDatabaseSchema schema =
-                configManager.getClusterSchemaManager().getDatabaseSchemaByName(db);
-            if (schema != null
-                && schema.isSetSecurityLabel()
-                && schema.getSecurityLabel() != null) {
-              Map<String, String> securityLabelMap = schema.getSecurityLabel();
-              String securityLabel = "";
-              if (!securityLabelMap.isEmpty()) {
-                // Join all label key-value pairs
-                securityLabel =
-                    securityLabelMap.entrySet().stream()
-                        .map(labelEntry -> labelEntry.getKey() + ":" + labelEntry.getValue())
-                        .collect(java.util.stream.Collectors.joining(","));
-              }
-              allLabels.put(db, securityLabel);
-              LOGGER.debug("Database {} has security label: {}", db, securityLabel);
-            } else {
-              // Database exists but has no security labels
-              allLabels.put(db, "");
-              LOGGER.debug("Database {} has no security labels", db);
-            }
-          } catch (Exception e) {
-            // If error, treat as no label
-            allLabels.put(db, "");
-            LOGGER.warn("Error getting security label for database {}: {}", db, e.getMessage());
-          }
-        }
+        // Use optimized method to get all database security labels
+        Map<String, String> allLabels =
+            configManager.getClusterSchemaManager().getAllDatabaseSecurityLabelsOptimized();
 
         // Set all labels to response
         resp.setSecurityLabel(allLabels);
         resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-        LOGGER.info("Successfully retrieved security labels for all databases: {}", allLabels);
         return resp;
       }
 
-      // Check if database exists
-      if (!configManager.getClusterSchemaManager().isDatabaseExist(dbPath)) {
-        resp.setStatus(
-            new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-                .setMessage("Database [" + dbPath + "] does not exist"));
-        return resp;
-      }
+      // Single database query - use existing fast method
+      String securityLabel =
+          configManager.getClusterSchemaManager().getDatabaseSecurityLabel(dbPath);
 
-      // Get the database schema which contains security labels
-      TDatabaseSchema databaseSchema =
-          configManager.getClusterSchemaManager().getDatabaseSchemaByName(dbPath);
-
-      if (databaseSchema.isSetSecurityLabel() && databaseSchema.getSecurityLabel() != null) {
-        // Convert map to string representation
-        Map<String, String> securityLabelMap = databaseSchema.getSecurityLabel();
-        String securityLabel = "";
-        if (!securityLabelMap.isEmpty()) {
-          securityLabel =
-              securityLabelMap.entrySet().stream()
-                  .map(labelEntry -> labelEntry.getKey() + ":" + labelEntry.getValue())
-                  .collect(Collectors.joining(","));
-        }
-        java.util.Map<String, String> labelMap = new java.util.HashMap<>();
-        labelMap.put(dbPath, securityLabel);
-        resp.setSecurityLabel(labelMap);
-        resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-        LOGGER.info(
-            "Successfully retrieved security label for database: {}, labels: {}",
-            dbPath,
-            securityLabel);
-      } else {
-        // Database exists but has no security labels
-        java.util.Map<String, String> labelMap = new java.util.HashMap<>();
-        labelMap.put(dbPath, "");
-        resp.setSecurityLabel(labelMap);
-        resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-        LOGGER.debug("Database {} exists but has no security labels", dbPath);
-      }
+      Map<String, String> labelMap = new HashMap<>();
+      labelMap.put(dbPath, securityLabel);
+      resp.setSecurityLabel(labelMap);
+      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
     } catch (Exception e) {
-      LOGGER.error("Failed to get security label for database: {}", req.getDatabasePath(), e);
-      resp.setStatus(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage("Failed to get security label: " + e.getMessage()));
+      LOGGER.error("Error in getDatabaseSecurityLabel", e);
+      TSStatus errorStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      errorStatus.setMessage(e.getMessage());
+      resp.setStatus(errorStatus);
     }
 
     return resp;
