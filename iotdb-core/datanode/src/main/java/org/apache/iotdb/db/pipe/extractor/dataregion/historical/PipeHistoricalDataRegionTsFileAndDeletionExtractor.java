@@ -703,13 +703,23 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       // instead of replication or something else.
       ProgressIndex dedicatedProgressIndex =
           tryToExtractLocalProgressIndexForIoTV2(resource.getMaxProgressIndexAfterClose());
-      return greaterThanStartIndex(dedicatedProgressIndex);
+      return greaterThanStartIndex(resource, dedicatedProgressIndex);
     }
-    return greaterThanStartIndex(resource.getMaxProgressIndexAfterClose());
+    return greaterThanStartIndex(resource, resource.getMaxProgressIndexAfterClose());
   }
 
-  private boolean greaterThanStartIndex(ProgressIndex progressIndex) {
-    return !startIndex.isAfter(progressIndex) && !startIndex.equals(progressIndex);
+  private boolean greaterThanStartIndex(PersistentResource resource, ProgressIndex progressIndex) {
+    if (!startIndex.isAfter(progressIndex) && !startIndex.equals(progressIndex)) {
+      LOGGER.info(
+          "Pipe {}@{}: resource {} meets mayTsFileContainUnprocessedData condition, extractor progressIndex: {}, resource ProgressIndex: {}",
+          pipeName,
+          dataRegionId,
+          resource,
+          startIndex,
+          progressIndex);
+      return true;
+    }
+    return false;
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
@@ -809,7 +819,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
               if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
                 toBeCompared = tryToExtractLocalProgressIndexForIoTV2(toBeCompared);
               }
-              return !greaterThanStartIndex(toBeCompared);
+              return !greaterThanStartIndex(resource, toBeCompared);
             })
         .forEach(DeletionResource::decreaseReference);
     // Get deletions that should be sent.
@@ -821,7 +831,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                   if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
                     toBeCompared = tryToExtractLocalProgressIndexForIoTV2(toBeCompared);
                   }
-                  return greaterThanStartIndex(toBeCompared);
+                  return greaterThanStartIndex(resource, toBeCompared);
                 })
             .collect(Collectors.toList());
     resourceList.addAll(allDeletionResources);
