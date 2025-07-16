@@ -127,7 +127,7 @@ public class SingleSeriesCompactionExecutor {
       TsFileSequenceReader reader = readerListPair.left;
       List<ChunkMetadata> chunkMetadataList = readerListPair.right;
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        Chunk currentChunk = reader.readMemChunk(chunkMetadata).rewrite(chunkMetadata.getNewType());
+        Chunk currentChunk = chunkMetadata.getNewType() != null ? reader.readMemChunk(chunkMetadata).rewrite(chunkMetadata.getNewType()) : reader.readMemChunk(chunkMetadata);
         summary.increaseProcessChunkNum(1);
         summary.increaseProcessPointNum(chunkMetadata.getNumOfPoints());
         if (chunkMetadata.getNewType() != null) {

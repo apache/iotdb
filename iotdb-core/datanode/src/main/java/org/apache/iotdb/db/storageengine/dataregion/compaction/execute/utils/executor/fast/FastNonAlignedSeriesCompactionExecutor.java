@@ -197,18 +197,24 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
   @Override
   void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException {
     updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
-    chunkMetadataElement.chunk =
-        readerCacheMap
-            .get(chunkMetadataElement.fileElement.resource)
-            .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata)
-            .rewrite(((ChunkMetadata) chunkMetadataElement.chunkMetadata).getNewType());
     if (chunkMetadataElement.chunkMetadata.getNewType() != null) {
+      chunkMetadataElement.chunk =
+              readerCacheMap
+                      .get(chunkMetadataElement.fileElement.resource)
+                      .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata)
+                      .rewrite(((ChunkMetadata) chunkMetadataElement.chunkMetadata).getNewType());
+
       ChunkMetadata chunkMetadata = (ChunkMetadata) chunkMetadataElement.chunkMetadata;
       chunkMetadata.setTsDataType(chunkMetadataElement.chunkMetadata.getNewType());
       Statistics<?> statistics = Statistics.getStatsByType(chunkMetadata.getNewType());
       statistics.mergeStatistics(chunkMetadataElement.chunk.getChunkStatistic());
       chunkMetadata.setStatistics(statistics);
       chunkMetadataElement.chunkMetadata = chunkMetadata;
+    } else {
+      chunkMetadataElement.chunk =
+              readerCacheMap
+                      .get(chunkMetadataElement.fileElement.resource)
+                      .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata);
     }
     if (!hasStartMeasurement) {
       // for nonAligned sensors, only after getting chunkMetadatas can we create metadata to
