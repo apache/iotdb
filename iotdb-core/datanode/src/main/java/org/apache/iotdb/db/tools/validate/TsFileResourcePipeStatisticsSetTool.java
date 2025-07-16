@@ -247,12 +247,12 @@ public class TsFileResourcePipeStatisticsSetTool {
       skip = false;
     }
 
-    if (resetProgressIndex && resource.getProgressIndex() != MinimumProgressIndex.INSTANCE) {
+    if (resetProgressIndex && resource.getMaxProgressIndex() != MinimumProgressIndex.INSTANCE) {
       // The resource is valid, no need to repair
       LOGGER.info(
           "Resetting TsFileResource:{} 's progressIndex to minimum, original progressIndex: {}",
           resource.getTsFile().getAbsolutePath(),
-          resource.getProgressIndex());
+          resource.getMaxProgressIndex());
 
       toResetProgressIndexResource.getAndIncrement();
       skip = false;
