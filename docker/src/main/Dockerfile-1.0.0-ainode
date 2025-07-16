@@ -60,6 +60,7 @@ RUN wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/timer_xl/config.json
 
 ENV PATH="${IOTDB_AINODE_HOME}/sbin/:${IOTDB_AINODE_HOME}/tools/:${PATH}"
 RUN bash start-ainode.sh || true
+RUN rm -r ${IOTDB_AINODE_HOME}/logs/*
 
 EXPOSE 10810
 VOLUME $IOTDB_AINODE_HOME/logs

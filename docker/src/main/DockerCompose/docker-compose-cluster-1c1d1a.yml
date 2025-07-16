@@ -41,6 +41,11 @@ services:
     volumes:
         - ./data/iotdb:/iotdb/data
         - ./logs/iotdb:/iotdb/logs
+    # Enable this configuration for kylinOS
+    # ulimits:
+    #   nofile:
+    #     soft: 20000
+    #     hard: 20000
     networks:
       iotdb:
         # ipv4_address: 127.0.0.1
