@@ -59,10 +59,8 @@ class InferenceRequest:
         self.cur_step_idx = 0  # Current write position in the output step index
 
         # Preallocate output buffer [batch_size, max_new_tokens]
-        #TODO: check the device of inputs
-        device = inputs.device
         self.output_tensor = torch.zeros(
-            self.batch_size, max_new_tokens, device='cpu'
+            self.batch_size, max_new_tokens, device="cpu"
         )  # shape: [self.batch_size, max_new_steps]
 
     def mark_running(self):
@@ -81,8 +79,6 @@ class InferenceRequest:
         if step_output.ndim == 1:
             step_output = step_output.unsqueeze(0)
 
-        # TODO: now, step_output is on cuda, and self.output_tensor is on cpu
-        # step_output = step_output.to(self.output_tensor.device)  # 显式拷贝
         batch_size, step_size = step_output.shape
         end_idx = self.cur_step_idx + step_size
 

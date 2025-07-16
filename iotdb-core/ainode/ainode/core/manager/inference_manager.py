@@ -135,7 +135,7 @@ class RegisteredStrategy(InferenceStrategy):
 
 class InferenceManager:
     ACCELERATE_MODEL_ID = "sundial"
-    #DEFAULT_DEVICE = "cpu"
+    # DEFAULT_DEVICE = "cpu"
     DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     DEFAULT_POOL_SIZE = (
         2  # TODO: Remove these parameter by sampling model inference consumption
@@ -165,9 +165,6 @@ class InferenceManager:
         """
         self._request_pool_map[self.ACCELERATE_MODEL_ID] = []
         for idx in range(self.DEFAULT_POOL_SIZE):
-            # sundial_model = self._model_manager.load_model(
-            #     self.ACCELERATE_MODEL_ID, {}
-            # ).to(self.DEFAULT_DEVICE)
             sundial_config = SundialConfig()
             request_queue = mp.Queue()
             request_pool = InferenceRequestPool(
@@ -224,7 +221,7 @@ class InferenceManager:
                 if data.dtype.byteorder not in ("=", "|"):
                     data = data.byteswap().newbyteorder()
                 # the inputs should be on CPU before passing to the inference request
-                inputs = torch.tensor(data).unsqueeze(0).float().to('cpu')
+                inputs = torch.tensor(data).unsqueeze(0).float().to("cpu")
                 infer_req = InferenceRequest(
                     req_id=_generate_req_id(),
                     inputs=inputs,

@@ -107,7 +107,9 @@ class InferenceRequestPool(mp.Process):
             num_samples=10,
             revin=True,
         )
-        request.output_tensor = request.output_tensor.to(self.device) # Ensure output tensor is on the same device
+        request.output_tensor = request.output_tensor.to(
+            self.device
+        )  # Ensure output tensor is on the same device
         request.write_step_output(output[0].mean(dim=0))
         request.inference_pipeline.post_decode()
         if request.is_finished():
@@ -116,7 +118,7 @@ class InferenceRequestPool(mp.Process):
                 f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is finished"
             )
             # ensure the output tensor is on CPU before sending to result queue
-            request.output_tensor = request.output_tensor[:, :request.cur_step_idx].cpu()
+            request.output_tensor = request.output_tensor.cpu()
             self._finished_queue.put(request)
         else:
             logger.debug(
@@ -131,12 +133,9 @@ class InferenceRequestPool(mp.Process):
 
     def run(self):
         self._model_manager = ModelManager()
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
-        self.model = self._model_manager.load_model(
-            self.model_id,{}).to(self.device)
-        
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = self._model_manager.load_model(self.model_id, {}).to(self.device)
+
         activate_daemon = threading.Thread(
             target=self._requests_activate_loop, daemon=True
         )
