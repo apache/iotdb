@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,9 +97,11 @@ public class ClusterTopology {
     if (!isPartitioned.get() || all == null || all.isEmpty()) {
       return all;
     }
-    if (all.stream().anyMatch(set -> set.getDataNodeLocationsSize() == 0)) {
+    for (TRegionReplicaSet replicaSet : all) {
       // some TRegionReplicaSet is unreachable since all DataNodes are down
-      return Collections.emptyList();
+      if (replicaSet.getDataNodeLocationsSize() == 0) {
+        throw new ReplicaSetUnreachableException(replicaSet);
+      }
     }
     final Map<Integer, Set<Integer>> topologyMapCurrent =
         Collections.unmodifiableMap(this.topologyMap.get());
