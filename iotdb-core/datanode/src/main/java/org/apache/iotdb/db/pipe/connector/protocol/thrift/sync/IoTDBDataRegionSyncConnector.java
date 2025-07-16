@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
-import org.apache.iotdb.commons.pipe.connector.limiter.TsFileSendRateLimiter;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.RetryUtils;
@@ -44,7 +43,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -67,22 +65,16 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_ENABLE_SEND_TSFILE_LIMIT;
 
 public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionSyncConnector.class);
 
   private PipeTransferBatchReqBuilder tabletBatchBuilder;
-  private boolean enableSendTsFileLimit;
 
   @Override
   public void customize(
@@ -94,11 +86,6 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
     }
-
-    enableSendTsFileLimit =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(SINK_ENABLE_SEND_TSFILE_LIMIT, CONNECTOR_ENABLE_SEND_TSFILE_LIMIT),
-            CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE);
   }
 
   @Override
@@ -111,14 +98,6 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   protected PipeTransferFilePieceReq getTransferMultiFilePieceReq(
       final String fileName, final long position, final byte[] payLoad) throws IOException {
     return PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(fileName, position, payLoad);
-  }
-
-  @Override
-  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
-    PipeResourceMetrics.getInstance().recordDiskIO(requiredBytes);
-    if (enableSendTsFileLimit) {
-      TsFileSendRateLimiter.getInstance().acquire(requiredBytes);
-    }
   }
 
   @Override
