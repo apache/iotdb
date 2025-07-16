@@ -476,8 +476,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     if (!startIndex.isAfter(resource.getMaxProgressIndex())
         && !startIndex.equals(resource.getMaxProgressIndex())) {
-      LOGGER.debug(
-          "Pipe {}@{}: captured historical file: {}, extractor progressIndex: {}, resource ProgressIndex: {}",
+      LOGGER.info(
+          "Pipe {}@{}: file {} meets mayTsFileContainUnprocessedData condition, extractor progressIndex: {}, resource ProgressIndex: {}",
           pipeName,
           dataRegionId,
           resource.getTsFilePath(),
