@@ -473,8 +473,19 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     if (startIndex instanceof StateProgressIndex) {
       startIndex = ((StateProgressIndex) startIndex).getInnerProgressIndex();
     }
-    return !startIndex.isAfter(resource.getMaxProgressIndex())
-        && !startIndex.equals(resource.getMaxProgressIndex());
+
+    if (!startIndex.isAfter(resource.getMaxProgressIndex())
+        && !startIndex.equals(resource.getMaxProgressIndex())) {
+      LOGGER.debug(
+          "Pipe {}@{}: captured historical file: {}, extractor progressIndex: {}, resource ProgressIndex: {}",
+          pipeName,
+          dataRegionId,
+          resource.getTsFilePath(),
+          startIndex,
+          resource.getMaxProgressIndex());
+      return true;
+    }
+    return false;
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
