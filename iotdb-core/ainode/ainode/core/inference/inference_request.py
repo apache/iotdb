@@ -79,8 +79,6 @@ class InferenceRequest:
         if step_output.ndim == 1:
             step_output = step_output.unsqueeze(0)
 
-        # TODO: now, step_output is on cuda, and self.output_tensor is on cpu
-        # step_output = step_output.to(self.output_tensor.device)  # 显式拷贝
         batch_size, step_size = step_output.shape
         end_idx = self.cur_step_idx + step_size
 
