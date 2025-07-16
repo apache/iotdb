@@ -71,7 +71,7 @@ struct TWindowParams {
 
 struct TInferenceResp {
   1: required common.TSStatus status
-  2: required list<binary> inferenceResult
+  2: optional list<binary> inferenceResult
 }
 
 struct IDataSchema {
@@ -96,7 +96,7 @@ struct TForecastReq {
 
 struct TForecastResp {
   1: required common.TSStatus status
-  2: required binary forecastResult
+  2: optional binary forecastResult
 }
 
 struct TShowModelsReq {
