@@ -19,16 +19,16 @@
 
 @echo off
 echo ````````````````````````````````````````````````````````````````````````
-echo Starting Validating the isGeneratedByPipe Mark in TsFile Resources
+echo Starting Resetting the Pipe Related Statistics in TsFile Resources
 echo ````````````````````````````````````````````````````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
 
-pushd %~dp0..\..
+pushd %~dp0..\..\..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.validate.TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.validate.TsFileResourcePipeStatisticsSetTool
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
