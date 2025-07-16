@@ -30,6 +30,7 @@ from ainode.core.constant import (
     AINODE_CONF_FILE_NAME,
     AINODE_CONF_GIT_FILE_NAME,
     AINODE_CONF_POM_FILE_NAME,
+    AINODE_INFERENCE_BATCH_INTERVAL_IN_MS,
     AINODE_INFERENCE_RPC_ADDRESS,
     AINODE_INFERENCE_RPC_PORT,
     AINODE_LOG_DIR,
@@ -55,6 +56,9 @@ class AINodeConfig(object):
         # Used for connection of DataNode/ConfigNode clients
         self._ain_inference_rpc_address: str = AINODE_INFERENCE_RPC_ADDRESS
         self._ain_inference_rpc_port: int = AINODE_INFERENCE_RPC_PORT
+        self._ain_inference_batch_interval_in_ms: int = (
+            AINODE_INFERENCE_BATCH_INTERVAL_IN_MS
+        )
 
         # log directory
         self._ain_logs_dir: str = AINODE_LOG_DIR
@@ -131,6 +135,14 @@ class AINodeConfig(object):
 
     def set_ain_inference_rpc_port(self, ain_inference_rpc_port: int) -> None:
         self._ain_inference_rpc_port = ain_inference_rpc_port
+
+    def get_ain_inference_batch_interval_in_ms(self) -> int:
+        return self._ain_inference_batch_interval_in_ms
+
+    def set_ain_inference_batch_interval_in_ms(
+        self, ain_inference_batch_interval_in_ms: int
+    ) -> None:
+        self._ain_inference_batch_interval_in_ms = ain_inference_batch_interval_in_ms
 
     def get_ain_logs_dir(self) -> str:
         return self._ain_logs_dir
@@ -271,6 +283,11 @@ class AINodeDescriptor(object):
             if "ain_inference_rpc_port" in config_keys:
                 self._config.set_ain_inference_rpc_port(
                     int(file_configs["ain_inference_rpc_port"])
+                )
+
+            if "ain_inference_batch_interval_in_ms" in config_keys:
+                self._config.set_ain_inference_batch_interval_in_ms(
+                    int(file_configs["ain_inference_batch_interval_in_ms"])
                 )
 
             if "ain_models_dir" in config_keys:
