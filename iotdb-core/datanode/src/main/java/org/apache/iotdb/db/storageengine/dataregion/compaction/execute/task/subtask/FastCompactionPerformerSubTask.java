@@ -206,11 +206,6 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
                 summary,
                 ignoreAllNullRows);
       }
-      for (String measurement : measurements) {
-        seriesCompactionExecutor.setType(
-                compactionSeriesContextMap.get(measurement).getFinalType());
-        seriesCompactionExecutor.execute();
-      }
       seriesCompactionExecutor.execute();
     }
     return null;
