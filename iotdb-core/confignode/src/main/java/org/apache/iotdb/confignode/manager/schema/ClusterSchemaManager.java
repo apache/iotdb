@@ -259,7 +259,6 @@ public class ClusterSchemaManager {
     }
   }
 
-
   /** Get cached database names to avoid expensive memory tree traversal */
   private List<String> getCachedDatabaseNames() {
     synchronized (CACHE_LOCK) {

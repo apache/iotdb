@@ -505,6 +505,25 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       TSStatus result = configManager.getConsensusManager().write(setSecurityLabelPlan);
 
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // Clear ConfigNode cache immediately
+        configManager.getClusterSchemaManager().clearSecurityLabelCache();
+        LOGGER.info(
+            "Cleared ConfigNode security label cache after setting label for database: {}",
+            req.getDatabasePath());
+
+        // Notify DataNodes to clear their cache
+        try {
+          configManager.getProcedureManager().getEnv().invalidateCache(req.getDatabasePath());
+          LOGGER.info(
+              "Notified DataNodes to clear security label cache for database: {}",
+              req.getDatabasePath());
+        } catch (Exception e) {
+          LOGGER.warn(
+              "Failed to notify DataNodes to clear cache for database: {}",
+              req.getDatabasePath(),
+              e);
+        }
+
         if (req.getSecurityLabel() == null || req.getSecurityLabel().isEmpty()) {
           LOGGER.info(
               "Successfully dropped security label for database: {}", req.getDatabasePath());
@@ -730,11 +749,21 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.getPermissions(),
             req.isGrantOpt(),
             AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
+
+    // Set label policy fields if present
     if (req.isSetLabelPolicyExpression()) {
       authorTreePlan.setLabelPolicyExpression(req.getLabelPolicyExpression());
     }
     if (req.isSetLabelPolicyScope()) {
       authorTreePlan.setLabelPolicyScope(req.getLabelPolicyScope());
+    }
+
+    // Set read/write label policy fields if present
+    if (req.isSetReadLabelPolicyExpression()) {
+      authorTreePlan.setReadLabelPolicyExpression(req.getReadLabelPolicyExpression());
+    }
+    if (req.isSetWriteLabelPolicyExpression()) {
+      authorTreePlan.setWriteLabelPolicyExpression(req.getWriteLabelPolicyExpression());
     }
 
     return configManager.operatePermission(authorTreePlan);

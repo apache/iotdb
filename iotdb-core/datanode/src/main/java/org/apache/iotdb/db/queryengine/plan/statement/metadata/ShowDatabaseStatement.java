@@ -196,7 +196,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   }
 
   /**
-   * 构造只包含数据库名和安全标签的 TSBlock
+   * 构造只包含数据库名和安全标签的 TSBlock 添加LBAC过滤逻辑，只返回用户有权限访问的数据库
    *
    * @param securityLabelMap Map<数据库名, 标签字符串>
    * @param future 返回结果
@@ -205,10 +205,28 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
       Map<String, String> securityLabelMap, SettableFuture<ConfigTaskResult> future) {
     try {
       // Add detailed logging for debugging
-      LOGGER.info("buildTSBlockFromSecurityLabel called with map: {}", securityLabelMap);
-      LOGGER.info("Map size: {}", securityLabelMap != null ? securityLabelMap.size() : "null");
-      LOGGER.info("showSecurityLabel flag: {}", showSecurityLabel);
-      LOGGER.info("pathPattern: {}", pathPattern);
+      LOGGER.warn("=== SHOW DATABASES SECURITY LABEL BUILD START ===");
+      LOGGER.warn("buildTSBlockFromSecurityLabel called with map: {}", securityLabelMap);
+      LOGGER.warn("Map size: {}", securityLabelMap.size());
+      LOGGER.warn("showSecurityLabel flag: {}", showSecurityLabel);
+      LOGGER.warn("pathPattern: {}", pathPattern);
+
+      // Get current user for LBAC filtering
+      String currentUser = SessionManager.getInstance().getCurrSession().getUsername();
+      LOGGER.warn("Current user for LBAC filtering: {}", currentUser);
+
+      // Apply LBAC filtering to security label map
+      Map<String, String> filteredSecurityLabelMap =
+          LbacPermissionChecker.filterSecurityLabelMapByLbac(securityLabelMap, currentUser);
+
+      LOGGER.warn("Original security label map size: {}", securityLabelMap.size());
+      LOGGER.warn("Filtered security label map size: {}", filteredSecurityLabelMap.size());
+      LOGGER.warn(
+          "Filtered out {} databases due to LBAC restrictions",
+          securityLabelMap.size() - filteredSecurityLabelMap.size());
+
+      // Use filtered map for building result
+      Map<String, String> finalSecurityLabelMap = filteredSecurityLabelMap;
 
       List<TSDataType> outputDataTypes =
           ColumnHeaderConstant.SHOW_DATABASE_SECURITY_LABEL_COLUMN_HEADERS.stream()
@@ -217,10 +235,10 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
       LOGGER.debug("Output data types: {}", outputDataTypes);
       TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
-      if (securityLabelMap != null && !securityLabelMap.isEmpty()) {
-        LOGGER.info("Processing {} database security labels", securityLabelMap.size());
+      if (finalSecurityLabelMap != null && !finalSecurityLabelMap.isEmpty()) {
+        LOGGER.info("Processing {} database security labels", finalSecurityLabelMap.size());
 
-        for (Map.Entry<String, String> entry : securityLabelMap.entrySet()) {
+        for (Map.Entry<String, String> entry : finalSecurityLabelMap.entrySet()) {
           String databaseName = entry.getKey();
           String securityLabel = entry.getValue();
 
@@ -257,8 +275,9 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
               builder.build(),
               DatasetHeaderFactory.getShowDatabaseSecurityLabelHeader()));
       LOGGER.info("Successfully created TSBlock with {} databases", builder.getPositionCount());
+      LOGGER.warn("=== SHOW DATABASES SECURITY LABEL BUILD END ===");
     } catch (Exception e) {
-      LOGGER.error("Exception in buildTSBlockFromSecurityLabel", e);
+      LOGGER.error("Error in buildTSBlockFromSecurityLabel", e);
       future.setException(e);
     }
   }

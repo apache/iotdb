@@ -94,12 +94,9 @@ public class ShowTimeSeriesStatement extends ShowStatement {
   }
 
   /**
-   * Filter time series based on LBAC permissions for the given user Only show time series that the
-   * user has permission to access
-   *
-   * @param timeSeriesList Original time series list
-   * @param userName Current user name
-   * @return Filtered time series list containing only accessible time series
+   * Filter time series list based on LBAC permissions for the current user Only show time series
+   * that the user has permission to access If user has policy but database has no label, deny
+   * access to that time series
    */
   public List<Object> filterTimeSeriesByLbac(List<Object> timeSeriesList, String userName) {
 
@@ -149,11 +146,8 @@ public class ShowTimeSeriesStatement extends ShowStatement {
   }
 
   /**
-   * Check LBAC permission for a specific time series device
-   *
-   * @param user User object
-   * @param devicePath Device path to check
-   * @return true if user has permission, false otherwise
+   * Check LBAC permission for a specific time series device If user has policy but database has no
+   * label, deny access
    */
   private boolean checkTimeSeriesLbacPermission(User user, String devicePath) {
     try {

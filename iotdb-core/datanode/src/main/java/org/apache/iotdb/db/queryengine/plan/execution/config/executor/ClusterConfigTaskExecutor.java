@@ -591,14 +591,36 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         }
       } else {
-        // Use existing logic for non-security-label queries
+
+        LOGGER.warn("=== SHOW DATABASES API CALL START ===");
+
         final List<String> databasePathPattern =
             java.util.Arrays.asList(showDatabaseStatement.getPathPattern().getNodes());
+        LOGGER.warn("Database path pattern: {}", databasePathPattern);
+        LOGGER.warn("Authority scope: {}", showDatabaseStatement.getAuthorityScope());
+
         org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq req =
             new org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq(
                     databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize())
                 .setIsTableModel(false);
+
+        LOGGER.warn("Sending request to ConfigNode - isTableModel: false");
+        LOGGER.warn("Request details: {}", req);
+
         org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp resp = client.showDatabase(req);
+
+        LOGGER.warn("Received response from ConfigNode");
+        LOGGER.warn("Response status: {}", resp.getStatus());
+        LOGGER.warn(
+            "Response database count: {}",
+            resp.getDatabaseInfoMap() != null ? resp.getDatabaseInfoMap().size() : "null");
+
+        if (resp.getDatabaseInfoMap() != null) {
+          LOGGER.warn("Database names in response: {}", resp.getDatabaseInfoMap().keySet());
+        }
+
+        LOGGER.warn("=== SHOW DATABASES API CALL END ===");
+
         showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
       }
     } catch (final Exception e) {

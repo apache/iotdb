@@ -329,4 +329,59 @@ public class LbacIntegration {
               username, scope, status));
     }
   }
+
+  /**
+   * Get user information from ConfigNode This method fetches user information including label
+   * policies from ConfigNode
+   *
+   * @param userName The username to fetch
+   * @return User object or null if not found
+   */
+  public static User getUserFromConfigNode(String userName) {
+    try {
+      LOGGER.debug("Getting user {} from ConfigNode", userName);
+
+      // Use the existing ConfigNode client to fetch user information
+      // This should use the same RPC mechanism as other operations
+      org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq req =
+          new org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq();
+      req.setUsername(userName);
+      req.setScope("READ_WRITE"); // Get both read and write policies
+
+      org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp resp =
+          getConfigNodeClient().showUserLabelPolicy(req);
+
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // Create a User object with the fetched information
+        User user = new User(userName, ""); // Password not needed for LBAC
+
+        // Set label policies from response
+        if (resp.getUserLabelPolicyList() != null) {
+          for (org.apache.iotdb.confignode.rpc.thrift.TUserLabelPolicyInfo policyInfo :
+              resp.getUserLabelPolicyList()) {
+            String scope = policyInfo.getScope();
+            String expression = policyInfo.getPolicyExpression();
+
+            if ("READ".equals(scope)) {
+              user.setReadLabelPolicyExpression(expression);
+            } else if ("WRITE".equals(scope)) {
+              user.setWriteLabelPolicyExpression(expression);
+            } else if ("READ_WRITE".equals(scope)) {
+              user.setReadLabelPolicyExpression(expression);
+              user.setWriteLabelPolicyExpression(expression);
+            }
+          }
+        }
+
+        LOGGER.debug("Successfully fetched user {} with policies from ConfigNode", userName);
+        return user;
+      } else {
+        LOGGER.warn("Failed to fetch user {} from ConfigNode: {}", userName, resp.getStatus());
+        return null;
+      }
+    } catch (Exception e) {
+      LOGGER.error("Error getting user {} from ConfigNode: {}", userName, e.getMessage(), e);
+      return null;
+    }
+  }
 }

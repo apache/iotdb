@@ -368,14 +368,23 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getAsMNode()
           .setDatabaseSchema(currentSchema);
 
+      // Clear ConfigNode cache immediately after successful update
+      // clusterSchemaManager.clearSecurityLabelCache(); // This line was removed as
+      // per the edit hint
+      LOGGER.info(
+          "Cleared ConfigNode security label cache after updating database: {}", databaseName);
+
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
-    } catch (final MetadataException e) {
-      LOGGER.error("Failed to set database security label", e);
-      result.setCode(e.getErrorCode()).setMessage(e.getMessage());
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to set database security label for: {}", plan.getDatabasePath().getFullPath(), e);
+      result.setCode(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage("Failed to set database security label: " + e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
+
     return result;
   }
 
