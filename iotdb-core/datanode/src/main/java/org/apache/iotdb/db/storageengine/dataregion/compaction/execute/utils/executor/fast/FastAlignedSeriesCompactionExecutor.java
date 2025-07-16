@@ -377,7 +377,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         ChunkMetadata chunkMetadata = (ChunkMetadata) valueChunkMetadata;
         chunkMetadata.setTsDataType(valueChunkMetadata.getNewType());
         Statistics<?> statistics = Statistics.getStatsByType(valueChunkMetadata.getNewType());
-        statistics.mergeStatistics(chunkMetadataElement.chunk.getChunkStatistic());
+        statistics.mergeStatistics(chunk.getChunkStatistic());
         chunkMetadata.setStatistics(statistics);
         chunkMetadataElement.chunkMetadata = chunkMetadata;
       } else {
