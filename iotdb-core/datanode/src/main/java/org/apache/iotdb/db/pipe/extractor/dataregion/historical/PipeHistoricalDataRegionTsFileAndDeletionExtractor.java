@@ -819,7 +819,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
               if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
                 toBeCompared = tryToExtractLocalProgressIndexForIoTV2(toBeCompared);
               }
-              return !greaterThanStartIndex(null, toBeCompared);
+              return !greaterThanStartIndex(resource, toBeCompared);
             })
         .forEach(DeletionResource::decreaseReference);
     // Get deletions that should be sent.
@@ -831,7 +831,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                   if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
                     toBeCompared = tryToExtractLocalProgressIndexForIoTV2(toBeCompared);
                   }
-                  return greaterThanStartIndex(null, toBeCompared);
+                  return greaterThanStartIndex(resource, toBeCompared);
                 })
             .collect(Collectors.toList());
     resourceList.addAll(allDeletionResources);
