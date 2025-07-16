@@ -143,9 +143,6 @@ public class SessionManager implements SessionManagerMBean {
     // check password expiration
     long passwordExpirationDays =
         CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays();
-    if (passwordExpirationDays <= 0) {
-      return Long.MAX_VALUE;
-    }
 
     TSLastDataQueryReq lastDataQueryReq = new TSLastDataQueryReq();
     lastDataQueryReq.setSessionId(0);
@@ -189,7 +186,8 @@ public class SessionManager implements SessionManagerMBean {
         // columns of last query: [timeseriesName, value, dataType]
         String oldPassword = tsBlock.getColumn(1).getBinary(0).toString();
         if (oldPassword.equals(AuthUtils.encryptPassword(password))) {
-          if (lastPasswordTime + passwordExpirationDays * 1000 * 86400 < lastPasswordTime) {
+          if (lastPasswordTime + passwordExpirationDays * 1000 * 86400 <= lastPasswordTime) {
+            // overflow or passwordExpirationDays <= 0
             return Long.MAX_VALUE;
           } else {
             return lastPasswordTime + passwordExpirationDays * 1000 * 86400;
