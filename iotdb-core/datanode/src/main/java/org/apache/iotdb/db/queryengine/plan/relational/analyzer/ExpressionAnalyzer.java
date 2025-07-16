@@ -1455,10 +1455,15 @@ public class ExpressionAnalyzer {
 
     @Override
     protected Type visitExtract(Extract node, StackableAstVisitorContext<Context> context) {
-      Type type = process(node.getExpression(), context);
+      if (node.getExpression() instanceof LongLiteral) {
+        // Don't visit child here to avoid setting its Type to INT32
+        setExpressionType(node.getExpression(), INT64);
+      } else {
+        Type type = process(node.getExpression(), context);
 
-      if (!(type instanceof TimestampType)) {
-        throw new SemanticException(String.format("Cannot extract from %s", type));
+        if (!(type instanceof TimestampType)) {
+          throw new SemanticException(String.format("Cannot extract from %s", type));
+        }
       }
 
       return setExpressionType(node, INT64);

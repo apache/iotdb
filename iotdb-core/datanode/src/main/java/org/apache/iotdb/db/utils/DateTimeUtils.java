@@ -87,7 +87,6 @@ public class DateTimeUtils {
   }
 
   public static final Function<Long, Long> CAST_TIMESTAMP_TO_MS;
-
   public static final Function<Long, Long> EXTRACT_TIMESTAMP_MS_PART;
   public static final Function<Long, Long> EXTRACT_TIMESTAMP_US_PART;
   public static final Function<Long, Long> EXTRACT_TIMESTAMP_NS_PART;
@@ -97,25 +96,22 @@ public class DateTimeUtils {
       case "us":
       case "microsecond":
         CAST_TIMESTAMP_TO_MS = timestamp -> timestamp / 1000;
-
-        EXTRACT_TIMESTAMP_MS_PART = timestamp -> (timestamp % 1000_000) / 1000;
-        EXTRACT_TIMESTAMP_US_PART = timestamp -> timestamp % 1000;
+        EXTRACT_TIMESTAMP_MS_PART = timestamp -> Math.floorMod(timestamp, 1000_000L) / 1000;
+        EXTRACT_TIMESTAMP_US_PART = timestamp -> Math.floorMod(timestamp, 1000L);
         EXTRACT_TIMESTAMP_NS_PART = timestamp -> 0L;
         break;
       case "ns":
       case "nanosecond":
         CAST_TIMESTAMP_TO_MS = timestamp -> timestamp / 1000000;
-
-        EXTRACT_TIMESTAMP_MS_PART = timestamp -> (timestamp % 1000_000_000) / 1000_000;
-        EXTRACT_TIMESTAMP_US_PART = timestamp -> (timestamp % 1000_000) / 1000;
-        EXTRACT_TIMESTAMP_NS_PART = timestamp -> timestamp % 1000;
+        EXTRACT_TIMESTAMP_MS_PART = timestamp -> Math.floorMod(timestamp, 1000_000_000L) / 1000_000;
+        EXTRACT_TIMESTAMP_US_PART = timestamp -> Math.floorMod(timestamp, 1000_000L) / 1000;
+        EXTRACT_TIMESTAMP_NS_PART = timestamp -> Math.floorMod(timestamp, 1000L);
         break;
       case "ms":
       case "millisecond":
       default:
         CAST_TIMESTAMP_TO_MS = timestamp -> timestamp;
-
-        EXTRACT_TIMESTAMP_MS_PART = timestamp -> timestamp % 1000;
+        EXTRACT_TIMESTAMP_MS_PART = timestamp -> Math.floorMod(timestamp, 1000L);
         EXTRACT_TIMESTAMP_US_PART = timestamp -> 0L;
         EXTRACT_TIMESTAMP_NS_PART = timestamp -> 0L;
         break;
