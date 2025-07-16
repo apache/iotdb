@@ -19,10 +19,10 @@
 #
 
 echo ------------------------------------------------------------------------------------
-echo Starting Validating the isGeneratedByPipe Mark in TsFile Resources
+echo Starting Resetting the Pipe Related Statistics in TsFile Resources
 echo ------------------------------------------------------------------------------------
 
-source "$(dirname "$0")/../../sbin/iotdb-common.sh"
+source "$(dirname "$0")/../../conf/iotdb-common.sh"
 #get_iotdb_include and checkAllVariables is in iotdb-common.sh
 VARS=$(get_iotdb_include "$*")
 checkAllVariables
@@ -45,7 +45,7 @@ for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=org.apache.iotdb.db.tools.validate.TsFileResourceIsGeneratedByPipeMarkValidationAndRepairTool
+MAIN_CLASS=org.apache.iotdb.db.tools.validate.TsFileResourcePipeStatisticsSetTool
 
 "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?
