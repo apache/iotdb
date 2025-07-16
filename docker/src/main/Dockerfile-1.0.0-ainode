@@ -22,7 +22,7 @@ ARG target=apache-iotdb-${version}-ainode-bin
 
 # replace deb source when necessary
 # RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list && \
-    # sed -i 's|security.debian.org/debian-security|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list
+#     sed -i 's|security.debian.org/debian-security|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list
 
 # replace pip source when necessary
 # RUN pip config set global.index-url https://mirrors.ustc.edu.cn/pypi/web/simple
@@ -57,14 +57,12 @@ RUN wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/sundial/config.json 
 RUN wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/timer_xl/config.json https://${hf_web}/thuml/timer-base-84m/resolve/main/config.json && \
     wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/timer_xl/model.safetensors https://${hf_web}/thuml/timer-base-84m/resolve/main/model.safetensors
 
-EXPOSE 10810
-VOLUME $IOTDB_AINODE_HOME/data
-VOLUME $IOTDB_AINODE_HOME/logs
 
 ENV PATH="${IOTDB_AINODE_HOME}/sbin/:${IOTDB_AINODE_HOME}/tools/:${PATH}"
-
 RUN bash start-ainode.sh || true
-RUN rm -r ${IOTDB_AINODE_HOME}/logs/*
+
+EXPOSE 10810
+VOLUME $IOTDB_AINODE_HOME/logs
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 CMD ["bash", "-c", "entrypoint.sh ainode"]

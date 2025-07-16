@@ -101,7 +101,7 @@ function prepare_buildx(){
             docker_publish="" ;
             return ;
         fi
-        docker_build="docker buildx build --platform linux/amd64,linux/arm64/v8,linux/arm/v7" ;
+        docker_build="docker buildx build --platform linux/amd64,linux/arm64/v8" ;
         docker buildx inspect mybuilder || if [[ $? -ne 0 ]]; then
             docker buildx create --name mybuilder --driver docker-container --bootstrap --use
             docker run --rm --privileged tonistiigi/binfmt:latest --install all

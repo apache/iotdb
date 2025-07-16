@@ -42,7 +42,6 @@ RUN chmod +x *.sh && dos2unix *.sh \
   && dos2unix ${IOTDB_HOME}/conf/*.sh
 
 EXPOSE 6667
-EXPOSE 10710
 VOLUME /iotdb/data
 VOLUME /iotdb/logs
 
