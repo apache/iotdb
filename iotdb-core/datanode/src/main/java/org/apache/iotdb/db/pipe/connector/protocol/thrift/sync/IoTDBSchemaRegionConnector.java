@@ -163,9 +163,4 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
       final String fileName, final long position, final byte[] payLoad) throws IOException {
     return PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq(fileName, position, payLoad);
   }
-
-  @Override
-  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
-    // Do nothing
-  }
 }
