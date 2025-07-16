@@ -80,19 +80,19 @@ def test_dialect():
             schema_names, ["root.cursor", "root.cursor_s1", "root.__system"]
         ):
             test_fail()
-            print_message("Actual result " + schema_names)
+            print_message("Actual result " + str(schema_names))
             print_message("test get_schema_names failed!")
         # test get_table_names
         table_names = insp.get_table_names("root.cursor")
         if not operator.eq(table_names, ["device1", "device2"]):
             test_fail()
-            print_message("Actual result " + table_names)
+            print_message("Actual result " + str(table_names))
             print_message("test get_table_names failed!")
         # test get_columns
         columns = insp.get_columns(table_name="device1", schema="root.cursor")
         if len(columns) != 3:
             test_fail()
-            print_message("Actual result " + columns)
+            print_message("Actual result " + str(columns))
             print_message("test get_columns failed!")
 
         with Session(eng) as session:

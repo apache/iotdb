@@ -143,8 +143,7 @@ public class SessionManager implements SessionManagerMBean {
     // check password expiration
     long passwordExpirationDays =
         CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays();
-    if (passwordExpirationDays <= 0
-        || username.equals(CommonDescriptor.getInstance().getConfig().getAdminName())) {
+    if (passwordExpirationDays <= 0) {
       return Long.MAX_VALUE;
     }
 
@@ -244,7 +243,10 @@ public class SessionManager implements SessionManagerMBean {
         String logInMessage = "Login successfully";
         if (timeToExpire != null && timeToExpire != Long.MAX_VALUE) {
           logInMessage += ". Your password will expire at " + new Date(timeToExpire);
-        } else {
+        } else if (timeToExpire == null) {
+          LOGGER.info(
+              "No password history for user {}, using the current time to create a new one",
+              username);
           TSStatus tsStatus = DataNodeAuthUtils.recordPassword(username, password, null);
           if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             openSessionResp
