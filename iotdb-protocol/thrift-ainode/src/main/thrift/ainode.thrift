@@ -112,6 +112,8 @@ struct TShowModelsResp {
 service IAINodeRPCService {
 
   // -------------- For Config Node --------------
+  common.TSStatus stopAINode()
+
   TShowModelsResp showModels(TShowModelsReq req)
 
   common.TSStatus deleteModel(TDeleteModelReq req)

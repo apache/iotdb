@@ -101,8 +101,8 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
 
   protected void appendLastValueToTsBlockBuilder(
       long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath, String type) {
-    LastQueryUtil.appendLastValue(
-        tsBlockBuilder, lastTime, measurementPath.getFullPath(), lastValue.getStringValue(), type);
+    LastQueryUtil.appendLastValueRespectBlob(
+        tsBlockBuilder, lastTime, measurementPath.getFullPath(), lastValue, type);
   }
 
   @Override

@@ -16,13 +16,10 @@
 # under the License.
 #
 
-import os
 from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
-from huggingface_hub import hf_hub_download
-from safetensors.torch import load_file as load_safetensors
 from torch import nn
 from transformers import Cache, DynamicCache, PreTrainedModel
 from transformers.activations import ACT2FN

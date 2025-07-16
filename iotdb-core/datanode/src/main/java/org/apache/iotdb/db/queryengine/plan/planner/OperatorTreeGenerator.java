@@ -606,7 +606,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<Integer> remainingColumnIndexList = new ArrayList<>();
     for (String outputColumnName : outputColumnNames) {
       int index = inputColumnNames.indexOf(outputColumnName);
-      if (index < 0) {
+      if (index < 0 && !outputColumnName.equals(TIMESTAMP_EXPRESSION_STRING)) {
         throw new IllegalStateException(
             String.format("Cannot find column [%s] in child's output", outputColumnName));
       }
@@ -3047,9 +3047,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         }
       } else { //  cached last value is satisfied, put it into LastCacheScanOperator
         if (node.getOutputViewPath() != null) {
-          context.addCachedLastValue(timeValuePair, node.getOutputViewPath());
+          context.addCachedLastValue(
+              timeValuePair, node.getOutputViewPath(), node.getOutputViewPathType());
         } else {
-          context.addCachedLastValue(timeValuePair, measurementPath.getFullPath());
+          context.addCachedLastValue(
+              timeValuePair, measurementPath.getFullPath(), measurementSchema.getType());
         }
       }
     }
@@ -3097,7 +3099,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
 
-    List<Pair<TimeValuePair, Binary>> cachedLastValueAndPathList =
+    List<Pair<TimeValuePair, Pair<Binary, TSDataType>>> cachedLastValueAndPathList =
         context.getCachedLastValueAndPathList();
 
     int initSize = cachedLastValueAndPathList != null ? cachedLastValueAndPathList.size() : 0;
@@ -3106,12 +3108,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(initSize);
       for (int i = 0; i < initSize; i++) {
         TimeValuePair timeValuePair = cachedLastValueAndPathList.get(i).left;
-        LastQueryUtil.appendLastValue(
+        LastQueryUtil.appendLastValueRespectBlob(
             builder,
             timeValuePair.getTimestamp(),
-            cachedLastValueAndPathList.get(i).right,
-            timeValuePair.getValue().getStringValue(),
-            timeValuePair.getValue().getDataType().name());
+            cachedLastValueAndPathList.get(i).right.getLeft(),
+            timeValuePair.getValue(),
+            cachedLastValueAndPathList.get(i).right.getRight().name());
       }
       OperatorContext operatorContext =
           context
@@ -3127,18 +3129,19 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           node.getTimeseriesOrdering() == ASC ? ASC_BINARY_COMPARATOR : DESC_BINARY_COMPARATOR;
       // sort values from last cache
       if (initSize > 0) {
-        cachedLastValueAndPathList.sort(Comparator.comparing(Pair::getRight, comparator));
+        cachedLastValueAndPathList.sort(
+            Comparator.comparing(pair -> pair.getRight().getLeft(), comparator));
       }
 
       TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(initSize);
       for (int i = 0; i < initSize; i++) {
         TimeValuePair timeValuePair = cachedLastValueAndPathList.get(i).left;
-        LastQueryUtil.appendLastValue(
+        LastQueryUtil.appendLastValueRespectBlob(
             builder,
             timeValuePair.getTimestamp(),
-            cachedLastValueAndPathList.get(i).right,
-            timeValuePair.getValue().getStringValue(),
-            timeValuePair.getValue().getDataType().name());
+            cachedLastValueAndPathList.get(i).right.getLeft(),
+            timeValuePair.getValue(),
+            cachedLastValueAndPathList.get(i).right.getRight().name());
       }
 
       OperatorContext operatorContext =
@@ -3219,6 +3222,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           .add(new InputLocation(tsBlockIndex, -1));
       int valueColumnIndex = 0;
       for (String columnName : childNode.getOutputColumnNames()) {
+        if (columnName.equals(TIMESTAMP_EXPRESSION_STRING)) {
+          valueColumnIndex++;
+          continue;
+        }
         outputMappings
             .computeIfAbsent(columnName, key -> new ArrayList<>())
             .add(new InputLocation(tsBlockIndex, valueColumnIndex));

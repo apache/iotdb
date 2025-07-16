@@ -528,20 +528,17 @@ public class NodeManager {
     return resp;
   }
 
-  /**
-   * Remove AINodes.
-   *
-   * @param removeAINodePlan removeDataNodePlan
-   */
-  public TSStatus removeAINode(RemoveAINodePlan removeAINodePlan) {
-    LOGGER.info("NodeManager start to remove AINode {}", removeAINodePlan);
-
+  /** Remove AINodes. */
+  public TSStatus removeAINode() {
     // check if the node exists
-    if (!nodeInfo.containsAINode(removeAINodePlan.getAINodeLocation().getAiNodeId())) {
+    if (nodeInfo.getRegisteredAINodes().isEmpty()) {
       return new TSStatus(TSStatusCode.REMOVE_AI_NODE_ERROR.getStatusCode())
-          .setMessage("AINode doesn't exist.");
+          .setMessage("Remove AINode failed because there is no AINode in the cluster.");
     }
 
+    // We remove the only AINode by default
+    RemoveAINodePlan removeAINodePlan =
+        new RemoveAINodePlan(nodeInfo.getRegisteredAINodes().get(0).getLocation());
     // Add request to queue, then return to client
     boolean removeSucceed = configManager.getProcedureManager().removeAINode(removeAINodePlan);
     TSStatus status;
@@ -553,8 +550,7 @@ public class NodeManager {
       status.setMessage("Server rejected the request, maybe requests are too many");
     }
 
-    LOGGER.info(
-        "NodeManager submit RemoveAINodePlan finished, removeAINodePlan: {}", removeAINodePlan);
+    LOGGER.info("NodeManager submit RemoveAINodePlan finished, {}", removeAINodePlan);
     return status;
   }
 

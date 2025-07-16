@@ -83,8 +83,8 @@ public class LocalExecutionPlanContext {
   private List<TSDataType> cachedDataTypes;
 
   // left is cached last value in last query
-  // right is full path for each cached last value
-  private List<Pair<TimeValuePair, Binary>> cachedLastValueAndPathList;
+  // right is full path and DataType for each cached last value
+  private List<Pair<TimeValuePair, Pair<Binary, TSDataType>>> cachedLastValueAndPathList;
 
   // whether we need to update last cache
   private boolean needUpdateLastCache;
@@ -274,15 +274,18 @@ public class LocalExecutionPlanContext {
     this.needUpdateLastCache = needUpdateLastCache;
   }
 
-  public void addCachedLastValue(TimeValuePair timeValuePair, String fullPath) {
+  public void addCachedLastValue(
+      TimeValuePair timeValuePair, String fullPath, TSDataType dataType) {
     if (cachedLastValueAndPathList == null) {
       cachedLastValueAndPathList = new ArrayList<>();
     }
     cachedLastValueAndPathList.add(
-        new Pair<>(timeValuePair, new Binary(fullPath, TSFileConfig.STRING_CHARSET)));
+        new Pair<>(
+            timeValuePair,
+            new Pair<>(new Binary(fullPath, TSFileConfig.STRING_CHARSET), dataType)));
   }
 
-  public List<Pair<TimeValuePair, Binary>> getCachedLastValueAndPathList() {
+  public List<Pair<TimeValuePair, Pair<Binary, TSDataType>>> getCachedLastValueAndPathList() {
     return cachedLastValueAndPathList;
   }
 
