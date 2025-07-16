@@ -40,7 +40,7 @@ public class RemoteConfigNodeConfig implements ConfigNodeConfig {
   }
 
   @Override
-  public ConfigNodeConfig setEnableAutoLeaderBalanceForIotConsensus(boolean enable) {
+  public ConfigNodeConfig setLeaderDistributionPolicy(String policy) {
     return this;
   }
 }

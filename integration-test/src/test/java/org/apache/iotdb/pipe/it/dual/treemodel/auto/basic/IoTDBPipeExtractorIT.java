@@ -73,14 +73,14 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualTreeModelAutoIT {
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false);
-    senderEnv.getConfig().getConfigNodeConfig().setEnableAutoLeaderBalanceForIotConsensus(false);
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-    receiverEnv.getConfig().getConfigNodeConfig().setEnableAutoLeaderBalanceForIotConsensus(false);
+    receiverEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);

@@ -69,8 +69,8 @@ public class MppConfigNodeConfig extends MppBaseConfig implements ConfigNodeConf
   }
 
   @Override
-  public ConfigNodeConfig setEnableAutoLeaderBalanceForIotConsensus(boolean enable) {
-    properties.setProperty("enable_auto_leader_balance_for_iot_consensus", String.valueOf(enable));
+  public ConfigNodeConfig setLeaderDistributionPolicy(String policy) {
+    properties.setProperty("leader_distribution_policy", policy);
     return this;
   }
 }

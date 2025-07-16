@@ -30,5 +30,5 @@ public interface ConfigNodeConfig {
 
   ConfigNodeConfig setMetricPrometheusReporterPassword(String password);
 
-  ConfigNodeConfig setEnableAutoLeaderBalanceForIotConsensus(boolean enable);
+  ConfigNodeConfig setLeaderDistributionPolicy(String policy);
 }
