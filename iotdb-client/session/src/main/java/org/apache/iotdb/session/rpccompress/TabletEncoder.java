@@ -164,15 +164,19 @@ public class TabletEncoder {
   private ByteBuffer compressBuffer(ByteBuffer buffer) {
     if (compressionType != CompressionType.UNCOMPRESSED) {
       ICompressor compressor = ICompressor.getCompressor(compressionType);
-      byte[] compressed = new byte[compressor.getMaxBytesForCompression(buffer.remaining())];
+      int uncompressedSize = buffer.remaining();
+      byte[] compressed = new byte[compressor.getMaxBytesForCompression(uncompressedSize) + 4];
       try {
         int compressedLength =
             compressor.compress(
                 buffer.array(),
                 buffer.arrayOffset() + buffer.position(),
-                buffer.remaining(),
+                uncompressedSize,
                 compressed);
-        buffer = ByteBuffer.wrap(compressed, 0, compressedLength);
+        buffer = ByteBuffer.wrap(compressed, 0, compressedLength + 4);
+        buffer.position(compressedLength);
+        buffer.putInt(uncompressedSize);
+        buffer.rewind();
       } catch (IOException e) {
         throw new IllegalStateException(e);
       }

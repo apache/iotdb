@@ -77,6 +77,8 @@ public abstract class AbstractSessionBuilder {
 
   public Boolean isCompressed = false;
 
+  public Boolean isCompacted = false;
+
   public CompressionType compressionType = CompressionType.UNCOMPRESSED;
 
   public Map<TSDataType, TSEncoding> columnEncodersMap;

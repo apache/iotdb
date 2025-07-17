@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.TableSessionBuilder;
@@ -60,17 +60,17 @@ public class IoTDBSessionCompressedIT {
 
     List<String> nodeUrls =
         EnvFactory.getEnv().getDataNodeWrapperList().stream()
-            .map(AbstractNodeWrapper::getIpAndPortString)
+            .map(DataNodeWrapper::getIpAndPortString)
             .collect(Collectors.toList());
+    //    List<String> nodeUrls = Collections.singletonList("127.0.0.1:6667");
     session1 =
         new TableSessionBuilder()
             .nodeUrls(nodeUrls)
             .username(CommonDescriptor.getInstance().getConfig().getAdminName())
             .password(CommonDescriptor.getInstance().getConfig().getAdminPassword())
-            .enableCompression(false)
+            .enableCompression(true)
             .enableRedirection(true)
             .enableAutoFetch(false)
-            .isCompressed(true)
             .withCompressionType(CompressionType.SNAPPY)
             .withBooleanEncoding(TSEncoding.PLAIN)
             .withInt32Encoding(TSEncoding.CHIMP)
@@ -88,10 +88,9 @@ public class IoTDBSessionCompressedIT {
             .nodeUrls(nodeUrls)
             .username(CommonDescriptor.getInstance().getConfig().getAdminName())
             .password(CommonDescriptor.getInstance().getConfig().getAdminPassword())
-            .enableCompression(false)
+            .enableCompression(true)
             .enableRedirection(true)
             .enableAutoFetch(false)
-            .isCompressed(true)
             .withCompressionType(CompressionType.SNAPPY)
             .withBooleanEncoding(TSEncoding.PLAIN)
             .withInt32Encoding(TSEncoding.SPRINTZ)
@@ -109,10 +108,9 @@ public class IoTDBSessionCompressedIT {
             .nodeUrls(nodeUrls)
             .username(CommonDescriptor.getInstance().getConfig().getAdminName())
             .password(CommonDescriptor.getInstance().getConfig().getAdminPassword())
-            .enableCompression(false)
+            .enableCompression(true)
             .enableRedirection(true)
             .enableAutoFetch(false)
-            .isCompressed(true)
             .withCompressionType(CompressionType.GZIP)
             .withBooleanEncoding(TSEncoding.RLE)
             .withInt32Encoding(TSEncoding.TS_2DIFF)
@@ -130,10 +128,9 @@ public class IoTDBSessionCompressedIT {
             .nodeUrls(nodeUrls)
             .username(CommonDescriptor.getInstance().getConfig().getAdminName())
             .password(CommonDescriptor.getInstance().getConfig().getAdminPassword())
-            .enableCompression(false)
+            .enableCompression(true)
             .enableRedirection(true)
             .enableAutoFetch(false)
-            .isCompressed(true)
             .withCompressionType(CompressionType.LZMA2)
             .withBooleanEncoding(TSEncoding.PLAIN)
             .withInt32Encoding(TSEncoding.GORILLA)

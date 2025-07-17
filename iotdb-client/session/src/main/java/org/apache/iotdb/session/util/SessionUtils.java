@@ -37,6 +37,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -468,6 +469,11 @@ public class SessionUtils {
       default:
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", dataType));
+    }
+    try {
+      encoder.flush(outputStream);
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
     }
   }
 
