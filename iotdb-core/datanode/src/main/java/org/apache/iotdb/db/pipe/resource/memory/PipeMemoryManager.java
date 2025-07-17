@@ -641,19 +641,19 @@ public class PipeMemoryManager {
     return memoryBlock.getFreeMemoryInBytes();
   }
 
-  public static long getTotalNonFloatingMemorySizeInBytes() {
+  public long getTotalNonFloatingMemorySizeInBytes() {
     return (long)
-        (TOTAL_MEMORY_SIZE_IN_BYTES
+        (memoryBlock.getTotalMemorySizeInBytes()
             * (1 - PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion()));
   }
 
-  public static long getTotalFloatingMemorySizeInBytes() {
+  public long getTotalFloatingMemorySizeInBytes() {
     return (long)
-        (TOTAL_MEMORY_SIZE_IN_BYTES
+        (memoryBlock.getTotalMemorySizeInBytes()
             * PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion());
   }
 
-  public static long getTotalMemorySizeInBytes() {
-    return TOTAL_MEMORY_SIZE_IN_BYTES;
+  public long getTotalMemorySizeInBytes() {
+    return memoryBlock.getTotalMemorySizeInBytes();
   }
 }
