@@ -50,6 +50,7 @@ class InferenceRequestPool(mp.Process):
         config: PretrainedConfig,
         request_queue: mp.Queue,
         result_queue: mp.Queue,
+        model_manager: ModelManager,
         **pool_kwargs,
     ):
         super().__init__()
@@ -132,7 +133,7 @@ class InferenceRequestPool(mp.Process):
             self._step()
 
     def run(self):
-        self._model_manager = ModelManager()
+        #self._model_manager = ModelManager()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = self._model_manager.load_model(self.model_id, {}).to(self.device)
 
