@@ -38,6 +38,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 
 // TODO:fix the different type exception
 @RunWith(IoTDBTestRunner.class)
@@ -671,6 +672,14 @@ public class IoTDBCaseWhenThenTableIT {
     String sql =
         "select case when s3 >= 0 and s3 < 20 and s4 >= 50 and s4 < 60 then 'just so so~~~' when s3 >= 20 and s3 < 40 and s4 >= 70 and s4 < 80 then 'very well~~~' end from table2";
     String[] retArray = new String[] {"null,", "just so so~~~,", "null,", "very well~~~,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
+  }
+
+  @Test
+  public void testThenWithBinarySameConstant() {
+    String sql = "SELECT CASE WHEN true THEN 200 + (s1 - 200) END AS result FROM table1";
+    String[] expectedHeader = new String[] {"result"};
+    String[] retArray = new String[] {"0,", "11,", "22,", "33,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
   }
 }
