@@ -25,16 +25,18 @@ struct TDeleteModelReq {
   1: required string modelId
 }
 
-struct TAIHeartbeatReq{
+struct TAIHeartbeatReq {
   1: required i64 heartbeatTimestamp
   2: required bool needSamplingLoad
+  3: optional bool activated
 }
 
-struct TAIHeartbeatResp{
+struct TAIHeartbeatResp {
   1: required i64 heartbeatTimestamp
   2: required string status
   3: optional string statusReason
   4: optional common.TLoadSample loadSample
+  5: optional string activateStatus
 }
 
 struct TRegisterModelReq {
@@ -69,7 +71,7 @@ struct TWindowParams {
 
 struct TInferenceResp {
   1: required common.TSStatus status
-  2: required list<binary> inferenceResult
+  2: optional list<binary> inferenceResult
 }
 
 struct IDataSchema {
@@ -94,7 +96,7 @@ struct TForecastReq {
 
 struct TForecastResp {
   1: required common.TSStatus status
-  2: required binary forecastResult
+  2: optional binary forecastResult
 }
 
 struct TShowModelsReq {
