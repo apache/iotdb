@@ -74,6 +74,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
+
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
   }
