@@ -169,9 +169,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   }
 
   public String getDeviceId() {
-    return Objects.nonNull(insertNode.getDevicePath())
-        ? insertNode.getDevicePath().getFullPath()
-        : null;
+    return Objects.nonNull(devicePath) ? devicePath.getFullPath() : null;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
