@@ -27,7 +27,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.client.async.AsyncAINodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
@@ -35,7 +34,6 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeHeartbeatClientPool
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.AINodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.DataNodeHeartbeatHandler;
-import org.apache.iotdb.confignode.client.sync.SyncDataNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
@@ -278,15 +276,15 @@ public class HeartbeatService {
               configManager.getPipeManager().getPipeRuntimeCoordinator());
       configManager.getClusterQuotaManager().updateSpaceQuotaUsage();
       addConfigNodeLocationsToReq(dataNodeId, heartbeatReq);
-//      if (CommonDescriptor.getInstance().getConfig().isEnableSSL()) {
-//        SyncDataNodeHeartbeatClientPool.getInstance()
-//            .getDataNodeHeartBeat(
-//                dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
-//      } else {
-        AsyncDataNodeHeartbeatClientPool.getInstance()
-            .getDataNodeHeartBeat(
-                dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
-//      }
+      //      if (CommonDescriptor.getInstance().getConfig().isEnableSSL()) {
+      //        SyncDataNodeHeartbeatClientPool.getInstance()
+      //            .getDataNodeHeartBeat(
+      //                dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
+      //      } else {
+      AsyncDataNodeHeartbeatClientPool.getInstance()
+          .getDataNodeHeartBeat(
+              dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
+      //      }
     }
   }
 
