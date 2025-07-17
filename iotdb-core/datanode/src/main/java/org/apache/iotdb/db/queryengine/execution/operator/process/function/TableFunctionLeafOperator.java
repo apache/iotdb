@@ -69,7 +69,6 @@ public class TableFunctionLeafOperator implements ProcessOperator {
       throw new IoTDBRuntimeException(
           e.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true);
     }
-    processor.process(columnBuilders);
     return buildTsBlock(columnBuilders);
   }
 
