@@ -315,11 +315,12 @@ public class LbacPermissionChecker {
   }
 
   /**
-   * Get user's label policy for the specified operation type
+   * Get user label policy for specific operation type Must separate read policy and write policy,
+   * policies only have two types
    *
-   * @param user the user
-   * @param operationType the operation type (READ/WRITE)
-   * @return label policy expression or null if none defined
+   * @param user User object
+   * @param operationType Operation type (READ/WRITE)
+   * @return Label policy expression or null if no policy exists
    */
   private static String getUserLabelPolicy(
       User user, LbacOperationClassifier.OperationType operationType) {
@@ -327,9 +328,9 @@ public class LbacPermissionChecker {
     LOGGER.debug(
         "Getting label policy for user: {} and operation: {}", user.getName(), operationType);
 
-    // Check for specific read/write policy expressions first
+    // Must separate read policy and write policy
     if (operationType == LbacOperationClassifier.OperationType.READ) {
-      // Check for read-specific policy
+      // Priority use read policy
       String readPolicyExpression = user.getReadLabelPolicyExpression();
       if (readPolicyExpression != null && !readPolicyExpression.trim().isEmpty()) {
         LOGGER.debug(
@@ -337,7 +338,7 @@ public class LbacPermissionChecker {
         return readPolicyExpression;
       }
     } else if (operationType == LbacOperationClassifier.OperationType.WRITE) {
-      // Check for write-specific policy
+      // Priority use write policy
       String writePolicyExpression = user.getWriteLabelPolicyExpression();
       if (writePolicyExpression != null && !writePolicyExpression.trim().isEmpty()) {
         LOGGER.debug(
@@ -346,29 +347,19 @@ public class LbacPermissionChecker {
       }
     }
 
-    // Fall back to legacy fields for backward compatibility
+    // Legacy fields for backward compatibility
     String labelPolicyExpression = user.getLabelPolicyExpression();
     String labelPolicyScope = user.getLabelPolicyScope();
 
-    LOGGER.debug(
-        "User {} has legacy labelPolicyExpression: '{}', labelPolicyScope: '{}'",
-        user.getName(),
-        labelPolicyExpression,
-        labelPolicyScope);
-
-    // If no label policy expression is set, return null
+    // If no policy expression is set, return null
     if (labelPolicyExpression == null || labelPolicyExpression.trim().isEmpty()) {
       LOGGER.debug("User {} has no label policy expression", user.getName());
       return null;
     }
 
-    // Check if the policy scope matches the operation type
+    // Check if policy scope matches operation type
     if (labelPolicyScope != null) {
-      // Convert operation type to lowercase string for comparison
       String operationString = operationType.name().toLowerCase();
-
-      // Policy scope should contain the operation type (e.g., "FOR WRITE", "FOR
-      // READ")
       if (!labelPolicyScope.toLowerCase().contains(operationString)) {
         LOGGER.debug(
             "User {} legacy label policy scope '{}' does not match operation type {}",
@@ -378,12 +369,6 @@ public class LbacPermissionChecker {
         return null;
       }
     }
-
-    LOGGER.debug(
-        "User {} has matching legacy label policy for {} operation: '{}'",
-        user.getName(),
-        operationType,
-        labelPolicyExpression);
 
     return labelPolicyExpression;
   }
@@ -557,29 +542,30 @@ public class LbacPermissionChecker {
   }
 
   /**
-   * Check if user has any label policies for read or write operations This method can be used to
-   * determine if a user has any LBAC policies set
+   * Check if user has any label policies (read/write/both) This method determines whether the user
+   * has any policy restrictions
    *
    * @param user User object to check
-   * @return true if user has any label policies, false otherwise
+   * @return true if user has any policies, false otherwise
    */
   public static boolean userHasLabelPolicies(User user) {
     if (user == null) {
       return false;
     }
 
-    // Check for read policy
+    // Check read policy
     String readPolicy = user.getReadLabelPolicyExpression();
     boolean hasReadPolicy = (readPolicy != null && !readPolicy.trim().isEmpty());
 
-    // Check for write policy
+    // Check write policy
     String writePolicy = user.getWriteLabelPolicyExpression();
     boolean hasWritePolicy = (writePolicy != null && !writePolicy.trim().isEmpty());
 
-    // Check for legacy policy
+    // Check legacy policy (backward compatibility)
     String legacyPolicy = user.getLabelPolicyExpression();
     boolean hasLegacyPolicy = (legacyPolicy != null && !legacyPolicy.trim().isEmpty());
 
+    // Has any policy (read/write/both exist)
     boolean hasPolicies = hasReadPolicy || hasWritePolicy || hasLegacyPolicy;
 
     LOGGER.debug(
@@ -747,8 +733,10 @@ public class LbacPermissionChecker {
   }
 
   /**
-   * Simplified LBAC permission check for database listing. This method checks if user has any read
-   * policy and if it matches the database labels.
+   * Simplified LBAC permission check for database listing. For SHOW DATABASES operation, we need to
+   * check read access. This method implements the LBAC policy logic as specified: - No policies:
+   * Allow access regardless of database labels - Has any policy (read/write/both): - No labels:
+   * Deny access - Has labels: Check policy matching
    *
    * @param user User object
    * @param devicePaths List of device paths (database names)
@@ -757,38 +745,61 @@ public class LbacPermissionChecker {
   private static LbacCheckResult checkLbacPermissionForDatabase(
       User user, List<String> devicePaths) {
     try {
-      // Check if user has any read policy
+      // Check if user has any read or write policy
       String readPolicy = getUserLabelPolicy(user, LbacOperationClassifier.OperationType.READ);
-      boolean hasReadPolicy = (readPolicy != null && !readPolicy.trim().isEmpty());
+      String writePolicy = getUserLabelPolicy(user, LbacOperationClassifier.OperationType.WRITE);
 
-      if (!hasReadPolicy) {
-        LOGGER.debug("User has no read policy, allowing access for database listing");
+      boolean hasReadPolicy = (readPolicy != null && !readPolicy.trim().isEmpty());
+      boolean hasWritePolicy = (writePolicy != null && !writePolicy.trim().isEmpty());
+      boolean hasAnyPolicy = hasReadPolicy || hasWritePolicy;
+
+      LOGGER.debug(
+          "User {} - Read policy: {}, Write policy: {}, Has any policy: {}",
+          user.getName(),
+          hasReadPolicy,
+          hasWritePolicy,
+          hasAnyPolicy);
+
+      // No read/write policies (both read and write policies are empty)
+      if (!hasAnyPolicy) {
+        LOGGER.debug("User has no policies, allowing access for database listing");
         return LbacCheckResult.allow();
       }
 
-      // User has read policy - check each device path
+      // Has any policy (read/write/both exist)
       for (String devicePath : devicePaths) {
-        LOGGER.debug("Checking read policy for database: {}", devicePath);
+        LOGGER.debug("Checking policies for database: {}", devicePath);
 
         // Get database security label
         SecurityLabel databaseLabel = DatabaseLabelFetcher.getSecurityLabelForPath(devicePath);
         boolean databaseHasLabels = (databaseLabel != null);
 
-        // If database has no labels and user has read policy, deny access
-        if (!databaseHasLabels && hasReadPolicy) {
-          LOGGER.debug("Database has no labels but user has read policy, denying access");
+        // No labeled data → Trigger LBAC, directly deny access
+        if (!databaseHasLabels && hasAnyPolicy) {
+          LOGGER.debug("Database has no labels but user has policies, denying access");
           return LbacCheckResult.deny(
               "Database has no security label but user has label policy restrictions");
         }
 
-        // If database has labels, check read policy
+        // Has labeled data
         if (databaseHasLabels) {
-          LOGGER.debug("Checking read policy for database with labels");
-          LbacCheckResult readResult = evaluatePolicy(readPolicy, databaseLabel, devicePath);
-          if (!readResult.isAllowed()) {
-            LOGGER.debug("Read policy check failed: {}", readResult.getReason());
-            return readResult;
+          // SHOW DATABASES is a read operation
+          if (hasReadPolicy) {
+            // Only has read policy - Read operation → Trigger LBAC, perform read policy and
+            // label judgment
+            LOGGER.debug("Checking read policy for database with labels");
+            LbacCheckResult readResult = evaluatePolicy(readPolicy, databaseLabel, devicePath);
+            if (!readResult.isAllowed()) {
+              LOGGER.debug("Read policy check failed: {}", readResult.getReason());
+              return readResult;
+            }
+          } else if (hasWritePolicy) {
+            // Only has write policy - Read operation → Do not trigger LBAC, allow access
+            LOGGER.debug("User has write policy but no read policy, allowing read access");
           }
+          // Has both read and write policies - Read operation → Trigger LBAC, perform
+          // read policy and label judgment
+          // (already handled above)
         }
       }
 

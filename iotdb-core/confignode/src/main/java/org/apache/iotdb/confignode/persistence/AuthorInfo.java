@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
@@ -41,6 +42,8 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
+import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
@@ -56,6 +59,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserLabelPolicyInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -84,7 +88,9 @@ public class AuthorInfo implements SnapshotProcessor {
   private static final String NO_USER_MSG = "No such user : ";
 
   private IAuthorizer authorizer;
+
   private ConfigManager configManager;
+  
 
   public AuthorInfo(ConfigManager configManager) {
     try {
@@ -93,6 +99,11 @@ public class AuthorInfo implements SnapshotProcessor {
     } catch (AuthException e) {
       LOGGER.error("get user or role permissionInfo failed because ", e);
     }
+  }
+
+  // Add setter for ConfigManager to enable cache invalidation
+  public void setConfigManager(ConfigManager configManager) {
+    this.configManager = configManager;
   }
 
   public TPermissionInfoResp login(String username, String password) {
@@ -959,10 +970,13 @@ public class AuthorInfo implements SnapshotProcessor {
     return resp;
   }
 
-  public TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req) {
+  public TSStatus setUserLabelPolicy(TSetUserLabelPolicyReq req) {
     try {
       String username = req.getUsername();
+
+      String policyExpression = req.getPolicyExpression();
       String scope = req.getScope();
+
       // Check if scope contains both READ and WRITE regardless of order
       boolean isReadWrite =
           "READ_WRITE".equals(scope)
@@ -974,13 +988,67 @@ public class AuthorInfo implements SnapshotProcessor {
             String.format("User [%s] does not exist.", username));
       }
 
+      // Set the label policy using the authorizer
       if (isReadWrite) {
-        // Drop both READ and WRITE policies
-        authorizer.dropUserLabelPolicy(username, "READ");
-        authorizer.dropUserLabelPolicy(username, "WRITE");
+        // Set both READ and WRITE policies
+        authorizer.setUserLabelPolicy(username, policyExpression, "READ");
+        authorizer.setUserLabelPolicy(username, policyExpression, "WRITE");
       } else {
-        // Drop single policy
-        authorizer.dropUserLabelPolicy(username, scope);
+        // Set single policy
+        authorizer.setUserLabelPolicy(username, policyExpression, scope);
+      }
+
+      // Directly invalidate user cache to ensure immediate effect
+      // This ensures DataNode caches are cleared immediately after policy changes
+      try {
+        if (configManager != null) {
+          List<TDataNodeConfiguration> allDataNodes =
+              configManager.getNodeManager().getRegisteredDataNodes();
+
+          // Send cache invalidation request to all DataNodes
+          for (TDataNodeConfiguration dataNode : allDataNodes) {
+            TInvalidatePermissionCacheReq cacheReq = new TInvalidatePermissionCacheReq();
+            cacheReq.setUsername(username);
+            cacheReq.setRoleName("");
+            TSStatus status =
+                (TSStatus)
+                    SyncDataNodeClientPool.getInstance()
+                        .sendSyncRequestToDataNodeWithRetry(
+                            dataNode.getLocation().getInternalEndPoint(),
+                            cacheReq,
+                            CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE);
+
+            if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              LOGGER.debug(
+                  "Successfully invalidated user cache for {} on DataNode {}",
+                  username,
+                  dataNode.getLocation().getDataNodeId());
+            } else {
+              LOGGER.warn(
+                  "Failed to invalidate user cache for {} on DataNode {}: {}",
+                  username,
+                  dataNode.getLocation().getDataNodeId(),
+                  status.getMessage());
+            }
+          }
+
+          LOGGER.info(
+              "Successfully triggered user cache invalidation for label policy change: {}",
+              username);
+        } else {
+          LOGGER.warn(
+              "ConfigManager is null, cannot trigger user cache invalidation for user: {}",
+              username);
+        }
+
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Error triggering user cache invalidation for user label policy change: {}",
+            username,
+            e);
+        // Don't fail the operation if cache invalidation fails
+        // The policy change is already applied, cache invalidation is just for
+        // immediate effect
       }
 
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -990,11 +1058,11 @@ public class AuthorInfo implements SnapshotProcessor {
     }
   }
 
-  public TSStatus setUserLabelPolicy(TSetUserLabelPolicyReq req) {
+  public TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req) {
     try {
       String username = req.getUsername();
-      String policyExpression = req.getPolicyExpression();
       String scope = req.getScope();
+
       // Check if scope contains both READ and WRITE regardless of order
       boolean isReadWrite =
           "READ_WRITE".equals(scope)
@@ -1006,13 +1074,65 @@ public class AuthorInfo implements SnapshotProcessor {
             String.format("User [%s] does not exist.", username));
       }
 
+      // Drop the label policy using the authorizer
       if (isReadWrite) {
-        // Set both READ and WRITE policies
-        authorizer.setUserLabelPolicy(username, policyExpression, "READ");
-        authorizer.setUserLabelPolicy(username, policyExpression, "WRITE");
+        // Drop both READ and WRITE policies
+        authorizer.dropUserLabelPolicy(username, "READ");
+        authorizer.dropUserLabelPolicy(username, "WRITE");
       } else {
-        // Set single policy
-        authorizer.setUserLabelPolicy(username, policyExpression, scope);
+        // Drop single policy
+        authorizer.dropUserLabelPolicy(username, scope);
+      }
+
+      // Directly invalidate user cache to ensure immediate effect
+      // This ensures DataNode caches are cleared immediately after policy drops
+      try {
+        if (configManager != null) {
+          List<TDataNodeConfiguration> allDataNodes =
+              configManager.getNodeManager().getRegisteredDataNodes();
+
+          // Send cache invalidation request to all DataNodes
+          for (TDataNodeConfiguration dataNode : allDataNodes) {
+            TInvalidatePermissionCacheReq cacheReq = new TInvalidatePermissionCacheReq();
+            cacheReq.setUsername(username);
+            cacheReq.setRoleName("");
+
+            TSStatus status =
+                (TSStatus)
+                    SyncDataNodeClientPool.getInstance()
+                        .sendSyncRequestToDataNodeWithRetry(
+                            dataNode.getLocation().getInternalEndPoint(),
+                            cacheReq,
+                            CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE);
+
+            if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              LOGGER.debug(
+                  "Successfully invalidated user cache for {} on DataNode {}",
+                  username,
+                  dataNode.getLocation().getDataNodeId());
+            } else {
+              LOGGER.warn(
+                  "Failed to invalidate user cache for {} on DataNode {}: {}",
+                  username,
+                  dataNode.getLocation().getDataNodeId(),
+                  status.getMessage());
+            }
+          }
+
+          LOGGER.info(
+              "Successfully triggered user cache invalidation for label policy drop: {}", username);
+        } else {
+          LOGGER.warn(
+              "ConfigManager is null, cannot trigger user cache invalidation for user: {}",
+              username);
+        }
+
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Error triggering user cache invalidation for user label policy drop: {}", username, e);
+        // Don't fail the operation if cache invalidation fails
+        // The policy drop is already applied, cache invalidation is just for immediate
+        // effect
       }
 
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);

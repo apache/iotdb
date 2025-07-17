@@ -2502,7 +2502,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       // Handle setting label policy for READ independently
       if (ctx.readPolicyExpression != null) {
         String username = parseIdentifier(ctx.userNameForLabel.getText());
-        String readPolicyExpression = ctx.readPolicyExpression.getText();
+        // Use parsePolicyExpression to properly handle the policy expression and
+        // preserve spacing
+        String readPolicyExpression = parsePolicyExpression(ctx.readPolicyExpression);
         // Only set READ policy
         return new SetUserLabelPolicyStatement(
             username, readPolicyExpression, ShowUserLabelPolicyStatement.LabelPolicyScope.READ);
@@ -2510,7 +2512,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       // Handle setting label policy for WRITE independently
       if (ctx.writePolicyExpression != null) {
         String username = parseIdentifier(ctx.userNameForLabel.getText());
-        String writePolicyExpression = ctx.writePolicyExpression.getText();
+        // Use parsePolicyExpression to properly handle the policy expression and
+        // preserve spacing
+        String writePolicyExpression = parsePolicyExpression(ctx.writePolicyExpression);
         // Only set WRITE policy
         return new SetUserLabelPolicyStatement(
             username, writePolicyExpression, ShowUserLabelPolicyStatement.LabelPolicyScope.WRITE);
