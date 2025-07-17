@@ -398,7 +398,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
         if (endPointFilter != null
             && !endPointFilter.apply(targetNodeUrl)
-            && currentClientIndex - start < clientSize) {
+            && currentClientIndex - start <= clientSize) {
           continue; // Skip this endpoint if it does not pass the filter
         }
 
@@ -415,18 +415,13 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     @Override
     public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
       final int clientSize = endPointList.size();
-
-      long start = currentClientIndex;
+      long n = 0;
 
       while (true) {
+        n++;
         final TEndPoint targetNodeUrl = endPointList.get((int) (Math.random() * clientSize));
-        if (endPointFilter != null && !endPointFilter.test(targetNodeUrl)) {
-          continue; // Skip this endpoint if it does not pass the filter
-        }
 
-        if (endPointFilter != null
-            && !endPointFilter.apply(targetNodeUrl)
-            && currentClientIndex - start < clientSize) {
+        if (endPointFilter != null && !endPointFilter.apply(targetNodeUrl) && n <= clientSize) {
           continue; // Skip this endpoint if it does not pass the filter
         }
 
@@ -442,8 +437,15 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   private class PriorityLoadBalancer implements LoadBalancer {
     @Override
     public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
+      final int clientSize = endPointList.size();
+      long n = 0;
       while (true) {
         for (final TEndPoint targetNodeUrl : endPointList) {
+          n++;
+          if (endPointFilter != null && !endPointFilter.apply(targetNodeUrl) && n <= clientSize) {
+            continue; // Skip this endpoint if it does not pass the filter
+          }
+
           final AsyncPipeDataTransferServiceClient client =
               endPoint2Client.borrowClient(targetNodeUrl);
           if (handshakeIfNecessary(targetNodeUrl, client)) {
