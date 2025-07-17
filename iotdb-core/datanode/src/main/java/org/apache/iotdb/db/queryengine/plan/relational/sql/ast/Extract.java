@@ -76,13 +76,13 @@ public class Extract extends Expression {
 
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
-    expression.serialize(byteBuffer);
+    serialize(expression, byteBuffer);
     ReadWriteIOUtils.write(field.ordinal(), byteBuffer);
   }
 
   @Override
   protected void serialize(DataOutputStream stream) throws IOException {
-    expression.serialize(stream);
+    serialize(expression, stream);
     ReadWriteIOUtils.write(field.ordinal(), stream);
   }
 
