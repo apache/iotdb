@@ -713,7 +713,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final long freeMemorySizeInBytes = pipeMemoryManager.getFreeMemorySizeInBytes();
     final long reservedMemorySizeInBytes =
         (long)
-            (PipeMemoryManager.getTotalMemorySizeInBytes()
+            (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
                 * PipeConfig.getInstance().getReservedMemoryPercentage());
     if (freeMemorySizeInBytes < needMemory + reservedMemorySizeInBytes) {
       final String message =
@@ -722,7 +722,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
               needMemory,
               freeMemorySizeInBytes,
               freeMemorySizeInBytes,
-              PipeMemoryManager.getTotalMemorySizeInBytes());
+              PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes());
       LOGGER.warn(message);
       throw new PipeException(message);
     }
@@ -752,7 +752,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     final long allocatedMemorySizeInBytes = this.getAllFloatingMemoryUsageInByte();
     final long remainingMemory =
-        PipeMemoryManager.getTotalFloatingMemorySizeInBytes() - allocatedMemorySizeInBytes;
+        PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes()
+            - allocatedMemorySizeInBytes;
     if (remainingMemory < PipeConfig.getInstance().PipeInsertNodeQueueMemory()) {
       final String message =
           String.format(

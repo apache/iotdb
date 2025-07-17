@@ -23,7 +23,8 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -220,12 +221,15 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
 
     @Override
     public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-        String pipeName,
-        long creationTime,
-        PipeTaskMeta pipeTaskMeta,
-        PipePattern pattern,
-        long startTime,
-        long endTime) {
+        final String pipeName,
+        final long creationTime,
+        final PipeTaskMeta pipeTaskMeta,
+        final TreePattern treePattern,
+        final TablePattern tablePattern,
+        final String userName,
+        final boolean skipIfNoPrivileges,
+        final long startTime,
+        final long endTime) {
       return null;
     }
 

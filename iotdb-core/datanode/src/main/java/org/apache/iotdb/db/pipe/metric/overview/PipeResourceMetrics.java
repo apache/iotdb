@@ -83,7 +83,7 @@ public class PipeResourceMetrics implements IMetricSet {
         Metric.PIPE_MEM.toString(),
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.memory(),
-        o -> PipeMemoryManager.getTotalFloatingMemorySizeInBytes(),
+        o -> PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes(),
         Tag.NAME.toString(),
         PIPE_FLOATING_MEMORY);
     metricService.createAutoGauge(

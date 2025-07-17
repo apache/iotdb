@@ -129,7 +129,7 @@ public class LoadTsFileDataTypeConverter {
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
     } finally {
       DataNodeSchemaLockManager.getInstance()
-          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
+          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TREE);
     }
   }
 
