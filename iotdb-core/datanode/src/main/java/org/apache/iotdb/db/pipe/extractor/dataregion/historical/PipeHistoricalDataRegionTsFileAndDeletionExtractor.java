@@ -73,6 +73,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -158,6 +159,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private volatile boolean hasBeenStarted = false;
 
   private Queue<PersistentResource> pendingQueue;
+  private final Set<TsFileResource> filteredTsFileResources = new HashSet<>();
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -526,26 +528,26 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     dataRegion.writeLock(
         "Pipe: start to extract historical TsFile and Deletion(if uses pipeConsensus)");
     try {
-      List<PersistentResource> resourceList = new ArrayList<>();
+      List<PersistentResource> originalResourceList = new ArrayList<>();
 
       if (shouldExtractInsertion) {
         flushTsFilesForExtraction(dataRegion, startHistoricalExtractionTime);
-        extractTsFiles(dataRegion, startHistoricalExtractionTime, resourceList);
+        extractTsFiles(dataRegion, startHistoricalExtractionTime, originalResourceList);
       }
       if (shouldExtractDeletion) {
         Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
-            .ifPresent(manager -> extractDeletions(manager, resourceList));
+            .ifPresent(manager -> extractDeletions(manager, originalResourceList));
       }
 
       // Sort tsFileResource and deletionResource
       long startTime = System.currentTimeMillis();
       LOGGER.info("Pipe {}@{}: start to sort all extracted resources", pipeName, dataRegionId);
-      resourceList.sort(
+      originalResourceList.sort(
           (o1, o2) ->
               startIndex instanceof TimeWindowStateProgressIndex
                   ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
                   : o1.getProgressIndex().topologicalCompareTo(o2.getProgressIndex()));
-      pendingQueue = new ArrayDeque<>(resourceList);
+      pendingQueue = new ArrayDeque<>(originalResourceList);
 
       LOGGER.info(
           "Pipe {}@{}: finish to sort all extracted resources, took {} ms",
@@ -599,7 +601,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private void extractTsFiles(
       final DataRegion dataRegion,
       final long startHistoricalExtractionTime,
-      final List<PersistentResource> resourceList) {
+      final List<PersistentResource> originalResourceList) {
     final TsFileManager tsFileManager = dataRegion.getTsFileManager();
     tsFileManager.readLock();
     try {
@@ -616,6 +618,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
       final Collection<TsFileResource> sequenceTsFileResources =
           tsFileManager.getTsFileList(true).stream()
+              .peek(originalResourceList::add)
               .filter(
                   resource ->
                       // Some resource is marked as deleted but not removed from the list.
@@ -632,10 +635,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                                   && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
                                   && mayTsFileResourceOverlappedWithPattern(resource)))
               .collect(Collectors.toList());
-      resourceList.addAll(sequenceTsFileResources);
+      filteredTsFileResources.addAll(sequenceTsFileResources);
 
       final Collection<TsFileResource> unsequenceTsFileResources =
           tsFileManager.getTsFileList(false).stream()
+              .peek(originalResourceList::add)
               .filter(
                   resource ->
                       // Some resource is marked as deleted but not removed from the list.
@@ -652,21 +656,18 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                                   && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
                                   && mayTsFileResourceOverlappedWithPattern(resource)))
               .collect(Collectors.toList());
-      resourceList.addAll(unsequenceTsFileResources);
+      filteredTsFileResources.addAll(unsequenceTsFileResources);
 
-      resourceList.removeIf(
+      filteredTsFileResources.removeIf(
           resource -> {
             // Pin the resource, in case the file is removed by compaction or anything.
             // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
             try {
               PipeDataNodeResourceManager.tsfile()
-                  .pinTsFileResource((TsFileResource) resource, shouldTransferModFile);
+                  .pinTsFileResource(resource, shouldTransferModFile);
               return false;
             } catch (final IOException e) {
-              LOGGER.warn(
-                  "Pipe: failed to pin TsFileResource {}",
-                  ((TsFileResource) resource).getTsFilePath(),
-                  e);
+              LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
               return true;
             }
           });
@@ -680,7 +681,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
           originalSequenceTsFileCount,
           unsequenceTsFileResources.size(),
           originalUnsequenceTsFileCount,
-          resourceList.size(),
+          filteredTsFileResources.size(),
           originalSequenceTsFileCount + originalUnsequenceTsFileCount,
           System.currentTimeMillis() - startHistoricalExtractionTime);
     } finally {
