@@ -53,7 +53,7 @@ public class SessionConcurrentExample {
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, IOException {
 
-    try (Session session = new Session("127.0.0.1", 6667, "root", "root")) {
+    try (Session session = new Session("127.0.0.1", 6667, "root", "IoTDB@2017")) {
       session.open(false);
       createTemplate(session);
     } catch (Exception e) {
@@ -80,7 +80,7 @@ public class SessionConcurrentExample {
 
   private static void concurrentOperation(CountDownLatch latch, int currentIndex) {
 
-    Session session = new Session("127.0.0.1", 6667, "root", "root");
+    Session session = new Session("127.0.0.1", 6667, "root", "IoTDB@2017");
     try {
       session.open(false);
     } catch (IoTDBConnectionException e) {

@@ -83,6 +83,7 @@ public class IoTDBLoadTsFileIT {
   public void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
@@ -233,7 +234,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
         if (resultSet.next()) {
           long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -298,7 +299,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -388,7 +389,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -405,7 +406,7 @@ public class IoTDBLoadTsFileIT {
       isAligned.put(SchemaConfig.DEVICE_2, "false");
       isAligned.put(SchemaConfig.DEVICE_3, "false");
       isAligned.put(SchemaConfig.DEVICE_4, "true");
-      try (final ResultSet resultSet = statement.executeQuery("show devices")) {
+      try (final ResultSet resultSet = statement.executeQuery("show devices root.sg.**")) {
         int size = 0;
         while (resultSet.next()) {
           size += 1;
@@ -423,7 +424,7 @@ public class IoTDBLoadTsFileIT {
 
   @Test
   public void testAuth() throws Exception {
-    createUser("test", "test123");
+    createUser("test", "test123123456");
 
     // device 0, device 1, sg 0
     try (final TsFileGenerator generator =
@@ -472,7 +473,7 @@ public class IoTDBLoadTsFileIT {
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
         "No permissions for this operation, please add privilege WRITE_DATA",
         "test",
-        "test123");
+        "test123123456");
 
     grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.**");
 
@@ -480,7 +481,7 @@ public class IoTDBLoadTsFileIT {
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
         "No permissions for this operation, please add privilege MANAGE_DATABASE",
         "test",
-        "test123");
+        "test123123456");
 
     grantUserSystemPrivileges("test", PrivilegeType.MANAGE_DATABASE);
 
@@ -488,12 +489,12 @@ public class IoTDBLoadTsFileIT {
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
         "Auto create or verify schema error when executing statement LoadTsFileStatement",
         "test",
-        "test123");
+        "test123123456");
 
     grantUserSystemPrivileges("test", PrivilegeType.WRITE_SCHEMA);
 
     executeNonQuery(
-        String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()), "test", "test123");
+        String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()), "test", "test123123456");
   }
 
   @Test
@@ -554,7 +555,7 @@ public class IoTDBLoadTsFileIT {
               file1.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -574,7 +575,7 @@ public class IoTDBLoadTsFileIT {
               file2.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
         if (resultSet.next()) {
           long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -643,7 +644,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -719,7 +720,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -741,7 +742,7 @@ public class IoTDBLoadTsFileIT {
 
       statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
 
-      try (final ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (final ResultSet resultSet = statement.executeQuery("show timeseries root.sg")) {
         Assert.assertFalse(resultSet.next());
       }
     }
@@ -809,7 +810,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -852,7 +853,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" ", file.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sgCount = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint, sgCount);
@@ -911,7 +912,7 @@ public class IoTDBLoadTsFileIT {
     // Prepare normal user
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("create user test 'password'");
+      adminStmt.execute("create user test 'password123456'");
       adminStmt.execute(
           String.format(
               "grant create, insert on %s.%s to user test",
@@ -922,7 +923,7 @@ public class IoTDBLoadTsFileIT {
     }
 
     try (final Connection connection =
-            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
       statement.execute(String.format("load '%s'", file.getAbsolutePath()));

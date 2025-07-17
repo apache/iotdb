@@ -31,7 +31,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.read.common.RowRecord;
 import org.awaitility.Awaitility;
 import org.junit.Assert;
@@ -56,6 +55,22 @@ import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliabilityITFramework {
   private static final String RECONSTRUCT_FORMAT = "reconstruct region %d on %d";
   private static Logger LOGGER = LoggerFactory.getLogger(IoTDBRegionReconstructForIoTV1IT.class);
+
+  private boolean deleteTsFiles(File file) {
+    if (file.isDirectory()) {
+      File[] files = file.listFiles();
+      if (files != null) {
+        for (File f : files) {
+          if (!deleteTsFiles(f)) {
+            return false;
+          }
+        }
+      }
+    } else if (file.getName().endsWith(".tsfile")) {
+      return file.delete();
+    }
+    return true;
+  }
 
   @Test
   public void normal1C3DTest() throws Exception {
@@ -82,7 +97,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       Set<Integer> allDataNodeId = getAllDataNodes(statement);
 
       // select datanode
-      final int selectedRegion = 1;
+      final int selectedRegion = 3;
       Assert.assertTrue(dataRegionMap.containsKey(selectedRegion));
       Assert.assertEquals(2, dataRegionMap.get(selectedRegion).size());
       Iterator<Integer> iterator = dataRegionMap.get(selectedRegion).iterator();
@@ -109,13 +124,18 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
                   .dataNodeIdToWrapper(dataNodeToBeReconstructed)
                   .get()
                   .getDataPath());
-      FileUtils.deleteDirectory(dataDirToBeReconstructed);
+
+      if (!deleteTsFiles(dataDirToBeReconstructed)) {
+        statement.execute(FLUSH_COMMAND);
+        deleteTsFiles(dataDirToBeReconstructed);
+      }
+
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
       // now, the query should throw exception
       Assert.assertThrows(
           StatementExecutionException.class,
-          () -> session.executeQueryStatement("select * from root.**"));
+          () -> session.executeQueryStatement("select * from root.sg.**"));
 
       // start DataNode, reconstruct the delete one
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().start();
@@ -140,7 +160,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
       // now, the query should work fine
-      SessionDataSet resultSet = session.executeQueryStatement("select * from root.**");
+      SessionDataSet resultSet = session.executeQueryStatement("select * from root.sg.**");
       RowRecord rowRecord = resultSet.next();
       Assert.assertEquals("2.0", rowRecord.getField(0).getStringValue());
       Assert.assertEquals("1.0", rowRecord.getField(1).getStringValue());

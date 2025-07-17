@@ -56,7 +56,7 @@ public class IoTDBExampleIT {
         Statement statement = connection.createStatement()) {
 
       statement.execute("CREATE DATABASE root.sg");
-      try (ResultSet resultSet = statement.executeQuery("show databases")) {
+      try (ResultSet resultSet = statement.executeQuery("show databases root.sg")) {
         if (resultSet.next()) {
           String storageGroupPath = resultSet.getString(ColumnHeaderConstant.DATABASE);
           Assert.assertEquals("root.sg", storageGroupPath);

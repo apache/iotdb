@@ -317,12 +317,14 @@ public class ConfigNodeDescriptor {
     String leaderDistributionPolicy =
         properties.getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy());
     if (AbstractLeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
-        || AbstractLeaderBalancer.CFD_POLICY.equals(leaderDistributionPolicy)) {
+        || AbstractLeaderBalancer.CFD_POLICY.equals(leaderDistributionPolicy)
+        || AbstractLeaderBalancer.HASH_POLICY.equals(leaderDistributionPolicy)) {
       conf.setLeaderDistributionPolicy(leaderDistributionPolicy);
     } else {
       throw new IOException(
           String.format(
-              "Unknown leader_distribution_policy: %s, " + "please set to \"GREEDY\" or \"CFD\"",
+              "Unknown leader_distribution_policy: %s, "
+                  + "please set to \"GREEDY\" or \"CFD\" or \"HASH\"",
               leaderDistributionPolicy));
     }
 

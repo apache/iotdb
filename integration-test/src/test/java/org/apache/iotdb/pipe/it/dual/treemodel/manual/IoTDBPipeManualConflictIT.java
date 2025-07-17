@@ -111,7 +111,8 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
         Arrays.asList(
             "create timeseries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
             "insert into root.ln.wf01.wt01(time, status0) values(now(), false);",
-            "flush"))) {
+            "flush"),
+        null)) {
       return;
     }
 
@@ -120,13 +121,14 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
         Arrays.asList(
             "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
             "insert into root.ln.wf01.wt01(time, status1) values(now(), true);",
-            "flush"))) {
+            "flush"),
+        null)) {
       return;
     }
 
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,
-        "show timeseries",
+        "show timeseries root.ln.**",
         "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
         new HashSet<>(
             Arrays.asList(
@@ -134,12 +136,12 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
                 "root.ln.wf01.wt01.status1,null,root.ln,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,")));
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,
-        "select count(*) from root.** group by level=1",
+        "select count(*) from root.ln.** group by level=1",
         "count(root.ln.*.*.*),",
         Collections.singleton("2,"));
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "show timeseries",
+        "show timeseries root.ln.**",
         "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
         new HashSet<>(
             Arrays.asList(
@@ -147,7 +149,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
                 "root.ln.wf01.wt01.status1,null,root.ln,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,")));
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select count(*) from root.** group by level=1",
+        "select count(*) from root.ln.** group by level=1",
         "count(root.ln.*.*.*),",
         Collections.singleton("2,"));
   }
@@ -224,7 +226,8 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
             "set device template t1 to root.sg1",
             "create timeseries using device template on root.sg1.d1",
             "insert into root.sg1.d1(time, s1, s2, s3) values(0, 1, 2, 3);",
-            "flush"))) {
+            "flush"),
+        null)) {
       return;
     }
 
@@ -233,22 +236,29 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
         Arrays.asList(
             "create timeseries using device template on root.sg1.d2",
             "insert into root.sg1.d2(time, s1, s2, s3) values(0, 1, 2, 3);",
-            "flush"))) {
+            "flush"),
+        null)) {
       return;
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        senderEnv, "count timeseries", "count(timeseries),", Collections.singleton("6,"));
+        senderEnv,
+        "count timeseries root.sg1.**",
+        "count(timeseries),",
+        Collections.singleton("6,"));
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,
-        "select count(*) from root.** group by level=1",
+        "select count(*) from root.sg1.** group by level=1",
         "count(root.sg1.*.*),",
         Collections.singleton("6,"));
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("6,"));
+        receiverEnv,
+        "count timeseries root.sg1.**",
+        "count(timeseries),",
+        Collections.singleton("6,"));
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select count(*) from root.** group by level=1",
+        "select count(*) from root.sg1.** group by level=1",
         "count(root.sg1.*.*),",
         Collections.singleton("6,"));
   }

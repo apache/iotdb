@@ -57,6 +57,7 @@ public abstract class AbstractPipeDualTreeModelManualIT {
         .setAutoCreateSchemaEnabled(false)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -82,7 +83,7 @@ public abstract class AbstractPipeDualTreeModelManualIT {
         .pollInterval(2, TimeUnit.SECONDS)
         .until(
             () -> {
-              if (!TestUtils.tryExecuteNonQueryWithRetry(env, "flush")) {
+              if (!TestUtils.tryExecuteNonQueryWithRetry(env, "flush", null)) {
                 return false;
               }
               return env.getDataNodeWrapperList().stream()

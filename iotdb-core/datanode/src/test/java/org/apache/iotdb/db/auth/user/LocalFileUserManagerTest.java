@@ -59,7 +59,7 @@ public class LocalFileUserManagerTest {
   public void testIllegalInput() {
     // Password contains space
     try {
-      manager.createUser("username1", "password_ ", true);
+      manager.createUser("username1", "password_ 123456", true);
     } catch (AuthException e) {
       assertTrue(e.getMessage().contains("cannot contain spaces"));
     }

@@ -137,7 +137,7 @@ public class IoTDBProcedureIT {
     Callable<Boolean> finalCheck =
         () -> {
           TShowDatabaseResp resp1 = newLeaderClient.showDatabase(showAllDatabasesReq);
-          if (MAX_STATE != resp1.getDatabaseInfoMap().size()) {
+          if (MAX_STATE != resp1.getDatabaseInfoMap().size() - 1) {
             return false;
           }
           resp1

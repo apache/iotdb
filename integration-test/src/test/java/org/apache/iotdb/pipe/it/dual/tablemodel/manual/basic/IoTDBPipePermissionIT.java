@@ -90,7 +90,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testSourcePermission() {
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "create user `thulab` 'passwd'")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(
+        senderEnv, "create user `thulab` 'passwD@123456'", null)) {
       return;
     }
 
@@ -161,7 +162,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
     // Successfully alter
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify source ('username'='thulab', 'password'='passwd')");
+      statement.execute(
+          "alter pipe a2b modify source ('username'='thulab', 'password'='passwD@123456')");
     } catch (final SQLException e) {
       e.printStackTrace();
       fail("Alter pipe shall not fail if user and password are specified");
@@ -179,7 +181,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     // Grant some privilege
     if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab")) {
+        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab", null)) {
       return;
     }
 
@@ -217,7 +219,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         "test",
         BaseEnv.TABLE_SQL_DIALECT,
         senderEnv,
-        Arrays.asList("grant SELECT on any to user thulab", "start pipe a2b"))) {
+        Arrays.asList("grant SELECT on any to user thulab", "start pipe a2b"),
+        null)) {
       return;
     }
 
@@ -242,7 +245,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "create user testUser 'password'")) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          receiverEnv, "create user testUser 'passwD@123456'", null)) {
         return;
       }
 
@@ -262,7 +266,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.user", "testUser");
-      connectorAttributes.put("connector.password", "password");
+      connectorAttributes.put("connector.password", "passwD@123456");
 
       final TSStatus status =
           client.createPipe(
@@ -295,7 +299,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           "information_schema",
           BaseEnv.TABLE_SQL_DIALECT,
           receiverEnv,
-          "grant insert,create on database test to user testUser")) {
+          "grant insert,create on database test to user testUser",
+          null)) {
         return;
       }
 
@@ -334,7 +339,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           "information_schema",
           BaseEnv.TABLE_SQL_DIALECT,
           receiverEnv,
-          "grant insert,create on database test2 to user testUser")) {
+          "grant insert,create on database test2 to user testUser",
+          null)) {
         return;
       }
 

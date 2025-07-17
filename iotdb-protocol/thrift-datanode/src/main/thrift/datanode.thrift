@@ -17,6 +17,7 @@
  * under the License.
  */
 include "common.thrift"
+include "client.thrift"
 namespace java org.apache.iotdb.mpp.rpc.thrift
 namespace py iotdb.thrift.datanode
 
@@ -1201,6 +1202,9 @@ service IDataNodeRPCService {
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
+
+  /** to write audit log or other events as time series **/
+  common.TSStatus insertRecord(1:client.TSInsertRecordReq req);
 }
 
 service MPPDataExchangeService {

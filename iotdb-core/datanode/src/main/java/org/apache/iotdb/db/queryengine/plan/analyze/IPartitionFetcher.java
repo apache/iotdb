@@ -38,6 +38,11 @@ public interface IPartitionFetcher {
   /** Get schema partition without automatically create, used in write and query scenarios. */
   SchemaPartition getSchemaPartition(PathPatternTree patternTree);
 
+  /** Get schema partition without automatically create, used in write and query scenarios. */
+  default SchemaPartition getSchemaPartition(PathPatternTree patternTree, String username) {
+    return getSchemaPartition(patternTree);
+  }
+
   /**
    * Get or create schema partition, used in insertion with enable_auto_create_schema is true. if
    * schemaPartition does not exist, then automatically create.

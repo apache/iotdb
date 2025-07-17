@@ -76,6 +76,10 @@ public abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionI
         .getConfig()
         .getCommonConfig()
         .setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(32 * 1024);
+
+    sender.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
+    receiver1.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
+    receiver2.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
   }
 
   @Override

@@ -88,7 +88,7 @@ public class IoTDBSessionSyntaxConventionIT {
         assertTrue(e.getMessage().contains("is not a legal path"));
       }
 
-      final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
+      final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES root.sg.**");
       assertFalse(dataSet.hasNext());
 
       session.deleteStorageGroup(storageGroup);
