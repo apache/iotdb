@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -449,6 +450,14 @@ public abstract class EnrichedEvent implements Event {
 
   public long getCommitId() {
     return commitId;
+  }
+
+  public List<EnrichedEvent> getDummyEventsForCommitIds() {
+    return Collections.emptyList();
+  }
+
+  public List<Long> getCommitIds() {
+    return Collections.singletonList(commitId);
   }
 
   public long getReplicateIndexForIoTV2() {
