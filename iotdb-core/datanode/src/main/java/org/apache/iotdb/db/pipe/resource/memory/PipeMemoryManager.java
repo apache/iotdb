@@ -641,7 +641,6 @@ public class PipeMemoryManager {
     return memoryBlock.getFreeMemoryInBytes();
   }
 
-
   public static long getTotalNonFloatingMemorySizeInBytes() {
     return (long)
         (TOTAL_MEMORY_SIZE_IN_BYTES

@@ -517,8 +517,10 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public String toString() {
     return String.format(
             "PipeInsertNodeTabletInsertionEvent{progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s, eventParsers=%s}",
-          progressIndex, Objects.nonNull(insertNode) ? insertNode.isAligned() : null,
-                    Objects.nonNull(insertNode) ? insertNode.isGeneratedByPipe() : null, eventParsers)
+            progressIndex,
+            Objects.nonNull(insertNode) ? insertNode.isAligned() : null,
+            Objects.nonNull(insertNode) ? insertNode.isGeneratedByPipe() : null,
+            eventParsers)
         + " - "
         + super.toString();
   }
@@ -556,7 +558,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + (Objects.nonNull(devicePath) ? PartialPath.estimateSize(devicePath) : 0)
-    + (Objects.nonNull(insertNode) ? InsertNodeMemoryEstimator.sizeOf(insertNode) : 0)
+        + (Objects.nonNull(insertNode) ? InsertNodeMemoryEstimator.sizeOf(insertNode) : 0)
         + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0)
         + (Objects.nonNull(treeModelDatabaseName)
             ? RamUsageEstimator.sizeOf(treeModelDatabaseName)

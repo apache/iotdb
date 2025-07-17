@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingI
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
 import org.slf4j.Logger;
@@ -109,8 +108,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           // The wait operation will release the highPriorityLockTaskCount lock, so there will be
           // no deadlock.
           if (highPriorityLockTaskCount.get() == 0) {
-            highPriorityLockTaskCount.wait(
-                    getSleepIntervalBasedOnThrowable(throwable));
+            highPriorityLockTaskCount.wait(getSleepIntervalBasedOnThrowable(throwable));
           }
         }
       } catch (final InterruptedException e) {
@@ -183,8 +181,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
         // The wait operation will release the highPriorityLockTaskCount lock, so there will be
         // no deadlock.
         if (highPriorityLockTaskCount.get() == 0) {
-          highPriorityLockTaskCount.wait(
-                  getSleepIntervalBasedOnThrowable(throwable));
+          highPriorityLockTaskCount.wait(getSleepIntervalBasedOnThrowable(throwable));
         }
       }
     } catch (final InterruptedException e) {

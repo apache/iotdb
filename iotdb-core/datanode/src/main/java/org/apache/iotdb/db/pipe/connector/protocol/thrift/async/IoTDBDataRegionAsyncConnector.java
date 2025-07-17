@@ -283,9 +283,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
       final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       final String databaseName =
-              pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
-                      ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-                      : null;
+          pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+              ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+              : null;
       final TPipeTransferReq pipeTransferReq =
           compressIfNeeded(
               Objects.isNull(insertNode)

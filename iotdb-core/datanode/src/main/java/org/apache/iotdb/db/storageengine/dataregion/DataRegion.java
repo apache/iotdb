@@ -3360,7 +3360,6 @@ public class DataRegion implements IDataRegionForQuery {
     PipeInsertionDataNodeListener.getInstance()
         .listenToTsFile(dataRegionId, databaseName, tsFileResource, true);
 
-
     tsFileManager.add(tsFileResource, false);
 
     return true;

@@ -42,9 +42,8 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

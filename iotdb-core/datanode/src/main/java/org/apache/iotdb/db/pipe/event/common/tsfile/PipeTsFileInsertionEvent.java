@@ -515,11 +515,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   private Set<IDeviceID> getDeviceSet() throws IOException {
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
-            PipeDataNodeResourceManager.tsfile()
-                    .getDeviceIsAlignedMapFromCache(
-                            PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
-                                    resource.getTsFile(), pipeName),
-                            false);
+        PipeDataNodeResourceManager.tsfile()
+            .getDeviceIsAlignedMapFromCache(
+                PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                    resource.getTsFile(), pipeName),
+                false);
     return Objects.nonNull(deviceIsAlignedMap)
         ? deviceIsAlignedMap.keySet()
         : resource.getDevices();
