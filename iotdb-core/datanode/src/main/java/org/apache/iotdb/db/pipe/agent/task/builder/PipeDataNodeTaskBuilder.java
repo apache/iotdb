@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
-import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.agent.task.stage.PipeTaskConnectorStage;
@@ -44,7 +43,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -72,19 +70,8 @@ public class PipeDataNodeTaskBuilder {
   private final int regionId;
   private final PipeTaskMeta pipeTaskMeta;
 
-  private static final PipeProcessorSubtaskExecutor PROCESSOR_EXECUTOR;
-  private static final Map<PipeType, PipeConnectorSubtaskExecutor> CONNECTOR_EXECUTOR_MAP;
-
-  static {
-    PROCESSOR_EXECUTOR = PipeSubtaskExecutorManager.getInstance().getProcessorExecutor();
-    CONNECTOR_EXECUTOR_MAP = new EnumMap<>(PipeType.class);
-    CONNECTOR_EXECUTOR_MAP.put(
-        PipeType.USER, PipeSubtaskExecutorManager.getInstance().getConnectorExecutor());
-    CONNECTOR_EXECUTOR_MAP.put(
-        PipeType.SUBSCRIPTION, PipeSubtaskExecutorManager.getInstance().getSubscriptionExecutor());
-    CONNECTOR_EXECUTOR_MAP.put(
-        PipeType.CONSENSUS, PipeSubtaskExecutorManager.getInstance().getConsensusExecutor());
-  }
+  private static final PipeProcessorSubtaskExecutor PROCESSOR_EXECUTOR =
+      PipeSubtaskExecutorManager.getInstance().getProcessorExecutor();
 
   protected final Map<String, String> systemParameters = new HashMap<>();
 
@@ -126,7 +113,7 @@ public class PipeDataNodeTaskBuilder {
               pipeStaticMeta.getCreationTime(),
               connectorParameters,
               regionId,
-              CONNECTOR_EXECUTOR_MAP.get(pipeType));
+              PipeSubtaskExecutorManager.getInstance().getSubscriptionExecutor());
     } else { // user pipe or consensus pipe
       connectorStage =
           new PipeTaskConnectorStage(
@@ -134,7 +121,9 @@ public class PipeDataNodeTaskBuilder {
               pipeStaticMeta.getCreationTime(),
               connectorParameters,
               regionId,
-              CONNECTOR_EXECUTOR_MAP.get(pipeType));
+              pipeType.equals(PipeType.USER)
+                  ? PipeSubtaskExecutorManager.getInstance().getConnectorExecutorSupplier()
+                  : PipeSubtaskExecutorManager.getInstance().getConsensusExecutorSupplier());
     }
 
     // The processor connects the extractor and connector.

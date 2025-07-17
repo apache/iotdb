@@ -36,7 +36,7 @@ public class SubscriptionTaskConnectorStage extends PipeTaskConnectorStage {
       PipeParameters pipeConnectorParameters,
       int regionId,
       PipeConnectorSubtaskExecutor executor) {
-    super(pipeName, creationTime, pipeConnectorParameters, regionId, executor);
+    super(pipeName, creationTime, pipeConnectorParameters, regionId, () -> executor);
   }
 
   @Override
@@ -44,7 +44,7 @@ public class SubscriptionTaskConnectorStage extends PipeTaskConnectorStage {
     this.connectorSubtaskId =
         SubscriptionConnectorSubtaskManager.instance()
             .register(
-                executor,
+                executor.get(),
                 pipeConnectorParameters,
                 new PipeTaskConnectorRuntimeEnvironment(pipeName, creationTime, regionId));
   }

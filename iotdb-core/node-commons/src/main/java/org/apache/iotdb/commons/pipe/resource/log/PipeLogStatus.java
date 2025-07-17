@@ -42,7 +42,7 @@ class PipeLogStatus {
 
   synchronized Optional<Logger> schedule(final int scale) {
     if (currentRounds.incrementAndGet()
-        >= Math.min((int) Math.ceil((double) scale / maxAverageScale), maxLogInterval)) {
+        >= Math.min((int) Math.ceil(scale / maxAverageScale), maxLogInterval)) {
       currentRounds.set(0);
       return Optional.of(logger);
     }

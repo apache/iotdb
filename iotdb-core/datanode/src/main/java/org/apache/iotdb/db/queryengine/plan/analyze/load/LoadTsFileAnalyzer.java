@@ -464,7 +464,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     final long startTime = System.nanoTime();
     try {
       final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-          new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+          new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
 
       final TSStatus status =
           isTableModelTsFile.get(i)
@@ -722,7 +722,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+        new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
 
     for (int i = 0; i < tsFiles.size(); i++) {
       final long startTime = System.nanoTime();

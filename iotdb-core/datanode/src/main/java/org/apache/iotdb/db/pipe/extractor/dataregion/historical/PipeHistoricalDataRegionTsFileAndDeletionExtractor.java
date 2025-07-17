@@ -49,7 +49,6 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -532,7 +531,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       List<PersistentResource> originalResourceList = new ArrayList<>();
 
       if (shouldExtractInsertion) {
-        flushTsFilesForExtraction(dataRegion, startHistoricalExtractionTime);
+        flushTsFilesForExtraction(dataRegion);
         extractTsFiles(dataRegion, startHistoricalExtractionTime, originalResourceList);
       }
       if (shouldExtractDeletion) {
@@ -560,8 +559,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     }
   }
 
-  private void flushTsFilesForExtraction(
-      DataRegion dataRegion, final long startHistoricalExtractionTime) {
+  private void flushTsFilesForExtraction(DataRegion dataRegion) {
     LOGGER.info("Pipe {}@{}: start to flush data region", pipeName, dataRegionId);
 
     // Consider the scenario: a consensus pipe comes to the same region, followed by another pipe
@@ -571,31 +569,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     // consensus pipe, and the lastFlushed timestamp is not updated here.
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
-      LOGGER.info(
-          "Pipe {}@{}: finish to flush data region, took {} ms",
-          pipeName,
-          dataRegionId,
-          System.currentTimeMillis() - startHistoricalExtractionTime);
-      return;
-    }
-
-    synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
-      final long lastFlushedByPipeTime = DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
-      if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
-        dataRegion.syncCloseAllWorkingTsFileProcessors();
-        DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(dataRegionId, System.currentTimeMillis());
-        LOGGER.info(
-            "Pipe {}@{}: finish to flush data region, took {} ms",
-            pipeName,
-            dataRegionId,
-            System.currentTimeMillis() - startHistoricalExtractionTime);
-      } else {
-        LOGGER.info(
-            "Pipe {}@{}: skip to flush data region, last flushed time {} ms ago",
-            pipeName,
-            dataRegionId,
-            System.currentTimeMillis() - lastFlushedByPipeTime);
-      }
+    } else {
+      dataRegion.asyncCloseAllWorkingTsFileProcessors();
     }
   }
 
@@ -665,7 +640,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
             try {
               PipeDataNodeResourceManager.tsfile()
-                  .pinTsFileResource(resource, shouldTransferModFile);
+                  .pinTsFileResource(resource, shouldTransferModFile, pipeName);
               return false;
             } catch (final IOException e) {
               LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
@@ -729,9 +704,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     try {
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
           PipeDataNodeResourceManager.tsfile()
-              .getDeviceIsAlignedMapFromCache(
-                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
-                  false);
+              .getDeviceIsAlignedMapFromCache(resource.getTsFile(), false);
       deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
     } catch (final IOException e) {
@@ -913,6 +886,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             isModelDetected ? isTableModel : null,
             resource.getDatabaseName(),
             resource,
+            null,
             shouldTransferModFile,
             false,
             true,
@@ -956,7 +930,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       return isReferenceCountIncreased ? event : null;
     } finally {
       try {
-        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
+        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
       } catch (final IOException e) {
         LOGGER.warn(
             "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
@@ -1026,7 +1000,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
           resource -> {
             if (resource instanceof TsFileResource) {
               try {
-                PipeDataNodeResourceManager.tsfile().unpinTsFileResource((TsFileResource) resource);
+                PipeDataNodeResourceManager.tsfile()
+                    .unpinTsFileResource((TsFileResource) resource, pipeName);
               } catch (final IOException e) {
                 LOGGER.warn(
                     "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",

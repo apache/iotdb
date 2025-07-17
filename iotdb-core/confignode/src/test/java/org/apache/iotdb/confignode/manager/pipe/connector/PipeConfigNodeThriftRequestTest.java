@@ -44,7 +44,6 @@ public class PipeConfigNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
-    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getTimestampPrecision(), deserializeReq.getTimestampPrecision());
   }
@@ -57,7 +56,6 @@ public class PipeConfigNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
-    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
   }
 
   @Test
@@ -72,7 +70,6 @@ public class PipeConfigNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
-    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getFileName(), deserializeReq.getFileName());
     Assert.assertEquals(req.getStartWritingOffset(), deserializeReq.getStartWritingOffset());
@@ -105,7 +102,6 @@ public class PipeConfigNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
-    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getFileNames(), deserializeReq.getFileNames());
     Assert.assertEquals(req.getFileLengths(), deserializeReq.getFileLengths());

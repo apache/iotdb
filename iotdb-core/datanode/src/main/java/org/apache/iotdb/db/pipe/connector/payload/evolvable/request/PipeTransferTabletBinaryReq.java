@@ -93,7 +93,6 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
 
     binaryReq.version = transferReq.version;
     binaryReq.type = transferReq.type;
-    binaryReq.body = transferReq.body;
 
     return binaryReq;
   }
