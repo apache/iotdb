@@ -370,7 +370,7 @@ public class DupliQuantile_CompareBaselinesIT {
         new String[] {
           "dupli_quantile_kll_vanilla",
           "dupli_quantile_dd",
-          "dupli_quantile_dss", // 2min per dss 12s others
+          "dupli_quantile_dss",
           "dupli_quantile_gk",
           "dupli_quantile_td",
           "dupli_quantile_kll_vanilla",
@@ -476,7 +476,7 @@ public class DupliQuantile_CompareBaselinesIT {
         new String[] {
           "dupli_quantile_kll_vanilla",
           "dupli_quantile_dd",
-          "dupli_quantile_dss", // 2min per dss 12s others
+          "dupli_quantile_dss",
           "dupli_quantile_gk",
           "dupli_quantile_td",
           "dupli_quantile_kll_vanilla",
@@ -578,7 +578,7 @@ public class DupliQuantile_CompareBaselinesIT {
         new String[] {
           "dupli_quantile_kll_vanilla",
           "dupli_quantile_dd",
-          "dupli_quantile_dss", // 2min per dss 12s others
+          "dupli_quantile_dss",
           "dupli_quantile_gk",
           "dupli_quantile_td",
           "dupli_quantile_kll_vanilla",
