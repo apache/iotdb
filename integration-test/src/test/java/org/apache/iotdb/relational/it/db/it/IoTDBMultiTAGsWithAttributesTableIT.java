@@ -155,7 +155,9 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         "insert into tableB(time,device,value) values('2020-01-01 00:00:03.000', 'd333', 333)",
         "flush",
         "insert into tableB(time,device,value) values('2020-01-01 00:00:04.000', 'd2', 40)",
-        "insert into tableB(time,device,value) values('2020-01-01 00:00:05.000', 'd2', 50)"
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:05.000', 'd2', 50)",
+        "create table tableD(device STRING TAG, value TIMESTAMP FIELD)",
+        "insert into tableD(time,device,value) values('2020-01-01 00:00:07.000', 'd2', '1970-01-01 00:00:00.000')"
       };
 
   String[] expectedHeader;
@@ -2810,6 +2812,20 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "join ("
             + "select date_bin(1ms,time) as date,count(*)from table1 where time=0 group by date_bin(1ms,time)) t1 "
             + "on t0.date = t1.date",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void timestampTypeTest() {
+    expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,"
+        };
+    tableResultSetEqualTest(
+        "select last(value),first(value),last_by(value,time),first_by(value,time),max(value),min(value) from tableD",
         expectedHeader,
         retArray,
         DATABASE_NAME);
