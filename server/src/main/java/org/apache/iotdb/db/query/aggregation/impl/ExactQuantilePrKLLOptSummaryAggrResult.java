@@ -130,7 +130,9 @@ public class ExactQuantilePrKLLOptSummaryAggrResult extends AggregateResult {
     countOfLessThanCntL = 0;
     if (iteration == 0) { // first iteration
       if (mergeBufferRatio > 0)
-        heapKLL = new KLLSketchLazyExact(maxMemoryByte * (mergeBufferRatio - 1) / mergeBufferRatio);
+        heapKLL =
+            new KLLSketchLazyExact(
+                (int) ((long) maxMemoryByte * (mergeBufferRatio - 1) / mergeBufferRatio));
       else heapKLL = new KLLSketchLazyExact(maxMemoryByte);
       cntL = Long.MIN_VALUE;
       cntR = Long.MAX_VALUE;
@@ -568,7 +570,8 @@ public class ExactQuantilePrKLLOptSummaryAggrResult extends AggregateResult {
   public boolean canUpdateFromStatistics(Statistics statistics) {
     if ((seriesDataType == DOUBLE) && iteration == 0 && mergeBufferRatio > 0) {
       DoubleStatistics doubleStats = (DoubleStatistics) statistics;
-      if (doubleStats.getSummaryNum() > 0) return true;
+      if (Statistics.SUMMARY_TYPE == Statistics.SummaryTypes.KLL && doubleStats.getSummaryNum() > 0)
+        return true;
     }
     if (iteration > 0) {
       long minVal = dataToLong(statistics.getMinValue());
@@ -586,7 +589,7 @@ public class ExactQuantilePrKLLOptSummaryAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean useStatisticsIfPossible() {
+  public boolean useOverlappedStatisticsIfPossible() {
     return mergeBufferRatio > 0;
   }
 

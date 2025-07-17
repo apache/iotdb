@@ -48,10 +48,12 @@ public class DoubleStatistics extends Statistics<Double> {
   private List<KLLSketchForQuantile> kllSketchList = null;
   //  public ByteBuffer chunkSketchBuffer;
   //  public boolean hasChunkSketchBuffer = false;
-  private TDigestForStatMerge tDigest = null;
-  private List<TDigestForStatMerge> tDigestList = null;
+  private TDigestForExact tDigest = null;
+  private List<TDigestForExact> tDigestList = null;
   private SamplingHeapForStatMerge sampling = null;
   private List<SamplingHeapForStatMerge> samplingList = null;
+  private DDSketchPositiveForExact DDSketch = null;
+  private List<DDSketchPositiveForExact> DDSketchList = null;
   private int bfNum = 0;
   private BloomFilter<Long> bf = null;
   private List<BloomFilter<Long>> bfList = null;
@@ -191,12 +193,16 @@ public class DoubleStatistics extends Statistics<Double> {
     return kllSketchList;
   }
 
-  public List<TDigestForStatMerge> getTDigestList() {
+  public List<TDigestForExact> getTDigestList() {
     return tDigestList;
   }
 
   public List<SamplingHeapForStatMerge> getSamplingList() {
     return samplingList;
+  }
+
+  public List<DDSketchPositiveForExact> getDDSketchList() {
+    return DDSketchList;
   }
 
   protected static double getFPP(double bitsPerKey) {
@@ -250,7 +256,7 @@ public class DoubleStatistics extends Statistics<Double> {
       isEmpty = false;
       if (ENABLE_SYNOPSIS) {
         this.summaryNum = 1;
-        if (SUMMARY_TYPE == 0) {
+        if (SUMMARY_TYPE == SummaryTypes.KLL) {
           this.kllSketchList = new ArrayList<>(1);
           this.kllSketchList.add(
               this.kllSketch =
@@ -258,24 +264,27 @@ public class DoubleStatistics extends Statistics<Double> {
                       STATISTICS_PAGE_MAXSIZE, PAGE_SIZE_IN_BYTE, SYNOPSIS_SIZE_IN_BYTE));
           this.kllSketch.update(dataToLong(value));
         }
-        if (SUMMARY_TYPE == 1) {
+        if (SUMMARY_TYPE == SummaryTypes.TD) {
           this.tDigestList = new ArrayList<>(1);
           this.tDigestList.add(
-              this.tDigest = new TDigestForStatMerge(PAGE_SIZE_IN_BYTE, SYNOPSIS_SIZE_IN_BYTE));
+              this.tDigest = new TDigestForExact(PAGE_SIZE_IN_BYTE, 1, SYNOPSIS_SIZE_IN_BYTE));
           this.tDigest.update(value);
         }
-        if (SUMMARY_TYPE == 2) {
-          this.samplingList = new ArrayList<>(1);
-          this.samplingList.add(
-              this.sampling =
-                  new SamplingHeapForStatMerge(PAGE_SIZE_IN_BYTE, SYNOPSIS_SIZE_IN_BYTE));
-          this.sampling.update(dataToLong(value));
+        if (SUMMARY_TYPE == SummaryTypes.DD) {
+          this.DDSketchList = new ArrayList<>(1);
+          this.DDSketchList.add(
+              this.DDSketch =
+                  new DDSketchPositiveForExact(
+                      DDPrecomputeAlpha[DATASET_TYPE.ordinal()],
+                      STATISTICS_PAGE_MAXSIZE,
+                      SYNOPSIS_SIZE_IN_BYTE));
+          this.DDSketch.insert(value - DDPrecomputeMinV[DATASET_TYPE.ordinal()] + 1);
         }
       }
     } else {
       updateStats(value, value, value, value);
       if (ENABLE_SYNOPSIS) {
-        if (SUMMARY_TYPE == 0) {
+        if (SUMMARY_TYPE == SummaryTypes.KLL) {
           if (this.summaryNum == 1) {
             if (this.kllSketch.getN() >= STATISTICS_PAGE_MAXSIZE) {
               if (this.kllSketch.getN() % 1000 == 0)
@@ -288,11 +297,11 @@ public class DoubleStatistics extends Statistics<Double> {
             }
           }
         }
-        if (SUMMARY_TYPE == 1) {
+        if (SUMMARY_TYPE == SummaryTypes.TD) {
           this.tDigest.update(value);
         }
-        if (SUMMARY_TYPE == 2) {
-          this.sampling.update(dataToLong(value));
+        if (SUMMARY_TYPE == SummaryTypes.DD) {
+          this.DDSketch.insert(value - DDPrecomputeMinV[DATASET_TYPE.ordinal()] + 1);
         }
         if (this.summaryNum > 1)
           System.out.println(
@@ -353,20 +362,20 @@ public class DoubleStatistics extends Statistics<Double> {
     DoubleStatistics doubleStat = ((DoubleStatistics) stat);
     if (doubleStat.summaryNum > 0) {
       this.summaryNum = 1;
-      if (SUMMARY_TYPE == 0) {
+      if (SUMMARY_TYPE == SummaryTypes.KLL) {
         this.kllSketch = (LongKLLSketch) (doubleStat.kllSketchList.get(pageID));
         this.kllSketchList = new ArrayList<>(1);
         this.kllSketchList.add(this.kllSketch);
       }
-      if (SUMMARY_TYPE == 1) {
+      if (SUMMARY_TYPE == SummaryTypes.TD) {
         this.tDigest = doubleStat.tDigestList.get(pageID);
         this.tDigestList = new ArrayList<>(1);
         this.tDigestList.add(this.tDigest);
       }
-      if (SUMMARY_TYPE == 2) {
-        this.sampling = doubleStat.samplingList.get(pageID);
-        this.samplingList = new ArrayList<>(1);
-        this.samplingList.add(this.sampling);
+      if (SUMMARY_TYPE == SummaryTypes.DD) {
+        this.DDSketch = doubleStat.DDSketchList.get(pageID);
+        this.DDSketchList = new ArrayList<>(1);
+        this.DDSketchList.add(this.DDSketch);
       }
       //      System.out.println(
       //          "\t[DEBUG][DoubleStat setPageStat] pageID="
@@ -396,17 +405,17 @@ public class DoubleStatistics extends Statistics<Double> {
       isEmpty = false;
       if (ENABLE_SYNOPSIS) {
         this.summaryNum = doubleStats.summaryNum;
-        if (SUMMARY_TYPE == 0) {
+        if (SUMMARY_TYPE == SummaryTypes.KLL) {
           this.kllSketch = doubleStats.kllSketch;
           this.kllSketchList = doubleStats.kllSketchList;
         }
-        if (SUMMARY_TYPE == 1) {
+        if (SUMMARY_TYPE == SummaryTypes.TD) {
           this.tDigest = doubleStats.tDigest;
           this.tDigestList = doubleStats.tDigestList;
         }
-        if (SUMMARY_TYPE == 2) {
-          this.sampling = doubleStats.sampling;
-          this.samplingList = doubleStats.samplingList;
+        if (SUMMARY_TYPE == SummaryTypes.DD) {
+          this.DDSketch = doubleStats.DDSketch;
+          this.DDSketchList = doubleStats.DDSketchList;
         }
         //        System.out.println(
         //            "\t[DEBUG][DoubleStat MERGE_STAT] from EMPTY. now N="
@@ -431,9 +440,9 @@ public class DoubleStatistics extends Statistics<Double> {
           stats.getEndTime());
       if (ENABLE_SYNOPSIS) {
         this.summaryNum += doubleStats.summaryNum;
-        if (SUMMARY_TYPE == 0) this.kllSketchList.addAll(doubleStats.kllSketchList);
-        if (SUMMARY_TYPE == 1) this.tDigestList.addAll(doubleStats.tDigestList);
-        if (SUMMARY_TYPE == 2) this.samplingList.addAll(doubleStats.samplingList);
+        if (SUMMARY_TYPE == SummaryTypes.KLL) this.kllSketchList.addAll(doubleStats.kllSketchList);
+        if (SUMMARY_TYPE == SummaryTypes.TD) this.tDigestList.addAll(doubleStats.tDigestList);
+        if (SUMMARY_TYPE == SummaryTypes.DD) this.DDSketchList.addAll(doubleStats.DDSketchList);
         //        System.out.println(
         //            "\t[DEBUG][DoubleStat MERGE_STAT] from another."
         //                + "\tanother: N="
@@ -527,7 +536,14 @@ public class DoubleStatistics extends Statistics<Double> {
       return byteLen;
     }
     if (summaryNum > 0) {
-      if (SUMMARY_TYPE == 0)
+      byteLen += ReadWriteIOUtils.write(SUMMARY_TYPE.ordinal(), outputStream);
+      byteLen += ReadWriteIOUtils.write(DATASET_TYPE.ordinal(), outputStream);
+      System.out.println(
+          "\t\tserializeSketchStat \tSUMMARY_TYPE:"
+              + SUMMARY_TYPE
+              + "\tDATASET_TYPE:"
+              + DATASET_TYPE);
+      if (SUMMARY_TYPE == SummaryTypes.KLL)
         for (KLLSketchForQuantile sketch : kllSketchList) {
           LongKLLSketch diskSketch =
               !LSMFile ? ((LongKLLSketch) sketch) : (new LongKLLSketch(sketch));
@@ -536,15 +552,15 @@ public class DoubleStatistics extends Statistics<Double> {
           //        System.out.println("\t[DEBUG][DoubleStat serializeStats]:\tbytes:" + tmp);
           //        sketch.show();
         }
-      if (SUMMARY_TYPE == 1)
-        for (TDigestForStatMerge summary : tDigestList) {
+      if (SUMMARY_TYPE == SummaryTypes.TD)
+        for (TDigestForExact summary : tDigestList) {
           int tmp = summary.serialize(outputStream);
           byteLen += tmp;
           //        System.out.println("\t[DEBUG][DoubleStat serializeStats]:\tbytes:" + tmp);
           //        sketch.show();
         }
-      if (SUMMARY_TYPE == 2)
-        for (SamplingHeapForStatMerge summary : samplingList) {
+      if (SUMMARY_TYPE == SummaryTypes.DD)
+        for (DDSketchPositiveForExact summary : DDSketchList) {
           int tmp = summary.serialize(outputStream);
           byteLen += tmp;
           //        System.out.println("\t[DEBUG][DoubleStat serializeStats]:\tbytes:" + tmp);
@@ -593,19 +609,23 @@ public class DoubleStatistics extends Statistics<Double> {
     this.bfNum = ReadWriteIOUtils.readInt(inputStream);
     this.hasSegTreeBySketch = ReadWriteIOUtils.readBool(inputStream);
     if (this.summaryNum > 0) {
-      if (SUMMARY_TYPE == 0) {
+      SUMMARY_TYPE = SummaryTypes.values()[ReadWriteIOUtils.readInt(inputStream)];
+      DATASET_TYPE = DatasetTypes.values()[ReadWriteIOUtils.readInt(inputStream)];
+      //      System.out.println(
+      //          "\t\tdeserialize from inputStream\tSUMMARY_TYPE:" + Statistics.SUMMARY_TYPE);
+
+      if (SUMMARY_TYPE == SummaryTypes.KLL) {
         this.kllSketchList = new ArrayList<>(summaryNum);
         for (int i = 0; i < summaryNum; i++) this.kllSketchList.add(new LongKLLSketch(inputStream));
       }
-      if (SUMMARY_TYPE == 1) {
+      if (SUMMARY_TYPE == SummaryTypes.TD) {
         this.tDigestList = new ArrayList<>(summaryNum);
-        for (int i = 0; i < summaryNum; i++)
-          this.tDigestList.add(new TDigestForStatMerge(inputStream));
+        for (int i = 0; i < summaryNum; i++) this.tDigestList.add(new TDigestForExact(inputStream));
       }
-      if (SUMMARY_TYPE == 2) {
-        this.samplingList = new ArrayList<>(summaryNum);
+      if (SUMMARY_TYPE == SummaryTypes.DD) {
+        this.DDSketchList = new ArrayList<>(summaryNum);
         for (int i = 0; i < summaryNum; i++)
-          this.samplingList.add(new SamplingHeapForStatMerge(inputStream));
+          this.DDSketchList.add(new DDSketchPositiveForExact(inputStream));
       }
     }
     if (this.bfNum > 0) {
@@ -633,25 +653,28 @@ public class DoubleStatistics extends Statistics<Double> {
       return;
     }
     if (this.summaryNum > 0) {
+      SUMMARY_TYPE = SummaryTypes.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+      DATASET_TYPE = DatasetTypes.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+      //      System.out.println(
+      //          "\t\tdeserialize from byteBuffer\tSUMMARY_TYPE:" + Statistics.SUMMARY_TYPE);
       //      System.out.println(
       //          "\t\t\t[Stat Deserialize]\tsketch\tsumNum=" + summaryNum + "\tstartT:" +
       // getStartTime());
-      if (SUMMARY_TYPE == 0) {
+      if (SUMMARY_TYPE == SummaryTypes.KLL) {
         this.kllSketchList = new ArrayList<>(summaryNum);
         for (int i = 0; i < summaryNum; i++) this.kllSketchList.add(new LongKLLSketch(byteBuffer));
         //        for (int i = 0; i < summaryNum; i++)
         //          System.out.println("\t\t\t\t\tsketch numLen:" +
         // this.kllSketchList.get(i).getNumLen());
       }
-      if (SUMMARY_TYPE == 1) {
+      if (SUMMARY_TYPE == SummaryTypes.TD) {
         this.tDigestList = new ArrayList<>(summaryNum);
-        for (int i = 0; i < summaryNum; i++)
-          this.tDigestList.add(new TDigestForStatMerge(byteBuffer));
+        for (int i = 0; i < summaryNum; i++) this.tDigestList.add(new TDigestForExact(byteBuffer));
       }
-      if (SUMMARY_TYPE == 2) {
-        this.samplingList = new ArrayList<>(summaryNum);
+      if (SUMMARY_TYPE == SummaryTypes.DD) {
+        this.DDSketchList = new ArrayList<>(summaryNum);
         for (int i = 0; i < summaryNum; i++)
-          this.samplingList.add(new SamplingHeapForStatMerge(byteBuffer));
+          this.DDSketchList.add(new DDSketchPositiveForExact(byteBuffer));
       }
     }
     if (this.bfNum > 0) {

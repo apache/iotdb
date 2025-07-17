@@ -126,6 +126,7 @@ public class ExactMultiQuantilesQuickSelectAggrResult extends AggregateResult {
     this.hasCandidateResult = true;
     if (this.returnType.equals("value")) this.doubleValue = doubleValue;
     else if (this.returnType.equals("space")) this.doubleValue = data.size() * Long.BYTES;
+    else if (this.returnType.equals("iteration_num")) this.doubleValue = 1.0;
   }
 
   public void getKth(int L, int R, int qL, int qR) {
@@ -299,7 +300,7 @@ public class ExactMultiQuantilesQuickSelectAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean useStatisticsIfPossible() {
+  public boolean useOverlappedStatisticsIfPossible() {
     return false;
   }
 

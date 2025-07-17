@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import it.unimi.dsi.util.XoRoShiRo128PlusPlusRandomGenerator;
+import org.apache.commons.math3.distribution.LogNormalDistribution;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -119,6 +121,8 @@ public class ExactQuantile_InsertDataIT {
     }
 
     Random random = new Random(233);
+    LogNormalDistribution logNormal =
+        new LogNormalDistribution(new XoRoShiRo128PlusPlusRandomGenerator(233), 1, 2);
 
     for (int deviceID = 0; deviceID < deviceNumR - deviceNumL; deviceID++) {
       String device = deviceList.get(deviceID);
@@ -144,11 +148,7 @@ public class ExactQuantile_InsertDataIT {
 
             if (seriesID == 0) {
               double num = random.nextGaussian();
-
-              //              num =
-              //                  timestamps[
-              //                      row]; // row == 0 ? -1e9 : (row == TABLET_SIZE - 1 ? 1e9 :
-              // timestamps[row]);
+              num = logNormal.sample();
 
               ((double[]) values[seriesID])[row] = num;
             } else if (seriesID == 1) {
@@ -273,41 +273,22 @@ public class ExactQuantile_InsertDataIT {
     for (int i = 0; i < T; i++) {
       dataSet =
           session.executeQueryStatement(
-              //              "select exact_quantile_pr_kll_priori_fix_pr" +
-              //
-              // "(s0,'quantile'='0.5','memory'='6KB','return_type'='iteration_num','fix_pr'='0.99','merge_buffer_ratio'='0') from "
-              //                            "select exact_quantile_pr_kll_priori_best_pr" +
-              //
-              // "(s0,'quantile'='0.5','memory'='6KB','return_type'='iteration_num','merge_buffer_ratio'='0') from "
-              //              "select exact_quantile_pr_kll_post_best_pr" +
-              //
-              // "(s0,'quantile'='0.5','memory'='4KB','return_type'='iteration_num','merge_buffer_ratio'='0') from "
+              //              "select exact_multi_quantiles_gk"
+              //                  + "(s0,'multi_quantiles'='128','memory'='1024KB',"
+              //                  + "'return_type'='iteration_num','param'='1') from "
+              //                  + deviceList.get(0)
+              //                  + " where time>=0 and time<3000000"
 
-              //                            "select exact_quantile_mrl" +
-              //
-              // "(s0,'quantile'='0.5','memory'='8KB','return_type'='iteration_num','merge_buffer_ratio'='0') from "
-              //              "select
-              // exact_quantile_tdigest(s0,'quantile'='0.5','memory'='64KB','return_type'='iteration_num','param'='1') from "
-              //                                  "select exact_quantile_ddsketch_positive" +
-              //
-              // "(s0,'quantile'='0.5','memory'='4KB','return_type'='iteration_num') from "
-              //              "select exact_multi_quantiles_pr_kll_post_best_pr" +
-              //
-              // "(s0,'multi_quantiles'='224','memory'='1024KB','return_type'='iteration_num','merge_buffer_ratio'='0') from "
-              //              "select exact_multi_quantiles_pr_kll_fix_pr" +
-              //
-              // "(s0,'multi_quantiles'='224','memory'='1024KB','return_type'='iteration_num','merge_buffer_ratio'='0'," +
-              //                  "'fix_pr'='0.99') from "
-              //              "select exact_multi_quantiles_mrl" +
-              //
-              // "(s0,'multi_quantiles'='96','memory'='1024KB','return_type'='iteration_num','merge_buffer_ratio'='0') from "
-              //              "select exact_multi_quantiles_tdigest"
-              //                  +
-              // "(s0,'multi_quantiles'='32','memory'='1024KB','return_type'='iteration_num','param'='1') from "
-              "select exact_multi_quantiles_ddsketch_positive (s0,'multi_quantiles'='2000'"
-                  + ",'memory'='1024KB','return_type'='iteration_num') from "
+              //              "select exact_quantile_ddsketch_positive"
+              //                  + "(s0,'quantile'='0.5','memory'='64KB',"
+              //                  + "'return_type'='iteration_num') from "
+              //                  + deviceList.get(0)
+              //                  + " where time>=0 and time<4000000"
+              "select exact_multi_quantiles_tdigest"
+                  + "(s0,'multi_quantiles'='128','memory'='1024KB',"
+                  + "'return_type'='iteration_num','param'='1') from "
                   + deviceList.get(0)
-                  + " where time>=0 and time<5000000");
+                  + " where time>=0 and time<4000000");
       String tmp = dataSet.next().getFields().toString();
       avgIter += Double.parseDouble(tmp.substring(1, tmp.lastIndexOf(']'))) / T;
     }

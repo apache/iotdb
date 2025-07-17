@@ -538,7 +538,7 @@ public class KLLStatMedianAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean useStatisticsIfPossible() {
+  public boolean useOverlappedStatisticsIfPossible() {
     return iteration == 0;
   }
 }

@@ -166,7 +166,9 @@ public class ExactMultiQuantilesMRLAggrResult extends AggregateResult {
   public void startIteration() {
     if (iteration == 0) { // first iteration
       if (mergeBufferRatio > 0)
-        sketch = new MRLSketchLazy(maxMemoryByte * (mergeBufferRatio - 1) / mergeBufferRatio);
+        sketch =
+            new MRLSketchLazy(
+                (int) ((long) maxMemoryByte * (mergeBufferRatio - 1) / mergeBufferRatio));
       else sketch = new MRLSketchLazy(maxMemoryByte);
       n = 0;
     } else {
@@ -305,8 +307,8 @@ public class ExactMultiQuantilesMRLAggrResult extends AggregateResult {
               cntWorker[i].getFilter(
                   CountOfValL[i],
                   CountOfValR[i],
-                  iterate_result[i][0],
-                  iterate_result[i][1],
+                  rest_iterate_result[i][0],
+                  rest_iterate_result[i][1],
                   rest_query_rank1[i] - CountOfLessThanValL[i],
                   rest_query_rank2[i] - CountOfLessThanValL[i]);
         }
@@ -551,7 +553,7 @@ public class ExactMultiQuantilesMRLAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean useStatisticsIfPossible() {
+  public boolean useOverlappedStatisticsIfPossible() {
     return mergeBufferRatio > 0;
   }
 

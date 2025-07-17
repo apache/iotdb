@@ -93,6 +93,7 @@ public class CountAggrResult extends AggregateResult {
     int cnt = 0;
     while (valueIterator.hasNext()) {
       valueIterator.next();
+      //      System.out.println("\t\t\t\t[tmp update count]");
       cnt++;
     }
     setLongValue(getLongValue() + cnt);

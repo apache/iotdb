@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Map;
 
-public class DDSketchPositiveForExact implements Serializable {
+public class DDSketchPositiveForDupli implements Serializable {
   public double alpha;
   private double gamma;
   private double multiplier;
@@ -30,12 +30,16 @@ public class DDSketchPositiveForExact implements Serializable {
   private static final double COEFFICIENT = 1.5;
   boolean valid_buckets = false;
   Bucket[] buckets;
-  public static final int bucketNumPerByteInMemory = 48;
+  public static final int bucketNumPerByteInMemoryForExact = 48;
+  public static final int bucketNumPerByteInMemoryForApprox = 24;
 
+  public static int getBucketNumLimit(int seriByte) {
+    return (int) (seriByte / bucketNumPerByteInMemoryForApprox / COEFFICIENT);
+  }
   // B bucket:  at most threshold_for_compression=1.5*B buckets,    OpenHashMap loadFactor0.75
   // a bucket:  key2count&key2lastV(Int2Long,Int2Double)  2*(4+8)=24Byte;
-  public DDSketchPositiveForExact(double alpha, int bucket_num_limit) {
-    //        System.out.println(alpha);
+  public DDSketchPositiveForDupli(double alpha, int bucket_num_limit) {
+    //        System.out.println("alpha:\t"+alpha+"\t\tbuckets:"+bucket_num_limit);
     this.alpha = alpha;
     this.bucket_num_limit = Math.max(bucket_num_limit, 2);
     this.threshold_for_compression = (int) (bucket_num_limit * COEFFICIENT);
@@ -53,7 +57,7 @@ public class DDSketchPositiveForExact implements Serializable {
   long maxN;
   int maxSeriByte;
 
-  public DDSketchPositiveForExact(double alpha, int maxN, int maxSeriByte) {
+  public DDSketchPositiveForDupli(double alpha, int maxN, int maxSeriByte) {
     this.maxN = maxN;
     this.maxSeriByte = maxSeriByte;
     this.alpha = alpha;
@@ -67,7 +71,7 @@ public class DDSketchPositiveForExact implements Serializable {
     this.positive_collapse_bound = -Double.MAX_VALUE;
   }
 
-  public void insert(double v) {
+  public void update(double v) {
     valid_buckets = false;
     if (v > MIN_POSITIVE_VALUE) {
       if (v < positive_collapse_bound) {
@@ -83,7 +87,7 @@ public class DDSketchPositiveForExact implements Serializable {
     if (positive_buckets.size() > threshold_for_compression) collapse(bucket_num_limit);
   }
 
-  public void mergeWithDeserialized(DDSketchPositiveForExact another) {
+  public void mergeWithDeserialized(DDSketchPositiveForDupli another) {
     if (another.alpha != this.alpha) {
       System.out.println("\t\t[ERROR DDSketchPositive] Merge With Different α.");
       return;
@@ -108,6 +112,7 @@ public class DDSketchPositiveForExact implements Serializable {
   }
 
   private void collapse(int limit) {
+    //    System.out.println("\t\tcollapse. limit:"+limit);
     int posi_exceed = positive_buckets.size() - limit;
 
     int[] indices;
@@ -126,11 +131,8 @@ public class DDSketchPositiveForExact implements Serializable {
       positive_buckets_content.put(indices[posi_exceed], 0);
       positive_collapse_bound = Math.pow(gamma, indices[posi_exceed]);
     }
-    System.out.println(
-        "\t\tDD collapse.\t"
-            + positive_buckets.size()
-            + "\t"
-            + 1.0 * positive_buckets.size() / threshold_for_compression);
+    //    System.out.println("\t\tDD
+    // collapse.\t"+positive_buckets.size()+"\t"+1.0*positive_buckets.size()/threshold_for_compression);
   }
 
   static final int DIVIDE_DELTA = 1000000000, DIVIDE_HALF = DIVIDE_DELTA / 2;
@@ -236,6 +238,25 @@ public class DDSketchPositiveForExact implements Serializable {
     }
   }
 
+  public DoubleArrayList getQuantiles(DoubleArrayList qs) {
+    if (!valid_buckets) union_buckets();
+    long total_count = total_count();
+    int bucketPos = find_p_index(buckets, total_count, qs.getDouble(0));
+    Bucket p;
+    DoubleArrayList ans = new DoubleArrayList();
+    for (double q : qs) {
+      while (bucketPos + 1 < total_count && buckets[bucketPos].prefixSum < q * (total_count - 1))
+        bucketPos++;
+      p = buckets[bucketPos];
+      if (getL(p.bucketIndex) < 0) {
+        ans.add(2 * getL(p.bucketIndex) / (1 + gamma));
+      } else {
+        ans.add(2 * getR(p.bucketIndex) / (1 + gamma));
+      }
+    }
+    return ans;
+  }
+
   public double[] findResultRange(long K1, long K2) {
     if (!valid_buckets) union_buckets();
     DoubleArrayList result = new DoubleArrayList(2);
@@ -287,10 +308,6 @@ public class DDSketchPositiveForExact implements Serializable {
     K -= CountOfValL;
     int p2 = find_p_index(buckets, K);
     valR = getR(buckets[p2].bucketIndex);
-    //    if (valR == 0.062203969999999886-valL+1)
-    //    {
-    //      System.out.println("\tDEBUG\tprefixSum:" + buckets[p2].prefixSum + " K:" + K);
-    //    }
     if (valR == 0) return new double[] {0, zero_count, -233};
     if (getLastV(buckets[p2].bucketIndex) != 0)
       return new double[] {
@@ -304,6 +321,7 @@ public class DDSketchPositiveForExact implements Serializable {
     if (!valid_buckets) union_buckets();
     double[] filterL = getFilterL(CountOfValL, CountOfValR, valL, valR, K1);
     double[] filterR = getFilterR(CountOfValL, CountOfValR, valL, valR, K2);
+    //    System.out.println("\t\t\t\tvalL,R:\t"+filterL[0]+"..."+filterR[0]);
     long tot_count = 0;
     tot_count += filterL.length == 2 ? getCount(buckets[(int) filterL[1]].bucketIndex) : filterL[1];
     if (!(filterL[0] == filterR[0]
@@ -346,7 +364,7 @@ public class DDSketchPositiveForExact implements Serializable {
     return byteLen;
   }
 
-  public DDSketchPositiveForExact(InputStream inputStream) throws IOException {
+  public DDSketchPositiveForDupli(InputStream inputStream) throws IOException {
     this.alpha = ReadWriteIOUtils.readDouble(inputStream);
     this.gamma = ReadWriteIOUtils.readDouble(inputStream);
     this.multiplier = ReadWriteIOUtils.readDouble(inputStream);
@@ -363,7 +381,7 @@ public class DDSketchPositiveForExact implements Serializable {
     }
   }
 
-  public DDSketchPositiveForExact(ByteBuffer byteBuffer) {
+  public DDSketchPositiveForDupli(ByteBuffer byteBuffer) {
     this.alpha = ReadWriteIOUtils.readDouble(byteBuffer);
     this.gamma = ReadWriteIOUtils.readDouble(byteBuffer);
     this.multiplier = ReadWriteIOUtils.readDouble(byteBuffer);

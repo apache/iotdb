@@ -124,6 +124,7 @@ public class SQLConstant {
       "exact_quantile_pr_kll_post_best_pr";
   public static final String EXACT_QUANTILE_MRL = "exact_quantile_mrl";
   public static final String EXACT_QUANTILE_TDIGEST = "exact_quantile_tdigest";
+  public static final String EXACT_QUANTILE_GK = "exact_quantile_gk";
   public static final String EXACT_QUANTILE_DDSKETCH_POSITIVE = "exact_quantile_ddsketch_positive";
   public static final String EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR =
       "exact_multi_quantiles_pr_kll_post_best_pr";
@@ -131,8 +132,16 @@ public class SQLConstant {
       "exact_multi_quantiles_pr_kll_fix_pr";
   public static final String EXACT_MULTI_QUANTILES_MRL = "exact_multi_quantiles_mrl";
   public static final String EXACT_MULTI_QUANTILES_TDIGEST = "exact_multi_quantiles_tdigest";
+  public static final String EXACT_MULTI_QUANTILES_GK = "exact_multi_quantiles_gk";
   public static final String EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE =
       "exact_multi_quantiles_ddsketch_positive";
+  public static final String DUPLI_QUANTILE_DSS = "dupli_quantile_dss";
+  public static final String DUPLI_QUANTILE_GK = "dupli_quantile_gk";
+  public static final String DUPLI_QUANTILE_TD = "dupli_quantile_td";
+  public static final String DUPLI_QUANTILE_KLL_VANILLA = "dupli_quantile_kll_vanilla";
+  public static final String DUPLI_QUANTILE_KLL_PAIR = "dupli_quantile_kll_pair";
+  public static final String DUPLI_QUANTILE_DD = "dupli_quantile_dd";
+  public static final String DUPLI_QUANTILE_REQ = "dupli_quantile_req";
 
   public static final String ALL = "all";
 
@@ -190,12 +199,21 @@ public class SQLConstant {
               EXACT_QUANTILE_PR_KLL_POST_BEST_PR,
               EXACT_QUANTILE_MRL,
               EXACT_QUANTILE_TDIGEST,
+              EXACT_QUANTILE_GK,
               EXACT_QUANTILE_DDSKETCH_POSITIVE,
               EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR,
               EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR,
               EXACT_MULTI_QUANTILES_MRL,
               EXACT_MULTI_QUANTILES_TDIGEST,
-              EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE));
+              EXACT_MULTI_QUANTILES_GK,
+              EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE,
+              DUPLI_QUANTILE_DSS,
+              DUPLI_QUANTILE_GK,
+              DUPLI_QUANTILE_TD,
+              DUPLI_QUANTILE_KLL_VANILLA,
+              DUPLI_QUANTILE_KLL_PAIR,
+              DUPLI_QUANTILE_DD,
+              DUPLI_QUANTILE_REQ));
 
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;

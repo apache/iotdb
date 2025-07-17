@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.utils.TDigestForStatMerge;
+import org.apache.iotdb.tsfile.utils.TDigestForExact;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -43,7 +43,7 @@ public class TDigestStatSingleAggrResult extends AggregateResult {
   private long pageKLLNum, statNum;
   private long cntL, cntR, lastL;
   private long n, K1, heapN;
-  private TDigestForStatMerge tDigest;
+  private TDigestForExact tDigest;
   private boolean hasFinalResult;
   long DEBUG = 0;
 
@@ -147,13 +147,13 @@ public class TDigestStatSingleAggrResult extends AggregateResult {
   public void startIteration() {
     heapN = statNum = 0;
     if (iteration == 0) { // first iteration
-      tDigest = new TDigestForStatMerge(maxMemoryByte);
+      tDigest = new TDigestForExact(maxMemoryByte);
       lastL = cntL = Long.MIN_VALUE;
       cntR = Long.MAX_VALUE;
       n = 0;
       pageKLLNum = 0;
     } else {
-      tDigest = new TDigestForStatMerge(maxMemoryByte);
+      tDigest = new TDigestForExact(maxMemoryByte);
       pageKLLNum = 0;
       System.out.println(
           "\t[KLL STAT DEBUG] start iteration "

@@ -77,12 +77,21 @@ public enum AggregationType {
   EXACT_QUANTILE_PR_KLL_POST_BEST_PR,
   EXACT_QUANTILE_MRL,
   EXACT_QUANTILE_TDIGEST,
+  EXACT_QUANTILE_GK,
   EXACT_QUANTILE_DDSKETCH_POSITIVE,
   EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR,
   EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR,
   EXACT_MULTI_QUANTILES_MRL,
   EXACT_MULTI_QUANTILES_TDIGEST,
-  EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE;
+  EXACT_MULTI_QUANTILES_GK,
+  EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE,
+  DUPLI_QUANTILE_DSS,
+  DUPLI_QUANTILE_GK,
+  DUPLI_QUANTILE_TD,
+  DUPLI_QUANTILE_KLL_VANILLA,
+  DUPLI_QUANTILE_KLL_PAIR,
+  DUPLI_QUANTILE_DD,
+  DUPLI_QUANTILE_REQ;
 
   /**
    * give an integer to return a data type.
@@ -206,6 +215,24 @@ public enum AggregationType {
         return EXACT_MULTI_QUANTILES_TDIGEST;
       case 56:
         return EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE;
+      case 57:
+        return EXACT_QUANTILE_GK;
+      case 58:
+        return EXACT_MULTI_QUANTILES_GK;
+      case 59:
+        return DUPLI_QUANTILE_DSS;
+      case 60:
+        return DUPLI_QUANTILE_GK;
+      case 61:
+        return DUPLI_QUANTILE_TD;
+      case 62:
+        return DUPLI_QUANTILE_KLL_VANILLA;
+      case 63:
+        return DUPLI_QUANTILE_KLL_PAIR;
+      case 64:
+        return DUPLI_QUANTILE_DD;
+      case 65:
+        return DUPLI_QUANTILE_REQ;
 
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + i);
@@ -385,6 +412,33 @@ public enum AggregationType {
         break;
       case EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
         i = 56;
+        break;
+      case EXACT_QUANTILE_GK:
+        i = 57;
+        break;
+      case EXACT_MULTI_QUANTILES_GK:
+        i = 58;
+        break;
+      case DUPLI_QUANTILE_DSS:
+        i = 59;
+        break;
+      case DUPLI_QUANTILE_GK:
+        i = 60;
+        break;
+      case DUPLI_QUANTILE_TD:
+        i = 61;
+        break;
+      case DUPLI_QUANTILE_KLL_VANILLA:
+        i = 62;
+        break;
+      case DUPLI_QUANTILE_KLL_PAIR:
+        i = 63;
+        break;
+      case DUPLI_QUANTILE_DD:
+        i = 64;
+        break;
+      case DUPLI_QUANTILE_REQ:
+        i = 65;
         break;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + this.name());

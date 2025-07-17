@@ -25,14 +25,13 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
-import org.apache.iotdb.tsfile.utils.*;
+import org.apache.iotdb.tsfile.utils.GKBandForExact;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -42,22 +41,19 @@ import java.util.Map;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
 
-public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResult {
-  boolean sharedPass = true;
-  double bestPr, fixPr = 0;
-  int mergeBufferRatio = 5;
+public class ExactMultiQuantilesGKAggrResult extends AggregateResult {
   int MULTI_QUANTILES = 1, batchN;
   double[] query_q;
   long[] query_rank1, query_rank2;
   double[][] deterministic_result, iterate_result;
+  boolean lastPass;
+  long lastN;
+  DoubleArrayList[] lastPassData;
   private String returnType = "value";
   private TSDataType seriesDataType;
   private int iteration;
   private long n;
-  private KLLSketchLazyExactPriori heapKLL;
-  private ObjectArrayList<KLLSketchForQuantile> preComputedSketch;
-  private LongArrayList preComputedSketchMinV, preComputedSketchMaxV;
-  private int preComputedSketchSize, maxPreComputedSketchSize;
+  private GKBandForExact sketch;
   private boolean hasFinalResult;
   long DEBUG = 0;
 
@@ -75,85 +71,52 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
     }
   }
 
-  public ExactMultiQuantilesPrKLLPostBestPrAggrResult(TSDataType seriesDataType)
+  public ExactMultiQuantilesGKAggrResult(TSDataType seriesDataType)
       throws UnSupportedDataTypeException {
-    super(DOUBLE, AggregationType.EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR);
+    super(DOUBLE, AggregationType.EXACT_MULTI_QUANTILES_GK);
     this.seriesDataType = seriesDataType;
     reset();
-  }
-
-  private long dataToLong(Object data) throws UnSupportedDataTypeException {
-    long result;
-    switch (seriesDataType) {
-      case INT32:
-        return (int) data;
-      case FLOAT:
-        result = Float.floatToIntBits((float) data);
-        return (float) data >= 0f ? result : result ^ Long.MAX_VALUE;
-      case INT64:
-        return (long) data;
-      case DOUBLE:
-        result = Double.doubleToLongBits((double) data);
-        return (double) data >= 0d ? result : result ^ Long.MAX_VALUE;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation MEDIAN : %s", seriesDataType));
-    }
-  }
-
-  private double longToResult(long result) throws UnSupportedDataTypeException {
-    switch (seriesDataType) {
-      case INT32:
-        return (double) (result);
-      case FLOAT:
-        result = (result >>> 31) == 0 ? result : result ^ Long.MAX_VALUE;
-        return Float.intBitsToFloat((int) (result));
-      case INT64:
-        return (double) (result);
-      case DOUBLE:
-        result = (result >>> 63) == 0 ? result : result ^ Long.MAX_VALUE;
-        return Double.longBitsToDouble(result);
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation MEDIAN : %s", seriesDataType));
-    }
   }
 
   private void processValBuf() {
     Arrays.sort(valBuf, 0, bufSize);
     int index = 0;
     for (int bufID = 0; bufID < bufSize; bufID++) {
-      long dataL = valBuf[bufID];
-      double dataD = longToResult(dataL);
+      double dataD = valBuf[bufID];
       while (index < rest_multi_quantiles && dataD > (rest_iterate_result[index][1])) index++;
       if (index == rest_multi_quantiles) break;
       int i = index;
       for (; i < rest_multi_quantiles && dataD >= (rest_iterate_result[i][0]); i++)
-        if (dataD < (rest_iterate_result[i][0])) {
-          CountOfLessThanValL[i]++;
-          CountOfLessThanValL[i + 1]--;
-        } else if ((rest_iterate_result[i][0]) <= dataD && dataD <= (rest_iterate_result[i][1])) {
-          if (dataD == rest_iterate_result[i][0]) CountOfValL[i]++;
-          else if (dataD == rest_iterate_result[i][1]) CountOfValR[i]++;
-          else cntWorker[i].update(dataL);
+        if ((rest_iterate_result[i][0]) <= dataD && dataD <= (rest_iterate_result[i][1])) {
+          if (lastPass) lastPassData[i].add(dataD);
+          else {
+            if (dataD == rest_iterate_result[i][0]) CountOfValL[i]++;
+            else if (dataD == rest_iterate_result[i][1]) CountOfValR[i]++;
+            else {
+              cntWorker[i].insert(dataD);
+              debug_numInRange[i]++;
+            }
+          }
         }
       CountOfLessThanValL[i]++;
+
+      //      if(!lastPass)
+      //      for(i=0;i<rest_multi_quantiles;i++)
+      //        if ((rest_iterate_result[i][0]) <= dataD && dataD <= (rest_iterate_result[i][1])) {
+      //          debug_numInRange[i]++;
+      //        }
     }
     bufSize = 0;
   }
 
   private void updateStatusFromDataFirstIter(Object data) {
-    long dataL = dataToLong(data);
+    //    long dataL = dataToLong(data);
     n++;
-    if (sharedPass) heapKLL.update(dataL);
-    else {
-      for (int i = 0; i < MULTI_QUANTILES; i++) cntWorker[i].update(dataL);
-    }
+    sketch.insert((double) data);
   }
 
   private void updateStatusFromDataLaterIter(Object data) {
-    long dataL = dataToLong(data);
-    valBuf[bufSize++] = dataL;
+    valBuf[bufSize++] = (double) data;
     if (bufSize == batchN) processValBuf();
   }
 
@@ -163,35 +126,17 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
   double[][] rest_deterministic_result, rest_iterate_result;
   double minValL, maxValR;
   long[] CountOfLessThanValL, CountOfValL, CountOfValR;
-  long[] valBuf;
-  KLLSketchLazyExactPriori[] cntWorker;
+  double[] valBuf;
+  int[] debug_numInRange;
+  GKBandForExact[] cntWorker;
 
   @Override
   public void startIteration() {
     if (iteration == 0) { // first iteration
+      sketch = new GKBandForExact(maxMemoryByte);
       n = 0;
-      double tmpRatio =
-          mergeBufferRatio > 0 ? 1.0 * (mergeBufferRatio - 1) / mergeBufferRatio : 1.0;
-      if (sharedPass) {
-        heapKLL = new KLLSketchLazyExactPriori((int) (maxMemoryByte * tmpRatio));
-        maxPreComputedSketchSize = (int) (maxMemoryByte * (1 - tmpRatio));
-      } else {
-        cntWorker = new KLLSketchLazyExactPriori[MULTI_QUANTILES];
-        maxPreComputedSketchSize =
-            mergeBufferRatio > 0
-                ? (int)
-                    (1.0
-                        * maxMemoryByte
-                        / MULTI_QUANTILES
-                        / (mergeBufferRatio - 1 + 1.0 / MULTI_QUANTILES))
-                : 0;
-        for (int i = 0; i < MULTI_QUANTILES; i++)
-          // (M-x)/k=(ratio-1)*x, M/k=x*(ratio-1+1/k), x=M/k/(ratio-1+1/k)
-          cntWorker[i] =
-              new KLLSketchLazyExactPriori(
-                  (int) (maxMemoryByte - maxPreComputedSketchSize) / MULTI_QUANTILES);
-      }
     } else {
+
       rest_multi_quantiles = 0;
       rest_query_id = new int[MULTI_QUANTILES];
       rest_query_rank1 = new long[MULTI_QUANTILES];
@@ -208,22 +153,40 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
           rest_query_id[rest_multi_quantiles] = qid;
           rest_multi_quantiles++;
         }
+      debug_numInRange = new int[rest_multi_quantiles];
       CountOfLessThanValL = new long[rest_multi_quantiles + 1];
       CountOfValL = new long[rest_multi_quantiles + 1];
       CountOfValR = new long[rest_multi_quantiles + 1];
-      valBuf = new long[rest_multi_quantiles];
+      valBuf = new double[rest_multi_quantiles];
       bufSize = 0;
       batchN = rest_multi_quantiles;
 
-      cntWorker = new KLLSketchLazyExactPriori[rest_multi_quantiles];
+      if (lastN <= maxMemoryByte / 8 / rest_multi_quantiles) {
+        lastPass = true;
+        cntWorker = null;
+        lastPassData = new DoubleArrayList[rest_multi_quantiles];
+        for (int i = 0; i < rest_multi_quantiles; i++) lastPassData[i] = new DoubleArrayList();
+        return;
+      }
 
+      lastPass = false;
+      lastPassData = null;
+
+      cntWorker = new GKBandForExact[rest_multi_quantiles];
       minValL = rest_iterate_result[0][0];
       maxValR = rest_iterate_result[0][1];
       for (int i = 0; i < rest_multi_quantiles; i++) {
-        cntWorker[i] = new KLLSketchLazyExactPriori(maxMemoryByte / rest_multi_quantiles);
+        cntWorker[i] = new GKBandForExact(maxMemoryByte / rest_multi_quantiles);
         minValL = Math.min(minValL, rest_iterate_result[i][0]);
         maxValR = Math.max(maxValR, rest_iterate_result[i][1]);
       }
+      //      System.out.println("\t\t\ttesting bound -↗");
+      //      for (int i = 1; i < rest_multi_quantiles; i++) {
+      //        if (rest_iterate_result[i][0] < rest_iterate_result[i - 1][0])
+      //          System.out.println("\t\tERROR! Left_Bound of rest_iterate_result  is not -↗");
+      //        if (rest_iterate_result[i][1] < rest_iterate_result[i - 1][1])
+      //          System.out.println("\t\tERROR! Right_Bound of rest_iterate_result  is not -↗");
+      //      }
     }
   }
 
@@ -236,65 +199,59 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
 
   @Override
   public void finishIteration() {
-    //            System.out.println(
-    //                "\n\t[ExactMultiQuantiles DEBUG]"
-    //                    + "finish iteration "
-    //                    + iteration);
+    //                System.out.println(
+    //                    "\t[DEBUG multi_GK]"
+    //                        + "finishing iteration "
+    //                        + iteration);
     iteration++;
     if (n == 0) {
       hasFinalResult = true;
       return;
     }
 
-    if (preComputedSketch.size() > 0) {
-      mergePrecomputedWhenFinish();
-    }
     if (iteration > 1 && bufSize > 0) processValBuf();
+    if (lastPass) {
+      for (int i = 1; i < rest_multi_quantiles; i++)
+        CountOfLessThanValL[i] += CountOfLessThanValL[i - 1];
+      System.out.println("\t[DEBUG multi_GK]\tLast Pass.\tlastN:\t" + lastN);
+      double sum = 0;
+      for (int i = 0; i < rest_multi_quantiles; i++) {
+        lastPassData[i].sort(Double::compare);
+        double ans = 0;
+        //            ((lastPassData[i].getDouble((int) (rest_query_rank1[i] -
+        // CountOfLessThanValL[i]) - 1))
+        //                    + (lastPassData[i].getDouble(
+        //                        (int) (rest_query_rank2[i] - CountOfLessThanValL[i]) - 1)))
+        //                * 0.5;
+        deterministic_result[rest_query_id[i]][0] = deterministic_result[rest_query_id[i]][1] = ans;
+      }
+      for (int i = 0; i < MULTI_QUANTILES; i++)
+        sum += (deterministic_result[i][0] + deterministic_result[i][0]) * 0.5;
+      setDoubleValue(sum);
+      hasFinalResult = true;
+      return;
+    }
     if (iteration
         == 1) { // first iteration overint[] query_rank1=new int[MULTI_QUANTILES],query_rank2=new
       // int[MULTI_QUANTILES];
+      //      System.out.println("\t\tfirst-pass start to get bounds.");
+      //      sketch.show();
       for (int qid = 0; qid < MULTI_QUANTILES; qid++) {
         query_rank1[qid] = (int) Math.floor(query_q[qid] * (n - 1) + 1);
         query_rank2[qid] = (int) Math.ceil(query_q[qid] * (n - 1) + 1);
         deterministic_result[qid] =
-            (sharedPass)
-                ? heapKLL.getFilter(0, 0, 0, 0, query_rank1[qid], query_rank2[qid], 1.0)
-                : cntWorker[qid].getFilter(0, 0, 0, 0, query_rank1[qid], query_rank2[qid], 1.0);
+            sketch.getFilter(0, 0, 0, 0, query_rank1[qid], query_rank2[qid]);
       }
 
-      if (fixPr == 0) {
-        int[] compactNum =
-            (sharedPass) ? heapKLL.getRelatedCompactNum() : cntWorker[0].getRelatedCompactNum();
-        PrioriBestPrHelper helper =
-            //            (sharedPass)?
-            new PrioriBestPrHelper(maxMemoryByte / 8, (int) n, compactNum, 0, MULTI_QUANTILES);
-        //                : new PrioriBestPrHelper(
-        //                maxMemoryByte / MULTI_QUANTILES / 8, (int) n, compactNum, 0, 1);
+      lastN = 0;
+      for (int qid = 0; qid < MULTI_QUANTILES; qid++) {
 
-        bestPr = helper.findBestPr(5e-4, 5e-4, 5e-1, (int) n)[0];
-
-        System.out.println(
-            "\t[DEBUG multi_best_pr] First pass bestPr:\t"
-                + bestPr
-                + "\t\testiPass:\t"
-                + helper.findBestPr(5e-4, 5e-4, 5e-1, (int) n)[1]);
-      } else {
-        bestPr = fixPr;
-        System.out.println("\t[DEBUG multi_fix_pr] First pass fixedPr:\t" + bestPr);
+        iterate_result[qid] = sketch.getFilter(0, 0, 0, 0, query_rank1[qid], query_rank2[qid]);
+        lastN =
+            Math.max(
+                lastN, sketch.findMaxNumberInRange(iterate_result[qid][0], iterate_result[qid][1]));
       }
-      for (int qid = 0; qid < MULTI_QUANTILES; qid++)
-        iterate_result[qid] =
-            (sharedPass)
-                ? heapKLL.getFilter(
-                    0,
-                    0,
-                    0,
-                    0,
-                    query_rank1[qid],
-                    query_rank2[qid],
-                    Math.pow(bestPr, 1.0 / MULTI_QUANTILES))
-                : cntWorker[qid].getFilter(0, 0, 0, 0, query_rank1[qid], query_rank2[qid], bestPr);
-
+      //      System.out.println("\t\tfirst-pass got bounds.");
     } else {
       for (int i = 1; i < rest_multi_quantiles; i++)
         CountOfLessThanValL[i] += CountOfLessThanValL[i - 1];
@@ -309,12 +266,22 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
         if (cntRank1 <= 0
             || cntRank2
                 > CountOfValL[i] + CountOfValR[i] + cntWorker[i].getN()) { // iteration failed.
-          System.out.println(
-              "\t\t\t\t\t\titerate fail."
-                  + "\t\tcntIter:"
-                  + iteration
-                  + "\t\tcntQ:"
-                  + query_q[qid]);
+          //          System.out.println(
+          //              "\t\t\t\t\t\titerate fail."
+          //                  + "\t\tcntIter:"
+          //                  + iteration
+          //                  + "\t\tcntQ:"
+          //                  + query_q[qid]
+          //                  + "\t\tcntRank1,2:"
+          //                  + cntRank1+","+cntRank2+"\t\tCountOf<L:"
+          //                  +CountOfLessThanValL[i]+"\t\tnumNInRange:"
+          //                  +(CountOfValL[i] + CountOfValR[i]
+          //                  + cntWorker[i].N+"="+CountOfValL[i]
+          //                  +"+"+cntWorker[i].N+"+"+CountOfValR[i])
+          //          + "\t\trange:"+rest_iterate_result[i][0]
+          //                  +"..."+rest_iterate_result[i][1]
+          //          +"\t\tdebugNumInRange:\t"+debug_numInRange[i]
+          //          +"\tsketchInsertN:\t"+cntWorker[i].debugInsertN);
           if (cntRank1 <= 0)
             iterate_result[qid] =
                 new double[] {rest_deterministic_result[i][0], rest_iterate_result[i][0]};
@@ -338,8 +305,7 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
                 rest_iterate_result[i][0],
                 rest_iterate_result[i][1],
                 cntRank1,
-                cntRank2,
-                1.0);
+                cntRank2);
         if (deterministic_result[qid].length == 3
             || deterministic_result[qid][0] == deterministic_result[qid][1]) {
           iterate_result[qid] = deterministic_result[qid];
@@ -352,27 +318,13 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
         for (int i : toEstimateID) if (cntWorker[i].getN() > cntWorker[worstID].getN()) worstID = i;
         //        System.out.println("\t\tfinish iter >=2.\tdet:"+
         // Arrays.toString(deterministic_result[rest_query_id[worstID]]));
-
-        if (fixPr == 0) {
-          int[] compactNum = cntWorker[worstID].getRelatedCompactNum();
-          PrioriBestPrHelper helper =
-              new PrioriBestPrHelper(
-                  maxMemoryByte / 8,
-                  (int) cntWorker[worstID].getN(),
-                  compactNum,
-                  0,
-                  toEstimateID.size());
-          bestPr = helper.findBestPr(5e-4, 5e-4, 5e-1, (int) cntWorker[worstID].getN())[0];
-          System.out.println(
-              "\t[DEBUG multi_best_pr] " + iteration + "-th pass bestPr:\t" + bestPr);
-        } else {
-          bestPr = Math.pow(fixPr, toEstimateID.size());
-          System.out.println("\t[DEBUG multi_fix_pr] " + iteration + "-th pass fixedPr:\t" + fixPr);
-        }
-
-        System.out.print("\t\t[DEBUG multi]:\t iteration:" + iteration + "\tworstSketch:");
-        cntWorker[worstID].show();
-
+        System.out.println(
+            "\t\t[DEBUG multi_GK]:\t iteration:"
+                + iteration
+                + "\tworstSketch_N:\t"
+                + cntWorker[worstID].getN());
+        //        cntWorker[worstID].show();
+        lastN = 0;
         for (int i : toEstimateID) {
           //          cntWorker[i].show();
           int qid = rest_query_id[i];
@@ -383,8 +335,12 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
                   rest_iterate_result[i][0],
                   rest_iterate_result[i][1],
                   rest_query_rank1[i] - CountOfLessThanValL[i],
-                  rest_query_rank2[i] - CountOfLessThanValL[i],
-                  Math.pow(bestPr, 1.0 / toEstimateID.size()));
+                  rest_query_rank2[i] - CountOfLessThanValL[i]);
+          lastN =
+              Math.max(
+                  lastN,
+                  cntWorker[i].findMaxNumberInRange(
+                      iterate_result[qid][0], iterate_result[qid][1]));
         }
       }
     }
@@ -417,43 +373,6 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
     return hasCandidateResult() ? getDoubleValue() : null;
   }
 
-  public void addSketch(KLLSketchForQuantile sketch, double minV, double maxV) {
-    //    sketch.show();
-    n += sketch.getN();
-    preComputedSketch.add(sketch);
-    preComputedSketchMinV.add(dataToLong(minV));
-    preComputedSketchMaxV.add(dataToLong(maxV));
-    preComputedSketchSize += sketch.getNumLen() * 8;
-    if (preComputedSketchSize >= maxPreComputedSketchSize) {
-      if (sharedPass)
-        heapKLL.mergeWithTempSpace(preComputedSketch, preComputedSketchMinV, preComputedSketchMaxV);
-      else
-        for (int i = 0; i < MULTI_QUANTILES; i++)
-          cntWorker[i].mergeWithTempSpace(
-              preComputedSketch, preComputedSketchMinV, preComputedSketchMaxV);
-      preComputedSketch.clear();
-      preComputedSketchMinV.clear();
-      preComputedSketchMaxV.clear();
-      preComputedSketchSize = 0;
-    }
-  }
-
-  private void mergePrecomputedWhenFinish() {
-    //    KLLSketchLazyExactPriori tmpSketch = heapKLL;
-    //    heapKLL = new KLLSketchLazyExactPriori(maxMemoryByte);
-    //    heapKLL.mergeWithTempSpace(tmpSketch, tmpSketch.getMin(), tmpSketch.getMax());
-    if (sharedPass)
-      heapKLL.mergeWithTempSpace(preComputedSketch, preComputedSketchMinV, preComputedSketchMaxV);
-    else
-      for (int i = 0; i < MULTI_QUANTILES; i++)
-        cntWorker[i].mergeWithTempSpace(
-            preComputedSketch, preComputedSketchMinV, preComputedSketchMaxV);
-    preComputedSketch.clear();
-    preComputedSketchMinV.clear();
-    preComputedSketchMaxV.clear();
-    preComputedSketchSize = 0;
-  }
-
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
     switch (statistics.getType()) {
@@ -469,28 +388,8 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
             String.format(
                 "Unsupported data type in aggregation MEDIAN : %s", statistics.getType()));
     }
-    if (iteration == 0 && mergeBufferRatio > 0) {
-      if (statistics.getType() == DOUBLE) {
-        DoubleStatistics stat = (DoubleStatistics) statistics;
-        if (stat.getSummaryNum() > 0) {
-          for (KLLSketchForQuantile sketch : stat.getKllSketchList()) {
-            ((LongKLLSketch) sketch).deserializeFromBuffer();
-            addSketch(sketch, stat.getMinValue(), stat.getMaxValue());
-          }
-          return;
-        } // else System.out.println("\t\t\t\t!!!!!![ERROR!] no KLL in stat!");
-      }
-    }
     double minVal = (double) (statistics.getMinValue());
     double maxVal = (double) (statistics.getMaxValue());
-    //    System.out.println(
-    //        "\t[ExactQuantile DEBUG pr_kll_opt_summary] update from statistics:\t"
-    //            + "min,max:"
-    //            + minVal
-    //            + ","
-    //            + maxVal
-    //            + " statN:"
-    //            + statistics.getCount());
     // out of range
     if (minVal > maxValR) return;
     if (maxVal < minValL) {
@@ -600,25 +499,16 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
   @Override
   public void reset() {
     super.reset();
-    heapKLL = null;
+    sketch = null;
     minValL = Long.MIN_VALUE;
     maxValR = Long.MAX_VALUE;
     n = 0;
     iteration = 0;
     hasFinalResult = false;
-    preComputedSketch = new ObjectArrayList<>();
-    preComputedSketchMinV = new LongArrayList();
-    preComputedSketchMaxV = new LongArrayList();
-    preComputedSketchSize = 0;
   }
 
   @Override
   public boolean canUpdateFromStatistics(Statistics statistics) {
-    if ((seriesDataType == DOUBLE) && iteration == 0 && mergeBufferRatio > 0) {
-      DoubleStatistics doubleStats = (DoubleStatistics) statistics;
-      if (Statistics.SUMMARY_TYPE == Statistics.SummaryTypes.KLL && doubleStats.getSummaryNum() > 0)
-        return true;
-    }
     if (iteration > 0) {
       double minVal = (double) (statistics.getMinValue());
       double maxVal = (double) (statistics.getMaxValue());
@@ -636,19 +526,17 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
 
   @Override
   public boolean useOverlappedStatisticsIfPossible() {
-    return mergeBufferRatio > 0;
+    return false;
   }
 
   @Override
   public void setAttributes(Map<String, String> attrs) {
-    if (attrs.containsKey("sharedPass")) {
-      String sp = attrs.get("sharedPass");
-      this.sharedPass = Boolean.parseBoolean(sp);
-    }
     if (attrs.containsKey("memory")) {
       String mem = attrs.get("memory");
       if (mem.contains("KB"))
         this.maxMemoryByte = Integer.parseInt(mem.substring(0, mem.length() - 2)) * 1024;
+      else if (mem.contains("MB"))
+        this.maxMemoryByte = Integer.parseInt(mem.substring(0, mem.length() - 2)) * 1024 * 1024;
       else if (mem.contains("B"))
         this.maxMemoryByte = Integer.parseInt(mem.substring(0, mem.length() - 1));
     }
@@ -660,14 +548,6 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
       String q = attrs.get("return_type");
       this.returnType = q;
     }
-    if (attrs.containsKey("merge_buffer_ratio")) { // 0 means don't use summary.
-      String r = attrs.get("merge_buffer_ratio");
-      this.mergeBufferRatio = Integer.parseInt(r);
-    }
-    if (attrs.containsKey("fix_delta")) {
-      String p = attrs.get("fix_delta");
-      this.fixPr = 1.0 - Double.parseDouble(p);
-    }
     if (attrs.containsKey("multi_quantiles")) {
       String mq = attrs.get("multi_quantiles");
       this.MULTI_QUANTILES = Integer.parseInt(mq);
@@ -676,9 +556,7 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
         "  [setAttributes DEBUG]\t\t\tmaxMemoryByte:"
             + maxMemoryByte
             + "\t\tMULTI_QUANTILES:"
-            + MULTI_QUANTILES
-            + "\t\t fixPrOrNot:"
-            + fixPr);
+            + MULTI_QUANTILES);
 
     this.batchN = MULTI_QUANTILES;
     query_q = new double[MULTI_QUANTILES];
@@ -688,5 +566,7 @@ public class ExactMultiQuantilesPrKLLPostBestPrAggrResult extends AggregateResul
     query_rank2 = new long[MULTI_QUANTILES];
     deterministic_result = new double[MULTI_QUANTILES][];
     iterate_result = new double[MULTI_QUANTILES][];
+    lastPass = false;
+    lastN = Long.MAX_VALUE;
   }
 }

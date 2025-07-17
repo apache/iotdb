@@ -32,8 +32,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TDigestForExact;
 
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -53,9 +51,6 @@ public class ExactQuantileTDigestAggrResult extends AggregateResult {
   DoubleArrayList lastPassData;
   boolean lastPass = false;
   long lastN = Long.MAX_VALUE;
-  private ObjectArrayList<TDigestForExact> preComputedSketch;
-  private LongArrayList preComputedSketchMinV, preComputedSketchMaxV;
-  private int preComputedSketchSize;
   private boolean hasFinalResult;
   long DEBUG = 0;
 
@@ -194,9 +189,6 @@ public class ExactQuantileTDigestAggrResult extends AggregateResult {
       return;
     }
 
-    if (preComputedSketch.size() > 0) {
-      mergePrecomputedWhenFinish();
-    }
     if (iteration == 1) { // first iteration over
       K1 = (int) Math.floor(QUANTILE * (n - 1) + 1);
       K2 = (int) Math.ceil(QUANTILE * (n - 1) + 1);
@@ -207,10 +199,9 @@ public class ExactQuantileTDigestAggrResult extends AggregateResult {
       System.out.println(
           "\t[ExactQuantile DEBUG TDigest]\tLast Pass.\tdataN:\t" + lastPassData.size());
       lastPassData.sort(Double::compare);
-      double ans = 0;
-      //          ((lastPassData.getDouble((int) cntK1 - 1)) + (lastPassData.getDouble((int) cntK2 -
-      // 1)))
-      //              * 0.5;
+      double ans = // 0;
+          ((lastPassData.getDouble((int) cntK1 - 1)) + (lastPassData.getDouble((int) cntK2 - 1)))
+              * 0.5;
       setDoubleValue(ans);
       hasFinalResult = true;
       return;
@@ -229,7 +220,7 @@ public class ExactQuantileTDigestAggrResult extends AggregateResult {
 
       System.out.println(
           "\t[ExactQuantile DEBUG TDigest]\tIter Failed."
-              + (cntK1 <= 0 ? "\tans smaller than cntL." : "\tans larger than cntL.")
+              + (cntK1 <= 0 ? "\tans smaller than cntL." : "\tans larger than cntR.")
               + "\tcntL,R:"
               + (cntL)
               + ","
@@ -319,17 +310,9 @@ public class ExactQuantileTDigestAggrResult extends AggregateResult {
     return hasCandidateResult() ? getDoubleValue() : null;
   }
 
-  public void addSketch(TDigestForExact sketch, double minV, double maxV) {
-    n += sketch.totN;
-  }
-
-  private void mergePrecomputedWhenFinish() {
-    //    sketch.mergeWithTempSpace(preComputedSketch, preComputedSketchMinV,
-    // preComputedSketchMaxV);
-    preComputedSketch.clear();
-    preComputedSketchMinV.clear();
-    preComputedSketchMaxV.clear();
-    preComputedSketchSize = 0;
+  public void addSketch(TDigestForExact pageSketch) {
+    n += pageSketch.totN;
+    sketch.merge(pageSketch);
   }
 
   @Override
@@ -350,13 +333,11 @@ public class ExactQuantileTDigestAggrResult extends AggregateResult {
     if (iteration == 0) {
       if (statistics.getType() == DOUBLE) {
         DoubleStatistics stat = (DoubleStatistics) statistics;
-        if (stat.getSummaryNum() > 0) {
-          //          for (KLLSketchForQuantile sketch : stat.getKllSketchList()) {
-          //            ((LongKLLSketch) sketch).deserializeFromBuffer();
-          //            addSketch(sketch, stat.getMinValue(), stat.getMaxValue());
-          //          }
+        if (DoubleStatistics.SUMMARY_TYPE == Statistics.SummaryTypes.TD
+            && stat.getSummaryNum() > 0) {
+          for (TDigestForExact pageSketch : stat.getTDigestList()) addSketch(pageSketch);
           return;
-        } // else System.out.println("\t\t\t\t!!!!!![ERROR!] no KLL in stat!");
+        }
       }
     }
     double minVal = (double) (statistics.getMinValue());
@@ -381,6 +362,7 @@ public class ExactQuantileTDigestAggrResult extends AggregateResult {
       else for (int i = 0; i < statistics.getCount(); i++) updateStatusFromData(minVal);
       return;
     }
+    System.out.println("\t\t\t\t!!!!!![ERROR!] TD cannot use stat!");
   }
 
   @Override
@@ -467,17 +449,15 @@ public class ExactQuantileTDigestAggrResult extends AggregateResult {
     iteration = 0;
     countOfLessThanCntL = 0;
     hasFinalResult = false;
-    preComputedSketch = new ObjectArrayList<>();
-    preComputedSketchMinV = new LongArrayList();
-    preComputedSketchMaxV = new LongArrayList();
-    preComputedSketchSize = 0;
   }
 
   @Override
   public boolean canUpdateFromStatistics(Statistics statistics) {
+    if (!useAnyStat) return false;
     if ((seriesDataType == DOUBLE) && iteration == 0) {
       DoubleStatistics doubleStats = (DoubleStatistics) statistics;
-      if (doubleStats.getSummaryNum() > 0) return true;
+      if (DoubleStatistics.SUMMARY_TYPE == Statistics.SummaryTypes.TD
+          && doubleStats.getSummaryNum() > 0) return true;
     }
     if (iteration > 0) {
       double minVal = (double) (statistics.getMinValue());
@@ -495,12 +475,10 @@ public class ExactQuantileTDigestAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean useStatisticsIfPossible() {
-    return false;
-  }
-
-  @Override
   public void setAttributes(Map<String, String> attrs) {
+    if (attrs.containsKey("useAnyStat")) {
+      this.useAnyStat = Boolean.parseBoolean(attrs.get("useAnyStat"));
+    }
     if (attrs.containsKey("memory")) {
       String mem = attrs.get("memory");
       if (mem.contains("KB"))
@@ -518,7 +496,7 @@ public class ExactQuantileTDigestAggrResult extends AggregateResult {
       String q = attrs.get("return_type");
       this.returnType = q;
     }
-    if (attrs.containsKey("param")) { // 0 means don't use summary.
+    if (attrs.containsKey("param")) {
       String r = attrs.get("param");
       this.mergingBuffer = Integer.parseInt(r);
     }
