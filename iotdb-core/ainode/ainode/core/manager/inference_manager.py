@@ -138,7 +138,7 @@ class InferenceManager:
     # DEFAULT_DEVICE = "cpu"
     DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     DEFAULT_POOL_SIZE = (
-        0  # TODO: Remove these parameter by sampling model inference consumption
+        2  # TODO: Remove these parameter by sampling model inference consumption
     )
     WAITING_INTERVAL_IN_MS = (
         AINodeDescriptor().get_config().get_ain_inference_batch_interval_in_ms()
@@ -173,6 +173,7 @@ class InferenceManager:
                 config=sundial_config,
                 request_queue=request_queue,
                 result_queue=self._result_queue,
+                model_manager=self._model_manager,
             )
             request_pool.start()
             self._request_pool_map[self.ACCELERATE_MODEL_ID].append(
