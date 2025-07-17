@@ -210,27 +210,6 @@ jobs:
         cluster1: [HighPerformanceMode]
         cluster2: [HighPerformanceMode]
         os: [ ubuntu-latest ]
-        exclude:
-          - cluster1: LightWeightStandaloneMode
-            cluster2: LightWeightStandaloneMode
-          - cluster1: LightWeightStandaloneMode
-            cluster2: ScalableSingleNodeMode
-          - cluster1: ScalableSingleNodeMode
-            cluster2: LightWeightStandaloneMode
-          - cluster1: ScalableSingleNodeMode
-            cluster2: HighPerformanceMode
-          - cluster1: HighPerformanceMode
-            cluster2: LightWeightStandaloneMode
-          - cluster1: HighPerformanceMode
-            cluster2: HighPerformanceMode
-          - cluster1: PipeConsensusBatchMode
-            cluster2: LightWeightStandaloneMode
-          - cluster1: PipeConsensusBatchMode
-            cluster2: HighPerformanceMode
-          - cluster1: PipeConsensusStreamMode
-            cluster2: LightWeightStandaloneMode
-          - cluster1: PipeConsensusStreamMode
-            cluster2: HighPerformanceMode
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -315,27 +294,6 @@ jobs:
         cluster1: [HighPerformanceMode]
         cluster2: [HighPerformanceMode]
         os: [ ubuntu-latest ]
-        exclude:
-          - cluster1: LightWeightStandaloneMode
-            cluster2: LightWeightStandaloneMode
-          - cluster1: LightWeightStandaloneMode
-            cluster2: ScalableSingleNodeMode
-          - cluster1: ScalableSingleNodeMode
-            cluster2: LightWeightStandaloneMode
-          - cluster1: ScalableSingleNodeMode
-            cluster2: HighPerformanceMode
-          - cluster1: HighPerformanceMode
-            cluster2: LightWeightStandaloneMode
-          - cluster1: HighPerformanceMode
-            cluster2: HighPerformanceMode
-          - cluster1: PipeConsensusBatchMode
-            cluster2: LightWeightStandaloneMode
-          - cluster1: PipeConsensusBatchMode
-            cluster2: HighPerformanceMode
-          - cluster1: PipeConsensusStreamMode
-            cluster2: LightWeightStandaloneMode
-          - cluster1: PipeConsensusStreamMode
-            cluster2: HighPerformanceMode
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
