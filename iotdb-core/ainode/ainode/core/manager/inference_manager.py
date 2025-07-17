@@ -43,7 +43,6 @@ from ainode.core.inference.strategy.timer_sundial_inference_pipeline import (
 from ainode.core.inference.utils import _generate_req_id
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
-from ainode.core.manager.model_manager_singleton import get_model_manager
 from ainode.core.model.sundial.configuration_sundial import SundialConfig
 from ainode.core.model.sundial.modeling_sundial import SundialForPrediction
 from ainode.core.model.timerxl.modeling_timer import TimerForPrediction
