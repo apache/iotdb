@@ -88,12 +88,14 @@ public class TabletDecoder {
     }
     try {
       int uncompressedLength = compressedBuffer.getInt(compressedBuffer.limit() - 4);
-      ByteBuffer output = ByteBuffer.allocate(uncompressedLength);
-      byte[] compressedData = new byte[compressedBuffer.remaining() - 4];
-      compressedBuffer.slice().get(compressedData);
-      byte[] uncompressedData = unCompressor.uncompress(compressedData);
-      output.put(uncompressedData);
-      output.flip();
+      byte[] uncompressedBytes = new byte[uncompressedLength];
+      unCompressor.uncompress(
+          compressedBuffer.array(),
+          compressedBuffer.arrayOffset() + compressedBuffer.position(),
+          compressedBuffer.remaining() - 4,
+          uncompressedBytes,
+          0);
+      ByteBuffer output = ByteBuffer.wrap(uncompressedBytes);
       RPCServiceThriftHandlerMetrics.getInstance()
           .recordDecompressLatencyTimer(System.nanoTime() - startUncompressTime);
       return output;
