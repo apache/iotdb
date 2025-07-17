@@ -20,7 +20,6 @@ from ainode.core.log import Logger
 from ainode.core.manager.cluster_manager import ClusterManager
 from ainode.core.manager.inference_manager import InferenceManager
 from ainode.core.manager.model_manager import ModelManager
-from ainode.core.manager.model_manager_singleton import get_model_manager
 from ainode.core.rpc.status import get_status
 from ainode.thrift.ainode import IAINodeRPCService
 from ainode.thrift.ainode.ttypes import (
