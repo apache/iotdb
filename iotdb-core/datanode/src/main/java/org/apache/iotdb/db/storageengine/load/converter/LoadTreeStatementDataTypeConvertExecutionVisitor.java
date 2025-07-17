@@ -219,8 +219,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
     return result;
   }
 
-  private static boolean handleTSStatus(
-      final TSStatus result, final LoadTsFileStatement loadTsFileStatement) {
+  public static boolean handleTSStatus(final TSStatus result, final Object loadTsFileStatement) {
     if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         || result.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
