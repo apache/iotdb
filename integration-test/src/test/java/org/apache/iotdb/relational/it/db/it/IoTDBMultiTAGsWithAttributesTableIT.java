@@ -1231,7 +1231,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     expectedHeader = buildHeaders(24);
     retArray =
         new String[] {
-          "1971-08-20T11:33:20.000Z,d2,l5,yy,zz,15,3147483648,4654.231,2023-01-01,1971-01-01T00:01:40.000Z,test-string3,6666.8,1970-01-01T00:00:00.000Z,d1,l1,c,a,1,2107483648,12.123,2022-01-01,1970-01-01T00:00:00.020Z,test-string1,6666.3,",
+          "1971-08-20T11:33:20.000Z,d2,l5,yy,zz,15,3147483648,4654.231,2023-01-01,2024-09-25T06:15:35.000Z,test-string3,6666.8,1970-01-01T00:00:00.000Z,d1,l1,c,a,1,2107483648,12.123,2022-01-01,2024-08-01T06:15:35.000Z,test-string1,6666.3,",
         };
     sql =
         "select max(time),max(device),max(level),max(attr1),max(attr2),max(num),max(bignum),max(floatnum),max(date),max(ts),max(stringv),max(doubleNum),min(time),min(device),min(level),min(attr1),min(attr2),min(num),min(bignum),min(floatnum),min(date),min(ts),min(stringv),min(doubleNum) from table0";
