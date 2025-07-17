@@ -151,7 +151,7 @@ public class IoTDBSessionCompressedIT {
             .enableCompression(false)
             .enableRedirection(true)
             .enableAutoFetch(false)
-            .isCompressed(false)
+            .enableCompaction(false)
             .build();
   }
 
