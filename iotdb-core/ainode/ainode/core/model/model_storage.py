@@ -299,7 +299,6 @@ class ModelStorage(object):
         Returns:
             model: The model instance corresponding to specific model_id
         """
-        # TODO: read lock or write lock?
         with self._lock_pool.get_lock(model_id).read_lock():
             if self._is_built_in_or_fine_tuned(model_id):
                 model_dir = os.path.join(self._builtin_model_dir, f"{model_id}")
