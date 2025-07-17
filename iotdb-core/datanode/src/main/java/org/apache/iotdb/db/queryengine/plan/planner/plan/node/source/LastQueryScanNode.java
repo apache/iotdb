@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -64,6 +65,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
   private List<IMeasurementSchema> globalMeasurementSchemaList;
 
   private final String outputViewPath;
+  private final TSDataType outputViewPathType;
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
@@ -75,12 +77,14 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
       boolean aligned,
       List<Integer> indexOfMeasurementSchemas,
       String outputViewPath,
+      TSDataType outputViewPathType,
       List<IMeasurementSchema> globalMeasurementSchemaList) {
     super(id, new AtomicInteger(1));
     this.aligned = aligned;
     this.devicePath = devicePath;
     this.indexOfMeasurementSchemas = indexOfMeasurementSchemas;
     this.outputViewPath = outputViewPath;
+    this.outputViewPathType = outputViewPathType;
     this.globalMeasurementSchemaList = globalMeasurementSchemaList;
   }
 
@@ -90,7 +94,8 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
       boolean aligned,
       List<Integer> indexOfMeasurementSchemas,
       AtomicInteger dataNodeSeriesScanNum,
-      String outputViewPath) {
+      String outputViewPath,
+      TSDataType outputViewPathType) {
     this(
         id,
         devicePath,
@@ -98,6 +103,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
         indexOfMeasurementSchemas,
         dataNodeSeriesScanNum,
         outputViewPath,
+        outputViewPathType,
         null);
   }
 
@@ -108,12 +114,14 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
       List<Integer> indexOfMeasurementSchemas,
       AtomicInteger dataNodeSeriesScanNum,
       String outputViewPath,
+      TSDataType outputViewPathType,
       List<IMeasurementSchema> globalMeasurementSchemaList) {
     super(id, dataNodeSeriesScanNum);
     this.aligned = aligned;
     this.devicePath = devicePath;
     this.indexOfMeasurementSchemas = indexOfMeasurementSchemas;
     this.outputViewPath = outputViewPath;
+    this.outputViewPathType = outputViewPathType;
     this.globalMeasurementSchemaList = globalMeasurementSchemaList;
   }
 
@@ -124,6 +132,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
       List<Integer> indexOfMeasurementSchemas,
       AtomicInteger dataNodeSeriesScanNum,
       String outputViewPath,
+      TSDataType outputViewPathType,
       TRegionReplicaSet regionReplicaSet,
       boolean deviceInMultiRegion,
       List<IMeasurementSchema> globalMeasurementSchemaList) {
@@ -132,6 +141,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
     this.aligned = aligned;
     this.indexOfMeasurementSchemas = indexOfMeasurementSchemas;
     this.outputViewPath = outputViewPath;
+    this.outputViewPathType = outputViewPathType;
     this.regionReplicaSet = regionReplicaSet;
     this.deviceInMultiRegion = deviceInMultiRegion;
     this.globalMeasurementSchemaList = globalMeasurementSchemaList;
@@ -160,6 +170,10 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
 
   public String getOutputViewPath() {
     return outputViewPath;
+  }
+
+  public TSDataType getOutputViewPathType() {
+    return outputViewPathType;
   }
 
   public String getOutputSymbolForSort() {
@@ -196,6 +210,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
         indexOfMeasurementSchemas,
         getDataNodeSeriesScanNum(),
         outputViewPath,
+        outputViewPathType,
         regionReplicaSet,
         deviceInMultiRegion,
         globalMeasurementSchemaList);
@@ -226,6 +241,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
         && Objects.equals(aligned, that.aligned)
         && Objects.equals(indexOfMeasurementSchemas, that.indexOfMeasurementSchemas)
         && Objects.equals(outputViewPath, that.outputViewPath)
+        && Objects.equals(outputViewPathType, that.outputViewPathType)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
 
@@ -275,6 +291,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
     ReadWriteIOUtils.write(outputViewPath == null, byteBuffer);
     if (outputViewPath != null) {
       ReadWriteIOUtils.write(outputViewPath, byteBuffer);
+      ReadWriteIOUtils.write(outputViewPathType, byteBuffer);
     }
     ReadWriteIOUtils.write(deviceInMultiRegion, byteBuffer);
   }
@@ -292,6 +309,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
     ReadWriteIOUtils.write(outputViewPath == null, stream);
     if (outputViewPath != null) {
       ReadWriteIOUtils.write(outputViewPath, stream);
+      ReadWriteIOUtils.write(outputViewPathType, stream);
     }
     ReadWriteIOUtils.write(deviceInMultiRegion, stream);
   }
@@ -308,6 +326,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
     int dataNodeSeriesScanNum = ReadWriteIOUtils.readInt(byteBuffer);
     boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
     String outputPathSymbol = isNull ? null : ReadWriteIOUtils.readString(byteBuffer);
+    TSDataType dataType = isNull ? null : ReadWriteIOUtils.readDataType(byteBuffer);
     boolean deviceInMultiRegion = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new LastQueryScanNode(
@@ -317,6 +336,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
         measurementSchemas,
         new AtomicInteger(dataNodeSeriesScanNum),
         outputPathSymbol,
+        dataType,
         null,
         deviceInMultiRegion,
         null);
