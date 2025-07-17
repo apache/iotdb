@@ -401,6 +401,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitRemoveAINode(RemoveAINode node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitClearCache(ClearCache node, C context) {
     return visitStatement(node, context);
   }
@@ -729,7 +733,15 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitCreateModel(CreateModel node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitShowModels(ShowModels node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropModel(DropModel node, C context) {
     return visitStatement(node, context);
   }
 

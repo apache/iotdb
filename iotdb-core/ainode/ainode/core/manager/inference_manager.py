@@ -15,24 +15,39 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import threading
+import time
 from abc import ABC, abstractmethod
+from typing import Dict, List
 
 import pandas as pd
 import torch
+import torch.multiprocessing as mp
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 
+from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import TSStatusCode
 from ainode.core.exception import (
     InferenceModelInternalError,
     InvalidWindowArgumentError,
     runtime_error_extractor,
 )
+from ainode.core.inference.inference_request import (
+    InferenceRequest,
+    InferenceRequestProxy,
+)
+from ainode.core.inference.inference_request_pool import InferenceRequestPool
+from ainode.core.inference.strategy.timer_sundial_inference_pipeline import (
+    TimerSundialInferencePipeline,
+)
+from ainode.core.inference.utils import _generate_req_id
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
+from ainode.core.model.sundial.configuration_sundial import SundialConfig
 from ainode.core.model.sundial.modeling_sundial import SundialForPrediction
 from ainode.core.model.timerxl.modeling_timer import TimerForPrediction
+from ainode.core.rpc.status import get_status
 from ainode.core.util.serde import convert_to_binary
-from ainode.core.util.status import get_status
 from ainode.thrift.ainode.ttypes import (
     TForecastReq,
     TForecastResp,
@@ -89,7 +104,7 @@ class BuiltInStrategy(InferenceStrategy):
 
 
 class RegisteredStrategy(InferenceStrategy):
-    def infer(self, full_data, window_interval=None, window_step=None, **kwargs):
+    def infer(self, full_data, window_interval=None, window_step=None, **_):
         _, dataset, _, length = full_data
         if window_interval is None or window_step is None:
             window_interval = length
@@ -118,19 +133,74 @@ class RegisteredStrategy(InferenceStrategy):
         return [convert_to_binary(df) for df in results]
 
 
-def _get_strategy(model_id, model):
-    if isinstance(model, TimerForPrediction):
-        return TimerXLStrategy(model)
-    if isinstance(model, SundialForPrediction):
-        return SundialStrategy(model)
-    if model_id.startswith("_"):
-        return BuiltInStrategy(model)
-    return RegisteredStrategy(model)
-
-
 class InferenceManager:
+    ACCELERATE_MODEL_ID = "sundial"
+    DEFAULT_DEVICE = "cpu"
+    # DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    DEFAULT_POOL_SIZE = (
+        0  # TODO: Remove these parameter by sampling model inference consumption
+    )
+    WAITING_INTERVAL_IN_MS = (
+        AINodeDescriptor().get_config().get_ain_inference_batch_interval_in_ms()
+    )  # How often to check for requests in the result queue
+
     def __init__(self, model_manager: ModelManager):
-        self.model_manager = model_manager
+        self._model_manager = model_manager
+        self._result_queue = mp.Queue()
+        self._result_wrapper_map = {}
+        self._result_wrapper_lock = threading.RLock()
+        # structure: {model_id: [(InferenceRequestPool, request_queue), ...]}
+        self._request_pool_map: Dict[str, List[(InferenceRequestPool, mp.Queue)]] = {}
+        self._stop_event = mp.Event()
+        self._init_inference_request_pool()
+        self._result_handler_thread = threading.Thread(
+            target=self._handle_results, daemon=True
+        )
+        self._result_handler_thread.start()
+
+    def _init_inference_request_pool(self):
+        """
+        Initialize the inference request pool for each model.
+        TODO: This is a temporary solution, we need a automatic algorithm to adjust the pool size for different models
+        """
+        self._request_pool_map[self.ACCELERATE_MODEL_ID] = []
+        for idx in range(self.DEFAULT_POOL_SIZE):
+            sundial_model = self._model_manager.load_model(
+                self.ACCELERATE_MODEL_ID, {}
+            ).to(self.DEFAULT_DEVICE)
+            sundial_config = SundialConfig()
+            request_queue = mp.Queue()
+            request_pool = InferenceRequestPool(
+                pool_id=idx,
+                model=sundial_model,
+                config=sundial_config,
+                request_queue=request_queue,
+                result_queue=self._result_queue,
+            )
+            request_pool.start()
+            self._request_pool_map[self.ACCELERATE_MODEL_ID].append(
+                (request_pool, request_queue)
+            )
+
+    def _handle_results(self):
+        while not self._stop_event.is_set():
+            if self._result_queue.empty():
+                time.sleep(self.WAITING_INTERVAL_IN_MS / 1000)
+                continue
+            infer_req: InferenceRequest = self._result_queue.get()
+            with self._result_wrapper_lock:
+                self._result_wrapper_map[infer_req.req_id].set_result(
+                    infer_req.get_final_output()
+                )
+
+    def _get_strategy(self, model_id, model):
+        if isinstance(model, TimerForPrediction):
+            return TimerXLStrategy(model)
+        if isinstance(model, SundialForPrediction):
+            return SundialStrategy(model)
+        if self._model_manager.model_storage._is_built_in_or_fine_tuned(model_id):
+            return BuiltInStrategy(model)
+        return RegisteredStrategy(model)
 
     def _run(
         self,
@@ -142,19 +212,42 @@ class InferenceManager:
         single_output: bool,
     ):
         model_id = req.modelId
-        logger.info(f"Start processing for {model_id}")
         try:
             raw = data_getter(req)
             full_data = deserializer(raw)
             inference_attrs = extract_attrs(req)
 
-            # load model
-            accel = str(inference_attrs.get("acceleration", "")).lower() == "true"
-            model = self.model_manager.load_model(model_id, accel)
-
-            # inference by strategy
-            strategy = _get_strategy(model_id, model)
-            outputs = strategy.infer(full_data, **inference_attrs)
+            if model_id == self.ACCELERATE_MODEL_ID and self.DEFAULT_POOL_SIZE > 0:
+                # TODO: Logic in this branch shall handle all LTSM inferences
+                # TODO: TSBlock -> Tensor codes should be unified
+                data = full_data[1][0]
+                if data.dtype.byteorder not in ("=", "|"):
+                    data = data.byteswap().newbyteorder()
+                inputs = torch.tensor(data).unsqueeze(0).float().to(self.DEFAULT_DEVICE)
+                infer_req = InferenceRequest(
+                    req_id=_generate_req_id(),
+                    inputs=inputs,
+                    inference_pipeline=TimerSundialInferencePipeline(SundialConfig()),
+                    max_new_tokens=inference_attrs.get("predict_length", 96),
+                )
+                infer_proxy = InferenceRequestProxy(infer_req.req_id)
+                with self._result_wrapper_lock:
+                    self._result_wrapper_map[infer_req.req_id] = infer_proxy
+                pool_idx = hash(infer_req.req_id) % len(
+                    self._request_pool_map[model_id]
+                )
+                self._request_pool_map[model_id][pool_idx][1].put(infer_req)
+                outputs = infer_proxy.wait_for_completion()
+                outputs = convert_to_binary(pd.DataFrame(outputs[0]))
+                with self._result_wrapper_lock:
+                    del self._result_wrapper_map[infer_req.req_id]
+            else:
+                # load model
+                accel = str(inference_attrs.get("acceleration", "")).lower() == "true"
+                model = self._model_manager.load_model(model_id, inference_attrs, accel)
+                # inference by strategy
+                strategy = self._get_strategy(model_id, model)
+                outputs = strategy.infer(full_data, **inference_attrs)
 
             # construct response
             status = get_status(TSStatusCode.SUCCESS_STATUS)
@@ -195,3 +288,15 @@ class InferenceManager:
             resp_cls=TInferenceResp,
             single_output=False,
         )
+
+    def shutdown(self):
+        self._stop_event.set()
+        for model_id, pools in self._request_pool_map.items():
+            for requestPool, requestQueue in pools:
+                requestPool.stop()
+                while not requestQueue.empty():
+                    requestQueue.get_nowait()
+                requestQueue.close()
+        while not self._result_queue.empty():
+            self._result_queue.get_nowait()
+        self._result_queue.close()

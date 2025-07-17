@@ -46,9 +46,6 @@ public class PipeDescriptor {
     config.setPipeHardlinkTsFileDirName(
         properties.getProperty(
             "pipe_hardlink_tsfile_dir_name", config.getPipeHardlinkTsFileDirName()));
-    config.setPipeProgressIndexPersistDirName(
-        properties.getProperty(
-            "pipe_progress_index_persist_dir_name", config.getPipeProgressIndexPersistDirName()));
     config.setPipeHardlinkWALDirName(
         properties.getProperty("pipe_hardlink_wal_dir_name", config.getPipeHardlinkWALDirName()));
     config.setPipeHardLinkWALEnabled(
@@ -100,21 +97,6 @@ public class PipeDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
-    config.setPipeProgressIndexPersistEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "pipe_progress_index_persist_enabled",
-                String.valueOf(config.isPipeProgressIndexPersistEnabled()))));
-    config.setPipeProgressIndexPersistCheckPointGap(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_progress_index_persist_check_point_gap",
-                String.valueOf(config.getPipeProgressIndexPersistCheckPointGap()))));
-    config.setPipeProgressIndexFlushIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_progress_index_flush_interval_ms",
-                String.valueOf(config.getPipeProgressIndexFlushIntervalMs()))));
 
     config.setPipeAirGapReceiverEnabled(
         Boolean.parseBoolean(
@@ -128,7 +110,7 @@ public class PipeDescriptor {
                 Integer.toString(config.getPipeAirGapReceiverPort()))));
 
     config.setPipeMetaReportMaxLogNumPerRound(
-        Integer.parseInt(
+        Double.parseDouble(
             properties.getProperty(
                 "pipe_meta_report_max_log_num_per_round",
                 String.valueOf(config.getPipeMetaReportMaxLogNumPerRound()))));
@@ -596,6 +578,11 @@ public class PipeDescriptor {
                 "pipe_threshold_allocation_strategy_high_usage_threshold",
                 String.valueOf(
                     config.getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold()))));
+
+    config.setPipeMaxWaitFinishTime(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_max_wait_finish_time", String.valueOf(config.getPipeMaxWaitFinishTime()))));
   }
 
   public static void loadPipeExternalConfig(
@@ -635,6 +622,12 @@ public class PipeDescriptor {
             isHotModify);
     if (value != null) {
       config.setPipeAsyncConnectorMaxTsFileClientNumber(Integer.parseInt(value));
+    }
+
+    value =
+        parserPipeConfig(properties, "pipe_send_tsfile_rate_limit_bytes_per_second", isHotModify);
+    if (value != null) {
+      config.setPipeSendTsFileRateLimitBytesPerSecond(Double.parseDouble(value));
     }
 
     value = parserPipeConfig(properties, "pipe_all_sinks_rate_limit_bytes_per_second", isHotModify);
