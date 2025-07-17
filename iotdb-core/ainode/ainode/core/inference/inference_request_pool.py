@@ -29,6 +29,7 @@ from ainode.core.config import AINodeDescriptor
 from ainode.core.inference.inference_request import InferenceRequest
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
+from ainode.core.manager.model_manager_singleton import get_model_manager
 
 logger = Logger()
 
@@ -50,7 +51,6 @@ class InferenceRequestPool(mp.Process):
         config: PretrainedConfig,
         request_queue: mp.Queue,
         result_queue: mp.Queue,
-        model_manager: ModelManager,
         **pool_kwargs,
     ):
         super().__init__()
@@ -133,7 +133,7 @@ class InferenceRequestPool(mp.Process):
             self._step()
 
     def run(self):
-        #self._model_manager = ModelManager()
+        self._model_manager = get_model_manager()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = self._model_manager.load_model(self.model_id, {}).to(self.device)
 
