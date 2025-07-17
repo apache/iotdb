@@ -92,6 +92,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         .setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(30);
     senderEnv.getConfig().getCommonConfig().setPipeMetaSyncerInitialSyncDelayMinutes(1);
     senderEnv.getConfig().getCommonConfig().setPipeMetaSyncerSyncIntervalMinutes(1);
+    senderEnv.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
+
+    receiverEnv.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
   }
 
   @Test
