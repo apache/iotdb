@@ -212,13 +212,14 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       dataBuffer = ByteBuffer.allocate(128 * 1024);
     }
     dataBuffer.clear();
-    readWALBufferFromChannel(dataBuffer);
+    readWALBufferFromChannel(dataBuffer, channel);
     dataBuffer.flip();
   }
 
   private void loadNextSegmentV2() throws IOException {
     long position = channel.position();
-    SegmentInfo segmentInfo = getNextSegmentInfo();
+    SegmentInfo segmentInfo =
+        getNextSegmentInfo(channel, segmentHeaderWithoutCompressedSizeBuffer, compressedSizeBuffer);
     try {
       if (segmentInfo.compressionType != CompressionType.UNCOMPRESSED) {
         // A compressed segment
@@ -239,7 +240,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         compressedBuffer.clear();
         // limit the buffer to prevent it from reading too much byte than expected
         compressedBuffer.limit(segmentInfo.dataInDiskSize);
-        if (readWALBufferFromChannel(compressedBuffer) != segmentInfo.dataInDiskSize) {
+        if (readWALBufferFromChannel(compressedBuffer, channel) != segmentInfo.dataInDiskSize) {
           throw new IOException("Unexpected end of file");
         }
         compressedBuffer.flip();
@@ -257,7 +258,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         // limit the buffer to prevent it from reading too much byte than expected
         dataBuffer.limit(segmentInfo.dataInDiskSize);
 
-        if (readWALBufferFromChannel(dataBuffer) != segmentInfo.dataInDiskSize) {
+        if (readWALBufferFromChannel(dataBuffer, channel) != segmentInfo.dataInDiskSize) {
           throw new IOException("Unexpected end of file");
         }
       }
@@ -293,15 +294,18 @@ public class WALInputStream extends InputStream implements AutoCloseable {
    *
    * @param pos The logical offset to skip to
    * @throws IOException If the file is broken or the given position is invalid
+   * @return The number of bytes skipped, which should be equal to the given position
    */
-  public void skipToGivenLogicalPosition(long pos) throws IOException {
+  public int skipToGivenLogicalPosition(long pos) throws IOException {
     if (version == WALFileVersion.V2) {
       channel.position(version.getVersionBytes().length);
       long posRemain = pos;
       SegmentInfo segmentInfo;
       do {
         long currentPos = channel.position();
-        segmentInfo = getNextSegmentInfo();
+        segmentInfo =
+            getNextSegmentInfo(
+                channel, segmentHeaderWithoutCompressedSizeBuffer, compressedSizeBuffer);
         if (posRemain >= segmentInfo.uncompressedSize) {
           posRemain -= segmentInfo.uncompressedSize;
           channel.position(currentPos + segmentInfo.dataInDiskSize + segmentInfo.headerSize());
@@ -312,7 +316,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
       if (segmentInfo.compressionType != CompressionType.UNCOMPRESSED) {
         compressedBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
-        readWALBufferFromChannel(compressedBuffer);
+        readWALBufferFromChannel(compressedBuffer, channel);
         compressedBuffer.flip();
         IUnCompressor unCompressor = IUnCompressor.getUnCompressor(segmentInfo.compressionType);
         dataBuffer = ByteBuffer.allocateDirect(segmentInfo.uncompressedSize);
@@ -321,14 +325,16 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         compressedBuffer = null;
       } else {
         dataBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
-        readWALBufferFromChannel(dataBuffer);
+        readWALBufferFromChannel(dataBuffer, channel);
         dataBuffer.flip();
       }
 
       dataBuffer.position((int) posRemain);
+      return (int) posRemain;
     } else {
       dataBuffer = null;
       channel.position(pos);
+      return (int) pos;
     }
   }
 
@@ -358,7 +364,11 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     return walMetaData;
   }
 
-  private SegmentInfo getNextSegmentInfo() throws IOException {
+  public static SegmentInfo getNextSegmentInfo(
+      final FileChannel channel,
+      final ByteBuffer segmentHeaderWithoutCompressedSizeBuffer,
+      final ByteBuffer compressedSizeBuffer)
+      throws IOException {
     segmentHeaderWithoutCompressedSizeBuffer.clear();
     channel.read(segmentHeaderWithoutCompressedSizeBuffer);
     segmentHeaderWithoutCompressedSizeBuffer.flip();
@@ -368,7 +378,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     info.dataInDiskSize = segmentHeaderWithoutCompressedSizeBuffer.getInt();
     if (info.compressionType != CompressionType.UNCOMPRESSED) {
       compressedSizeBuffer.clear();
-      readWALBufferFromChannel(compressedSizeBuffer);
+      readWALBufferFromChannel(compressedSizeBuffer, channel);
       compressedSizeBuffer.flip();
       info.uncompressedSize = compressedSizeBuffer.getInt();
     } else {
@@ -377,14 +387,15 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     return info;
   }
 
-  private int readWALBufferFromChannel(ByteBuffer buffer) throws IOException {
+  public static int readWALBufferFromChannel(final ByteBuffer buffer, final FileChannel channel)
+      throws IOException {
     long startTime = System.nanoTime();
     int size = channel.read(buffer);
     WritingMetrics.getInstance().recordWALRead(size, System.nanoTime() - startTime);
     return size;
   }
 
-  private void uncompressWALBuffer(
+  public static void uncompressWALBuffer(
       ByteBuffer compressed, ByteBuffer uncompressed, IUnCompressor unCompressor)
       throws IOException {
     long startTime = System.nanoTime();
@@ -392,7 +403,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     WritingMetrics.getInstance().recordWALUncompressCost(System.nanoTime() - startTime);
   }
 
-  private static class SegmentInfo {
+  public static class SegmentInfo {
     public CompressionType compressionType;
     public int dataInDiskSize;
     public int uncompressedSize;

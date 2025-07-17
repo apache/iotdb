@@ -86,7 +86,7 @@ public class WALInsertNodeCacheTest {
       InsertRowNode node1 = getInsertRowNode(System.currentTimeMillis());
       node1.setSearchIndex(1);
       WALFlushListener flushListener = walNode.log(memTable.getMemTableId(), node1);
-      WALEntryPosition position = flushListener.getWalEntryHandler().getWalEntryPosition();
+      WALEntrySegmentPosition position = flushListener.getWalEntryHandler().getWalEntryPosition();
       // wait until wal flushed
       walNode.rollWALFile();
       Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed() && position.canRead());
@@ -106,7 +106,7 @@ public class WALInsertNodeCacheTest {
     InsertRowNode node1 = getInsertRowNode(System.currentTimeMillis());
     node1.setSearchIndex(1);
     WALFlushListener flushListener = walNode.log(memTable.getMemTableId(), node1);
-    WALEntryPosition position = flushListener.getWalEntryHandler().getWalEntryPosition();
+    WALEntrySegmentPosition position = flushListener.getWalEntryHandler().getWalEntryPosition();
     // wait until wal flushed
     walNode.rollWALFile();
     Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed() && position.canRead());
@@ -144,7 +144,7 @@ public class WALInsertNodeCacheTest {
     InsertRowNode node1 = getInsertRowNode(System.currentTimeMillis());
     node1.setSearchIndex(1);
     WALFlushListener flushListener = walNode.log(memTable.getMemTableId(), node1);
-    WALEntryPosition position = flushListener.getWalEntryHandler().getWalEntryPosition();
+    WALEntrySegmentPosition position = flushListener.getWalEntryHandler().getWalEntryPosition();
     // wait until wal flushed
     Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed() && position.canRead());
     // load by cache

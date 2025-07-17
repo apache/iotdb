@@ -21,9 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockType;
@@ -31,40 +28,31 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeModelFixedMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
-import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 
-import com.github.benmanes.caffeine.cache.CacheLoader;
+import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.tsfile.utils.Pair;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** This cache is used by {@link WALEntryPosition}. */
+/** This cache is used by {@link WALEntrySegmentPosition}. */
 public class WALInsertNodeCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WALInsertNodeCache.class);
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig MEMORY_CONFIG =
-      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
   private static PipeModelFixedMemoryBlock walModelFixedMemory = null;
 
-  // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
-  private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
+  // LRU cache, find ByteBuffer or InsertNode by WALEntryPosition
+  private final WALCache bufferCache;
+
+  private final Cache<WALEntrySegmentPosition, InsertNode> insertNodeCache;
 
   // ids of all pinned memTables
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
@@ -76,31 +64,33 @@ public class WALInsertNodeCache {
       init();
     }
 
-    final long requestedAllocateSize =
-        (long)
-            (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
-                * PIPE_CONFIG.getPipeDataStructureWalMemoryProportion());
+    final long requestedAllocateSize = walModelFixedMemory.getMemoryUsageInBytes();
 
-    lruCache =
+    final long insertNodeCacheSize =
+        (long) (PIPE_CONFIG.getPipeWALCacheInsertNodeMemoryProportion() * requestedAllocateSize);
+    final long bufferCacheSize =
+        Math.min(
+            requestedAllocateSize - insertNodeCacheSize,
+            (long) (PIPE_CONFIG.getPipeWAlCacheBufferMemoryProportion() * requestedAllocateSize));
+    insertNodeCache =
         Caffeine.newBuilder()
-            .maximumWeight(requestedAllocateSize)
+            .maximumWeight(requestedAllocateSize / 2)
             .weigher(
-                (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
-                    (position, pair) -> {
-                      long weightInLong = 0L;
-                      if (pair.right != null) {
-                        weightInLong = InsertNodeMemoryEstimator.sizeOf(pair.right);
-                      } else {
-                        weightInLong = position.getSize();
-                      }
+                (Weigher<WALEntrySegmentPosition, InsertNode>)
+                    (position, insertNode) -> {
+                      long weightInLong = InsertNodeMemoryEstimator.sizeOf(insertNode);
                       if (weightInLong <= 0) {
                         return Integer.MAX_VALUE;
                       }
                       final int weightInInt = (int) weightInLong;
                       return weightInInt != weightInLong ? Integer.MAX_VALUE : weightInInt;
                     })
-            .recordStats()
-            .build(new WALInsertNodeCacheLoader());
+            .build();
+
+    bufferCache =
+        PipeConfig.getInstance().getPipeWALCacheSegmentUnitEnabled()
+            ? new WALSegmentCache(bufferCacheSize, memTablesNeedSearch)
+            : new WALEntryCache(bufferCacheSize, memTablesNeedSearch);
   }
 
   // please call this method at PipeLauncher
@@ -108,16 +98,27 @@ public class WALInsertNodeCache {
     if (walModelFixedMemory != null) {
       return;
     }
-    try {
-      // Allocate memory for the fixed memory block of WAL
-      walModelFixedMemory =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForModelFixedMemoryBlock(
-                  (long)
-                      (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
-                          * PIPE_CONFIG.getPipeDataStructureWalMemoryProportion()),
-                  PipeMemoryBlockType.WAL);
-    } catch (Exception e) {
+
+    Exception e = null;
+    // Allocate memory for the fixed memory block of WAL. If the allocation fails, try again until
+    // the appropriate memory is allocated.
+    for (long i = PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfWAL();
+        i > 0;
+        i = i / 2) {
+      try {
+        // Allocate memory for the fixed memory block of WAL
+        walModelFixedMemory =
+            PipeDataNodeResourceManager.memory()
+                .forceAllocateForModelFixedMemoryBlock(i, PipeMemoryBlockType.WAL);
+        LOGGER.info("Successfully initialized WAL model fixed memory block, size: {}", i);
+        break;
+      } catch (Exception exception) {
+        e = exception;
+      }
+    }
+
+    // If the allocation fails, we will log an error and force allocate a memory block of size 0.
+    if (walModelFixedMemory == null) {
       LOGGER.error("Failed to initialize WAL model fixed memory block", e);
       walModelFixedMemory =
           PipeDataNodeResourceManager.memory()
@@ -127,22 +128,28 @@ public class WALInsertNodeCache {
 
   /////////////////////////// Getter & Setter ///////////////////////////
 
-  public InsertNode getInsertNode(final WALEntryPosition position) {
-    final Pair<ByteBuffer, InsertNode> pair = getByteBufferOrInsertNode(position);
+  public InsertNode getInsertNodeIfPossible(final WALEntrySegmentPosition position) {
+    hasPipeRunning = true;
+    return insertNodeCache.getIfPresent(position);
+  }
 
-    if (pair.getRight() != null) {
-      return pair.getRight();
+  public InsertNode getInsertNode(final WALEntrySegmentPosition position) {
+    InsertNode insertNode = getInsertNodeIfPossible(position);
+
+    if (insertNode != null) {
+      return insertNode;
     }
 
-    if (pair.getLeft() == null) {
+    ByteBuffer buffer = bufferCache.load(position);
+
+    if (buffer == null) {
       throw new IllegalStateException();
     }
 
     try {
       // multi pipes may share the same wal entry, so we need to wrap the byte[] into
       // different ByteBuffer for each pipe
-      final InsertNode insertNode = parse(ByteBuffer.wrap(pair.getLeft().array()));
-      pair.setRight(insertNode);
+      insertNode = parse(buffer);
       return insertNode;
     } catch (final Exception e) {
       LOGGER.error(
@@ -164,66 +171,74 @@ public class WALInsertNodeCache {
     }
   }
 
-  public ByteBuffer getByteBuffer(final WALEntryPosition position) {
-    Pair<ByteBuffer, InsertNode> pair = getByteBufferOrInsertNode(position);
+  public ByteBuffer getByteBuffer(final WALEntrySegmentPosition position) {
+    final ByteBuffer buffer = getByteBufferIfPossible(position);
 
-    if (pair.getLeft() != null) {
-      // multi pipes may share the same wal entry, so we need to wrap the byte[] into
-      // different ByteBuffer for each pipe
-      return ByteBuffer.wrap(pair.getLeft().array());
-    }
-
-    // forbid multi threads to invalidate and load the same entry
-    synchronized (this) {
-      lruCache.invalidate(position);
-      pair = getByteBufferOrInsertNode(position);
-    }
-
-    if (pair.getLeft() == null) {
+    if (buffer == null) {
       throw new IllegalStateException();
     }
 
-    return ByteBuffer.wrap(pair.getLeft().array());
+    return buffer;
   }
 
-  public Pair<ByteBuffer, InsertNode> getByteBufferOrInsertNode(final WALEntryPosition position) {
+  public ByteBuffer getByteBufferIfPossible(final WALEntrySegmentPosition position) {
     hasPipeRunning = true;
-
-    final Pair<ByteBuffer, InsertNode> pair = lruCache.get(position);
-
-    if (pair == null) {
-      throw new IllegalStateException();
-    }
-
-    return pair;
-  }
-
-  public Pair<ByteBuffer, InsertNode> getByteBufferOrInsertNodeIfPossible(
-      final WALEntryPosition position) {
-    hasPipeRunning = true;
-    return lruCache.getIfPresent(position);
+    return bufferCache.load(position);
   }
 
   public void cacheInsertNodeIfNeeded(
-      final WALEntryPosition walEntryPosition, final InsertNode insertNode) {
+      final WALEntrySegmentPosition walEntrySegmentPosition, final InsertNode insertNode) {
     // reduce memory usage
     if (hasPipeRunning) {
-      lruCache.put(walEntryPosition, new Pair<>(null, insertNode));
+      insertNodeCache.put(walEntrySegmentPosition, insertNode);
     }
+  }
+
+  public Pair<ByteBuffer, InsertNode> getByteBufferOrInsertNodeIfPossible(
+      final WALEntrySegmentPosition position) {
+    final InsertNode insertNode = getInsertNodeIfPossible(position);
+
+    if (insertNode != null) {
+      // multi pipes may share the same wal entry, so we need to wrap the byte[] into
+      // different ByteBuffer for each pipe
+      return new Pair<>(null, insertNode);
+    }
+
+    // forbid multi threads to invalidate and load the same entry
+    final ByteBuffer byteBuffer = getByteBufferIfPossible(position);
+
+    if (byteBuffer == null) {
+      throw new IllegalStateException(
+          "WALInsertNodeCache getByteBuffer failed, position: " + position);
+    }
+
+    return new Pair<>(byteBuffer, null);
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
-  public double getCacheHitRate() {
-    return Objects.nonNull(lruCache) ? lruCache.stats().hitRate() : 0;
+  public double getInsertNodeCacheHitRate() {
+    return Objects.nonNull(bufferCache) ? insertNodeCache.stats().hitRate() : 0;
   }
 
-  public double getCacheHitCount() {
-    return Objects.nonNull(lruCache) ? lruCache.stats().hitCount() : 0;
+  public double getInsertNodeCacheHitCount() {
+    return Objects.nonNull(bufferCache) ? insertNodeCache.stats().hitCount() : 0;
   }
 
-  public double getCacheRequestCount() {
-    return Objects.nonNull(lruCache) ? lruCache.stats().requestCount() : 0;
+  public double getInsertNodeCacheRequestCount() {
+    return Objects.nonNull(bufferCache) ? insertNodeCache.stats().requestCount() : 0;
+  }
+
+  public double getBufferCacheHitRate() {
+    return Objects.nonNull(bufferCache) ? bufferCache.stats().hitRate() : 0;
+  }
+
+  public double getBufferCacheHitCount() {
+    return Objects.nonNull(bufferCache) ? bufferCache.stats().hitCount() : 0;
+  }
+
+  public double getBufferCacheRequestCount() {
+    return Objects.nonNull(bufferCache) ? bufferCache.stats().requestCount() : 0;
   }
 
   /////////////////////////// MemTable ///////////////////////////
@@ -234,78 +249,6 @@ public class WALInsertNodeCache {
 
   public void removeMemTable(final long memTableId) {
     memTablesNeedSearch.remove(memTableId);
-  }
-
-  /////////////////////////// Cache Loader ///////////////////////////
-
-  class WALInsertNodeCacheLoader
-      implements CacheLoader<WALEntryPosition, Pair<ByteBuffer, InsertNode>> {
-
-    @Override
-    public @Nullable Pair<ByteBuffer, InsertNode> load(@NonNull final WALEntryPosition key)
-        throws Exception {
-      return new Pair<>(key.read(), null);
-    }
-
-    /** Batch load all wal entries in the file when any one key is absent. */
-    @Override
-    public @NonNull Map<@NonNull WALEntryPosition, @NonNull Pair<ByteBuffer, InsertNode>> loadAll(
-        @NonNull final Iterable<? extends @NonNull WALEntryPosition> walEntryPositions) {
-      final Map<WALEntryPosition, Pair<ByteBuffer, InsertNode>> loadedEntries = new HashMap<>();
-
-      for (final WALEntryPosition walEntryPosition : walEntryPositions) {
-        if (loadedEntries.containsKey(walEntryPosition) || !walEntryPosition.canRead()) {
-          continue;
-        }
-
-        final long walFileVersionId = walEntryPosition.getWalFileVersionId();
-
-        // load one when wal file is not sealed
-        if (!walEntryPosition.isInSealedFile()) {
-          try {
-            loadedEntries.put(walEntryPosition, load(walEntryPosition));
-          } catch (final Exception e) {
-            LOGGER.info(
-                "Fail to cache wal entries from the wal file with version id {}",
-                walFileVersionId,
-                e);
-          }
-          continue;
-        }
-
-        // batch load when wal file is sealed
-        long position = 0;
-        try (final WALByteBufReader walByteBufReader = new WALByteBufReader(walEntryPosition)) {
-          while (walByteBufReader.hasNext()) {
-            // see WALInfoEntry#serialize, entry type + memtable id + plan node type
-            final ByteBuffer buffer = walByteBufReader.next();
-
-            final int size = buffer.capacity();
-            final WALEntryType type = WALEntryType.valueOf(buffer.get());
-            final long memTableId = buffer.getLong();
-
-            if ((memTablesNeedSearch.contains(memTableId)
-                    || walEntryPosition.getPosition() == position)
-                && type.needSearch()) {
-              buffer.clear();
-              loadedEntries.put(
-                  new WALEntryPosition(
-                      walEntryPosition.getIdentifier(), walFileVersionId, position, size),
-                  new Pair<>(buffer, null));
-            }
-
-            position += size;
-          }
-        } catch (final IOException e) {
-          LOGGER.info(
-              "Fail to cache wal entries from the wal file with version id {}",
-              walFileVersionId,
-              e);
-        }
-      }
-
-      return loadedEntries;
-    }
   }
 
   /////////////////////////// Singleton ///////////////////////////
@@ -326,13 +269,8 @@ public class WALInsertNodeCache {
   /////////////////////////// Test Only ///////////////////////////
 
   @TestOnly
-  boolean contains(WALEntryPosition position) {
-    return lruCache.getIfPresent(position) != null;
-  }
-
-  @TestOnly
   public void clear() {
-    lruCache.invalidateAll();
+    bufferCache.invalidateAll();
     memTablesNeedSearch.clear();
   }
 }
