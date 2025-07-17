@@ -54,9 +54,11 @@ public class ExtremeAccumulator implements TableAccumulator {
   public void addInput(Column[] arguments, AggregationMask mask) {
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         addIntInput(arguments[0], mask);
         return;
       case INT64:
+      case TIMESTAMP:
         addLongInput(arguments[0], mask);
         return;
       case FLOAT:
@@ -69,8 +71,6 @@ public class ExtremeAccumulator implements TableAccumulator {
       case STRING:
       case BLOB:
       case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
             String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
@@ -86,9 +86,11 @@ public class ExtremeAccumulator implements TableAccumulator {
 
       switch (seriesDataType) {
         case INT32:
+        case DATE:
           updateIntResult(argument.getInt(i));
           break;
         case INT64:
+        case TIMESTAMP:
           updateLongResult(argument.getLong(i));
           break;
         case FLOAT:
@@ -101,8 +103,6 @@ public class ExtremeAccumulator implements TableAccumulator {
         case STRING:
         case BLOB:
         case BOOLEAN:
-        case DATE:
-        case TIMESTAMP:
         default:
           throw new UnSupportedDataTypeException(
               String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
@@ -118,10 +118,12 @@ public class ExtremeAccumulator implements TableAccumulator {
 
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         updateIntResult((int) statistics[0].getMaxValue());
         updateIntResult((int) statistics[0].getMinValue());
         break;
       case INT64:
+      case TIMESTAMP:
         updateLongResult((long) statistics[0].getMaxValue());
         updateLongResult((long) statistics[0].getMinValue());
         break;
@@ -137,8 +139,6 @@ public class ExtremeAccumulator implements TableAccumulator {
       case STRING:
       case BLOB:
       case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
             String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
@@ -154,9 +154,11 @@ public class ExtremeAccumulator implements TableAccumulator {
 
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         columnBuilder.writeInt(extremeResult.getInt());
         break;
       case INT64:
+      case TIMESTAMP:
         columnBuilder.writeLong(extremeResult.getLong());
         break;
       case FLOAT:
@@ -169,8 +171,6 @@ public class ExtremeAccumulator implements TableAccumulator {
       case STRING:
       case BLOB:
       case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
             String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
@@ -186,9 +186,11 @@ public class ExtremeAccumulator implements TableAccumulator {
 
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         columnBuilder.writeInt(extremeResult.getInt());
         break;
       case INT64:
+      case TIMESTAMP:
         columnBuilder.writeLong(extremeResult.getLong());
         break;
       case FLOAT:
@@ -201,8 +203,6 @@ public class ExtremeAccumulator implements TableAccumulator {
       case STRING:
       case BLOB:
       case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
             String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
