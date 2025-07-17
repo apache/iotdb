@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeE
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -881,6 +882,32 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   }
 
   private Event supplyTsFileEvent(final TsFileResource resource) {
+    if (!filteredTsFileResources.contains(resource)) {
+      final ProgressReportEvent progressReportEvent =
+          new ProgressReportEvent(
+              pipeName,
+              creationTime,
+              pipeTaskMeta,
+              treePattern,
+              tablePattern,
+              userName,
+              skipIfNoPrivileges,
+              historicalDataExtractionStartTime,
+              historicalDataExtractionEndTime);
+      progressReportEvent.bindProgressIndex(resource.getMaxProgressIndex());
+      final boolean isReferenceCountIncreased =
+          progressReportEvent.increaseReferenceCount(
+              PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName());
+      if (!isReferenceCountIncreased) {
+        LOGGER.warn(
+            "The reference count of the event {} cannot be increased, skipping it.",
+            progressReportEvent);
+      }
+      return isReferenceCountIncreased ? progressReportEvent : null;
+    }
+
+    filteredTsFileResources.remove(resource);
+
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             isModelDetected ? isTableModel : null,
