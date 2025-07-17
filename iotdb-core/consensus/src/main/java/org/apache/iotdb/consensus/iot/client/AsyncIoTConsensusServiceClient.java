@@ -62,6 +62,7 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
             ? TNonblockingSocketWrapper.wrap(
                 endpoint.getIp(),
                 endpoint.getPort(),
+                property.getConnectionTimeoutMs(),
                 commonConfig.getKeyStorePath(),
                 commonConfig.getKeyStorePwd(),
                 commonConfig.getTrustStorePath(),

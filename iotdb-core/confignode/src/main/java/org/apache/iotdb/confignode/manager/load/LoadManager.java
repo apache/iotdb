@@ -152,7 +152,7 @@ public class LoadManager {
     statisticsService.startLoadStatisticsService();
     eventService.startEventService();
     partitionBalancer.setupPartitionBalancer();
-    //    topologyService.startTopologyService();
+    topologyService.startTopologyService();
   }
 
   public void stopLoadServices() {

@@ -96,6 +96,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
   public NettyTNonBlockingTransport(
       String host,
       int port,
+      int connectTimeoutMs,
       String keystorePath,
       String keystorePassword,
       String truststorePath,
@@ -104,8 +105,8 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
     super(new TConfiguration());
     this.host = host;
     this.port = port;
-    this.connectTimeoutMs = 60000;
-    this.sslHandshakeTimeoutMs = 30000;
+    this.connectTimeoutMs = connectTimeoutMs;
+    this.sslHandshakeTimeoutMs = connectTimeoutMs;
     this.eventLoopGroup = new NioEventLoopGroup();
     this.bootstrap = new Bootstrap();
     this.keystorePath = keystorePath;
@@ -156,7 +157,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
                     .addListener(
                         future -> {
                           if (future.isSuccess()) {
-                            logger.info(
+                            logger.debug(
                                 "SSL handshake completed successfully for {}:{}", host, port);
                           } else {
                             logger.error(
@@ -226,7 +227,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
     try {
       byteBuf = readQueue.poll();
       if (byteBuf == null) {
-        logger.info("No data available for ByteBuffer read");
+        logger.debug("No data available for ByteBuffer read");
         return 0;
       }
 
@@ -235,7 +236,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
         byte[] tempArray = new byte[available];
         byteBuf.readBytes(tempArray);
         buffer.put(tempArray);
-        logger.info(
+        logger.debug(
             "Read {} bytes into ByteBuffer, remaining space: {}", available, buffer.remaining());
       }
 
@@ -243,7 +244,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
         ByteBuf remaining = byteBuf.slice();
         remaining.retain();
         readQueue.offer(remaining);
-        logger.info("Put back {} remaining bytes", remaining.readableBytes());
+        logger.debug("Put back {} remaining bytes", remaining.readableBytes());
       }
 
       // Drain dummy channel to clear OP_READ
@@ -306,7 +307,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
       return 0;
     }
 
-    logger.info("Writing {} bytes from ByteBuffer", remaining);
+    logger.debug("Writing {} bytes from ByteBuffer", remaining);
 
     synchronized (lock) {
       ByteBuf byteBuf = Unpooled.buffer(remaining);
@@ -361,7 +362,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
       if (channel != null) {
         channel.close();
         channel = null;
-        logger.info("Channel closed for {}:{}", host, port);
+        logger.debug("Channel closed for {}:{}", host, port);
       }
       try {
         if (dummyClient != null) {
@@ -377,7 +378,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
         logger.warn("Failed to close dummy channels", e);
       }
       eventLoopGroup.shutdownGracefully();
-      logger.info("EventLoopGroup shutdown initiated");
+      logger.debug("EventLoopGroup shutdown initiated");
     }
   }
 
@@ -393,7 +394,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
       return false;
     }
 
-    logger.info("Starting connection to {}:{}", host, port);
+    logger.debug("Starting connection to {}:{}", host, port);
 
     try {
       // Initiate dummy connect, it will pend until accept
@@ -406,7 +407,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
               future1 -> {
                 synchronized (lock) {
                   if (future1.isSuccess()) {
-                    logger.info("Connection established successfully to {}:{}", host, port);
+                    logger.debug("Connection established successfully to {}:{}", host, port);
                     channel = future1.channel();
                     connected.set(true);
                     // Now accept the dummy connection to complete it
@@ -483,7 +484,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-      logger.info("Channel active: {}", ctx.channel().remoteAddress());
+      logger.debug("Channel active: {}", ctx.channel().remoteAddress());
       super.channelActive(ctx);
     }
 
@@ -491,7 +492,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
       if (msg instanceof ByteBuf) {
         ByteBuf byteBuf = (ByteBuf) msg;
-        logger.info("Received {} bytes", byteBuf.readableBytes());
+        logger.debug("Received {} bytes", byteBuf.readableBytes());
 
         synchronized (lock) {
           readQueue.offer(byteBuf.retain());
@@ -511,7 +512,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-      logger.info("Channel inactive: {}", ctx.channel().remoteAddress());
+      logger.debug("Channel inactive: {}", ctx.channel().remoteAddress());
       synchronized (lock) {
         connected.set(false);
         connecting.set(false);

@@ -62,6 +62,7 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
             ? TNonblockingSocketWrapper.wrap(
                 endpoint.getIp(),
                 endpoint.getPort(),
+                property.getConnectionTimeoutMs(),
                 commonConfig.getKeyStorePath(),
                 commonConfig.getKeyStorePwd(),
                 commonConfig.getTrustStorePath(),

@@ -62,13 +62,14 @@ public class TNonblockingSocketWrapper {
   public static TNonblockingTransport wrap(
       String host,
       int port,
+      int timeout,
       String keyStorePath,
       String keyStorePwd,
       String trustStorePath,
       String trustStorePwd) {
     try {
       return new NettyTNonBlockingTransport(
-          host, port, keyStorePath, keyStorePwd, trustStorePath, trustStorePwd);
+          host, port, timeout, keyStorePath, keyStorePwd, trustStorePath, trustStorePwd);
     } catch (TTransportException e) {
       // never happen
       return null;
