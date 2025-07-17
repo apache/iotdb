@@ -43,6 +43,7 @@ from ainode.core.inference.strategy.timer_sundial_inference_pipeline import (
 from ainode.core.inference.utils import _generate_req_id
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
+from ainode.core.manager.model_manager_singleton import get_model_manager
 from ainode.core.model.sundial.configuration_sundial import SundialConfig
 from ainode.core.model.sundial.modeling_sundial import SundialForPrediction
 from ainode.core.model.timerxl.modeling_timer import TimerForPrediction
@@ -144,8 +145,8 @@ class InferenceManager:
         AINodeDescriptor().get_config().get_ain_inference_batch_interval_in_ms()
     )  # How often to check for requests in the result queue
 
-    def __init__(self, model_manager: ModelManager):
-        self._model_manager = model_manager
+    def __init__(self):
+        self._model_manager = get_model_manager()
         self._result_queue = mp.Queue()
         self._result_wrapper_map = {}
         self._result_wrapper_lock = threading.RLock()
@@ -173,7 +174,6 @@ class InferenceManager:
                 config=sundial_config,
                 request_queue=request_queue,
                 result_queue=self._result_queue,
-                model_manager=self._model_manager,
             )
             request_pool.start()
             self._request_pool_map[self.ACCELERATE_MODEL_ID].append(
