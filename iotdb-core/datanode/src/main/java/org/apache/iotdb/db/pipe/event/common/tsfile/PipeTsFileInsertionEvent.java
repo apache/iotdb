@@ -171,8 +171,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
 
-    this.dataContainer = new AtomicReference<>(null);
-
     isClosed = new AtomicBoolean(resource.isClosed());
     // Register close listener if TsFile is not closed
     if (!isClosed.get()) {

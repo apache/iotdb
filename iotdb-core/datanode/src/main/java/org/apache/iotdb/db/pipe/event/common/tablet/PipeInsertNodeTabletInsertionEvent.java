@@ -197,7 +197,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
-      PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
       // release the parsers' memory and close memory block
       if (eventParsers != null) {
         eventParsers.clear();
