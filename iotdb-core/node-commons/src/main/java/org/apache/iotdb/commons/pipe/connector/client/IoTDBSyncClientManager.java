@@ -59,6 +59,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       new ConcurrentHashMap<>();
   private final Map<TEndPoint, String> endPoint2HandshakeErrorMessage = new ConcurrentHashMap<>();
 
+  private volatile long lastCheckClientStatusTimestamp = 0L;
+
   private final LoadBalancer loadBalancer;
 
   protected IoTDBSyncClientManager(
@@ -113,10 +115,14 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   }
 
   public void checkClientStatusAndTryReconstructIfNecessary() {
-    // Check whether any clients are available, if any client is available, return directly
-    for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : endPoint2ClientAndStatus.values()) {
-      if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
-        return;
+    if (System.currentTimeMillis() - lastCheckClientStatusTimestamp < 5 * 60 * 1000) {
+      lastCheckClientStatusTimestamp = System.currentTimeMillis();
+      // Check whether any clients are available, if any client is available, return directly
+      for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus :
+          endPoint2ClientAndStatus.values()) {
+        if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+          return;
+        }
       }
     }
 
@@ -133,6 +139,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     // Check whether any clients are available
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : endPoint2ClientAndStatus.values()) {
       if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+        lastCheckClientStatusTimestamp = System.currentTimeMillis();
         return;
       }
     }
@@ -154,6 +161,11 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
           .append(")");
     }
     throw new PipeConnectionException(errorMessage.toString());
+  }
+
+  public boolean isEndPointAlive(final TEndPoint endPoint) {
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = endPoint2ClientAndStatus.get(endPoint);
+    return clientAndStatus != null && Boolean.TRUE.equals(clientAndStatus.getRight());
   }
 
   protected void reconstructClient(TEndPoint endPoint) {
