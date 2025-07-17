@@ -113,6 +113,13 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   }
 
   public void checkClientStatusAndTryReconstructIfNecessary() {
+    // Check whether any clients are available, if any client is available, return directly
+    for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : endPoint2ClientAndStatus.values()) {
+      if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+        return;
+      }
+    }
+
     // Reconstruct all dead clients
     for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
         endPoint2ClientAndStatus.entrySet()) {
