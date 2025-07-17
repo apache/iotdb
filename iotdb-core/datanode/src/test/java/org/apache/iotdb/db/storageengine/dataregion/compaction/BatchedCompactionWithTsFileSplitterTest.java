@@ -71,7 +71,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
     super.setUp();
     originMaxConcurrentAlignedSeriesInCompaction =
         IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(6);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(2);
   }
 
   @After
