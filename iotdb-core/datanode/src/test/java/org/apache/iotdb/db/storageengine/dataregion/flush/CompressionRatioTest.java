@@ -63,7 +63,7 @@ public class CompressionRatioTest {
     long totalDiskSize = 5;
 
     for (int i = 0; i < 5; i++) {
-      this.compressionRatio.updateRatio(10, 5);
+      this.compressionRatio.updateRatio(10, 5, "dr" + i);
       if (!new File(
               directory,
               String.format(
@@ -75,6 +75,7 @@ public class CompressionRatioTest {
         fail();
       }
       assertEquals(2, this.compressionRatio.getRatio(), 0.1);
+      assertEquals(2, this.compressionRatio.getRatio("dr" + i), 0.1);
       totalMemorySize += 10;
       totalDiskSize += 5;
     }
