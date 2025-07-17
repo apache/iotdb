@@ -90,7 +90,6 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
                   commonConfig.isRpcThriftCompressionEnabled(),
                   DeepCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
-      e.printStackTrace();
       throw new IllegalAccessException(e.getMessage());
     }
     thriftServiceThread.setName(ThreadName.CONFIGNODE_RPC_SERVICE.getName());
