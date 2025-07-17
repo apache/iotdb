@@ -66,35 +66,6 @@ public class KLLSketchLazyExactPriori extends KLLSketchForQuantile {
     //    show();
   }
 
-  public static int[] calcLevelMaxSizeByLevel(int maxMemoryNum, int setLevel) {
-    int[] levelMaxSize = new int[setLevel];
-    int newK = 0;
-    for (int addK = 1 << 28; addK > 0; addK >>>= 1) { // find a new K to fit the memory limit.
-      int need = 0;
-      for (int i = 0; i < setLevel; i++)
-        need +=
-            Math.max(3, (int) Math.round(((newK + addK) * Math.pow(2.0 / 3, setLevel - i - 1))));
-      if (need <= maxMemoryNum) newK += addK;
-    }
-    for (int i = 0; i < setLevel; i++)
-      levelMaxSize[i] = Math.max(3, (int) Math.round((newK * Math.pow(2.0 / 3, setLevel - i - 1))));
-    return levelMaxSize;
-  }
-
-  public static int[] calcLevelMaxSize(int maxMemoryNum, int maxN) {
-    if (maxN <= maxMemoryNum) return new int[] {maxMemoryNum};
-    int L = 2, R = (int) Math.ceil(Math.log(maxN / 3.0) / Math.log(2)) + 1;
-    while (L < R) {
-      int mid = (L + R) / 2;
-      int[] capacity = calcLevelMaxSizeByLevel(maxMemoryNum, mid);
-      long allCap = 0;
-      for (int i = 0; i < mid; i++) allCap += (long) capacity[i] << i;
-      if (allCap >= maxN) R = mid;
-      else L = mid + 1;
-    }
-    return calcLevelMaxSizeByLevel(maxMemoryNum, L);
-  }
-
   public String toString() {
     final StringBuilder sb = new StringBuilder();
     sb.append(N);
@@ -158,50 +129,25 @@ public class KLLSketchLazyExactPriori extends KLLSketchForQuantile {
 
   @Override
   public void compact() {
-    boolean compacted = false;
-    //    for (int i = 0; i < cntLevel; i++)
-    //      if (levelPos[i + 1] - levelPos[i] > levelMaxSize[i]) {
-    //        compactOneLevel(i);
-    //        compacted = true;
-    //        break;
-    //      }
-
-    int compLV = -1;
-    for (int i = 0; i < cntLevel; i++)
-      if (getLevelSize(i) > levelMaxSize[i]
-          && (compLV < 0
-              || (getLevelSize(i) << (compLV << 1L)) >= (getLevelSize(compLV) << (i << 1L)))) {
-        compLV = i;
+    for (int i = 0; i < cntLevel - 1; i++)
+      if (getLevelSize(i) > levelMaxSize[i]) {
+        compactOneLevel(i);
+        return;
       }
-    if (compLV != -1) {
-      compactOneLevel(compLV);
-      return;
-    }
-
-    if (!compacted) {
-      calcLevelMaxSize(cntLevel + 1);
-      compact();
-      //      compactOneLevel(cntLevel - 1);
-    }
+    calcLevelMaxSize(cntLevel + 1);
+    compactOneLevel(cntLevel - 2);
     //    this.showLevelMaxSize();
+    //    this.showNum();
   }
 
   public void merge(KLLSketchForQuantile another) {
-    //    System.out.println("[MERGE]");
-    //    show();
-    //    another.show();
     if (another.cntLevel > cntLevel) calcLevelMaxSize(another.cntLevel);
     for (int i = 0; i < another.cntLevel; i++) {
       int numToMerge = another.levelPos[i + 1] - another.levelPos[i];
       if (numToMerge == 0) continue;
       int mergingL = another.levelPos[i];
       while (numToMerge > 0) {
-        //        System.out.println("\t\t"+levelPos[0]);show();showLevelMaxSize();
         if (levelPos[0] == 0) compact();
-        //        if(levelPos[0]==0){
-        //          show();
-        //          showLevelMaxSize();
-        //        }
         int delta = Math.min(numToMerge, levelPos[0]);
         if (i > 0) { // move to give space for level i
           for (int j = 0; j < i; j++) levelPos[j] -= delta;
@@ -226,12 +172,6 @@ public class KLLSketchLazyExactPriori extends KLLSketchForQuantile {
 
   public void mergeWithTempSpace(
       List<KLLSketchForQuantile> otherList, LongArrayList minV, LongArrayList maxV) {
-    //    System.out.println("[MERGE]");
-    //    show();
-    //
-    // System.out.println("[mergeWithTempSpace]\t???\t"+num.length+"\t??\t"+cntLevel+"\t??\toldPos0:"+levelPos[0]);
-    //    System.out.println("[mergeWithTempSpace]\t???\tmaxMemNum:"+maxMemoryNum);
-    //    another.show();
     int[] oldLevelPos = Arrays.copyOf(levelPos, cntLevel + 1);
     int oldCntLevel = cntLevel;
     int otherNumLen = 0;
@@ -321,13 +261,16 @@ public class KLLSketchLazyExactPriori extends KLLSketchForQuantile {
 
   public void showCompact() {
     int totERR = 0;
+    long totSIGMA = 0;
     for (int i = 0; i < cntLevel; i++) {
       System.out.print("\t");
       System.out.print("[" + compactionNumInLevel.getInt(i) + "]");
       System.out.print("\t");
       totERR += compactionNumInLevel.getInt(i) << i;
+      totSIGMA += (long) compactionNumInLevel.getInt(i) << (i * 2L);
     }
-    System.out.println("\tmaxLV=" + (cntLevel - 1) + "\ttotERR=" + totERR);
+    System.out.println(
+        "\tmaxLV=" + (cntLevel - 1) + "\ttotERR=" + totERR + "\ttotSIGMA=" + totSIGMA);
   }
 
   private void addRecordInLevel(long minV, long maxV, int level) {
@@ -346,7 +289,7 @@ public class KLLSketchLazyExactPriori extends KLLSketchForQuantile {
     }
   }
 
-  static int lastBound;
+  static long lastBound;
   static double lastSig2, lastPr = -1;
   static NormalDistribution lastNormalDis;
 
@@ -379,7 +322,8 @@ public class KLLSketchLazyExactPriori extends KLLSketchForQuantile {
     return mx;
   }
 
-  public static int queryRankErrBoundGivenParameter(double sig2, long maxERR, double Pr) {
+  public static long queryRankErrBoundGivenParameter(double sig2, long maxERR, double Pr) {
+    if (maxERR == 0) return 0;
     NormalDistribution dis =
         sig2 == lastSig2 && lastNormalDis != null
             ? lastNormalDis
@@ -387,20 +331,24 @@ public class KLLSketchLazyExactPriori extends KLLSketchForQuantile {
     if (sig2 == lastSig2 && Pr == lastPr) return lastBound;
     double tmpBound = dis.inverseCumulativeProbability(0.5 * (1 - Pr));
     tmpBound = Math.min(-Math.floor(tmpBound), maxERR);
-    lastBound = (int) tmpBound;
+    //
+    // System.out.println("\t\t\t\t..\t\ttmp\t\t"+sig2+"\t"+maxERR+"\t"+Pr+"\t\t\ttmpBound:\t"+tmpBound);
+    lastBound = (long) tmpBound;
     lastPr = Pr;
     lastSig2 = sig2;
     lastNormalDis = dis;
     //    System.out.println("\tPr:"+Pr+"\t"+"sig2:\t"+sig2+"\t\tbyInvCum:\t"+(long)tmpBound);
-    return (int) tmpBound;
+    return (long) tmpBound;
   }
 
-  public static int queryRankErrBound(int[] relatedCompactNum, double Pr) {
+  public static long queryRankErrBound(int[] relatedCompactNum, double Pr) {
     double sig2 = 0;
     long maxERR = 0;
     for (int i = 0; i < relatedCompactNum.length; i++)
       sig2 += 0.5 * relatedCompactNum[i] * Math.pow(2, i * 2);
     for (int i = 0; i < relatedCompactNum.length; i++) maxERR += (long) relatedCompactNum[i] << i;
+    //    System.out.println("\t\t\t\t\t\tqueryRankErrBound\tmaxERR:\t"+maxERR+"\t\tsig2:\t"+
+    // sig2+"\t\t\n"+ Arrays.toString(relatedCompactNum));
     return queryRankErrBoundGivenParameter(sig2, maxERR, Pr);
     //    NormalDistribution dis = sig2==lastSig2&&lastNormalDis!=null?lastNormalDis:new
     // NormalDistribution(0, Math.sqrt(sig2));
@@ -415,12 +363,12 @@ public class KLLSketchLazyExactPriori extends KLLSketchForQuantile {
     //    return (int)tmpBound;
   }
 
-  public int queryRankErrBound(double Pr) {
+  public long queryRankErrBound(double Pr) {
     return queryRankErrBound(compactionNumInLevel.toIntArray(), Pr);
   }
 
   // 返回误差err，该数值在sketch里估计排名的偏差绝对值有Pr的概率<err
-  public int queryRankErrBound(long result, double Pr) {
+  public long queryRankErrBound(long result, double Pr) {
     int[] relatedCompactNum = getRelatedCompactNum();
     return queryRankErrBound(relatedCompactNum, Pr);
   }
@@ -437,7 +385,7 @@ public class KLLSketchLazyExactPriori extends KLLSketchForQuantile {
         continue;
       }
 
-      int rankErrBound = queryRankErrBound(mid, Pr);
+      long rankErrBound = queryRankErrBound(mid, Pr);
       //
       // System.out.println("\t\t\t\t\t"+longToResult(mid)+"\t\trank:"+approxRankMid+"\t\terr:"+rankErrBound+"\t\t\tL,R,mid:"+L+" "+R+" "+mid);
       if (approxRankMid + rankErrBound < /*<*/ queryRank) {
@@ -462,7 +410,7 @@ public class KLLSketchLazyExactPriori extends KLLSketchForQuantile {
         R = mid;
         continue;
       }
-      int rankErrBound = queryRankErrBound(mid, Pr);
+      long rankErrBound = queryRankErrBound(mid, Pr);
       if (approxRankMid - rankErrBound >= queryRank) {
         R = mid;
         approxRankR = approxRankMid;
@@ -537,5 +485,28 @@ public class KLLSketchLazyExactPriori extends KLLSketchForQuantile {
     double[] filterR = getFilterR(CountOfValL, CountOfValR, valL, valR, K2, Pr);
     if (filterL.length + filterR.length == 4) return new double[] {filterL[0], filterR[0], -233};
     else return new double[] {filterL[0], filterR[0]};
+  }
+
+  public double sumForAvgDupli = 0, countForAvgDupli = 0;
+
+  public double checkDupliElementsInSketch() {
+    if (levelPos[0] == levelPos[cntLevel]) return 1.0;
+    sortLV0();
+    int tmpSize = 0, tmpDistinct = 0;
+    for (int lv = 0; lv < cntLevel; lv++) {
+      int lvSize = getLevelSize(lv), lvDistinct = 0;
+      for (int i = levelPos[lv]; i < levelPos[lv + 1]; i++) {
+        if (i == levelPos[lv] || num[i] != num[i - 1]) lvDistinct++;
+      }
+      tmpSize += lvSize;
+      tmpDistinct += lvDistinct;
+    }
+    //    System.out.println("\t\t\t[DEBUG]\tSize/Distinct:\t"+1.0*tmpSize/tmpDistinct);
+    return 1.0 * tmpSize / tmpDistinct;
+  }
+
+  public double getAvgDupliInSketch() {
+    if (countForAvgDupli > 0) return sumForAvgDupli / countForAvgDupli;
+    else return checkDupliElementsInSketch();
   }
 }

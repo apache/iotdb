@@ -3,6 +3,8 @@ package org.apache.iotdb.tsfile.utils; // inspired by t-Digest by Ted Dunning. S
 // This is a simple implementation with radix sort and K0.
 // Clusters are NOT strictly in order.
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
@@ -14,8 +16,8 @@ import java.text.DecimalFormat;
 import java.util.Comparator;
 import java.util.List;
 
-public class TDigestForExact {
-  static final int ElementSeriByte = 4 * 8;
+public class TDigestForDupli {
+  static final int ElementSeriByte = /*4*8*/ 2 * 8; // use only avg and count in estimation
   static final double EPS = 1e-11;
   public int compression;
   public ObjectArrayList<Cluster> cluster;
@@ -81,7 +83,7 @@ public class TDigestForExact {
   //    totN = 0;
   //    cluster = new DoubleObjectPair<countMinMax>[clusterNumMemLimit];
   //  }
-  public TDigestForExact(int maxMemByte) {
+  public TDigestForDupli(int maxMemByte) {
     this.maxMemByte = maxMemByte;
     this.maxSeriByte = maxMemByte;
     this.clusterNumMemLimit = maxMemByte / ElementSeriByte;
@@ -92,13 +94,13 @@ public class TDigestForExact {
     cluster = new ObjectArrayList<>(clusterNumMemLimit);
   }
 
-  public TDigestForExact(int maxMemByte, int mergingBuffer) {
+  public TDigestForDupli(int maxMemByte, int mergingBuffer) {
     this(maxMemByte);
     this.compression =
         this.clusterNumMemLimit / (1 + mergingBuffer); //  cluster:buffer = 1:mergingBuffer
   }
 
-  public TDigestForExact(int maxMemByte, int mergingBuffer, int maxSeriByte) {
+  public TDigestForDupli(int maxMemByte, int mergingBuffer, int maxSeriByte) {
     this(maxMemByte, mergingBuffer);
     this.maxSeriByte = maxSeriByte;
   }
@@ -162,18 +164,18 @@ public class TDigestForExact {
     addCluster(value);
   }
 
-  public void merge(TDigestForExact another) {
+  public void merge(TDigestForDupli another) {
     sorted = false;
     //    System.out.println("\t\t add: "+(value));
     totN += another.totN;
     for (int i = 0; i < another.cluster.size(); i++) addCluster(another.cluster.get(i));
   }
 
-  public void merge(List<TDigestForExact> anotherList) {
-    for (TDigestForExact another : anotherList) merge(another);
+  public void merge(List<TDigestForDupli> anotherList) {
+    for (TDigestForDupli another : anotherList) merge(another);
   }
 
-  public double quantile(double q) {
+  public double getQuantile(double q) {
     sortCluster();
     double preN = 0;
     for (int i = 0; i < cluster.size(); i++) {
@@ -187,6 +189,28 @@ public class TDigestForExact {
       preN += cluster.get(i).count;
     }
     return cluster.get(cluster.size() - 1).avg;
+  }
+
+  public DoubleArrayList quantiles(DoubleArrayList qs) {
+    sortCluster();
+    DoubleArrayList ans = new DoubleArrayList();
+    double preN = 0;
+    int pos = 0;
+    for (double q : qs) {
+      while (pos < cluster.size() && preN + 0.5 * cluster.get(pos).count < q * totN) {
+        preN += cluster.get(pos).count;
+        pos++;
+      }
+      if (pos == 0) ans.add(cluster.get(0).avg);
+      else if (pos >= cluster.size()) ans.add(cluster.get(cluster.size() - 1).avg);
+      else {
+        Cluster c1 = cluster.get(pos - 1), c2 = cluster.get(pos);
+        double wLeft = q * totN - preN + 0.5 * c1.count;
+        double wRight = preN - q * totN + 0.5 * c2.count;
+        ans.add((c1.avg * wRight + c2.avg * wLeft) / (wLeft + wRight));
+      }
+    }
+    return ans;
   }
 
   public double getAllMin() {
@@ -298,13 +322,13 @@ public class TDigestForExact {
     }
   }
 
-  private long dataToLong(double data) {
+  private long dataToLong(double data) throws UnSupportedDataTypeException {
     long result;
     result = Double.doubleToLongBits((double) data);
     return (double) data >= 0d ? result : result ^ Long.MAX_VALUE;
   }
 
-  private double longToResult(long result) {
+  private double longToResult(long result) throws UnSupportedDataTypeException {
     result = (result >>> 63) == 0 ? result : result ^ Long.MAX_VALUE;
     return Double.longBitsToDouble(result);
   }
@@ -482,7 +506,7 @@ public class TDigestForExact {
   //    this.sorted = false;
   //  }
   //
-  public TDigestForExact(InputStream inputStream) throws IOException {
+  public TDigestForDupli(InputStream inputStream) throws IOException {
     this.totN = ReadWriteIOUtils.readLong(inputStream);
     int clusterNum = ReadWriteIOUtils.readInt(inputStream);
     int maxMemByte = (clusterNum + 2) * ElementSeriByte;
@@ -501,7 +525,7 @@ public class TDigestForExact {
     this.sorted = false;
   }
 
-  public TDigestForExact(ByteBuffer byteBuffer) {
+  public TDigestForDupli(ByteBuffer byteBuffer) {
     this.totN = ReadWriteIOUtils.readLong(byteBuffer);
     int clusterNum = ReadWriteIOUtils.readInt(byteBuffer);
     int maxMemByte = (clusterNum + 2) * ElementSeriByte;

@@ -21,7 +21,7 @@ public class KLLSketchLazyEmptyForSimuCompact {
 
   public KLLSketchLazyEmptyForSimuCompact(int maxN, int maxMemNum) {
     this.maxMemNum = maxMemNum;
-    int lv = KLLSketchLazyExact.calcLevelMaxSize(maxMemNum, maxN).length;
+    int lv = KLLSketchLazyExactPriori.calcLevelMaxSize(maxMemNum, maxN).length;
     compactNum = new int[lv];
     maxSize = new int[lv];
     lvSize = new int[lv];
@@ -44,7 +44,7 @@ public class KLLSketchLazyEmptyForSimuCompact {
 
   private void increaseCntLevel() {
     cntLevel++;
-    maxSize = KLLSketchLazyExact.calcLevelMaxSizeByLevel(maxMemNum, cntLevel);
+    maxSize = KLLSketchLazyExactPriori.calcLevelMaxSizeByLevel(maxMemNum, cntLevel);
     lvSize = Arrays.copyOf(lvSize, cntLevel);
     compactNum = Arrays.copyOf(compactNum, cntLevel);
   }
@@ -63,14 +63,15 @@ public class KLLSketchLazyEmptyForSimuCompact {
       restN -= cntFreeSpace;
       lvSize[0] += cntFreeSpace;
 
-      //      compLV=0;// full laziness
-      //      while(compLV<cntLevel-1&&lvSize[compLV]<=maxSize[compLV])compLV++;
+      compLV = 0; // full laziness
+      while (compLV < cntLevel - 1 && lvSize[compLV] <= maxSize[compLV]) compLV++;
 
-      compLV = -1; // another laziness
-      for (int i = 0; i < cntLevel; i++)
-        if (lvSize[i] > maxSize[i]
-            && (compLV < 0 || (lvSize[i] << (compLV << 1L)) >= (lvSize[compLV] << (i << 1L))))
-          compLV = i;
+      //      compLV = -1; // another laziness
+      //      for (int i = 0; i < cntLevel; i++)
+      //        if (lvSize[i] > maxSize[i]
+      //            && (compLV < 0 || (lvSize[i] << (compLV << 1L)) >= (lvSize[compLV] << (i <<
+      // 1L))))
+      //          compLV = i;
       //      if(lvSize[0]>maxSize[0]&&compLV>0)
       //      System.out.println("\t\t"+ Arrays.toString(lvSize) +"\t\t"+compLV);
       //

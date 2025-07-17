@@ -492,6 +492,16 @@ public class TSFileConfig implements Serializable {
     this.summaryType = type;
   }
 
+  private int datasetType = 0;
+
+  public int getDatasetType() {
+    return this.datasetType;
+  }
+
+  public void setDatasetType(int type) {
+    this.datasetType = type;
+  }
+
   private double QUANTILE = 0;
 
   public double getQUANTILE() {

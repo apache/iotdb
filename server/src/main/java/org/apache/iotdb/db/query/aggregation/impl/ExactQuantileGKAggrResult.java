@@ -25,11 +25,12 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
-import org.apache.iotdb.tsfile.utils.*;
+import org.apache.iotdb.tsfile.utils.GKBandForExact;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
@@ -40,15 +41,17 @@ import java.util.Map;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
 
-public class ExactQuantileMRLAggrResult extends AggregateResult {
-  int mergeBufferRatio = 5;
+public class ExactQuantileGKAggrResult extends AggregateResult {
   private String returnType = "iteration_num";
   private TSDataType seriesDataType;
   private int iteration;
   private double cntL, cntR, detL, detR;
   private long n, K1, K2, countOfLessThanCntL, countOfCntL, countOfCntR;
-  private MRLSketchLazy sketch;
-  private ObjectArrayList<MRLSketchLazy> preComputedSketch;
+  private GKBandForExact sketch;
+  DoubleArrayList lastPassData;
+  boolean lastPass = false;
+  long lastN = Long.MAX_VALUE;
+  private ObjectArrayList<GKBandForExact> preComputedSketch;
   private LongArrayList preComputedSketchMinV, preComputedSketchMaxV;
   private int preComputedSketchSize;
   private boolean hasFinalResult;
@@ -68,8 +71,8 @@ public class ExactQuantileMRLAggrResult extends AggregateResult {
     }
   }
 
-  public ExactQuantileMRLAggrResult(TSDataType seriesDataType) throws UnSupportedDataTypeException {
-    super(DOUBLE, AggregationType.EXACT_QUANTILE_MRL);
+  public ExactQuantileGKAggrResult(TSDataType seriesDataType) throws UnSupportedDataTypeException {
+    super(DOUBLE, AggregationType.EXACT_QUANTILE_GK);
     this.seriesDataType = seriesDataType;
     reset();
   }
@@ -114,41 +117,49 @@ public class ExactQuantileMRLAggrResult extends AggregateResult {
   private void updateStatusFromData(Object data) {
     double dataD = (double) data;
     if (iteration == 0) n++;
-    if (cntL < dataD && dataD < cntR) {
-      sketch.update(dataToLong(dataD));
-    } else if (dataD < cntL) {
-      countOfLessThanCntL++;
-    } else if (cntL == dataD) countOfCntL++;
-    else if (cntR == dataD) countOfCntR++;
+    if (lastPass) {
+      if (cntL <= dataD && dataD <= cntR) lastPassData.add(dataD);
+      else if (dataD < cntL) countOfLessThanCntL++;
+    } else {
+      if (cntL < dataD && dataD < cntR) {
+        sketch.insert(dataD);
+      } else if (dataD < cntL) {
+        countOfLessThanCntL++;
+      } else if (cntL == dataD) countOfCntL++;
+      else if (cntR == dataD) countOfCntR++;
+    }
   }
 
   @Override
   public void startIteration() {
     countOfLessThanCntL = countOfCntL = countOfCntR = 0;
     if (iteration == 0) { // first iteration
-      if (mergeBufferRatio > 0)
-        sketch =
-            new MRLSketchLazy(
-                (int) ((long) maxMemoryByte * (mergeBufferRatio - 1) / mergeBufferRatio));
-      else sketch = new MRLSketchLazy(maxMemoryByte);
+      sketch = new GKBandForExact(maxMemoryByte);
       cntL = -Double.MAX_VALUE;
       cntR = Double.MAX_VALUE;
       n = 0;
     } else {
-      sketch = new MRLSketchLazy(maxMemoryByte);
-      System.out.println(
-          "\t[ExactQuantile DEBUG MRL] start iteration "
-              + iteration
-              + " cntL,R:"
-              + "["
-              + cntL
-              + ","
-              + cntR
-              + "]"
-              + "\tK1,2:"
-              + K1
-              + ","
-              + K2);
+      if (lastN <= maxMemoryByte / 8) {
+        lastPass = true;
+        lastPassData = new DoubleArrayList(maxMemoryByte / 8);
+        sketch = null;
+      } else {
+        lastPass = false;
+        sketch = new GKBandForExact(maxMemoryByte);
+        System.out.println(
+            "\t[ExactQuantile DEBUG GK] start iteration "
+                + iteration
+                + " cntL,R:"
+                + "["
+                + cntL
+                + ","
+                + cntR
+                + "]"
+                + "\tK1,2:"
+                + K1
+                + ","
+                + K2);
+      }
     }
   }
 
@@ -188,19 +199,31 @@ public class ExactQuantileMRLAggrResult extends AggregateResult {
       K2 = (int) Math.ceil(QUANTILE * (n - 1) + 1);
     }
     long cntK1 = K1 - countOfLessThanCntL, cntK2 = K2 - countOfLessThanCntL;
+
+    if (lastPass) {
+      System.out.println("\t[ExactQuantile DEBUG GK]\tLast Pass.\tdataN:\t" + lastPassData.size());
+      lastPassData.sort(Double::compare);
+      double ans = // 0;
+          ((lastPassData.getDouble((int) cntK1 - 1)) + (lastPassData.getDouble((int) cntK2 - 1)))
+              * 0.5;
+      setDoubleValue(ans);
+      hasFinalResult = true;
+      return;
+    }
+
     //    System.out.println(
     //        "\t[ExactQuantile DEBUG]\tfinish iter."
     //            + " cntK1,2:"
     //            + cntK1
     //            + ","
     //            + cntK2
-    //            + "\tmrlN:"
+    //            + "\tGKN:"
     //            + sketch.getN());
     double lastCntL = cntL, lastCntR = cntR;
     if (cntK1 <= 0 || cntK2 > countOfCntL + countOfCntR + sketch.getN()) { // iteration failed.
 
       System.out.println(
-          "\t[ExactQuantile DEBUG MRL]\tIter Failed."
+          "\t[ExactQuantile DEBUG GK]\tIter Failed."
               + (cntK1 <= 0 ? "\tans smaller than cntL." : "\tans larger than cntL.")
               + "\tcntL,R:"
               + (cntL)
@@ -221,7 +244,7 @@ public class ExactQuantileMRLAggrResult extends AggregateResult {
       detR = cntR;
       if (detL >= detR) {
         System.out.println(
-            "\t[ExactQuantile DEBUG MRL]\tFail but Answer Found.\tdetL,R:" + (detL) + "," + (detR));
+            "\t[ExactQuantile DEBUG GK]\tFail but Answer Found.\tdetL,R:" + (detL) + "," + (detR));
         double ans = ((detL) + (detR)) * 0.5;
         setDoubleValue(ans);
         hasFinalResult = true;
@@ -239,13 +262,15 @@ public class ExactQuantileMRLAggrResult extends AggregateResult {
       setDoubleValue(ans);
       hasFinalResult = true;
       System.out.println(
-          "\t[ExactQuantile DEBUG MRL]\tAnswer Found."
+          "\t[ExactQuantile DEBUG GK]\tAnswer Found."
               + " det_result:"
               + deterministic_result[0]
               + "..."
               + deterministic_result[1]
-              + "\tmrlN:"
-              + sketch.getN());
+              + "\tGKN:"
+              + sketch.getN()
+              + "\t\tGKε:"
+              + sketch.rankAccuracy);
       return;
     }
 
@@ -260,20 +285,23 @@ public class ExactQuantileMRLAggrResult extends AggregateResult {
       double ans = (deterministic_result[0] + deterministic_result[1]) * 0.5;
       setDoubleValue(ans);
       hasFinalResult = true;
-      System.out.println("\t[ExactQuantile DEBUG MRL]\tDANGER!! range_not_updated_after_an_iter.");
+      System.out.println("\t[ExactQuantile DEBUG GK]\tDANGER!! range_not_updated_after_an_iter.");
       return;
     }
 
     System.out.println(
-        "\t[ExactQuantile DEBUG MRL]\tfinish iter"
+        "\t[ExactQuantile DEBUG GK]\tfinish iter"
             + (iteration - 1)
             + "."
             + " cntK1,2:"
             + cntK1
             + ","
             + cntK2
-            + "\tmrlN:"
-            + sketch.getN());
+            + "\tGKN:"
+            + sketch.getN()
+            + "\t\tGKε:"
+            + sketch.rankAccuracy);
+    lastN = sketch.findMaxNumberInRange(iterate_result[0], iterate_result[1]);
   }
 
   @Override
@@ -284,22 +312,6 @@ public class ExactQuantileMRLAggrResult extends AggregateResult {
   @Override
   public Double getResult() {
     return hasCandidateResult() ? getDoubleValue() : null;
-  }
-
-  public void addSketch(MRLSketchLazy sketch, double minV, double maxV) {
-    n += sketch.getN();
-    preComputedSketch.add(sketch);
-    preComputedSketchMinV.add(dataToLong(minV));
-    preComputedSketchMaxV.add(dataToLong(maxV));
-    preComputedSketchSize += sketch.getNumLen() * 8;
-    if (preComputedSketchSize >= maxMemoryByte / mergeBufferRatio) {
-      //      sketch.mergeWithTempSpace(preComputedSketch, preComputedSketchMinV,
-      // preComputedSketchMaxV);
-      preComputedSketch.clear();
-      preComputedSketchMinV.clear();
-      preComputedSketchMaxV.clear();
-      preComputedSketchSize = 0;
-    }
   }
 
   private void mergePrecomputedWhenFinish() {
@@ -326,22 +338,10 @@ public class ExactQuantileMRLAggrResult extends AggregateResult {
             String.format(
                 "Unsupported data type in aggregation MEDIAN : %s", statistics.getType()));
     }
-    if (iteration == 0 && mergeBufferRatio > 0) {
-      if (statistics.getType() == DOUBLE) {
-        DoubleStatistics stat = (DoubleStatistics) statistics;
-        if (stat.getSummaryNum() > 0) {
-          //          for (KLLSketchForQuantile sketch : stat.getKllSketchList()) {
-          //            ((LongKLLSketch) sketch).deserializeFromBuffer();
-          //            addSketch(sketch, stat.getMinValue(), stat.getMaxValue());
-          //          }
-          return;
-        } // else System.out.println("\t\t\t\t!!!!!![ERROR!] no KLL in stat!");
-      }
-    }
     double minVal = (double) (statistics.getMinValue());
     double maxVal = (double) (statistics.getMaxValue());
     //    System.out.println(
-    //        "\t[ExactQuantile DEBUG MRL] update from statistics:\t"
+    //        "\t[ExactQuantile DEBUG GK] update from statistics:\t"
     //            + "min,max:"
     //            + minVal
     //            + ","
@@ -454,10 +454,7 @@ public class ExactQuantileMRLAggrResult extends AggregateResult {
 
   @Override
   public boolean canUpdateFromStatistics(Statistics statistics) {
-    if ((seriesDataType == DOUBLE) && iteration == 0 && mergeBufferRatio > 0) {
-      DoubleStatistics doubleStats = (DoubleStatistics) statistics;
-      if (doubleStats.getSummaryNum() > 0) return true;
-    }
+    if (!useAnyStat) return false;
     if (iteration > 0) {
       double minVal = (double) (statistics.getMinValue());
       double maxVal = (double) (statistics.getMaxValue());
@@ -474,12 +471,10 @@ public class ExactQuantileMRLAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean useOverlappedStatisticsIfPossible() {
-    return mergeBufferRatio > 0;
-  }
-
-  @Override
   public void setAttributes(Map<String, String> attrs) {
+    if (attrs.containsKey("useAnyStat")) {
+      this.useAnyStat = Boolean.parseBoolean(attrs.get("useAnyStat"));
+    }
     if (attrs.containsKey("memory")) {
       String mem = attrs.get("memory");
       if (mem.contains("KB"))
@@ -496,10 +491,6 @@ public class ExactQuantileMRLAggrResult extends AggregateResult {
     if (attrs.containsKey("return_type")) {
       String q = attrs.get("return_type");
       this.returnType = q;
-    }
-    if (attrs.containsKey("merge_buffer_ratio")) { // 0 means don't use summary.
-      String r = attrs.get("merge_buffer_ratio");
-      this.mergeBufferRatio = Integer.parseInt(r);
     }
     System.out.println(
         "  [setAttributes DEBUG]\t\t\tmaxMemoryByte:" + maxMemoryByte + "\t\tquantile:" + QUANTILE);

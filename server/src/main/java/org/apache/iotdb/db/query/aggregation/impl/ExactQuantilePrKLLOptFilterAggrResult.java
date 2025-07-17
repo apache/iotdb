@@ -538,7 +538,7 @@ public class ExactQuantilePrKLLOptFilterAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean useStatisticsIfPossible() {
+  public boolean useOverlappedStatisticsIfPossible() {
     return true;
   }
 

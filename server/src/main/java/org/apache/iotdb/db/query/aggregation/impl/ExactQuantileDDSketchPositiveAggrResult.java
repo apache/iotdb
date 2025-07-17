@@ -53,6 +53,8 @@ public class ExactQuantileDDSketchPositiveAggrResult extends AggregateResult {
   private int preComputedSketchSize;
   private boolean hasFinalResult;
   long DEBUG = 0;
+  double precomputedAlpha, precomputedMinV;
+  boolean precomputedParamGot = false;
 
   private int getBitsOfDataType() {
     switch (seriesDataType) {
@@ -143,9 +145,23 @@ public class ExactQuantileDDSketchPositiveAggrResult extends AggregateResult {
       cntR = Double.MAX_VALUE;
       n = 0;
     } else {
+      if (iteration == 1 && precomputedParamGot) {
+        lastPass = false;
+        sketch =
+            new DDSketchPositiveForExact(
+                precomputedAlpha,
+                maxMemoryByte / DDSketchPositiveForExact.bucketNumPerByteInMemory);
+        return;
+      }
       double dataset_V = cntR - cntL + 1;
-      int DDLimit = maxMemoryByte / 48; // System.out.println("\t\t??\t\t"+dataset_V);
-      double DDSketch_ALPHA = Math.pow(10, Math.log10(dataset_V) / DDLimit) - 1;
+      int DDLimit =
+          maxMemoryByte
+              / DDSketchPositiveForExact
+                  .bucketNumPerByteInMemory; // System.out.println("\t\t??\t\t"+dataset_V);
+      double DDSketch_GAMMA = Math.pow(10, Math.log10(dataset_V) / (DDLimit - 1));
+      double DDSketch_ALPHA = 1 - 2 / (DDSketch_GAMMA + 1);
+      System.out.println(
+          "\t[ExactQuantile DEBUG DD] dataset_V:" + dataset_V + "\tγ:" + DDSketch_GAMMA);
       if (lastN <= maxMemoryByte / 8) {
         lastPass = true;
         lastPassData = new DoubleArrayList(maxMemoryByte / 8);
@@ -154,7 +170,7 @@ public class ExactQuantileDDSketchPositiveAggrResult extends AggregateResult {
         lastPass = false;
         sketch = new DDSketchPositiveForExact(DDSketch_ALPHA, DDLimit);
         System.out.println(
-            "\t[ExactQuantile DEBUG DDSketch] start iteration "
+            "\t[ExactQuantile DEBUG DD] start iteration "
                 + iteration
                 + " cntL,R:"
                 + "["
@@ -190,20 +206,30 @@ public class ExactQuantileDDSketchPositiveAggrResult extends AggregateResult {
     if (iteration == 1) { // first iteration over
       K1 = (int) Math.floor(QUANTILE * (n - 1) + 1);
       K2 = (int) Math.ceil(QUANTILE * (n - 1) + 1);
-      cntL = detL = DataMinV;
-      cntR = detR = DataMaxV;
-      System.out.println(
-          "\t[ExactQuantile DEBUG DDSketch]\tfirst Pass for MinV,MaxV:\t"
-              + DataMinV
-              + "\t"
-              + DataMaxV);
+      if (precomputedParamGot) {
+        cntL = detL = precomputedMinV;
+        cntR = detR = DataMaxV;
+        DataMinV = precomputedMinV;
+        System.out.println(
+            "\t[ExactQuantile DEBUG DD]\tfirst Pass. Precomputed. "
+                + "cntL,R:\t"
+                + cntL
+                + "\t"
+                + cntR
+                + "\tα:"
+                + precomputedAlpha);
+      } else {
+        cntL = detL = DataMinV;
+        cntR = detR = DataMaxV;
+        System.out.println(
+            "\t[ExactQuantile DEBUG DD]\tfirst Pass for MinV,MaxV:\t" + cntL + "\t" + cntR);
+      }
       return;
     }
     long cntK1 = K1 - countOfLessThanCntL, cntK2 = K2 - countOfLessThanCntL;
 
     if (lastPass) {
-      System.out.println(
-          "\t[ExactQuantile DEBUG DDSketch]\tLast Pass.\tdataN:\t" + lastPassData.size());
+      System.out.println("\t[ExactQuantile DEBUG DD]\tLast Pass.\tdataN:\t" + lastPassData.size());
       lastPassData.sort(Double::compare);
       double ans = 0;
       //          ((lastPassData.getDouble((int) cntK1 - 1)) + (lastPassData.getDouble((int) cntK2 -
@@ -227,7 +253,7 @@ public class ExactQuantileDDSketchPositiveAggrResult extends AggregateResult {
         || cntK2 > countOfCntL + countOfCntR + sketch.total_count()) { // iteration failed.
 
       System.out.println(
-          "\t[ExactQuantile DEBUG DDSketch]\tIter Failed."
+          "\t[ExactQuantile DEBUG DD]\tIter Failed."
               + (cntK1 <= 0 ? "\tans smaller than cntL." : "\tans larger than cntL.")
               + "\tcntL,R:"
               + (cntL)
@@ -248,10 +274,7 @@ public class ExactQuantileDDSketchPositiveAggrResult extends AggregateResult {
       detR = cntR;
       if (detL >= detR) {
         System.out.println(
-            "\t[ExactQuantile DEBUG DDSketch]\tFail but Answer Found.\tdetL,R:"
-                + (detL)
-                + ","
-                + (detR));
+            "\t[ExactQuantile DEBUG DD]\tFail but Answer Found.\tdetL,R:" + (detL) + "," + (detR));
         double ans = ((detL) + (detR)) * 0.5;
         setDoubleValue(ans);
         hasFinalResult = true;
@@ -271,13 +294,15 @@ public class ExactQuantileDDSketchPositiveAggrResult extends AggregateResult {
       setDoubleValue(ans);
       hasFinalResult = true;
       System.out.println(
-          "\t[ExactQuantile DEBUG DDSketch]\tAnswer Found."
+          "\t[ExactQuantile DEBUG DD]\tAnswer Found."
               + " det_result:"
               + deterministic_result[0]
               + "..."
               + deterministic_result[1]
               + "\tddsketchN:"
-              + sketch.total_count());
+              + sketch.total_count()
+              + "\tddsketchSize:"
+              + sketch.sketch_size());
       return;
     }
 
@@ -292,13 +317,12 @@ public class ExactQuantileDDSketchPositiveAggrResult extends AggregateResult {
       double ans = (deterministic_result[0] + deterministic_result[1]) * 0.5;
       setDoubleValue(ans);
       hasFinalResult = true;
-      System.out.println(
-          "\t[ExactQuantile DEBUG DDSketch]\tDANGER!! range_not_updated_after_an_iter.");
+      System.out.println("\t[ExactQuantile DEBUG DD]\tDANGER!! range_not_updated_after_an_iter.");
       return;
     }
 
     System.out.println(
-        "\t[ExactQuantile DEBUG DDSketch]\tfinish iter"
+        "\t[ExactQuantile DEBUG DD]\tfinish iter"
             + (iteration - 1)
             + "."
             + " cntK1,2:"
@@ -307,8 +331,12 @@ public class ExactQuantileDDSketchPositiveAggrResult extends AggregateResult {
             + cntK2
             + "\tddsketchN:"
             + sketch.total_count()
+            + "\tddsketchSize:"
+            + sketch.sketch_size()
             + "\tnextN:"
-            + (int) iterate_result[2]);
+            + (int) iterate_result[2]
+            + "\tDDAlpha:"
+            + sketch.alpha);
     lastN = (int) iterate_result[2];
   }
 
@@ -320,6 +348,11 @@ public class ExactQuantileDDSketchPositiveAggrResult extends AggregateResult {
   @Override
   public Double getResult() {
     return hasCandidateResult() ? getDoubleValue() : null;
+  }
+
+  public void addSketch(DDSketchPositiveForExact pageSketch) {
+    n += pageSketch.total_count();
+    sketch.mergeWithDeserialized(pageSketch);
   }
 
   @Override
@@ -337,19 +370,29 @@ public class ExactQuantileDDSketchPositiveAggrResult extends AggregateResult {
             String.format(
                 "Unsupported data type in aggregation MEDIAN : %s", statistics.getType()));
     }
-    if (iteration == 0) {
-      if (statistics.getType() == DOUBLE) {
-        DoubleStatistics stat = (DoubleStatistics) statistics;
+    if (statistics.getType() == DOUBLE) {
+      DoubleStatistics stat = (DoubleStatistics) statistics;
+      if (iteration == 0) {
         n += stat.getCount();
         DataMinV = Math.min(DataMinV, stat.getMinValue());
         DataMaxV = Math.max(DataMaxV, stat.getMaxValue());
+        if (Statistics.SUMMARY_TYPE == Statistics.SummaryTypes.DD && stat.getSummaryNum() > 0) {
+          precomputedParamGot = true;
+          precomputedAlpha = stat.getDDSketchList().get(0).alpha;
+          precomputedMinV = Statistics.DDPrecomputeMinV[Statistics.DATASET_TYPE.ordinal()];
+        }
+        return;
+      } else if (iteration == 1
+          && Statistics.SUMMARY_TYPE == Statistics.SummaryTypes.DD
+          && stat.getSummaryNum() > 0) {
+        for (DDSketchPositiveForExact pageSketch : stat.getDDSketchList()) addSketch(pageSketch);
+        return;
       }
-      return;
     }
     double minVal = (double) (statistics.getMinValue());
     double maxVal = (double) (statistics.getMaxValue());
     //    System.out.println(
-    //        "\t[ExactQuantile DEBUG DDSketch] update from statistics:\t"
+    //        "\t[ExactQuantile DEBUG DD] update from statistics:\t"
     //            + "min,max:"
     //            + minVal
     //            + ","
@@ -459,8 +502,18 @@ public class ExactQuantileDDSketchPositiveAggrResult extends AggregateResult {
 
   @Override
   public boolean canUpdateFromStatistics(Statistics statistics) {
-    if ((seriesDataType == DOUBLE) && iteration == 0) {
-      return true;
+    if (!useAnyStat) return false;
+    if (seriesDataType == DOUBLE) {
+      DoubleStatistics doubleStats = (DoubleStatistics) statistics;
+      if (iteration == 0) {
+        if (!precomputedParamGot && Statistics.SUMMARY_TYPE == Statistics.SummaryTypes.DD) {
+          return doubleStats.getSummaryNum() == 1;
+        }
+        return true;
+      }
+      if (iteration == 1
+          && Statistics.SUMMARY_TYPE == Statistics.SummaryTypes.DD
+          && doubleStats.getSummaryNum() > 0) return true;
     }
     if (iteration > 0) {
       double minVal = (double) (statistics.getMinValue());
@@ -478,12 +531,15 @@ public class ExactQuantileDDSketchPositiveAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean useStatisticsIfPossible() {
+  public boolean useOverlappedStatisticsIfPossible() {
     return false;
   }
 
   @Override
   public void setAttributes(Map<String, String> attrs) {
+    if (attrs.containsKey("useAnyStat")) {
+      this.useAnyStat = Boolean.parseBoolean(attrs.get("useAnyStat"));
+    }
     if (attrs.containsKey("memory")) {
       String mem = attrs.get("memory");
       if (mem.contains("KB"))

@@ -162,12 +162,21 @@ public class TypeInferenceUtils {
       case SQLConstant.EXACT_QUANTILE_PR_KLL_POST_BEST_PR:
       case SQLConstant.EXACT_QUANTILE_MRL:
       case SQLConstant.EXACT_QUANTILE_TDIGEST:
+      case SQLConstant.EXACT_QUANTILE_GK:
       case SQLConstant.EXACT_QUANTILE_DDSKETCH_POSITIVE:
       case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR:
       case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR:
       case SQLConstant.EXACT_MULTI_QUANTILES_MRL:
       case SQLConstant.EXACT_MULTI_QUANTILES_TDIGEST:
+      case SQLConstant.EXACT_MULTI_QUANTILES_GK:
       case SQLConstant.EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
+      case SQLConstant.DUPLI_QUANTILE_DSS:
+      case SQLConstant.DUPLI_QUANTILE_GK:
+      case SQLConstant.DUPLI_QUANTILE_TD:
+      case SQLConstant.DUPLI_QUANTILE_KLL_VANILLA:
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR:
+      case SQLConstant.DUPLI_QUANTILE_DD:
+      case SQLConstant.DUPLI_QUANTILE_REQ:
         return TSDataType.DOUBLE;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);

@@ -70,7 +70,7 @@ if %half_% GTR %quarter_% (
 	set max_heap_size_in_mb=%half_%
 ) else set max_heap_size_in_mb=%quarter_%
 
-set max_heap_size_in_mb=%oneThird_%
+@REM set max_heap_size_in_mb=%oneThird_%
 
 set MAX_HEAP_SIZE=%max_heap_size_in_mb%M
 set max_sensible_yg_per_core_in_mb=100

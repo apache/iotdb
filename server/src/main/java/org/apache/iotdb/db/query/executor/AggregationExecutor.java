@@ -357,7 +357,7 @@ public class AggregationExecutor {
     if (ascAggregateResultList != null && !ascAggregateResultList.isEmpty()) {
       boolean allUseStatistics = true;
       for (AggregateResult aggregateResult : ascAggregateResultList)
-        allUseStatistics &= aggregateResult.useStatisticsIfPossible();
+        allUseStatistics &= aggregateResult.useOverlappedStatisticsIfPossible();
       IAggregateReader seriesReader;
       int strategy = IoTDBDescriptor.getInstance().getConfig().getAggregationStrategy();
       if (!allUseStatistics || strategy == 0) {

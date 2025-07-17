@@ -7,6 +7,7 @@ import java.util.Arrays;
 // based on KLL Sketch in DataSketch. See
 // https://github.com/apache/datasketches-java/tree/master/src/main/java/org/apache/datasketches/kll
 public abstract class KLLSketchForQuantile {
+  static final int MinimumLevelMaxSize = 7; // at least compact MinimumLevelSizeLimit + 1 elements
   long N;
   int maxMemoryNum;
   long[] num;
@@ -31,6 +32,39 @@ public abstract class KLLSketchForQuantile {
     return levelPos[level + 1] - levelPos[level];
   }
 
+  public static int[] calcLevelMaxSizeByLevel(int maxMemoryNum, int setLevel) {
+    int[] levelMaxSize = new int[setLevel];
+    int newK = 0;
+    for (int addK = 1 << 28; addK > 0; addK >>>= 1) { // find a new K to fit the memory limit.
+      int need = 0;
+      for (int i = 0; i < setLevel; i++)
+        need +=
+            Math.max(
+                MinimumLevelMaxSize,
+                (int) Math.round(((newK + addK) * Math.pow(2.0 / 3, setLevel - i - 1))));
+      if (need <= maxMemoryNum) newK += addK;
+    }
+    for (int i = 0; i < setLevel; i++)
+      levelMaxSize[i] =
+          Math.max(
+              MinimumLevelMaxSize, (int) Math.round((newK * Math.pow(2.0 / 3, setLevel - i - 1))));
+    return levelMaxSize;
+  }
+
+  public static int[] calcLevelMaxSize(int maxMemoryNum, int maxN) {
+    if (maxN <= maxMemoryNum) return new int[] {maxMemoryNum};
+    int L = 2, R = (int) Math.ceil(Math.log(maxN / 3.0) / Math.log(2)) + 1;
+    while (L < R) {
+      int mid = (L + R) / 2;
+      int[] capacity = calcLevelMaxSizeByLevel(maxMemoryNum, mid);
+      long allCap = 0;
+      for (int i = 0; i < mid; i++) allCap += (long) capacity[i] << i;
+      if (allCap >= maxN) R = mid;
+      else L = mid + 1;
+    }
+    return calcLevelMaxSizeByLevel(maxMemoryNum, L);
+  }
+
   public void show() {
     for (int i = 0; i < cntLevel; i++) {
       System.out.print("\t");
@@ -43,8 +77,9 @@ public abstract class KLLSketchForQuantile {
   public void showNum() {
     for (int i = 0; i < cntLevel; i++) {
       System.out.print("\t|");
-      for (int j = levelPos[i]; j < levelPos[i + 1]; j++) System.out.print(num[j] + ",");
-      //      System.out.print(longToResult(num[j])+", ");
+      for (int j = levelPos[i]; j < levelPos[i + 1]; j++)
+        //        System.out.print(num[j]+",");
+        System.out.print(longToResult(num[j]) + ", ");
       System.out.print("|\t");
     }
     System.out.println();
@@ -103,6 +138,11 @@ public abstract class KLLSketchForQuantile {
     return (L - levelPos[level] + 1) * (1 << level);
   }
 
+  protected long dataToLong(double data) {
+    long result = Double.doubleToLongBits((double) data);
+    return data >= 0d ? result : result ^ Long.MAX_VALUE;
+  }
+
   protected double longToResult(long result) {
     result = (result >>> 63) == 0 ? result : result ^ Long.MAX_VALUE;
     return Double.longBitsToDouble(result);
@@ -133,10 +173,7 @@ public abstract class KLLSketchForQuantile {
   public long findMaxValueWithRank(long K) {
     long L = Long.MIN_VALUE, R = Long.MAX_VALUE, mid;
     while (L < R) {
-      mid = L + ((R - L) >>> 1);
-      if (L == mid) mid++;
-      //
-      // System.out.println("\t\t2fenA\t\t"+L+"..."+R+"\t\tmid="+mid+"\t\t"+(getApproxRank(mid)>=K));
+      mid = L + ((R - L + 1) >>> 1);
       if (getApproxRank(mid) <= K) L = mid;
       else R = mid - 1;
     }
@@ -148,8 +185,7 @@ public abstract class KLLSketchForQuantile {
     while (L < R) {
       mid = L + ((R - L) >>> 1);
       //
-      //
-      // System.out.println("\t\t2fenB\t\t"+L+"..."+R+"\t\tmid="+mid+"\t\t"+(getApproxRank(mid)>=K));
+      // System.out.println("\t\t2fen\t\t"+L+"..."+R+"\t\tmid="+mid+"\t\t"+(getApproxRank(mid)>=K));
       if (getApproxRank(mid) > K) R = mid;
       else L = mid + 1;
     }

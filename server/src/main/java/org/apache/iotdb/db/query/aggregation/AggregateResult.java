@@ -53,6 +53,7 @@ public abstract class AggregateResult {
   protected boolean hasCandidateResult;
   protected int maxMemoryByte;
   protected double QUANTILE;
+  protected boolean useAnyStat = true;
 
   /**
    * construct.
@@ -369,7 +370,7 @@ public abstract class AggregateResult {
     return true;
   }
 
-  public boolean useStatisticsIfPossible() {
+  public boolean useOverlappedStatisticsIfPossible() {
     return true;
   }
 

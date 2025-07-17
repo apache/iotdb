@@ -183,8 +183,6 @@ public class TDigestForStatMerge {
     System.out.println();
   }
 
-  //
-
   public int serialize(OutputStream outputStream) throws IOException { // 15+1*?+8*?
     compactBeforeSerialization(); // if N==maxN
     int byteLen = 0;

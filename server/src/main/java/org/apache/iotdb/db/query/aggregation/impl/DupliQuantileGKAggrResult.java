@@ -27,10 +27,8 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
+import org.apache.iotdb.tsfile.utils.GKBandForDupli;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -39,15 +37,14 @@ import java.util.Map;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
 
-public class ExactQuantileQuickSelectAggrResult extends AggregateResult {
-  int mergeBufferRatio = 5;
-  private String returnType = "value";
+public class DupliQuantileGKAggrResult extends AggregateResult {
+  String returnType = "value";
   private TSDataType seriesDataType;
+  private int iteration;
   private long n;
+  private GKBandForDupli sketch;
   private boolean hasFinalResult;
-  LongArrayList data;
   long DEBUG = 0;
-  public static XoRoShiRo128PlusRandom random = new XoRoShiRo128PlusRandom();
 
   private int getBitsOfDataType() {
     switch (seriesDataType) {
@@ -63,133 +60,51 @@ public class ExactQuantileQuickSelectAggrResult extends AggregateResult {
     }
   }
 
-  public ExactQuantileQuickSelectAggrResult(TSDataType seriesDataType)
-      throws UnSupportedDataTypeException {
-    super(DOUBLE, AggregationType.EXACT_QUANTILE_QUICK_SELECT);
+  public DupliQuantileGKAggrResult(TSDataType seriesDataType) throws UnSupportedDataTypeException {
+    super(DOUBLE, AggregationType.DUPLI_QUANTILE_GK);
     this.seriesDataType = seriesDataType;
     reset();
   }
 
-  private long dataToLong(Object data) throws UnSupportedDataTypeException {
-    long result;
-    switch (seriesDataType) {
-      case INT32:
-        return (int) data;
-      case FLOAT:
-        result = Float.floatToIntBits((float) data);
-        return (float) data >= 0f ? result : result ^ Long.MAX_VALUE;
-      case INT64:
-        return (long) data;
-      case DOUBLE:
-        result = Double.doubleToLongBits((double) data);
-        return (double) data >= 0d ? result : result ^ Long.MAX_VALUE;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation MEDIAN : %s", seriesDataType));
-    }
-  }
-
-  private double longToResult(long result) throws UnSupportedDataTypeException {
-    switch (seriesDataType) {
-      case INT32:
-        return (double) (result);
-      case FLOAT:
-        result = (result >>> 31) == 0 ? result : result ^ Long.MAX_VALUE;
-        return Float.intBitsToFloat((int) (result));
-      case INT64:
-        return (double) (result);
-      case DOUBLE:
-        result = (result >>> 63) == 0 ? result : result ^ Long.MAX_VALUE;
-        return Double.longBitsToDouble(result);
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation MEDIAN : %s", seriesDataType));
-    }
-  }
-
   private void updateStatusFromData(Object data) {
-
-    long dataL = dataToLong(data);
-    this.data.add(dataL);
-    //    if(this.data.size()%1000==0)System.out.println("\t\t\t\t\t"+(double)data);
+    double dataD = (double) data;
+    n++;
+    //    System.out.println("\t\t\t\t[tmp update] dataD:"+dataD);
+    sketch.update(dataD);
   }
 
   @Override
   public void startIteration() {
+    sketch = new GKBandForDupli(maxMemoryByte);
     n = 0;
+    //    System.out.println("\t\t\t[startIteration]");
   }
 
   @Override
   public void setDoubleValue(double doubleValue) {
     this.hasCandidateResult = true;
+    //    System.out.println("\t\tsetDoubleValue\t"+doubleValue);
     if (this.returnType.equals("value")) this.doubleValue = doubleValue;
-    else if (this.returnType.equals("space")) this.doubleValue = data.size() * Long.BYTES;
-    else if (this.returnType.equals("iteration_num")) this.doubleValue = 1.0;
-  }
-
-  public long getKth(int L, int R, int K) {
-    int pos = L + random.nextInt(R - L);
-    long pivot_v = data.getLong(pos), swap_v;
-
-    int leP = L, eqR = R;
-    data.set(pos, data.set(--eqR, pivot_v)); //   [L,leP): < pivot_v ;    [eqR,R): == pivot_v ;
-
-    for (int i = L; i < eqR; i++)
-      if ((swap_v = data.getLong(i)) < pivot_v) data.set(i, data.set(leP++, swap_v));
-      else if (swap_v == pivot_v) {
-        data.set(i--, data.set(--eqR, swap_v));
-      }
-
-    //        if(R-eqR>1)System.out.println("\t\t\t\tk_select. same pivot v.  count:"+(R-eqR));
-    if (K < leP - L) return getKth(L, leP, K);
-    if (K >= (leP - L) + (R - eqR)) return getKth(leP, eqR, K - (leP - L) - (R - eqR));
-    return pivot_v;
+    else if (this.returnType.equals("iteration_num")) this.doubleValue = iteration;
   }
 
   @Override
   public void finishIteration() {
-
-    n = data.size();
+    iteration++;
     if (n == 0) {
+      setDoubleValue(0);
       hasFinalResult = true;
       return;
     }
 
-    int K1 = (int) Math.floor(QUANTILE * (n - 1) + 1);
-    int K2 = (int) Math.ceil(QUANTILE * (n - 1) + 1);
-    System.out.println(
-        "\t\t[Quick Select DEBUG]\tfinish iter.\tn:" + data.size() + "\t\tK1,2:" + K1 + "," + K2);
-    K1--;
-    K2--;
-    long val1 = getKth(0, (int) n, K1), val2 = Long.MAX_VALUE;
-    if (K2 > K1) {
-      boolean occur = false;
-      for (long d : data)
-        if (d < val2) {
-          if (d > val1) val2 = d;
-          else if (d == val1) {
-            if (occur) {
-              val2 = d;
-              break;
-            }
-            occur = true;
-          }
-        }
-    } else val2 = val1;
-    double ans = 0.5 * (longToResult(val1) + longToResult(val2));
-    System.out.println("\t\t\tval1,2:" + longToResult(val1) + "," + longToResult(val2));
-    setDoubleValue(ans);
+    setDoubleValue(sketch.getQuantile(QUANTILE));
+    //    System.out.println("\t\t[TMP] q:"+QUANTILE+"\tans:\t"+sketch.getQuantile(QUANTILE));
     hasFinalResult = true;
-    //    data.sort(Long::compare);
-    //    System.out.println("\t\t\tsort...
-    // val1,2:"+longToResult(data.getLong(K1))+","+longToResult(data.getLong(K2)));
-    //    System.out.println("\t\t\tsort...
-    // min,max:"+longToResult(data.getLong(0))+","+longToResult(data.getLong((int)n-1)));
   }
 
   @Override
   protected boolean hasCandidateResult() {
-    return hasFinalResult && n > 0;
+    return hasFinalResult;
   }
 
   @Override
@@ -199,8 +114,22 @@ public class ExactQuantileQuickSelectAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    System.out.println("\t\t\t???????!!!!!!!!!!!!!!!!!!!CAN't use stat");
-    // no-op
+    switch (statistics.getType()) {
+      case INT32:
+      case INT64:
+      case FLOAT:
+      case DOUBLE:
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format(
+                "Unsupported data type in aggregation MEDIAN : %s", statistics.getType()));
+    }
+    double minVal = (double) (statistics.getMinValue());
+    double maxVal = (double) (statistics.getMaxValue());
+    System.out.println("\t[ERR] GKForDupli should NOT use Statistics.");
   }
 
   @Override
@@ -246,7 +175,7 @@ public class ExactQuantileQuickSelectAggrResult extends AggregateResult {
 
   @Override
   public int maxIteration() {
-    return 1;
+    return 2;
   }
 
   @Override
@@ -264,13 +193,11 @@ public class ExactQuantileQuickSelectAggrResult extends AggregateResult {
   @Override
   protected void deserializeSpecificFields(ByteBuffer buffer) {
     this.seriesDataType = TSDataType.deserialize(buffer.get());
-    // TODO
   }
 
   @Override
   protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(seriesDataType, outputStream);
-    // TODO
   }
 
   public long getN() {
@@ -280,9 +207,10 @@ public class ExactQuantileQuickSelectAggrResult extends AggregateResult {
   @Override
   public void reset() {
     super.reset();
+    sketch = null;
     n = 0;
+    iteration = 0;
     hasFinalResult = false;
-    data = new LongArrayList();
   }
 
   @Override
@@ -292,11 +220,6 @@ public class ExactQuantileQuickSelectAggrResult extends AggregateResult {
 
   @Override
   public boolean groupByLevelBeforeAggregation() {
-    return true;
-  }
-
-  @Override
-  public boolean useOverlappedStatisticsIfPossible() {
     return false;
   }
 
@@ -306,6 +229,8 @@ public class ExactQuantileQuickSelectAggrResult extends AggregateResult {
       String mem = attrs.get("memory");
       if (mem.contains("KB"))
         this.maxMemoryByte = Integer.parseInt(mem.substring(0, mem.length() - 2)) * 1024;
+      else if (mem.contains("MB"))
+        this.maxMemoryByte = Integer.parseInt(mem.substring(0, mem.length() - 2)) * 1024 * 1024;
       else if (mem.contains("B"))
         this.maxMemoryByte = Integer.parseInt(mem.substring(0, mem.length() - 1));
     }
@@ -317,11 +242,7 @@ public class ExactQuantileQuickSelectAggrResult extends AggregateResult {
       String q = attrs.get("return_type");
       this.returnType = q;
     }
-    if (attrs.containsKey("merge_buffer_ratio")) {
-      String r = attrs.get("merge_buffer_ratio");
-      this.mergeBufferRatio = Integer.parseInt(r);
-    }
     System.out.println(
-        "  [setAttributes DEBUG]\t\t\tmaxMemoryByte:" + maxMemoryByte + "\t\tquantile:" + QUANTILE);
+        "\t[setAttributes DEBUG]\t\t\tmaxMemoryByte:" + maxMemoryByte + "\t\tquantile:" + QUANTILE);
   }
 }

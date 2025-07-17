@@ -113,7 +113,7 @@ public class PrioriBestPrHelper {
       double fixPr,
       int depth,
       int maxMemoryNum,
-      int avgN,
+      long avgN,
       double sig2,
       long maxERR) {
     int memoryNumForEachQuantile = maxMemoryNum / MULTI_QUANTILE;
@@ -143,13 +143,13 @@ public class PrioriBestPrHelper {
     // avgN:"+avgN+"\tfixPr:"+fixPr+"\t\tcontinuePr:"+continuePr+"\t\t\tconAvgN:"+continueAvgN+"\t\tconMaxERR:"+conMaxErr);
 
     double allSuccessPr = MULTI_QUANTILE == 1 ? fixPr : Math.pow(fixPr, 1.0 / MULTI_QUANTILE);
-    int conSuccessN =
+    long conSuccessN =
         conMaxErr == 0
             ? 1
             : KLLSketchLazyExactPriori.queryRankErrBoundGivenParameter(
                     conSig2, conMaxErr, allSuccessPr)
                 * 2;
-    int conFailN = (Math.min(continueAvgN, (int) conMaxErr * 2) - conSuccessN) / 2;
+    long conFailN = (Math.min(continueAvgN, (int) conMaxErr * 2) - conSuccessN) / 2;
     //        System.out.println("\t\t\tconSuccessN:"+conSuccessN+"\t\tconFailN:"+conFailN);
     //        bestSimuIter = 1 + pr * simulateIteration(casePr * pr, pr, depth + 1, successN,
     // maxMemoryNum, succComNum)[0] + (1 - pr) * (1 + simulateIteration(casePr * (1 - pr), pr, depth
@@ -195,15 +195,15 @@ public class PrioriBestPrHelper {
                 maxMemoryNum * (merge_buffer_ratio - 1) / merge_buffer_ratio);
     simuWorkerSmall1 = new KLLSketchLazyEmptyForSimuCompact(maxMemoryNum / MULTI_QUANTILE);
     simuWorkerSmall2 = new KLLSketchLazyEmptyForSimuCompact(maxMemoryNum / MULTI_QUANTILE);
-    int maxERR =
+    long maxERR =
         KLLSketchLazyExactPriori.queryRankErrBound(simuWorker.simulateCompactNumGivenN(detN), 1.0);
     double sig2 = simuWorker.getSig2();
     long nextMaxErr = simuWorker.getMaxError();
     double allSuccessPr = MULTI_QUANTILE == 1 ? fixPr : Math.pow(fixPr, 1.0 / MULTI_QUANTILE);
-    int prERR = KLLSketchLazyExactPriori.queryRankErrBound(simuWorker.compactNum, allSuccessPr);
+    long prERR = KLLSketchLazyExactPriori.queryRankErrBound(simuWorker.compactNum, allSuccessPr);
 
-    int successAvgN = prERR * 2;
-    int failAvgN = (Math.min(detN, maxERR * 2) - successAvgN) / 2;
+    long successAvgN = prERR * 2;
+    long failAvgN = (Math.min(detN, maxERR * 2) - successAvgN) / 2;
 
     //        System.out.println("\t\tfirst paas.
     // successAvgN:\t"+successAvgN+"\t\tfailAvgN:\t"+failAvgN);
@@ -222,17 +222,17 @@ public class PrioriBestPrHelper {
 
   private static double evaluatePr(int maxMemoryNum, double fixPr, int detN) {
     if (MERGE_BUFFER_RATIO == 0 && detN <= maxMemoryNum) return 1.0;
-    int maxERR = KLLSketchLazyExactPriori.queryRankErrBound(initialCompactNum, 1.0);
+    long maxERR = KLLSketchLazyExactPriori.queryRankErrBound(initialCompactNum, 1.0);
     double sig2 = KLLSketchLazyEmptyForSimuCompact.getSig2(initialCompactNum);
     long nextMaxErr = KLLSketchLazyEmptyForSimuCompact.getMaxError(initialCompactNum);
     double allSuccessPr = MULTI_QUANTILE == 1 ? fixPr : Math.pow(fixPr, 1.0 / MULTI_QUANTILE);
     //
     // if(MULTI_QUANTILE>1&&allSuccessPr!=fixPr)System.out.println("\t\t\t\t\t"+allSuccessPr+"\t\t"+fixPr);
-    int prERR = KLLSketchLazyExactPriori.queryRankErrBound(initialCompactNum, allSuccessPr);
+    long prERR = KLLSketchLazyExactPriori.queryRankErrBound(initialCompactNum, allSuccessPr);
 
-    int successAvgN = prERR * 2;
+    long successAvgN = prERR * 2;
     // if(fixPr==0.9995)System.out.println("\t\t\tsuccAvgN:\t"+successAvgN+"\t\tallSuccessPr:\t"+allSuccessPr);
-    int failAvgN = (Math.min(detN, maxERR * 2) - successAvgN) / 2;
+    long failAvgN = (Math.min(detN, maxERR * 2) - successAvgN) / 2;
 
     //        System.out.println("\t\tfirst paas.
     // successAvgN:\t"+successAvgN+"\t\tfailAvgN:\t"+failAvgN+"\t\tfixPr:"+fixPr);

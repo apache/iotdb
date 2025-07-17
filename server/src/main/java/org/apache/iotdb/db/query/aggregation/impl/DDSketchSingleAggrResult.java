@@ -147,7 +147,8 @@ public class DDSketchSingleAggrResult extends AggregateResult {
     if (iteration == 0) { // first iteration
 
       int dataset_V = 40000, limit = maxMemoryByte / 42;
-      double DDSketch_ALPHA = Math.pow(10, Math.log10(dataset_V) / limit) - 1;
+      double DDSketch_GAMMA = Math.pow(10, Math.log10(dataset_V) / (limit - 1));
+      double DDSketch_ALPHA = 1 - 2 / (DDSketch_GAMMA + 1);
       DDSketch = new DDSketchForQuantile(DDSketch_ALPHA, limit);
       lastL = cntL = Long.MIN_VALUE;
       cntR = Long.MAX_VALUE;

@@ -149,6 +149,8 @@ public class ChunkReader implements IChunkReader {
         //                + pageHeader.getStartTime()
         //                + "..."
         //                + pageHeader.getEndTime());
+        //        System.out.println("\t\tinitAllPageReaders\tSUMMARY_TYPE:" +
+        // Statistics.SUMMARY_TYPE);
         pageHeader.getStatistics().setPageStatFromChunkMetaDataStat(chunkStatistic, pageID);
         pageReaderList.add(constructPageReaderForNextPage(pageHeader));
       } else {

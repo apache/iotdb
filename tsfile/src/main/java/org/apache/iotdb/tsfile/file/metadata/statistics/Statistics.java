@@ -51,6 +51,34 @@ import java.util.Objects;
  * and endTime can be used.</br>
  */
 public abstract class Statistics<T extends Serializable> {
+  public enum SummaryTypes {
+    KLL,
+    TD,
+    DD,
+    UNKNOWN
+  }
+
+  public enum DatasetTypes {
+    SYNTHETIC,
+    BITCOIN,
+    THRUSTER,
+    ELECTRIC,
+    BINANCE,
+    IBM,
+    UNKNOWN,
+  }
+
+  public static double[] DDPrecomputeMinV =
+      new double[] {0, 0, -21.106857576922298, -10.51797, 0, 0};
+  public static double[] DDPrecomputeAlpha =
+      new double[] {
+        Math.pow(2, -5),
+        Math.pow(2, -4),
+        Math.pow(2, -7),
+        Math.pow(2, -5),
+        Math.pow(2, -3),
+        Math.pow(2, -3)
+      };
 
   private static final Logger LOG = LoggerFactory.getLogger(Statistics.class);
   /**
@@ -68,12 +96,13 @@ public abstract class Statistics<T extends Serializable> {
 
   public static Boolean ENABLE_SYNOPSIS = false;
   public static Boolean ENABLE_BLOOM_FILTER = false;
-  public static int STATISTICS_PAGE_MAXSIZE = 8000;
+  public static int STATISTICS_PAGE_MAXSIZE = 9000;
   public static int SYNOPSIS_SIZE_IN_BYTE = 1024;
   public static int BLOOM_FILTER_BITS_PER_KEY = 8;
   public static int BLOOM_FILTER_SIZE = 0;
   public static int PAGE_SIZE_IN_BYTE = 65536;
-  public static int SUMMARY_TYPE = 0;
+  public static SummaryTypes SUMMARY_TYPE = SummaryTypes.UNKNOWN;
+  public static DatasetTypes DATASET_TYPE = DatasetTypes.UNKNOWN;
   //  public static boolean ENABLE_LSM_SKETCH =
   // TSFileDescriptor.getInstance().getConfig().getCompressionPerLSMLevel();
 
@@ -109,7 +138,12 @@ public abstract class Statistics<T extends Serializable> {
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     BLOOM_FILTER_SIZE = calcBFSize(STATISTICS_PAGE_MAXSIZE, getFPP(BLOOM_FILTER_BITS_PER_KEY));
     PAGE_SIZE_IN_BYTE = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
-    SUMMARY_TYPE = TSFileDescriptor.getInstance().getConfig().getSummaryType();
+    if (SUMMARY_TYPE == SummaryTypes.UNKNOWN)
+      SUMMARY_TYPE =
+          SummaryTypes.values()[TSFileDescriptor.getInstance().getConfig().getSummaryType()];
+    if (DATASET_TYPE == DatasetTypes.UNKNOWN)
+      DATASET_TYPE =
+          DatasetTypes.values()[TSFileDescriptor.getInstance().getConfig().getDatasetType()];
     //    System.out.println(
     //        "\t[DEBUG][Statistics] enable kll/bf:"
     //            + ENABLE_SYNOPSIS

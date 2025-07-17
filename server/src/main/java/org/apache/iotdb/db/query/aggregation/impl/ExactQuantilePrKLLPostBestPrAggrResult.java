@@ -40,9 +40,11 @@ import java.util.Map;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
 
+/** Decide the best Pr in each iteration. */
 public class ExactQuantilePrKLLPostBestPrAggrResult extends AggregateResult {
-  double bestPr = 0.5;
+  double bestPr = 0.5, fixPr = 0;
   int mergeBufferRatio = 5;
+  double findPrTime = 0;
   private String returnType = "iteration_num";
   boolean mergeUpdate = false;
   private TSDataType seriesDataType;
@@ -139,7 +141,8 @@ public class ExactQuantilePrKLLPostBestPrAggrResult extends AggregateResult {
     if (iteration == 0) { // first iteration
       if (mergeBufferRatio > 0)
         heapKLL =
-            new KLLSketchLazyExactPriori(maxMemoryByte * (mergeBufferRatio - 1) / mergeBufferRatio);
+            new KLLSketchLazyExactPriori(
+                (int) ((long) maxMemoryByte * (mergeBufferRatio - 1) / mergeBufferRatio));
       else heapKLL = new KLLSketchLazyExactPriori(maxMemoryByte);
       cntL = -Double.MAX_VALUE;
       cntR = Double.MAX_VALUE;
@@ -167,6 +170,7 @@ public class ExactQuantilePrKLLPostBestPrAggrResult extends AggregateResult {
     this.hasCandidateResult = true;
     if (this.returnType.equals("value")) this.doubleValue = doubleValue;
     else if (this.returnType.equals("iteration_num")) this.doubleValue = iteration;
+    else if (this.returnType.equals("findPrTime")) this.doubleValue = findPrTime;
   }
 
   @Override
@@ -251,23 +255,33 @@ public class ExactQuantilePrKLLPostBestPrAggrResult extends AggregateResult {
       }
       return;
     }
-    PrioriBestPrHelper prHelper =
-        new PrioriBestPrHelper(
-            maxMemoryByte / 8,
-            (int) n,
-            heapKLL.getRelatedCompactNum(),
-            iteration == 1 ? mergeBufferRatio : 0,
-            1);
-    // only merge pre-computed sketches in first pass.
-    double[] tmp = prHelper.findBestPr(5e-4, 5e-4, 5e-1, (int) heapKLL.getN());
-    bestPr = tmp[0];
-    System.out.println(
-        "\t\t\t[DEBUG pr_kll_Post_bestPr]\tAfter "
-            + iteration
-            + "-th Pass. Pr:"
-            + tmp[0]
-            + "\t\testiPass:"
-            + tmp[1]);
+    if (fixPr == 0) {
+      long tmpStart = System.nanoTime();
+      PrioriBestPrHelper prHelper =
+          new PrioriBestPrHelper(
+              maxMemoryByte / 8,
+              (int) n,
+              heapKLL.getRelatedCompactNum(),
+              iteration == 1 ? mergeBufferRatio : 0,
+              1);
+      // only merge pre-computed sketches in first pass.
+      double[] tmp = prHelper.findBestPr(5e-4, 5e-4, 5e-1, (int) heapKLL.getN());
+      findPrTime += (System.nanoTime() - tmpStart) / 1e3;
+      System.out.println("\t\t\t[DEBUG pr_kll_Post_bestPr]\tfindPrTime(us):\t" + findPrTime);
+      bestPr = tmp[0];
+      System.out.println(
+          "\t\t\t[DEBUG pr_kll_Post_bestPr]\tAfter "
+              + iteration
+              + "-th Pass. Pr:"
+              + tmp[0]
+              + "\t\testiPass:"
+              + tmp[1]);
+    } else {
+      bestPr = fixPr;
+      System.out.println(
+          "\t\t\t[DEBUG pr_kll_Post_bestPr]\tAfter " + iteration + "-th Pass. FixedPr:" + fixPr);
+    }
+
     // iteration success.
     //    heapKLL.show();
     //    double[] deterministic_result = heapKLL.findResultRange(cntK1, cntK2, 1.0);
@@ -520,9 +534,11 @@ public class ExactQuantilePrKLLPostBestPrAggrResult extends AggregateResult {
 
   @Override
   public boolean canUpdateFromStatistics(Statistics statistics) {
+    if (!useAnyStat) return false;
     if ((seriesDataType == DOUBLE) && iteration == 0 && mergeBufferRatio > 0) {
       DoubleStatistics doubleStats = (DoubleStatistics) statistics;
-      if (doubleStats.getSummaryNum() > 0) return true;
+      if (Statistics.SUMMARY_TYPE == Statistics.SummaryTypes.KLL && doubleStats.getSummaryNum() > 0)
+        return true;
     }
     if (iteration > 0) {
       double minVal = (double) (statistics.getMinValue());
@@ -540,12 +556,15 @@ public class ExactQuantilePrKLLPostBestPrAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean useStatisticsIfPossible() {
+  public boolean useOverlappedStatisticsIfPossible() {
     return mergeBufferRatio > 0;
   }
 
   @Override
   public void setAttributes(Map<String, String> attrs) {
+    if (attrs.containsKey("useAnyStat")) {
+      this.useAnyStat = Boolean.parseBoolean(attrs.get("useAnyStat"));
+    }
     if (attrs.containsKey("memory")) {
       String mem = attrs.get("memory");
       if (mem.contains("KB"))
@@ -571,6 +590,10 @@ public class ExactQuantilePrKLLPostBestPrAggrResult extends AggregateResult {
       String r = attrs.get("merge_buffer_ratio");
       this.mergeBufferRatio = Integer.parseInt(r);
     }
+    if (attrs.containsKey("fix_delta")) {
+      String p = attrs.get("fix_delta");
+      this.fixPr = 1.0 - Double.parseDouble(p);
+    }
     System.out.println(
         "  [setAttributes DEBUG]\t\t\tmaxMemoryByte:"
             + maxMemoryByte
@@ -579,7 +602,9 @@ public class ExactQuantilePrKLLPostBestPrAggrResult extends AggregateResult {
             + "\t\t mergeBufferRatio:"
             + mergeBufferRatio
             + "\t\t merge_update:"
-            + mergeUpdate);
+            + mergeUpdate
+            + "\t\t fixPrOrNot:"
+            + fixPr);
   }
 
   @Override

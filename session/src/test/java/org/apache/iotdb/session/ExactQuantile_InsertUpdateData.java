@@ -53,9 +53,11 @@ public class ExactQuantile_InsertUpdateData {
   private static final int series_num = 1;
   private static final int Long_Series_Num = 0;
   private static final boolean inMemory = false;
-  static String sketch_size = "0Byte";
+  static String sketch_size = "No";
   static double UpdateRate = 0.1;
   static String UpdateRateStr;
+  static TSEncoding ENC = TSEncoding.GORILLA;
+  static CompressionType COM = CompressionType.UNCOMPRESSED;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -91,15 +93,14 @@ public class ExactQuantile_InsertUpdateData {
     try {
       session.executeNonQueryStatement("delete storage group " + sgName);
       session.executeNonQueryStatement("delete timeseries " + seriesName);
-      Thread.sleep(400);
+      Thread.sleep(4000);
     } catch (Exception e) {
       // no-op
     }
 
     List<MeasurementSchema> schemaList = new ArrayList<>();
-    session.createTimeseries(
-        seriesName, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.SNAPPY);
-    schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.PLAIN));
+    session.createTimeseries(seriesName, TSDataType.DOUBLE, ENC, COM);
+    schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, ENC));
 
     XoRoShiRo128PlusRandom random = new XoRoShiRo128PlusRandom(233);
     double Emax = 300;
@@ -117,7 +118,7 @@ public class ExactQuantile_InsertUpdateData {
     long[] unSeqT = unSeqTablet.timestamps;
     double[] unSeqV = (double[]) (unSeqTablet.values[0]);
 
-    int synN = (int) (1e8 + 1e8);
+    int synN = (int) (5e8 + 5e8);
     for (int i = 0; i < synN; i++) {
       if (SeqT < synN * (1 - UpdateRate)
           && (flushedSeqDataSize == 0 || random.nextDoubleFast() >= UpdateRate)) {
@@ -207,9 +208,8 @@ public class ExactQuantile_InsertUpdateData {
       DoubleArrayList vv = new DoubleArrayList();
       for (int i = 0; i < realN; i++) vv.add(Double.parseDouble(reader.readLine()));
 
-      session.createTimeseries(
-          seriesName, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.SNAPPY);
-      MeasurementSchema schema = new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.PLAIN);
+      session.createTimeseries(seriesName, TSDataType.DOUBLE, ENC, COM);
+      MeasurementSchema schema = new MeasurementSchema("s0", TSDataType.DOUBLE, ENC);
       List<MeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(schema);
 
@@ -268,10 +268,10 @@ public class ExactQuantile_InsertUpdateData {
   @Test
   public void insertDATA() {
     try {
-      for (double upd : new double[] {0, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5}) {
+      for (double upd : new double[] {0 /*, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5*/}) {
         UpdateRate = upd;
         prepareTimeSeriesData();
-        insertUpdateDataFromTXT();
+        //        insertUpdateDataFromTXT();
       }
     } catch (IoTDBConnectionException | StatementExecutionException | IOException e) {
       e.printStackTrace();

@@ -1094,6 +1094,15 @@ public class IoTDBDescriptor {
 
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setDatasetType(
+            Integer.parseInt(
+                properties.getProperty(
+                    "dataset_type",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getDatasetType()))));
+
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setQUANTILE(
             Double.parseDouble(
                 properties.getProperty(

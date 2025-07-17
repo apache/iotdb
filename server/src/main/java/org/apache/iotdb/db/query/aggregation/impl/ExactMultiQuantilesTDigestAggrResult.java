@@ -32,9 +32,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TDigestForExact;
 
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -58,11 +55,10 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
   private int iteration;
   private long n;
   private TDigestForExact sketch;
-  private ObjectArrayList<TDigestForExact> preComputedSketch;
-  private LongArrayList preComputedSketchMinV, preComputedSketchMaxV;
-  private int preComputedSketchSize;
   private boolean hasFinalResult;
   long DEBUG = 0;
+  boolean precomputeIsUsed = false, usePrecomputeOrNot = true;
+  int firstIterationNum = 0;
 
   private int getBitsOfDataType() {
     switch (seriesDataType) {
@@ -122,37 +118,46 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
   }
 
   int rest_multi_quantiles, bufSize;
-  int[] rest_query_id;
-  long[] rest_query_rank1, rest_query_rank2;
-  double[][] rest_deterministic_result, rest_iterate_result;
+  int[] rest2OriginL, rest2OriginR;
+  double[][] rest_iterate_result;
   double minValL, maxValR;
   long[] CountOfLessThanValL, CountOfValL, CountOfValR;
   double[] valBuf;
   TDigestForExact[] cntWorker;
+  int rest_workers;
+  int[] rest_quantile_to_worker;
 
   @Override
   public void startIteration() {
-    if (iteration == 0) { // first iteration
+    if (iteration <= firstIterationNum) { // first iteration
       sketch = new TDigestForExact(maxMemoryByte, mergingBuffer);
       n = 0;
     } else {
-
       rest_multi_quantiles = 0;
-      rest_query_id = new int[MULTI_QUANTILES];
-      rest_query_rank1 = new long[MULTI_QUANTILES];
-      rest_query_rank2 = new long[MULTI_QUANTILES];
-      rest_deterministic_result = new double[MULTI_QUANTILES][];
       rest_iterate_result = new double[MULTI_QUANTILES][];
+      rest2OriginL = new int[MULTI_QUANTILES];
+      rest2OriginR = new int[MULTI_QUANTILES];
       for (int qid = 0; qid < MULTI_QUANTILES; qid++)
-        if (deterministic_result[qid][0] < deterministic_result[qid][1]
-            && deterministic_result[qid].length != 3) {
-          rest_query_rank1[rest_multi_quantiles] = query_rank1[qid];
-          rest_query_rank2[rest_multi_quantiles] = query_rank2[qid];
-          rest_deterministic_result[rest_multi_quantiles] = deterministic_result[qid];
-          rest_iterate_result[rest_multi_quantiles] = iterate_result[qid];
-          rest_query_id[rest_multi_quantiles] = qid;
-          rest_multi_quantiles++;
+        if (iterate_result[qid][0] < iterate_result[qid][1] && iterate_result[qid].length != 3) {
+          if (rest_multi_quantiles == 0
+              || iterate_result[qid][0] != rest_iterate_result[rest_multi_quantiles - 1][0]
+              || iterate_result[qid][1] != rest_iterate_result[rest_multi_quantiles - 1][1]) {
+            rest2OriginL[rest_multi_quantiles] = qid;
+            rest2OriginR[rest_multi_quantiles] = qid;
+            rest_iterate_result[rest_multi_quantiles] = iterate_result[qid];
+            rest_multi_quantiles++;
+          } else rest2OriginR[rest_multi_quantiles - 1] = qid;
         }
+      double debug = 0;
+      for (int i = 0; i < rest_multi_quantiles; i++) debug += rest2OriginR[i] - rest2OriginL[i] + 1;
+      System.out.println(
+          "\t\t[DEBUG multi_TDigest]iter:"
+              + iteration
+              + "\trestSketches:"
+              + rest_multi_quantiles
+              + "\tsameSketchQuantilesAvg:"
+              + debug / rest_multi_quantiles);
+
       CountOfLessThanValL = new long[rest_multi_quantiles + 1];
       CountOfValL = new long[rest_multi_quantiles + 1];
       CountOfValR = new long[rest_multi_quantiles + 1];
@@ -201,14 +206,11 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
       return;
     }
 
-    if (preComputedSketch.size() > 0) {
-      mergePrecomputedWhenFinish();
-    }
-    if (iteration > 1 && bufSize > 0) processValBuf();
+    if (iteration > firstIterationNum + 1 && bufSize > 0) processValBuf();
     if (lastPass) {
       for (int i = 1; i < rest_multi_quantiles; i++)
         CountOfLessThanValL[i] += CountOfLessThanValL[i - 1];
-      System.out.println("\t[DEBUG multi_TDigest]\tLast Pass.\tlastN:\t" + lastN);
+      System.out.println("\t\t[DEBUG multi_TDigest]\tLast Pass.\tlastN:\t" + lastN);
       double sum = 0;
       for (int i = 0; i < rest_multi_quantiles; i++) {
         lastPassData[i].sort(Double::compare);
@@ -218,7 +220,8 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
         //                    + (lastPassData[i].getDouble(
         //                        (int) (rest_query_rank2[i] - CountOfLessThanValL[i]) - 1)))
         //                * 0.5;
-        deterministic_result[rest_query_id[i]][0] = deterministic_result[rest_query_id[i]][1] = ans;
+        for (int j = rest2OriginL[i]; j <= rest2OriginR[i]; j++)
+          deterministic_result[j][0] = deterministic_result[j][1] = ans;
       }
       for (int i = 0; i < MULTI_QUANTILES; i++)
         sum += (deterministic_result[i][0] + deterministic_result[i][0]) * 0.5;
@@ -226,8 +229,8 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
       hasFinalResult = true;
       return;
     }
-    if (iteration
-        == 1) { // first iteration overint[] query_rank1=new int[MULTI_QUANTILES],query_rank2=new
+    if (iteration <= firstIterationNum + 1) { // first iteration overint[] query_rank1=new
+      // int[MULTI_QUANTILES],query_rank2=new
       // int[MULTI_QUANTILES];
       //      System.out.println("\t\tfirst-pass start to get bounds.");
       //      sketch.show();
@@ -237,96 +240,92 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
         deterministic_result[qid] =
             sketch.getFilter(0, 0, 0, 0, query_rank1[qid], query_rank2[qid]);
       }
-
       lastN = 0;
+      long lastTotN = 0;
+      boolean overlap = false;
       for (int qid = 0; qid < MULTI_QUANTILES; qid++) {
-
         iterate_result[qid] = sketch.getFilter(0, 0, 0, 0, query_rank1[qid], query_rank2[qid]);
-        lastN =
-            Math.max(
-                lastN, sketch.findMaxNumberInRange(iterate_result[qid][0], iterate_result[qid][1]));
+        if (qid == 0
+            || iterate_result[qid][0] != iterate_result[qid - 1][0]
+            || iterate_result[qid][1] != iterate_result[qid - 1][1]) {
+          long nInRange =
+              sketch.findMaxNumberInRange(iterate_result[qid][0], iterate_result[qid][1]);
+          lastN = Math.max(lastN, nInRange);
+          lastTotN += lastN;
+          if (qid > 0) overlap |= iterate_result[qid][0] < iterate_result[qid - 1][1];
+        }
       }
-      //      System.out.println("\t\tfirst-pass got bounds.");
+      System.out.println(
+          "\t\t[DEBUG multi_TDigest]\titer:"
+              + iteration
+              + "\tn:"
+              + n
+              + "\tlastTotN/n:"
+              + 1.0 * lastTotN / n
+              + "\toverlap:"
+              + overlap);
+      if (firstIterationNum == 0
+          && usePrecomputeOrNot
+          && precomputeIsUsed
+          && lastTotN > n * 2
+          && overlap) {
+        firstIterationNum++;
+        usePrecomputeOrNot = false;
+        precomputeIsUsed = false;
+        return;
+      }
     } else {
       for (int i = 1; i < rest_multi_quantiles; i++)
         CountOfLessThanValL[i] += CountOfLessThanValL[i - 1];
 
-      IntArrayList toEstimateID = new IntArrayList(rest_multi_quantiles);
-      for (int i = 0; i < rest_multi_quantiles; i++) {
-        //                        if(DEBUG_PRINT)cntWorker[i].show();
-        int qid = rest_query_id[i];
-        long cntRank1 = rest_query_rank1[i] - CountOfLessThanValL[i];
-        long cntRank2 = rest_query_rank2[i] - CountOfLessThanValL[i];
-        //                    System.out.println("\t\t\t\t\t\tcntRank:"+cntRank1+" "+cntRank2);
-        if (cntRank1 <= 0
-            || cntRank2
-                > CountOfValL[i] + CountOfValR[i] + cntWorker[i].totN) { // iteration failed.
-          System.out.println(
-              "\t\t\t\t\t\titerate fail."
-                  + "\t\tcntIter:"
-                  + iteration
-                  + "\t\tcntQ:"
-                  + query_q[qid]);
-          if (cntRank1 <= 0)
-            iterate_result[qid] =
-                new double[] {rest_deterministic_result[i][0], rest_iterate_result[i][0]};
-          else
-            iterate_result[qid] =
-                new double[] {rest_iterate_result[i][1], rest_deterministic_result[i][1]};
-          deterministic_result[qid] = iterate_result[qid];
-          if (deterministic_result[qid][0] == deterministic_result[qid][1]) continue;
-          //          FailCount += 1;
-          //                        IterCount-=1;
-          continue;
-        }
-        //        if (DEBUG_PRINT)
-        //          System.out.println("\t\t\t\t\t\titerate success." + "\t\tcntN:" +
-        // cntWorker[i].getN() + "\t\tcntIter:" + MMP);
+      lastN = 0;
+      for (int i = 0; i < rest_multi_quantiles; i++)
+        for (int j = rest2OriginL[i]; j <= rest2OriginR[i]; j++) {
+          long cntRank1 = query_rank1[j] - CountOfLessThanValL[i];
+          long cntRank2 = query_rank2[j] - CountOfLessThanValL[i];
+          //                    System.out.println("\t\t\t\t\t\tcntRank:"+cntRank1+" "+cntRank2);
+          if (cntRank1 <= 0
+              || cntRank2
+                  > CountOfValL[i] + CountOfValR[i] + cntWorker[i].totN) { // iteration failed.
+            System.out.println(
+                "\t\t\t\t\t\titerate fail."
+                    + "\t\tcntIter:"
+                    + iteration
+                    + "\t\tcntQ:"
+                    + query_q[j]);
+            if (cntRank1 <= 0)
+              iterate_result[j] =
+                  new double[] {deterministic_result[j][0], rest_iterate_result[i][0]};
+            else
+              iterate_result[j] =
+                  new double[] {rest_iterate_result[i][1], deterministic_result[j][1]};
+            deterministic_result[j] = iterate_result[j];
+            if (deterministic_result[j][0] == deterministic_result[j][1]) continue;
+          }
+          //        if (DEBUG_PRINT)
+          //          System.out.println("\t\t\t\t\t\titerate success." + "\t\tcntN:" +
+          // cntWorker[i].getN() + "\t\tcntIter:" + MMP);
 
-        deterministic_result[qid] =
-            cntWorker[i].getFilter(
-                CountOfValL[i],
-                CountOfValR[i],
-                iterate_result[i][0],
-                iterate_result[i][1],
-                cntRank1,
-                cntRank2);
-        if (deterministic_result[qid].length == 3
-            || deterministic_result[qid][0] == deterministic_result[qid][1]) {
-          iterate_result[qid] = deterministic_result[qid];
-          continue;
-        }
-        toEstimateID.add(i);
-      }
-      if (toEstimateID.size() > 0) {
-        int worstID = toEstimateID.getInt(0);
-        for (int i : toEstimateID) if (cntWorker[i].getN() > cntWorker[worstID].getN()) worstID = i;
-        //        System.out.println("\t\tfinish iter >=2.\tdet:"+
-        // Arrays.toString(deterministic_result[rest_query_id[worstID]]));
-        System.out.println(
-            "\t\t[DEBUG multi_TDigest]:\t iteration:"
-                + iteration
-                + "\tworstSketch_N:\t"
-                + cntWorker[worstID].getN());
-        //        cntWorker[worstID].show();
-        lastN = 0;
-        for (int i : toEstimateID) {
-          //          cntWorker[i].show();
-          int qid = rest_query_id[i];
-          iterate_result[qid] =
-              cntWorker[i].getFilter(
-                  CountOfValL[i],
-                  CountOfValR[i],
-                  iterate_result[i][0],
-                  iterate_result[i][1],
-                  rest_query_rank1[i] - CountOfLessThanValL[i],
-                  rest_query_rank2[i] - CountOfLessThanValL[i]);
+          iterate_result[j] =
+              deterministic_result[j] =
+                  cntWorker[i].getFilter(
+                      CountOfValL[i],
+                      CountOfValR[i],
+                      rest_iterate_result[i][0],
+                      rest_iterate_result[i][1],
+                      cntRank1,
+                      cntRank2);
+          if (deterministic_result[j].length == 3
+              || deterministic_result[j][0] == deterministic_result[j][1]) {
+            iterate_result[j] = deterministic_result[j];
+            continue;
+          }
+
           lastN =
               Math.max(
                   lastN,
-                  cntWorker[i].findMaxNumberInRange(iterate_result[i][0], iterate_result[i][1]));
+                  cntWorker[i].findMaxNumberInRange(iterate_result[j][0], iterate_result[j][1]));
         }
-      }
     }
     boolean calc_finished = true;
     for (int qid = 0; qid < MULTI_QUANTILES; qid++)
@@ -357,21 +356,10 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
     return hasCandidateResult() ? getDoubleValue() : null;
   }
 
-  public void addSketch(TDigestForExact sketch, double minV, double maxV) {
-    //    sketch.show();
-    n += sketch.getN();
-  }
-
-  private void mergePrecomputedWhenFinish() {
-    //    TDigestForExact tmpSketch = heapKLL;
-    //    heapKLL = new TDigestForExact(maxMemoryByte);
-    //    heapKLL.mergeWithTempSpace(tmpSketch, tmpSketch.getMin(), tmpSketch.getMax());
-    //    sketch.mergeWithTempSpace(preComputedSketch, preComputedSketchMinV,
-    // preComputedSketchMaxV);
-    preComputedSketch.clear();
-    preComputedSketchMinV.clear();
-    preComputedSketchMaxV.clear();
-    preComputedSketchSize = 0;
+  public void addSketch(TDigestForExact pageSketch) {
+    precomputeIsUsed = true;
+    n += pageSketch.totN;
+    sketch.merge(pageSketch);
   }
 
   @Override
@@ -392,14 +380,12 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
     if (iteration == 0) {
       if (statistics.getType() == DOUBLE) {
         DoubleStatistics stat = (DoubleStatistics) statistics;
-        if (stat.getSummaryNum() > 0) {
-          //          for (TDigestForExact sketch : stat.getKllSketchList()) {
-          //            ((LongKLLSketch) sketch).deserializeFromBuffer();
-          //            addSketch(
-          //                sketch, stat.getMinValue(),stat.getMaxValue());
-          //          }
+        if (DoubleStatistics.SUMMARY_TYPE == Statistics.SummaryTypes.TD
+            && stat.getSummaryNum() > 0
+            && usePrecomputeOrNot) {
+          for (TDigestForExact pageSketch : stat.getTDigestList()) addSketch(pageSketch);
           return;
-        } // else System.out.println("\t\t\t\t!!!!!![ERROR!] no KLL in stat!");
+        }
       }
     }
     double minVal = (double) (statistics.getMinValue());
@@ -419,7 +405,7 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
       return;
     }
     if (minVal == maxVal) { // min == max
-      if (iteration == 0)
+      if (iteration <= firstIterationNum)
         for (int i = 0; i < statistics.getCount(); i++) updateStatusFromDataFirstIter(minVal);
       else for (int i = 0; i < statistics.getCount(); i++) updateStatusFromDataLaterIter(minVal);
       return;
@@ -434,7 +420,7 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
   @Override
   public void updateResultFromPageData(
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
-    if (iteration == 0)
+    if (iteration <= firstIterationNum)
       while (batchIterator.hasNext()) {
         if (batchIterator.currentTime() >= maxBound || batchIterator.currentTime() < minBound) {
           break;
@@ -459,7 +445,7 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
   public void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
     Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
-    if (iteration == 0)
+    if (iteration <= firstIterationNum)
       for (int i = 0; i < length; i++) {
         if (values[i] != null) {
           updateStatusFromDataFirstIter(values[i]);
@@ -475,7 +461,7 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
 
   @Override
   public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
-    if (iteration == 0)
+    if (iteration <= firstIterationNum)
       while (valueIterator.hasNext()) {
         updateStatusFromDataFirstIter(valueIterator.next());
       }
@@ -527,17 +513,14 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
     n = 0;
     iteration = 0;
     hasFinalResult = false;
-    preComputedSketch = new ObjectArrayList<>();
-    preComputedSketchMinV = new LongArrayList();
-    preComputedSketchMaxV = new LongArrayList();
-    preComputedSketchSize = 0;
   }
 
   @Override
   public boolean canUpdateFromStatistics(Statistics statistics) {
     if ((seriesDataType == DOUBLE) && iteration == 0) {
       DoubleStatistics doubleStats = (DoubleStatistics) statistics;
-      if (doubleStats.getSummaryNum() > 0) return true;
+      if (DoubleStatistics.SUMMARY_TYPE == Statistics.SummaryTypes.TD
+          && doubleStats.getSummaryNum() > 0) return true;
     }
     if (iteration > 0) {
       double minVal = (double) (statistics.getMinValue());
@@ -555,7 +538,7 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean useStatisticsIfPossible() {
+  public boolean useOverlappedStatisticsIfPossible() {
     return false;
   }
 
@@ -565,6 +548,8 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
       String mem = attrs.get("memory");
       if (mem.contains("KB"))
         this.maxMemoryByte = Integer.parseInt(mem.substring(0, mem.length() - 2)) * 1024;
+      else if (mem.contains("MB"))
+        this.maxMemoryByte = Integer.parseInt(mem.substring(0, mem.length() - 2)) * 1024 * 1024;
       else if (mem.contains("B"))
         this.maxMemoryByte = Integer.parseInt(mem.substring(0, mem.length() - 1));
     }
@@ -594,6 +579,7 @@ public class ExactMultiQuantilesTDigestAggrResult extends AggregateResult {
     query_q = new double[MULTI_QUANTILES];
     final double query_delta_q = 1.0 / (MULTI_QUANTILES + 1);
     for (int i = 0; i < MULTI_QUANTILES; i++) query_q[i] = query_delta_q * (i + 1);
+    ; // 1e-4*i
     query_rank1 = new long[MULTI_QUANTILES];
     query_rank2 = new long[MULTI_QUANTILES];
     deterministic_result = new double[MULTI_QUANTILES][];
