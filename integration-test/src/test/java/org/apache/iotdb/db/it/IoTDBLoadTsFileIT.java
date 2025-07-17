@@ -891,7 +891,6 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
-  @Ignore("Load with conversion is currently banned")
   public void testLoadWithEmptyDatabaseForTableModel() throws Exception {
     final int lineCount = 10000;
 
@@ -946,6 +945,7 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  @Ignore("Load with conversion is currently banned")
   public void testLoadWithConvertOnTypeMismatchForTableModel() throws Exception {
     final int lineCount = 10000;
 
