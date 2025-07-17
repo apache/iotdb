@@ -49,6 +49,8 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
       final TsFileResource tsFileResource,
       final boolean shouldReportProgress) {
     super(
+        anyOfOriginalEvents.isTableModelEvent(),
+        anyOfOriginalEvents.getTreeModelDatabaseName(),
         tsFileResource,
         null,
         bindIsWithMod(originalEvents),
@@ -57,7 +59,10 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         committerKey.getPipeName(),
         committerKey.getCreationTime(),
         anyOfOriginalEvents.getPipeTaskMeta(),
-        anyOfOriginalEvents.getPipePattern(),
+        anyOfOriginalEvents.getTreePattern(),
+        anyOfOriginalEvents.getTablePattern(),
+        anyOfOriginalEvents.getUserName(),
+        anyOfOriginalEvents.isSkipIfNoPrivileges(),
         anyOfOriginalEvents.getStartTime(),
         anyOfOriginalEvents.getEndTime());
 
@@ -193,6 +198,9 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
           PipeCompactedTsFileInsertionEvent.this.creationTime,
           PipeCompactedTsFileInsertionEvent.this.pipeTaskMeta,
           null, // PipePattern is not needed for dummy event
+          null,
+          null,
+          true,
           Long.MIN_VALUE,
           Long.MAX_VALUE);
       this.commitId = commitId; // Use the commitId passed in
