@@ -115,8 +115,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   }
 
   public void checkClientStatusAndTryReconstructIfNecessary() {
-    if (System.currentTimeMillis() - lastCheckClientStatusTimestamp < 5 * 60 * 1000) {
-      lastCheckClientStatusTimestamp = System.currentTimeMillis();
+    if (System.currentTimeMillis() - lastCheckClientStatusTimestamp
+        < PipeConfig.getInstance().getPipeCheckAllSyncClientLiveTimeIntervalMs()) {
       // Check whether any clients are available, if any client is available, return directly
       for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus :
           endPoint2ClientAndStatus.values()) {
