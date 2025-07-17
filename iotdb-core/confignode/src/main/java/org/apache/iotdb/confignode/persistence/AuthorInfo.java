@@ -977,6 +977,9 @@ public class AuthorInfo implements SnapshotProcessor {
       String policyExpression = req.getPolicyExpression();
       String scope = req.getScope();
 
+      // 修复策略表达式的格式问题
+      policyExpression = fixPolicyExpressionSpacing(policyExpression);
+
       // Check if scope contains both READ and WRITE regardless of order
       boolean isReadWrite =
           "READ_WRITE".equals(scope)
@@ -1056,6 +1059,39 @@ public class AuthorInfo implements SnapshotProcessor {
       return RpcUtils.getStatus(
           TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getMessage());
     }
+  }
+
+  /** Fix spacing issues in policy expression Support single quotes only */
+  private String fixPolicyExpressionSpacing(String rawExpression) {
+    if (rawExpression == null || rawExpression.trim().isEmpty()) {
+      return rawExpression;
+    }
+
+    String fixed =
+        rawExpression
+            // Fix 'and' operator spacing - support single quotes only
+            .replaceAll(
+                "([a-zA-Z][a-zA-Z0-9_]*\\s*=\\s*'[^']*')(and)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)(and)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            .replaceAll(
+                "([a-zA-Z][a-zA-Z0-9_]*\\s*=\\s*'[^']*')(AND)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)(AND)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            // Fix 'or' operator spacing
+            .replaceAll(
+                "([a-zA-Z][a-zA-Z0-9_]*\\s*=\\s*'[^']*')(or)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)(or)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            .replaceAll(
+                "([a-zA-Z][a-zA-Z0-9_]*\\s*=\\s*'[^']*')(OR)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)(OR)([a-zA-Z][a-zA-Z0-9_]*)", "$1 $2 $3")
+            // Fix comparison operator spacing - support single quotes only
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)\\s*=\\s*('[^']*'|\\d+)", "$1 = $2")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)\\s*!=\\s*('[^']*'|\\d+)", "$1 != $2")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)\\s*>\\s*('[^']*'|\\d+)", "$1 > $2")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)\\s*<\\s*('[^']*'|\\d+)", "$1 < $2")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)\\s*>=\\s*('[^']*'|\\d+)", "$1 >= $2")
+            .replaceAll("([a-zA-Z][a-zA-Z0-9_]*)\\s*<=\\s*('[^']*'|\\d+)", "$1 <= $2");
+
+    return fixed;
   }
 
   public TSStatus dropUserLabelPolicy(TDropUserLabelPolicyReq req) {

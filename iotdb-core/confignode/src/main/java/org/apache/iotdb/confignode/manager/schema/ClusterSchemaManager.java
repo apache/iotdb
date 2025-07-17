@@ -204,8 +204,8 @@ public class ClusterSchemaManager {
               if (!securityLabelMap.isEmpty()) {
                 securityLabel =
                     securityLabelMap.entrySet().stream()
-                        .map(labelEntry -> labelEntry.getKey() + ":" + labelEntry.getValue())
-                        .collect(Collectors.joining(","));
+                        .map(labelEntry -> labelEntry.getKey() + " = " + labelEntry.getValue())
+                        .collect(Collectors.joining(" , "));
               }
             }
 

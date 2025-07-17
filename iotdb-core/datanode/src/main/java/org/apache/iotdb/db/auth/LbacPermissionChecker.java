@@ -36,6 +36,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Core LBAC (Label-Based Access Control) permission checker. This class integrates operation
@@ -277,15 +279,16 @@ public class LbacPermissionChecker {
       boolean policyMatches = LabelPolicyEvaluator.evaluate(userLabelPolicy, databaseLabel);
 
       if (policyMatches) {
-        LOGGER.debug("Label policy matches for device path: {}", devicePath);
+        LOGGER.debug("Label policy matches for database security label: {}", devicePath);
         return LbacCheckResult.allow();
       } else {
-        LOGGER.debug("Label policy does not match for device path: {}", devicePath);
+        LOGGER.debug("Label policy does not match for database security label: {}", devicePath);
         return LbacCheckResult.deny(
-            String.format("Label policy does not match for device path: %s", devicePath));
+            String.format(
+                "Label policy does not match for database security label: %s", devicePath));
       }
     } catch (Exception e) {
-      LOGGER.error("Error evaluating policy for device path: {}", devicePath, e);
+      LOGGER.error("Error evaluating policy for database security label: {}", devicePath, e);
       return LbacCheckResult.deny("Error evaluating label policy: " + e.getMessage());
     }
   }
@@ -600,9 +603,9 @@ public class LbacPermissionChecker {
   }
 
   /**
-   * Filter database info map based on LBAC permissions for the current user. Only show databases
-   * that the user has permission to access. If user has policy but database has no label, deny
-   * access to that database.
+   * Filter database info map based on LBAC permissions for the current user Only show databases
+   * that the user has permission to access If user has policy but database has no label, deny
+   * access to that database
    *
    * @param databaseInfoMap Original database info map
    * @param currentUser Current user name
@@ -611,7 +614,9 @@ public class LbacPermissionChecker {
   public static Map<String, TDatabaseInfo> filterDatabaseInfoMapByLbac(
       Map<String, TDatabaseInfo> databaseInfoMap, String currentUser) {
 
-    LOGGER.warn("=== LBAC DATABASE FILTER START === User: {}", currentUser);
+    LOGGER.warn("=== LBAC DATABASE FILTER START ===");
+    LOGGER.warn("Filtering databases for user: {}", currentUser);
+    LOGGER.warn("Original database count: {}", databaseInfoMap.size());
 
     if (currentUser == null) {
       LOGGER.warn("Current user is null, denying access to all databases");
@@ -620,7 +625,7 @@ public class LbacPermissionChecker {
 
     // If user is super user, return all databases
     if (AuthorityChecker.SUPER_USER.equals(currentUser)) {
-      LOGGER.debug("User {} is super user, showing all databases", currentUser);
+      LOGGER.warn("User {} is super user, showing all databases", currentUser);
       return databaseInfoMap;
     }
 
@@ -632,30 +637,41 @@ public class LbacPermissionChecker {
     }
 
     Map<String, TDatabaseInfo> filteredMap = new HashMap<>();
+    int allowedCount = 0;
+    int deniedCount = 0;
 
     for (Map.Entry<String, TDatabaseInfo> entry : databaseInfoMap.entrySet()) {
       String databaseName = entry.getKey();
       TDatabaseInfo databaseInfo = entry.getValue();
 
+      LOGGER.warn("Checking database: {}", databaseName);
+
       // Check LBAC permission for this specific database
       if (checkDatabaseLbacPermission(user, databaseName, databaseInfo)) {
         filteredMap.put(databaseName, databaseInfo);
-        LOGGER.debug("User {} has LBAC permission for database: {}", currentUser, databaseName);
+        allowedCount++;
+        LOGGER.warn("Database {} ALLOWED by LBAC", databaseName);
       } else {
-        LOGGER.debug("User {} denied LBAC access to database: {}", currentUser, databaseName);
+        deniedCount++;
+        LOGGER.warn("Database {} DENIED by LBAC", databaseName);
       }
     }
 
     LOGGER.warn(
-        "=== LBAC DATABASE FILTER COMPLETE === Filtered {} databases for user: {}",
-        filteredMap.size(),
-        currentUser);
+        "LBAC filtering complete - Allowed: {}, Denied: {}, Final database count: {}",
+        allowedCount,
+        deniedCount,
+        filteredMap.size());
+    LOGGER.warn("=== LBAC DATABASE FILTER END ===");
+
     return filteredMap;
   }
 
   /**
-   * Check LBAC permission for a specific database. If user has policy but database has no label,
-   * deny access.
+   * Check LBAC permission for a specific database Implements the new strategy logic: 1. No
+   * read/write policies + No labels: Allow access (no LBAC triggered) 2. No read/write policies +
+   * Has labels: Allow access (no LBAC triggered) 3. Has any policy + No labels: Deny access (LBAC
+   * triggered) 4. Has any policy + Has labels: Evaluate specific policy based on operation type
    *
    * @param user User object
    * @param databaseName Database name to check
@@ -665,69 +681,80 @@ public class LbacPermissionChecker {
   private static boolean checkDatabaseLbacPermission(
       User user, String databaseName, TDatabaseInfo databaseInfo) {
     try {
+      LOGGER.warn("=== CHECKING DATABASE LBAC PERMISSION ===");
+      LOGGER.warn("Database: {}", databaseName);
+      LOGGER.warn("User: {}", user.getName());
+
       // Get database security labels
       Map<String, String> securityLabels = databaseInfo.getSecurityLabel();
-
-      // Check if user has any label policies
-      boolean userHasPolicies = userHasLabelPolicies(user);
-
-      // Check if database has security labels
       boolean databaseHasLabels = (securityLabels != null && !securityLabels.isEmpty());
-
-      LOGGER.debug(
-          "Database: {}, User has policies: {}, Database has labels: {}",
-          databaseName,
-          userHasPolicies,
-          databaseHasLabels);
-
-      // If user has policies but database has no labels, deny access
-      if (userHasPolicies && !databaseHasLabels) {
-        LOGGER.debug(
-            "User has label policies but database {} has no security labels, denying access",
-            databaseName);
-        return false;
+      LOGGER.warn("Database has labels: {}", databaseHasLabels);
+      if (databaseHasLabels) {
+        LOGGER.warn("Database labels: {}", securityLabels);
       }
 
-      // If database has no labels and user has no policies, allow access
-      if (!databaseHasLabels && !userHasPolicies) {
-        LOGGER.debug(
-            "Neither user nor database has labels/policies, allowing access to database {}",
-            databaseName);
+      // Get user's read and write policies
+      String readPolicy = getUserLabelPolicy(user, LbacOperationClassifier.OperationType.READ);
+      String writePolicy = getUserLabelPolicy(user, LbacOperationClassifier.OperationType.WRITE);
+
+      boolean hasReadPolicy = (readPolicy != null && !readPolicy.trim().isEmpty());
+      boolean hasWritePolicy = (writePolicy != null && !writePolicy.trim().isEmpty());
+      boolean hasAnyPolicy = hasReadPolicy || hasWritePolicy;
+
+      LOGGER.warn("User has read policy: {} ({})", hasReadPolicy, readPolicy);
+      LOGGER.warn("User has write policy: {} ({})", hasWritePolicy, writePolicy);
+      LOGGER.warn("User has any policy: {}", hasAnyPolicy);
+
+      // Rule 1 & 2: No read/write policies (both read and write policies are empty)
+      if (!hasAnyPolicy) {
+        LOGGER.warn("User has no policies, allowing access regardless of database labels");
         return true;
       }
 
-      // If database has no labels but user has policies, deny access
-      if (!databaseHasLabels && userHasPolicies) {
-        LOGGER.debug(
-            "User has policies but database {} has no labels, denying access", databaseName);
+      // Rule 3: Has any policy + No labels
+      if (hasAnyPolicy && !databaseHasLabels) {
+        LOGGER.warn("User has policies but database has no labels, denying access");
         return false;
       }
 
-      // Both user has policies and database has labels - check policy matching
-      LOGGER.debug(
-          "Both user has policies and database has labels, checking policy matching for database {}",
-          databaseName);
+      // Rule 4: Has any policy + Has labels
+      if (hasAnyPolicy && databaseHasLabels) {
+        LOGGER.warn("User has policies and database has labels, evaluating policy");
 
-      // Create device path list for LBAC check
-      List<String> devicePaths = new ArrayList<>();
-      devicePaths.add(databaseName);
+        // For SHOW DATABASES operation (READ operation)
+        if (hasReadPolicy) {
+          // Has read policy - Read operation → Trigger LBAC, perform read policy
+          // evaluation
+          LOGGER.warn("Checking read policy for database with labels");
 
-      // Use LbacPermissionChecker to check LBAC permission
-      // Note: We need to create a dummy statement for the check
-      // This is a simplified check for database listing
-      LbacCheckResult result = checkLbacPermissionForDatabase(user, devicePaths);
-      boolean hasPermission = result.isAllowed();
+          // Convert database labels to SecurityLabel object
+          SecurityLabel databaseLabel = new SecurityLabel();
+          for (Map.Entry<String, String> entry : securityLabels.entrySet()) {
+            databaseLabel.setLabel(entry.getKey(), entry.getValue());
+          }
 
-      if (hasPermission) {
-        LOGGER.debug("LBAC permission check passed for database {}", databaseName);
-      } else {
-        LOGGER.debug(
-            "LBAC permission check failed for database {}: {}", databaseName, result.getReason());
+          LbacCheckResult readResult = evaluatePolicy(readPolicy, databaseLabel, databaseName);
+          boolean hasPermission = readResult.isAllowed();
+
+          LOGGER.warn("Read policy check result: {} ({})", hasPermission, readResult.getReason());
+          return hasPermission;
+        } else if (hasWritePolicy) {
+          // Only has write policy - Read operation → Do not trigger LBAC, allow access
+          LOGGER.warn("User has write policy but no read policy, allowing read access");
+          return true;
+        }
+        // Has both read and write policies - Read operation → Trigger LBAC, perform
+        // read policy evaluation
+        // (already handled above)
       }
 
-      return hasPermission;
+      // Default case: allow access
+      LOGGER.warn("Default case: allowing access");
+      return true;
+
     } catch (Exception e) {
-      LOGGER.warn("LBAC permission check failed for database {}: {}", databaseName, e.getMessage());
+      LOGGER.error(
+          "Error checking database LBAC permission for {}: {}", databaseName, e.getMessage(), e);
       return false; // Deny access on error
     }
   }
@@ -813,9 +840,9 @@ public class LbacPermissionChecker {
   }
 
   /**
-   * Filter security label map based on LBAC permissions for the current user. Only include
-   * databases that the user has permission to access. If user has policy but database has no label,
-   * deny access to that database.
+   * Filter security label map based on LBAC permissions for the current user Only include databases
+   * that the current user has permission to access If user has policy but database has no label,
+   * deny access to that database
    *
    * @param securityLabelMap Original security label map (databaseName -> label string)
    * @param currentUser Current user name
@@ -933,10 +960,14 @@ public class LbacPermissionChecker {
   }
 
   /**
-   * Check LBAC permission for a single device path with policy maps
+   * Check LBAC permission for a single device path with policy maps Implements the new strategy
+   * logic: 1. No read/write policies + No labels: Allow access (no LBAC triggered) 2. No read/write
+   * policies + Has labels: Allow access (no LBAC triggered) 3. Has any policy + No labels: Deny
+   * access (LBAC triggered) 4. Has any policy + Has labels: Evaluate specific policy based on
+   * operation type
    *
    * @param devicePath the device path to check
-   * @param databaseLabel the database security label
+   * @param databaseLabel the database security label string
    * @param userReadPolicies user's read policies
    * @param userWritePolicies user's write policies
    * @param operationType the operation type
@@ -956,55 +987,189 @@ public class LbacPermissionChecker {
           databaseLabel,
           operationType);
 
-      // Get database security label for this device path
-      SecurityLabel securityLabel = DatabaseLabelFetcher.getSecurityLabelForPath(devicePath);
+      // Extract database path from device path
+      String databasePath = extractDatabasePathFromDevicePath(devicePath);
+
+      // Parse database security label from string
+      SecurityLabel securityLabel = parseSecurityLabelFromString(databaseLabel);
       boolean databaseHasLabels = (securityLabel != null);
 
       // Determine which policy to use based on operation type
-      String userLabelPolicy = null;
-      if (operationType == LbacOperationClassifier.OperationType.READ) {
-        userLabelPolicy = userReadPolicies.get("read");
-      } else if (operationType == LbacOperationClassifier.OperationType.WRITE) {
-        userLabelPolicy = userWritePolicies.get("write");
-      }
+      String userReadPolicy = userReadPolicies.get("read");
+      String userWritePolicy = userWritePolicies.get("write");
 
-      boolean userHasPolicy = (userLabelPolicy != null && !userLabelPolicy.trim().isEmpty());
+      boolean hasReadPolicy = (userReadPolicy != null && !userReadPolicy.trim().isEmpty());
+      boolean hasWritePolicy = (userWritePolicy != null && !userWritePolicy.trim().isEmpty());
+      boolean hasAnyPolicy = hasReadPolicy || hasWritePolicy;
 
       LOGGER.debug(
-          "Database has labels: {}, User has policy: {}, Operation: {}",
+          "Database has labels: {}, User has read policy: {}, User has write policy: {}, Operation: {}",
           databaseHasLabels,
-          userHasPolicy,
+          hasReadPolicy,
+          hasWritePolicy,
           operationType);
 
       // Rule 1 & 2: No policies + No labels OR No policies + Has labels
-      if (!userHasPolicy) {
+      if (!hasAnyPolicy) {
         LOGGER.debug("User has no policies, allowing access regardless of database labels");
         return LbacCheckResult.allow();
       }
 
       // Rule 3: Has any policy + No labels
-      if (userHasPolicy && !databaseHasLabels) {
+      if (hasAnyPolicy && !databaseHasLabels) {
         LOGGER.debug("User has policies but database has no labels, denying access");
         return LbacCheckResult.deny(
             "Database has no security label but user has label policy restrictions");
       }
 
       // Rule 4: Has any policy + Has labels
-      if (userHasPolicy && databaseHasLabels) {
+      if (hasAnyPolicy && databaseHasLabels) {
         LOGGER.debug("User has policies and database has labels, evaluating policy");
-        return evaluatePolicy(userLabelPolicy, securityLabel, devicePath);
+
+        // Handle different operation types
+        if (operationType == LbacOperationClassifier.OperationType.READ) {
+          // Read operation
+          if (hasReadPolicy) {
+            // Has read policy - trigger LBAC, perform read policy evaluation
+            LOGGER.debug("Checking read policy for read operation");
+            return evaluatePolicy(userReadPolicy, securityLabel, devicePath);
+          } else {
+            // No read policy - don't trigger LBAC, allow access
+            LOGGER.debug("User has no read policy, allowing read access");
+            return LbacCheckResult.allow();
+          }
+        } else if (operationType == LbacOperationClassifier.OperationType.WRITE) {
+          // Write operation
+          if (hasWritePolicy) {
+            // Has write policy - trigger LBAC, perform write policy evaluation
+            LOGGER.debug("Checking write policy for write operation");
+            return evaluatePolicy(userWritePolicy, securityLabel, devicePath);
+          } else {
+            // No write policy - don't trigger LBAC, allow access
+            LOGGER.debug("User has no write policy, allowing write access");
+            return LbacCheckResult.allow();
+          }
+        } else if (operationType == LbacOperationClassifier.OperationType.BOTH) {
+          // Both read and write operations (like SELECT INTO)
+          LOGGER.debug("Checking both read and write policies for BOTH operation");
+
+          // Check read policy if user has read policy
+          if (hasReadPolicy) {
+            LbacCheckResult readResult = evaluatePolicy(userReadPolicy, securityLabel, devicePath);
+            if (!readResult.isAllowed()) {
+              LOGGER.debug(
+                  "Read policy check failed for BOTH operation: {}", readResult.getReason());
+              return readResult;
+            }
+          }
+
+          // Check write policy if user has write policy
+          if (hasWritePolicy) {
+            LbacCheckResult writeResult =
+                evaluatePolicy(userWritePolicy, securityLabel, devicePath);
+            if (!writeResult.isAllowed()) {
+              LOGGER.debug(
+                  "Write policy check failed for BOTH operation: {}", writeResult.getReason());
+              return writeResult;
+            }
+          }
+
+          // Both checks passed
+          LOGGER.debug("Both read and write policy checks passed for BOTH operation");
+          return LbacCheckResult.allow();
+        }
       }
 
       // Default case: allow access
       LOGGER.debug("Default case: allowing access");
       return LbacCheckResult.allow();
 
-    } catch (MetadataException e) {
-      LOGGER.error("Metadata error checking device path: {}", devicePath, e);
-      return LbacCheckResult.deny("Error accessing database metadata: " + e.getMessage());
     } catch (Exception e) {
       LOGGER.error("Unexpected error checking device path: {}", devicePath, e);
       return LbacCheckResult.deny("Unexpected error during LBAC check: " + e.getMessage());
+    }
+  }
+
+  /**
+   * Extract database path from device path
+   *
+   * @param devicePath the device path (e.g., "root.db1.device1.sensor1")
+   * @return database path (e.g., "root.db1")
+   */
+  private static String extractDatabasePathFromDevicePath(String devicePath) {
+    if (devicePath == null || devicePath.trim().isEmpty()) {
+      return null;
+    }
+
+    try {
+      // Parse device path to extract database
+      // IoTDB path format: root.database.device.measurement...
+      String[] pathParts = devicePath.split("\\.");
+
+      if (pathParts.length < 2 || !pathParts[0].equals("root")) {
+        LOGGER.debug("Invalid path format for database extraction: {}", devicePath);
+        return null;
+      }
+
+      // Assume database is the second level after root
+      // e.g., root.db1.device1.sensor1 -> root.db1
+      if (pathParts.length >= 2) {
+        String databasePath = pathParts[0] + "." + pathParts[1];
+        LOGGER.debug("Extracted database path: {} from device path: {}", databasePath, devicePath);
+        return databasePath;
+      }
+
+      LOGGER.debug("No database found for path: {}", devicePath);
+      return null;
+    } catch (Exception e) {
+      LOGGER.error("Error extracting database path from device path: {}", devicePath, e);
+      return null;
+    }
+  }
+
+  /**
+   * Parse security label from string format using regex Support single quotes only Handles various
+   * formats like: - "env = 'prod' , level = 3" - "env='prod',level=3"
+   *
+   * @param labelString the security label string
+   * @return SecurityLabel object or null if parsing fails
+   */
+  private static SecurityLabel parseSecurityLabelFromString(String labelString) {
+    if (labelString == null || labelString.trim().isEmpty()) {
+      return null;
+    }
+
+    try {
+      SecurityLabel securityLabel = new SecurityLabel();
+
+      // Regex pattern to match key-value pairs with flexible spacing
+      // Support single quotes only
+      Pattern pattern =
+          Pattern.compile(
+              "\\s*([a-zA-Z][a-zA-Z0-9_]*)\\s*=\\s*('?[^',]*'?)\\s*(?:,|$)",
+              Pattern.CASE_INSENSITIVE);
+
+      Matcher matcher = pattern.matcher(labelString);
+
+      while (matcher.find()) {
+        String key = matcher.group(1).trim();
+        String value = matcher.group(2).trim();
+
+        // Remove single quotes if present
+        if (value.startsWith("'") && value.endsWith("'")) {
+          value = value.substring(1, value.length() - 1);
+        }
+
+        if (!key.isEmpty() && !value.isEmpty()) {
+          securityLabel.setLabel(key, value);
+          LOGGER.debug("Parsed label: {} = {}", key, value);
+        }
+      }
+
+      return securityLabel;
+    } catch (Exception e) {
+      LOGGER.error("Error parsing security label from string: {}", labelString, e);
+      return null;
     }
   }
 }

@@ -134,11 +134,11 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
         Map<String, String> securityLabelMap = databaseInfo.getSecurityLabel();
         String securityLabel = "";
         if (securityLabelMap != null && !securityLabelMap.isEmpty()) {
-          // Convert map to string representation
+          // Convert map to string representation with proper formatting
           securityLabel =
               securityLabelMap.entrySet().stream()
-                  .map(labelEntry -> labelEntry.getKey() + ":" + labelEntry.getValue())
-                  .collect(Collectors.joining(","));
+                  .map(labelEntry -> labelEntry.getKey() + " = " + labelEntry.getValue())
+                  .collect(Collectors.joining(" , "));
         }
         builder
             .getColumnBuilder(1)

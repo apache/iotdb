@@ -38,15 +38,15 @@ public class LabelPolicyEvaluator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LabelPolicyEvaluator.class);
 
-  // Regex patterns for parsing policy expressions
+  // Regex patterns for parsing policy expressions - support single quotes only
   private static final Pattern TOKEN_PATTERN =
       Pattern.compile(
-          "\\s*(\\(|\\)|AND|OR|[a-zA-Z][a-zA-Z0-9_]*\\s*(?:=|!=|>|<|>=|<=)\\s*(?:\"[^\"]*\"|\\d+))\\s*",
+          "\\s*(\\(|\\)|AND|OR|[a-zA-Z][a-zA-Z0-9_]*\\s*(?:=|!=|>|<|>=|<=)\\s*(?:'[^']*'|\\d+))\\s*",
           Pattern.CASE_INSENSITIVE);
 
   private static final Pattern CONDITION_PATTERN =
       Pattern.compile(
-          "([a-zA-Z][a-zA-Z0-9_]*)\\s*(=|!=|>|<|>=|<=)\\s*(\"[^\"]*\"|\\d+)",
+          "([a-zA-Z][a-zA-Z0-9_]*)\\s*(=|!=|>|<|>=|<=)\\s*('[^']*'|\\d+)",
           Pattern.CASE_INSENSITIVE);
 
   /** Enum for expression tokens */
@@ -248,12 +248,12 @@ public class LabelPolicyEvaluator {
       return false;
     }
 
-    // Parse the expected value
+    // Parse the expected value - support single quotes only
     String expectedValue;
     boolean isNumeric = false;
 
-    if (valueStr.startsWith("\"") && valueStr.endsWith("\"")) {
-      // String value
+    if (valueStr.startsWith("'") && valueStr.endsWith("'")) {
+      // String value (single quotes only)
       expectedValue = valueStr.substring(1, valueStr.length() - 1);
     } else {
       // Numeric value
