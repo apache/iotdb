@@ -164,7 +164,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   public AsyncPipeDataTransferServiceClient borrowClient(final TEndPoint endPoint)
       throws Exception {
-    if (!useLeaderCache || Objects.isNull(endPoint)) {
+    if (!useLeaderCache || Objects.isNull(endPoint) || !endPointFilter.apply(endPoint)) {
       return borrowClient();
     }
 
