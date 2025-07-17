@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
@@ -524,7 +525,7 @@ public class TsFileInsertionEventParserTest {
   }
 
   private void testPartialNullValue(final boolean isQuery)
-      throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException, IllegalPathException {
     alignedTsFile = new File("0-0-2-0.tsfile");
 
     final List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -562,6 +563,7 @@ public class TsFileInsertionEventParserTest {
             false,
             "",
             new TsFileResource(tsFile),
+            null,
             true,
             false,
             false,
