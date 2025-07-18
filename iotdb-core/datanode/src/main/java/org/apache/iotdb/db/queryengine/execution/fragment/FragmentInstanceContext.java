@@ -45,6 +45,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegio
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
@@ -235,7 +236,10 @@ public class FragmentInstanceContext extends QueryContext {
     this.sessionInfo = sessionInfo;
     this.dataRegion = dataRegion;
     this.globalTimeFilter =
-        globalTimePredicate == null ? null : globalTimePredicate.convertPredicateToTimeFilter();
+        globalTimePredicate == null
+            ? null
+            : globalTimePredicate.convertPredicateToTimeFilter(
+                sessionInfo.getZoneId(), TimestampPrecisionUtils.currPrecision);
     this.dataNodeQueryContextMap = dataNodeQueryContextMap;
     this.dataNodeQueryContext = dataNodeQueryContextMap.get(id.getQueryId());
     this.memoryReservationManager =

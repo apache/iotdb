@@ -229,7 +229,24 @@ public class TestUtils {
         expectedRetArray,
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
-        database);
+        database,
+        "+00:00");
+  }
+
+  public static void tableResultSetEqualTest(
+      String sql,
+      String timeZone,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String database) {
+    tableResultSetEqualTest(
+        sql,
+        expectedHeader,
+        expectedRetArray,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        database,
+        timeZone);
   }
 
   public static void tableResultSetEqualTest(
@@ -239,9 +256,21 @@ public class TestUtils {
       String userName,
       String password,
       String database) {
+    tableResultSetEqualTest(
+        sql, expectedHeader, expectedRetArray, userName, password, database, "+00:00");
+  }
+
+  public static void tableResultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String userName,
+      String password,
+      String database,
+      String timeZone) {
     try (Connection connection =
         EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
-      connection.setClientInfo("time_zone", "+00:00");
+      connection.setClientInfo("time_zone", timeZone);
       try (Statement statement = connection.createStatement()) {
         statement.execute("use " + database);
         try (ResultSet resultSet = statement.executeQuery(sql)) {
