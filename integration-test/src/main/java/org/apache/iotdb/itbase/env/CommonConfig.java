@@ -40,6 +40,8 @@ public interface CommonConfig {
 
   CommonConfig setEncryptKeyPath(String encryptKeyPath);
 
+  CommonConfig setEnableGrantOpt(boolean enableGrantOpt);
+
   CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
 
   CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB);
