@@ -49,5 +49,5 @@ done
 
 MAIN_CLASS=org.apache.iotdb.db.tools.validate.TsFileOverlapValidationAndRepairTool
 
-"$JAVA" "$JVM_OPTS" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+"$JAVA" $JVM_OPTS -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?
