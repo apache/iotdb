@@ -236,7 +236,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualTreeModelManualIT
     String sql =
         String.format(
             "create pipe test"
-                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='forced-log','realtime.enable'='true','history.enable'='false')"
+                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='forced-log')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='tablet')",
             receiverEnv.getIP(), receiverEnv.getPort());

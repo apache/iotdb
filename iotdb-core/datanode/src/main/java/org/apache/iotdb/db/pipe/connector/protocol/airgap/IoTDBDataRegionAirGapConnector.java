@@ -232,8 +232,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       final AirGapSocket socket,
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
-    final InsertNode insertNode =
-        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+    final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     final byte[] bytes =
         Objects.isNull(insertNode)
             ? PipeTransferTabletBinaryReqV2.toTPipeTransferBytes(

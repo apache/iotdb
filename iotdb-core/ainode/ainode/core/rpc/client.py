@@ -66,8 +66,8 @@ class ConfigNodeClient(object):
         self._MSG_RECONNECTION_FAIL = (
             "Fail to connect to any config node. Please check status of ConfigNodes"
         )
-        self._RETRY_NUM = 5
-        self._RETRY_INTERVAL_MS = 1
+        self._RETRY_NUM = 10
+        self._RETRY_INTERVAL_IN_S = 1
 
         self._try_to_connect()
 
@@ -89,17 +89,21 @@ class ConfigNodeClient(object):
         try_host_num = 0
         while try_host_num < len(self._config_nodes):
             self._cursor = (self._cursor + 1) % len(self._config_nodes)
-
             try_endpoint = self._config_nodes[self._cursor]
-            try:
-                self._connect(try_endpoint)
-                return
-            except TException:
-                logger.warning(
-                    "The current node {} may have been down, try next node",
-                    try_endpoint,
-                )
-
+            for _ in range(0, self._RETRY_NUM):
+                try:
+                    self._connect(try_endpoint)
+                    return
+                except TException:
+                    logger.warning(
+                        "The current node {} may have been down, waiting and retry...",
+                        try_endpoint,
+                    )
+                    time.sleep(self._RETRY_INTERVAL_IN_S)
+            logger.warning(
+                "The current node {} may have been down, try next node...",
+                try_endpoint,
+            )
             try_host_num = try_host_num + 1
 
         raise TException(self._MSG_RECONNECTION_FAIL)
@@ -123,7 +127,7 @@ class ConfigNodeClient(object):
 
     def _wait_and_reconnect(self) -> None:
         # wait to start the next try
-        time.sleep(self._RETRY_INTERVAL_MS)
+        time.sleep(self._RETRY_INTERVAL_IN_S)
 
         try:
             self._try_to_connect()

@@ -29,15 +29,19 @@ AINODE_CONF_FILE_NAME = "iotdb-ainode.properties"
 AINODE_CONF_GIT_FILE_NAME = "git.properties"
 AINODE_CONF_POM_FILE_NAME = "pom.properties"
 AINODE_SYSTEM_FILE_NAME = "system.properties"
+
 # inference_rpc_address
 AINODE_INFERENCE_RPC_ADDRESS = "127.0.0.1"
 AINODE_INFERENCE_RPC_PORT = 10810
+AINODE_INFERENCE_BATCH_INTERVAL_IN_MS = 15
+
 # AINode folder structure
 AINODE_MODELS_DIR = "data/ainode/models"
 AINODE_BUILTIN_MODELS_DIR = "data/ainode/models/weights"  # For built-in models, we only need to store their weights and config.
 AINODE_SYSTEM_DIR = "data/ainode/system"
-AINODE_LOG_DIR = "logs/ainode"
+AINODE_LOG_DIR = "logs"
 AINODE_THRIFT_COMPRESSION_ENABLED = False
+
 # use for node management
 AINODE_CLUSTER_NAME = "defaultCluster"
 AINODE_VERSION_INFO = "UNKNOWN"
@@ -45,6 +49,7 @@ AINODE_BUILD_INFO = "UNKNOWN"
 AINODE_ROOT_DIR = os.path.dirname(
     os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 )
+
 # connect IoTDB cluster
 AINODE_CLUSTER_INGRESS_ADDRESS = "127.0.0.1"
 AINODE_CLUSTER_INGRESS_PORT = 6667

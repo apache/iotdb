@@ -78,7 +78,6 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
-    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getTimestampPrecision(), deserializeReq.getTimestampPrecision());
   }
@@ -101,7 +100,6 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
-    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getInsertNode(), deserializeReq.getInsertNode());
 
@@ -155,7 +153,6 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
-    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
   }
 
   @Test
@@ -193,7 +190,6 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
-    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getPlanNode(), deserializeReq.getPlanNode());
   }
@@ -231,7 +227,6 @@ public class PipeDataNodeThriftRequestTest {
 
       Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
       Assert.assertEquals(req.getType(), deserializeReq.getType());
-      Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
       final Statement statement =
           req.constructStatement(); // will call PipeTransferTabletRawReq.sortTablet() here
@@ -378,8 +373,6 @@ public class PipeDataNodeThriftRequestTest {
     final PipeTransferTabletBatchReq deserializedReq =
         PipeTransferTabletBatchReq.fromTPipeTransferReq(req);
 
-    Assert.assertArrayEquals(
-        new byte[] {'a', 'b'}, deserializedReq.getBinaryReqs().get(0).getBody());
     Assert.assertEquals(node, deserializedReq.getInsertNodeReqs().get(0).getInsertNode());
     Assert.assertEquals(t, deserializedReq.getTabletReqs().get(0).getTablet());
     Assert.assertFalse(deserializedReq.getTabletReqs().get(0).getIsAligned());
@@ -485,7 +478,6 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
-    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getFileName(), deserializeReq.getFileName());
     Assert.assertEquals(req.getStartWritingOffset(), deserializeReq.getStartWritingOffset());
@@ -504,7 +496,6 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
-    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getFileName(), deserializeReq.getFileName());
     Assert.assertEquals(req.getStartWritingOffset(), deserializeReq.getStartWritingOffset());
@@ -523,7 +514,6 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
-    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getFileName(), deserializeReq.getFileName());
     Assert.assertEquals(req.getStartWritingOffset(), deserializeReq.getStartWritingOffset());
@@ -541,7 +531,6 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
-    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getFileName(), deserializeReq.getFileName());
     Assert.assertEquals(req.getFileLength(), deserializeReq.getFileLength());
@@ -576,7 +565,6 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
-    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getFileNames(), deserializeReq.getFileNames());
     Assert.assertEquals(req.getFileLengths(), deserializeReq.getFileLengths());

@@ -230,8 +230,7 @@ public class WriteBackConnector implements PipeConnector {
   private void doTransfer(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
-    final InsertNode insertNode =
-        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+    final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     final String dataBaseName =
         pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
             ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
