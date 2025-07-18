@@ -21,7 +21,6 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SecurityLabel;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
@@ -256,9 +255,6 @@ public class LbacPermissionChecker {
       LOGGER.debug("Default case: allowing access");
       return LbacCheckResult.allow();
 
-    } catch (MetadataException e) {
-      LOGGER.error("Metadata error checking device path: {}", devicePath, e);
-      return LbacCheckResult.deny("Error accessing database metadata: " + e.getMessage());
     } catch (Exception e) {
       LOGGER.error("Unexpected error checking device path: {}", devicePath, e);
       return LbacCheckResult.deny("Unexpected error during LBAC check: " + e.getMessage());
@@ -1091,35 +1087,29 @@ public class LbacPermissionChecker {
   }
 
   /**
-   * Extract database path from device path
+   * Extract database path from device path For example: "root.ln111.fsf.sfs" -> "root.ln111"
    *
-   * @param devicePath the device path (e.g., "root.db1.device1.sensor1")
-   * @return database path (e.g., "root.db1")
+   * @param devicePath the device path
+   * @return the database path, or null if cannot extract
    */
-  private static String extractDatabasePathFromDevicePath(String devicePath) {
-    if (devicePath == null || devicePath.trim().isEmpty()) {
+  public static String extractDatabasePathFromDevicePath(String devicePath) {
+    if (devicePath == null || devicePath.isEmpty()) {
       return null;
     }
 
     try {
-      // Parse device path to extract database
-      // IoTDB path format: root.database.device.measurement...
+      // Split the device path by dots
       String[] pathParts = devicePath.split("\\.");
 
-      if (pathParts.length < 2 || !pathParts[0].equals("root")) {
-        LOGGER.debug("Invalid path format for database extraction: {}", devicePath);
-        return null;
-      }
-
-      // Assume database is the second level after root
-      // e.g., root.db1.device1.sensor1 -> root.db1
+      // Database path should be at least root.database level
       if (pathParts.length >= 2) {
-        String databasePath = pathParts[0] + "." + pathParts[1];
-        LOGGER.debug("Extracted database path: {} from device path: {}", databasePath, devicePath);
-        return databasePath;
+        // Return root.database format
+        return pathParts[0] + "." + pathParts[1];
+      } else if (pathParts.length == 1) {
+        // If only root level, return as is
+        return pathParts[0];
       }
 
-      LOGGER.debug("No database found for path: {}", devicePath);
       return null;
     } catch (Exception e) {
       LOGGER.error("Error extracting database path from device path: {}", devicePath, e);

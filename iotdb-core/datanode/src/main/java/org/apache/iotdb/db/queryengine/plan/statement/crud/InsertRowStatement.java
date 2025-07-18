@@ -560,12 +560,12 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // 首先检查是否为超级用户
+    // First check if user is super user
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
 
-    // 执行传统的RBAC权限检查
+    // Perform traditional RBAC permission check
     List<PartialPath> checkedPaths = getPaths();
     TSStatus rbacStatus =
         AuthorityChecker.getTSStatus(
@@ -574,12 +574,24 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
             checkedPaths,
             PrivilegeType.WRITE_DATA);
 
-    // 如果RBAC检查失败，直接返回
+    // If RBAC check fails, return immediately
     if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return rbacStatus;
     }
 
-    // RBAC检查通过后，进行LBAC检查
-    return LbacIntegration.checkLbacAfterRbac(this, userName, checkedPaths);
+    // Perform LBAC permission check for write operation
+    try {
+      // Use LbacIntegration for LBAC check with device paths
+      TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, checkedPaths);
+      if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return lbacStatus;
+      }
+    } catch (Exception e) {
+      // Reject access when LBAC check fails with exception
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage("LBAC permission check failed: " + e.getMessage());
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }

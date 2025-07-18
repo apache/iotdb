@@ -60,12 +60,12 @@ public class InsertStatement extends Statement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // 首先检查是否为超级用户
+    // First check if user is super user
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
 
-    // 执行传统的RBAC权限检查
+    // Perform traditional RBAC permission check
     List<PartialPath> checkedPaths = getPaths();
     TSStatus rbacStatus =
         AuthorityChecker.getTSStatus(
@@ -74,24 +74,20 @@ public class InsertStatement extends Statement {
             checkedPaths,
             PrivilegeType.WRITE_DATA);
 
-    // 如果RBAC检查失败，直接返回
+    // If RBAC check fails, return immediately
     if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return rbacStatus;
     }
 
-    // 执行LBAC权限检查
+    // Perform LBAC permission check for write operation
     try {
-      // 从设备路径中提取数据库路径进行LBAC检查
-      List<PartialPath> devicePaths = new ArrayList<>();
-      if (device != null) {
-        devicePaths.add(device);
-      }
-      TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
+      // Use LbacIntegration for LBAC check with device paths
+      TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, checkedPaths);
       if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return lbacStatus;
       }
     } catch (Exception e) {
-      // LBAC检查异常时记录日志并拒绝访问
+      // Reject access when LBAC check fails with exception
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
           .setMessage("LBAC permission check failed: " + e.getMessage());
     }

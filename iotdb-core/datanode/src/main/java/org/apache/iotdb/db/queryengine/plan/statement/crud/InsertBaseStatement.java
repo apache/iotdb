@@ -217,12 +217,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
     // Perform LBAC permission check
     try {
-      // Extract device paths for LBAC write policy check
-      List<PartialPath> devicePaths = new ArrayList<>();
-      if (devicePath != null) {
-        devicePaths.add(devicePath);
-      }
-      TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
+      // Use LbacIntegration for LBAC check with device paths
+      TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, checkedPaths);
       if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return lbacStatus;
       }

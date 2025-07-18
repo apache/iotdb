@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.LbacIntegration;
+import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -88,16 +89,29 @@ public class CreateTimeSeriesStatement extends Statement {
       return rbacStatus;
     }
 
-    // Perform LBAC permission check
+    // Perform LBAC permission check for write operation using database paths
     try {
-      // Extract device path from timeseries path for LBAC write policy check
-      List<PartialPath> devicePaths = new ArrayList<>();
+      // Extract database path from timeseries path for LBAC write policy check
+      List<String> databasePaths = new ArrayList<>();
       if (path != null) {
-        // For CREATE TIMESERIES, need to get device path from measurement path
-        PartialPath devicePath = path.getDevicePath();
-        devicePaths.add(devicePath);
+        // For CREATE TIMESERIES, need to get database path from measurement path
+        String devicePath = path.getDevicePath().getFullPath();
+        String databasePath = LbacPermissionChecker.extractDatabasePathFromDevicePath(devicePath);
+        if (databasePath != null) {
+          databasePaths.add(databasePath);
+        }
       }
-      TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
+
+      // Convert database paths to device paths for LbacIntegration
+      List<PartialPath> devicePathsForLbac = new ArrayList<>();
+      for (String databasePath : databasePaths) {
+        // Create a device path from database path for LBAC check
+        // This ensures LBAC checker uses database path to find labels
+        devicePathsForLbac.add(new PartialPath(databasePath));
+      }
+
+      // Use LbacIntegration for LBAC check with database paths
+      TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, devicePathsForLbac);
       if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return lbacStatus;
       }

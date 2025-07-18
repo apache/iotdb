@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.LbacIntegration;
+import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindow;
@@ -234,12 +234,23 @@ public class QueryStatement extends AuthorityInformationStatement {
       return new TSStatus(e.getCode().getStatusCode());
     }
 
-    // Perform LBAC permission check (only for non-super users)
+    // Perform LBAC permission check for read operation using database paths
     if (!AuthorityChecker.SUPER_USER.equals(userName)) {
       try {
-        // Get all paths involved in the query for LBAC read policy check
+        // Get all database paths involved in the query for LBAC read policy check
         List<PartialPath> queryPaths = getPaths();
-        TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, queryPaths);
+        List<String> databasePaths = new ArrayList<>();
+
+        for (PartialPath queryPath : queryPaths) {
+          String devicePath = queryPath.getDevicePath().getFullPath();
+          String databasePath = LbacPermissionChecker.extractDatabasePathFromDevicePath(devicePath);
+          if (databasePath != null && !databasePaths.contains(databasePath)) {
+            databasePaths.add(databasePath);
+          }
+        }
+
+        // Use LbacPermissionChecker for centralized LBAC check
+        TSStatus lbacStatus = LbacPermissionChecker.checkLbacPermissionForStatement(this, userName);
         if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return lbacStatus;
         }

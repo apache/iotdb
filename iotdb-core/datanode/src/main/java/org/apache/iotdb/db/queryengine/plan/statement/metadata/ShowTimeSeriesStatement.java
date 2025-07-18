@@ -99,7 +99,6 @@ public class ShowTimeSeriesStatement extends ShowStatement {
    * access to that time series
    */
   public List<Object> filterTimeSeriesByLbac(List<Object> timeSeriesList, String userName) {
-
     // If user is super user, return all time series
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       LOGGER.debug("User {} is super user, showing all time series", userName);
@@ -116,23 +115,26 @@ public class ShowTimeSeriesStatement extends ShowStatement {
     List<Object> filteredList = new ArrayList<>();
 
     for (Object timeSeries : timeSeriesList) {
-      // Extract database/device path from time series
-      String devicePath = extractDevicePathFromTimeSeries(timeSeries);
+      // Extract database path from time series
+      String databasePath = extractDatabasePathFromTimeSeries(timeSeries);
 
-      if (devicePath != null) {
-        // Check LBAC permission for this specific time series
-        if (checkTimeSeriesLbacPermission(user, devicePath)) {
+      if (databasePath != null) {
+        // Check LBAC permission for this specific database
+        if (checkDatabaseLbacPermission(user, databasePath)) {
           filteredList.add(timeSeries);
           LOGGER.debug(
-              "User {} has LBAC permission for time series in device: {}", userName, devicePath);
+              "User {} has LBAC permission for time series in database: {}",
+              userName,
+              databasePath);
         } else {
           LOGGER.debug(
-              "User {} denied LBAC access to time series in device: {}", userName, devicePath);
+              "User {} denied LBAC access to time series in database: {}", userName, databasePath);
         }
       } else {
-        // If we can't extract device path, allow access (fallback)
+        // If we can't extract database path, allow access (fallback)
         filteredList.add(timeSeries);
-        LOGGER.debug("User {} allowed access to time series (no device path extracted)", userName);
+        LOGGER.debug(
+            "User {} allowed access to time series (no database path extracted)", userName);
       }
     }
 
@@ -145,67 +147,44 @@ public class ShowTimeSeriesStatement extends ShowStatement {
     return filteredList;
   }
 
-  /**
-   * Check LBAC permission for a specific time series device If user has policy but database has no
-   * label, deny access
-   */
-  private boolean checkTimeSeriesLbacPermission(User user, String devicePath) {
+  /** Extract database path from time series object */
+  private String extractDatabasePathFromTimeSeries(Object timeSeries) {
     try {
-      // Create a list with single device path for LBAC check
-      List<String> devicePaths = new ArrayList<>();
-      devicePaths.add(devicePath);
-
-      // Use LbacPermissionChecker to check permission
-      LbacPermissionChecker.LbacCheckResult result =
-          LbacPermissionChecker.checkLbacPermission(this, user, devicePaths);
-
-      boolean hasPermission = result.isAllowed();
-      if (!hasPermission) {
-        LOGGER.debug("LBAC check failed for device {}: {}", devicePath, result.getReason());
+      if (timeSeries instanceof String) {
+        String fullPath = (String) timeSeries;
+        // Extract database path from full path (e.g., "root.database1.device1.sensor1"
+        // -> "root.database1")
+        String[] pathParts = fullPath.split("\\.");
+        if (pathParts.length >= 2) {
+          return pathParts[0] + "." + pathParts[1];
+        }
       }
-
-      return hasPermission;
-
+      return null;
     } catch (Exception e) {
-      LOGGER.error("Error checking LBAC permission for device: {}", devicePath, e);
-      return false; // Deny access on error
+      LOGGER.error("Error extracting database path from time series: {}", timeSeries, e);
+      return null;
     }
   }
 
-  /**
-   * Extract device path from time series object This is a simplified implementation - in practice
-   * you might need to adapt based on actual time series data structure
-   *
-   * @param timeSeries Time series object
-   * @return Device path or null if cannot extract
-   */
-  private String extractDevicePathFromTimeSeries(Object timeSeries) {
+  /** Check LBAC permission for a specific database */
+  private boolean checkDatabaseLbacPermission(User user, String databasePath) {
     try {
-      // This is a placeholder implementation
-      // In practice, you would need to extract the device path from the actual time
-      // series data structure
-      // For example, if timeSeries is a String representing the full path, extract
-      // the device part
-      if (timeSeries instanceof String) {
-        String fullPath = (String) timeSeries;
-        // Extract device path from full path (e.g., "root.device1.sensor1" ->
-        // "root.device1")
-        int lastDotIndex = fullPath.lastIndexOf('.');
-        if (lastDotIndex > 0) {
-          return fullPath.substring(0, lastDotIndex);
-        }
-        return fullPath;
+      List<String> databasePaths = new ArrayList<>();
+      databasePaths.add(databasePath);
+
+      // Use LbacPermissionChecker to check permission
+      LbacPermissionChecker.LbacCheckResult result =
+          LbacPermissionChecker.checkLbacPermission(this, user, databasePaths);
+
+      boolean hasPermission = result.isAllowed();
+      if (!hasPermission) {
+        LOGGER.debug("LBAC check failed for database {}: {}", databasePath, result.getReason());
       }
 
-      // For other data structures, implement appropriate extraction logic
-      LOGGER.debug(
-          "Cannot extract device path from time series object of type: {}",
-          timeSeries != null ? timeSeries.getClass().getSimpleName() : "null");
-      return null;
-
+      return hasPermission;
     } catch (Exception e) {
-      LOGGER.error("Error extracting device path from time series", e);
-      return null;
+      LOGGER.error("Error checking LBAC permission for database: {}", databasePath, e);
+      return false; // Deny access on error
     }
   }
 
@@ -239,39 +218,51 @@ public class ShowTimeSeriesStatement extends ShowStatement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    // First check if user is super user
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-
-    // Perform traditional RBAC permission check
-    try {
-      if (hasTimeCondition()) {
+    // Check RBAC permissions first
+    TSStatus rbacStatus;
+    if (hasTimeCondition()) {
+      try {
         if (!AuthorityChecker.SUPER_USER.equals(userName)) {
           this.authorityScope =
               PathPatternTreeUtils.intersectWithFullPathPrefixTree(
                   AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA),
                   AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA));
         }
-      } else {
-        // For regular SHOW TIMESERIES without time condition
-        if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-          this.authorityScope =
-              AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA);
-        }
+      } catch (AuthException e) {
+        return new TSStatus(e.getCode().getStatusCode());
       }
-    } catch (AuthException e) {
-      return new TSStatus(e.getCode().getStatusCode());
+      rbacStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      rbacStatus = super.checkPermissionBeforeProcess(userName);
     }
 
-    // For SHOW TIMESERIES, we don't perform strict LBAC check here
-    // Instead, we will filter the results during execution based on LBAC
-    // permissions
-    // This allows users to see time series they have permission to access
-    // even if some time series don't have labels or don't match their policy
-    LOGGER.debug(
-        "SHOW TIMESERIES permission check passed for user: {}, will filter results during execution",
-        userName);
+    if (rbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return rbacStatus;
+    }
+
+    // Perform LBAC permission check for read operation using database paths
+    try {
+      List<PartialPath> queryPaths = getPaths();
+      List<String> databasePaths = new ArrayList<>();
+
+      for (PartialPath queryPath : queryPaths) {
+        String devicePath = queryPath.getDevicePath().getFullPath();
+        String databasePath = LbacPermissionChecker.extractDatabasePathFromDevicePath(devicePath);
+        if (databasePath != null && !databasePaths.contains(databasePath)) {
+          databasePaths.add(databasePath);
+        }
+      }
+
+      // Use LbacPermissionChecker for centralized LBAC check
+      TSStatus lbacStatus = LbacPermissionChecker.checkLbacPermissionForStatement(this, userName);
+      if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return lbacStatus;
+      }
+    } catch (Exception e) {
+      // Reject access when LBAC check fails with exception
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage("LBAC permission check failed: " + e.getMessage());
+    }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }

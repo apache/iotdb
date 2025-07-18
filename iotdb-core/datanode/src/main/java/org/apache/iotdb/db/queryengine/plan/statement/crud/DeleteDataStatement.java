@@ -22,9 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.LbacIntegration;
+import org.apache.iotdb.db.auth.LbacPermissionChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -72,17 +71,20 @@ public class DeleteDataStatement extends Statement {
       return rbacStatus;
     }
 
-    // Perform LBAC permission check
+    // Perform LBAC permission check for write operation using database paths
     try {
-      // Extract device paths from measurement paths for LBAC write policy check
-      List<PartialPath> devicePaths = new ArrayList<>();
+      // Extract database paths from measurement paths for LBAC write policy check
+      List<String> databasePaths = new ArrayList<>();
       for (MeasurementPath measurementPath : checkedPaths) {
-        PartialPath devicePath = measurementPath.getDevicePath();
-        if (!devicePaths.contains(devicePath)) {
-          devicePaths.add(devicePath);
+        String devicePath = measurementPath.getDevicePath().getFullPath();
+        String databasePath = LbacPermissionChecker.extractDatabasePathFromDevicePath(devicePath);
+        if (databasePath != null && !databasePaths.contains(databasePath)) {
+          databasePaths.add(databasePath);
         }
       }
-      TSStatus lbacStatus = LbacIntegration.checkLbacAfterRbac(this, userName, devicePaths);
+
+      // Use LbacPermissionChecker for centralized LBAC check
+      TSStatus lbacStatus = LbacPermissionChecker.checkLbacPermissionForStatement(this, userName);
       if (lbacStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return lbacStatus;
       }
