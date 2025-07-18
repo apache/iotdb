@@ -122,7 +122,6 @@ set CONFIGNODE_HEAP_OPTS=-Xmx%ON_HEAP_MEMORY% -Xms%ON_HEAP_MEMORY%
 set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -XX:MaxDirectMemorySize=%OFF_HEAP_MEMORY%
 set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -Djdk.nio.maxCachedBufferSize=%MAX_CACHED_BUFFER_SIZE%
 set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -XX:+CrashOnOutOfMemoryError
-set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8
 
 @REM if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
 @REM CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=\tmp\confignode_heapdump.hprof
