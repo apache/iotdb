@@ -165,12 +165,12 @@ public class CachedSchemaPatternMatcherTest {
                 null,
                 Collections.singletonMap(new StringArrayDeviceID("root.db" + i), measurements));
         final long startTime = System.currentTimeMillis();
-        matcher.match(event).forEach(extractor -> extractor.extract(event));
+        matcher.match(event).getLeft().forEach(extractor -> extractor.extract(event));
         totalTime += (System.currentTimeMillis() - startTime);
       }
       final MockedPipeRealtimeEvent event = new MockedPipeRealtimeEvent(null, null, deviceMap);
       final long startTime = System.currentTimeMillis();
-      matcher.match(event).forEach(extractor -> extractor.extract(event));
+      matcher.match(event).getLeft().forEach(extractor -> extractor.extract(event));
       totalTime += (System.currentTimeMillis() - startTime);
     }
     System.out.println("matcher.getRegisterCount() = " + matcher.getRegisterCount());
