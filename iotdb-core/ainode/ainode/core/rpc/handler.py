@@ -44,7 +44,7 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def __init__(self, aiNode):
         self._aiNode = aiNode
         self._model_manager = ModelManager()
-        self._inference_manager = InferenceManager(model_manager=self._model_manager)
+        self._inference_manager = InferenceManager()
 
     def stopAINode(self) -> TSStatus:
         self._aiNode.stop()
