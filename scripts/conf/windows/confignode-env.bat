@@ -125,7 +125,7 @@ set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -XX:+CrashOnOutOfMemoryError
 set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8
 
 @REM if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
-@REM IOTDB_JMX_OPTS=%IOTDB_HEAP_OPTS% -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=\tmp\confignode_heapdump.hprof
+@REM CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=\tmp\confignode_heapdump.hprof
 
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
