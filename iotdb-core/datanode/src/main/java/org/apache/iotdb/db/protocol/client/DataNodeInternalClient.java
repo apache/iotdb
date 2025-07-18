@@ -22,6 +22,8 @@ package org.apache.iotdb.db.protocol.client;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.IntoProcessException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
@@ -34,7 +36,13 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -50,18 +58,27 @@ public class DataNodeInternalClient {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   private final IPartitionFetcher partitionFetcher;
 
   private final ISchemaFetcher schemaFetcher;
 
   private final IClientSession session;
 
+  // Relational Insert
+  private final SqlParser relationSqlParser;
+  private final Metadata metadata;
+
   public DataNodeInternalClient(SessionInfo sessionInfo) {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
+    metadata = LocalExecutionPlanner.getInstance().metadata;
+    relationSqlParser = new SqlParser();
 
     try {
       session = new InternalClientSession("SELECT_INTO");
+      session.setSqlDialect(sessionInfo.getSqlDialect());
 
       SESSION_MANAGER.supplySession(
           session, sessionInfo.getUserName(), sessionInfo.getZoneId(), ClientVersion.V_1_0);
@@ -95,6 +112,33 @@ public class DataNodeInternalClient {
     } catch (final Exception e) {
       return onQueryException(
           e, OperationType.INSERT_TABLETS.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
+  }
+
+  public TSStatus insertRelationalTablet(InsertTabletStatement statement) {
+    long startTime = System.nanoTime();
+    try {
+      // call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId();
+      ExecutionResult result =
+          COORDINATOR.executeForTableModel(
+              statement,
+              relationSqlParser,
+              session,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(session),
+              "",
+              metadata,
+              config.getConnectionTimeoutInMS());
+      return result.status;
+    } catch (Exception e) {
+      return onQueryException(
+          e, OperationType.SELECT_INTO.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      CommonUtils.addStatementExecutionLatency(
+          OperationType.SELECT_INTO,
+          StatementType.SELECT_INTO.name(),
+          System.nanoTime() - startTime);
     }
   }
 
