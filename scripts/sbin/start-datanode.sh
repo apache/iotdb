@@ -182,7 +182,7 @@ launch_service()
     # Startup IoTDB, background it, and write the pid.
     else
         if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
-              exec $NUMACTL "$JAVA" "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $PARAMS 2>&1 > /dev/null  <&- &
+              exec $NUMACTL "$JAVA" "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS $IOTDB_JVM_OPTS -cp "$CLASSPATH" "$class" $PARAMS 2>&1 > /dev/null  <&- &
               [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
               true
         else
