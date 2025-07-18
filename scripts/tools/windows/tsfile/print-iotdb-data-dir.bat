@@ -45,7 +45,7 @@ goto :eof
 
 @REM -----------------------------------------------------------------------------
 :okClasspath
-set JAVA_OPTS=%JAVA_OPTS% -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8
+set JAVA_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
 "%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp "%CLASSPATH%" "-Dlogback.configurationFile=%IOTDB_HOME%\conf\logback-tool.xml" %MAIN_CLASS% %*
 
 goto finally
