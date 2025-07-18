@@ -289,6 +289,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeTransferTsFileSync();
   }
 
+  public long getPipeCheckAllSyncClientLiveTimeIntervalMs() {
+    return COMMON_CONFIG.getPipeCheckAllSyncClientLiveTimeIntervalMs();
+  }
+
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
@@ -512,6 +516,9 @@ public class PipeConfig {
         "PipePipeRemainingInsertEventCountAverage: {}", getPipeRemainingInsertNodeCountEMAAlpha());
     LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
     LOGGER.info("PipeTransferTsFileSync: {}", isTransferTsFileSync());
+    LOGGER.info(
+        "PipeCheckAllSyncClientLiveTimeIntervalMs: {}",
+        getPipeCheckAllSyncClientLiveTimeIntervalMs());
 
     LOGGER.info("PipeDynamicMemoryHistoryWeight: {}", getPipeDynamicMemoryHistoryWeight());
     LOGGER.info(

@@ -54,6 +54,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY;
@@ -70,6 +71,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   private static final Map<String, Integer> RECEIVER_ATTRIBUTES_REF_COUNT =
       new ConcurrentHashMap<>();
   private final String receiverAttributes;
+
+  protected final Function<TEndPoint, Boolean> endPointFilter;
 
   // receiverAttributes -> IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
   private static final Map<String, IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
@@ -97,7 +100,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final String loadTsFileStrategy,
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
-      final boolean isTSFileUsed) {
+      final boolean isTSFileUsed,
+      final Function<TEndPoint, Boolean> endPointFilter) {
     super(
         endPoints,
         useLeaderCache,
@@ -109,6 +113,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         shouldMarkAsPipeRequest);
 
     endPointSet = new HashSet<>(endPoints);
+    this.endPointFilter = endPointFilter;
 
     receiverAttributes =
         String.format(
@@ -179,7 +184,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   public AsyncPipeDataTransferServiceClient borrowClient(final TEndPoint endPoint)
       throws Exception {
-    if (!useLeaderCache || Objects.isNull(endPoint)) {
+    if (!useLeaderCache || Objects.isNull(endPoint) || !endPointFilter.apply(endPoint)) {
       return borrowClient();
     }
 
@@ -423,8 +428,16 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     @Override
     public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
       final int clientSize = endPointList.size();
+      long start = currentClientIndex;
       while (true) {
         final TEndPoint targetNodeUrl = endPointList.get((int) (currentClientIndex++ % clientSize));
+
+        if (endPointFilter != null
+            && !endPointFilter.apply(targetNodeUrl)
+            && currentClientIndex - start <= clientSize) {
+          continue; // Skip this endpoint if it does not pass the filter
+        }
+
         final AsyncPipeDataTransferServiceClient client =
             endPoint2Client.borrowClient(targetNodeUrl);
         if (handshakeIfNecessary(targetNodeUrl, client)) {
@@ -438,8 +451,16 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     @Override
     public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
       final int clientSize = endPointList.size();
+      long n = 0;
+
       while (true) {
+        n++;
         final TEndPoint targetNodeUrl = endPointList.get((int) (Math.random() * clientSize));
+
+        if (endPointFilter != null && !endPointFilter.apply(targetNodeUrl) && n <= clientSize) {
+          continue; // Skip this endpoint if it does not pass the filter
+        }
+
         final AsyncPipeDataTransferServiceClient client =
             endPoint2Client.borrowClient(targetNodeUrl);
         if (handshakeIfNecessary(targetNodeUrl, client)) {
@@ -452,8 +473,15 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   private class PriorityLoadBalancer implements LoadBalancer {
     @Override
     public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
+      final int clientSize = endPointList.size();
+      long n = 0;
       while (true) {
         for (final TEndPoint targetNodeUrl : endPointList) {
+          n++;
+          if (endPointFilter != null && !endPointFilter.apply(targetNodeUrl) && n <= clientSize) {
+            continue; // Skip this endpoint if it does not pass the filter
+          }
+
           final AsyncPipeDataTransferServiceClient client =
               endPoint2Client.borrowClient(targetNodeUrl);
           if (handshakeIfNecessary(targetNodeUrl, client)) {
