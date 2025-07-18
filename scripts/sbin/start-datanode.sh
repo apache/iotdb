@@ -130,7 +130,7 @@ if [ "x$SHOW_VERSION" != "x" ]; then
     else
         JAVA=java
     fi
-    exec "$JAVA" $IOTDB_JMX_OPTS $IOTDB_JVM_OPTS -cp "$CLASSPATH" "-Dlogback.configurationFile=${IOTDB_LOG_CONFIG}" "$classname"
+    exec "$JAVA" $IOTDB_JMX_OPTS $IOTDB_JVM_OPTS "-Dlogback.configurationFile=${IOTDB_LOG_CONFIG}" -cp "$CLASSPATH" "$classname"
     exit 0
 fi
 
