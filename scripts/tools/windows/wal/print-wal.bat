@@ -34,7 +34,8 @@ if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
 @REM JVM Opts
-set JAVA_OPTS=-ea -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8
+set JAVA_OPTS=-ea^
+ -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8
 
 @REM -----------------------------------------------------------------------------
 @REM ***** CLASSPATH library setting *****
