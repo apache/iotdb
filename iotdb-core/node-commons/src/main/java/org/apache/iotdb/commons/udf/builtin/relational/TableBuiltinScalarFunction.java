@@ -67,6 +67,14 @@ public enum TableBuiltinScalarFunction {
   FORMAT("format"),
   GREATEST("greatest"),
   LEAST("least"),
+  BIT_COUNT("bit_count"),
+  BITWISE_AND("bitwise_and"),
+  BITWISE_NOT("bitwise_not"),
+  BITWISE_OR("bitwise_or"),
+  BITWISE_XOR("bitwise_xor"),
+  BITWISE_LEFT_SHIFT("bitwise_left_shift"),
+  BITWISE_RIGHT_SHIFT("bitwise_right_shift"),
+  BITWISE_RIGHT_SHIFT_ARITHMETIC("bitwise_right_shift_arithmetic"),
   ;
 
   private final String functionName;
