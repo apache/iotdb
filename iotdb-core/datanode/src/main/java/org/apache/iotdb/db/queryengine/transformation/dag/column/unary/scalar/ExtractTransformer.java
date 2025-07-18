@@ -45,7 +45,7 @@ public class ExtractTransformer extends UnaryColumnTransformer {
     this.evaluateFunction = constructEvaluateFunction(field, zoneId);
   }
 
-  private Function<Long, Long> constructEvaluateFunction(Extract.Field field, ZoneId zoneId) {
+  public static Function<Long, Long> constructEvaluateFunction(Extract.Field field, ZoneId zoneId) {
     switch (field) {
       case YEAR:
         return timestamp -> (long) convertToZonedDateTime(timestamp, zoneId).getYear();

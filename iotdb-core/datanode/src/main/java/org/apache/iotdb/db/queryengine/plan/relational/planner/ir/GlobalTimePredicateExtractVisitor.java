@@ -273,6 +273,7 @@ public class GlobalTimePredicateExtractVisitor
 
   public static boolean isExtractTimeColumn(Expression e, String timeColumnName) {
     return e instanceof Extract
+        && ((Extract) e).getExpression() instanceof SymbolReference
         && ((SymbolReference) ((Extract) e).getExpression())
             .getName()
             .equalsIgnoreCase(timeColumnName);

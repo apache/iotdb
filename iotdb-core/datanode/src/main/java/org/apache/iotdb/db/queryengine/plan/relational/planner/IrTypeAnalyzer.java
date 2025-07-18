@@ -309,6 +309,7 @@ public class IrTypeAnalyzer {
 
     @Override
     protected Type visitExtract(Extract node, Context context) {
+      process(node.getExpression(), context);
       return setExpressionType(node, INT64);
     }
 

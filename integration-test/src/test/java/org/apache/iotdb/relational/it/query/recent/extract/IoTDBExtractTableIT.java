@@ -285,6 +285,28 @@ public class IoTDBExtractTableIT {
         DATABASE_NAME);
   }
 
+  @Test
+  public void testExtractFromComplexExpression() {
+    String[] expectedHeader = new String[] {"_col0"};
+    String[] retArray = new String[] {"0,"};
+    tableResultSetEqualTest(
+        "SELECT extract(hour from cast(s1 AS TIMESTAMP))" + " FROM table1 order by time limit 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testExtractFromConstant() {
+    String[] expectedHeader = new String[] {"_col0"};
+    String[] retArray = new String[] {"1,"};
+    tableResultSetEqualTest(
+        "SELECT extract(hour from 2025/07/08 01:18:51)" + " FROM table1 order by time limit 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
   protected String getTimeStrUTC(String time) {
     return time + "." + decimal + 'Z';
   }
