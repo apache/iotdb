@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
@@ -204,11 +205,13 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      Optional.ofNullable(statement)
-          .ifPresent(
-              s ->
-                  CommonUtils.addStatementExecutionLatency(
-                      OperationType.EXECUTE_QUERY_STATEMENT, s.getType().name(), costTime));
+      String statementType =
+          Optional.ofNullable(statement)
+              .map(s -> s.getType().name())
+              .orElse(StatementType.FAST_LAST_QUERY.name());
+
+      CommonUtils.addStatementExecutionLatency(
+          OperationType.EXECUTE_QUERY_STATEMENT, statementType, costTime);
       if (queryId != null) {
         if (finish) {
           long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
