@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 
+import org.apache.tsfile.utils.Pair;
+
 import java.util.Set;
 
 public interface PipeDataRegionMatcher {
@@ -48,7 +50,8 @@ public interface PipeDataRegionMatcher {
    * @param event the event to be matched
    * @return the matched extractors
    */
-  Set<PipeRealtimeDataRegionExtractor> match(PipeRealtimeEvent event);
+  Pair<Set<PipeRealtimeDataRegionExtractor>, Set<PipeRealtimeDataRegionExtractor>> match(
+      PipeRealtimeEvent event);
 
   /** Clear all the registered extractors and internal data structures. */
   void clear();

@@ -141,6 +141,7 @@ public class PipeDataRegionAssigner implements Closeable {
 
     matcher
         .match(event)
+        .getLeft()
         .forEach(
             extractor -> {
               if (disruptor.isClosed()) {
