@@ -174,7 +174,7 @@ launch_service()
         iotdb_parms="$iotdb_parms -Diotdb-foreground=yes"
         if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
           [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
-            exec $NUMACTL "$JAVA" "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $PARAMS
+            exec $NUMACTL "$JAVA" "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS $IOTDB_JVM_OPTS -cp "$CLASSPATH" "$class" $PARAMS
         else
             [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
             exec $NUMACTL "$JAVA" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $PARAMS
