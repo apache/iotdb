@@ -45,10 +45,10 @@ public interface PipeDataRegionMatcher {
 
   /**
    * Match the event's schema info with the registered extractors' patterns. If the event's schema
-   * info matches the pattern of a extractor, the extractor will be returned.
+   * info matches the pattern of an extractor, the extractor will be returned.
    *
    * @param event the event to be matched
-   * @return the matched extractors
+   * @return pair of matched extractors and unmatched extractors.
    */
   Pair<Set<PipeRealtimeDataRegionExtractor>, Set<PipeRealtimeDataRegionExtractor>> match(
       PipeRealtimeEvent event);
