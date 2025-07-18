@@ -186,7 +186,7 @@ launch_service()
               [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
               true
         else
-              exec $NUMACTL "$JAVA" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $PARAMS 2>&1 > /dev/null <&- &
+              exec $NUMACTL "$JAVA" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS $IOTDB_JVM_OPTS -cp "$CLASSPATH" "$class" $PARAMS 2>&1 > /dev/null <&- &
               [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
               true
         fi
