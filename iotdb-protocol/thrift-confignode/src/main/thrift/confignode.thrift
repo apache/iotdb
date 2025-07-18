@@ -634,12 +634,12 @@ struct TAINodeInfo {
 
 struct TProcedureInfo {
   1: required i64 procId
-  2: required string state
+  2: required string phase
   3: required i64 submittedTime
-  4: required i64 lastUpdate
+  4: required i64 lastUpdateTime
   5: required i64 parentProcId
   6: required string className
-  7: required string status
+  7: required string state
   8: required string progress
 }
 

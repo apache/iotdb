@@ -26,7 +26,9 @@ import org.apache.iotdb.confignode.procedure.impl.testonly.AddNeverFinishSubProc
 import org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -46,11 +48,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure.MAX_STATE;
@@ -218,5 +225,61 @@ public class IoTDBProcedureIT {
     }
 
     LOGGER.info("test pass");
+  }
+
+  @Test
+  public void showProceduresTest() throws Exception {
+    EnvFactory.getEnv().initClusterEnvironment(1, 1);
+    final String database = "root.sg1";
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(String.format("create database %s", database));
+    }
+
+    String ttlSql = "set ttl to %s 36%d0000";
+    AtomicBoolean stopInserting = new AtomicBoolean(false);
+    CountDownLatch procedureDetected = new CountDownLatch(1);
+    SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
+    AtomicLong atomicLong = new AtomicLong(0);
+    Thread createTimeseriesThread =
+        new Thread(
+            () -> {
+              while (!stopInserting.get()) {
+
+                try {
+                  if (!TestUtils.tryExecuteNonQueriesWithRetry(
+                      EnvFactory.getEnv(),
+                      Arrays.asList(
+                          String.format(ttlSql, database, atomicLong.getAndIncrement())))) {}
+                  System.out.println("set TTL" + String.format(ttlSql, database, atomicLong.get()));
+                  Thread.sleep(100L);
+                } catch (Exception e) {
+                  break;
+                }
+              }
+            });
+    try {
+      Awaitility.await()
+          .atMost(1, TimeUnit.MINUTES)
+          .pollInterval(10, TimeUnit.MILLISECONDS)
+          .until(
+              () -> {
+                try {
+                  TShowProceduresResp response = client.showProcedures();
+                  return !response.getProceduresInfoList().isEmpty();
+                } catch (Exception e) {
+                  return false;
+                }
+              });
+
+      stopInserting.set(true);
+      procedureDetected.countDown();
+    } finally {
+      stopInserting.set(true);
+      createTimeseriesThread.join(2000);
+    }
+    Assert.assertTrue(
+        "Procedure should be detected in SHOW PROCEDURES", procedureDetected.getCount() == 0);
   }
 }

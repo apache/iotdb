@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
+import org.apache.iotdb.confignode.rpc.thrift.TProcedureInfo;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -199,6 +200,19 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     if (byteBuffer.get() == 1) {
       this.lockedWhenLoading();
     }
+  }
+
+  public static TProcedureInfo toTProcedureInfo(Procedure<?> procedure) {
+    TProcedureInfo procedureInfo = new TProcedureInfo();
+    procedureInfo.setProcId(procedure.getProcId());
+    procedureInfo.setPhase(procedure.getState().name());
+    procedureInfo.setSubmittedTime(procedure.getSubmittedTime());
+    procedureInfo.setLastUpdateTime(procedure.getLastUpdate());
+    procedureInfo.setParentProcId(procedure.getParentProcId());
+    procedureInfo.setClassName(procedure.getClass().getSimpleName());
+    procedureInfo.setState(procedure.getCurrentStateForDisplay());
+    procedureInfo.setProgress(procedure.getProgressForDisplay());
+    return procedureInfo;
   }
 
   /**

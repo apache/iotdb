@@ -61,10 +61,10 @@ ddlStatement
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
-    | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
+    | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId | showProcedures
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
     | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode
-    | verifyConnection | showProcedures
+    | verifyConnection
     // AINode
     | showAINodes | createModel | dropModel | showModels | callInference
     // Quota

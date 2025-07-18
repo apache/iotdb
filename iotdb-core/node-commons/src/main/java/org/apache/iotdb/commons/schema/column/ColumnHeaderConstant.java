@@ -97,7 +97,7 @@ public class ColumnHeaderConstant {
 
   public static final String PROC_ID = "ProcedureId";
   public static final String SUBMITTED_TIME = "SubmittedTime";
-  public static final String LAST_UPDATE = "LastUpdate";
+  public static final String LAST_UPDATE_TIME = "LastUpdateTime";
   public static final String PARENT_PROC_ID = "ParentProcId";
 
   // column names for show clusterId statement
@@ -118,6 +118,7 @@ public class ColumnHeaderConstant {
   public static final String TRIGGER_NAME = "TriggerName";
   public static final String EVENT = "Event";
   public static final String STATE = "State";
+  public static final String PHASE = "Phase";
   public static final String MODEL_TYPE = "ModelType";
   public static final String CONFIGS = "Configs";
   public static final String PATH_PATTERN = "PathPattern";
@@ -447,11 +448,11 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showProceduresColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(PROC_ID, TSDataType.INT64),
-          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(PHASE, TSDataType.TEXT),
           new ColumnHeader(STATE, TSDataType.TEXT),
           new ColumnHeader(PROGRESS, TSDataType.TEXT),
           new ColumnHeader(SUBMITTED_TIME, TSDataType.TEXT),
-          new ColumnHeader(LAST_UPDATE, TSDataType.TEXT),
+          new ColumnHeader(LAST_UPDATE_TIME, TSDataType.TEXT),
           new ColumnHeader(PARENT_PROC_ID, TSDataType.INT64),
           new ColumnHeader(CLASS_NAME, TSDataType.TEXT));
 

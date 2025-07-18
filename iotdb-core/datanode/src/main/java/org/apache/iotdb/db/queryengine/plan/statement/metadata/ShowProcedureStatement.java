@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -29,6 +31,11 @@ public class ShowProcedureStatement extends ShowStatement implements IConfigStat
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitShowProcedures(this, context);
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.checkSuperUserOrMaintain(userName);
   }
 
   @Override
