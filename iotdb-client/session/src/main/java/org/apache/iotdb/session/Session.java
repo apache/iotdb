@@ -56,6 +56,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.rpccompress.TabletEncoder;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
@@ -137,6 +138,7 @@ public class Session implements ISession {
    */
   private long queryTimeoutInMs = -1;
 
+  protected boolean enableRPCCompaction;
   protected boolean enableRPCCompression;
   protected int connectionTimeoutInMs;
   protected ZoneId zoneId;
@@ -217,6 +219,9 @@ public class Session implements ISession {
 
   protected static final String TABLE = "table";
   protected static final String TREE = "tree";
+
+  private CompressionType compressionType;
+  public Map<TSDataType, TSEncoding> columnEncodersMap;
 
   public Session(String host, int rpcPort) {
     this(
@@ -449,6 +454,10 @@ public class Session implements ISession {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
       this.enableQueryRedirection = builder.enableRedirection;
     }
+    this.enableRPCCompaction = builder.isCompacted;
+    this.enableRPCCompression = builder.isCompressed;
+    this.compressionType = builder.compressionType;
+    this.columnEncodersMap = builder.columnEncodersMap;
     this.enableRedirection = builder.enableRedirection;
     this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
     this.username = builder.username;
@@ -495,12 +504,12 @@ public class Session implements ISession {
   }
 
   @Override
-  public synchronized void open(boolean enableRPCCompression) throws IoTDBConnectionException {
-    open(enableRPCCompression, SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+  public synchronized void open(boolean enableRPCCompaction) throws IoTDBConnectionException {
+    open(enableRPCCompaction, SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   @Override
-  public synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
+  public synchronized void open(boolean enableRPCCompaction, int connectionTimeoutInMs)
       throws IoTDBConnectionException {
     if (!isClosed) {
       return;
@@ -530,13 +539,12 @@ public class Session implements ISession {
               useSSL,
               trustStore,
               trustStorePwd,
-              enableRPCCompression,
+              enableRPCCompaction,
               version.toString());
     } else {
       this.availableNodes = new DummyNodesSupplier(getNodeUrls());
     }
 
-    this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
     getDefaultSessionConnection().setEnableRedirect(enableQueryRedirection);
@@ -1779,12 +1787,7 @@ public class Session implements ISession {
     return false;
   }
 
-  /**
-   * Filter the null object of list。
-   *
-   * @param prefixPaths devices path。
-   * @return true:all values of valuesList are null;false:Not all values of valuesList are null.
-   */
+  /** Filter the null object of list。 */
   private void filterNullValueAndMeasurementWithStringType(
       List<String> prefixPaths,
       List<Long> times,
@@ -3000,8 +3003,35 @@ public class Session implements ISession {
 
     request.setPrefixPath(tablet.getDeviceId());
     request.setIsAligned(isAligned);
-    request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
-    request.setValues(SessionUtils.getValueBuffer(tablet));
+
+    List<Byte> encodingTypes;
+    if (enableRPCCompression) {
+      encodingTypes = new ArrayList<>(tablet.getSchemas().size() + 1);
+      encodingTypes.add(this.columnEncodersMap.get(TSDataType.INT64).serialize());
+      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+        if (measurementSchema.getMeasurementName() == null) {
+          throw new IllegalArgumentException("measurement should be non null value");
+        }
+        encodingTypes.add(this.columnEncodersMap.get(measurementSchema.getType()).serialize());
+      }
+    } else {
+      encodingTypes =
+          Collections.nCopies(tablet.getSchemas().size() + 1, TSEncoding.PLAIN.serialize());
+    }
+
+    TabletEncoder encoder =
+        new TabletEncoder(
+            enableRPCCompression ? this.compressionType : CompressionType.UNCOMPRESSED,
+            encodingTypes.stream().map(TSEncoding::deserialize).collect(Collectors.toList()));
+
+    request.setIsCompressed(this.enableRPCCompression);
+    if (this.enableRPCCompression) {
+      request.setCompressType(compressionType.serialize());
+      request.setEncodingTypes(encodingTypes);
+    }
+    request.setTimestamps(encoder.encodeTime(tablet));
+    request.setValues(encoder.encodeValues(tablet));
+
     request.setSize(tablet.getRowSize());
     return request;
   }
@@ -4208,6 +4238,14 @@ public class Session implements ISession {
     this.defaultSessionConnection = defaultSessionConnection;
   }
 
+  public boolean isEnableRPCCompaction() {
+    return enableRPCCompaction;
+  }
+
+  public void setEnableRPCCompaction(boolean enableRPCCompaction) {
+    this.enableRPCCompaction = enableRPCCompaction;
+  }
+
   public static class Builder extends AbstractSessionBuilder {
 
     public Builder host(String host) {
@@ -4237,6 +4275,16 @@ public class Session implements ISession {
 
     public Builder zoneId(ZoneId zoneId) {
       this.zoneId = zoneId;
+      return this;
+    }
+
+    public Builder isCompressed(boolean isCompressed) {
+      this.isCompressed = isCompressed;
+      return this;
+    }
+
+    public Builder isCompacted(boolean isCompacted) {
+      this.isCompacted = isCompacted;
       return this;
     }
 
