@@ -50,8 +50,6 @@ if [ -z $JAVA ] ; then
     exit 1;
 fi
 
-JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
-
 datanodeclassname=org.apache.iotdb.db.service.DataNode
 
 confignodeclassname=org.apache.iotdb.db.service.ConfigNode
@@ -135,7 +133,7 @@ logs_dir="${IOTDB_HOME}/logs"
 if [ ! -d "$logs_dir" ]; then
     mkdir "$logs_dir"
 fi
-
+JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
 IOTDB_CLI_CONF=${IOTDB_HOME}/conf
 iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-backup.xml"
-exec nohup "$JAVA" $JAVA_OPTS -DIOTDB_HOME=${IOTDB_HOME} $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" "$@" >/dev/null 2>&1 <&- &
+exec nohup "$JAVA" $JVM_OPTS -DIOTDB_HOME=${IOTDB_HOME} $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" "$@" >/dev/null 2>&1 <&- &

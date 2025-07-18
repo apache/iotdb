@@ -46,5 +46,5 @@ done
 
 MAIN_CLASS=org.apache.iotdb.db.tools.settle.TsFileSettleByCompactionTool
 
-"$JAVA" -cp "$CLASSPATH" "$JVM_OPTS" "$MAIN_CLASS" "$@"
+"$JAVA" "$JVM_OPTS" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

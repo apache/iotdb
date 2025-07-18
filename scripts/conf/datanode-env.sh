@@ -203,8 +203,6 @@ if [ -z $JAVA ] ; then
     exit 1;
 fi
 
-JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
-
 # Determine the sort of JVM we'll be running on.
 java_ver_output=`"$JAVA" -version 2>&1`
 jvmver=`echo "$java_ver_output" | grep '[openjdk|java] version' | awk -F'"' 'NR==1 {print $2}' | cut -d\- -f1`
@@ -339,6 +337,7 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xss512k"
 # these two options print safepoints with pauses longer than 1000ms to the standard output. You can see these logs via redirection when starting in the background like "start-datanode.sh > log_datanode_safepoint.log"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:SafepointTimeoutDelay=1000"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+SafepointTimeout"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
 
 # option below tries to optimize safepoint stw time for large counted loop.
 # NOTE: it may have an impact on JIT's black-box optimization.
