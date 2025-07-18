@@ -178,6 +178,10 @@ public class MPPQueryContext {
     return session;
   }
 
+  public void setSession(SessionInfo session) {
+    this.session = session;
+  }
+
   public long getStartTime() {
     return startTime;
   }

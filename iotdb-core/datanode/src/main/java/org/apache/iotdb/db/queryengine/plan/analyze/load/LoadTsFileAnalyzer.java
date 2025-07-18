@@ -28,7 +28,9 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -410,6 +412,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private void analyzeSingleTsFile(final File tsFile, int i) throws Exception {
+    final SessionInfo sessionInfo = context.getSession();
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // check whether the tsfile is tree-model or not
       final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
@@ -448,8 +451,24 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
 
       if (isTableModelFile) {
+        final SessionInfo newSessionInfo =
+            new SessionInfo(
+                sessionInfo.getSessionId(),
+                sessionInfo.getUserName(),
+                sessionInfo.getZoneId(),
+                sessionInfo.getDatabaseName().orElse(null),
+                IClientSession.SqlDialect.TABLE);
+        context.setSession(newSessionInfo);
         doAnalyzeSingleTableFile(tsFile, reader, timeseriesMetadataIterator, tableSchemaMap);
       } else {
+        final SessionInfo newSessionInfo =
+            new SessionInfo(
+                sessionInfo.getSessionId(),
+                sessionInfo.getUserName(),
+                sessionInfo.getZoneId(),
+                sessionInfo.getDatabaseName().orElse(null),
+                IClientSession.SqlDialect.TREE);
+        context.setSession(newSessionInfo);
         doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
       }
     } catch (final LoadEmptyFileException loadEmptyFileException) {
@@ -457,6 +476,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       if (isDeleteAfterLoad) {
         FileUtils.deleteQuietly(tsFile);
       }
+    } finally {
+      // reset the session info to the original one
+      context.setSession(sessionInfo);
     }
   }
 
