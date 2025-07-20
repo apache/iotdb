@@ -570,6 +570,17 @@ public class TableMetadataImpl implements Metadata {
                 + " must have at least two arguments, and all type must be the same.");
       }
       return argumentTypes.get(0);
+    } else if (TableBuiltinScalarFunction.TO_BASE64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1
+          && (isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0))))) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one argument and it must be STRING, TEXT or BLOB data type.");
+      }
+      return STRING;
     }
 
     // builtin aggregation function
