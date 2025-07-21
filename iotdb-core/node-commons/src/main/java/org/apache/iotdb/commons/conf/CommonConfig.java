@@ -69,7 +69,7 @@ public class CommonConfig {
 
   private String adminPassword = "root";
 
-  private Boolean enableGrantOpt = true;
+  private Boolean enableGrantOption = true;
 
   private String oldUserFolder =
       IoTDBConstant.DN_DEFAULT_DATA_DIR
@@ -483,12 +483,12 @@ public class CommonConfig {
     return oldUserFolder;
   }
 
-  public void setEnableGrantOpt(Boolean enableGrantOpt) {
-    this.enableGrantOpt = enableGrantOpt;
+  public void setEnableGrantOption(Boolean enableGrantOption) {
+    this.enableGrantOption = enableGrantOption;
   }
 
-  public Boolean getEnableGrantOpt() {
-    return enableGrantOpt;
+  public Boolean getEnableGrantOption() {
+    return enableGrantOption;
   }
 
   public String getOldRoleFolder() {

@@ -90,9 +90,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableGrantOpt(boolean enableGrantOpt) {
-    cnConfig.setEnableGrantOpt(enableGrantOpt);
-    dnConfig.setEnableGrantOpt(enableGrantOpt);
+  public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
+    cnConfig.setEnableGrantOption(enableGrantOption);
+    dnConfig.setEnableGrantOption(enableGrantOption);
     return this;
   }
 

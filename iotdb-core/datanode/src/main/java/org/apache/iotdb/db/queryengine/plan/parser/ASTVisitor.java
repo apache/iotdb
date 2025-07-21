@@ -2474,7 +2474,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     authorStatement.setPrivilegeList(priviParsed);
     authorStatement.setNodeNameList(nodeNameList);
-    if (!CommonDescriptor.getInstance().getConfig().getEnableGrantOpt() && ctx.grantOpt() != null) {
+    if (!CommonDescriptor.getInstance().getConfig().getEnableGrantOption()
+        && ctx.grantOpt() != null) {
       throw new SemanticException(
           "Grant Option is disabled, Please check the parameter enable_grant_option.");
     }
@@ -2500,7 +2501,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setPrivilegeList(priviParsed);
     authorStatement.setNodeNameList(nodeNameList);
-    if (!CommonDescriptor.getInstance().getConfig().getEnableGrantOpt() && ctx.grantOpt() != null) {
+    if (!CommonDescriptor.getInstance().getConfig().getEnableGrantOption()
+        && ctx.grantOpt() != null) {
       throw new SemanticException(
           "Grant Option is disabled, Please check the parameter enable_grant_option.");
     }

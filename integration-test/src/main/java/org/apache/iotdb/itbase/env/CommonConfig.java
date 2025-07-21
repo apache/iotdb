@@ -40,7 +40,7 @@ public interface CommonConfig {
 
   CommonConfig setEncryptKeyPath(String encryptKeyPath);
 
-  CommonConfig setEnableGrantOpt(boolean enableGrantOpt);
+  CommonConfig setEnableGrantOption(boolean enableGrantOption);
 
   CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
 

@@ -110,8 +110,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableGrantOpt(boolean enableGrantOpt) {
-    setProperty("enable_grant_opt", String.valueOf(enableGrantOpt));
+  public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
+    setProperty("enable_grant_option", String.valueOf(enableGrantOption));
     return this;
   }
 

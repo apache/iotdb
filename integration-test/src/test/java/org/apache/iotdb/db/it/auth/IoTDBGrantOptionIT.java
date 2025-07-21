@@ -38,7 +38,7 @@ import java.sql.Statement;
 public class IoTDBGrantOptionIT {
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setEnableGrantOpt(false);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnableGrantOption(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

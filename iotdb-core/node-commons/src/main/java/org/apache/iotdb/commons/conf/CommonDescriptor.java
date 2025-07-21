@@ -90,8 +90,9 @@ public class CommonDescriptor {
             "iotdb_server_encrypt_decrypt_provider_parameter",
             config.getEncryptDecryptProviderParameter()));
 
-    config.setEnableGrantOpt(
-        Boolean.parseBoolean(properties.getProperty("enable_grant_opt", String.valueOf("true"))));
+    config.setEnableGrantOption(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_grant_option", String.valueOf("true"))));
 
     String[] tierTTLStr = new String[config.getTierTTLInMs().length];
     for (int i = 0; i < tierTTLStr.length; ++i) {

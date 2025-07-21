@@ -1792,7 +1792,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     String name;
     toUser = ctx.holderType().getText().equalsIgnoreCase("user");
     name = (((Identifier) visit(ctx.holderName)).getValue());
-    if (!CommonDescriptor.getInstance().getConfig().getEnableGrantOpt() && ctx.grantOpt() != null) {
+    if (!CommonDescriptor.getInstance().getConfig().getEnableGrantOption()
+        && ctx.grantOpt() != null) {
       throw new SemanticException(
           "Grant Option is disabled, Please check the parameter enable_grant_option.");
     }

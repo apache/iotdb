@@ -65,7 +65,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableGrantOpt(boolean enableGrantOpt) {
+  public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
     return this;
   }
 

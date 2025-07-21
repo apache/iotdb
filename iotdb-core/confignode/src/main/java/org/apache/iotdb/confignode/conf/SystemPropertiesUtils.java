@@ -205,10 +205,10 @@ public class SystemPropertiesUtils {
     if (systemProperties.getProperty("enable_grant_option", null) != null) {
       boolean enableGrantOption =
           Boolean.parseBoolean(systemProperties.getProperty("enable_grant_option"));
-      if (enableGrantOption != COMMON_CONFIG.getEnableGrantOpt()) {
+      if (enableGrantOption != COMMON_CONFIG.getEnableGrantOption()) {
         LOGGER.warn(
-            format, "enable_grant_option", COMMON_CONFIG.getEnableGrantOpt(), enableGrantOption);
-        COMMON_CONFIG.setEnableGrantOpt(enableGrantOption);
+            format, "enable_grant_option", COMMON_CONFIG.getEnableGrantOption(), enableGrantOption);
+        COMMON_CONFIG.setEnableGrantOption(enableGrantOption);
       }
     }
   }
@@ -283,7 +283,7 @@ public class SystemPropertiesUtils {
     systemProperties.setProperty(
         "tag_attribute_total_size", String.valueOf(COMMON_CONFIG.getTagAttributeTotalSize()));
     systemProperties.setProperty(
-        "enable_grant_option", String.valueOf(COMMON_CONFIG.getEnableGrantOpt()));
+        "enable_grant_option", String.valueOf(COMMON_CONFIG.getEnableGrantOption()));
     systemPropertiesHandler.overwrite(systemProperties);
   }
 
