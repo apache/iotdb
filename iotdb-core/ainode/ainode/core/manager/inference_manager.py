@@ -135,8 +135,8 @@ class RegisteredStrategy(InferenceStrategy):
 
 class InferenceManager:
     ACCELERATE_MODEL_ID = "sundial"
-    DEFAULT_DEVICE = "cpu"
-    # DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # DEFAULT_DEVICE = "cpu"
+    DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     DEFAULT_POOL_SIZE = (
         0  # TODO: Remove these parameter by sampling model inference consumption
     )
@@ -144,8 +144,8 @@ class InferenceManager:
         AINodeDescriptor().get_config().get_ain_inference_batch_interval_in_ms()
     )  # How often to check for requests in the result queue
 
-    def __init__(self, model_manager: ModelManager):
-        self._model_manager = model_manager
+    def __init__(self):
+        self._model_manager = ModelManager()
         self._result_queue = mp.Queue()
         self._result_wrapper_map = {}
         self._result_wrapper_lock = threading.RLock()
@@ -165,14 +165,11 @@ class InferenceManager:
         """
         self._request_pool_map[self.ACCELERATE_MODEL_ID] = []
         for idx in range(self.DEFAULT_POOL_SIZE):
-            sundial_model = self._model_manager.load_model(
-                self.ACCELERATE_MODEL_ID, {}
-            ).to(self.DEFAULT_DEVICE)
             sundial_config = SundialConfig()
             request_queue = mp.Queue()
             request_pool = InferenceRequestPool(
                 pool_id=idx,
-                model=sundial_model,
+                model_id=self.ACCELERATE_MODEL_ID,
                 config=sundial_config,
                 request_queue=request_queue,
                 result_queue=self._result_queue,
@@ -223,7 +220,8 @@ class InferenceManager:
                 data = full_data[1][0]
                 if data.dtype.byteorder not in ("=", "|"):
                     data = data.byteswap().newbyteorder()
-                inputs = torch.tensor(data).unsqueeze(0).float().to(self.DEFAULT_DEVICE)
+                # the inputs should be on CPU before passing to the inference request
+                inputs = torch.tensor(data).unsqueeze(0).float().to("cpu")
                 infer_req = InferenceRequest(
                     req_id=_generate_req_id(),
                     inputs=inputs,
