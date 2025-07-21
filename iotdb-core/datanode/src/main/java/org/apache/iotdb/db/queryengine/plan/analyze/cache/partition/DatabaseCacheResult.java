@@ -24,7 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public abstract class StorageGroupCacheResult<V> {
+public abstract class DatabaseCacheResult<V> {
   /** the result */
   private boolean success = true;
 
