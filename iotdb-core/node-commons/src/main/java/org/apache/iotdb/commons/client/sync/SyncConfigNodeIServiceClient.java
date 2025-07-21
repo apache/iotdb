@@ -73,7 +73,9 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endPoint;
     this.clientManager = clientManager;
-    getInputProtocol().getTransport().open();
+    if (!getInputProtocol().getTransport().isOpen()) {
+      getInputProtocol().getTransport().open();
+    }
   }
 
   public int getTimeout() throws SocketException {

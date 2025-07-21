@@ -71,7 +71,9 @@ public class SyncIoTConsensusServiceClient extends IoTConsensusIService.Client
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
-    getInputProtocol().getTransport().open();
+    if (!getInputProtocol().getTransport().isOpen()) {
+      getInputProtocol().getTransport().open();
+    }
   }
 
   @Override
