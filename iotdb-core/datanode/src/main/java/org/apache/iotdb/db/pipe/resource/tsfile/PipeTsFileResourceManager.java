@@ -76,6 +76,10 @@ public class PipeTsFileResourceManager {
    * @param file tsfile, resource file or mod file. can be original file or hardlink/copy of
    *     original file
    * @param isTsFile {@code true} to create hardlink, {@code false} to copy file
+   * @param pipeName Nonnull if the pipe is from historical or assigner -> extractors, null if is
+   *     dataRegion -> assigner
+   * @param sourceFile for inner use, historical extractor will use this to create hardlink from
+   *     pipe tsFile -> common tsFile
    * @return the hardlink or copied file
    * @throws IOException when create hardlink or copy file failed
    */
@@ -154,7 +158,7 @@ public class PipeTsFileResourceManager {
     }
     // Increase the assigner's file to avoid hard-link or memory cache cleaning
     // Note that it does not exist for historical files
-    increaseFileReference(new File(getCommonFilePath(file)), isTsFile, null);
+    increaseFileReference(new File(getCommonFilePath(file)), isTsFile, null, file);
   }
 
   public static File getHardlinkOrCopiedFileInPipeDir(
