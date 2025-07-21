@@ -146,7 +146,7 @@
     -->
         <ratis.version>3.2.1</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
-        <reactor-netty.version>1.1.20</reactor-netty.version>
+        <reactor-netty.version>1.2.8</reactor-netty.version>
         <reactor.version>3.5.18</reactor.version>
         <reflections.version>0.10.2</reflections.version>
         <slf4j.version>2.0.9</slf4j.version>
