@@ -56,6 +56,11 @@ public class PipeTsFileResourceManager {
       hardlinkOrCopiedFileToPipeTsFileResourceMap = new ConcurrentHashMap<>();
   private final PipeTsFileResourceSegmentLock segmentLock = new PipeTsFileResourceSegmentLock();
 
+  public File increaseFileReference(
+      final File file, final boolean isTsFile, final @Nullable String pipeName) throws IOException {
+    return increaseFileReference(file, isTsFile, pipeName, null);
+  }
+
   /**
    * Given a file, create a hardlink or copy it to pipe dir, maintain a reference count for the
    * hardlink or copied file, and return the hardlink or copied file.
@@ -75,8 +80,12 @@ public class PipeTsFileResourceManager {
    * @return the hardlink or copied file
    * @throws IOException when create hardlink or copy file failed
    */
-  public File increaseFileReference(
-      final File file, final boolean isTsFile, final @Nullable String pipeName) throws IOException {
+  private File increaseFileReference(
+      final File file,
+      final boolean isTsFile,
+      final @Nullable String pipeName,
+      final @Nullable File sourceFile)
+      throws IOException {
     // If the file is already a hardlink or copied file,
     // just increase reference count and return it
     segmentLock.lock(file);
@@ -90,7 +99,8 @@ public class PipeTsFileResourceManager {
 
     // If the file is not a hardlink or copied file, check if there is a related hardlink or
     // copied file in pipe dir. if so, increase reference count and return it
-    final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file, pipeName);
+    final File hardlinkOrCopiedFile =
+        Objects.isNull(sourceFile) ? getHardlinkOrCopiedFileInPipeDir(file, pipeName) : file;
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
       if (increaseReferenceIfExists(hardlinkOrCopiedFile, pipeName, isTsFile)) {
@@ -99,10 +109,12 @@ public class PipeTsFileResourceManager {
 
       // If the file is a tsfile, create a hardlink in pipe dir and will return it.
       // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
+      final File source = Objects.isNull(sourceFile) ? file : sourceFile;
+
       final File resultFile =
           isTsFile
-              ? FileUtils.createHardLink(file, hardlinkOrCopiedFile)
-              : FileUtils.copyFile(file, hardlinkOrCopiedFile);
+              ? FileUtils.createHardLink(source, hardlinkOrCopiedFile)
+              : FileUtils.copyFile(source, hardlinkOrCopiedFile);
 
       // If the file is not a hardlink or copied file, and there is no related hardlink or copied
       // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
