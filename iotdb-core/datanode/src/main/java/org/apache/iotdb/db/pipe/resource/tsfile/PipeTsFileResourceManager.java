@@ -80,7 +80,7 @@ public class PipeTsFileResourceManager {
     // just increase reference count and return it
     segmentLock.lock(file);
     try {
-      if (increaseReferenceIfExists(file, pipeName)) {
+      if (increaseReferenceIfExists(file, pipeName, isTsFile)) {
         return file;
       }
     } finally {
@@ -92,7 +92,7 @@ public class PipeTsFileResourceManager {
     final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file, pipeName);
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
-      if (increaseReferenceIfExists(hardlinkOrCopiedFile, pipeName)) {
+      if (increaseReferenceIfExists(hardlinkOrCopiedFile, pipeName, isTsFile)) {
         return getResourceMap(pipeName).get(hardlinkOrCopiedFile.getPath()).getFile();
       }
 
@@ -115,7 +115,7 @@ public class PipeTsFileResourceManager {
             resultFile.getPath(), new PipeTsFilePublicResource(resultFile));
       }
 
-      increasePublicReference(resultFile, pipeName);
+      increasePublicReference(resultFile, pipeName, isTsFile);
 
       return resultFile;
     } finally {
@@ -123,34 +123,26 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  private boolean increaseReferenceIfExists(final File file, final @Nullable String pipeName) {
+  private boolean increaseReferenceIfExists(
+      final File file, final @Nullable String pipeName, final boolean isTsFile) throws IOException {
     final String path = file.getPath();
     final PipeTsFileResource resource = getResourceMap(pipeName).get(path);
     if (resource != null) {
       resource.increaseReferenceCount();
-      increasePublicReference(file, pipeName);
+      increasePublicReference(file, pipeName, isTsFile);
       return true;
     }
     return false;
   }
 
-  private void increasePublicReference(final File file, final String pipeName) {
+  private void increasePublicReference(
+      final File file, final @Nullable String pipeName, final boolean isTsFile) throws IOException {
     if (Objects.isNull(pipeName)) {
       return;
     }
     // Increase the assigner's file to avoid hard-link or memory cache cleaning
     // Note that it does not exist for historical files
-    final String path = getCommonFilePath(file);
-    hardlinkOrCopiedFileToTsFilePublicResourceMap.compute(
-        path,
-        (k, v) -> {
-          if (Objects.isNull(v)) {
-            return new PipeTsFilePublicResource(new File(path));
-          } else {
-            v.increaseReferenceCount();
-            return v;
-          }
-        });
+    increaseFileReference(new File(getCommonFilePath(file)), isTsFile, null);
   }
 
   public static File getHardlinkOrCopiedFileInPipeDir(
@@ -227,13 +219,7 @@ public class PipeTsFileResourceManager {
     }
     // Increase the assigner's file to avoid hard-link or memory cache cleaning
     // Note that it does not exist for historical files
-    final String commonFilePath = getCommonFilePath(file);
-    if (hardlinkOrCopiedFileToTsFilePublicResourceMap.containsKey(commonFilePath)
-        && hardlinkOrCopiedFileToTsFilePublicResourceMap
-            .get(commonFilePath)
-            .decreaseReferenceCount()) {
-      hardlinkOrCopiedFileToPipeTsFileResourceMap.remove(commonFilePath);
-    }
+    decreaseFileReference(new File(getCommonFilePath(file)), null);
   }
 
   // Warning: Shall not be called by the assigner
