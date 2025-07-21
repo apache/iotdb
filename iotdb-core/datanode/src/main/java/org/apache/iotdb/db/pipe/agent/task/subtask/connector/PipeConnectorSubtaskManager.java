@@ -87,7 +87,14 @@ public class PipeConnectorSubtaskManager {
                 .contains(new DataRegionId(environment.getRegionId()))
             || PipeRuntimeMeta.isSourceExternal(environment.getRegionId());
 
-    final int connectorNum;
+    final boolean isForceSequential =
+        pipeConnectorParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeConnectorConstant.CONNECTOR_FORCE_SEQUENTIAL_KEY,
+                PipeConnectorConstant.SINK_FORCE_SEQUENTIAL_KEY),
+            PipeConnectorConstant.CONNECTOR_FORCE_SEQUENTIAL_DEFAULT_VALUE);
+
+    int connectorNum;
     boolean realTimeFirst = false;
     String attributeSortedString = generateAttributeSortedString(pipeConnectorParameters);
     if (isDataRegionConnector) {
@@ -111,6 +118,10 @@ public class PipeConnectorSubtaskManager {
       attributeSortedString = "schema_" + attributeSortedString;
     }
     environment.setAttributeSortedString(attributeSortedString);
+    realTimeFirst = realTimeFirst && !isForceSequential;
+    if(isForceSequential){
+      connectorNum = 1;
+    }
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final PipeConnectorSubtaskExecutor executor = executorSupplier.get();
