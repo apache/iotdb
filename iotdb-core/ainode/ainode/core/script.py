@@ -19,6 +19,8 @@ import os
 import shutil
 import sys
 
+import torch.multiprocessing as mp
+
 from ainode.core.ainode import AINode
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import TSStatusCode
@@ -86,6 +88,8 @@ def main():
     command = arguments[1]
     if command == "start":
         try:
+            mp.set_start_method("spawn", force=True)
+            logger.info(f"Current multiprocess start method: {mp.get_start_method()}")
             logger.info("IoTDB-AINode is starting...")
             ai_node = AINode()
             ai_node.start()

@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
@@ -304,6 +305,12 @@ public class IrTypeAnalyzer {
     @Override
     protected Type visitArithmeticUnary(ArithmeticUnaryExpression node, Context context) {
       return setExpressionType(node, process(node.getValue(), context));
+    }
+
+    @Override
+    protected Type visitExtract(Extract node, Context context) {
+      process(node.getExpression(), context);
+      return setExpressionType(node, INT64);
     }
 
     @Override
