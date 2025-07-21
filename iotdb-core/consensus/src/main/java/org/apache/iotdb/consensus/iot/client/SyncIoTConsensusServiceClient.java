@@ -53,7 +53,7 @@ public class SyncIoTConsensusServiceClient extends IoTConsensusIService.Client
         property
             .getProtocolFactory()
             .getProtocol(
-                commonConfig.isEnableSSL()
+                commonConfig.isEnableInternalSSL()
                     ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         endpoint.getIp(),
                         endpoint.getPort(),

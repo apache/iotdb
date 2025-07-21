@@ -138,7 +138,7 @@ public class DataRegionConsensusImpl {
                               CONF.getThriftServerAwaitTimeForStopService())
                           .setThriftMaxFrameSize(CONF.getThriftMaxFrameSize())
                           .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
-                          .setEnableSSL(COMMON_CONF.isEnableSSL())
+                          .setEnableSSL(COMMON_CONF.isEnableInternalSSL())
                           .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
                           .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
                           .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())
@@ -167,7 +167,7 @@ public class DataRegionConsensusImpl {
                           .setThriftServerAwaitTimeForStopService(
                               CONF.getThriftServerAwaitTimeForStopService())
                           .setThriftMaxFrameSize(CONF.getThriftMaxFrameSize())
-                          .setEnableSSL(COMMON_CONF.isEnableSSL())
+                          .setEnableSSL(COMMON_CONF.isEnableInternalSSL())
                           .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
                           .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
                           .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())
@@ -218,7 +218,7 @@ public class DataRegionConsensusImpl {
                                   CONF.getDataRatisConsensusGrpcFlowControlWindow()))
                           .setLeaderOutstandingAppendsMax(
                               CONF.getDataRatisConsensusGrpcLeaderOutstandingAppendsMax())
-                          .setEnableSSL(COMMON_CONF.isEnableSSL())
+                          .setEnableSSL(COMMON_CONF.isEnableInternalSSL())
                           .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
                           .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
                           .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())

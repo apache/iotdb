@@ -451,10 +451,18 @@ public class CommonDescriptor {
   }
 
   public void initThriftSSL(TrimProperties properties) {
-    config.setEnableSSL(
+    config.setEnableThriftClientSSL(
         Boolean.parseBoolean(
-            properties.getProperty("enable_thrift_ssl", Boolean.toString(config.isEnableSSL()))));
+            properties.getProperty(
+                "enable_thrift_ssl", Boolean.toString(config.isEnableThriftClientSSL()))));
+    config.setEnableInternalSSL(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_internal_connection_ssl", Boolean.toString(config.isEnableInternalSSL()))));
     config.setKeyStorePath(properties.getProperty("key_store_path", config.getKeyStorePath()));
-    config.setKeyStorePwd(properties.getProperty("key_store_pwd", config.getKeyStorePath()));
+    config.setKeyStorePwd(properties.getProperty("key_store_pwd", config.getKeyStorePwd()));
+    config.setTrustStorePath(
+        properties.getProperty("trust_store_path", config.getTrustStorePath()));
+    config.setTrustStorePwd(properties.getProperty("trust_store_pwd", config.getTrustStorePwd()));
   }
 }

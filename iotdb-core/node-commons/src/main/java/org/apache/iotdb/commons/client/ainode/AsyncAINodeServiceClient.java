@@ -53,7 +53,7 @@ public class AsyncAINodeServiceClient extends IAINodeRPCService.AsyncClient
     super(
         property.getProtocolFactory(),
         tClientManager,
-        commonConfig.isEnableSSL()
+        commonConfig.isEnableInternalSSL()
             ? TNonblockingSocketWrapper.wrap(
                 endPoint.getIp(),
                 endPoint.getPort(),

@@ -265,7 +265,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public void connect(TEndPoint endpoint, int timeoutMs) throws TException {
     try {
       transport =
-          commonConfig.isEnableSSL()
+          commonConfig.isEnableInternalSSL()
               ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                   endpoint.getIp(),
                   endpoint.getPort(),

@@ -58,7 +58,7 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
     super(
         property.getProtocolFactory(),
         tAsyncClientManager,
-        commonConfig.isEnableSSL()
+        commonConfig.isEnableInternalSSL()
             ? TNonblockingSocketWrapper.wrap(
                 endpoint.getIp(),
                 endpoint.getPort(),

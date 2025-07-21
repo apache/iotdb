@@ -58,7 +58,7 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
     super(
         property.getProtocolFactory(),
         tClientManager,
-        commonConfig.isEnableSSL()
+        commonConfig.isEnableInternalSSL()
             ? TNonblockingSocketWrapper.wrap(
                 endpoint.getIp(),
                 endpoint.getPort(),

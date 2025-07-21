@@ -55,7 +55,7 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
         property
             .getProtocolFactory()
             .getProtocol(
-                commonConfig.isEnableSSL()
+                commonConfig.isEnableInternalSSL()
                     ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         endpoint.getIp(),
                         endpoint.getPort(),

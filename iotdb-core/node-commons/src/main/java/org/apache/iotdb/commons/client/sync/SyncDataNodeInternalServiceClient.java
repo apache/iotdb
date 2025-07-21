@@ -56,7 +56,7 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
         property
             .getProtocolFactory()
             .getProtocol(
-                commonConfig.isEnableSSL()
+                commonConfig.isEnableInternalSSL()
                     ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         endpoint.getIp(),
                         endpoint.getPort(),

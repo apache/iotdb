@@ -99,7 +99,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   private void init() throws TException {
     try {
-      if (commonConfig.isEnableSSL()) {
+      if (commonConfig.isEnableInternalSSL()) {
         TSSLTransportFactory.TSSLTransportParameters params =
             new TSSLTransportFactory.TSSLTransportParameters();
         params.setTrustStore(commonConfig.getTrustStorePath(), commonConfig.getTrustStorePwd());

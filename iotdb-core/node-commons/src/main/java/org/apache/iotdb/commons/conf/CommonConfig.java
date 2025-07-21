@@ -416,8 +416,11 @@ public class CommonConfig {
 
   private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
-  /** Enable the thrift Service ssl. */
-  private boolean enableSSL = false;
+  /** Enable the Thrift Client ssl. */
+  private boolean enableThriftClientSSL = false;
+
+  /** Enable the cluster internal connection ssl. */
+  private boolean enableInternalSSL = false;
 
   /** ssl key Store Path. */
   private String keyStorePath = "";
@@ -2449,12 +2452,20 @@ public class CommonConfig {
     this.trustedUriPattern = trustedUriPattern;
   }
 
-  public boolean isEnableSSL() {
-    return enableSSL;
+  public boolean isEnableThriftClientSSL() {
+    return enableThriftClientSSL;
   }
 
-  public void setEnableSSL(boolean enableSSL) {
-    this.enableSSL = enableSSL;
+  public void setEnableThriftClientSSL(boolean enableThriftClientSSL) {
+    this.enableThriftClientSSL = enableThriftClientSSL;
+  }
+
+  public boolean isEnableInternalSSL() {
+    return enableInternalSSL;
+  }
+
+  public void setEnableInternalSSL(boolean enableInternalSSL) {
+    this.enableInternalSSL = enableInternalSSL;
   }
 
   public String getKeyStorePath() {

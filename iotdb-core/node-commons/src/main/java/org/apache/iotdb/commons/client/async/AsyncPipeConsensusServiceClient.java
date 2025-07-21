@@ -63,7 +63,7 @@ public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.Async
     super(
         property.getProtocolFactory(),
         tAsyncClientManager,
-        commonConfig.isEnableSSL()
+        commonConfig.isEnableInternalSSL()
             ? TNonblockingSocketWrapper.wrap(
                 endpoint.getIp(),
                 endpoint.getPort(),

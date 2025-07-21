@@ -66,7 +66,7 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
   public void initThriftServiceThread() throws IllegalAccessException {
     try {
       thriftServiceThread =
-          commonConfig.isEnableSSL()
+          commonConfig.isEnableThriftClientSSL()
               ? new ThriftServiceThread(
                   processor,
                   getID().getName(),

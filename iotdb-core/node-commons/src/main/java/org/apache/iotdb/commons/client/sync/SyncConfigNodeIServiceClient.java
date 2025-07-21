@@ -55,7 +55,7 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
         property
             .getProtocolFactory()
             .getProtocol(
-                commonConfig.isEnableSSL()
+                commonConfig.isEnableInternalSSL()
                     ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         endPoint.getIp(),
                         endPoint.getPort(),

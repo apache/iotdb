@@ -92,6 +92,7 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
             password=password,
             zone_id=time_zone,
         )
+        # TODO(HAONAN)
         self.session.open(False)
         self.use_rate = use_rate
         self.offset_rate = offset_rate

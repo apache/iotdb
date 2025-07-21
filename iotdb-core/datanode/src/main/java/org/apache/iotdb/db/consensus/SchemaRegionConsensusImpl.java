@@ -104,7 +104,7 @@ public class SchemaRegionConsensusImpl {
                                       .setLeaderOutstandingAppendsMax(
                                           CONF
                                               .getSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax())
-                                      .setEnableSSL(COMMON_CONF.isEnableSSL())
+                                      .setEnableSSL(COMMON_CONF.isEnableInternalSSL())
                                       .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
                                       .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
                                       .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())

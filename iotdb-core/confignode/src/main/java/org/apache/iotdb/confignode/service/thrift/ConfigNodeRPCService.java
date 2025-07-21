@@ -61,7 +61,7 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
 
     try {
       thriftServiceThread =
-          commonConfig.isEnableSSL()
+          commonConfig.isEnableInternalSSL()
               ? new ThriftServiceThread(
                   processor,
                   getID().getName(),

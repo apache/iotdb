@@ -60,7 +60,7 @@ public class AsyncDataNodeExternalServiceClient extends IDataNodeRPCService.Asyn
     super(
         property.getProtocolFactory(),
         tClientManager,
-        commonConfig.isEnableSSL()
+        commonConfig.isEnableInternalSSL()
             ? TNonblockingSocketWrapper.wrap(
                 endpoint.getIp(),
                 endpoint.getPort(),

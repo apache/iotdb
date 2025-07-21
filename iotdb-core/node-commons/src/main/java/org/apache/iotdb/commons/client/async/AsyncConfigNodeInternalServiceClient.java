@@ -60,7 +60,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
     super(
         property.getProtocolFactory(),
         tClientManager,
-        commonConfig.isEnableSSL()
+        commonConfig.isEnableInternalSSL()
             ? TNonblockingSocketWrapper.wrap(
                 endpoint.getIp(),
                 endpoint.getPort(),

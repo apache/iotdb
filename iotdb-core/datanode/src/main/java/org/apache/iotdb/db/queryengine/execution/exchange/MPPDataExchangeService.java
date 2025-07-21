@@ -93,7 +93,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
   public void initThriftServiceThread() throws IllegalAccessException {
     try {
       thriftServiceThread =
-          commonConfig.isEnableSSL()
+          commonConfig.isEnableInternalSSL()
               ? new ThriftServiceThread(
                   processor,
                   getID().getName(),
