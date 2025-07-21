@@ -36,7 +36,7 @@ RUN apt update \
 COPY target/${target}.zip /
 RUN cd / && unzip ${target}.zip \
   && rm ${target}.zip \
-  && mv apache-iotdb-${version}-ainode-bin ainode
+  && mv ${target} ainode
 
 ENV IOTDB_AINODE_HOME=/ainode VERSION=${version}
 WORKDIR ${IOTDB_AINODE_HOME}/sbin
