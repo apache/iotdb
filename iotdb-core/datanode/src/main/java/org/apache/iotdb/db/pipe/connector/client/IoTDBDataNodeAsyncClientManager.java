@@ -297,6 +297,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       if (exception.get() != null) {
         markUnhealthy(targetNodeUrl);
         throw new PipeConnectionException("Failed to handshake.", exception.get());
+      } else {
+        markHealthy(targetNodeUrl);
       }
     } catch (TException e) {
       client.resetMethodStateIfStopped();
@@ -391,11 +393,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     @Override
     public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
       final int clientSize = endPointList.size();
-      long start = currentClientIndex;
-      while (currentClientIndex - start <= 5L * clientSize) {
+      long n = 0;
+      while (true) {
         final TEndPoint targetNodeUrl = endPointList.get((int) (currentClientIndex++ % clientSize));
-
-        if (isUnhealthy(targetNodeUrl) && currentClientIndex - start <= clientSize) {
+        if (isUnhealthy(targetNodeUrl) && n < clientSize) {
+          n++;
           continue;
         }
 
@@ -405,9 +407,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           return client;
         }
       }
-
-      throw new PipeException(
-          "Failed to borrow client after trying all endpoints. maybe client manager is closed.");
     }
   }
 
@@ -417,11 +416,10 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final int clientSize = endPointList.size();
       long n = 0;
 
-      while (n <= 5L * clientSize) {
-        n++;
+      while (true) {
         final TEndPoint targetNodeUrl = endPointList.get((int) (Math.random() * clientSize));
-
         if (isUnhealthy(targetNodeUrl) && n <= clientSize) {
+          n++;
           continue;
         }
 
@@ -431,9 +429,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           return client;
         }
       }
-
-      throw new PipeException(
-          "Failed to borrow client after trying all endpoints. maybe client manager is closed.");
     }
   }
 
@@ -442,10 +437,10 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
       final int clientSize = endPointList.size();
       long n = 0;
-      while (n <= 5L * clientSize) {
+      while (true) {
         for (final TEndPoint targetNodeUrl : endPointList) {
-          n++;
           if (isUnhealthy(targetNodeUrl) && n <= clientSize) {
+            n++;
             continue;
           }
 
@@ -456,9 +451,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           }
         }
       }
-
-      throw new PipeException(
-          "Failed to borrow client after trying all endpoints. maybe client manager is closed.");
     }
   }
 
