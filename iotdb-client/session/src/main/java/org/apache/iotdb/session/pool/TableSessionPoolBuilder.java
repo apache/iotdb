@@ -176,12 +176,12 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
    * @defaultValue false
    */
   public TableSessionPoolBuilder enableIoTDBRpcCompression(boolean enableCompression) {
-    this.isCompressed = enableCompression;
+    this.isIoTDBRpcCompressionEnabled = enableCompression;
     return this;
   }
 
   public TableSessionPoolBuilder enableThriftCompression(boolean enableCompression) {
-    this.isCompacted = enableCompression;
+    this.isThriftRpcCompactionEnabled = enableCompression;
     return this;
   }
 

@@ -511,8 +511,8 @@ public class SessionPool implements ISessionPool {
     this.password = builder.pw;
     this.fetchSize = builder.fetchSize;
     this.waitToGetSessionTimeoutInMs = builder.waitToGetSessionTimeoutInMs;
-    this.enableThriftCompression = builder.isCompacted;
-    this.enableIoTDBRpcCompression = builder.isCompressed;
+    this.enableThriftCompression = builder.isThriftRpcCompactionEnabled;
+    this.enableIoTDBRpcCompression = builder.isIoTDBRpcCompressionEnabled;
     this.zoneId = builder.zoneId;
     this.enableRedirection = builder.enableRedirection;
     if (this.enableRedirection) {
@@ -590,8 +590,8 @@ public class SessionPool implements ISessionPool {
               .sqlDialect(sqlDialect)
               .database(database)
               .timeOut(queryTimeoutInMs)
-              .isCompressed(enableIoTDBRpcCompression)
-              .isCompacted(enableThriftCompression)
+              .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
+              .enableThriftRpcCompression(enableThriftCompression)
               .build();
     } else {
       // Construct redirect-able Session
@@ -615,8 +615,8 @@ public class SessionPool implements ISessionPool {
               .sqlDialect(sqlDialect)
               .database(database)
               .timeOut(queryTimeoutInMs)
-              .isCompressed(enableIoTDBRpcCompression)
-              .isCompacted(enableThriftCompression)
+              .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
+              .enableThriftRpcCompression(enableThriftCompression)
               .build();
     }
     session.setEnableQueryRedirection(enableQueryRedirection);
@@ -3681,13 +3681,13 @@ public class SessionPool implements ISessionPool {
       return this;
     }
 
-    public Builder enableCompaction(boolean enableCompaction) {
-      this.isCompacted = enableCompaction;
+    public Builder enableThriftRpcCompaction(boolean enableCompaction) {
+      this.isThriftRpcCompactionEnabled = enableCompaction;
       return this;
     }
 
-    public Builder enableCompression(boolean enableCompression) {
-      this.isCompressed = enableCompression;
+    public Builder enableIoTDBRpcCompression(boolean enableCompression) {
+      this.isIoTDBRpcCompressionEnabled = enableCompression;
       return this;
     }
 

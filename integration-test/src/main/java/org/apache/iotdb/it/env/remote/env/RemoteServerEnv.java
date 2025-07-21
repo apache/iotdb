@@ -225,7 +225,7 @@ public class RemoteServerEnv implements BaseEnv {
         .maxSize(maxSize)
         .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
         .waitToGetSessionTimeoutInMs(60_000)
-        .enableCompression(false)
+        .enableIoTDBRpcCompression(false)
         .zoneId(null)
         .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
         .connectionTimeoutInMs(SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS)

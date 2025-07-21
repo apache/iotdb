@@ -247,7 +247,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
    * @defaultValue false
    */
   public TableSessionBuilder enableCompression(boolean enableCompression) {
-    this.isCompressed = enableCompression;
+    this.isIoTDBRpcCompressionEnabled = enableCompression;
     return this;
   }
 
@@ -264,7 +264,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   public TableSessionBuilder enableCompaction(boolean enableCompaction) {
-    this.isCompacted = enableCompaction;
+    this.isThriftRpcCompactionEnabled = enableCompaction;
     return this;
   }
 
@@ -382,10 +382,10 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
     }
     this.sqlDialect = TABLE;
     Session newSession = new Session(this);
-    newSession.enableRPCCompression = isCompressed;
+    newSession.enableRPCCompression = isIoTDBRpcCompressionEnabled;
 
     try {
-      newSession.open(isCompacted, connectionTimeoutInMs);
+      newSession.open(isThriftRpcCompactionEnabled, connectionTimeoutInMs);
     } catch (IoTDBConnectionException e) {
       newSession.close();
       throw e;

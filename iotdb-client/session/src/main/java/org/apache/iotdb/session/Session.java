@@ -454,8 +454,8 @@ public class Session implements ISession {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
       this.enableQueryRedirection = builder.enableRedirection;
     }
-    this.enableRPCCompaction = builder.isCompacted;
-    this.enableRPCCompression = builder.isCompressed;
+    this.enableRPCCompaction = builder.isThriftRpcCompactionEnabled;
+    this.enableRPCCompression = builder.isIoTDBRpcCompressionEnabled;
     this.compressionType = builder.compressionType;
     this.columnEncodersMap = builder.columnEncodersMap;
     this.enableRedirection = builder.enableRedirection;
@@ -4273,13 +4273,13 @@ public class Session implements ISession {
       return this;
     }
 
-    public Builder isCompressed(boolean isCompressed) {
-      this.isCompressed = isCompressed;
+    public Builder enableIoTDBRpcCompression(boolean enabled) {
+      this.isIoTDBRpcCompressionEnabled = enabled;
       return this;
     }
 
-    public Builder isCompacted(boolean isCompacted) {
-      this.isCompacted = isCompacted;
+    public Builder enableThriftRpcCompression(boolean enabled) {
+      this.isThriftRpcCompactionEnabled = enabled;
       return this;
     }
 

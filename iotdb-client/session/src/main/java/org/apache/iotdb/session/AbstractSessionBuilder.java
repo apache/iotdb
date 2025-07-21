@@ -75,9 +75,9 @@ public abstract class AbstractSessionBuilder {
 
   public String database;
 
-  public Boolean isCompressed = false;
+  public Boolean isIoTDBRpcCompressionEnabled = false;
 
-  public Boolean isCompacted = false;
+  public Boolean isThriftRpcCompactionEnabled = false;
 
   public CompressionType compressionType = CompressionType.UNCOMPRESSED;
 
