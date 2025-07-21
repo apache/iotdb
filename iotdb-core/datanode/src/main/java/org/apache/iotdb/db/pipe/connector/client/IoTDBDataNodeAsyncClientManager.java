@@ -319,9 +319,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       client.returnSelf();
     }
 
-    if (isHandshakeFinished.get()) {
-      markHealthy(targetNodeUrl);
-    }
     return false;
   }
 
