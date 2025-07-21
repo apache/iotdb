@@ -50,6 +50,7 @@ DEFAULT_RECONNECT_TIMES = 3
 
 # AINode inference configuration
 AINODE_INFERENCE_BATCH_INTERVAL_IN_MS = 15
+AINODE_INFERENCE_MAX_PREDICT_LENGTH = 2880
 
 # AINode folder structure
 AINODE_ROOT_DIR = os.path.dirname(
