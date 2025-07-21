@@ -71,7 +71,10 @@ public class DescribeTableDetailsTask extends AbstractTableTask {
         columnStatus = "PRE_DELETE";
       } else if (preAlteredColumns.containsKey(columnSchema.getColumnName())) {
         columnStatus = "PRE_ALTER";
-        dataTypeName += "->" + TSDataType.getTsDataType(preAlteredColumns.get(columnSchema.getColumnName())).name();
+        dataTypeName +=
+            "->"
+                + TSDataType.getTsDataType(preAlteredColumns.get(columnSchema.getColumnName()))
+                    .name();
       }
       builder
           .getColumnBuilder(0)

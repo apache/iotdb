@@ -31,6 +31,7 @@ public class AlterColumnDataType extends Statement {
   private final DataType dataType;
   private final boolean ifTableExists;
   private final boolean ifColumnExists;
+  private final boolean view;
 
   public AlterColumnDataType(
       @Nullable NodeLocation location,
@@ -38,13 +39,15 @@ public class AlterColumnDataType extends Statement {
       Identifier columnName,
       DataType dataType,
       boolean ifTableExists,
-      boolean ifColumnExists) {
+      boolean ifColumnExists,
+      boolean view) {
     super(location);
     this.tableName = tableName;
     this.columnName = columnName;
     this.dataType = dataType;
     this.ifTableExists = ifTableExists;
     this.ifColumnExists = ifColumnExists;
+    this.view = view;
   }
 
   @Override
@@ -80,6 +83,8 @@ public class AlterColumnDataType extends Statement {
         + columnName
         + ", dataType="
         + dataType
+        + ", view="
+        + view
         + '}';
   }
 
@@ -106,5 +111,9 @@ public class AlterColumnDataType extends Statement {
 
   public boolean isIfColumnExists() {
     return ifColumnExists;
+  }
+
+  public boolean isView() {
+    return view;
   }
 }

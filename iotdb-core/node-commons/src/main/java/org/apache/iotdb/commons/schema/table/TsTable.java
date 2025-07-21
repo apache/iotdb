@@ -68,6 +68,7 @@ public class TsTable {
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
   private final Map<String, Integer> tagColumnIndexMap = new HashMap<>();
+  private final Map<String, Integer> idColumnIndexMap = new HashMap<>();
 
   private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -77,6 +78,8 @@ public class TsTable {
   private transient long ttlValue = Long.MIN_VALUE;
   private transient int tagNums = 0;
   private transient int fieldNum = 0;
+  private transient int idNums = 0;
+  private transient int measurementNum = 0;
 
   public TsTable(final String tableName) {
     this.tableName = tableName;

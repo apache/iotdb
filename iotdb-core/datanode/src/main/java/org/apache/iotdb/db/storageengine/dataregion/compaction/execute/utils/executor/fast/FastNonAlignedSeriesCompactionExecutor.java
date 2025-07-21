@@ -199,10 +199,10 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
     updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
     if (chunkMetadataElement.chunkMetadata.getNewType() != null) {
       chunkMetadataElement.chunk =
-              readerCacheMap
-                      .get(chunkMetadataElement.fileElement.resource)
-                      .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata)
-                      .rewrite(((ChunkMetadata) chunkMetadataElement.chunkMetadata).getNewType());
+          readerCacheMap
+              .get(chunkMetadataElement.fileElement.resource)
+              .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata)
+              .rewrite(((ChunkMetadata) chunkMetadataElement.chunkMetadata).getNewType());
 
       ChunkMetadata chunkMetadata = (ChunkMetadata) chunkMetadataElement.chunkMetadata;
       chunkMetadata.setTsDataType(chunkMetadataElement.chunkMetadata.getNewType());
@@ -212,9 +212,9 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
       chunkMetadataElement.chunkMetadata = chunkMetadata;
     } else {
       chunkMetadataElement.chunk =
-              readerCacheMap
-                      .get(chunkMetadataElement.fileElement.resource)
-                      .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata);
+          readerCacheMap
+              .get(chunkMetadataElement.fileElement.resource)
+              .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata);
     }
     if (!hasStartMeasurement) {
       // for nonAligned sensors, only after getting chunkMetadatas can we create metadata to

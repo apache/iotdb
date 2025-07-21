@@ -244,7 +244,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatemen
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
-import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser.AlterColumnDataTypeContext;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -547,17 +546,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     Identifier columnName = lowerIdentifier((Identifier) visit(ctx.identifier()));
     DataType dataType = (DataType) visit(ctx.new_type);
     boolean ifTableExists =
-            ctx.EXISTS().stream()
-                    .anyMatch(
-                            node ->
-                                    node.getSymbol().getTokenIndex() < ctx.COLUMN().getSymbol().getTokenIndex());
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() < ctx.COLUMN().getSymbol().getTokenIndex());
     boolean ifColumnExists =
-            ctx.EXISTS().stream()
-                    .anyMatch(
-                            node ->
-                                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex());
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex());
     return new AlterColumnDataType(
-            getLocation(ctx), tableName, columnName, dataType, ifTableExists, ifColumnExists);
+        getLocation(ctx), tableName, columnName, dataType, ifTableExists, ifColumnExists, false);
   }
 
   @Override

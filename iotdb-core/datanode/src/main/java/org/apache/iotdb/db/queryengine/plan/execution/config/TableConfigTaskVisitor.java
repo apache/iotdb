@@ -558,7 +558,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         ifTableExists,
         ifColumnExists,
         columnName,
-        getDataType(dataType));
+        getDataType(dataType),
+        node.isView());
   }
 
   private boolean checkTimeColumnIdempotent(

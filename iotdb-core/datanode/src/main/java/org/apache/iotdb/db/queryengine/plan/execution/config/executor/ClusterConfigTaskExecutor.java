@@ -3787,7 +3787,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else if (Boolean.FALSE.equals(isShowCreateView)) {
         ShowCreateTableTask.buildTsBlock(table, future);
       } else if (isDetails) {
-        DescribeTableDetailsTask.buildTsBlock(table, resp.getPreDeletedColumns(), resp.preAlteredColumns, future);
+        DescribeTableDetailsTask.buildTsBlock(
+            table, resp.getPreDeletedColumns(), resp.preAlteredColumns, future);
       } else {
         DescribeTableTask.buildTsBlock(table, future);
       }
@@ -3930,7 +3931,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TSDataType newType,
       String queryId,
       boolean ifTableExists,
-      boolean ifColumnExists) {
+      boolean ifColumnExists,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3942,6 +3944,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.ALTER_COLUMN_DATA_TYPE,
               TsTableColumnSchemaUtil.serialize(columnName, newType),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
