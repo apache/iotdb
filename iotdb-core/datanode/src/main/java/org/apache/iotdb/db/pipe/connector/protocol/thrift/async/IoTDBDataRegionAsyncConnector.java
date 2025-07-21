@@ -163,8 +163,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             loadTsFileStrategy,
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
-            false,
-            syncConnector.getClientManager()::isEndPointAlive);
+            false);
 
     transferTsFileClientManager =
         new IoTDBDataNodeAsyncClientManager(
@@ -179,8 +178,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             loadTsFileStrategy,
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
-            isSplitTSFileBatchModeEnabled,
-            syncConnector.getClientManager()::isEndPointAlive);
+            isSplitTSFileBatchModeEnabled);
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);

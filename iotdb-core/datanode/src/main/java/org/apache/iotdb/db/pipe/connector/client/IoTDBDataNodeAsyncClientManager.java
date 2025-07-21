@@ -50,7 +50,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY;
@@ -68,8 +67,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       new ConcurrentHashMap<>();
   private final String receiverAttributes;
 
-  protected final Function<TEndPoint, Boolean> endPointFilter;
-
   // receiverAttributes -> IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
   private static final Map<String, IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new ConcurrentHashMap<>();
@@ -78,6 +75,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   private final LoadBalancer loadBalancer;
 
   private volatile boolean isClosed = false;
+
+  private final Map<TEndPoint, Long> unhealthyEndPointMap = new ConcurrentHashMap<>();
 
   public IoTDBDataNodeAsyncClientManager(
       final List<TEndPoint> endPoints,
@@ -91,8 +90,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final String loadTsFileStrategy,
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
-      final boolean isTSFileUsed,
-      final Function<TEndPoint, Boolean> endPointFilter) {
+      final boolean isTSFileUsed) {
     super(
         endPoints,
         useLeaderCache,
@@ -104,7 +102,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         shouldMarkAsPipeRequest);
 
     endPointSet = new HashSet<>(endPoints);
-    this.endPointFilter = endPointFilter;
 
     receiverAttributes =
         String.format(
@@ -164,7 +161,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   public AsyncPipeDataTransferServiceClient borrowClient(final TEndPoint endPoint)
       throws Exception {
-    if (!useLeaderCache || Objects.isNull(endPoint) || !endPointFilter.apply(endPoint)) {
+    if (!useLeaderCache || Objects.isNull(endPoint) || isUnhealthy(endPoint)) {
       return borrowClient();
     }
 
@@ -298,10 +295,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         waitHandshakeFinished(isHandshakeFinished);
       }
       if (exception.get() != null) {
+        markUnhealthy(targetNodeUrl);
         throw new PipeConnectionException("Failed to handshake.", exception.get());
       }
     } catch (TException e) {
       client.resetMethodStateIfStopped();
+      markUnhealthy(targetNodeUrl);
       throw e;
     } finally {
       if (isClosed) {
@@ -320,6 +319,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       client.returnSelf();
     }
 
+    if (isHandshakeFinished.get()) {
+      markHealthy(targetNodeUrl);
+      return true;
+    }
+
+    markUnhealthy(targetNodeUrl);
     return false;
   }
 
@@ -393,13 +398,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
       final int clientSize = endPointList.size();
       long start = currentClientIndex;
-      while (true) {
+      while (currentClientIndex - start <= 5L * clientSize) {
         final TEndPoint targetNodeUrl = endPointList.get((int) (currentClientIndex++ % clientSize));
 
-        if (endPointFilter != null
-            && !endPointFilter.apply(targetNodeUrl)
-            && currentClientIndex - start <= clientSize) {
-          continue; // Skip this endpoint if it does not pass the filter
+        if (isUnhealthy(targetNodeUrl) && currentClientIndex - start <= clientSize) {
+          continue;
         }
 
         final AsyncPipeDataTransferServiceClient client =
@@ -408,6 +411,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           return client;
         }
       }
+
+      throw new PipeException(
+          "Failed to borrow client after trying all endpoints. maybe client manager is closed.");
     }
   }
 
@@ -417,12 +423,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final int clientSize = endPointList.size();
       long n = 0;
 
-      while (true) {
+      while (n <= 5L * clientSize) {
         n++;
         final TEndPoint targetNodeUrl = endPointList.get((int) (Math.random() * clientSize));
 
-        if (endPointFilter != null && !endPointFilter.apply(targetNodeUrl) && n <= clientSize) {
-          continue; // Skip this endpoint if it does not pass the filter
+        if (isUnhealthy(targetNodeUrl) && n <= clientSize) {
+          continue;
         }
 
         final AsyncPipeDataTransferServiceClient client =
@@ -431,6 +437,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           return client;
         }
       }
+
+      throw new PipeException(
+          "Failed to borrow client after trying all endpoints. maybe client manager is closed.");
     }
   }
 
@@ -439,11 +448,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
       final int clientSize = endPointList.size();
       long n = 0;
-      while (true) {
+      while (n <= 5L * clientSize) {
         for (final TEndPoint targetNodeUrl : endPointList) {
           n++;
-          if (endPointFilter != null && !endPointFilter.apply(targetNodeUrl) && n <= clientSize) {
-            continue; // Skip this endpoint if it does not pass the filter
+          if (isUnhealthy(targetNodeUrl) && n <= clientSize) {
+            continue;
           }
 
           final AsyncPipeDataTransferServiceClient client =
@@ -453,6 +462,30 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           }
         }
       }
+
+      throw new PipeException(
+          "Failed to borrow client after trying all endpoints. maybe client manager is closed.");
     }
+  }
+
+  private boolean isUnhealthy(TEndPoint endPoint) {
+    Long downTime = unhealthyEndPointMap.get(endPoint);
+    if (downTime == null) {
+      return false;
+    }
+    if (System.currentTimeMillis() - downTime
+        > PipeConfig.getInstance().getPipeCheckAllSyncClientLiveTimeIntervalMs()) {
+      markHealthy(endPoint);
+      return false;
+    }
+    return true;
+  }
+
+  private void markUnhealthy(TEndPoint endPoint) {
+    unhealthyEndPointMap.put(endPoint, System.currentTimeMillis());
+  }
+
+  private void markHealthy(TEndPoint endPoint) {
+    unhealthyEndPointMap.remove(endPoint);
   }
 }

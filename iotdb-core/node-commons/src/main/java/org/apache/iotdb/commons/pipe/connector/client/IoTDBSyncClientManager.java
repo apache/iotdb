@@ -163,11 +163,6 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     throw new PipeConnectionException(errorMessage.toString());
   }
 
-  public boolean isEndPointAlive(final TEndPoint endPoint) {
-    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = endPoint2ClientAndStatus.get(endPoint);
-    return clientAndStatus != null && Boolean.TRUE.equals(clientAndStatus.getRight());
-  }
-
   protected void reconstructClient(TEndPoint endPoint) {
     endPoint2HandshakeErrorMessage.remove(endPoint);
 
