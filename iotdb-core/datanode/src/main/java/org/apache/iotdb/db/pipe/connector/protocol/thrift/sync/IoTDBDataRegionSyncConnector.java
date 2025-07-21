@@ -376,8 +376,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       // getDeviceId() may return null for InsertRowsNode, will be equal to getClient(null)
       clientAndStatus = clientManager.getClient(pipeInsertNodeTabletInsertionEvent.getDeviceId());
 
-      final InsertNode insertNode =
-          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       final TPipeTransferReq req =
           compressIfNeeded(
               insertNode != null

@@ -59,9 +59,8 @@ class InferenceRequest:
         self.cur_step_idx = 0  # Current write position in the output step index
 
         # Preallocate output buffer [batch_size, max_new_tokens]
-        device = inputs.device
         self.output_tensor = torch.zeros(
-            self.batch_size, max_new_tokens, device=device
+            self.batch_size, max_new_tokens, device="cpu"
         )  # shape: [self.batch_size, max_new_steps]
 
     def mark_running(self):

@@ -454,6 +454,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
+    setProperty("pipe_enable_memory_checked", String.valueOf(isPipeEnableMemoryCheck));
+    return this;
+  }
+
+  @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     setProperty("pipe_air_gap_receiver_enabled", String.valueOf(isPipeAirGapReceiverEnabled));
     return this;

@@ -57,7 +57,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Optional;
 
@@ -224,14 +223,14 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     } catch (IOException e) {
       TSStatus tsStatus = new TSStatus(INTERNAL_SERVER_ERROR.getStatusCode());
       tsStatus.setMessage(String.format("Failed to serialize input tsblock %s", e.getMessage()));
-      return new TForecastResp(tsStatus, ByteBuffer.allocate(0));
+      return new TForecastResp(tsStatus);
     } catch (TException e) {
       TSStatus tsStatus = new TSStatus(CAN_NOT_CONNECT_AINODE.getStatusCode());
       tsStatus.setMessage(
           String.format(
               "Failed to connect to AINode when executing %s: %s",
               Thread.currentThread().getStackTrace()[1].getMethodName(), e.getMessage()));
-      return new TForecastResp(tsStatus, ByteBuffer.allocate(0));
+      return new TForecastResp(tsStatus);
     }
   }
 

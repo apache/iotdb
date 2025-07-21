@@ -28,13 +28,15 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import java.util.function.Supplier;
+
 public class PipeTaskConnectorStage extends PipeTaskStage {
 
   protected final String pipeName;
   protected final long creationTime;
   protected final PipeParameters pipeConnectorParameters;
   protected final int regionId;
-  protected final PipeConnectorSubtaskExecutor executor;
+  protected final Supplier<? extends PipeConnectorSubtaskExecutor> executor;
 
   protected String connectorSubtaskId;
 
@@ -43,7 +45,7 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
       long creationTime,
       PipeParameters pipeConnectorParameters,
       int regionId,
-      PipeConnectorSubtaskExecutor executor) {
+      Supplier<? extends PipeConnectorSubtaskExecutor> executor) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.pipeConnectorParameters = pipeConnectorParameters;

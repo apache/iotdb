@@ -325,7 +325,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
 
     try (final SyncPipeConsensusServiceClient syncPipeConsensusServiceClient =
         syncRetryClientManager.borrowClient(getFollowerUrl())) {
-      insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
 
       if (insertNode != null) {

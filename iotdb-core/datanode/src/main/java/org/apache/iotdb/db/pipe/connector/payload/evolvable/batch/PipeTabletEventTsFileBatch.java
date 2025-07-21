@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTableModelTabletEventS
 import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
@@ -123,6 +124,12 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           event.getClass());
     }
     return true;
+  }
+
+  @Override
+  protected void recordMetric(long timeInterval, long bufferSize) {
+    PipeDataRegionConnectorMetrics.tsFileBatchTimeIntervalHistogram.update(timeInterval);
+    PipeDataRegionConnectorMetrics.tsFileBatchSizeHistogram.update(bufferSize);
   }
 
   private void bufferTreeModelTablet(

@@ -48,10 +48,6 @@ public class DataRegionWatermarkInjector {
     return injectionIntervalInMs;
   }
 
-  public long getNextInjectionTime() {
-    return nextInjectionTime;
-  }
-
   public PipeWatermarkEvent inject() {
     if (System.currentTimeMillis() < nextInjectionTime) {
       return null;

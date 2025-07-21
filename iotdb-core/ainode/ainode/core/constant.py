@@ -39,7 +39,7 @@ AINODE_INFERENCE_BATCH_INTERVAL_IN_MS = 15
 AINODE_MODELS_DIR = "data/ainode/models"
 AINODE_BUILTIN_MODELS_DIR = "data/ainode/models/weights"  # For built-in models, we only need to store their weights and config.
 AINODE_SYSTEM_DIR = "data/ainode/system"
-AINODE_LOG_DIR = "logs/ainode"
+AINODE_LOG_DIR = "logs"
 AINODE_THRIFT_COMPRESSION_ENABLED = False
 
 # use for node management

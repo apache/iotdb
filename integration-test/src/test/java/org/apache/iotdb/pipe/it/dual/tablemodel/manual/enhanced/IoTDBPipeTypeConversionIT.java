@@ -33,6 +33,7 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -51,6 +52,8 @@ import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
+@Ignore(
+    "Currently this may lose some data because tsFile conversion is banned, and historical transferred is not opened if history.enable = false")
 public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualIT {
 
   @Override

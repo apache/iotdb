@@ -99,7 +99,6 @@ public class FetchCombineResultRequest extends TPipeTransferReq {
 
     version = transferReq.version;
     type = transferReq.type;
-    body = transferReq.body;
 
     return this;
   }

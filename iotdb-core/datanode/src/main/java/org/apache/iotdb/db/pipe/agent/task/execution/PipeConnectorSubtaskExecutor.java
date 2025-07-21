@@ -23,16 +23,20 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class PipeConnectorSubtaskExecutor extends PipeSubtaskExecutor {
+  private static final AtomicInteger id = new AtomicInteger(0);
 
   public PipeConnectorSubtaskExecutor() {
     super(
         PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
-        ThreadName.PIPE_CONNECTOR_EXECUTOR_POOL,
+        ThreadName.PIPE_CONNECTOR_EXECUTOR_POOL.getName() + "-" + id.get(),
+        ThreadName.PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL.getName() + "-" + id.getAndIncrement(),
         true);
   }
 
-  public PipeConnectorSubtaskExecutor(final int corePoolSize, final ThreadName threadName) {
+  public PipeConnectorSubtaskExecutor(final int corePoolSize, final String threadName) {
     super(corePoolSize, threadName, true);
   }
 }

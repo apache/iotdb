@@ -563,6 +563,7 @@ public class TsFileInsertionEventParserTest {
             false,
             "",
             new TsFileResource(tsFile),
+            null,
             true,
             false,
             false,

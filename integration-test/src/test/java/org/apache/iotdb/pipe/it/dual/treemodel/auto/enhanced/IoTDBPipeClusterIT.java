@@ -78,7 +78,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setIsPipeEnableMemoryCheck(false);
 
     receiverEnv
         .getConfig()
@@ -88,7 +89,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         .setSchemaReplicationFactor(3)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
