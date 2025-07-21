@@ -185,9 +185,8 @@ public class PipeHeartbeatParser {
         final PipeTaskMeta runtimeMetaFromAgent =
             pipeTaskMetaMapFromAgent.get(runtimeMetaFromCoordinator.getKey());
         if (runtimeMetaFromAgent == null) {
-          LOGGER.warn(
-              "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "
-                  + "runtimeMetaFromAgent is null, runtimeMetaFromCoordinator: {}",
+          LOGGER.info(
+              "No corresponding Pipe is running in the reported DataRegion. runtimeMetaFromAgent is null, runtimeMetaFromCoordinator: {}",
               runtimeMetaFromCoordinator);
           continue;
         }
