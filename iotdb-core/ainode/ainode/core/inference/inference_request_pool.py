@@ -29,6 +29,7 @@ from ainode.core.config import AINodeDescriptor
 from ainode.core.inference.inference_request import InferenceRequest
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
+from ainode.core.inference.scheduler.basic_scheduler import BasicScheduler
 
 logger = Logger()
 
@@ -50,6 +51,8 @@ class InferenceRequestPool(mp.Process):
         config: PretrainedConfig,
         request_queue: mp.Queue,
         result_queue: mp.Queue,
+        max_memory_bytes: int,
+        max_batch_size: int,
         **pool_kwargs,
     ):
         super().__init__()
@@ -66,6 +69,15 @@ class InferenceRequestPool(mp.Process):
         self._waiting_queue = request_queue  # Requests that are waiting to be processed
         self._running_queue = mp.Queue()  # Requests that are currently being processed
         self._finished_queue = result_queue  # Requests that are finished
+        self._max_memory_bytes = max_memory_bytes
+        self._max_batch_size = max_batch_size
+        self._scheduler = BasicScheduler(
+            self._waiting_queue,
+            self._running_queue,
+            self._finished_queue,
+            self._max_memory_bytes,
+            self._max_batch_size
+        )
         self._stop_event = mp.Event()
 
         # Fix inference seed
@@ -78,16 +90,12 @@ class InferenceRequestPool(mp.Process):
         pass
 
     def _activate_requests(self):
-        if self._waiting_queue.empty():
-            return
-        request: InferenceRequest = self._waiting_queue.get()
-        # TODO: Check memory size before activating requests
-        request.inputs = request.inference_pipeline.preprocess_inputs(request.inputs)
-        request.mark_running()
-        logger.debug(
-            f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is activated with inputs shape {request.inputs.shape}"
-        )
-        self._running_queue.put(request)
+        requests = self._scheduler.schedule_activate()
+        for request in requests:
+            request.inputs = request.inference_pipeline.preprocess_inputs(request.inputs)
+            logger.debug(
+                f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is activated with inputs shape {request.inputs.shape}"
+            )
 
     def _requests_activate_loop(self):
         while not self._stop_event.is_set():
@@ -95,36 +103,34 @@ class InferenceRequestPool(mp.Process):
             self._activate_requests()
 
     def _step(self):
-        if self._running_queue.empty():
-            return
+        requests = self._scheduler.schedule_step()
         # TODO: We need a batcher to accelerate the concurrent inference
-        # TODO: Check memory size before executing requests
-        request: InferenceRequest = self._running_queue.get()
-        inputs = request.inputs.to(self.device)
-        output = self.model.generate(
-            inputs,
-            max_new_tokens=request.max_new_tokens,
-            num_samples=10,
-            revin=True,
-        )
-        request.output_tensor = request.output_tensor.to(
-            self.device
-        )  # Ensure output tensor is on the same device
-        request.write_step_output(output[0].mean(dim=0))
-        request.inference_pipeline.post_decode()
-        if request.is_finished():
-            request.inference_pipeline.post_inference()
-            logger.debug(
-                f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is finished"
+        for request in requests:
+            inputs = request.inputs.to(self.device)
+            output = self.model.generate(
+                inputs,
+                max_new_tokens=request.max_new_tokens,
+                num_samples=10,
+                revin=True,
             )
-            # ensure the output tensor is on CPU before sending to result queue
-            request.output_tensor = request.output_tensor.cpu()
-            self._finished_queue.put(request)
-        else:
-            logger.debug(
-                f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is not finished, re-queueing"
-            )
-            self._waiting_queue.put(request)
+            request.output_tensor = request.output_tensor.to(
+                self.device
+            )  # Ensure output tensor is on the same device
+            request.write_step_output(output[0].mean(dim=0))
+            request.inference_pipeline.post_decode()
+            if request.is_finished():
+                request.inference_pipeline.post_inference()
+                logger.debug(
+                    f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is finished"
+                )
+                # ensure the output tensor is on CPU before sending to result queue
+                request.output_tensor = request.output_tensor.cpu()
+                self._finished_queue.put(request)
+            else:
+                logger.debug(
+                    f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is not finished, re-queueing"
+                )
+                self._waiting_queue.put(request)
 
     def _requests_execute_loop(self):
         while not self._stop_event.is_set():
