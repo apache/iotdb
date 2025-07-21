@@ -138,8 +138,8 @@ public class PartitionCache {
    */
   public Map<String, List<String>> getStorageGroupToDevice(
       List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate, String userName) {
-    StorageGroupCacheResult<List<String>> result =
-        new StorageGroupCacheResult<List<String>>() {
+    DatabaseCacheResult<List<String>> result =
+        new DatabaseCacheResult<List<String>>() {
           @Override
           public void put(String device, String storageGroupName) {
             map.computeIfAbsent(storageGroupName, k -> new ArrayList<>());
@@ -160,8 +160,8 @@ public class PartitionCache {
    */
   public Map<String, String> getDeviceToStorageGroup(
       List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate, String userName) {
-    StorageGroupCacheResult<String> result =
-        new StorageGroupCacheResult<String>() {
+    DatabaseCacheResult<String> result =
+        new DatabaseCacheResult<String>() {
           @Override
           public void put(String device, String storageGroupName) {
             map.put(device, storageGroupName);
@@ -195,13 +195,13 @@ public class PartitionCache {
    * @param devicePaths the devices that need to hit
    */
   private void fetchStorageGroupAndUpdateCache(
-      StorageGroupCacheResult<?> result, List<String> devicePaths)
+      DatabaseCacheResult<?> result, List<String> devicePaths)
       throws ClientManagerException, TException {
     storageGroupCacheLock.writeLock().lock();
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       result.reset();
-      getStorageGroupMap(result, devicePaths, true);
+      getDatabaseMap(result, devicePaths, true);
       if (!result.isSuccess()) {
         TGetDatabaseReq req = new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY);
         TDatabaseSchemaResp storageGroupSchemaResp = client.getMatchedDatabaseSchemas(req);
@@ -210,7 +210,7 @@ public class PartitionCache {
           Set<String> storageGroupNames = storageGroupSchemaResp.getDatabaseSchemaMap().keySet();
           // update all database into cache
           updateStorageCache(storageGroupNames);
-          getStorageGroupMap(result, devicePaths, true);
+          getDatabaseMap(result, devicePaths, true);
         }
       }
     } finally {
@@ -227,7 +227,7 @@ public class PartitionCache {
    * @throws RuntimeException if failed to create database
    */
   private void createStorageGroupAndUpdateCache(
-      StorageGroupCacheResult<?> result, List<String> devicePaths, String userName)
+      DatabaseCacheResult<?> result, List<String> devicePaths, String userName)
       throws ClientManagerException, MetadataException, TException {
     storageGroupCacheLock.writeLock().lock();
     try (ConfigNodeClient client =
@@ -235,25 +235,25 @@ public class PartitionCache {
       // Try to check whether database need to be created
       result.reset();
       // Try to hit database with all missed devices
-      getStorageGroupMap(result, devicePaths, false);
+      getDatabaseMap(result, devicePaths, false);
       if (!result.isSuccess()) {
         // Try to get database needed to be created from missed device
-        Set<String> storageGroupNamesNeedCreated = new HashSet<>();
+        Set<String> databaseNamesNeedCreated = new HashSet<>();
         for (String devicePath : result.getMissedDevices()) {
           if (devicePath.equals(SchemaConstant.SYSTEM_DATABASE)
               || devicePath.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")) {
-            storageGroupNamesNeedCreated.add(SchemaConstant.SYSTEM_DATABASE);
+            databaseNamesNeedCreated.add(SchemaConstant.SYSTEM_DATABASE);
           } else {
-            PartialPath storageGroupNameNeedCreated =
+            PartialPath databaseNameNeedCreated =
                 MetaUtils.getStorageGroupPathByLevel(
                     new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
-            storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
+            databaseNamesNeedCreated.add(databaseNameNeedCreated.getFullPath());
           }
         }
 
         // Try to create databases one by one until done or one database fail
-        Set<String> successFullyCreatedStorageGroup = new HashSet<>();
-        for (String storageGroupName : storageGroupNamesNeedCreated) {
+        Set<String> successFullyCreatedDatabases = new HashSet<>();
+        for (String databaseName : databaseNamesNeedCreated) {
           long startTime = System.nanoTime();
           try {
             if (!AuthorityChecker.SUPER_USER.equals(userName)) {
@@ -271,29 +271,30 @@ public class PartitionCache {
             PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
           }
           TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
-          storageGroupSchema.setName(storageGroupName);
-          if (SchemaConstant.SYSTEM_DATABASE.equals(storageGroupName)) {
+          storageGroupSchema.setName(databaseName);
+          if (SchemaConstant.SYSTEM_DATABASE.equals(databaseName)) {
             storageGroupSchema.setMinSchemaRegionGroupNum(1);
             storageGroupSchema.setMaxSchemaRegionGroupNum(1);
             storageGroupSchema.setMaxDataRegionGroupNum(1);
             storageGroupSchema.setMaxDataRegionGroupNum(1);
           }
           TSStatus tsStatus = client.setDatabase(storageGroupSchema);
-          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
-            successFullyCreatedStorageGroup.add(storageGroupName);
-          } else {
+          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+              || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
+            successFullyCreatedDatabases.add(databaseName);
+          } else if (TSStatusCode.DATABASE_CONFLICT.getStatusCode() != tsStatus.getCode()) {
             // Try to update cache by databases successfully created
-            updateStorageCache(successFullyCreatedStorageGroup);
+            updateStorageCache(successFullyCreatedDatabases);
             logger.warn(
                 "[{} Cache] failed to create database {}",
                 CacheMetrics.STORAGE_GROUP_CACHE_NAME,
-                storageGroupName);
+                databaseName);
             throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
           }
         }
         // Try to update database cache when all databases has already been created
-        updateStorageCache(storageGroupNamesNeedCreated);
-        getStorageGroupMap(result, devicePaths, false);
+        updateStorageCache(databaseNamesNeedCreated);
+        getDatabaseMap(result, devicePaths, false);
       }
     } finally {
       storageGroupCacheLock.writeLock().unlock();
@@ -307,8 +308,8 @@ public class PartitionCache {
    * @param devicePaths the devices that need to hit
    * @param failFast if true, return when failed. if false, return when all devices hit
    */
-  private void getStorageGroupMap(
-      StorageGroupCacheResult<?> result, List<String> devicePaths, boolean failFast) {
+  private void getDatabaseMap(
+      DatabaseCacheResult<?> result, List<String> devicePaths, boolean failFast) {
     storageGroupCacheLock.readLock().lock();
     try {
       // reset result before try
@@ -355,7 +356,7 @@ public class PartitionCache {
    * @param userName
    */
   private void getStorageGroupCacheResult(
-      StorageGroupCacheResult<?> result,
+      DatabaseCacheResult<?> result,
       List<String> devicePaths,
       boolean tryToFetch,
       boolean isAutoCreate,
@@ -369,7 +370,7 @@ public class PartitionCache {
       }
     }
     // first try to hit database in fast-fail way
-    getStorageGroupMap(result, devicePaths, true);
+    getDatabaseMap(result, devicePaths, true);
     if (!result.isSuccess() && tryToFetch) {
       try {
         // try to fetch database from config node when miss
