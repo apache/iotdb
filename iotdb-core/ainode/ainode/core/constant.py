@@ -30,7 +30,9 @@ AINODE_SYSTEM_FILE_NAME = "system.properties"
 # inference_rpc_address
 AINODE_INFERENCE_RPC_ADDRESS = "127.0.0.1"
 AINODE_INFERENCE_RPC_PORT = 10810
+# AINode folder structure
 AINODE_MODELS_DIR = "data/ainode/models"
+AINODE_BUILTIN_MODELS_DIR = "data/ainode/models/weights"  # For built-in models, we only need to store their weights and config.
 AINODE_SYSTEM_DIR = "data/ainode/system"
 AINODE_LOG_DIR = "logs/ainode"
 AINODE_THRIFT_COMPRESSION_ENABLED = False
@@ -38,21 +40,30 @@ AINODE_THRIFT_COMPRESSION_ENABLED = False
 AINODE_CLUSTER_NAME = "defaultCluster"
 AINODE_VERSION_INFO = "UNKNOWN"
 AINODE_BUILD_INFO = "UNKNOWN"
-AINODE_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))))
+AINODE_ROOT_DIR = os.path.dirname(
+    os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+)
+# connect IoTDB cluster
+AINODE_CLUSTER_INGRESS_ADDRESS = "127.0.0.1"
+AINODE_CLUSTER_INGRESS_PORT = 6667
+AINODE_CLUSTER_INGRESS_USERNAME = "root"
+AINODE_CLUSTER_INGRESS_PASSWORD = "root"
+AINODE_CLUSTER_INGRESS_TIME_ZONE = "UTC+8"
 
 # AINode log
-AINODE_LOG_FILE_NAMES = ['log_ainode_all.log',
-                         'log_ainode_info.log',
-                         'log_ainode_warning.log',
-                         'log_ainode_error.log']
-AINODE_LOG_FILE_LEVELS = [
-    logging.DEBUG,
-    logging.INFO,
-    logging.WARNING,
-    logging.ERROR]
+AINODE_LOG_FILE_NAMES = [
+    "log_ainode_all.log",
+    "log_ainode_info.log",
+    "log_ainode_warning.log",
+    "log_ainode_error.log",
+]
+AINODE_LOG_FILE_LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR]
 
 TRIAL_ID_PREFIX = "__trial_"
 DEFAULT_TRIAL_ID = TRIAL_ID_PREFIX + "0"
+
+MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"
+MODEL_CONFIG_FILE_IN_JSON = "config.json"
 DEFAULT_MODEL_FILE_NAME = "model.pt"
 DEFAULT_CONFIG_FILE_NAME = "config.yaml"
 DEFAULT_CHUNK_SIZE = 8192
@@ -136,50 +147,30 @@ class ModelInputName(Enum):
     DEC_INP = "dec_inp"
 
 
-class BuiltInModelType(Enum):
-    # forecast models
-    ARIMA = "_arima"
-    EXPONENTIAL_SMOOTHING = "_exponentialsmoothing"
-    NAIVE_FORECASTER = "_naiveforecaster"
-    STL_FORECASTER = "_stlforecaster"
-
-    # anomaly detection models
-    GAUSSIAN_HMM = "_gaussianhmm"
-    GMM_HMM = "_gmmhmm"
-    STRAY = "_stray"
-
-    @classmethod
-    def values(cls) -> List[str]:
-        values = []
-        for item in list(cls):
-            values.append(item.value)
-        return values
-
-
 class AttributeName(Enum):
     # forecast Attribute
     PREDICT_LENGTH = "predict_length"
 
     # NaiveForecaster
-    STRATEGY = 'strategy'
-    SP = 'sp'
+    STRATEGY = "strategy"
+    SP = "sp"
 
     # STLForecaster
     # SP = 'sp'
-    SEASONAL = 'seasonal'
-    SEASONAL_DEG = 'seasonal_deg'
-    TREND_DEG = 'trend_deg'
-    LOW_PASS_DEG = 'low_pass_deg'
-    SEASONAL_JUMP = 'seasonal_jump'
-    TREND_JUMP = 'trend_jump'
-    LOSS_PASS_JUMP = 'low_pass_jump'
+    SEASONAL = "seasonal"
+    SEASONAL_DEG = "seasonal_deg"
+    TREND_DEG = "trend_deg"
+    LOW_PASS_DEG = "low_pass_deg"
+    SEASONAL_JUMP = "seasonal_jump"
+    TREND_JUMP = "trend_jump"
+    LOSS_PASS_JUMP = "low_pass_jump"
 
     # ExponentialSmoothing
-    DAMPED_TREND = 'damped_trend'
-    INITIALIZATION_METHOD = 'initialization_method'
-    OPTIMIZED = 'optimized'
-    REMOVE_BIAS = 'remove_bias'
-    USE_BRUTE = 'use_brute'
+    DAMPED_TREND = "damped_trend"
+    INITIALIZATION_METHOD = "initialization_method"
+    OPTIMIZED = "optimized"
+    REMOVE_BIAS = "remove_bias"
+    USE_BRUTE = "use_brute"
 
     # Arima
     ORDER = "order"
@@ -241,6 +232,27 @@ class AttributeName(Enum):
     P = "p"
     SIZE_THRESHOLD = "size_threshold"
     OUTLIER_TAIL = "outlier_tail"
+
+    # timerxl
+    INPUT_TOKEN_LEN = "input_token_len"
+    HIDDEN_SIZE = "hidden_size"
+    INTERMEDIATE_SIZE = "intermediate_size"
+    OUTPUT_TOKEN_LENS = "output_token_lens"
+    NUM_HIDDEN_LAYERS = "num_hidden_layers"
+    NUM_ATTENTION_HEADS = "num_attention_heads"
+    HIDDEN_ACT = "hidden_act"
+    USE_CACHE = "use_cache"
+    ROPE_THETA = "rope_theta"
+    ATTENTION_DROPOUT = "attention_dropout"
+    INITIALIZER_RANGE = "initializer_range"
+    MAX_POSITION_EMBEDDINGS = "max_position_embeddings"
+    CKPT_PATH = "ckpt_path"
+
+    # sundial
+    DROPOUT_RATE = "dropout_rate"
+    FLOW_LOSS_DEPTH = "flow_loss_depth"
+    NUM_SAMPLING_STEPS = "num_sampling_steps"
+    DIFFUSION_BATCH_MUL = "diffusion_batch_mul"
 
     def name(self) -> str:
         return self.value

@@ -84,7 +84,7 @@ public class ModelInformation {
   }
 
   public ModelInformation(String modelName, ModelStatus status) {
-    this.modelType = ModelType.USER_DEFINED;
+    this.modelType = ModelType.BUILT_IN_FORECAST;
     this.modelName = modelName;
     this.inputShape = new int[0];
     this.outputShape = new int[0];

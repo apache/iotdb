@@ -122,7 +122,7 @@ public class PipeTsFileResource implements AutoCloseable {
     return finalReferenceCount;
   }
 
-  public synchronized boolean closeIfOutOfTimeToLive() throws IOException {
+  public synchronized boolean closeIfOutOfTimeToLive() {
     if (referenceCount.get() <= 0
         && (deviceMeasurementsMap == null // Not cached yet.
             || System.currentTimeMillis() - lastUnpinToZeroTime.get()
@@ -135,7 +135,7 @@ public class PipeTsFileResource implements AutoCloseable {
   }
 
   @Override
-  public synchronized void close() throws IOException {
+  public synchronized void close() {
     if (deviceMeasurementsMap != null) {
       deviceMeasurementsMap = null;
     }
@@ -153,7 +153,15 @@ public class PipeTsFileResource implements AutoCloseable {
       allocatedMemoryBlock = null;
     }
 
-    Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
+    try {
+      Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
+    } catch (final Exception e) {
+      LOGGER.error(
+          "PipeTsFileResource: Failed to delete tsfile {} when closing, because {}. Please MANUALLY delete it.",
+          hardlinkOrCopiedFile,
+          e.getMessage(),
+          e);
+    }
 
     LOGGER.info("PipeTsFileResource: Closed tsfile {} and cleaned up.", hardlinkOrCopiedFile);
   }

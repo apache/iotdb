@@ -62,19 +62,21 @@ public class PipeEventCommitter {
 
     final int commitQueueSizeBeforeCommit = commitQueue.size();
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          "COMMIT QUEUE OFFER: committer key {}, event commit id {}, last commit id {}, commit queue size {}",
-          committerKey,
-          event.getCommitId(),
-          lastCommitId.get(),
-          commitQueueSizeBeforeCommit);
-    } else if (commitQueueSizeBeforeCommit != 0 && commitQueueSizeBeforeCommit % 100 == 0) {
-      LOGGER.info(
-          "COMMIT QUEUE OFFER: committer key {}, event commit id {}, last commit id {}, commit queue size {}",
-          committerKey,
-          event.getCommitId(),
-          lastCommitId.get(),
-          commitQueueSizeBeforeCommit);
+      if (commitQueueSizeBeforeCommit != 0 && commitQueueSizeBeforeCommit % 100 == 0) {
+        LOGGER.info(
+            "COMMIT QUEUE OFFER: committer key {}, event commit id {}, last commit id {}, commit queue size {}",
+            committerKey,
+            event.getCommitId(),
+            lastCommitId.get(),
+            commitQueueSizeBeforeCommit);
+      } else {
+        LOGGER.debug(
+            "COMMIT QUEUE OFFER: committer key {}, event commit id {}, last commit id {}, commit queue size {}",
+            committerKey,
+            event.getCommitId(),
+            lastCommitId.get(),
+            commitQueueSizeBeforeCommit);
+      }
     }
 
     while (!commitQueue.isEmpty()) {

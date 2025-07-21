@@ -155,7 +155,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   @Override
   public String toString() {
     return "InsertRowNode{"
-        + "time="
+        + "insertTarget="
+        + targetPath
+        + ", time="
         + time
         + ", values="
         + Arrays.toString(values)

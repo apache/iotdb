@@ -55,11 +55,6 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptFlag(boolean encryptFlag) {
-    return this;
-  }
-
-  @Override
   public CommonConfig setEncryptType(String encryptType) {
     return this;
   }
@@ -383,6 +378,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
     return this;
   }
 }

@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
@@ -167,6 +168,13 @@ public abstract class PipeTaskAgent {
   private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
       throws IllegalPathException {
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
+
+    // Do nothing with the subscription pipe if disable subscription
+    if (PipeStaticMeta.isSubscriptionPipe(pipeName)
+        && !SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return;
+    }
+
     final PipeMeta metaInAgent = pipeMetaKeeper.getPipeMeta(pipeName);
 
     // If pipe meta does not exist on local agent, create a new pipe
@@ -514,6 +522,7 @@ public abstract class PipeTaskAgent {
     // but the pipe task meta has not been cleaned up (in case of failure when executing
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+    existedPipeMeta.getRuntimeMeta().onSetPipeDroppedOrStopped();
 
     // Drop pipe tasks
     final Map<Integer, PipeTask> pipeTasks =
@@ -555,6 +564,7 @@ public abstract class PipeTaskAgent {
     // but the pipe task meta has not been cleaned up (in case of failure when executing
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+    existedPipeMeta.getRuntimeMeta().onSetPipeDroppedOrStopped();
 
     // Drop pipe tasks
     final Map<Integer, PipeTask> pipeTasks =
@@ -647,6 +657,7 @@ public abstract class PipeTaskAgent {
 
     // Set pipe meta status to STOPPED
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+    existedPipeMeta.getRuntimeMeta().onSetPipeDroppedOrStopped();
   }
 
   ////////////////////////// Checker //////////////////////////
@@ -661,7 +672,10 @@ public abstract class PipeTaskAgent {
       final PipeMeta existedPipeMeta, final String pipeName, final long creationTime)
       throws IllegalStateException {
     // Verify that Pipe is disabled if TSFile encryption is enabled
-    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+    if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+        && !Objects.equals(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            "org.apache.tsfile.encrypt.UNENCRYPTED")) {
       throw new PipeException(
           String.format(
               "Failed to create Pipe %s because TSFile is configured with encryption, which prohibits the use of Pipe",

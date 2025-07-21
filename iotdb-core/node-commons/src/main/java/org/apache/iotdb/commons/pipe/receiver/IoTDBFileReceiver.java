@@ -74,12 +74,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
-  private static final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
-      PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
   protected long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
-  private static final boolean IS_FSYNC_ENABLED =
-      PipeConfig.getInstance().getPipeFileReceiverFsyncEnabled();
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
+
   private File writingFile;
   private RandomAccessFile writingFileWriter;
 
@@ -320,9 +318,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected abstract String getClusterId();
 
   protected boolean shouldLogin() {
-    return LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+    final long pipeReceiverLoginPeriodicVerificationIntervalMs =
+        PIPE_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
+    return pipeReceiverLoginPeriodicVerificationIntervalMs >= 0
         && lastSuccessfulLoginTime
-            < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS;
+            < System.currentTimeMillis() - pipeReceiverLoginPeriodicVerificationIntervalMs;
   }
 
   protected TSStatus loginIfNecessary() {
@@ -449,7 +449,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private void closeCurrentWritingFileWriter(final boolean fsyncBeforeClose) {
     if (writingFileWriter != null) {
       try {
-        if (IS_FSYNC_ENABLED && fsyncBeforeClose) {
+        if (PIPE_CONFIG.getPipeFileReceiverFsyncEnabled() && fsyncBeforeClose) {
           writingFileWriter.getFD().sync();
         }
         writingFileWriter.close();
@@ -549,7 +549,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
       // system restart. (e.g., empty file in data region's data directory)
-      if (IS_FSYNC_ENABLED) {
+      if (PIPE_CONFIG.getPipeFileReceiverFsyncEnabled()) {
         writingFileWriter.getFD().sync();
       }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
@@ -639,7 +639,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
       // system restart. (e.g., empty file in data region's data directory)
-      if (IS_FSYNC_ENABLED) {
+      if (PIPE_CONFIG.getPipeFileReceiverFsyncEnabled()) {
         writingFileWriter.getFD().sync();
       }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during

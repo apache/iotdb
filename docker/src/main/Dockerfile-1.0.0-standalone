@@ -18,7 +18,7 @@
 #
 # syntax=docker/dockerfile:1
 
-FROM eclipse-temurin:17-jre-noble
+FROM eclipse-temurin:17-jre-focal
 ARG version=1.0.0
 ARG target=apache-iotdb-${version}-all-bin
 

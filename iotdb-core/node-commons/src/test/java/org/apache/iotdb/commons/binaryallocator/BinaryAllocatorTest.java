@@ -29,12 +29,15 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class BinaryAllocatorTest {
+
   @Test
   public void testAllocateBinary() {
     AllocatorConfig config = new AllocatorConfig();
@@ -42,19 +45,19 @@ public class BinaryAllocatorTest {
     BinaryAllocator binaryAllocator = new BinaryAllocator(config);
     binaryAllocator.resetArenaBinding();
 
-    PooledBinary binary = binaryAllocator.allocateBinary(255);
+    PooledBinary binary = binaryAllocator.allocateBinary(255, false);
     assertNotNull(binary);
     assertEquals(binary.getArenaIndex(), -1);
     assertEquals(binary.getLength(), 255);
     binaryAllocator.deallocateBinary(binary);
 
-    binary = binaryAllocator.allocateBinary(65536);
+    binary = binaryAllocator.allocateBinary(65536, false);
     assertNotNull(binary);
     assertEquals(binary.getArenaIndex(), 0);
     assertEquals(binary.getLength(), 65536);
     binaryAllocator.deallocateBinary(binary);
 
-    binary = binaryAllocator.allocateBinary(65535);
+    binary = binaryAllocator.allocateBinary(65535, false);
     assertNotNull(binary);
     assertEquals(binary.getArenaIndex(), 0);
     assertEquals(binary.getLength(), 65535);
@@ -67,8 +70,8 @@ public class BinaryAllocatorTest {
     BinaryAllocator binaryAllocator = new BinaryAllocator(AllocatorConfig.DEFAULT_CONFIG);
     binaryAllocator.resetArenaBinding();
 
-    PooledBinary binary1 = binaryAllocator.allocateBinary(4096);
-    PooledBinary binary2 = binaryAllocator.allocateBinary(4096);
+    PooledBinary binary1 = binaryAllocator.allocateBinary(4096, false);
+    PooledBinary binary2 = binaryAllocator.allocateBinary(4096, false);
     assertEquals(binary1.getArenaIndex(), binary2.getArenaIndex());
     binaryAllocator.deallocateBinary(binary1);
     binaryAllocator.deallocateBinary(binary2);
@@ -81,7 +84,7 @@ public class BinaryAllocatorTest {
           new Thread(
               () -> {
                 try {
-                  PooledBinary firstBinary = binaryAllocator.allocateBinary(2048);
+                  PooledBinary firstBinary = binaryAllocator.allocateBinary(2048, false);
                   int arenaId = firstBinary.getArenaIndex();
                   arenaUsageCount.merge(arenaId, 1, Integer::sum);
                   binaryAllocator.deallocateBinary(firstBinary);
@@ -107,7 +110,7 @@ public class BinaryAllocatorTest {
     BinaryAllocator binaryAllocator = new BinaryAllocator(config);
     binaryAllocator.resetArenaBinding();
 
-    PooledBinary binary = binaryAllocator.allocateBinary(4096);
+    PooledBinary binary = binaryAllocator.allocateBinary(4096, false);
     binaryAllocator.deallocateBinary(binary);
     assertEquals(binaryAllocator.getTotalUsedMemory(), 4096);
     Thread.sleep(200);
@@ -135,5 +138,32 @@ public class BinaryAllocatorTest {
         assertTrue("Previous size should be < original size", previousSize < size);
       }
     }
+  }
+
+  @Test
+  public void testAutoRelease() throws InterruptedException {
+    AllocatorConfig config = new AllocatorConfig();
+    config.minAllocateSize = 4096;
+    config.maxAllocateSize = 65536;
+    BinaryAllocator binaryAllocator = new BinaryAllocator(config);
+    binaryAllocator.resetArenaBinding();
+
+    PooledBinary binary = binaryAllocator.allocateBinary(4096, true);
+    assertNotNull(binary);
+    assertEquals(binary.getArenaIndex(), -1);
+    assertEquals(binary.getLength(), 4096);
+    assertEquals(binaryAllocator.getTotalUsedMemory(), 0);
+
+    // reference count is 0
+    binary = null;
+    System.gc();
+    long startTime = System.currentTimeMillis();
+    while (System.currentTimeMillis() - startTime <= TimeUnit.MINUTES.toMillis(1)) {
+      if (binaryAllocator.getTotalUsedMemory() == 4096) {
+        return;
+      }
+      Thread.sleep(100);
+    }
+    fail("Can not auto release PoolBinary in binary allocator");
   }
 }

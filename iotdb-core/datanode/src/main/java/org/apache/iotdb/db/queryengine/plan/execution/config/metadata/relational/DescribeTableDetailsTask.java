@@ -49,7 +49,7 @@ public class DescribeTableDetailsTask extends AbstractTableTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.describeTable(database, tableName, true);
+    return configTaskExecutor.describeTable(database, tableName, true, null);
   }
 
   public static void buildTsBlock(

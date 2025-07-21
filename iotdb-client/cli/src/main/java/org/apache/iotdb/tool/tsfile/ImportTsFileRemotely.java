@@ -53,7 +53,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
 public class ImportTsFileRemotely extends ImportTsFileBase {
@@ -63,9 +62,6 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
   private static final String MODS = ".mods";
   private static final String LOAD_STRATEGY = "sync";
   private static final Integer MAX_RETRY_COUNT = 3;
-
-  private static final AtomicInteger CONNECTION_TIMEOUT_MS =
-      new AtomicInteger(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
 
   private IoTDBSyncClient client;
 
@@ -166,7 +162,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
                 "Handshake error with target server ip: %s, port: %s, because: %s.",
                 client.getIpAddress(), client.getPort(), resp.getStatus()));
       } else {
-        client.setTimeout(CONNECTION_TIMEOUT_MS.get());
+        client.setTimeout(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
         IOT_PRINTER.println(
             String.format(
                 "Handshake success. Target server ip: %s, port: %s",

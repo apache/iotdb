@@ -120,7 +120,7 @@ pool_config = PoolConfig(
     user_name=username,
     password=password,
     fetch_size=1024,
-    time_zone="UTC+8",
+    time_zone="Asia/Shanghai",
     max_retry=3,
 )
 max_pool_size = 5

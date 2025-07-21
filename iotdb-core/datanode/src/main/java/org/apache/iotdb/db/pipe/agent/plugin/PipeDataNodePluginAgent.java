@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeDataNodePluginAgent {
@@ -214,5 +215,19 @@ public class PipeDataNodePluginAgent {
         pipeName, extractorAttributes, processorAttributes, connectorAttributes);
     schemaRegionAgent.validate(
         pipeName, extractorAttributes, processorAttributes, connectorAttributes);
+  }
+
+  public boolean checkIfPluginSameType(final String oldPluginName, final String newPluginName) {
+    PipePluginMeta oldPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(oldPluginName);
+    PipePluginMeta newPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(newPluginName);
+
+    if (oldPipePluginMeta == null) {
+      throw new PipeException(String.format("plugin %s is not registered.", oldPluginName));
+    }
+    if (newPipePluginMeta == null) {
+      throw new PipeException(String.format("plugin %s is not registered.", newPluginName));
+    }
+
+    return Objects.equals(oldPipePluginMeta.getClassName(), (newPipePluginMeta.getClassName()));
   }
 }

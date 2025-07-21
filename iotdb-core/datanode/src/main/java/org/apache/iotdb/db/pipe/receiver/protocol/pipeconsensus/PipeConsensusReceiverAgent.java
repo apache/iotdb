@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
@@ -45,6 +47,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
 
@@ -69,7 +72,8 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
           ConsensusGroupId, Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>>>
       replicaReceiverMap = new ConcurrentHashMap<>();
 
-  private final Set<ConsensusPipeName> createdConsensusPipes = new CopyOnWriteArraySet<>();
+  private final ReentrantReadWriteLock receiverLifeCircleLock = new ReentrantReadWriteLock();
+  private final Set<Integer> staleRegions = new CopyOnWriteArraySet<>();
 
   private PipeConsensus pipeConsensus;
 
@@ -97,7 +101,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
                 TSStatusCode.PIPE_CONSENSUS_CLOSE_ERROR,
                 "PipeConsensus receiver received a request after it was closed."));
     LOGGER.info(
-        "PipeConsensus-{}: receive on-the-fly no.{} event after consensus pipe was dropped, discard it",
+        "PipeConsensus-{}: receive on-the-fly no.{} event after data region was deleted, discard it",
         consensusInfo,
         tCommitId);
     return new TPipeConsensusTransferResp(status);
@@ -129,43 +133,49 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
 
   private PipeConsensusReceiver getReceiver(
       ConsensusGroupId consensusGroupId, int leaderDataNodeId, byte reqVersion) {
-    // 1. Route to given consensusGroup's receiver map
-    Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReceiverMap =
-        replicaReceiverMap.computeIfAbsent(consensusGroupId, key -> new ConcurrentHashMap<>());
-    // 2. Route to given consensusPipeTask's receiver
-    ConsensusPipeName consensusPipeName =
-        new ConsensusPipeName(consensusGroupId, leaderDataNodeId, thisNodeId);
-    // 3. Judge whether pipe task was dropped
-    if (!createdConsensusPipes.contains(consensusPipeName)) {
-      return null;
-    }
+    // Try to not block concurrent execution of receive() while ensuring sequential execution of
+    // creating receiver and releasing receiver by using writeReadLock.
+    receiverLifeCircleLock.readLock().lock();
+    try {
+      // If data region is stale, return null.
+      if (staleRegions.contains(consensusGroupId.getId())) {
+        return null;
+      }
+      // 1. Route to given consensusGroup's receiver map
+      Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReceiverMap =
+          replicaReceiverMap.computeIfAbsent(consensusGroupId, key -> new ConcurrentHashMap<>());
+      // 2. Route to given consensusPipeTask's receiver
+      ConsensusPipeName consensusPipeName =
+          new ConsensusPipeName(consensusGroupId, leaderDataNodeId, thisNodeId);
+      AtomicBoolean isFirstGetReceiver = new AtomicBoolean(false);
+      AtomicReference<PipeConsensusReceiver> receiverReference =
+          consensusPipe2ReceiverMap.computeIfAbsent(
+              consensusPipeName,
+              key -> {
+                isFirstGetReceiver.set(true);
+                return new AtomicReference<>(null);
+              });
 
-    AtomicBoolean isFirstGetReceiver = new AtomicBoolean(false);
-    AtomicReference<PipeConsensusReceiver> receiverReference =
-        consensusPipe2ReceiverMap.computeIfAbsent(
-            consensusPipeName,
-            key -> {
-              isFirstGetReceiver.set(true);
-              return new AtomicReference<>(null);
-            });
+      if (receiverReference.get() == null) {
+        return internalSetAndGetReceiver(
+            consensusGroupId, consensusPipeName, reqVersion, isFirstGetReceiver);
+      }
 
-    if (receiverReference.get() == null) {
-      return internalSetAndGetReceiver(
-          consensusGroupId, consensusPipeName, reqVersion, isFirstGetReceiver);
+      final byte receiverThreadLocalVersion = receiverReference.get().getVersion().getVersion();
+      if (receiverThreadLocalVersion != reqVersion) {
+        LOGGER.warn(
+            "The pipeConsensus request version {} is different from the sender request version {},"
+                + " the receiver will be reset to the sender request version.",
+            receiverThreadLocalVersion,
+            reqVersion);
+        receiverReference.set(null);
+        return internalSetAndGetReceiver(
+            consensusGroupId, consensusPipeName, reqVersion, isFirstGetReceiver);
+      }
+      return receiverReference.get();
+    } finally {
+      receiverLifeCircleLock.readLock().unlock();
     }
-
-    final byte receiverThreadLocalVersion = receiverReference.get().getVersion().getVersion();
-    if (receiverThreadLocalVersion != reqVersion) {
-      LOGGER.warn(
-          "The pipeConsensus request version {} is different from the sender request version {},"
-              + " the receiver will be reset to the sender request version.",
-          receiverThreadLocalVersion,
-          reqVersion);
-      receiverReference.set(null);
-      return internalSetAndGetReceiver(
-          consensusGroupId, consensusPipeName, reqVersion, isFirstGetReceiver);
-    }
-    return receiverReference.get();
   }
 
   private PipeConsensusReceiver internalSetAndGetReceiver(
@@ -186,6 +196,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
             RECEIVER_CONSTRUCTORS
                 .get(reqVersion)
                 .apply(pipeConsensus, consensusGroupId, consensusPipeName));
+        LOGGER.info("Receiver-{} is ready", consensusPipeName);
       } else {
         throw new UnsupportedOperationException(
             String.format("Unsupported pipeConsensus request version %d", reqVersion));
@@ -210,25 +221,52 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     }
   }
 
-  /** Release receiver of given pipeConsensusTask */
+  /** Release all receivers of given data region when this region is deleted */
   @Override
-  public final void handleDropPipeConsensusTask(ConsensusPipeName pipeName) {
-    // 1. Route to given consensusGroup's receiver map
-    Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReciverMap =
-        replicaReceiverMap.getOrDefault(pipeName.getConsensusGroupId(), new ConcurrentHashMap<>());
-    // 2. Route to given consensusPipeTask's receiver
-    AtomicReference<PipeConsensusReceiver> receiverReference =
-        consensusPipe2ReciverMap.getOrDefault(pipeName, null);
-    // 3. Release receiver
-    if (receiverReference != null) {
-      createdConsensusPipes.remove(pipeName);
-      receiverReference.get().handleExit();
-      receiverReference.set(null);
-      consensusPipe2ReciverMap.remove(pipeName);
+  public final void releaseReceiverResource(DataRegionId dataRegionId) {
+    receiverLifeCircleLock.writeLock().lock();
+    try {
+      // Mark this region as stale first, indicating that this region can not create new receivers
+      // since it has been deleted.
+      staleRegions.add(dataRegionId.getId());
+      // 1. Route to given consensusGroup's receiver map
+      Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReciverMap =
+          this.replicaReceiverMap.getOrDefault(
+              ConsensusGroupId.Factory.create(
+                  TConsensusGroupType.DataRegion.getValue(), dataRegionId.getId()),
+              new ConcurrentHashMap<>());
+      // 2. Release all related receivers
+      consensusPipe2ReciverMap.entrySet().stream()
+          .filter(entry -> entry.getKey().getReceiverDataNodeId() == thisNodeId)
+          .forEach(
+              receiverEntry -> {
+                ConsensusPipeName consensusPipeName = receiverEntry.getKey();
+                AtomicReference<PipeConsensusReceiver> receiverReference = receiverEntry.getValue();
+                if (receiverReference != null) {
+                  receiverReference.get().handleExit();
+                  receiverReference.set(null);
+                }
+              });
+      // 3. Release replica map
+      this.replicaReceiverMap.remove(dataRegionId);
+      // 4. GC receiver map
+      consensusPipe2ReciverMap.clear();
+      LOGGER.info("All Receivers related to {} are released.", dataRegionId);
+    } finally {
+      receiverLifeCircleLock.writeLock().unlock();
     }
   }
 
-  public void markConsensusPipeAsCreated(ConsensusPipeName pipeName) {
-    createdConsensusPipes.add(pipeName);
+  public final void closeReceiverExecutor() {
+    this.replicaReceiverMap.forEach(
+        (consensusGroupId, receiverMap) -> {
+          receiverMap.forEach(
+              (consensusPipeName, receiverReference) -> {
+                if (receiverReference != null) {
+                  receiverReference.get().closeExecutor();
+                  LOGGER.info("Receivers-{}' executor is closed.", consensusPipeName);
+                }
+              });
+        });
   }
 }

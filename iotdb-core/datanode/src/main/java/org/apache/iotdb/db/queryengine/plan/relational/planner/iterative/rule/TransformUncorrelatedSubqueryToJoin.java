@@ -131,6 +131,7 @@ public class TransformUncorrelatedSubqueryToJoin implements Rule<CorrelatedJoinN
         parent.getInput(),
         parent.getSubquery(),
         ImmutableList.of(),
+        Optional.empty(),
         parent.getInput().getOutputSymbols(),
         parent.getSubquery().getOutputSymbols(),
         filter.equals(TRUE_LITERAL) ? Optional.empty() : Optional.of(filter),

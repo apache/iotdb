@@ -243,6 +243,22 @@ public class IoTDBUserDefinedTableFunctionIT {
   }
 
   @Test
+  public void testPassThroughPartitionColumn() {
+    SQLFunctionUtils.createUDF(
+        "MY_SELECT", "org.apache.iotdb.db.query.udf.example.relational.MySelectColumn");
+    String[] expectedHeader = new String[] {"s1", "device_id"};
+    String[] retArray =
+        new String[] {
+          "1,d0,", "null,d0,", "3,d0,", "4,d1,",
+        };
+    tableResultSetEqualTest(
+        "select * from MY_SELECT(vehicle PARTITION BY device_id, 's1') ORDER BY device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testIllegalInput() {
     SQLFunctionUtils.createUDF(
         "repeat", "org.apache.iotdb.db.query.udf.example.relational.MyRepeatWithoutIndex");

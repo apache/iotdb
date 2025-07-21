@@ -25,10 +25,10 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDeviceP
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.write.record.Tablet;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -179,7 +179,7 @@ public class StatementConstructionHandler {
     for (int i = 0; i < columnCategories.length; i++) {
       columnCategories[i] =
           TsTableColumnCategory.fromTsFileColumnCategory(
-              Tablet.ColumnCategory.valueOf(insertTabletReq.getColumnCatogories().get(i)));
+              ColumnCategory.valueOf(insertTabletReq.getColumnCatogories().get(i)));
     }
     insertStatement.setColumnCategories(columnCategories);
 

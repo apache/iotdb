@@ -163,6 +163,7 @@ public class LocalSourceHandle implements ISourceHandle {
   @Override
   public boolean isFinished() {
     synchronized (queue) {
+      checkSharedQueueIfAborted();
       return queue.hasNoMoreTsBlocks() && queue.isEmpty();
     }
   }
@@ -259,10 +260,7 @@ public class LocalSourceHandle implements ISourceHandle {
 
   private void checkState() {
     if (aborted || closed) {
-      Optional<Throwable> abortedCause = queue.getAbortedCause();
-      if (abortedCause.isPresent()) {
-        throw new IllegalStateException(abortedCause.get());
-      }
+      checkSharedQueueIfAborted();
       if (queue.isBlocked().isDone()) {
         // try throw underlying exception instead of "Source handle is aborted."
         try {
@@ -276,6 +274,13 @@ public class LocalSourceHandle implements ISourceHandle {
       }
       throw new IllegalStateException(
           "LocalSinkChannel state is ." + (aborted ? "ABORTED" : "CLOSED"));
+    }
+  }
+
+  private void checkSharedQueueIfAborted() {
+    Optional<Throwable> abortedCause = queue.getAbortedCause();
+    if (abortedCause.isPresent()) {
+      throw new IllegalStateException(abortedCause.get());
     }
   }
 

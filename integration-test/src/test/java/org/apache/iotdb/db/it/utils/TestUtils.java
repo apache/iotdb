@@ -20,14 +20,12 @@
 package org.apache.iotdb.db.it.utils;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -46,6 +44,7 @@ import java.text.DateFormat;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -622,16 +621,19 @@ public class TestUtils {
   }
 
   public static void assertResultSetEqual(
-      ResultSet actualResultSet, String expectedHeader, Set<String> expectedRetSet) {
+      final ResultSet actualResultSet,
+      final String expectedHeader,
+      final Collection<String> expectedResult) {
     try {
-      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
-      StringBuilder header = new StringBuilder();
+      final ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+      final StringBuilder header = new StringBuilder();
       for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
         header.append(resultSetMetaData.getColumnName(i)).append(",");
       }
       assertEquals(expectedHeader, header.toString());
 
-      Set<String> actualRetSet = new HashSet<>();
+      final Collection<String> actualRetSet =
+          expectedResult instanceof Set ? new HashSet<>() : new ArrayList<>();
 
       while (actualResultSet.next()) {
         StringBuilder builder = new StringBuilder();
@@ -640,8 +642,8 @@ public class TestUtils {
         }
         actualRetSet.add(builder.toString());
       }
-      assertEquals(expectedRetSet, actualRetSet);
-    } catch (Exception e) {
+      assertEquals(expectedResult, actualRetSet);
+    } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));
     }
@@ -1443,6 +1445,27 @@ public class TestUtils {
     }
   }
 
+  // Note that this class will accept any exceptions
+  public static void assertAlwaysFail(final BaseEnv env, final String sql) {
+    assertAlwaysFail(env, sql, 10);
+  }
+
+  public static void assertAlwaysFail(
+      final BaseEnv env, final String sql, final long consistentSeconds) {
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(consistentSeconds, TimeUnit.SECONDS)
+          .failFast(() -> Assert.assertThrows(Exception.class, () -> statement.executeQuery(sql)));
+    } catch (final Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
   public static void assertDataEventuallyOnEnv(
       final BaseEnv env,
       final DataNodeWrapper dataNodeWrapper,
@@ -1709,11 +1732,6 @@ public class TestUtils {
     long retryIntervalMS = 1000;
     while (true) {
       try (Connection connection = EnvFactory.getEnv().getConnection()) {
-        final List<BaseNodeWrapper> allDataNodes =
-            new ArrayList<>(EnvFactory.getEnv().getDataNodeWrapperList());
-        EnvFactory.getEnv()
-            .ensureNodeStatus(
-                allDataNodes, Collections.nCopies(allDataNodes.size(), NodeStatus.Running));
         break;
       } catch (Exception e) {
         try {

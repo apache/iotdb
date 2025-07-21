@@ -67,7 +67,6 @@ public class DataRegionConsensusImpl {
     return DataRegionConsensusImplHolder.INSTANCE;
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     DataRegionConsensusImpl.DataRegionConsensusImplHolder.reinitializeStatics();
   }

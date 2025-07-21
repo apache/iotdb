@@ -91,6 +91,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -459,15 +460,19 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   @Override
   public PlanNode visitInsertTablet(
       InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
+    String[] measurements = insertTabletStatement.getMeasurements();
+    MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
+    stayConsistent(measurements, measurementSchemas);
+
     // convert insert statement to insert node
     InsertTabletNode insertNode =
         new InsertTabletNode(
             context.getQueryId().genPlanNodeId(),
             insertTabletStatement.getDevicePath(),
             insertTabletStatement.isAligned(),
-            insertTabletStatement.getMeasurements(),
+            measurements,
             insertTabletStatement.getDataTypes(),
-            insertTabletStatement.getMeasurementSchemas(),
+            measurementSchemas,
             insertTabletStatement.getTimes(),
             insertTabletStatement.getBitMaps(),
             insertTabletStatement.getColumns(),
@@ -478,15 +483,19 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
   @Override
   public PlanNode visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
+    String[] measurements = insertRowStatement.getMeasurements();
+    MeasurementSchema[] measurementSchemas = insertRowStatement.getMeasurementSchemas();
+    stayConsistent(measurements, measurementSchemas);
+
     // convert insert statement to insert node
     InsertRowNode insertNode =
         new InsertRowNode(
             context.getQueryId().genPlanNodeId(),
             insertRowStatement.getDevicePath(),
             insertRowStatement.isAligned(),
-            insertRowStatement.getMeasurements(),
+            measurements,
             insertRowStatement.getDataTypes(),
-            insertRowStatement.getMeasurementSchemas(),
+            measurementSchemas,
             insertRowStatement.getTime(),
             insertRowStatement.getValues(),
             insertRowStatement.isNeedInferType());
@@ -714,14 +723,19 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     for (int i = 0; i < insertRowsStatement.getInsertRowStatementList().size(); i++) {
       InsertRowStatement insertRowStatement =
           insertRowsStatement.getInsertRowStatementList().get(i);
+
+      String[] measurements = insertRowStatement.getMeasurements();
+      MeasurementSchema[] measurementSchemas = insertRowStatement.getMeasurementSchemas();
+      stayConsistent(measurements, measurementSchemas);
+
       InsertRowNode insertRowNode =
           new InsertRowNode(
               insertRowsNode.getPlanNodeId(),
               insertRowStatement.getDevicePath(),
               insertRowStatement.isAligned(),
-              insertRowStatement.getMeasurements(),
+              measurements,
               insertRowStatement.getDataTypes(),
-              insertRowStatement.getMeasurementSchemas(),
+              measurementSchemas,
               insertRowStatement.getTime(),
               insertRowStatement.getValues(),
               insertRowStatement.isNeedInferType());
@@ -740,14 +754,19 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     for (int i = 0; i < insertMultiTabletsStatement.getInsertTabletStatementList().size(); i++) {
       InsertTabletStatement insertTabletStatement =
           insertMultiTabletsStatement.getInsertTabletStatementList().get(i);
+
+      String[] measurements = insertTabletStatement.getMeasurements();
+      MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
+      stayConsistent(measurements, measurementSchemas);
+
       InsertTabletNode insertTabletNode =
           new InsertTabletNode(
               insertMultiTabletsNode.getPlanNodeId(),
               insertTabletStatement.getDevicePath(),
               insertTabletStatement.isAligned(),
-              insertTabletStatement.getMeasurements(),
+              measurements,
               insertTabletStatement.getDataTypes(),
-              insertTabletStatement.getMeasurementSchemas(),
+              measurementSchemas,
               insertTabletStatement.getTimes(),
               insertTabletStatement.getBitMaps(),
               insertTabletStatement.getColumns(),
@@ -771,14 +790,19 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     for (int i = 0; i < insertRowsOfOneDeviceStatement.getInsertRowStatementList().size(); i++) {
       InsertRowStatement insertRowStatement =
           insertRowsOfOneDeviceStatement.getInsertRowStatementList().get(i);
+
+      String[] measurements = insertRowStatement.getMeasurements();
+      MeasurementSchema[] measurementSchemas = insertRowStatement.getMeasurementSchemas();
+      stayConsistent(measurements, measurementSchemas);
+
       InsertRowNode insertRowNode =
           new InsertRowNode(
               insertRowsOfOneDeviceNode.getPlanNodeId(),
               insertRowStatement.getDevicePath(),
               insertRowStatement.isAligned(),
-              insertRowStatement.getMeasurements(),
+              measurements,
               insertRowStatement.getDataTypes(),
-              insertRowStatement.getMeasurementSchemas(),
+              measurementSchemas,
               insertRowStatement.getTime(),
               insertRowStatement.getValues(),
               insertRowStatement.isNeedInferType());
@@ -987,5 +1011,16 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         .planOffset(showLogicalViewStatement.getOffset())
         .planLimit(showLogicalViewStatement.getLimit())
         .getRoot();
+  }
+
+  private static void stayConsistent(
+      String[] measurements, MeasurementSchema[] measurementSchemas) {
+    int minLength = Math.min(measurements.length, measurementSchemas.length);
+    for (int j = 0; j < minLength; j++) {
+      if (measurements[j] == null || measurementSchemas[j] == null) {
+        measurements[j] = null;
+        measurementSchemas[j] = null;
+      }
+    }
   }
 }

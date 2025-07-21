@@ -46,7 +46,7 @@ public class PipeConsensusTabletBatchEventHandler
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConsensusTabletBatchEventHandler.class);
   private final List<Long> requestCommitIds;
-  private final List<Event> events;
+  private final List<EnrichedEvent> events;
   private final TPipeConsensusBatchTransferReq req;
   private final PipeConsensusAsyncConnector connector;
   private final PipeConsensusConnectorMetrics pipeConsensusConnectorMetrics;

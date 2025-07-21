@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.udf;
 
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.queryengine.transformation.dag.adapter.PointCollectorAdaptor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.InputRowUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;

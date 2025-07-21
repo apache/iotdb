@@ -28,7 +28,7 @@ config = TableSessionConfig(
     node_urls=["localhost:6667"],
     username="root",
     password="root",
-    time_zone="UTC+8",
+    time_zone="Asia/Shanghai",
 )
 session = TableSession(config)
 
@@ -69,7 +69,7 @@ config = TableSessionConfig(
     username="root",
     password="root",
     database="test1",
-    time_zone="UTC+8",
+    time_zone="Asia/Shanghai",
 )
 session = TableSession(config)
 

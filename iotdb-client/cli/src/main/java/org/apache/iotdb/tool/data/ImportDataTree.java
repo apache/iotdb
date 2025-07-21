@@ -228,14 +228,17 @@ public class ImportDataTree extends AbstractImportData {
               if (!"".equals(value)) {
                 TSDataType type;
                 if (!headerTypeMap.containsKey(header)) {
-                  type = typeInfer(value);
-                  if (type != null) {
-                    headerTypeMap.put(header, type);
-                  } else {
-                    ioTPrinter.printf(
-                        "Line '%s', column '%s': '%s' unknown type%n",
-                        recordObj.getRecordNumber(), header, value);
-                    isFail = true;
+                  queryType(header, headerTypeMap);
+                  if (!headerTypeMap.containsKey(header)) {
+                    type = typeInfer(value);
+                    if (type != null) {
+                      headerTypeMap.put(header, type);
+                    } else {
+                      ioTPrinter.printf(
+                          "Line '%s', column '%s': '%s' unknown type%n",
+                          recordObj.getRecordNumber(), header, value);
+                      isFail = true;
+                    }
                   }
                 }
                 type = headerTypeMap.get(header);
@@ -340,14 +343,16 @@ public class ImportDataTree extends AbstractImportData {
                   }
                   typeQueriedDevice.add(deviceName.get());
                 }
-                type = typeInfer(value);
-                if (type != null) {
-                  headerTypeMap.put(headerNameWithoutType, type);
-                } else {
-                  ioTPrinter.printf(
-                      "Line '%s', column '%s': '%s' unknown type%n",
-                      recordObj.getRecordNumber(), headerNameWithoutType, value);
-                  isFail.set(true);
+                if (!headerTypeMap.containsKey(headerNameWithoutType)) {
+                  type = typeInfer(value);
+                  if (type != null) {
+                    headerTypeMap.put(headerNameWithoutType, type);
+                  } else {
+                    ioTPrinter.printf(
+                        "Line '%s', column '%s': '%s' unknown type%n",
+                        recordObj.getRecordNumber(), headerNameWithoutType, value);
+                    isFail.set(true);
+                  }
                 }
               }
               type = headerTypeMap.get(headerNameWithoutType);
@@ -471,6 +476,26 @@ public class ImportDataTree extends AbstractImportData {
             "Meet error when query the type of timeseries because " + e.getMessage());
         System.exit(1);
       }
+    }
+  }
+
+  private static void queryType(String series, HashMap<String, TSDataType> headerTypeMap) {
+    String sql = "show timeseries " + series;
+    try (SessionDataSetWrapper sessionDataSetWrapper = sessionPool.executeQueryStatement(sql)) {
+      int tsIndex = sessionDataSetWrapper.getColumnNames().indexOf(ColumnHeaderConstant.TIMESERIES);
+      int dtIndex = sessionDataSetWrapper.getColumnNames().indexOf(ColumnHeaderConstant.DATATYPE);
+      while (sessionDataSetWrapper.hasNext()) {
+        RowRecord rowRecord = sessionDataSetWrapper.next();
+        List<Field> fields = rowRecord.getFields();
+        String timeseries = fields.get(tsIndex).getStringValue();
+        String dataType = fields.get(dtIndex).getStringValue();
+        if (Objects.equals(series, timeseries)) {
+          headerTypeMap.put(timeseries, getType(dataType));
+        }
+      }
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      ioTPrinter.println("Meet error when query the type of timeseries because " + e.getMessage());
+      System.exit(1);
     }
   }
 }

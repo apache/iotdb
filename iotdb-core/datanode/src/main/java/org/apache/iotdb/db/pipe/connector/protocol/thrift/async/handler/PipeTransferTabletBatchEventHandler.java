@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
@@ -63,11 +62,7 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
     pipeName2BytesAccumulated = batch.deepCopyPipeName2BytesAccumulated();
 
     final TPipeTransferReq uncompressedReq = batch.toTPipeTransferReq();
-    req =
-        connector.isRpcCompressionEnabled()
-            ? PipeTransferCompressedReq.toTPipeTransferReq(
-                uncompressedReq, connector.getCompressors())
-            : uncompressedReq;
+    req = connector.compressIfNeeded(uncompressedReq);
     reqCompressionRatio = (double) req.getBody().length / uncompressedReq.getBody().length;
   }
 

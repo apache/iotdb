@@ -20,9 +20,7 @@
 package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.session.Session;
@@ -31,19 +29,10 @@ import org.apache.iotdb.session.SessionConnection;
 import org.apache.thrift.TException;
 
 import java.time.ZoneId;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Supplier;
 
 public class SubscriptionSessionConnection extends SessionConnection {
-
-  private static final String SHOW_DATA_NODES_COMMAND = "SHOW DATANODES";
-  private static final String NODE_ID_COLUMN_NAME = "NodeID";
-  private static final String STATUS_COLUMN_NAME = "Status";
-  private static final String IP_COLUMN_NAME = "RpcAddress";
-  private static final String PORT_COLUMN_NAME = "RpcPort";
-  private static final String REMOVING_STATUS = "Removing";
 
   public SubscriptionSessionConnection(
       final Session session,
@@ -64,27 +53,6 @@ public class SubscriptionSessionConnection extends SessionConnection {
         retryIntervalInMs,
         sqlDialect,
         database);
-  }
-
-  // from org.apache.iotdb.session.NodesSupplier.updateDataNodeList
-  public Map<Integer, TEndPoint> fetchAllEndPoints()
-      throws IoTDBConnectionException, StatementExecutionException {
-    final SessionDataSet dataSet = session.executeQueryStatement(SHOW_DATA_NODES_COMMAND);
-    final SessionDataSet.DataIterator iterator = dataSet.iterator();
-    final Map<Integer, TEndPoint> endPoints = new HashMap<>();
-    while (iterator.next()) {
-      // ignore removing DN
-      if (REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))) {
-        continue;
-      }
-      final String ip = iterator.getString(IP_COLUMN_NAME);
-      final String port = iterator.getString(PORT_COLUMN_NAME);
-      if (ip != null && port != null) {
-        endPoints.put(
-            iterator.getInt(NODE_ID_COLUMN_NAME), new TEndPoint(ip, Integer.parseInt(port)));
-      }
-    }
-    return endPoints;
   }
 
   public TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req) throws TException {

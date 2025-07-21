@@ -39,7 +39,7 @@ public class FieldColumnSchema extends TsTableColumnSchema {
 
   private final CompressionType compressor;
 
-  // Only for information schema
+  // Only for information schema and tree view field
   public FieldColumnSchema(final String columnName, final TSDataType dataType) {
     super(columnName, dataType);
     this.encoding = TSEncoding.PLAIN;
@@ -65,6 +65,11 @@ public class FieldColumnSchema extends TsTableColumnSchema {
     super(columnName, dataType, props);
     this.encoding = encoding;
     this.compressor = compressor;
+  }
+
+  // Only for table view
+  public void setDataType(final TSDataType dataType) {
+    this.dataType = dataType;
   }
 
   @Override
