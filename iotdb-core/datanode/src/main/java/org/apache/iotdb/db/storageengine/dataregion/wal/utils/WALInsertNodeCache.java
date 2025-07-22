@@ -143,7 +143,8 @@ public class WALInsertNodeCache {
     ByteBuffer buffer = bufferCache.load(position);
 
     if (buffer == null) {
-      throw new IllegalStateException();
+      throw new IllegalStateException(
+          "WALInsertNodeCache getInsertNode failed, position: " + position);
     }
 
     try {

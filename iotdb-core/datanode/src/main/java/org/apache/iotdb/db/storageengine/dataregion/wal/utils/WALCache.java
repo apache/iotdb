@@ -34,6 +34,10 @@ public interface WALCache {
 
   public static ByteBuffer getEntryBySegment(WALEntrySegmentPosition key, ByteBuffer segment) {
     List<Integer> list = key.getWalSegmentMetaBuffersSize();
+    if (list == null || list.isEmpty()) {
+      throw new IllegalStateException("WAL segment meta buffers size is null or empty");
+    }
+
     int pos = 0;
     for (int size : list) {
       if (key.getPosition() == pos) {

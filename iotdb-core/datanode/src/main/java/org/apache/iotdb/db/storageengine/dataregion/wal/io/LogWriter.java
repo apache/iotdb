@@ -48,7 +48,7 @@ public abstract class LogWriter implements ILogWriter {
   protected final FileOutputStream logStream;
   protected final FileChannel logChannel;
   protected long originalSize = 0;
-  protected volatile WALSegmentMeta walSegmentMeta = null;
+  protected volatile WALSegmentMeta walSegmentMeta;
 
   /**
    * 1 byte for whether enable compression, 4 byte for compressedSize, 4 byte for uncompressedSize

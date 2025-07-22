@@ -152,9 +152,10 @@ public class WALEntrySegmentPosition {
       final ByteBuffer compressedDataBuffer = ByteBuffer.allocate(segmentInfo.dataInDiskSize);
       WALInputStream.readWALBufferFromChannel(compressedDataBuffer, channel);
 
-      ByteBuffer uncompressedDataBuffer = null;
+      final ByteBuffer uncompressedDataBuffer;
       if (segmentInfo.compressionType != CompressionType.UNCOMPRESSED) {
         uncompressedDataBuffer = ByteBuffer.allocate(segmentInfo.uncompressedSize);
+        compressedDataBuffer.flip();
         WALInputStream.uncompressWALBuffer(
             compressedDataBuffer,
             uncompressedDataBuffer,

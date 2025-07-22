@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointMan
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALSegmentMeta;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.MemoryControlledWALEntryQueue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
@@ -540,6 +541,9 @@ public class WALBuffer extends AbstractWALBuffer {
 
       makeMemTableCheckpoints();
 
+      // record
+      WALSegmentMeta walSegmentMeta = null;
+
       long walFileVersionId = currentWALFileVersion;
       currentWALFileWriter.updateFileStatus(fileStatus);
 
@@ -553,7 +557,11 @@ public class WALBuffer extends AbstractWALBuffer {
       // flush buffer to os
       double compressionRatio = 1.0;
       try {
+        final List<Integer> bufferSize = info.metaData.getBuffersSize();
         compressionRatio = currentWALFileWriter.write(syncingBuffer, info.metaData);
+        if ((walSegmentMeta = currentWALFileWriter.getWalSegmentMeta()) != null) {
+          walSegmentMeta.setBuffersSize(bufferSize);
+        }
       } catch (Throwable e) {
         logger.error(
             "Fail to sync wal node-{}'s buffer, change system mode to error.", identifier, e);
@@ -620,10 +628,13 @@ public class WALBuffer extends AbstractWALBuffer {
         for (WALFlushListener fsyncListener : info.fsyncListeners) {
           fsyncListener.succeed();
           if (fsyncListener.getWalEntryHandler() != null) {
+            if (info.metaData.getBuffersSize() == null
+                || info.metaData.getBuffersSize().isEmpty()) {
+              System.out.printf("");
+            }
             fsyncListener
                 .getWalEntryHandler()
-                .setEntryPosition(
-                    walFileVersionId, position, currentWALFileWriter.getWalSegmentMeta());
+                .setEntryPosition(walFileVersionId, position, walSegmentMeta);
             position += fsyncListener.getWalEntryHandler().getSize();
           }
         }
