@@ -73,6 +73,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.CONSENSUS_FOLDER_NAME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DELETION_FOLDER_NAME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PIPE_FOLDER_NAME;
+import static org.apache.iotdb.db.conf.IoTDBDescriptor.calculateDefaultSortBufferSize;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class IoTDBConfig {
@@ -415,7 +416,8 @@ public class IoTDBConfig {
   private volatile boolean enableAutoRepairCompaction = true;
 
   /** The buffer for sort operation */
-  private long sortBufferSize = 1024 * 1024L;
+  private long sortBufferSize =
+      calculateDefaultSortBufferSize(IoTDBDescriptor.getInstance().getMemoryConfig());
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
