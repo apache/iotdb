@@ -557,12 +557,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         + (Objects.nonNull(devicePath) ? PartialPath.estimateSize(devicePath) : 0)
         + (Objects.nonNull(insertNode) ? InsertNodeMemoryEstimator.sizeOf(insertNode) : 0)
         + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0)
-        + (Objects.nonNull(treeModelDatabaseName)
-            ? RamUsageEstimator.sizeOf(treeModelDatabaseName)
-            : 0)
-        + (Objects.nonNull(tableModelDatabaseName)
-            ? RamUsageEstimator.sizeOf(tableModelDatabaseName)
-            : 0)
         + (Objects.nonNull(tableNames)
             ? SET_SIZE
                 + tableNames.stream().mapToLong(RamUsageEstimator::sizeOf).reduce(0L, Long::sum)

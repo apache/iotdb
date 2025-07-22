@@ -28,6 +28,7 @@ from transformers import PretrainedConfig, PreTrainedModel
 from ainode.core.config import AINodeDescriptor
 from ainode.core.inference.inference_request import InferenceRequest
 from ainode.core.log import Logger
+from ainode.core.manager.model_manager import ModelManager
 
 logger = Logger()
 
@@ -45,7 +46,7 @@ class InferenceRequestPool(mp.Process):
     def __init__(
         self,
         pool_id: int,
-        model: PreTrainedModel,
+        model_id: int,
         config: PretrainedConfig,
         request_queue: mp.Queue,
         result_queue: mp.Queue,
@@ -53,10 +54,11 @@ class InferenceRequestPool(mp.Process):
     ):
         super().__init__()
         self.pool_id = pool_id
-        self.model = model
-        self.device = self.model.device
+        self.model_id = model_id
         self.config = config
         self.pool_kwargs = pool_kwargs
+        self.model = None
+        self.device = None
 
         # TODO: A scheduler is necessary for better handling following queues
         self._threads = []
@@ -97,12 +99,16 @@ class InferenceRequestPool(mp.Process):
         # TODO: We need a batcher to accelerate the concurrent inference
         # TODO: Check memory size before executing requests
         request: InferenceRequest = self._running_queue.get()
+        inputs = request.inputs.to(self.device)
         output = self.model.generate(
-            request.inputs,
+            inputs,
             max_new_tokens=request.max_new_tokens,
             num_samples=10,
             revin=True,
         )
+        request.output_tensor = request.output_tensor.to(
+            self.device
+        )  # Ensure output tensor is on the same device
         request.write_step_output(output[0].mean(dim=0))
         request.inference_pipeline.post_decode()
         if request.is_finished():
@@ -110,6 +116,8 @@ class InferenceRequestPool(mp.Process):
             logger.debug(
                 f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is finished"
             )
+            # ensure the output tensor is on CPU before sending to result queue
+            request.output_tensor = request.output_tensor.cpu()
             self._finished_queue.put(request)
         else:
             logger.debug(
@@ -123,6 +131,10 @@ class InferenceRequestPool(mp.Process):
             self._step()
 
     def run(self):
+        self._model_manager = ModelManager()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = self._model_manager.load_model(self.model_id, {}).to(self.device)
+
         activate_daemon = threading.Thread(
             target=self._requests_activate_loop, daemon=True
         )

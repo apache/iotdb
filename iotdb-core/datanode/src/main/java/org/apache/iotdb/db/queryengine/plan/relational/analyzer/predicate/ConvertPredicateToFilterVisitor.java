@@ -58,11 +58,13 @@ import org.apache.tsfile.utils.Binary;
 
 import javax.annotation.Nullable;
 
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -78,9 +80,10 @@ public class ConvertPredicateToFilterVisitor
   @Nullable private final String timeColumnName;
   private final ConvertPredicateToTimeFilterVisitor timeFilterVisitor;
 
-  public ConvertPredicateToFilterVisitor(@Nullable String timeColumnName) {
+  public ConvertPredicateToFilterVisitor(
+      @Nullable String timeColumnName, ZoneId zoneId, TimeUnit currPrecision) {
     this.timeColumnName = timeColumnName;
-    this.timeFilterVisitor = new ConvertPredicateToTimeFilterVisitor();
+    this.timeFilterVisitor = new ConvertPredicateToTimeFilterVisitor(zoneId, currPrecision);
   }
 
   @Override

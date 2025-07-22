@@ -17,16 +17,30 @@
 # under the License.
 #
 
+volumes:
+  ainode-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /data/ainode
+      o: bind
+
 services:
   iotdb-ainode:
-    image: apache/iotdb:2.0.5-SNAPSHOT-ainode
-    hostname: iotdb-ainode
+    image: apache/iotdb:<version>-ainode
     container_name: iotdb-ainode
-    ports:
-      - "10810:10810"
+    network_mode: host
     environment:
-      - ain_seed_config_node=iotdb-confignode:10710
-      - ain_inference_rpc_address=iotdb-ainode
-      - ain_inference_rpc_port=10810
+      - cluster_name=defaultCluster
+      - ain_seed_config_node=<iotdb-confignode>:10710
+      - ain_rpc_address=<iotdb-ainode>
+      - ain_rpc_port=10810
+      - ain_cluster_ingress_address=<iotdb-datanode>
+      - ain_cluster_ingress_port=6667
+      - ain_cluster_ingress_username=root
+      - ain_cluster_ingress_password=root
+      - ain_cluster_ingress_time_zone=UTC+8
     volumes:
-        - ./logs/ainode:/ainode/logs
+      - ainode-data:/ainode/data
+      - ./logs/ainode:/ainode/logs
+      # - ./lib/ainode:/ainode/lib  # Uncomment for rolling upgrade
