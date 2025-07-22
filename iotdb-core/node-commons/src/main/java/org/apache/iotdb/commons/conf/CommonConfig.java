@@ -331,6 +331,7 @@ public class CommonConfig {
   private double pipeThresholdAllocationStrategyLowUsageThreshold = 0.2d;
   private double pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold = 0.8d;
   private boolean pipeTransferTsFileSync = false;
+  private long pipeCheckAllSyncClientLiveTimeIntervalMs = 5 * 60 * 1000L; // 5 minutes
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -1933,6 +1934,21 @@ public class CommonConfig {
     }
     this.pipeTransferTsFileSync = pipeTransferTsFileSync;
     logger.info("pipeTransferTsFileSync is set to {}", pipeTransferTsFileSync);
+  }
+
+  public long getPipeCheckAllSyncClientLiveTimeIntervalMs() {
+    return pipeCheckAllSyncClientLiveTimeIntervalMs;
+  }
+
+  public void setPipeCheckAllSyncClientLiveTimeIntervalMs(
+      long pipeCheckSyncAllClientLiveTimeIntervalMs) {
+    if (this.pipeCheckAllSyncClientLiveTimeIntervalMs == pipeCheckSyncAllClientLiveTimeIntervalMs) {
+      return;
+    }
+    this.pipeCheckAllSyncClientLiveTimeIntervalMs = pipeCheckSyncAllClientLiveTimeIntervalMs;
+    logger.info(
+        "pipeCheckSyncAllClientLiveTimeIntervalMs is set to {}",
+        pipeCheckSyncAllClientLiveTimeIntervalMs);
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {
