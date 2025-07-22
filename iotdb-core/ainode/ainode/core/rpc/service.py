@@ -20,6 +20,7 @@ import threading
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.server import TServer
 from thrift.transport import TSocket, TTransport
+from thrift.transport.TSSLSocket import TSSLSocket
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.log import Logger
@@ -70,10 +71,28 @@ class AINodeRPCService(threading.Thread):
         self._stop_event = threading.Event()
         self._handler = handler
         processor = IAINodeRPCService.Processor(handler=self._handler)
-        transport = TSocket.TServerSocket(
-            host=AINodeDescriptor().get_config().get_ain_inference_rpc_address(),
-            port=AINodeDescriptor().get_config().get_ain_inference_rpc_port(),
-        )
+        if AINodeDescriptor().get_config().get_ain_thrift_ssl_enabled():
+            import ssl,sys
+            from thrift.transport import TSSLSocket
+
+            if sys.version_info >= (3, 10):
+                context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            else:
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+                context.verify_mode = ssl.CERT_REQUIRED
+                context.check_hostname = True
+            context.load_verify_locations(cafile=AINodeDescriptor().get_config().get_ain_thrift_ssl_ca_file())
+            context.load_cert_chain(certfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file())
+            transport = TSSLSocket.TSSLServerSocket(
+                host=AINodeDescriptor().get_config().get_ain_inference_rpc_address(),
+                port=AINodeDescriptor().get_config().get_ain_inference_rpc_port(),
+                ssl_context=context
+            )
+        else:
+            transport = TSocket.TServerSocket(
+                host=AINodeDescriptor().get_config().get_ain_inference_rpc_address(),
+                port=AINodeDescriptor().get_config().get_ain_inference_rpc_port(),
+            )
         transport_factory = TTransport.TFramedTransportFactory()
         if AINodeDescriptor().get_config().get_ain_thrift_compression_enabled():
             protocol_factory = TCompactProtocol.TCompactProtocolFactory()
