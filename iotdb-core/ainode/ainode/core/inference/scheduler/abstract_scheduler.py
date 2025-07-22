@@ -18,6 +18,7 @@
 
 from abc import ABC, abstractmethod
 
+
 class AbstractScheduler(ABC):
     """
     This is the abstract scheduler to schedule inference.
