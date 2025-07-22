@@ -25,19 +25,21 @@ logger = Logger()
 
 class BasicScheduler(AbstractScheduler):
 
-    def __init__(self, waiting_queue, running_queue, finished_queue, max_memory_bytes, max_batch_size):
+    def __init__(self, waiting_queue, running_queue, finished_queue, max_memory_bytes=1<<30, max_activate_size=10, max_step_size=10):
         super().__init__(waiting_queue, running_queue, finished_queue)
         self.max_memory_bytes = max_memory_bytes
-        self.max_batch_size = max_batch_size
+        self.max_activate_size = max_activate_size
+        self.max_step_size = max_step_size
 
     def memory_is_available(self):
-        used = torch.cuda.memory_allocated()
+        used = torch.cuda.memory_allocated() # memory allocated to tensors
+        reserved = torch.cuda.memory_reserved() # memory reserved by the caching allocator
+        # logger.debug(f"Memory used: {used} bytes, Max memory: {self.max_memory_bytes} bytes")
         return used < self.max_memory_bytes
 
     def schedule_activate(self) -> list:
-        # TODO: Check memory size before activating requests
         requests = []
-        while not self.waiting_queue.empty():
+        while not self.waiting_queue.empty() and len(requests) < self.max_activate_size:
             if not self.memory_is_available():
                 break
             request = self.waiting_queue.get()
@@ -47,9 +49,8 @@ class BasicScheduler(AbstractScheduler):
         return requests
 
     def schedule_step(self) -> list:
-        # TODO: Check memory size before executing requests
         requests = []
-        while not self.running_queue.empty() and len(requests) < self.max_batch_size:
+        while not self.running_queue.empty() and len(requests) < self.max_step_size:
             if not self.memory_is_available():
                 break
             requests.append(self.running_queue.get())
