@@ -185,10 +185,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
     }
 
-    // Check if we're updating both READ and WRITE policies
-    boolean isReadWrite =
-        labelPolicyScope.toUpperCase().contains("READ")
-            && labelPolicyScope.toUpperCase().contains("WRITE");
+    // Check what policy we're setting
     boolean isReadOnly =
         labelPolicyScope.toUpperCase().contains("READ")
             && !labelPolicyScope.toUpperCase().contains("WRITE");
@@ -196,26 +193,18 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         !labelPolicyScope.toUpperCase().contains("READ")
             && labelPolicyScope.toUpperCase().contains("WRITE");
 
-    // Update the specific policy fields
-    if (isReadWrite) {
-      // Update both READ and WRITE policies
+    // Update only the specific policy field - no combined policy setting
+    if (isReadOnly) {
+      // Set only READ policy
       user.setReadLabelPolicyExpression(labelPolicyExpression);
-      user.setWriteLabelPolicyExpression(labelPolicyExpression);
-      // For backward compatibility
-      user.setLabelPolicyExpression(labelPolicyExpression);
-      user.setLabelPolicyScope("READ,WRITE");
-    } else if (isReadOnly) {
-      // Update only READ policy
-      user.setReadLabelPolicyExpression(labelPolicyExpression);
-      // For backward compatibility
-      user.setLabelPolicyExpression(labelPolicyExpression);
-      user.setLabelPolicyScope("READ");
     } else if (isWriteOnly) {
-      // Update only WRITE policy
+      // Set only WRITE policy
       user.setWriteLabelPolicyExpression(labelPolicyExpression);
-      // For backward compatibility
-      user.setLabelPolicyExpression(labelPolicyExpression);
-      user.setLabelPolicyScope("WRITE");
+    } else {
+      // Invalid scope - must be either READ or WRITE, not both
+      throw new AuthException(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          "Label policy scope must be either 'READ' or 'WRITE', not both");
     }
 
     userManager.updateUser(user);
@@ -229,8 +218,29 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
     }
-    user.setLabelPolicyExpression(labelPolicyExpression);
-    user.setLabelPolicyScope(labelPolicyScope);
+
+    // Check what policy we're updating
+    boolean isReadOnly =
+        labelPolicyScope.toUpperCase().contains("READ")
+            && !labelPolicyScope.toUpperCase().contains("WRITE");
+    boolean isWriteOnly =
+        !labelPolicyScope.toUpperCase().contains("READ")
+            && labelPolicyScope.toUpperCase().contains("WRITE");
+
+    // Update only the specific policy field
+    if (isReadOnly) {
+      // Update only READ policy
+      user.setReadLabelPolicyExpression(labelPolicyExpression);
+    } else if (isWriteOnly) {
+      // Update only WRITE policy
+      user.setWriteLabelPolicyExpression(labelPolicyExpression);
+    } else {
+      // Invalid scope - must be either READ or WRITE, not both
+      throw new AuthException(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          "Label policy scope must be either 'READ' or 'WRITE', not both");
+    }
+
     userManager.updateUser(user);
   }
 
@@ -258,35 +268,19 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       // Drop both READ and WRITE policies
       user.setReadLabelPolicyExpression(null);
       user.setWriteLabelPolicyExpression(null);
-      // For backward compatibility
-      user.setLabelPolicyExpression(null);
-      user.setLabelPolicyScope(null);
     } else if (isReadOnly) {
       // Drop only READ policy
       user.setReadLabelPolicyExpression(null);
-      // For backward compatibility
-      if (user.getWriteLabelPolicyExpression() != null) {
-        // Keep WRITE policy
-        user.setLabelPolicyExpression(user.getWriteLabelPolicyExpression());
-        user.setLabelPolicyScope("WRITE");
-      } else {
-        // No WRITE policy, clear everything
-        user.setLabelPolicyExpression(null);
-        user.setLabelPolicyScope(null);
-      }
     } else if (isWriteOnly) {
       // Drop only WRITE policy
       user.setWriteLabelPolicyExpression(null);
-      // For backward compatibility
-      if (user.getReadLabelPolicyExpression() != null) {
-        // Keep READ policy
-        user.setLabelPolicyExpression(user.getReadLabelPolicyExpression());
-        user.setLabelPolicyScope("READ");
-      } else {
-        // No READ policy, clear everything
-        user.setLabelPolicyExpression(null);
-        user.setLabelPolicyScope(null);
-      }
+    } else {
+      // Invalid scope - should not happen with proper validation
+      throw new AuthException(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          "Invalid label policy scope: "
+              + labelPolicyScope
+              + ". Only READ, WRITE, or READ,WRITE is supported.");
     }
 
     userManager.updateUser(user);

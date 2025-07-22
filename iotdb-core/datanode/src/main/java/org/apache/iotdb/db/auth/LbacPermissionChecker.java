@@ -479,49 +479,37 @@ public class LbacPermissionChecker {
     LOGGER.debug(
         "Getting label policy for user: {} and operation: {}", user.getName(), operationType);
 
-    // Must separate read policy and write policy
+    // Use independent read and write policy fields
     if (operationType == LbacOperationClassifier.OperationType.READ) {
-      // Priority use read policy
+      // Use read policy for READ operations
       String readPolicyExpression = user.getReadLabelPolicyExpression();
       if (readPolicyExpression != null && !readPolicyExpression.trim().isEmpty()) {
-        LOGGER.debug(
-            "User {} has specific READ label policy: '{}'", user.getName(), readPolicyExpression);
+        LOGGER.debug("User {} has READ label policy: '{}'", user.getName(), readPolicyExpression);
         return readPolicyExpression;
+      } else {
+        LOGGER.debug("User {} has no READ label policy", user.getName());
+        return null;
       }
     } else if (operationType == LbacOperationClassifier.OperationType.WRITE) {
-      // Priority use write policy
+      // Use write policy for WRITE operations
       String writePolicyExpression = user.getWriteLabelPolicyExpression();
       if (writePolicyExpression != null && !writePolicyExpression.trim().isEmpty()) {
-        LOGGER.debug(
-            "User {} has specific WRITE label policy: '{}'", user.getName(), writePolicyExpression);
+        LOGGER.debug("User {} has WRITE label policy: '{}'", user.getName(), writePolicyExpression);
         return writePolicyExpression;
+      } else {
+        LOGGER.debug("User {} has no WRITE label policy", user.getName());
+        return null;
       }
-    }
-
-    // Legacy fields for backward compatibility
-    String labelPolicyExpression = user.getLabelPolicyExpression();
-    String labelPolicyScope = user.getLabelPolicyScope();
-
-    // If no policy expression is set, return null
-    if (labelPolicyExpression == null || labelPolicyExpression.trim().isEmpty()) {
-      LOGGER.debug("User {} has no label policy expression", user.getName());
+    } else if (operationType == LbacOperationClassifier.OperationType.BOTH) {
+      // For BOTH operations, we need to check both read and write policies
+      // This is handled by the calling method, so we return null here
+      LOGGER.debug("User {} BOTH operation - policy evaluation handled by caller", user.getName());
       return null;
     }
 
-    // Check if policy scope matches operation type
-    if (labelPolicyScope != null) {
-      String operationString = operationType.name().toLowerCase();
-      if (!labelPolicyScope.toLowerCase().contains(operationString)) {
-        LOGGER.debug(
-            "User {} legacy label policy scope '{}' does not match operation type {}",
-            user.getName(),
-            labelPolicyScope,
-            operationType);
-        return null;
-      }
-    }
-
-    return labelPolicyExpression;
+    LOGGER.debug(
+        "User {} has no label policy for operation type: {}", user.getName(), operationType);
+    return null;
   }
 
   /**
@@ -786,19 +774,14 @@ public class LbacPermissionChecker {
     String writePolicy = user.getWriteLabelPolicyExpression();
     boolean hasWritePolicy = (writePolicy != null && !writePolicy.trim().isEmpty());
 
-    // Check legacy policy (backward compatibility)
-    String legacyPolicy = user.getLabelPolicyExpression();
-    boolean hasLegacyPolicy = (legacyPolicy != null && !legacyPolicy.trim().isEmpty());
-
     // Has any policy (read/write/both exist)
-    boolean hasPolicies = hasReadPolicy || hasWritePolicy || hasLegacyPolicy;
+    boolean hasPolicies = hasReadPolicy || hasWritePolicy;
 
     LOGGER.debug(
-        "User {} - Read policy: {}, Write policy: {}, Legacy policy: {}, Has policies: {}",
+        "User {} - Read policy: {}, Write policy: {}, Has policies: {}",
         user.getName(),
         hasReadPolicy,
         hasWritePolicy,
-        hasLegacyPolicy,
         hasPolicies);
 
     return hasPolicies;

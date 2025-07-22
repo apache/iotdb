@@ -204,8 +204,6 @@ public class AuthorInfo implements SnapshotProcessor {
     Set<Integer> permissions = authorPlan.getPermissions();
     boolean grantOpt = authorPlan.getGrantOpt();
     List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
-    String labelPolicyExpression = authorPlan.getLabelPolicyExpression();
-    String labelPolicyScope = authorPlan.getLabelPolicyScope();
     String readLabelPolicyExpression = authorPlan.getReadLabelPolicyExpression();
     String writeLabelPolicyExpression = authorPlan.getWriteLabelPolicyExpression();
 
@@ -213,17 +211,10 @@ public class AuthorInfo implements SnapshotProcessor {
       switch (authorType) {
         case UpdateUser:
           authorizer.updateUserPassword(userName, newPassword);
-          // Set label policy if present
-          if (labelPolicyExpression != null || labelPolicyScope != null) {
-            authorizer.updateUserLabelPolicy(userName, labelPolicyExpression, labelPolicyScope);
-          }
+
           break;
         case CreateUser:
           authorizer.createUser(userName, password);
-          // Set label policy if present
-          if (labelPolicyExpression != null || labelPolicyScope != null) {
-            authorizer.setUserLabelPolicy(userName, labelPolicyExpression, labelPolicyScope);
-          }
           // Set read label policy if present
           if (readLabelPolicyExpression != null) {
             authorizer.setUserLabelPolicy(userName, readLabelPolicyExpression, "READ");
@@ -235,10 +226,6 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case CreateUserWithRawPassword:
           authorizer.createUserWithRawPassword(userName, password);
-          // Set label policy if present
-          if (labelPolicyExpression != null || labelPolicyScope != null) {
-            authorizer.setUserLabelPolicy(userName, labelPolicyExpression, labelPolicyScope);
-          }
           // Set read label policy if present
           if (readLabelPolicyExpression != null) {
             authorizer.setUserLabelPolicy(userName, readLabelPolicyExpression, "READ");
@@ -791,83 +778,40 @@ public class AuthorInfo implements SnapshotProcessor {
         // Get both read and write policy expressions
         String readPolicyExpression = user.getReadLabelPolicyExpression();
         String writePolicyExpression = user.getWriteLabelPolicyExpression();
-        // For backward compatibility
-        String policyExpression = user.getLabelPolicyExpression();
-        String policyScope = user.getLabelPolicyScope();
 
         if (isReadWrite) {
           // For READ_WRITE scope, check both READ and WRITE policies
           if (readPolicyExpression != null) {
-            // Use new read policy field if available
             TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
             readPolicyInfo.setUsername(username);
             readPolicyInfo.setScope("READ");
             readPolicyInfo.setPolicyExpression(readPolicyExpression);
             userLabelPolicyList.add(readPolicyInfo);
-          } else if (policyScope != null
-              && policyExpression != null
-              && policyScope.toUpperCase().contains("READ")) {
-            // Fallback to old field for backward compatibility
-            TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
-            readPolicyInfo.setUsername(username);
-            readPolicyInfo.setScope("READ");
-            readPolicyInfo.setPolicyExpression(policyExpression);
-            userLabelPolicyList.add(readPolicyInfo);
           }
 
           if (writePolicyExpression != null) {
-            // Use new write policy field if available
             TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
             writePolicyInfo.setUsername(username);
             writePolicyInfo.setScope("WRITE");
             writePolicyInfo.setPolicyExpression(writePolicyExpression);
             userLabelPolicyList.add(writePolicyInfo);
-          } else if (policyScope != null
-              && policyExpression != null
-              && policyScope.toUpperCase().contains("WRITE")) {
-            // Fallback to old field for backward compatibility
-            TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
-            writePolicyInfo.setUsername(username);
-            writePolicyInfo.setScope("WRITE");
-            writePolicyInfo.setPolicyExpression(policyExpression);
-            userLabelPolicyList.add(writePolicyInfo);
           }
         } else if (scope.toUpperCase().contains("READ")) {
           // For READ scope only
           if (readPolicyExpression != null) {
-            // Use new read policy field if available
             TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
             policyInfo.setUsername(username);
             policyInfo.setScope("READ");
             policyInfo.setPolicyExpression(readPolicyExpression);
             userLabelPolicyList.add(policyInfo);
-          } else if (policyScope != null
-              && policyExpression != null
-              && policyScope.toUpperCase().contains("READ")) {
-            // Fallback to old field for backward compatibility
-            TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
-            policyInfo.setUsername(username);
-            policyInfo.setScope("READ");
-            policyInfo.setPolicyExpression(policyExpression);
-            userLabelPolicyList.add(policyInfo);
           }
         } else if (scope.toUpperCase().contains("WRITE")) {
           // For WRITE scope only
           if (writePolicyExpression != null) {
-            // Use new write policy field if available
             TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
             policyInfo.setUsername(username);
             policyInfo.setScope("WRITE");
             policyInfo.setPolicyExpression(writePolicyExpression);
-            userLabelPolicyList.add(policyInfo);
-          } else if (policyScope != null
-              && policyExpression != null
-              && policyScope.toUpperCase().contains("WRITE")) {
-            // Fallback to old field for backward compatibility
-            TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
-            policyInfo.setUsername(username);
-            policyInfo.setScope("WRITE");
-            policyInfo.setPolicyExpression(policyExpression);
             userLabelPolicyList.add(policyInfo);
           }
         }
@@ -878,83 +822,40 @@ public class AuthorInfo implements SnapshotProcessor {
           // Get both read and write policy expressions
           String readPolicyExpression = userObj.getReadLabelPolicyExpression();
           String writePolicyExpression = userObj.getWriteLabelPolicyExpression();
-          // For backward compatibility
-          String policyExpression = userObj.getLabelPolicyExpression();
-          String policyScope = userObj.getLabelPolicyScope();
 
           if (isReadWrite) {
             // For READ_WRITE scope, check both READ and WRITE policies
             if (readPolicyExpression != null) {
-              // Use new read policy field if available
               TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
               readPolicyInfo.setUsername(user);
               readPolicyInfo.setScope("READ");
               readPolicyInfo.setPolicyExpression(readPolicyExpression);
               userLabelPolicyList.add(readPolicyInfo);
-            } else if (policyScope != null
-                && policyExpression != null
-                && policyScope.toUpperCase().contains("READ")) {
-              // Fallback to old field for backward compatibility
-              TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
-              readPolicyInfo.setUsername(user);
-              readPolicyInfo.setScope("READ");
-              readPolicyInfo.setPolicyExpression(policyExpression);
-              userLabelPolicyList.add(readPolicyInfo);
             }
 
             if (writePolicyExpression != null) {
-              // Use new write policy field if available
               TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
               writePolicyInfo.setUsername(user);
               writePolicyInfo.setScope("WRITE");
               writePolicyInfo.setPolicyExpression(writePolicyExpression);
               userLabelPolicyList.add(writePolicyInfo);
-            } else if (policyScope != null
-                && policyExpression != null
-                && policyScope.toUpperCase().contains("WRITE")) {
-              // Fallback to old field for backward compatibility
-              TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
-              writePolicyInfo.setUsername(user);
-              writePolicyInfo.setScope("WRITE");
-              writePolicyInfo.setPolicyExpression(policyExpression);
-              userLabelPolicyList.add(writePolicyInfo);
             }
           } else if (scope.toUpperCase().contains("READ")) {
             // For READ scope only
             if (readPolicyExpression != null) {
-              // Use new read policy field if available
               TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
               policyInfo.setUsername(user);
               policyInfo.setScope("READ");
               policyInfo.setPolicyExpression(readPolicyExpression);
               userLabelPolicyList.add(policyInfo);
-            } else if (policyScope != null
-                && policyExpression != null
-                && policyScope.toUpperCase().contains("READ")) {
-              // Fallback to old field for backward compatibility
-              TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
-              policyInfo.setUsername(user);
-              policyInfo.setScope("READ");
-              policyInfo.setPolicyExpression(policyExpression);
-              userLabelPolicyList.add(policyInfo);
             }
           } else if (scope.toUpperCase().contains("WRITE")) {
             // For WRITE scope only
             if (writePolicyExpression != null) {
-              // Use new write policy field if available
               TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
               policyInfo.setUsername(user);
               policyInfo.setScope("WRITE");
               policyInfo.setPolicyExpression(writePolicyExpression);
-              userLabelPolicyList.add(policyInfo);
-            } else if (policyScope != null
-                && policyExpression != null
-                && policyScope.toUpperCase().contains("WRITE")) {
-              // Fallback to old field for backward compatibility
-              TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
-              policyInfo.setUsername(user);
-              policyInfo.setScope("WRITE");
-              policyInfo.setPolicyExpression(policyExpression);
               userLabelPolicyList.add(policyInfo);
             }
           }
@@ -977,7 +878,6 @@ public class AuthorInfo implements SnapshotProcessor {
       String policyExpression = req.getPolicyExpression();
       String scope = req.getScope();
 
-      // 修复策略表达式的格式问题
       policyExpression = fixPolicyExpressionSpacing(policyExpression);
 
       // Check if scope contains both READ and WRITE regardless of order

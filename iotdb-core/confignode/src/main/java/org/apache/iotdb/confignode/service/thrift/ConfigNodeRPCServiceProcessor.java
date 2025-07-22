@@ -750,22 +750,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.isGrantOpt(),
             AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
 
-    // Set label policy fields if present
-    if (req.isSetLabelPolicyExpression()) {
-      authorTreePlan.setLabelPolicyExpression(req.getLabelPolicyExpression());
-    }
-    if (req.isSetLabelPolicyScope()) {
-      authorTreePlan.setLabelPolicyScope(req.getLabelPolicyScope());
-    }
-
-    // Set read/write label policy fields if present
-    if (req.isSetReadLabelPolicyExpression()) {
-      authorTreePlan.setReadLabelPolicyExpression(req.getReadLabelPolicyExpression());
-    }
-    if (req.isSetWriteLabelPolicyExpression()) {
-      authorTreePlan.setWriteLabelPolicyExpression(req.getWriteLabelPolicyExpression());
-    }
-
     return configManager.operatePermission(authorTreePlan);
   }
 

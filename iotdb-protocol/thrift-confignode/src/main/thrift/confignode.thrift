@@ -358,10 +358,8 @@ struct TAuthorizerReq {
   6: required set<i32> permissions
   7: required bool grantOpt
   8: required binary nodeNameList
-  9: optional string labelPolicyExpression
-  10: optional string labelPolicyScope
-  11: optional string readLabelPolicyExpression
-  12: optional string writeLabelPolicyExpression
+  9: optional string readLabelPolicyExpression
+  10: optional string writeLabelPolicyExpression
 }
 
 struct TAuthorizerRelationalReq {
@@ -387,9 +385,7 @@ struct TUserResp {
   2: required string password
   3: required set<string> roleSet
   4: required bool isOpenIdUser
-  5: optional string labelPolicyExpression
-  6: optional string labelPolicyScope
-  7: optional string readLabelPolicyExpression
+  5: optional string readLabelPolicyExpression
   8: optional string writeLabelPolicyExpression
 }
 

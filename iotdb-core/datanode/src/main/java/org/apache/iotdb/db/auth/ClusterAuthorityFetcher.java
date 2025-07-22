@@ -649,9 +649,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         tPermissionInfoResp.getUserInfo().getPermissionInfo().getSysPriSet());
     user.setSysPriGrantOptInt(
         tPermissionInfoResp.getUserInfo().getPermissionInfo().getSysPriSetGrantOpt());
-    // Cache label policy fields for LBAC support
-    user.setLabelPolicyExpression(tPermissionInfoResp.getUserInfo().getLabelPolicyExpression());
-    user.setLabelPolicyScope(tPermissionInfoResp.getUserInfo().getLabelPolicyScope());
+    // Cache read and write label policy fields for LBAC support
+    user.setReadLabelPolicyExpression(
+        tPermissionInfoResp.getUserInfo().getReadLabelPolicyExpression());
+    user.setWriteLabelPolicyExpression(
+        tPermissionInfoResp.getUserInfo().getWriteLabelPolicyExpression());
     try {
       user.loadTreePrivilegeInfo(privilegeList);
     } catch (MetadataException e) {
@@ -698,13 +700,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
             authorStatement.getGrantOpt(),
             AuthUtils.serializePartialPathList(authorStatement.getNodeNameList()));
-    // Set label policy fields if present
-    if (authorStatement.getLabelPolicyExpression() != null) {
-      req.setLabelPolicyExpression(authorStatement.getLabelPolicyExpression());
-    }
-    if (authorStatement.getLabelPolicyScope() != null) {
-      req.setLabelPolicyScope(authorStatement.getLabelPolicyScope());
-    }
+
     // Set read/write label policy fields if present
     if (authorStatement.getReadLabelPolicyExpression() != null) {
       req.setReadLabelPolicyExpression(authorStatement.getReadLabelPolicyExpression());

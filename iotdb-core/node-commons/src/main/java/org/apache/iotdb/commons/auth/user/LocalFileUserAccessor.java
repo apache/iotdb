@@ -92,10 +92,11 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
     super.saveEntityName(outputStream, role);
     User user = (User) role;
     IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+    // Write read and write label policy expressions
     IOUtils.writeString(
-        outputStream, user.getLabelPolicyExpression(), STRING_ENCODING, encodingBufferLocal);
+        outputStream, user.getReadLabelPolicyExpression(), STRING_ENCODING, encodingBufferLocal);
     IOUtils.writeString(
-        outputStream, user.getLabelPolicyScope(), STRING_ENCODING, encodingBufferLocal);
+        outputStream, user.getWriteLabelPolicyExpression(), STRING_ENCODING, encodingBufferLocal);
   }
 
   @Override
@@ -168,24 +169,24 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         }
         user.setPrivilegeList(pathPrivilegeList);
         // Old version: no LBAC fields, set to null
-        user.setLabelPolicyExpression(null);
-        user.setLabelPolicyScope(null);
+        user.setReadLabelPolicyExpression(null);
+        user.setWriteLabelPolicyExpression(null);
       } else if (tag == 1) {
         // Version 1: format without LBAC fields
         user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         loadPrivileges(dataInputStream, user);
         // Version 1: no LBAC fields, set to null
-        user.setLabelPolicyExpression(null);
-        user.setLabelPolicyScope(null);
+        user.setReadLabelPolicyExpression(null);
+        user.setWriteLabelPolicyExpression(null);
       } else if (tag == VERSION) {
         // Version 2: format with LBAC fields
         user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
-        // Load label policy fields after password but before privileges
-        user.setLabelPolicyExpression(
+        // Load read and write label policy fields after password but before privileges
+        user.setReadLabelPolicyExpression(
             IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
-        user.setLabelPolicyScope(
+        user.setWriteLabelPolicyExpression(
             IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         loadPrivileges(dataInputStream, user);
       } else {
