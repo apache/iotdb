@@ -40,6 +40,16 @@ public class ExtractExpressionTest {
     assertPlan(
         planTester.createPlan("select * from table1 where extract(ms from time) > 5"),
         output(tableScan("testdb.table1")));
+    assertPlan(
+        planTester.createPlan("select * from table1 where extract(ms from time) between 1 and 2"),
+        output(tableScan("testdb.table1")));
+
+    assertPlan(
+        planTester.createPlan("select * from table2 where extract(ms from s4) > 5"),
+        output(tableScan("testdb.table2")));
+    assertPlan(
+        planTester.createPlan("select * from table2 where extract(ms from s4) between 1 and 2"),
+        output(tableScan("testdb.table2")));
   }
 
   @Test
