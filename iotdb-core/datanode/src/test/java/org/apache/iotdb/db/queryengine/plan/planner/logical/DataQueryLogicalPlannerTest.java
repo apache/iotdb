@@ -89,6 +89,7 @@ public class DataQueryLogicalPlannerTest {
         d1s1Path.getDevicePath(),
         d1s1Path.isUnderAlignedEntity(),
         measurementSchemas,
+        null,
         null);
 
     measurementSchemas =
@@ -102,11 +103,12 @@ public class DataQueryLogicalPlannerTest {
         d2s1Path.getDevicePath(),
         d2s1Path.isUnderAlignedEntity(),
         measurementSchemas,
+        null,
         null);
 
     AlignedPath aPath = (AlignedPath) schemaMap.get("root.sg.d2.a");
     lastQueryNode.addDeviceLastQueryScanNode(
-        queryId.genPlanNodeId(), aPath.getDevicePath(), true, aPath.getSchemaList(), null);
+        queryId.genPlanNodeId(), aPath.getDevicePath(), true, aPath.getSchemaList(), null, null);
 
     PlanNode actualPlan = parseSQLToPlanNode(sql);
     Assert.assertEquals(actualPlan, lastQueryNode);
@@ -132,6 +134,7 @@ public class DataQueryLogicalPlannerTest {
         s3Path.getDevicePath(),
         s3Path.isUnderAlignedEntity(),
         measurementSchemas,
+        null,
         null);
 
     SortNode sortNode =

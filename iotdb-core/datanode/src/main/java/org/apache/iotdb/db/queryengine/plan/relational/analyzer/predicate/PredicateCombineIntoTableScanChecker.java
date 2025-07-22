@@ -41,17 +41,23 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isExtractTimeColumn;
 
 public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boolean, Void> {
 
   private final Set<String> measurementColumns;
+  private final String timeColumnName;
 
-  public static boolean check(Set<String> measurementColumns, Expression expression) {
-    return new PredicateCombineIntoTableScanChecker(measurementColumns).process(expression);
+  public static boolean check(
+      Set<String> measurementColumns, String timeColumnName, Expression expression) {
+    return new PredicateCombineIntoTableScanChecker(measurementColumns, timeColumnName)
+        .process(expression);
   }
 
-  public PredicateCombineIntoTableScanChecker(Set<String> measurementColumns) {
+  public PredicateCombineIntoTableScanChecker(
+      Set<String> measurementColumns, String timeColumnName) {
     this.measurementColumns = measurementColumns;
+    this.timeColumnName = timeColumnName;
   }
 
   @Override
@@ -115,14 +121,19 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
   @Override
   protected Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
     return (isMeasurementColumn(node.getLeft()) && isLiteral(node.getRight()))
-        || (isMeasurementColumn(node.getRight()) && isLiteral(node.getLeft()));
+        || (isMeasurementColumn(node.getRight()) && isLiteral(node.getLeft()))
+        || (isExtractTimeColumn(node.getLeft(), timeColumnName) && isLiteral(node.getRight()))
+        || (isExtractTimeColumn(node.getRight(), timeColumnName) && isLiteral(node.getLeft()));
   }
 
   @Override
   protected Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
     return (isMeasurementColumn(node.getValue())
-        && isLiteral(node.getMin())
-        && isLiteral(node.getMax()));
+            && isLiteral(node.getMin())
+            && isLiteral(node.getMax()))
+        || (isExtractTimeColumn(node.getValue(), timeColumnName)
+            && isLiteral(node.getMin())
+            && isLiteral(node.getMax()));
     // TODO After Constant-Folding introduced
     /*|| (isLiteral(node.getValue())
         && isMeasurementColumn(node.getMin())

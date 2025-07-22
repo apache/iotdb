@@ -126,28 +126,20 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
         new Symbol("time"),
         new ColumnSchema(
             "time", TypeFactory.getType(TSDataType.INT64), false, TsTableColumnCategory.TIME));
-    columnSchemaMap.put(
-        new Symbol("sensor0"),
-        new ColumnSchema(
-            "sensor0", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
-    columnSchemaMap.put(
-        new Symbol("sensor1"),
-        new ColumnSchema(
-            "sensor1", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
-    columnSchemaMap.put(
-        new Symbol("sensor2"),
-        new ColumnSchema(
-            "sensor2", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
-    columnSchemaMap.put(
-        new Symbol("sensor3"),
-        new ColumnSchema(
-            "sensor3", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
+    for (int i = 0; i < 10000; i++) {
+      columnSchemaMap.put(
+          new Symbol("sensor" + i),
+          new ColumnSchema(
+              "sensor" + i,
+              TypeFactory.getType(TSDataType.INT32),
+              false,
+              TsTableColumnCategory.FIELD));
+    }
 
     Map<Symbol, Type> symbolTSDataTypeMap = new HashMap<>();
-    symbolTSDataTypeMap.put(new Symbol("sensor0"), TypeFactory.getType(TSDataType.INT32));
-    symbolTSDataTypeMap.put(new Symbol("sensor1"), TypeFactory.getType(TSDataType.INT32));
-    symbolTSDataTypeMap.put(new Symbol("sensor2"), TypeFactory.getType(TSDataType.INT32));
-    symbolTSDataTypeMap.put(new Symbol("sensor3"), TypeFactory.getType(TSDataType.INT32));
+    for (int i = 0; i < 10000; i++) {
+      symbolTSDataTypeMap.put(new Symbol("sensor" + i), TypeFactory.getType(TSDataType.INT32));
+    }
     symbolTSDataTypeMap.put(new Symbol("time"), TypeFactory.getType(TypeEnum.INT64));
     symbolTSDataTypeMap.put(new Symbol("tag1"), TypeFactory.getType(TSDataType.TEXT));
     typeProvider = new TypeProvider(symbolTSDataTypeMap);
@@ -158,10 +150,9 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     tsTable.addColumnSchema(new TagColumnSchema("id_column", TSDataType.STRING));
     tsTable.addColumnSchema(new TimeColumnSchema("time", TSDataType.INT64));
     tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.TEXT));
-    tsTable.addColumnSchema(new FieldColumnSchema("sensor0", TSDataType.INT32));
-    tsTable.addColumnSchema(new FieldColumnSchema("sensor1", TSDataType.INT32));
-    tsTable.addColumnSchema(new FieldColumnSchema("sensor2", TSDataType.INT32));
-    tsTable.addColumnSchema(new FieldColumnSchema("sensor3", TSDataType.INT32));
+    for (int i = 0; i < 10000; i++) {
+      tsTable.addColumnSchema(new FieldColumnSchema("sensor" + i, TSDataType.INT32));
+    }
     tsTable.addProp(TsTable.TTL_PROPERTY, Long.MAX_VALUE + "");
     tsTable.addProp(
         TreeViewSchema.TREE_PATH_PATTERN,
@@ -174,6 +165,36 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
   public void tearDown() throws IOException {
     DataNodeTableCache.getInstance().invalid(tableDbName);
     SeriesReaderTestUtil.tearDown(seqResources, unSeqResources);
+  }
+
+  @Test
+  public void testQueryManyDevices() throws Exception {
+    List<String> outputColumnList = new ArrayList<>(10000 + 2);
+    TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
+    node.setPushDownOffset(500);
+    node.setPushDownLimit(500);
+    node.setPushDownPredicate(
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN,
+            new Symbol("sensor1").toSymbolReference(),
+            new LongLiteral("1000")));
+    for (int i = 0; i < 10000; i++) {
+      outputColumnList.add("sensor" + i);
+    }
+    outputColumnList.add("time");
+    outputColumnList.add("tag1");
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    try {
+      assertTrue(operator instanceof DeviceIteratorScanOperator);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      operator.close();
+      instanceNotificationExecutor.shutdown();
+    }
   }
 
   @Test

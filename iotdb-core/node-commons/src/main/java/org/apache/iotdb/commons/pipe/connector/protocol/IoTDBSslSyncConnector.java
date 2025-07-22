@@ -66,7 +66,14 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSslSyncConnector.class);
 
-  protected IoTDBSyncClientManager clientManager;
+  private volatile IoTDBSyncClientManager clientManager;
+
+  protected IoTDBSyncClientManager getClientManager() {
+    if (clientManager == null) {
+      throw new IllegalStateException("IoTDB sync client manager has been closed");
+    }
+    return clientManager;
+  }
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -153,7 +160,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
   @Override
   public void handshake() throws Exception {
-    clientManager.checkClientStatusAndTryReconstructIfNecessary();
+    getClientManager().checkClientStatusAndTryReconstructIfNecessary();
   }
 
   @Override
@@ -229,7 +236,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
         // Send handshake req and then re-transfer the event
         if (status.getCode()
             == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
-          clientManager.sendHandshakeReq(clientAndStatus);
+          getClientManager().sendHandshakeReq(clientAndStatus);
         }
         // Only handle the failed statuses to avoid string format performance overhead
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -255,6 +262,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   public void close() {
     if (clientManager != null) {
       clientManager.close();
+      clientManager = null;
     }
 
     super.close();

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReqV2;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -72,6 +73,12 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   @Override
+  protected void recordMetric(long timeInterval, long bufferSize) {
+    PipeDataRegionConnectorMetrics.tabletBatchTimeIntervalHistogram.update(timeInterval);
+    PipeDataRegionConnectorMetrics.tabletBatchSizeHistogram.update(bufferSize);
+  }
+
+  @Override
   public synchronized void onSuccess() {
     super.onSuccess();
 
@@ -113,8 +120,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
           (PipeInsertNodeTabletInsertionEvent) event;
       // Read the bytebuffer from the wal file and transfer it directly without serializing or
       // deserializing if possible
-      final InsertNode insertNode =
-          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       if (Objects.isNull(insertNode)) {
         buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
         binaryBuffers.add(buffer);

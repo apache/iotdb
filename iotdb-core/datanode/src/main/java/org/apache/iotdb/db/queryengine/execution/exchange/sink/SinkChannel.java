@@ -239,12 +239,12 @@ public class SinkChannel implements ISinkChannel {
   }
 
   @Override
-  public synchronized void abort() {
+  public synchronized boolean abort() {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[StartAbortSinkChannel]");
     }
     if (aborted || closed) {
-      return;
+      return false;
     }
     sequenceIdToTsBlock.clear();
     if (blocked != null) {
@@ -265,15 +265,16 @@ public class SinkChannel implements ISinkChannel {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[EndAbortSinkChannel]");
     }
+    return true;
   }
 
   @Override
-  public synchronized void close() {
+  public synchronized boolean close() {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[StartCloseSinkChannel]");
     }
     if (closed || aborted) {
-      return;
+      return false;
     }
     sequenceIdToTsBlock.clear();
     if (blocked != null) {
@@ -294,6 +295,7 @@ public class SinkChannel implements ISinkChannel {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[EndCloseSinkChannel]");
     }
+    return true;
   }
 
   private void invokeOnFinished() {

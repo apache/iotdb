@@ -68,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -530,7 +531,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, expression)) {
             metadataExpressions.add(expression);
           } else if (PredicateCombineIntoTableScanChecker.check(
-              measurementColumnNames, expression)) {
+              measurementColumnNames, timeColumnName, expression)) {
             expressionsCanPushDown.add(expression);
           } else {
             expressionsCannotPushDown.add(expression);
@@ -543,7 +544,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, predicate)) {
         metadataExpressions.add(predicate);
-      } else if (PredicateCombineIntoTableScanChecker.check(measurementColumnNames, predicate)) {
+      } else if (PredicateCombineIntoTableScanChecker.check(
+          measurementColumnNames, timeColumnName, predicate)) {
         expressionsCanPushDown.add(predicate);
       } else {
         expressionsCannotPushDown.add(predicate);
@@ -616,7 +618,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         final Filter timeFilter =
             tableScanNode
                 .getTimePredicate()
-                .map(value -> value.accept(new ConvertPredicateToTimeFilterVisitor(), null))
+                .map(
+                    value ->
+                        value.accept(
+                            new ConvertPredicateToTimeFilterVisitor(
+                                queryContext.getZoneId(), TimestampPrecisionUtils.currPrecision),
+                            null))
                 .orElse(null);
 
         tableScanNode.setTimeFilter(timeFilter);

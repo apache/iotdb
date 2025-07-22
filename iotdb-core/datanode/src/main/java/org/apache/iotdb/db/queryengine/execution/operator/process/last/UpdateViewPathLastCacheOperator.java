@@ -54,8 +54,8 @@ public class UpdateViewPathLastCacheOperator extends UpdateLastCacheOperator {
 
   @Override
   protected void appendLastValueToTsBlockBuilder(long lastTime, TsPrimitiveType lastValue) {
-    LastQueryUtil.appendLastValue(
-        tsBlockBuilder, lastTime, outputViewPath, lastValue.getStringValue(), dataType);
+    LastQueryUtil.appendLastValueRespectBlob(
+        tsBlockBuilder, lastTime, outputViewPath, lastValue, dataType);
   }
 
   @Override

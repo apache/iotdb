@@ -64,15 +64,19 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
    * return of a client is automatic whenever a particular client is used.
    */
   public void returnClient(K node, V client) {
-    Optional.ofNullable(node)
-        .ifPresent(
-            x -> {
-              try {
-                pool.returnObject(node, client);
-              } catch (Exception e) {
-                LOGGER.warn("Return client {} for node {} to pool failed.", client, node, e);
-              }
-            });
+    if (node != null) {
+      try {
+        pool.returnObject(node, client);
+      } catch (Exception e) {
+        LOGGER.warn("Return client {} for node {} to pool failed.", client, node, e);
+      }
+    } else if (client instanceof ThriftClient) {
+      ((ThriftClient) client).invalidateAll();
+      LOGGER.warn(
+          "Return client {} to pool failed because the node is null. "
+              + "This may cause resource leak, please check your code.",
+          client);
+    }
   }
 
   @Override

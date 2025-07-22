@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBClientManager;
@@ -48,7 +50,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY;
@@ -70,7 +74,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   // receiverAttributes -> IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
   private static final Map<String, IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new ConcurrentHashMap<>();
+  private static final Map<String, ExecutorService> TS_FILE_ASYNC_EXECUTOR_HOLDER =
+      new ConcurrentHashMap<>();
+  private static final AtomicInteger id = new AtomicInteger(0);
+
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> endPoint2Client;
+  private ExecutorService executor;
 
   private final LoadBalancer loadBalancer;
 
@@ -122,6 +131,17 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
                         : new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
       }
       endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
+
+      if (isTSFileUsed) {
+        if (!TS_FILE_ASYNC_EXECUTOR_HOLDER.containsKey(receiverAttributes)) {
+          TS_FILE_ASYNC_EXECUTOR_HOLDER.putIfAbsent(
+              receiverAttributes,
+              IoTDBThreadPoolFactory.newFixedThreadPool(
+                  PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize(),
+                  ThreadName.PIPE_TSFILE_ASYNC_SEND_POOL.getName() + "-" + id.getAndIncrement()));
+        }
+        executor = TS_FILE_ASYNC_EXECUTOR_HOLDER.get(receiverAttributes);
+      }
 
       RECEIVER_ATTRIBUTES_REF_COUNT.compute(
           receiverAttributes, (attributes, refCount) -> refCount == null ? 1 : refCount + 1);
@@ -299,6 +319,18 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       client.resetMethodStateIfStopped();
       throw e;
     } finally {
+      if (isClosed) {
+        try {
+          client.close();
+          client.invalidateAll();
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to close client {}:{} after handshake failure when the manager is closed.",
+              targetNodeUrl.getIp(),
+              targetNodeUrl.getPort(),
+              e);
+        }
+      }
       client.setShouldReturnSelf(true);
       client.returnSelf();
     }
@@ -336,6 +368,10 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
   }
 
+  public ExecutorService getExecutor() {
+    return executor;
+  }
+
   public void close() {
     isClosed = true;
     synchronized (IoTDBDataNodeAsyncClientManager.class) {
@@ -348,10 +384,28 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
               if (clientManager != null) {
                 try {
                   clientManager.close();
+                  LOGGER.info(
+                      "Closed AsyncPipeDataTransferServiceClientManager for receiver attributes: {}",
+                      receiverAttributes);
                 } catch (final Exception e) {
-                  LOGGER.warn("Failed to close client manager.", e);
+                  LOGGER.warn(
+                      "Failed to close AsyncPipeDataTransferServiceClientManager for receiver attributes: {}",
+                      receiverAttributes,
+                      e);
                 }
               }
+
+              final ExecutorService executor =
+                  TS_FILE_ASYNC_EXECUTOR_HOLDER.remove(receiverAttributes);
+              if (executor != null) {
+                try {
+                  executor.shutdown();
+                  LOGGER.info("Successfully shutdown executor {}.", executor);
+                } catch (final Exception e) {
+                  LOGGER.warn("Failed to shutdown executor {}.", executor);
+                }
+              }
+
               return null;
             }
             return refCount - 1;

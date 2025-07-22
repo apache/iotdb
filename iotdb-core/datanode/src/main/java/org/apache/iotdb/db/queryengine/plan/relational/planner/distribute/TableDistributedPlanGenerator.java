@@ -1038,11 +1038,11 @@ public class TableDistributedPlanGenerator
         node instanceof AggregationTreeDeviceViewScanNode
             ? ((AggregationTreeDeviceViewScanNode) node).getTreeDBName()
             : node.getQualifiedObjectName().getDatabaseName();
-    if (dbName == null) {
+    DataPartition dataPartition = analysis.getDataPartitionInfo();
+    if (dbName == null || dataPartition == null) {
       node.setRegionReplicaSet(NOT_ASSIGNED);
       return Collections.singletonList(node);
     }
-    DataPartition dataPartition = analysis.getDataPartitionInfo();
     boolean needSplit = false;
     List<List<TRegionReplicaSet>> regionReplicaSetsList = new ArrayList<>();
     if (dataPartition != null) {

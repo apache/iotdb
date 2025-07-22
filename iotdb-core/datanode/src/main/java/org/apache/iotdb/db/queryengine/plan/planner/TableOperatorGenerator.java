@@ -232,6 +232,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Da
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
@@ -375,13 +376,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             localInstanceId.toThrift(),
             node.getPlanNodeId().getId(),
             context.getInstanceContext());
-    sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
-    context.getDriverContext().setSink(sinkHandle);
 
     if (node.getChildren().size() == 1) {
       Operator child = node.getChildren().get(0).accept(this, context);
       List<Operator> children = new ArrayList<>(1);
       children.add(child);
+      sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
+      context.getDriverContext().setSink(sinkHandle);
       return new IdentitySinkOperator(
           operatorContext, children, downStreamChannelIndex, sinkHandle);
     } else {
@@ -614,7 +615,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             Filter timeFilter = null;
             if (node.getTimePredicate().isPresent()) {
               Expression timePredicate = node.getTimePredicate().get();
-              timeFilter = timePredicate.accept(new ConvertPredicateToTimeFilterVisitor(), null);
+              timeFilter =
+                  timePredicate.accept(
+                      new ConvertPredicateToTimeFilterVisitor(
+                          context.getZoneId(), TimestampPrecisionUtils.currPrecision),
+                      null);
               context
                   .getDriverContext()
                   .getFragmentInstanceContext()
@@ -647,16 +652,16 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               SeriesScanOptions.Builder builder = new SeriesScanOptions.Builder();
               // time filter may be stateful, so we need to copy it
               builder.withGlobalTimeFilter(timeFilter == null ? null : timeFilter.copy());
-              builder
-                  .withIsTableViewForTreeModel(true)
-                  .withAllSensors(new HashSet<>(measurementColumnNames));
+              builder.withIsTableViewForTreeModel(true).withAllSensors(allSensors);
               if (pushDownPredicateForCurrentMeasurement != null) {
                 builder.withPushDownFilter(
                     convertPredicateToFilter(
                         pushDownPredicateForCurrentMeasurement,
                         Collections.singletonMap(symbol.getName(), 0),
                         commonParameter.columnSchemaMap,
-                        commonParameter.timeColumnName));
+                        commonParameter.timeColumnName,
+                        context.getZoneId(),
+                        TimestampPrecisionUtils.currPrecision));
               }
               if (isSingleColumn
                   || (pushDownOffsetAndLimitToLeftChildSeriesScanOperator
@@ -1237,7 +1242,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       LocalExecutionPlanContext context, @NotNull Expression timePredicate) {
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
 
-    Filter timeFilter = timePredicate.accept(new ConvertPredicateToTimeFilterVisitor(), null);
+    Filter timeFilter =
+        timePredicate.accept(
+            new ConvertPredicateToTimeFilterVisitor(
+                context.getZoneId(), TimestampPrecisionUtils.currPrecision),
+            null);
     context.getDriverContext().getFragmentInstanceContext().setTimeFilterForTableModel(timeFilter);
     // time filter may be stateful, so we need to copy it
     scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
@@ -3115,7 +3124,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     if (pushDownPredicate != null) {
       scanOptionsBuilder.withPushDownFilter(
           convertPredicateToFilter(
-              pushDownPredicate, measurementColumnsIndexMap, columnSchemaMap, timeColumnName));
+              pushDownPredicate,
+              measurementColumnsIndexMap,
+              columnSchemaMap,
+              timeColumnName,
+              context.getZoneId(),
+              TimestampPrecisionUtils.currPrecision));
     }
     return scanOptionsBuilder.build();
   }

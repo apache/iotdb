@@ -63,7 +63,7 @@ ddlStatement
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId | showProcedures
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
-    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode
+    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode | removeAINode
     | verifyConnection
     // AINode
     | showAINodes | createModel | dropModel | showModels | callInference
@@ -567,6 +567,11 @@ removeConfigNode
     : REMOVE CONFIGNODE configNodeId=INTEGER_LITERAL
     ;
 
+// ---- Remove AINode
+removeAINode
+    : REMOVE AINODE (aiNodeId=INTEGER_LITERAL)?
+    ;
+
 // Pipe Task =========================================================================================
 createPipe
     : CREATE PIPE  (IF NOT EXISTS)? pipeName=identifier
@@ -703,7 +708,7 @@ dropSubscription
 // AI Model =========================================================================================
 // ---- Create Model
 createModel
-    : CREATE MODEL modelName=identifier uriClause
+    : CREATE MODEL modelId=identifier uriClause
     | CREATE MODEL modelId=identifier (WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET)? FROM MODEL existingModelId=identifier ON DATASET LR_BRACKET trainingData RR_BRACKET
     ;
 

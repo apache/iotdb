@@ -131,30 +131,23 @@ public class TsFileResourceProgressIndexTest {
     Assert.assertTrue(
         hybridProgressIndex.isAfter(new RecoverProgressIndex(3, new SimpleProgressIndex(5, 4))));
 
-    Assert.assertTrue(
-        new MockProgressIndex(0).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
+    Assert.assertTrue(new MockProgressIndex(0).isAfter(tsFileResource.getMaxProgressIndex()));
 
     indexList.forEach(tsFileResource::updateProgressIndex);
 
+    Assert.assertFalse(new MockProgressIndex(-1).isAfter(tsFileResource.getMaxProgressIndex()));
+    Assert.assertFalse(new MockProgressIndex(0).isAfter(tsFileResource.getMaxProgressIndex()));
+    Assert.assertFalse(new MockProgressIndex(1).isAfter(tsFileResource.getMaxProgressIndex()));
     Assert.assertFalse(
-        new MockProgressIndex(-1).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
-    Assert.assertFalse(
-        new MockProgressIndex(0).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
-    Assert.assertFalse(
-        new MockProgressIndex(1).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
-    Assert.assertFalse(
-        new MockProgressIndex(INDEX_NUM - 1)
-            .isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
+        new MockProgressIndex(INDEX_NUM - 1).isAfter(tsFileResource.getMaxProgressIndex()));
 
     Assert.assertTrue(
-        new MockProgressIndex(INDEX_NUM).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
+        new MockProgressIndex(INDEX_NUM).isAfter(tsFileResource.getMaxProgressIndex()));
     Assert.assertTrue(
-        new MockProgressIndex(Integer.MAX_VALUE)
-            .isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
+        new MockProgressIndex(Integer.MAX_VALUE).isAfter(tsFileResource.getMaxProgressIndex()));
 
     Assert.assertFalse(
-        new MockProgressIndex(1, INDEX_NUM - 1)
-            .isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
+        new MockProgressIndex(1, INDEX_NUM - 1).isAfter(tsFileResource.getMaxProgressIndex()));
   }
 
   @Test

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -50,6 +51,8 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
     }
 
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
+    PipeTsFileEpochProgressIndexKeeper.getInstance()
+        .registerProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getResource());
 
     if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
       event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
@@ -111,12 +114,16 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
         LOGGER.error(errorMessage);
         PipeDataNodeAgent.runtime()
             .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+        PipeTsFileEpochProgressIndexKeeper.getInstance()
+            .eliminateProgressIndex(
+                dataRegionId, pipeName, realtimeEvent.getTsFileEpoch().getFilePath());
       }
 
       realtimeEvent.decreaseReferenceCount(
           PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
 
       if (suppliedEvent != null) {
+        maySkipIndex4Event(realtimeEvent);
         return suppliedEvent;
       }
 
