@@ -35,6 +35,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.DirectoryNotEmptyException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -347,7 +348,34 @@ public class FileUtils {
 
     final Path sourcePath = FileSystems.getDefault().getPath(sourceFile.getAbsolutePath());
     final Path linkPath = FileSystems.getDefault().getPath(hardlink.getAbsolutePath());
-    Files.createLink(linkPath, sourcePath);
+    try {
+      Files.createLink(linkPath, sourcePath);
+    } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
+      if (haveSameMD5(sourceFile, hardlink)) {
+        LOGGER.warn(
+            "Hardlink {} already exists, will not create it again. Source file: {}",
+            hardlink.getAbsolutePath(),
+            sourceFile.getAbsolutePath());
+      } else {
+        LOGGER.warn(
+            "Hardlink {} already exists but does not match source file {}, will try create it again.",
+            hardlink.getAbsolutePath(),
+            sourceFile.getAbsolutePath());
+        deleteFileIfExist(hardlink);
+        try {
+          Files.createLink(linkPath, sourcePath);
+        } catch (final Exception e) {
+          deleteFileIfExist(linkPath.toFile());
+          LOGGER.error(
+              "Failed to create hardlink {} for file {}: {}",
+              hardlink.getAbsolutePath(),
+              sourceFile.getAbsolutePath(),
+              e.getMessage(),
+              e);
+          throw e;
+        }
+      }
+    }
     return hardlink;
   }
 
