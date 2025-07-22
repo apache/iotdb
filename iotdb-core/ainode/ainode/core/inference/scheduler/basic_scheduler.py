@@ -16,24 +16,36 @@
 # under the License.
 #
 
-from ainode.core.inference.scheduler.abstract_scheduler import AbstractScheduler
-from ainode.core.inference.inference_request import InferenceRequest
-from ainode.core.log import Logger
 import torch
+
+from ainode.core.inference.inference_request import InferenceRequest
+from ainode.core.inference.scheduler.abstract_scheduler import AbstractScheduler
+from ainode.core.log import Logger
 
 logger = Logger()
 
+
 class BasicScheduler(AbstractScheduler):
 
-    def __init__(self, waiting_queue, running_queue, finished_queue, max_memory_bytes=1<<30, max_activate_size=10, max_step_size=10):
+    def __init__(
+        self,
+        waiting_queue,
+        running_queue,
+        finished_queue,
+        max_memory_bytes=1 << 30,
+        max_activate_size=10,
+        max_step_size=10,
+    ):
         super().__init__(waiting_queue, running_queue, finished_queue)
         self.max_memory_bytes = max_memory_bytes
         self.max_activate_size = max_activate_size
         self.max_step_size = max_step_size
 
     def memory_is_available(self):
-        used = torch.cuda.memory_allocated() # memory allocated to tensors
-        reserved = torch.cuda.memory_reserved() # memory reserved by the caching allocator
+        used = torch.cuda.memory_allocated()  # memory allocated to tensors
+        reserved = (
+            torch.cuda.memory_reserved()
+        )  # memory reserved by the caching allocator
         # logger.debug(f"Memory used: {used} bytes, Max memory: {self.max_memory_bytes} bytes")
         return used < self.max_memory_bytes
 
@@ -55,5 +67,3 @@ class BasicScheduler(AbstractScheduler):
                 break
             requests.append(self.running_queue.get())
         return requests
-
-

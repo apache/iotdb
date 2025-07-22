@@ -16,10 +16,11 @@
 # under the License.
 #
 
+import gc
 import random
 import threading
 import time
-import gc
+
 import numpy as np
 import torch
 import torch.multiprocessing as mp
@@ -27,9 +28,9 @@ from transformers import PretrainedConfig
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.inference.inference_request import InferenceRequest
+from ainode.core.inference.scheduler.basic_scheduler import BasicScheduler
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
-from ainode.core.inference.scheduler.basic_scheduler import BasicScheduler
 
 logger = Logger()
 
@@ -68,9 +69,7 @@ class InferenceRequestPool(mp.Process):
         self._running_queue = mp.Queue()  # Requests that are currently being processed
         self._finished_queue = result_queue  # Requests that are finished
         self._scheduler = BasicScheduler(
-            self._waiting_queue,
-            self._running_queue,
-            self._finished_queue
+            self._waiting_queue, self._running_queue, self._finished_queue
         )
         self._stop_event = mp.Event()
 
@@ -80,29 +79,39 @@ class InferenceRequestPool(mp.Process):
         np.random.seed(self.FIX_SEED)
 
     def _warm_up_and_estimate_memory(self):
-        #TODO: Test per token memory usage
+        # TODO: Test per token memory usage
         torch.cuda.empty_cache()
         gc.collect()
-        dummy_input = torch.zeros((1, self.config.input_token_len), dtype=torch.float32).to(self.device)
+        dummy_input = torch.zeros(
+            (1, self.config.input_token_len), dtype=torch.float32
+        ).to(self.device)
 
         # force cuda synchronization to avoid any asynchronous memory allocation issues
         torch.cuda.reset_peak_memory_stats(self.device)
         torch.cuda.synchronize(self.device)
         memory_before_warmup = torch.cuda.memory_allocated(self.device)
-        logger.info(f'Before warm-up, peak memory usage: {memory_before_warmup:.2f} bytes')
+        logger.info(
+            f"Before warm-up, peak memory usage: {memory_before_warmup:.2f} bytes"
+        )
 
         # warm-up
         with torch.no_grad():
             self.model.generate(dummy_input, max_new_tokens=1)
         torch.cuda.synchronize(self.device)
         peak_memory_1_token = torch.cuda.max_memory_allocated(self.device)
-        logger.info(f"Baseline memory usage for 1 token: {peak_memory_1_token:.2f} bytes")
-        logger.info(f'Differentiation : {peak_memory_1_token-memory_before_warmup:.2f} bytes')
+        logger.info(
+            f"Baseline memory usage for 1 token: {peak_memory_1_token:.2f} bytes"
+        )
+        logger.info(
+            f"Differentiation : {peak_memory_1_token-memory_before_warmup:.2f} bytes"
+        )
 
     def _activate_requests(self):
         requests = self._scheduler.schedule_activate()
         for request in requests:
-            request.inputs = request.inference_pipeline.preprocess_inputs(request.inputs)
+            request.inputs = request.inference_pipeline.preprocess_inputs(
+                request.inputs
+            )
             logger.debug(
                 f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is activated with inputs shape {request.inputs.shape}"
             )
