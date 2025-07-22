@@ -55,8 +55,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -132,7 +130,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionExtractor.class);
 
-  private @Nullable PipeHistoricalDataRegionExtractor historicalExtractor;
+  private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
   private DataRegionWatermarkInjector watermarkInjector;
@@ -297,22 +295,10 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
     checkInvalidParameters(validator);
 
-    if (validator
-            .getParameters()
-            .getBooleanOrDefault(SystemConstant.RESTART_KEY, SystemConstant.RESTART_DEFAULT_VALUE)
-        || validator
-            .getParameters()
-            .getBooleanOrDefault(
-                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
-                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE)) {
-      // Do not flush or open historical extractor when historical tsFile is disabled
-      constructHistoricalExtractor();
-    }
+    constructHistoricalExtractor();
     constructRealtimeExtractor(validator.getParameters());
 
-    if (Objects.nonNull(historicalExtractor)) {
-      historicalExtractor.validate(validator);
-    }
+    historicalExtractor.validate(validator);
     realtimeExtractor.validate(validator);
   }
 
@@ -536,9 +522,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
     super.customize(parameters, configuration);
 
-    if (Objects.nonNull(historicalExtractor)) {
-      historicalExtractor.customize(parameters, configuration);
-    }
+    historicalExtractor.customize(parameters, configuration);
     realtimeExtractor.customize(parameters, configuration);
 
     // Set watermark injector
@@ -582,9 +566,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
         "Pipe {}@{}: Starting historical extractor {} and realtime extractor {}.",
         pipeName,
         regionId,
-        Objects.nonNull(historicalExtractor)
-            ? historicalExtractor.getClass().getSimpleName()
-            : null,
+        historicalExtractor.getClass().getSimpleName(),
         realtimeExtractor.getClass().getSimpleName());
 
     super.start();
@@ -619,9 +601,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
             "Pipe {}@{}: Started historical extractor {} and realtime extractor {} successfully within {} ms.",
             pipeName,
             regionId,
-            Objects.nonNull(historicalExtractor)
-                ? historicalExtractor.getClass().getSimpleName()
-                : null,
+            historicalExtractor.getClass().getSimpleName(),
             realtimeExtractor.getClass().getSimpleName(),
             System.currentTimeMillis() - startTime);
         return;
@@ -639,18 +619,14 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       // There can still be writing when tsFile events are added. If we start
       // realtimeExtractor after the process, then this part of data will be lost.
       realtimeExtractor.start();
-      if (Objects.nonNull(historicalExtractor)) {
-        historicalExtractor.start();
-      }
+      historicalExtractor.start();
     } catch (final Exception e) {
       exceptionHolder.set(e);
       LOGGER.warn(
           "Pipe {}@{}: Start historical extractor {} and realtime extractor {} error.",
           pipeName,
           regionId,
-          Objects.nonNull(historicalExtractor)
-              ? historicalExtractor.getClass().getSimpleName()
-              : null,
+          historicalExtractor.getClass().getSimpleName(),
           realtimeExtractor.getClass().getSimpleName(),
           e);
     }
@@ -669,7 +645,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     }
 
     Event event = null;
-    if (Objects.nonNull(historicalExtractor) && !historicalExtractor.hasConsumedAll()) {
+    if (!historicalExtractor.hasConsumedAll()) {
       event = historicalExtractor.supply();
     } else {
       if (Objects.nonNull(watermarkInjector)) {
@@ -699,9 +675,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       return;
     }
 
-    if (Objects.nonNull(historicalExtractor)) {
-      historicalExtractor.close();
-    }
+    historicalExtractor.close();
     realtimeExtractor.close();
     if (Objects.nonNull(taskID)) {
       PipeDataRegionExtractorMetrics.getInstance().deregister(taskID);
