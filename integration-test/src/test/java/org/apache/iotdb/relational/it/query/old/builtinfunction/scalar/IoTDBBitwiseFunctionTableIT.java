@@ -164,6 +164,25 @@ public class IoTDBBitwiseFunctionTableIT {
   }
 
   @Test
+  public void bitCountTestWithNonInteger() {
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bit_count(s4) from bit_count_error_table",
+        "701: Scalar function bit_count only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
+        DATABASE_NAME);
+
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bit_count(s1,s4) from bit_count_error_table",
+        "701: Scalar function bit_count only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
+        DATABASE_NAME);
+  }
+
+  @Test
   public void bitwiseAndTestNormal() {
     String[] expectedHeader = new String[] {"time", "s2", "s3", "_col3", "_col4", "_col5"};
     String[] expectedAns =
@@ -175,6 +194,25 @@ public class IoTDBBitwiseFunctionTableIT {
         "select time,s2,s3,bitwise_and(19,25),bitwise_and(s2,25),bitwise_and(s2,s3) from bitwise_and_table",
         expectedHeader,
         expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void bitwiseAndTestWithNonInteger() {
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_and(s4) from bitwise_and_table",
+        "701: Scalar function bitwise_and only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
+        DATABASE_NAME);
+
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_and(s1,s4) from bitwise_and_table",
+        "701: Scalar function bitwise_and only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
         DATABASE_NAME);
   }
 
@@ -196,6 +234,25 @@ public class IoTDBBitwiseFunctionTableIT {
   }
 
   @Test
+  public void bitwiseNotTestWithNonInteger() {
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_not(s4) from bitwise_not_table",
+        "701: Scalar function bitwise_not only accepts one argument and it must be Int32 or Int64 data type.",
+        "root",
+        "root",
+        DATABASE_NAME);
+
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_not(s1,s4) from bitwise_not_table",
+        "701: Scalar function bitwise_not only accepts one argument and it must be Int32 or Int64 data type.",
+        "root",
+        "root",
+        DATABASE_NAME);
+  }
+
+  @Test
   public void bitwiseOrTestNormal() {
     String[] expectedHeader = new String[] {"time", "s2", "s3", "_col3", "_col4", "_col5"};
     String[] expectedAns =
@@ -211,6 +268,25 @@ public class IoTDBBitwiseFunctionTableIT {
   }
 
   @Test
+  public void bitwiseOrTestWithNonInteger() {
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_or(s4) from bitwise_or_table",
+        "701: Scalar function bitwise_or only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
+        DATABASE_NAME);
+
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_or(s1,s4) from bitwise_or_table",
+        "701: Scalar function bitwise_or only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
+        DATABASE_NAME);
+  }
+
+  @Test
   public void bitwiseXorTestNormal() {
     String[] expectedHeader = new String[] {"time", "s2", "s3", "_col3", "_col4", "_col5"};
     String[] expectedAns =
@@ -222,6 +298,25 @@ public class IoTDBBitwiseFunctionTableIT {
         "select time,s2,s3,bitwise_xor(19,25),bitwise_xor(s2,25),bitwise_xor(s2,s3) from bitwise_xor_table",
         expectedHeader,
         expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void bitwiseXorTestWithNonInteger() {
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_xor(s4) from bitwise_xor_table",
+        "701: Scalar function bitwise_xor only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
+        DATABASE_NAME);
+
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_xor(s1,s4) from bitwise_xor_table",
+        "701: Scalar function bitwise_xor only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
         DATABASE_NAME);
   }
 
@@ -242,6 +337,25 @@ public class IoTDBBitwiseFunctionTableIT {
         "select time,s2,s3,bitwise_left_shift(1,2),bitwise_left_shift(s2,s3) from bitwise_left_shift_table",
         expectedHeader,
         expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void bitwiseLeftShiftTestWithNonInteger() {
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_left_shift(s4) from bitwise_left_shift_table",
+        "701: Scalar function bitwise_left_shift only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
+        DATABASE_NAME);
+
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_left_shift(s1,s4) from bitwise_left_shift_table",
+        "701: Scalar function bitwise_left_shift only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
         DATABASE_NAME);
   }
 
@@ -268,6 +382,25 @@ public class IoTDBBitwiseFunctionTableIT {
   }
 
   @Test
+  public void bitwiseRightShiftTestWithNonInteger() {
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_right_shift(s4) from bitwise_right_shift_table",
+        "701: Scalar function bitwise_right_shift only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
+        DATABASE_NAME);
+
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_right_shift(s1,s4) from bitwise_right_shift_table",
+        "701: Scalar function bitwise_right_shift only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
+        DATABASE_NAME);
+  }
+
+  @Test
   public void bitwiseRightShiftArithmeticTestNormal() {
     String[] expectedHeader = new String[] {"time", "s2", "s3", "_col3", "_col4"};
     String[] expectedAns =
@@ -280,6 +413,25 @@ public class IoTDBBitwiseFunctionTableIT {
         "select time,s2,s3,bitwise_right_shift_arithmetic(19,25),bitwise_right_shift_arithmetic(s2,s3) from bitwise_right_shift_arithmetic_table",
         expectedHeader,
         expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void bitwiseRightShiftArithmeticTestWithNonInteger() {
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_right_shift_arithmetic(s4) from bitwise_right_shift_arithmetic_table",
+        "701: Scalar function bitwise_right_shift_arithmetic only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
+        DATABASE_NAME);
+
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "select time, bitwise_right_shift_arithmetic(s1,s4) from bitwise_right_shift_arithmetic_table",
+        "701: Scalar function bitwise_right_shift_arithmetic only accepts two arguments and they must be Int32 or Int64 data type.",
+        "root",
+        "root",
         DATABASE_NAME);
   }
 }

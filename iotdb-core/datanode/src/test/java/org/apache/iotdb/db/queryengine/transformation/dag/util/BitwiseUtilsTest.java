@@ -40,6 +40,7 @@ public class BitwiseUtilsTest {
     Assert.assertThrows(SemanticException.class, () -> bitCountCheck(0, 0));
     Assert.assertThrows(SemanticException.class, () -> bitCountCheck(7, 1));
     Assert.assertThrows(SemanticException.class, () -> bitCountCheck(7, 2));
+    Assert.assertThrows(SemanticException.class, () -> bitCountCheck(128, 7));
   }
 
   @Test
@@ -50,6 +51,13 @@ public class BitwiseUtilsTest {
     Assert.assertEquals(2, BitwiseUtils.bitCountTransform(9, 8));
     Assert.assertEquals(62, BitwiseUtils.bitCountTransform(-7, 64));
     Assert.assertEquals(6, BitwiseUtils.bitCountTransform(-7, 8));
+    Assert.assertEquals(1, BitwiseUtils.bitCountTransform(128, 8));
+    Assert.assertEquals(1, BitwiseUtils.bitCountTransform(128, 9));
+    Assert.assertEquals(1, BitwiseUtils.bitCountTransform(128, 10));
+    Assert.assertEquals(1, BitwiseUtils.bitCountTransform(128, 11));
+    Assert.assertEquals(1, BitwiseUtils.bitCountTransform(128, 12));
+    Assert.assertEquals(1, BitwiseUtils.bitCountTransform(128, 32));
+    Assert.assertEquals(1, BitwiseUtils.bitCountTransform(128, 64));
   }
 
   @Test
