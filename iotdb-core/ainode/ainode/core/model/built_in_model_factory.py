@@ -20,7 +20,7 @@ from abc import abstractmethod
 from typing import Callable, Dict, List
 
 import numpy as np
-from huggingface_hub import hf_hub_download
+from huggingface_hub import hf_hub_download, snapshot_download
 from sklearn.preprocessing import MinMaxScaler
 from sktime.detection.hmm_learn import GMMHMM, GaussianHMM
 from sktime.detection.stray import STRAY
@@ -28,9 +28,11 @@ from sktime.forecasting.arima import ARIMA
 from sktime.forecasting.exp_smoothing import ExponentialSmoothing
 from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.trend import STLForecaster
+from transformers import AutoModel, AutoConfig
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import (
+    DEFAULT_RECONNECT_TIMEOUT,
     MODEL_CONFIG_FILE_IN_JSON,
     MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
     AttributeName,
@@ -44,10 +46,9 @@ from ainode.core.exception import (
     WrongAttributeTypeError,
 )
 from ainode.core.log import Logger
-from ainode.core.model.model_info import TIMER_REPO_ID, BuiltInModelType
+from ainode.core.model.model_info import TIMER_REPO_ID, BuiltInModelType, get_model_loading_strategy
 from ainode.core.model.sundial import modeling_sundial
 from ainode.core.model.timerxl import modeling_timer
-from ainode.core.model.timesfm import modeling_timesfm
 
 logger = Logger()
 
@@ -119,12 +120,224 @@ def get_model_attributes(model_type: BuiltInModelType):
         attribute_map = timerxl_attribute_map
     elif model_type == BuiltInModelType.SUNDIAL:
         attribute_map = sundial_attribute_map
-    elif model_type == BuiltInModelType.TIME_SFM:
+    elif model_type == BuiltInModelType.TIMESFM:
         attribute_map = timesfm_attribute_map
+    elif model_type == BuiltInModelType.CHRONOS:
+        attribute_map = chronos_attribute_map
     else:
         raise BuiltInModelNotSupportError(model_type.value)
     return attribute_map
 
+
+def load_model_from_uri(model_uri: str, inference_attrs: Dict[str, str] = None) -> Callable:
+    if inference_attrs is None:
+        inference_attrs = {}
+    
+    strategy = get_model_loading_strategy(model_uri)
+    
+    if strategy.startswith("builtin_"):
+        model_type = _guess_builtin_type(model_uri)
+        model_dir = _get_builtin_model_dir(model_type)  
+        return fetch_built_in_model(model_type, model_dir, inference_attrs)
+    
+    elif strategy == "user_defined":
+        return _load_user_defined_model(model_uri, inference_attrs)
+    
+    elif strategy == "network":
+        return _load_network_model(model_uri, inference_attrs)
+    
+    else:
+        raise ValueError(f"Unknown loading strategy: {strategy}")
+
+def _load_user_defined_model(model_path: str, inference_attrs: Dict[str, str]) -> Callable:
+    import sys
+    import importlib.util
+    
+    entry_file = os.path.join(model_path, "model.py")  
+    if not os.path.exists(entry_file):
+        import glob
+        python_files = glob.glob(os.path.join(model_path, "*.py"))
+        if not python_files:
+            raise FileNotFoundError("No Python files found")
+        entry_file = python_files[0]
+    
+    spec = importlib.util.spec_from_file_location("user_model", entry_file)
+    module = importlib.util.module_from_spec(spec)
+    
+    sys.path.insert(0, model_path)
+    try:
+        spec.loader.exec_module(module)
+        
+        for attr_name in ["load_model", "Model", "create_model"]:
+            if hasattr(module, attr_name):
+                loader = getattr(module, attr_name)
+                if callable(loader):
+                    model = loader(model_path) if not hasattr(loader, 'from_pretrained') else loader.from_pretrained(model_path)
+                    break
+        else:
+            raise AttributeError("No model loader found")
+        
+        def inference(data):
+            if hasattr(model, 'predict'):
+                return model.predict(data)
+            elif hasattr(model, '__call__'):
+                return model(data)
+            else:
+                raise AttributeError("Model has no inference method")
+        
+        return inference
+        
+    finally:
+        sys.path.remove(model_path)
+
+def _load_network_model(model_uri: str, inference_attrs: Dict[str, str]) -> Callable:
+    import tempfile
+    
+    temp_dir = tempfile.mkdtemp(prefix="net_model_")
+    
+    try:
+        if model_uri.startswith(("http://", "https://")):
+            _download_from_http(model_uri, temp_dir)
+        else:
+            snapshot_download(repo_id=model_uri, local_dir=temp_dir, local_dir_use_symlinks=False)
+        
+        if os.path.exists(os.path.join(temp_dir, MODEL_CONFIG_FILE_IN_JSON)):
+            return _load_transformers_from_dir(temp_dir, inference_attrs)
+        else:
+            return _load_user_defined_model(temp_dir, inference_attrs)
+            
+    except Exception as e:
+        logger.error(f"Failed to load network model: {e}")
+        raise InferenceModelInternalError(str(e))
+
+def _load_transformers_from_dir(model_dir: str, inference_attrs: Dict[str, str]) -> Callable:
+    
+    predict_length = int(inference_attrs.get("predict_length", "96"))
+    config = AutoConfig.from_pretrained(model_dir, trust_remote_code=True)
+    model = AutoModel.from_pretrained(model_dir, config=config, trust_remote_code=True)
+    
+    def inference(data):
+        return _simple_inference_call(model, data, predict_length, "network")
+    
+    return inference
+
+
+def _download_from_http(url: str, local_dir: str):
+    import requests
+    import zipfile
+    
+    response = requests.get(url, timeout=DEFAULT_RECONNECT_TIMEOUT)  
+    response.raise_for_status()
+    
+    zip_path = os.path.join(local_dir, "model.zip")
+    with open(zip_path, 'wb') as f:
+        f.write(response.content)
+    
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(local_dir)
+    
+    os.remove(zip_path)
+
+def _guess_builtin_type(uri: str) -> BuiltInModelType:
+    for model_type in BuiltInModelType:
+        if model_type.value.lower() in uri.lower():
+            return model_type
+    raise ValueError(f"Cannot determine model type from: {uri}")
+
+def _get_builtin_model_dir(model_type: BuiltInModelType) -> str:
+    model_name = model_type.value.lower().replace("-", "_")
+    return os.path.join(AINodeDescriptor().get_config().get_ain_models_dir(), "weights", model_name)
+
+def _simple_inference_call(model, data, predict_length: int, model_name: str):
+    try:
+        if isinstance(data, np.ndarray):
+            if len(data.shape) == 1:
+                input_data = data.tolist()
+            else:
+                input_data = [row.tolist() for row in data]
+        else:
+            input_data = data if isinstance(data, list) else [data]
+        
+        if model_name == "timesfm":
+            result = _call_timesfm(model, input_data, predict_length)
+        elif model_name == "chronos":
+            result = _call_chronos(model, input_data, predict_length)
+        elif model_name == "network":
+            result = _call_generic_transformers(model, input_data, predict_length)
+        else:
+            raise ValueError(f"Unknown model name: {model_name}")
+        
+        if not isinstance(result, np.ndarray):
+            result = np.array(result)
+        
+        return result.astype(np.float64)
+        
+    except Exception as e:
+        logger.error(f"{model_name} inference failed: {e}")
+        return np.zeros(predict_length, dtype=np.float64)
+
+def _call_timesfm(model, input_data, predict_length):
+    call_methods = [
+        lambda: model.generate(inputs=input_data, horizon_length=predict_length),
+        lambda: model.forecast(input_data, horizon=predict_length),
+        lambda: model(input_data),
+    ]
+    
+    for method in call_methods:
+        try:
+            result = method()
+            if hasattr(result, 'mean_predictions'):
+                return result.mean_predictions
+            elif hasattr(result, 'predictions'):
+                return result.predictions
+            elif hasattr(result, 'forecasts'):
+                return result.forecasts
+            else:
+                return result
+        except Exception:
+            continue
+    
+    raise Exception("No compatible TimesFM inference method found")
+
+def _call_chronos(model, input_data, predict_length):
+    if isinstance(input_data, list) and len(input_data) > 0:
+        context = np.array(input_data[0])
+    else:
+        context = np.array(input_data)
+    
+    if hasattr(model, 'predict'):
+        return model.predict(context=context, prediction_length=predict_length)
+    elif hasattr(model, 'generate'):
+        logger.warning("Using basic transformers interface for Chronos")
+        return np.zeros(predict_length, dtype=np.float64)
+    else:
+        raise Exception("No compatible Chronos inference method found")
+
+def _call_generic_transformers(model, input_data, predict_length):
+    methods = [
+        ('predict', lambda: model.predict(input_data)),
+        ('generate', lambda: model.generate(inputs=input_data, max_length=predict_length)),
+        ('forward', lambda: model(input_data)),
+        ('__call__', lambda: model(input_data)),
+    ]
+    
+    for method_name, method in methods:
+        if hasattr(model, method_name):
+            try:
+                result = method()
+                if hasattr(result, 'predictions'):
+                    return result.predictions
+                elif hasattr(result, 'last_hidden_state'):
+                    return result.last_hidden_state.detach().numpy()
+                elif isinstance(result, (list, tuple)) and len(result) > 0:
+                    return np.array(result[0])
+                else:
+                    return np.array(result)
+            except Exception as e:
+                logger.debug(f"Method {method_name} failed: {e}")
+                continue
+    
+    return np.zeros(predict_length, dtype=np.float64)
 
 def fetch_built_in_model(
     model_type: BuiltInModelType, model_dir, inference_attrs: Dict[str, str]
@@ -163,8 +376,6 @@ def fetch_built_in_model(
         model = modeling_timer.TimerForPrediction.from_pretrained(model_dir)
     elif model_type == BuiltInModelType.SUNDIAL:
         model = modeling_sundial.SundialForPrediction.from_pretrained(model_dir)
-    elif model_type == BuiltInModelType.TIMESFM:
-        model = modeling_timesfm.TimesFmForPrediction.from_pretrained(model_dir)
     else:
         raise BuiltInModelNotSupportError(model_type.value)
 
@@ -582,166 +793,23 @@ timerxl_attribute_map = {
 }
 
 timesfm_attribute_map = {
-    AttributeName.PATCH_LENGTH.value: IntAttribute(
-        name=AttributeName.PATCH_LENGTH.value,
-        default_value=32,
+    AttributeName.PREDICT_LENGTH.value: IntAttribute(
+        name=AttributeName.PREDICT_LENGTH.value,
+        default_value=96,
         default_low=1,
-        default_high=256,
-    ),
-
-    AttributeName.CONTEXT_LENGTH.value: IntAttribute(
-        name=AttributeName.CONTEXT_LENGTH.value,
-        default_value=2048,
-        default_low=32,
-        default_high=8192,
-    ),
-    
-    AttributeName.HORIZON_LENGTH.value: IntAttribute(
-        name=AttributeName.HORIZON_LENGTH.value,
-        default_value=128,
-        default_low=1,
-        default_high=1024,
-    ),
-    
-    AttributeName.HIDDEN_SIZE.value: IntAttribute(
-        name=AttributeName.HIDDEN_SIZE.value,
-        default_value=1280,
-        default_low=128,
-        default_high=4096,
-    ),
-    
-    AttributeName.INTERMEDIATE_SIZE.value: IntAttribute(
-        name=AttributeName.INTERMEDIATE_SIZE.value,
-        default_value=1280,
-        default_low=128,
-        default_high=8192,
-    ),
-    
-    AttributeName.NUM_HIDDEN_LAYERS.value: IntAttribute(
-        name=AttributeName.NUM_HIDDEN_LAYERS.value,
-        default_value=50,
-        default_low=1,
-        default_high=100,
-    ),
-    
-    AttributeName.NUM_ATTENTION_HEADS.value: IntAttribute(
-        name=AttributeName.NUM_ATTENTION_HEADS.value,
-        default_value=16,
-        default_low=1,
-        default_high=64,
-    ),
-    
-    AttributeName.HEAD_DIM.value: IntAttribute(
-        name=AttributeName.HEAD_DIM.value,
-        default_value=80,
-        default_low=32,
-        default_high=256,
-    ),
-    
-    AttributeName.FREQ_SIZE.value: IntAttribute(
-        name=AttributeName.FREQ_SIZE.value,
-        default_value=3,
-        default_low=1,
-        default_high=10,
-    ),
-    
-    AttributeName.USE_POSITIONAL_EMBEDDING.value: BooleanAttribute(
-        name=AttributeName.USE_POSITIONAL_EMBEDDING.value,
-        default_value=False,
-    ),
-    
-    AttributeName.MIN_TIMESCALE.value: IntAttribute(
-        name=AttributeName.MIN_TIMESCALE.value,
-        default_value=1,
-        default_low=1,
-        default_high=100,
-    ),
-    
-    AttributeName.MAX_TIMESCALE.value: IntAttribute(
-        name=AttributeName.MAX_TIMESCALE.value,
-        default_value=10000,
-        default_low=1000,
-        default_high=100000,
-    ),
-    
-    AttributeName.ATTENTION_DROPOUT.value: FloatAttribute(
-        name=AttributeName.ATTENTION_DROPOUT.value,
-        default_value=0.0,
-        default_low=0.0,
-        default_high=0.5,
-    ),
-    
-    AttributeName.INITIALIZER_RANGE.value: FloatAttribute(
-        name=AttributeName.INITIALIZER_RANGE.value,
-        default_value=0.02,
-        default_low=0.001,
-        default_high=0.1,
-    ),
-    
-    AttributeName.RMS_NORM_EPS.value: FloatAttribute(
-        name=AttributeName.RMS_NORM_EPS.value,
-        default_value=1e-06,
-        default_low=1e-10,
-        default_high=1e-03,
-    ),
-    
-    AttributeName.PAD_VAL.value: FloatAttribute(
-        name=AttributeName.PAD_VAL.value,
-        default_value=1123581321.0,
-        default_low=0.0,
-        default_high=1e12,
-    ),
-    
-    AttributeName.TOLERANCE.value: FloatAttribute(
-        name=AttributeName.TOLERANCE.value,
-        default_value=1e-06,
-        default_low=1e-10,
-        default_high=1e-03,
-    ),
-    
-    AttributeName.QUANTILES.value: ListAttribute(
-        name=AttributeName.QUANTILES.value,
-        default_value=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-        value_type=float
-    ),
-    
-    AttributeName.INPUT_TOKEN_LEN.value: IntAttribute(
-        name=AttributeName.INPUT_TOKEN_LEN.value,
-        default_value=32, 
-        default_low=1,
-        default_high=256,
-    ),
-    
-    AttributeName.OUTPUT_TOKEN_LENS.value: ListAttribute(
-        name=AttributeName.OUTPUT_TOKEN_LENS.value,
-        default_value=[128],  
-        value_type=int
-    ),
-    
-    AttributeName.MAX_POSITION_EMBEDDINGS.value: IntAttribute(
-        name=AttributeName.MAX_POSITION_EMBEDDINGS.value,
-        default_value=2048,  
-        default_low=32,
-        default_high=8192,
-    ),
-    
-    AttributeName.USE_CACHE.value: BooleanAttribute(
-        name=AttributeName.USE_CACHE.value,
-        default_value=True,
-    ),
-    
-    AttributeName.CKPT_PATH.value: StringAttribute(
-        name=AttributeName.CKPT_PATH.value,
-        default_value=os.path.join(
-            os.getcwd(),
-            AINodeDescriptor().get_config().get_ain_models_dir(),
-            "weights",
-            "timesfm",
-            "model.safetensors",
-        ),
-        value_choices=[""],
+        default_high=1000,
     ),
 }
+
+chronos_attribute_map = {
+    AttributeName.PREDICT_LENGTH.value: IntAttribute(
+        name=AttributeName.PREDICT_LENGTH.value,
+        default_value=48,
+        default_low=1,
+        default_high=1000,
+    ),
+}
+
 
 # built-in sktime model attributes
 # NaiveForecaster

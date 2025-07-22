@@ -144,15 +144,11 @@ class ModelStorage(object):
                         model_info.category = ModelCategory.BUILT_IN
                     if "sundial" == model_id:
                         model_info.category = ModelCategory.BUILT_IN
-                    if "timesfm" == model_id:
-                        model_info.category = ModelCategory.BUILT_IN
                     # Compatible patch with the codes in HuggingFace
                     if "timer" == model_type:
                         model_info.model_type = BuiltInModelType.TIMER_XL.value
                     if "sundial" == model_type:
                         model_info.model_type = BuiltInModelType.SUNDIAL.value
-                    if "timesfm" == model_type:
-                        model_info.model_type = BuiltInModelType.TIMESFM.value
                     result[model_id] = model_info
         return result
 

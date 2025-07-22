@@ -15,9 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import os
+import glob
 from enum import Enum
 from typing import List
 
+MODEL_LOADING_STRATEGY = {
+    "timer_xl": "builtin_traditional",
+    "sundial": "builtin_traditional", 
+    
+    "timesfm": "builtin_transformers",
+    "chronos": "builtin_transformers",
+}
 
 class BuiltInModelType(Enum):
     # forecast models
@@ -36,8 +45,9 @@ class BuiltInModelType(Enum):
     TIMER_XL = "Timer-XL"
     # sundial
     SUNDIAL = "Timer-Sundial"
-    # google timesfm
+    # transformer models
     TIMESFM = "TimesFM"
+    CHRONOS = "Chronos"
 
     @classmethod
     def values(cls) -> List[str]:
@@ -55,6 +65,18 @@ def get_built_in_model_type(model_type: str) -> BuiltInModelType:
     if not BuiltInModelType.is_built_in_model(model_type):
         raise ValueError(f"Invalid built-in model type: {model_type}")
     return BuiltInModelType(model_type)
+
+def get_model_loading_strategy(model_id_or_uri: str) -> str:
+    if model_id_or_uri in MODEL_LOADING_STRATEGY:
+        return MODEL_LOADING_STRATEGY[model_id_or_uri]
+    if "/" in model_id_or_uri and not model_id_or_uri.startswith(("http://", "https://", "file://")):
+        return "network"
+    if os.path.exists(model_id_or_uri):
+        python_files = glob.glob(os.path.join(model_id_or_uri, "*.py"))
+        if python_files:
+            return "user_defined"
+    
+    return "network"
 
 
 class ModelCategory(Enum):
@@ -89,7 +111,8 @@ class ModelInfo:
 TIMER_REPO_ID = {
     BuiltInModelType.TIMER_XL: "thuml/timer-base-84m",
     BuiltInModelType.SUNDIAL: "thuml/sundial-base-128m",
-    BuiltInModelType.TIMESFM: "google/timesfm-2.0-500m-pytorch",
+    BuiltInModelType.TIMESFM: "google/timesfm-1.0-200m",
+    BuiltInModelType.CHRONOS: "amazon/chronos-t5-small",
 }
 
 # Built-in machine learning models, they can be employed directly
@@ -165,5 +188,13 @@ BUILT_IN_LTSM_MAP = {
         model_type=BuiltInModelType.TIMESFM.value,
         category=ModelCategory.BUILT_IN,
         state=ModelStates.LOADING,
-    )
+        repo_id=TIMER_REPO_ID[BuiltInModelType.TIMESFM],
+    ),
+    "chronos": ModelInfo(
+        model_id="chronos",
+        model_type=BuiltInModelType.CHRONOS.value,
+        category=ModelCategory.BUILT_IN,
+        state=ModelStates.LOADING,
+        repo_id=TIMER_REPO_ID[BuiltInModelType.CHRONOS],
+    ),
 }
