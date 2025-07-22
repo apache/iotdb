@@ -19,8 +19,7 @@ import threading
 
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.server import TServer
-from thrift.transport import TSocket, TTransport
-from thrift.transport.TSSLSocket import TSSLSocket
+from thrift.transport import TSocket, TTransport, TSSLSocket
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.log import Logger
@@ -73,7 +72,6 @@ class AINodeRPCService(threading.Thread):
         processor = IAINodeRPCService.Processor(handler=self._handler)
         if AINodeDescriptor().get_config().get_ain_internal_ssl_enabled():
             import ssl, sys
-            from thrift.transport import TSSLSocket
 
             if sys.version_info >= (3, 10):
                 context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
@@ -89,14 +87,14 @@ class AINodeRPCService(threading.Thread):
                 keyfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_key_file(),
             )
             transport = TSSLSocket.TSSLServerSocket(
-                host=AINodeDescriptor().get_config().get_ain_inference_rpc_address(),
-                port=AINodeDescriptor().get_config().get_ain_inference_rpc_port(),
+                host=AINodeDescriptor().get_config().get_ain_rpc_address(),
+                port=AINodeDescriptor().get_config().get_ain_rpc_port(),
                 ssl_context=context,
             )
         else:
             transport = TSocket.TServerSocket(
-                host=AINodeDescriptor().get_config().get_ain_inference_rpc_address(),
-                port=AINodeDescriptor().get_config().get_ain_inference_rpc_port(),
+                host=AINodeDescriptor().get_config().get_ain_rpc_address(),
+                port=AINodeDescriptor().get_config().get_ain_rpc_port(),
             )
         transport_factory = TTransport.TFramedTransportFactory()
         if AINodeDescriptor().get_config().get_ain_thrift_compression_enabled():

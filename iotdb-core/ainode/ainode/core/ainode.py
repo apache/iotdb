@@ -43,8 +43,8 @@ def _generate_configuration() -> TAINodeConfiguration:
     location = TAINodeLocation(
         AINodeDescriptor().get_config().get_ainode_id(),
         TEndPoint(
-            AINodeDescriptor().get_config().get_ain_inference_rpc_address(),
-            AINodeDescriptor().get_config().get_ain_inference_rpc_port(),
+            AINodeDescriptor().get_config().get_ain_rpc_address(),
+            AINodeDescriptor().get_config().get_ain_rpc_port(),
         ),
     )
     resource = TNodeResource(int(psutil.cpu_count()), int(psutil.virtual_memory()[0]))
@@ -76,10 +76,8 @@ def _generate_system_properties(ainode_id: int):
         "cluster_name": AINodeDescriptor().get_config().get_cluster_name(),
         "iotdb_version": AINodeDescriptor().get_config().get_version_info(),
         "commit_id": AINodeDescriptor().get_config().get_build_info(),
-        "ain_rpc_address": AINodeDescriptor()
-        .get_config()
-        .get_ain_inference_rpc_address(),
-        "ain_rpc_port": AINodeDescriptor().get_config().get_ain_inference_rpc_port(),
+        "ain_rpc_address": AINodeDescriptor().get_config().get_ain_rpc_address(),
+        "ain_rpc_port": AINodeDescriptor().get_config().get_ain_rpc_port(),
         "config_node_list": AINodeDescriptor()
         .get_config()
         .get_ain_target_config_node_list(),

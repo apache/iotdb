@@ -494,6 +494,11 @@ public class PipeDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_transfer_tsfile_sync", String.valueOf(config.getPipeTransferTsFileSync()))));
+    config.setPipeCheckAllSyncClientLiveTimeIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_check_all_sync_client_live_time_interval_ms",
+                String.valueOf(config.getPipeCheckAllSyncClientLiveTimeIntervalMs()))));
 
     config.setPipeRemainingTimeCommitRateAutoSwitchSeconds(
         Long.parseLong(

@@ -19,7 +19,7 @@ import time
 
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.Thrift import TException
-from thrift.transport import TSocket, TTransport
+from thrift.transport import TSocket, TTransport, TSSLSocket
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import TSStatusCode
@@ -111,7 +111,6 @@ class ConfigNodeClient(object):
     def _connect(self, target_config_node: TEndPoint) -> None:
         if AINodeDescriptor().get_config().get_ain_internal_ssl_enabled():
             import ssl, sys
-            from thrift.transport import TSSLSocket
 
             if sys.version_info >= (3, 10):
                 context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)

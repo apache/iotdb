@@ -36,7 +36,7 @@ RUN apt update \
 COPY target/${target}.zip /
 RUN cd / && unzip ${target}.zip \
   && rm ${target}.zip \
-  && mv apache-iotdb-${version}-ainode-bin ainode
+  && mv ${target} ainode
 
 ENV IOTDB_AINODE_HOME=/ainode VERSION=${version}
 WORKDIR ${IOTDB_AINODE_HOME}/sbin
@@ -61,9 +61,6 @@ RUN wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/timer_xl/config.json
 ENV PATH="${IOTDB_AINODE_HOME}/sbin/:${IOTDB_AINODE_HOME}/tools/:${PATH}"
 RUN bash start-ainode.sh || true
 RUN rm -r ${IOTDB_AINODE_HOME}/logs/*
-
-EXPOSE 10810
-VOLUME $IOTDB_AINODE_HOME/logs
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 CMD ["bash", "-c", "entrypoint.sh ainode"]
