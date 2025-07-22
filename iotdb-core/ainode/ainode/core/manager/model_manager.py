@@ -28,7 +28,8 @@ from ainode.core.exception import (
 from ainode.core.log import Logger
 from ainode.core.model.model_info import BuiltInModelType, ModelInfo, ModelStates
 from ainode.core.model.model_storage import ModelStorage
-from ainode.core.util.status import get_status
+from ainode.core.rpc.status import get_status
+from ainode.core.util.decorator import singleton
 from ainode.thrift.ainode.ttypes import (
     TDeleteModelReq,
     TRegisterModelReq,
@@ -41,6 +42,7 @@ from ainode.thrift.common.ttypes import TSStatus
 logger = Logger()
 
 
+@singleton
 class ModelManager:
     def __init__(self):
         self.model_storage = ModelStorage()

@@ -155,7 +155,9 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         "insert into tableB(time,device,value) values('2020-01-01 00:00:03.000', 'd333', 333)",
         "flush",
         "insert into tableB(time,device,value) values('2020-01-01 00:00:04.000', 'd2', 40)",
-        "insert into tableB(time,device,value) values('2020-01-01 00:00:05.000', 'd2', 50)"
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:05.000', 'd2', 50)",
+        "create table tableD(device STRING TAG, value TIMESTAMP FIELD)",
+        "insert into tableD(time,device,value) values('2020-01-01 00:00:07.000', 'd2', '1970-01-01 00:00:00.000')"
       };
 
   String[] expectedHeader;
@@ -1229,7 +1231,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     expectedHeader = buildHeaders(24);
     retArray =
         new String[] {
-          "1971-08-20T11:33:20.000Z,d2,l5,yy,zz,15,3147483648,4654.231,2023-01-01,1971-01-01T00:01:40.000Z,test-string3,6666.8,1970-01-01T00:00:00.000Z,d1,l1,c,a,1,2107483648,12.123,2022-01-01,1970-01-01T00:00:00.020Z,test-string1,6666.3,",
+          "1971-08-20T11:33:20.000Z,d2,l5,yy,zz,15,3147483648,4654.231,2023-01-01,2024-09-25T06:15:35.000Z,test-string3,6666.8,1970-01-01T00:00:00.000Z,d1,l1,c,a,1,2107483648,12.123,2022-01-01,2024-08-01T06:15:35.000Z,test-string1,6666.3,",
         };
     sql =
         "select max(time),max(device),max(level),max(attr1),max(attr2),max(num),max(bignum),max(floatnum),max(date),max(ts),max(stringv),max(doubleNum),min(time),min(device),min(level),min(attr1),min(attr2),min(num),min(bignum),min(floatnum),min(date),min(ts),min(stringv),min(doubleNum) from table0";
@@ -2810,6 +2812,20 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "join ("
             + "select date_bin(1ms,time) as date,count(*)from table1 where time=0 group by date_bin(1ms,time)) t1 "
             + "on t0.date = t1.date",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void timestampTypeTest() {
+    expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,"
+        };
+    tableResultSetEqualTest(
+        "select last(value),first(value),last_by(value,time),first_by(value,time),max(value),min(value) from tableD",
         expectedHeader,
         retArray,
         DATABASE_NAME);

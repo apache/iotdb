@@ -22,8 +22,8 @@ from typing import Callable, Dict, List
 import numpy as np
 from huggingface_hub import hf_hub_download
 from sklearn.preprocessing import MinMaxScaler
-from sktime.annotation.hmm_learn import GMMHMM, GaussianHMM
-from sktime.annotation.stray import STRAY
+from sktime.detection.hmm_learn import GMMHMM, GaussianHMM
+from sktime.detection.stray import STRAY
 from sktime.forecasting.arima import ARIMA
 from sktime.forecasting.exp_smoothing import ExponentialSmoothing
 from sktime.forecasting.naive import NaiveForecaster

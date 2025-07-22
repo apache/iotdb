@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
@@ -610,6 +611,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitRemoveConfigNode(RemoveConfigNodeStatement removeConfigNodeStatement, C context) {
     return visitStatement(removeConfigNodeStatement, context);
+  }
+
+  public R visitRemoveAINode(RemoveAINodeStatement removeAINodeStatement, C context) {
+    return visitStatement(removeAINodeStatement, context);
   }
 
   public R visitDeactivateTemplate(

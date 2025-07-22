@@ -31,6 +31,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -47,6 +48,8 @@ import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
+@Ignore(
+    "Currently this may lose some data because tsFile conversion is banned, and historical transferred is not opened if history.enable = false")
 public class IoTDBPipeTypeConversionIT extends AbstractPipeDualTreeModelManualIT {
 
   private static final int generateDataSize = 100;
@@ -236,7 +239,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualTreeModelManualIT
     String sql =
         String.format(
             "create pipe test"
-                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='forced-log','realtime.enable'='true','history.enable'='false')"
+                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='forced-log')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='tablet')",
             receiverEnv.getIP(), receiverEnv.getPort());

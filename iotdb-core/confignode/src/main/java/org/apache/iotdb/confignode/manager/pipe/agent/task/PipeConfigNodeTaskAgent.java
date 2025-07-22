@@ -46,11 +46,13 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
@@ -247,5 +249,11 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     resp.setPipeMetaList(pipeMetaBinaryList);
     resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
     resp.setPipeRemainingTimeList(pipeRemainingTimeList);
+  }
+
+  @Override
+  public void runPipeTasks(
+      final Collection<PipeTask> pipeTasks, final Consumer<PipeTask> runSingle) {
+    pipeTasks.forEach(runSingle);
   }
 }

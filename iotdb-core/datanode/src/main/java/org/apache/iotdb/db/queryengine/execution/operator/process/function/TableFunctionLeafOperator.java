@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.function;
 
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionLeafProcessor;
 
@@ -61,7 +63,12 @@ public class TableFunctionLeafOperator implements ProcessOperator {
   @Override
   public TsBlock next() throws Exception {
     List<ColumnBuilder> columnBuilders = getOutputColumnBuilders();
-    processor.process(columnBuilders);
+    try {
+      processor.process(columnBuilders);
+    } catch (Exception e) {
+      throw new IoTDBRuntimeException(
+          e.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true);
+    }
     return buildTsBlock(columnBuilders);
   }
 
@@ -82,7 +89,14 @@ public class TableFunctionLeafOperator implements ProcessOperator {
   }
 
   @Override
-  public void close() throws Exception {}
+  public void close() throws Exception {
+    try {
+      processor.beforeDestroy();
+    } catch (Exception e) {
+      throw new IoTDBRuntimeException(
+          e.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true);
+    }
+  }
 
   @Override
   public boolean isFinished() throws Exception {
