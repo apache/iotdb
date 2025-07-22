@@ -99,8 +99,8 @@ public class TableWindowOperator implements ProcessOperator {
     this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
 
     // Basic information part
-    this.windowFunctions = windowFunctions;
-    this.frameInfoList = frameInfoList;
+    this.windowFunctions = ImmutableList.copyOf(windowFunctions);
+    this.frameInfoList = ImmutableList.copyOf(frameInfoList);
 
     // Partition Part
     this.partitionChannels = ImmutableList.copyOf(partitionChannels);
@@ -294,7 +294,6 @@ public class TableWindowOperator implements ProcessOperator {
         partitionExecutors.addLast(partitionExecutor);
 
         partitionStartInCurrentBlock = partitionEndInCurrentBlock;
-        partitionEndInCurrentBlock = partitionStartInCurrentBlock + 1;
       } else {
         // Last partition of TsBlock
         // The beginning of next TsBlock may have rows in this partition
@@ -314,6 +313,8 @@ public class TableWindowOperator implements ProcessOperator {
   private TsBlock transform(long startTime) {
     while (!cachedPartitionExecutors.isEmpty()) {
       PartitionExecutor partitionExecutor = cachedPartitionExecutors.getFirst();
+      // Reset window functions for new partition
+      partitionExecutor.resetWindowFunctions();
 
       while (System.nanoTime() - startTime < maxRuntime
           && !tsBlockBuilder.isFull()

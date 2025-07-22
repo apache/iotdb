@@ -198,8 +198,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
 
     // Read the bytebuffer from the wal file and transfer it directly without serializing or
     // deserializing if possible
-    final InsertNode insertNode =
-        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+    final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     // PipeConsensus will transfer binary data to TPipeConsensusTransferReq
     final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
     if (Objects.isNull(insertNode)) {

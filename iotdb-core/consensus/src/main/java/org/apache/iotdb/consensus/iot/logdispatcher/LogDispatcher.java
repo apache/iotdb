@@ -105,8 +105,8 @@ public class LogDispatcher {
   public synchronized void stop() {
     if (!threads.isEmpty()) {
       threads.forEach(LogDispatcherThread::setStopped);
-      threads.forEach(LogDispatcherThread::processStopped);
       executorService.shutdownNow();
+      threads.forEach(LogDispatcherThread::processStopped);
       int timeout = 10;
       try {
         if (!executorService.awaitTermination(timeout, TimeUnit.SECONDS)) {

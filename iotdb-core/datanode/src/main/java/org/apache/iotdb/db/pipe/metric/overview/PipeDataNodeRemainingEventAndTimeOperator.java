@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
+public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   // Calculate from schema region extractors directly for it requires less computation
   private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
@@ -58,10 +58,6 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   private Timer insertNodeTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer tsfileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-
-  private volatile long lastInsertNodeEventCountSmoothingTime = Long.MIN_VALUE;
-  private final Meter insertNodeEventCountMeter =
-      new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
 
   private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
   private double lastSchemaRegionCommitSmoothingValue = Long.MAX_VALUE;
@@ -104,18 +100,20 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     heartbeatEventCount.decrementAndGet();
   }
 
-  double getRemainingInsertEventSmoothingCount() {
-    if (PipeConfig.getInstance().getPipeRemainingInsertNodeCountAverage() == PipeRateAverage.NONE) {
-      return insertNodeEventCount.get();
-    }
-    if (System.currentTimeMillis() - lastInsertNodeEventCountSmoothingTime
-        >= PipeConfig.getInstance().getPipeRemainingInsertEventCountSmoothingIntervalSeconds()) {
-      insertNodeEventCountMeter.mark(insertNodeEventCount.get());
-      lastInsertNodeEventCountSmoothingTime = System.currentTimeMillis();
-    }
-    return PipeConfig.getInstance()
-        .getPipeRemainingInsertNodeCountAverage()
-        .getMeterRate(insertNodeEventCountMeter);
+  public long getRemainingNonHeartbeatEvents() {
+    final long remainingEvents =
+        tsfileEventCount.get()
+            + rawTabletEventCount.get()
+            + insertNodeEventCount.get()
+            + schemaRegionExtractors.stream()
+                .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
+                .reduce(Long::sum)
+                .orElse(0L);
+
+    // There are cases where the indicator is negative. For example, after the Pipe is restarted,
+    // the Processor SubTask is still collecting Events, resulting in a negative count. This
+    // situation cannot be avoided because the Pipe may be restarted internally.
+    return remainingEvents >= 0 ? remainingEvents : 0;
   }
 
   long getRemainingEvents() {
@@ -142,7 +140,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
    *
    * @return The estimated remaining time
    */
-  double getRemainingTime() {
+  public double getRemainingTime() {
     final PipeRateAverage pipeRemainingTimeCommitRateAverageTime =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 

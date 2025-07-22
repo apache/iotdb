@@ -29,7 +29,6 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeDataR
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -100,9 +99,7 @@ public class PipeInsertionDataNodeListener {
       final String dataRegionId,
       final String databaseName,
       final TsFileResource tsFileResource,
-      final boolean isLoaded,
-      final boolean isGeneratedByPipe) {
-    tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
+      final boolean isLoaded) {
     // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
     // because extractors may use tsfile events when some exceptions occur in the
     // insert nodes listening process.
@@ -116,13 +113,12 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(
-            dataRegionId, assigner.isTableModel(), databaseName, tsFileResource, isLoaded));
+            assigner.isTableModel(), databaseName, tsFileResource, isLoaded));
   }
 
   public void listenToInsertNode(
       final String dataRegionId,
       final String databaseName,
-      final WALEntryHandler walEntryHandler,
       final InsertNode insertNode,
       final TsFileResource tsFileResource) {
     if (listenToInsertNodeExtractorCount.get() == 0) {
@@ -138,12 +134,7 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(
-            dataRegionId,
-            assigner.isTableModel(),
-            databaseName,
-            walEntryHandler,
-            insertNode,
-            tsFileResource));
+            assigner.isTableModel(), databaseName, insertNode, tsFileResource));
   }
 
   public DeletionResource listenToDeleteData(
@@ -169,7 +160,7 @@ public class PipeInsertionDataNodeListener {
       deletionResource = null;
     }
 
-    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(regionId, node));
+    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node));
 
     return deletionResource;
   }

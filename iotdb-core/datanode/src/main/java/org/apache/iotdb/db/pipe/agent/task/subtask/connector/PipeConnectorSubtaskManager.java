@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeE
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -49,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 public class PipeConnectorSubtaskManager {
 
@@ -61,7 +63,7 @@ public class PipeConnectorSubtaskManager {
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
 
   public synchronized String register(
-      final PipeConnectorSubtaskExecutor executor,
+      final Supplier<? extends PipeConnectorSubtaskExecutor> executorSupplier,
       final PipeParameters pipeConnectorParameters,
       final PipeTaskConnectorRuntimeEnvironment environment) {
     final String connectorKey =
@@ -111,6 +113,8 @@ public class PipeConnectorSubtaskManager {
     environment.setAttributeSortedString(attributeSortedString);
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
+      final PipeConnectorSubtaskExecutor executor = executorSupplier.get();
+
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
@@ -171,6 +175,11 @@ public class PipeConnectorSubtaskManager {
         pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
       }
 
+      LOGGER.info(
+          "Pipe connector subtasks with attributes {} is bounded with connectorExecutor {} and callbackExecutor {}.",
+          attributeSortedString,
+          executor.getWorkingThreadName(),
+          executor.getCallbackThreadName());
       attributeSortedString2SubtaskLifeCycleMap.put(
           attributeSortedString, pipeConnectorSubtaskLifeCycleList);
     }
@@ -194,13 +203,25 @@ public class PipeConnectorSubtaskManager {
 
     final List<PipeConnectorSubtaskLifeCycle> lifeCycles =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
+
+    // Shall not be empty
+    final PipeConnectorSubtaskExecutor executor = lifeCycles.get(0).executor;
+
     lifeCycles.removeIf(o -> o.deregister(pipeName, regionId));
 
     if (lifeCycles.isEmpty()) {
       attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
+      executor.shutdown();
+      LOGGER.info(
+          "The executor {} and {} has been successfully shutdown.",
+          executor.getWorkingThreadName(),
+          executor.getCallbackThreadName());
     }
 
     PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, regionId);
+    // Reset IoTV2 replicate index to prevent index jumps. Do this when a consensus pipe no longer
+    // replicates data, since extractor and processor are already dropped now.
+    ReplicateProgressDataNodeManager.resetReplicateIndexForIoTV2(pipeName);
   }
 
   public synchronized void start(final String attributeSortedString) {

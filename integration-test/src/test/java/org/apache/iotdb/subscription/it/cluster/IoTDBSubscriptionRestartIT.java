@@ -71,6 +71,10 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
   public void setUp() throws Exception {
     super.setUp();
 
+    // enable subscription
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSubscriptionEnabled(true);
+
+    // set cluster env
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -78,7 +82,8 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2);
+        .setDataReplicationFactor(2)
+        .setIsPipeEnableMemoryCheck(false);
 
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
   }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -33,8 +34,11 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
@@ -436,6 +440,13 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
+  protected void maySkipIndex4Event(final PipeRealtimeEvent event) {
+    if (event.getEvent() instanceof PipeTsFileInsertionEvent
+        || event.getEvent() instanceof PipeInsertNodeTabletInsertionEvent) {
+      maySkipProgressIndexForRealtimeEvent(event);
+    }
+  }
+
   protected Event supplyHeartbeat(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {
       return event.getEvent();
@@ -547,6 +558,30 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public final boolean isShouldTransferModFile() {
     return shouldTransferModFile;
+  }
+
+  private void maySkipProgressIndexForRealtimeEvent(final PipeRealtimeEvent event) {
+    if (PipeTsFileEpochProgressIndexKeeper.getInstance()
+        .isProgressIndexAfterOrEquals(
+            dataRegionId,
+            pipeName,
+            event.getTsFileEpoch().getFilePath(),
+            getProgressIndex4RealtimeEvent(event))) {
+      event.skipReportOnCommit();
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Pipe {} on data region {} skip commit of event {} because it was flushed prematurely.",
+            pipeName,
+            dataRegionId,
+            event.coreReportMessage());
+      }
+    }
+  }
+
+  private ProgressIndex getProgressIndex4RealtimeEvent(final PipeRealtimeEvent event) {
+    return event.getEvent() instanceof PipeTsFileInsertionEvent
+        ? ((PipeTsFileInsertionEvent) event.getEvent()).forceGetProgressIndex()
+        : event.getProgressIndex();
   }
 
   @Override

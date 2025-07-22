@@ -229,6 +229,10 @@ public abstract class AstVisitor<R, C> {
     return visitExpression(node, context);
   }
 
+  protected R visitExtract(Extract node, C context) {
+    return visitExpression(node, context);
+  }
+
   protected R visitWindowDefinition(WindowDefinition node, C context) {
     return visitNode(node, context);
   }
@@ -394,6 +398,10 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitShowAINodes(ShowAINodes node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitRemoveAINode(RemoveAINode node, C context) {
     return visitStatement(node, context);
   }
 
@@ -725,7 +733,15 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitCreateModel(CreateModel node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitShowModels(ShowModels node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropModel(DropModel node, C context) {
     return visitStatement(node, context);
   }
 

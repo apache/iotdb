@@ -49,6 +49,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -370,5 +372,15 @@ public class ConfigNodeTestUtils {
       String clusterName, int nodeId, DataNodeWrapper dataNodeWrapper) {
     return new TDataNodeRestartReq(
         clusterName, generateTDataNodeConfiguration(nodeId, dataNodeWrapper));
+  }
+
+  public static void insertTreeModelData(Statement statement) throws SQLException {
+    for (int i = 0; i < 1024; i++) {
+      statement.addBatch(
+          String.format(
+              "INSERT INTO root.sg.d%d(timestamp,speed,temperature) values(%d, %d, %d)",
+              i, i, i, i));
+    }
+    statement.executeBatch();
   }
 }

@@ -521,6 +521,9 @@ public class TsFileSplitter {
           alignedChunkData.addValueChunk(header);
           if (!isTimeChunkNeedDecode) {
             alignedChunkData.writeEntireChunk(ByteBuffer.allocate(0), chunkMetadata);
+          } else {
+            alignedChunkData.writeEntirePage(
+                new PageHeader(0, 0, chunkMetadata.getStatistics()), ByteBuffer.allocate(0));
           }
           allChunkData.add(alignedChunkData);
         }

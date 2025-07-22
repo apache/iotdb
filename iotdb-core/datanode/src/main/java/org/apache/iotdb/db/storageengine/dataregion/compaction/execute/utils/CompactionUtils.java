@@ -329,8 +329,11 @@ public class CompactionUtils {
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources) {
     for (TsFileResource targetResource : targetResources) {
+      // Initial value
+      targetResource.setGeneratedByPipe(true);
+      targetResource.setGeneratedByPipeConsensus(true);
       for (TsFileResource unseqResource : unseqResources) {
-        targetResource.updateProgressIndex(unseqResource.getMaxProgressIndexAfterClose());
+        targetResource.updateProgressIndex(unseqResource.getMaxProgressIndex());
         targetResource.setGeneratedByPipe(
             unseqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
         targetResource.setGeneratedByPipeConsensus(
@@ -338,7 +341,7 @@ public class CompactionUtils {
                 && targetResource.isGeneratedByPipeConsensus());
       }
       for (TsFileResource seqResource : seqResources) {
-        targetResource.updateProgressIndex(seqResource.getMaxProgressIndexAfterClose());
+        targetResource.updateProgressIndex(seqResource.getMaxProgressIndex());
         targetResource.setGeneratedByPipe(
             seqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
         targetResource.setGeneratedByPipeConsensus(

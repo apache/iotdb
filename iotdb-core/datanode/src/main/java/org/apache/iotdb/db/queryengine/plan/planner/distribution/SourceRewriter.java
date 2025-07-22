@@ -20,11 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
@@ -61,7 +64,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.Inner
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
@@ -83,8 +85,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -775,14 +780,6 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     return processRawSeriesScan(node, context, mergeNode);
   }
 
-  @Override
-  public List<PlanNode> visitAlignedLastQueryScan(
-      AlignedLastQueryScanNode node, DistributionPlanContext context) {
-    LastQueryNode mergeNode =
-        new LastQueryNode(context.queryContext.getQueryId().genPlanNodeId(), null, false);
-    return processRawSeriesScan(node, context, mergeNode);
-  }
-
   private List<PlanNode> processRegionScan(RegionScanNode node, DistributionPlanContext context) {
     List<PlanNode> planNodeList = splitRegionScanNodeByRegion(node, context);
     if (planNodeList.size() == 1) {
@@ -977,8 +974,14 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     // For last query, we need to keep every FI's root node is LastQueryMergeNode. So we
     // force every region group have a parent node even if there is only 1 child for it.
     context.setForceAddParent();
-    PlanNode root = processRawMultiChildNode(node, context, false);
-    if (context.queryMultiRegion) {
+    boolean isLastQueryWithTransformNode = node.isContainsLastTransformNode();
+    PlanNode root = processRawMultiChildNode(node, context, false, isLastQueryWithTransformNode);
+    // For LastQueryNode, we force the LastQueryTransformNode to be split from the new cloned
+    // LastQueryNode for some subsequent optimizations. In the case of multiple regions, we do not
+    // need to do anything to achieve this. The judgement of 'isLastQueryWithTransformNode' here
+    // is only for the case where the query involves only a single region. See this document for
+    // details(https://docs.google.com/document/d/1w_weCIr39htOUbkHk2ffGVz2-kqBfdvLSZ2EblJaHMo).
+    if (context.queryMultiRegion || isLastQueryWithTransformNode) {
       PlanNode newRoot = genLastQueryRootNode(node, context);
       // add sort op for each if we add LastQueryMergeNode as root
       if (newRoot instanceof LastQueryMergeNode && !node.needOrderByTimeseries()) {
@@ -992,9 +995,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   }
 
   private void addSortForEachLastQueryNode(PlanNode root, Ordering timeseriesOrdering) {
-    if (root instanceof LastQueryNode
-        && (root.getChildren().get(0) instanceof LastQueryScanNode
-            || root.getChildren().get(0) instanceof AlignedLastQueryScanNode)) {
+    if (root instanceof LastQueryNode && (root.getChildren().get(0) instanceof LastQueryScanNode)) {
       LastQueryNode lastQueryNode = (LastQueryNode) root;
       lastQueryNode.setTimeseriesOrdering(timeseriesOrdering);
       // sort children node
@@ -1006,8 +1007,6 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                         String sortKey = "";
                         if (child instanceof LastQueryScanNode) {
                           sortKey = ((LastQueryScanNode) child).getOutputSymbolForSort();
-                        } else if (child instanceof AlignedLastQueryScanNode) {
-                          sortKey = ((AlignedLastQueryScanNode) child).getOutputSymbolForSort();
                         }
                         return sortKey;
                       }))
@@ -1016,11 +1015,18 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           .getChildren()
           .forEach(
               child -> {
-                if (child instanceof AlignedLastQueryScanNode) {
-                  // sort the measurements of AlignedPath for LastQueryMergeOperator
-                  ((AlignedLastQueryScanNode) child)
-                      .getSeriesPath()
-                      .sortMeasurement(Comparator.naturalOrder());
+                if (child instanceof LastQueryScanNode) {
+                  // sort the measurements for LastQueryMergeOperator
+                  LastQueryScanNode node = (LastQueryScanNode) child;
+                  ((LastQueryScanNode) child)
+                      .getIdxOfMeasurementSchemas()
+                      .sort(
+                          Comparator.comparing(
+                              idx ->
+                                  new Binary(
+                                      node.getMeasurementSchema(idx).getMeasurementName(),
+                                      TSFileConfig.STRING_CHARSET),
+                              Comparator.naturalOrder()));
                 }
               });
     } else {
@@ -1225,12 +1231,15 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     if (containsAggregationSource(node)) {
       return planAggregationWithTimeJoin(node, context);
     }
-    return Collections.singletonList(processRawMultiChildNode(node, context, true));
+    return Collections.singletonList(processRawMultiChildNode(node, context, true, false));
   }
 
   // Only `visitFullOuterTimeJoin` and `visitLastQuery` invoke this method
   private PlanNode processRawMultiChildNode(
-      MultiChildProcessNode node, DistributionPlanContext context, boolean isTimeJoin) {
+      MultiChildProcessNode node,
+      DistributionPlanContext context,
+      boolean isTimeJoin,
+      boolean isLastQueryWithTransformNode) {
     MultiChildProcessNode root = (MultiChildProcessNode) node.clone();
     Map<TRegionReplicaSet, List<SourceNode>> sourceGroup = groupBySourceNodes(node, context);
 
@@ -1250,21 +1259,27 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       // If `forceAddParent` is true, we should not create new MultiChildNode as the parent, either.
       // At last, we can use the parameter `addParent` to judge whether to create new
       // MultiChildNode.
+      // For LastQueryNode, we force the LastQueryTransformNode to be split from the new cloned
+      // LastQueryNode for some subsequent optimizations. In the case of multiple regions, we do not
+      // need to do anything to achieve this. The judgement of 'isLastQueryWithTransformNode' here
+      // is only for the case where the query involves only a single region. See this document for
+      // details(https://docs.google.com/document/d/1w_weCIr39htOUbkHk2ffGVz2-kqBfdvLSZ2EblJaHMo).
       boolean appendToRootDirectly =
-          sourceGroup.size() == 1 || (!addParent && !context.isForceAddParent());
+          !isLastQueryWithTransformNode
+              && (sourceGroup.size() == 1 || (!addParent && !context.isForceAddParent()));
       if (appendToRootDirectly) {
         // In non-last query, this code can be reached at most once
         // And we set region as MainFragmentLocatedRegion, the others Region should transfer data to
         // this region
         context.queryContext.setMainFragmentLocatedRegion(region);
-        seriesScanNodes.forEach(root::addChild);
+        root.addChildren(seriesScanNodes);
         addParent = true;
       } else {
         // We clone a TimeJoinNode from root to make the params to be consistent.
         // But we need to assign a new ID to it
         MultiChildProcessNode parentOfGroup = (MultiChildProcessNode) root.clone();
         parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-        seriesScanNodes.forEach(parentOfGroup::addChild);
+        parentOfGroup.addChildren(seriesScanNodes);
         root.addChild(parentOfGroup);
       }
     }
@@ -1276,7 +1291,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         // SeriesScanNode or SeriesAggregateScanNode
         // So this branch should not be touched.
         List<PlanNode> children = visit(child, context);
-        children.forEach(root::addChild);
+        root.addChildren(children);
       }
     }
     return root;
@@ -1287,25 +1302,37 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     // Step 1: Get all source nodes. For the node which is not source, add it as the child of
     // current TimeJoinNode
     List<SourceNode> sources = new ArrayList<>();
+    Map<String, Map<Integer, List<TRegionReplicaSet>>> cachedRegionReplicas = new HashMap<>();
     for (PlanNode child : node.getChildren()) {
       if (child instanceof SeriesSourceNode) {
         // If the child is SeriesScanNode, we need to check whether this node should be seperated
         // into several splits.
         SeriesSourceNode sourceNode = (SeriesSourceNode) child;
         List<TRegionReplicaSet> dataDistribution =
-            analysis.getPartitionInfo(
-                sourceNode.getPartitionPath(), context.getPartitionTimeFilter());
-        if (dataDistribution.size() > 1) {
+            getDeviceReplicaSets(
+                sourceNode.getPartitionPath().getIDeviceID(),
+                context.getPartitionTimeFilter(),
+                cachedRegionReplicas);
+        boolean deviceInMultiRegion = dataDistribution.size() > 1;
+        if (deviceInMultiRegion) {
           // If there is some series which is distributed in multi DataRegions
           context.setOneSeriesInMultiRegion(true);
         }
         // If the size of dataDistribution is N, this SeriesScanNode should be seperated into N
         // SeriesScanNode.
         for (TRegionReplicaSet dataRegion : dataDistribution) {
-          SeriesSourceNode split = (SeriesSourceNode) sourceNode.clone();
+          SeriesSourceNode split =
+              (SeriesSourceNode) (deviceInMultiRegion ? sourceNode.clone() : sourceNode);
           split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
           split.setRegionReplicaSet(dataRegion);
+          if (split instanceof LastQueryScanNode) {
+            ((LastQueryScanNode) split).setDeviceInMultiRegion(deviceInMultiRegion);
+          }
           sources.add(split);
+        }
+
+        if (deviceInMultiRegion) {
+          context.getQueryContext().setNeedUpdateScanNumForLastQuery(true);
         }
       }
     }
@@ -1318,6 +1345,69 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     }
 
     return sourceGroup;
+  }
+
+  private List<TRegionReplicaSet> getDeviceReplicaSets(
+      IDeviceID deviceID,
+      Filter timeFilter,
+      Map<String, Map<Integer, List<TRegionReplicaSet>>> cache) {
+    DataPartition dataPartition = analysis.getDataPartitionInfo();
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        dataPartitionMap = dataPartition.getDataPartitionMap();
+
+    String db = null;
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesPartitionMap =
+        null;
+    for (Map.Entry<
+            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        entry : dataPartitionMap.entrySet()) {
+      if (PathUtils.isStartWith(deviceID, entry.getKey())) {
+        db = entry.getKey();
+        seriesPartitionMap = entry.getValue();
+        break;
+      }
+    }
+    if (seriesPartitionMap == null) {
+      return Collections.singletonList(NOT_ASSIGNED);
+    }
+
+    Map<Integer, List<TRegionReplicaSet>> slot2ReplicasMap =
+        cache.computeIfAbsent(db, k -> new HashMap<>());
+    TSeriesPartitionSlot tSeriesPartitionSlot = dataPartition.calculateDeviceGroupId(deviceID);
+
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+        finalSeriesPartitionMap = seriesPartitionMap;
+    return slot2ReplicasMap.computeIfAbsent(
+        tSeriesPartitionSlot.slotId,
+        k ->
+            getDataRegionReplicaSetWithTimeFilter(
+                finalSeriesPartitionMap, tSeriesPartitionSlot, timeFilter));
+  }
+
+  public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+          seriesPartitionMap,
+      TSeriesPartitionSlot tSeriesPartitionSlot,
+      Filter timeFilter) {
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetMap =
+        seriesPartitionMap.getOrDefault(tSeriesPartitionSlot, Collections.emptyMap());
+    if (regionReplicaSetMap.isEmpty()) {
+      return Collections.singletonList(NOT_ASSIGNED);
+    }
+    List<TRegionReplicaSet> replicaSets = new ArrayList<>();
+    Set<TRegionReplicaSet> uniqueValues = new HashSet<>();
+    for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> entry :
+        regionReplicaSetMap.entrySet()) {
+      if (!TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime)) {
+        continue;
+      }
+      for (TRegionReplicaSet tRegionReplicaSet : entry.getValue()) {
+        if (uniqueValues.add(tRegionReplicaSet)) {
+          replicaSets.add(tRegionReplicaSet);
+        }
+      }
+    }
+    return replicaSets;
   }
 
   private boolean containsAggregationSource(FullOuterTimeJoinNode node) {

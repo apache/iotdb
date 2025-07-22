@@ -126,6 +126,7 @@ statement
     | removeRegionStatement
     | removeDataNodeStatement
     | removeConfigNodeStatement
+    | removeAINodeStatement
 
     // Admin Statement
     | showVariablesStatement
@@ -162,6 +163,7 @@ statement
 
     // AI
     | createModelStatement
+    | dropModelStatement
     | showModelsStatement
 
     // View, Trigger, CQ, Quota are not supported yet
@@ -590,6 +592,10 @@ removeConfigNodeStatement
     : REMOVE CONFIGNODE configNodeId=INTEGER_VALUE
     ;
 
+removeAINodeStatement
+    : REMOVE AINODE (aiNodeId=INTEGER_VALUE)?
+    ;
+
 // ------------------------------------------- Admin Statement ---------------------------------------------------------
 showVariablesStatement
     : SHOW VARIABLES
@@ -782,33 +788,16 @@ revokeGrantOpt
 // ------------------------------------------- AI ---------------------------------------------------------
 
 createModelStatement
-    : CREATE MODEL modelType=identifier modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? (FROM MODEL existingModelId=identifier)? ON DATASET '(' trainingData ')'
-    ;
-
-trainingData
-    : ALL
-    | dataElement(',' dataElement)*
-    ;
-
-dataElement
-    : databaseElement
-    | tableElement
-    ;
-
-databaseElement
-    : DATABASE database=identifier ('(' timeRange ')')?
-    ;
-
-tableElement
-    : TABLE tableName=qualifiedName ('(' timeRange ')')?
-    ;
-
-timeRange
-    : '[' startTime=timeValue ',' endTime=timeValue ']'
+    : CREATE MODEL modelId=identifier uriClause
+    | CREATE MODEL modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? FROM MODEL existingModelId=identifier ON DATASET '(' targetData=string ')'
     ;
 
 hparamPair
     : hparamKey=identifier '=' hyparamValue=primaryExpression
+    ;
+
+dropModelStatement
+    : DROP MODEL modelId=identifier
     ;
 
 showModelsStatement
@@ -1137,6 +1126,7 @@ primaryExpression
         trimSource=valueExpression ')'                                                    #trim
     | TRIM '(' trimSource=valueExpression ',' trimChar=valueExpression ')'                #trim
     | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
+    | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
     | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
     | DATE_BIN_GAPFILL '(' timeDuration ',' valueExpression (',' timeValue)? ')'          #dateBinGapFill
     | '(' expression ')'                                                                  #parenthesizedExpression
@@ -1388,6 +1378,7 @@ ABSENT: 'ABSENT';
 ADD: 'ADD';
 ADMIN: 'ADMIN';
 AFTER: 'AFTER';
+AINODE: 'AINODE';
 AINODES: 'AINODES';
 ALL: 'ALL';
 ALTER: 'ALTER';

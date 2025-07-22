@@ -26,9 +26,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 
 import java.util.Collections;
 
@@ -66,14 +68,14 @@ public class SortElimination implements PlanOptimizer {
     public PlanNode visitSort(SortNode node, Context context) {
       Context newContext = new Context();
       PlanNode child = node.getChild().accept(this, newContext);
-      context.setHasSeenFill(newContext.hasSeenFill);
+      context.setCannotEliminateSort(newContext.cannotEliminateSort);
       OrderingScheme orderingScheme = node.getOrderingScheme();
-      if (!context.hasSeenFill()
+      if (context.canEliminateSort()
           && newContext.getTotalDeviceEntrySize() == 1
           && orderingScheme.getOrderBy().get(0).getName().equals(context.getTimeColumnName())) {
         return child;
       }
-      return !context.hasSeenFill() && node.isOrderByAllIdsAndTime()
+      return context.canEliminateSort() && node.isOrderByAllIdsAndTime()
           ? child
           : node.replaceChildren(Collections.singletonList(child));
     }
@@ -82,8 +84,8 @@ public class SortElimination implements PlanOptimizer {
     public PlanNode visitStreamSort(StreamSortNode node, Context context) {
       Context newContext = new Context();
       PlanNode child = node.getChild().accept(this, newContext);
-      context.setHasSeenFill(newContext.hasSeenFill);
-      return !context.hasSeenFill()
+      context.setCannotEliminateSort(newContext.cannotEliminateSort);
+      return context.canEliminateSort()
               && (node.isOrderByAllIdsAndTime()
                   || node.getStreamCompareKeyEndIndex()
                       == node.getOrderingScheme().getOrderBy().size() - 1)
@@ -104,7 +106,7 @@ public class SortElimination implements PlanOptimizer {
       for (PlanNode child : node.getChildren()) {
         newNode.addChild(child.accept(this, context));
       }
-      context.setHasSeenFill(!(node instanceof ValueFillNode));
+      context.setCannotEliminateSort(!(node instanceof ValueFillNode));
       return newNode;
     }
 
@@ -114,7 +116,36 @@ public class SortElimination implements PlanOptimizer {
       for (PlanNode child : node.getChildren()) {
         newNode.addChild(child.accept(this, context));
       }
-      context.setHasSeenFill(true);
+      context.setCannotEliminateSort(true);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitWindowFunction(WindowNode node, Context context) {
+      PlanNode newNode = node.clone();
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, context));
+      }
+
+      // We can continue to eliminate sort when there is only PARTITION BY
+      if (node.getSpecification().getPartitionBy().isEmpty()
+          || node.getSpecification().getOrderingScheme().isPresent()) {
+        context.setCannotEliminateSort(true);
+      }
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitPatternRecognition(PatternRecognitionNode node, Context context) {
+      PlanNode newNode = node.clone();
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, context));
+      }
+
+      // Same as window function
+      if (node.getPartitionBy().isEmpty() || node.getOrderingScheme().isPresent()) {
+        context.setCannotEliminateSort(true);
+      }
       return newNode;
     }
   }
@@ -122,8 +153,11 @@ public class SortElimination implements PlanOptimizer {
   private static class Context {
     private int totalDeviceEntrySize = 0;
 
-    // has seen linear fill, previous fill or gapfill
-    private boolean hasSeenFill = false;
+    // There are 3 situations where sort cannot be eliminated
+    // 1. Query plan has linear fill, previous fill or gapfill
+    // 2. Query plan has window function and it has ordering scheme
+    // 3. Query plan has pattern recognition and it has ordering scheme
+    private boolean cannotEliminateSort = false;
 
     private String timeColumnName = null;
 
@@ -137,12 +171,12 @@ public class SortElimination implements PlanOptimizer {
       return totalDeviceEntrySize;
     }
 
-    public boolean hasSeenFill() {
-      return hasSeenFill;
+    public boolean canEliminateSort() {
+      return !cannotEliminateSort;
     }
 
-    public void setHasSeenFill(boolean hasSeenFill) {
-      this.hasSeenFill = hasSeenFill;
+    public void setCannotEliminateSort(boolean cannotEliminateSort) {
+      this.cannotEliminateSort = cannotEliminateSort;
     }
 
     public String getTimeColumnName() {

@@ -52,7 +52,14 @@ public class ExportTsFileTestIT extends AbstractScriptIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    // enable subscription
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSubscriptionEnabled(true)
+        .setIsPipeEnableMemoryCheck(false);
     EnvFactory.getEnv().initClusterEnvironment();
+
     ip = EnvFactory.getEnv().getIP();
     port = EnvFactory.getEnv().getPort();
     toolsPath = EnvFactory.getEnv().getToolsPath();

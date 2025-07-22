@@ -95,6 +95,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
@@ -268,6 +269,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Expressio
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowFunctions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.BasisType.TABLE;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.TIMECOL_PARAMETER_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTimestampType;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression.getQualifiedName;
@@ -1993,6 +1995,22 @@ public class StatementAnalyzer {
       protected List<Expression> visitRow(Row node, Scope context) {
         throw new SemanticException(
             String.format("%s are not supported now", node.getClass().getSimpleName()));
+      }
+
+      @Override
+      protected List<Expression> visitExtract(Extract node, Scope context) {
+        List<Expression> childResult = process(node.getExpression(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new Extract(expression, node.getField()));
+        }
+
+        return resultBuilder.build();
       }
 
       @Override
@@ -4786,13 +4804,9 @@ public class StatementAnalyzer {
       if (TableBuiltinTableFunction.FORECAST.getFunctionName().equalsIgnoreCase(functionName)) {
         String timeColumn =
             (String)
-                argumentSpecificationsByName
-                    .get(ForecastTableFunction.TIMECOL_PARAMETER_NAME)
-                    .getDefaultValue()
-                    .get();
+                argumentSpecificationsByName.get(TIMECOL_PARAMETER_NAME).getDefaultValue().get();
         for (TableFunctionArgument argument : arguments) {
-          if (ForecastTableFunction.TIMECOL_PARAMETER_NAME.equalsIgnoreCase(
-              argument.getName().get().getValue())) {
+          if (TIMECOL_PARAMETER_NAME.equalsIgnoreCase(argument.getName().get().getValue())) {
             if (argument.getValue() instanceof StringLiteral) {
               timeColumn = ((StringLiteral) argument.getValue()).getValue();
             }
@@ -4811,8 +4825,7 @@ public class StatementAnalyzer {
         int position = -1;
         String timeColumn = null;
         for (int i = 0, size = parameterSpecifications.size(); i < size; i++) {
-          if (ForecastTableFunction.TIMECOL_PARAMETER_NAME.equalsIgnoreCase(
-              parameterSpecifications.get(i).getName())) {
+          if (TIMECOL_PARAMETER_NAME.equalsIgnoreCase(parameterSpecifications.get(i).getName())) {
             position = i;
             timeColumn = (String) parameterSpecifications.get(i).getDefaultValue().get();
             break;
@@ -4833,6 +4846,10 @@ public class StatementAnalyzer {
     // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
     private void tryUpdateOrderByForForecast(
         List<TableFunctionArgument> arguments, String timeColumn) {
+      if (timeColumn == null || timeColumn.isEmpty()) {
+        throw new SemanticException(
+            String.format("%s should never be null or empty.", TIMECOL_PARAMETER_NAME));
+      }
       for (TableFunctionArgument argument : arguments) {
         if (argument.getValue() instanceof TableFunctionTableArgument) {
           TableFunctionTableArgument input = (TableFunctionTableArgument) argument.getValue();
@@ -4841,7 +4858,7 @@ public class StatementAnalyzer {
                 new OrderBy(
                     Collections.singletonList(
                         new SortItem(
-                            new Identifier(timeColumn),
+                            new Identifier(timeColumn.toLowerCase(ENGLISH)),
                             SortItem.Ordering.ASCENDING,
                             SortItem.NullOrdering.FIRST))));
           }

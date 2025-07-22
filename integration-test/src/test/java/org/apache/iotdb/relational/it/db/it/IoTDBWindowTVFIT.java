@@ -32,6 +32,8 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
@@ -52,6 +54,13 @@ public class IoTDBWindowTVFIT {
         "insert into bid values (2021-01-01T09:06:00, 'TESL', 200.0, 102)",
         "insert into bid values (2021-01-01T09:07:00, 'TESL', 202.0, 202)",
         "insert into bid values (2021-01-01T09:15:00, 'TESL', 195.0, 332)",
+        "create table multi_type (device_id string tag, int_val int32 field, long_val int64 field, float_val float field, double_val double field, bool_val boolean field, str_val string field, blob_val blob field, ts_val timestamp field, date_val date field)",
+        "insert into multi_type values (2021-01-01T09:00:00, 'device1', 1, null, 1.0, null, null, '1', null, 2021-01-01T09:00:00, null)",
+        "insert into multi_type values (2021-01-01T09:01:00, 'device1', 2, 2, 2.0, 2.0, true, '1', X'01', 2021-01-01T09:00:00, '2021-01-01')",
+        "insert into multi_type values (2021-01-01T09:02:00, 'device1', 3, 3, 3.0, 3.0, null, '2', X'02', 2021-01-01T10:00:00, '2021-01-02')",
+        "insert into multi_type values (2021-01-01T09:03:00, 'device1', null, null, null, null, false, null, null, null, null)",
+        "insert into multi_type values (2021-01-01T09:04:00, 'device1', null, null, null, null, null, null, null, null, null)",
+        "insert into multi_type values (2021-01-01T09:05:00, 'device1', 3, 3, 3.0, 3.0, false, '2', X'02', 2021-01-01T10:00:00, '2021-01-02')",
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };
@@ -225,6 +234,172 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+  }
+
+  @Test
+  public void testVariationWithMultiTypeAndNullValue() {
+    // Test case 1: int_val with delta=1.0, ignore_null=false
+    String[] expectedHeader = new String[] {"window_index", "time", "device_id", "int_val"};
+    String[] retArray =
+        new String[] {
+          "0,2021-01-01T09:00:00.000Z,device1,1,",
+          "0,2021-01-01T09:01:00.000Z,device1,2,",
+          "1,2021-01-01T09:02:00.000Z,device1,3,",
+          "2,2021-01-01T09:03:00.000Z,device1,null,",
+          "2,2021-01-01T09:04:00.000Z,device1,null,",
+          "3,2021-01-01T09:05:00.000Z,device1,3,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_index, time, device_id, int_val FROM variation(multi_type, 'int_val', 1.0, false)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // Test case 2: long_val column with delta=1.0, ignore_null=false
+    expectedHeader = new String[] {"window_index", "time", "device_id", "long_val"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:00:00.000Z,device1,null,",
+          "1,2021-01-01T09:01:00.000Z,device1,2,",
+          "1,2021-01-01T09:02:00.000Z,device1,3,",
+          "2,2021-01-01T09:03:00.000Z,device1,null,",
+          "2,2021-01-01T09:04:00.000Z,device1,null,",
+          "3,2021-01-01T09:05:00.000Z,device1,3,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_index, time, device_id, long_val FROM variation(multi_type, 'long_val', 1.0, false)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // Test case 3: float_val with delta=1.0, ignore_null=true
+    expectedHeader = new String[] {"window_index", "time", "device_id", "float_val"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:00:00.000Z,device1,1.0,",
+          "0,2021-01-01T09:01:00.000Z,device1,2.0,",
+          "1,2021-01-01T09:02:00.000Z,device1,3.0,",
+          "1,2021-01-01T09:03:00.000Z,device1,null,",
+          "1,2021-01-01T09:04:00.000Z,device1,null,",
+          "1,2021-01-01T09:05:00.000Z,device1,3.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_index, time, device_id, float_val FROM variation(multi_type, 'float_val', 1.0, true)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // Test case 4: double_val with delta=1.0, ignore_null=true
+    expectedHeader = new String[] {"window_index", "time", "device_id", "double_val"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:00:00.000Z,device1,null,",
+          "0,2021-01-01T09:01:00.000Z,device1,2.0,",
+          "0,2021-01-01T09:02:00.000Z,device1,3.0,",
+          "0,2021-01-01T09:03:00.000Z,device1,null,",
+          "0,2021-01-01T09:04:00.000Z,device1,null,",
+          "0,2021-01-01T09:05:00.000Z,device1,3.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_index, time, device_id, double_val FROM variation(multi_type, 'double_val', 1.0, true)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // Test case 5: bool_val with delta=0.0, ignore_null=true
+    expectedHeader = new String[] {"window_index", "time", "device_id", "bool_val"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:00:00.000Z,device1,null,",
+          "0,2021-01-01T09:01:00.000Z,device1,true,",
+          "0,2021-01-01T09:02:00.000Z,device1,null,",
+          "1,2021-01-01T09:03:00.000Z,device1,false,",
+          "1,2021-01-01T09:04:00.000Z,device1,null,",
+          "1,2021-01-01T09:05:00.000Z,device1,false,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_index, time, device_id, bool_val FROM variation(multi_type, 'bool_val', 0.0, true)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // Test case 6: str_val with delta=0.0, ignore_null=true
+    expectedHeader = new String[] {"window_index", "time", "device_id", "str_val"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:00:00.000Z,device1,1,",
+          "0,2021-01-01T09:01:00.000Z,device1,1,",
+          "1,2021-01-01T09:02:00.000Z,device1,2,",
+          "1,2021-01-01T09:03:00.000Z,device1,null,",
+          "1,2021-01-01T09:04:00.000Z,device1,null,",
+          "1,2021-01-01T09:05:00.000Z,device1,2,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_index, time, device_id, str_val FROM variation(multi_type, 'str_val', 0.0, true)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // Test case 7: blob_val with delta=0.0, ignore_null=false
+    expectedHeader = new String[] {"window_index", "time", "device_id", "blob_val"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:00:00.000Z,device1,null,",
+          "1,2021-01-01T09:01:00.000Z,device1,0x01,",
+          "2,2021-01-01T09:02:00.000Z,device1,0x02,",
+          "3,2021-01-01T09:03:00.000Z,device1,null,",
+          "3,2021-01-01T09:04:00.000Z,device1,null,",
+          "4,2021-01-01T09:05:00.000Z,device1,0x02,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_index, time, device_id, blob_val FROM variation(multi_type, 'blob_val', 0.0, false)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // Test case 8: ts_val with delta=0.0, ignore_null=false
+    expectedHeader = new String[] {"window_index", "time", "device_id", "ts_val"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:00:00.000Z,device1,2021-01-01T09:00:00.000Z,",
+          "0,2021-01-01T09:01:00.000Z,device1,2021-01-01T09:00:00.000Z,",
+          "1,2021-01-01T09:02:00.000Z,device1,2021-01-01T10:00:00.000Z,",
+          "2,2021-01-01T09:03:00.000Z,device1,null,",
+          "2,2021-01-01T09:04:00.000Z,device1,null,",
+          "3,2021-01-01T09:05:00.000Z,device1,2021-01-01T10:00:00.000Z,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_index, time, device_id, ts_val FROM variation(DATA=>multi_type, COL=>'ts_val', ignore_null=>false)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // Test case 9: date_val with delta=0.0, ignore_null=true (use default parameter)
+    expectedHeader = new String[] {"window_index", "time", "device_id", "date_val"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:00:00.000Z,device1,null,",
+          "0,2021-01-01T09:01:00.000Z,device1,2021-01-01,",
+          "1,2021-01-01T09:02:00.000Z,device1,2021-01-02,",
+          "1,2021-01-01T09:03:00.000Z,device1,null,",
+          "1,2021-01-01T09:04:00.000Z,device1,null,",
+          "1,2021-01-01T09:05:00.000Z,device1,2021-01-02,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_index, time, device_id, date_val FROM variation(multi_type, 'date_val', 0.0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // Test case 10: check illegal type when delta!=0
+    List<String> illegalCol =
+        Arrays.asList("bool_val", "str_val", "blob_val", "ts_val", "date_val");
+    for (String col : illegalCol) {
+      tableAssertTestFail(
+          "SELECT * FROM variation(multi_type, '" + col + "', 1.0, true)",
+          "The column type must be numeric if DELTA is not 0",
+          DATABASE_NAME);
+    }
   }
 
   @Test

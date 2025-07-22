@@ -59,9 +59,6 @@ public class PipeMemoryManager {
 
   private volatile long usedMemorySizeInBytesOfTsFiles;
 
-  private static final double FLOATING_MEMORY_RATIO =
-      PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion();
-
   // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
 
@@ -99,18 +96,6 @@ public class PipeMemoryManager {
     return (PIPE_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()
             + PIPE_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() / 2)
         * getTotalNonFloatingMemorySizeInBytes();
-  }
-
-  public long getAllocatedMemorySizeInBytesOfWAL() {
-    return (long)
-        (PIPE_CONFIG.getPipeDataStructureWalMemoryProportion()
-            * getTotalNonFloatingMemorySizeInBytes());
-  }
-
-  public long getAllocatedMemorySizeInBytesOfBatch() {
-    return (long)
-        (PIPE_CONFIG.getPipeDataStructureBatchMemoryProportion()
-            * getTotalNonFloatingMemorySizeInBytes());
   }
 
   public boolean isEnough4TabletParsing() {
@@ -646,15 +631,29 @@ public class PipeMemoryManager {
     return usedMemorySizeInBytesOfTsFiles;
   }
 
+  public long getAllocatedMemorySizeInBytesOfBatch() {
+    return (long)
+        (PipeConfig.getInstance().getPipeDataStructureBatchMemoryProportion()
+            * getTotalNonFloatingMemorySizeInBytes());
+  }
+
   public long getFreeMemorySizeInBytes() {
     return memoryBlock.getFreeMemoryInBytes();
   }
 
   public long getTotalNonFloatingMemorySizeInBytes() {
-    return (long) (memoryBlock.getTotalMemorySizeInBytes() * (1 - FLOATING_MEMORY_RATIO));
+    return (long)
+        (memoryBlock.getTotalMemorySizeInBytes()
+            * (1 - PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion()));
   }
 
   public long getTotalFloatingMemorySizeInBytes() {
-    return (long) (memoryBlock.getTotalMemorySizeInBytes() * FLOATING_MEMORY_RATIO);
+    return (long)
+        (memoryBlock.getTotalMemorySizeInBytes()
+            * PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion());
+  }
+
+  public long getTotalMemorySizeInBytes() {
+    return memoryBlock.getTotalMemorySizeInBytes();
   }
 }

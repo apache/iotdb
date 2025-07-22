@@ -54,6 +54,11 @@ class TSGenerationMixin(GenerationMixin):
     ) -> Union[GenerateOutput, torch.LongTensor]:
         if len(inputs.shape) != 2:
             raise ValueError("Input shape must be: [batch_size, seq_len]")
+        batch_size, cur_len = inputs.shape
+        if cur_len < self.config.input_token_len:
+            raise ValueError(
+                f"Input length must be at least {self.config.input_token_len}"
+            )
         if revin:
             means = inputs.mean(dim=-1, keepdim=True)
             stdev = inputs.std(dim=-1, keepdim=True, unbiased=False) + 1e-5
