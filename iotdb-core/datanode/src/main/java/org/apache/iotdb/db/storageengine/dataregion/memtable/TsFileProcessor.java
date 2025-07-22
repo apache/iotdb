@@ -1302,13 +1302,6 @@ public class TsFileProcessor {
       tsFileResource.setGeneratedByPipe(isTotallyGeneratedByPipe.get());
 
       try {
-        PipeInsertionDataNodeListener.getInstance()
-            .listenToTsFile(
-                dataRegionInfo.getDataRegion().getDataRegionId(),
-                dataRegionInfo.getDataRegion().getDatabaseName(),
-                tsFileResource,
-                false);
-
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);

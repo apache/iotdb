@@ -20,9 +20,6 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
@@ -51,13 +48,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeDataRegionAssigner implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataRegionAssigner.class);
-
-  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
   /**
    * The {@link PipeDataRegionMatcher} is used to match the event with the extractor based on the
@@ -71,9 +65,6 @@ public class PipeDataRegionAssigner implements Closeable {
   private final String dataRegionId;
 
   private Boolean isTableModel;
-
-  private final AtomicReference<ProgressIndex> maxProgressIndexForRealtimeEvent =
-      new AtomicReference<>(MinimumProgressIndex.INSTANCE);
 
   private final PipeEventCounter eventCounter = new PipeDataRegionEventCounter();
 
