@@ -22,7 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 import com.github.benmanes.caffeine.cache.stats.CacheStats;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
 public interface WALCache {
 
@@ -32,21 +31,9 @@ public interface WALCache {
 
   CacheStats stats();
 
-  public static ByteBuffer getEntryBySegment(WALEntrySegmentPosition key, ByteBuffer segment) {
-    List<Integer> list = key.getWalSegmentMetaBuffersSize();
-    if (list == null || list.isEmpty()) {
-      throw new IllegalStateException("WAL segment meta buffers size is null or empty");
-    }
-
-    int pos = 0;
-    for (int size : list) {
-      if (key.getPosition() == pos) {
-        final byte[] data = new byte[size];
-        System.arraycopy(segment.array(), pos, data, 0, size);
-        return ByteBuffer.wrap(data);
-      }
-      pos += size;
-    }
-    return null;
+  static ByteBuffer getEntryBySegment(WALEntrySegmentPosition key, ByteBuffer segment) {
+    final byte[] data = new byte[key.getSize()];
+    System.arraycopy(segment.array(), (int) key.getPosition(), data, 0, key.getSize());
+    return ByteBuffer.wrap(data);
   }
 }

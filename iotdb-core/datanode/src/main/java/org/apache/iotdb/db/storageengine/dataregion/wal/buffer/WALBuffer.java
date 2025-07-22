@@ -541,9 +541,6 @@ public class WALBuffer extends AbstractWALBuffer {
 
       makeMemTableCheckpoints();
 
-      // record
-      WALSegmentMeta walSegmentMeta = null;
-
       long walFileVersionId = currentWALFileVersion;
       currentWALFileWriter.updateFileStatus(fileStatus);
 
@@ -557,11 +554,7 @@ public class WALBuffer extends AbstractWALBuffer {
       // flush buffer to os
       double compressionRatio = 1.0;
       try {
-        final List<Integer> bufferSize = info.metaData.getBuffersSize();
         compressionRatio = currentWALFileWriter.write(syncingBuffer, info.metaData);
-        if ((walSegmentMeta = currentWALFileWriter.getWalSegmentMeta()) != null) {
-          walSegmentMeta.setBuffersSize(bufferSize);
-        }
       } catch (Throwable e) {
         logger.error(
             "Fail to sync wal node-{}'s buffer, change system mode to error.", identifier, e);
@@ -615,23 +608,15 @@ public class WALBuffer extends AbstractWALBuffer {
 
       // notify all waiting listeners
       if (forceSuccess) {
-        if (currentWALFileWriter.getWalSegmentMeta() == null) {
-          logger.warn(
-              "WALSegmentMeta is null, walFileVersionId: {}, currentWALFileWriter: {}",
-              walFileVersionId,
-              currentWALFileWriter);
-        } else {
-          currentWALFileWriter.getWalSegmentMeta().setBuffersSize(info.metaData.getBuffersSize());
+        final WALSegmentMeta walSegmentMeta = currentWALFileWriter.getWalSegmentMeta();
+        if (currentWALFileWriter.getWalSegmentMeta() != null && !info.fsyncListeners.isEmpty()) {
+          walSegmentMeta.setBuffersSize(new ArrayList<>(info.metaData.getBuffersSize()));
         }
 
         long position = 0;
         for (WALFlushListener fsyncListener : info.fsyncListeners) {
           fsyncListener.succeed();
           if (fsyncListener.getWalEntryHandler() != null) {
-            if (info.metaData.getBuffersSize() == null
-                || info.metaData.getBuffersSize().isEmpty()) {
-              System.out.printf("");
-            }
             fsyncListener
                 .getWalEntryHandler()
                 .setEntryPosition(walFileVersionId, position, walSegmentMeta);

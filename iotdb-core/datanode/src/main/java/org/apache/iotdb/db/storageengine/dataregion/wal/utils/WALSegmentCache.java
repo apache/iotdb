@@ -37,6 +37,7 @@ public class WALSegmentCache implements WALCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(WALSegmentCache.class);
 
   private final LoadingCache<WALEntrySegmentPosition, ByteBuffer> bufferCache;
+  private final int WALEntrySegmentPositionSize = 10 * 8 * 8;
 
   public WALSegmentCache(long maxSize, Set<Long> memTablesNeedSearch) {
     this.bufferCache =
@@ -45,7 +46,7 @@ public class WALSegmentCache implements WALCache {
             .weigher(
                 (Weigher<WALEntrySegmentPosition, ByteBuffer>)
                     (position, buffer) -> {
-                      return position.getSize();
+                      return buffer.capacity() + WALEntrySegmentPositionSize;
                     })
             .recordStats()
             .build(new WALEntryCacheLoader());
@@ -71,6 +72,7 @@ public class WALSegmentCache implements WALCache {
     bufferCache.invalidateAll();
   }
 
+  @Override
   public CacheStats stats() {
     return bufferCache.stats();
   }

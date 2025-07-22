@@ -50,7 +50,7 @@ public class WALInsertNodeCache {
   private static PipeModelFixedMemoryBlock walModelFixedMemory = null;
 
   // LRU cache, find ByteBuffer or InsertNode by WALEntryPosition
-  private final WALCache bufferCache;
+  private final WALSegmentCache bufferCache;
 
   private final Cache<WALEntrySegmentPosition, InsertNode> insertNodeCache;
 
@@ -87,10 +87,7 @@ public class WALInsertNodeCache {
                     })
             .build();
 
-    bufferCache =
-        PipeConfig.getInstance().getPipeWALCacheSegmentUnitEnabled()
-            ? new WALSegmentCache(bufferCacheSize, memTablesNeedSearch)
-            : new WALEntryCache(bufferCacheSize, memTablesNeedSearch);
+    bufferCache = new WALSegmentCache(bufferCacheSize, memTablesNeedSearch);
   }
 
   // please call this method at PipeLauncher
