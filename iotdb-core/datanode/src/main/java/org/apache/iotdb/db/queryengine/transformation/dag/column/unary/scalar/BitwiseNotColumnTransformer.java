@@ -19,35 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
-import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 
-public class BitwiseColumnTransformer extends UnaryColumnTransformer {
+public class BitwiseNotColumnTransformer extends UnaryColumnTransformer {
 
-  private final long rightValue;
-  private final String functionName;
-
-  public BitwiseColumnTransformer(
-      Type returnType,
-      ColumnTransformer childColumnTransformer,
-      long rightValue,
-      String functionName) {
+  public BitwiseNotColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
     super(returnType, childColumnTransformer);
-    this.rightValue = rightValue;
-    this.functionName = functionName.toUpperCase();
-  }
-
-  public BitwiseColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
-    super(returnType, childColumnTransformer);
-    this.rightValue = 0;
-    this.functionName = TableBuiltinScalarFunction.BITWISE_NOT.name();
   }
 
   @Override
@@ -74,11 +57,7 @@ public class BitwiseColumnTransformer extends UnaryColumnTransformer {
 
   private void transform(Column column, ColumnBuilder columnBuilder, int i) {
     long leftValue = column.getLong(i);
-    long currentValue = BitwiseUtils.bitwiseTransform(leftValue, rightValue, functionName);
-    if (TSDataType.INT32.equals(column.getDataType())) {
-      columnBuilder.writeInt((int) currentValue);
-    } else if (TSDataType.INT64.equals(column.getDataType())) {
-      columnBuilder.writeLong(currentValue);
-    }
+    long currentValue = BitwiseUtils.bitwiseNotTransform(leftValue);
+    columnBuilder.writeLong(currentValue);
   }
 }

@@ -21,23 +21,16 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 
-public class Bitwise2ColumnTransformer extends BinaryColumnTransformer {
-  private final String functionName;
+public abstract class AbstractBitwise2ColumnTransformer extends BinaryColumnTransformer {
 
-  public Bitwise2ColumnTransformer(
-      Type returnType,
-      ColumnTransformer leftTransformer,
-      ColumnTransformer rightTransformer,
-      String functionName) {
+  public AbstractBitwise2ColumnTransformer(
+      Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
-    this.functionName = functionName.toUpperCase();
   }
 
   @Override
@@ -73,15 +66,6 @@ public class Bitwise2ColumnTransformer extends BinaryColumnTransformer {
     }
   }
 
-  private void transform(
-      Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int i) {
-    long leftValue = leftColumn.getLong(i);
-    long rightValue = rightColumn.getLong(i);
-    long currentValue = BitwiseUtils.bitwiseTransform(leftValue, rightValue, functionName);
-    if (TSDataType.INT32.equals(leftColumn.getDataType())) {
-      columnBuilder.writeInt((int) currentValue);
-    } else if (TSDataType.INT64.equals(leftColumn.getDataType())) {
-      columnBuilder.writeLong(currentValue);
-    }
-  }
+  protected abstract void transform(
+      Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int i);
 }

@@ -20,57 +20,41 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 
-public class BitCount2ColumnTransformer extends BinaryColumnTransformer {
-  public BitCount2ColumnTransformer(
+public class BitwiseRightShift2ColumnTransformer extends AbstractBitwise2ColumnTransformer {
+
+  public BitwiseRightShift2ColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
   }
 
   @Override
-  protected void checkType() {
-    // do nothing
-  }
-
-  @Override
-  protected void doTransform(
-      Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
-    for (int i = 0; i < positionCount; i++) {
-      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        transform(leftColumn, rightColumn, builder, i);
-      } else {
-        builder.appendNull();
-      }
-    }
-  }
-
-  @Override
-  protected void doTransform(
-      Column leftColumn,
-      Column rightColumn,
-      ColumnBuilder builder,
-      int positionCount,
-      boolean[] selection) {
-    for (int i = 0; i < positionCount; i++) {
-      if (selection[i] && !leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        transform(leftColumn, rightColumn, builder, i);
-      } else {
-        builder.appendNull();
-      }
-    }
-  }
-
-  private void transform(
+  protected void transform(
       Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int i) {
-    long num = leftColumn.getLong(i);
-    long bits = rightColumn.getLong(i);
-    long currentValue = BitwiseUtils.bitCountTransform(num, bits);
-    columnBuilder.writeLong(currentValue);
+    if (TSDataType.INT32.equals(leftColumn.getDataType())) {
+      int leftValue = leftColumn.getInt(i);
+      if (TSDataType.INT32.equals(rightColumn.getDataType())) {
+        int rightValue = rightColumn.getInt(i);
+        columnBuilder.writeInt(BitwiseUtils.bitwiseRightShiftTransform(leftValue, rightValue));
+      } else if (TSDataType.INT64.equals(rightColumn.getDataType())) {
+        long rightValue = rightColumn.getLong(i);
+        columnBuilder.writeInt(BitwiseUtils.bitwiseRightShiftTransform(leftValue, rightValue));
+      }
+    } else if (TSDataType.INT64.equals(leftColumn.getDataType())) {
+      long leftValue = leftColumn.getLong(i);
+      if (TSDataType.INT32.equals(rightColumn.getDataType())) {
+        int rightValue = rightColumn.getInt(i);
+        columnBuilder.writeLong(BitwiseUtils.bitwiseRightShiftTransform(leftValue, rightValue));
+      } else if (TSDataType.INT64.equals(rightColumn.getDataType())) {
+        long rightValue = rightColumn.getLong(i);
+        columnBuilder.writeLong(BitwiseUtils.bitwiseRightShiftTransform(leftValue, rightValue));
+      }
+    }
   }
 }

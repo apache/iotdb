@@ -579,9 +579,9 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 2
           || !(isIntegerNumber(argumentTypes.get(0)) && isIntegerNumber(argumentTypes.get(1)))) {
         throw new SemanticException(
-            "Scalar function "
-                + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts two arguments and they must be Int32 or Int64 data type.");
+            String.format(
+                "Scalar function %s only accepts two arguments and they must be Int32 or Int64 data type.",
+                functionName));
       }
       return INT64;
     } else if (TableBuiltinScalarFunction.BITWISE_NOT
@@ -589,9 +589,9 @@ public class TableMetadataImpl implements Metadata {
         .equalsIgnoreCase(functionName)) {
       if (argumentTypes.size() != 1 || !isIntegerNumber(argumentTypes.get(0))) {
         throw new SemanticException(
-            "Scalar function "
-                + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Int32 or Int64 data type.");
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Int32 or Int64 data type.",
+                functionName));
       }
       return INT64;
     } else if (TableBuiltinScalarFunction.BITWISE_LEFT_SHIFT
@@ -606,9 +606,9 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 2
           || !(isIntegerNumber(argumentTypes.get(0)) && isIntegerNumber(argumentTypes.get(1)))) {
         throw new SemanticException(
-            "Scalar function "
-                + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts two arguments and they must be Int32 or Int64 data type.");
+            String.format(
+                "Scalar function %s only accepts two arguments and they must be Int32 or Int64 data type.",
+                functionName));
       }
       return argumentTypes.get(0);
     }

@@ -24,15 +24,14 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.BITWISE_AND;
-import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.BITWISE_LEFT_SHIFT;
-import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.BITWISE_NOT;
-import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.BITWISE_OR;
-import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.BITWISE_RIGHT_SHIFT;
-import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.BITWISE_RIGHT_SHIFT_ARITHMETIC;
-import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.BITWISE_XOR;
 import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitCountCheck;
-import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseTransform;
+import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseAndTransform;
+import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseLeftShiftTransform;
+import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseNotTransform;
+import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseOrTransform;
+import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseRightShiftArithmeticTransform;
+import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseRightShiftTransform;
+import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseXorTransform;
 
 public class BitwiseUtilsTest {
   @Test
@@ -41,6 +40,7 @@ public class BitwiseUtilsTest {
     Assert.assertThrows(SemanticException.class, () -> bitCountCheck(7, 1));
     Assert.assertThrows(SemanticException.class, () -> bitCountCheck(7, 2));
     Assert.assertThrows(SemanticException.class, () -> bitCountCheck(128, 7));
+    Assert.assertThrows(SemanticException.class, () -> bitCountCheck(128, 8));
   }
 
   @Test
@@ -51,7 +51,6 @@ public class BitwiseUtilsTest {
     Assert.assertEquals(2, BitwiseUtils.bitCountTransform(9, 8));
     Assert.assertEquals(62, BitwiseUtils.bitCountTransform(-7, 64));
     Assert.assertEquals(6, BitwiseUtils.bitCountTransform(-7, 8));
-    Assert.assertEquals(1, BitwiseUtils.bitCountTransform(128, 8));
     Assert.assertEquals(1, BitwiseUtils.bitCountTransform(128, 9));
     Assert.assertEquals(1, BitwiseUtils.bitCountTransform(128, 10));
     Assert.assertEquals(1, BitwiseUtils.bitCountTransform(128, 11));
@@ -61,29 +60,72 @@ public class BitwiseUtilsTest {
   }
 
   @Test
-  public void testBitwiseFunctions() {
-    Assert.assertEquals(17, bitwiseTransform(19, 25, BITWISE_AND.name()));
-    Assert.assertEquals(-6, bitwiseTransform(5, 0, BITWISE_NOT.name()));
-    Assert.assertEquals(11, bitwiseTransform(-12, 0, BITWISE_NOT.name()));
-    Assert.assertEquals(-20, bitwiseTransform(19, 0, BITWISE_NOT.name()));
-    Assert.assertEquals(-26, bitwiseTransform(25, 0, BITWISE_NOT.name()));
-    Assert.assertEquals(27, bitwiseTransform(19, 25, BITWISE_OR.name()));
-    Assert.assertEquals(10, bitwiseTransform(19, 25, BITWISE_XOR.name()));
-    Assert.assertEquals(4, bitwiseTransform(1, 2, BITWISE_LEFT_SHIFT.name()));
-    Assert.assertEquals(20, bitwiseTransform(5, 2, BITWISE_LEFT_SHIFT.name()));
-    Assert.assertEquals(20, bitwiseTransform(20, 0, BITWISE_LEFT_SHIFT.name()));
-    Assert.assertEquals(42, bitwiseTransform(42, 0, BITWISE_LEFT_SHIFT.name()));
-    Assert.assertEquals(0, bitwiseTransform(0, 1, BITWISE_LEFT_SHIFT.name()));
-    Assert.assertEquals(0, bitwiseTransform(0, 2, BITWISE_LEFT_SHIFT.name()));
-    Assert.assertEquals(1, bitwiseTransform(8, 3, BITWISE_RIGHT_SHIFT.name()));
-    Assert.assertEquals(4, bitwiseTransform(9, 1, BITWISE_RIGHT_SHIFT.name()));
-    Assert.assertEquals(20, bitwiseTransform(20, 0, BITWISE_RIGHT_SHIFT.name()));
-    Assert.assertEquals(42, bitwiseTransform(42, 0, BITWISE_RIGHT_SHIFT.name()));
-    Assert.assertEquals(0, bitwiseTransform(0, 1, BITWISE_RIGHT_SHIFT.name()));
-    Assert.assertEquals(0, bitwiseTransform(0, 2, BITWISE_RIGHT_SHIFT.name()));
-    Assert.assertEquals(0, bitwiseTransform(12, 64, BITWISE_RIGHT_SHIFT.name()));
-    Assert.assertEquals(0, bitwiseTransform(-45, 64, BITWISE_RIGHT_SHIFT.name()));
-    Assert.assertEquals(0, bitwiseTransform(12, 64, BITWISE_RIGHT_SHIFT_ARITHMETIC.name()));
-    Assert.assertEquals(-1, bitwiseTransform(-45, 64, BITWISE_RIGHT_SHIFT_ARITHMETIC.name()));
+  public void testBitwiseAndTransform() {
+    Assert.assertEquals(17, bitwiseAndTransform(19, 25));
+  }
+
+  @Test
+  public void testBitwiseNotTransform() {
+    Assert.assertEquals(-6, bitwiseNotTransform(5));
+    Assert.assertEquals(11, bitwiseNotTransform(-12));
+    Assert.assertEquals(-20, bitwiseNotTransform(19));
+    Assert.assertEquals(-26, bitwiseNotTransform(25));
+  }
+
+  @Test
+  public void testBitwiseOrTransform() {
+    Assert.assertEquals(27, bitwiseOrTransform(19, 25));
+  }
+
+  @Test
+  public void testBitwiseXorTransform() {
+    Assert.assertEquals(10, bitwiseXorTransform(19, 25));
+  }
+
+  @Test
+  public void testBitwiseLeftShiftTransform() {
+    Assert.assertEquals(4, bitwiseLeftShiftTransform(1, 2));
+    Assert.assertEquals(20, bitwiseLeftShiftTransform(5, 2));
+    Assert.assertEquals(20, bitwiseLeftShiftTransform(20, 0));
+    Assert.assertEquals(42, bitwiseLeftShiftTransform(42, 0));
+    Assert.assertEquals(0, bitwiseLeftShiftTransform(0, 1));
+    Assert.assertEquals(0, bitwiseLeftShiftTransform(0, 2));
+
+    Assert.assertEquals(4L, bitwiseLeftShiftTransform(1L, 2));
+    Assert.assertEquals(20L, bitwiseLeftShiftTransform(5L, 2));
+    Assert.assertEquals(20L, bitwiseLeftShiftTransform(20L, 0));
+    Assert.assertEquals(42L, bitwiseLeftShiftTransform(42L, 0));
+    Assert.assertEquals(0L, bitwiseLeftShiftTransform(0L, 1));
+    Assert.assertEquals(0L, bitwiseLeftShiftTransform(0L, 2));
+  }
+
+  @Test
+  public void testBitwiseRightShiftTransform() {
+    Assert.assertEquals(1, bitwiseRightShiftTransform(8, 3));
+    Assert.assertEquals(4, bitwiseRightShiftTransform(9, 1));
+    Assert.assertEquals(20, bitwiseRightShiftTransform(20, 0));
+    Assert.assertEquals(42, bitwiseRightShiftTransform(42, 0));
+    Assert.assertEquals(0, bitwiseRightShiftTransform(0, 1));
+    Assert.assertEquals(0, bitwiseRightShiftTransform(0, 2));
+    Assert.assertEquals(0, bitwiseRightShiftTransform(12, 64));
+    Assert.assertEquals(0, bitwiseRightShiftTransform(-45, 64));
+
+    Assert.assertEquals(1L, bitwiseRightShiftTransform(8L, 3));
+    Assert.assertEquals(4L, bitwiseRightShiftTransform(9L, 1));
+    Assert.assertEquals(20L, bitwiseRightShiftTransform(20L, 0));
+    Assert.assertEquals(42L, bitwiseRightShiftTransform(42L, 0));
+    Assert.assertEquals(0L, bitwiseRightShiftTransform(0L, 1));
+    Assert.assertEquals(0L, bitwiseRightShiftTransform(0L, 2));
+    Assert.assertEquals(0L, bitwiseRightShiftTransform(12L, 64));
+    Assert.assertEquals(0L, bitwiseRightShiftTransform(-45L, 64));
+  }
+
+  @Test
+  public void testBitwiseRightShiftArithmeticTransform() {
+    Assert.assertEquals(0, bitwiseRightShiftArithmeticTransform(12, 64));
+    Assert.assertEquals(-1, bitwiseRightShiftArithmeticTransform(-45, 64));
+
+    Assert.assertEquals(0L, bitwiseRightShiftArithmeticTransform(12L, 64));
+    Assert.assertEquals(-1L, bitwiseRightShiftArithmeticTransform(-45L, 64));
   }
 }

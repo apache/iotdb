@@ -21,21 +21,19 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
-public class BitCountColumnTransformer extends UnaryColumnTransformer {
+public abstract class AbstractBitwiseColumnTransformer extends UnaryColumnTransformer {
 
-  private final long bits;
+  protected final long rightValue;
 
-  public BitCountColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, long bits) {
+  public AbstractBitwiseColumnTransformer(
+      Type returnType, ColumnTransformer childColumnTransformer, long rightValue) {
     super(returnType, childColumnTransformer);
-    this.bits = bits;
-    BitwiseUtils.bitCountCheckBits(bits);
+    this.rightValue = rightValue;
   }
 
   @Override
@@ -60,9 +58,5 @@ public class BitCountColumnTransformer extends UnaryColumnTransformer {
     }
   }
 
-  private void transform(Column column, ColumnBuilder columnBuilder, int i) {
-    long num = column.getLong(i);
-    long currentValue = BitwiseUtils.bitCountTransform(num, bits);
-    columnBuilder.writeLong(currentValue);
-  }
+  protected abstract void transform(Column column, ColumnBuilder columnBuilder, int i);
 }

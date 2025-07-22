@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.util;
 
-import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 
 public class BitwiseUtils {
@@ -27,6 +26,10 @@ public class BitwiseUtils {
   private static final long TINYINT_SIGNED_BIT = 0b1000_0000L;
   private static final long SMALLINT_MASK = 0b1111_1111_1111_1111L;
   private static final long SMALLINT_SIGNED_BIT = 0b1000_0000_0000_0000L;
+  private static final int TINYINT_MASK_IN_INT = 0b1111_1111;
+  private static final int TINYINT_SIGNED_BIT_IN_INT = 0b1000_0000;
+  private static final int SMALLINT_MASK_IN_INT = 0b1111_1111_1111_1111;
+  private static final int SMALLINT_SIGNED_BIT_IN_INT = 0b1000_0000_0000_0000;
   private static final long INTEGER_MASK = 0x00_00_00_00_ff_ff_ff_ffL;
   private static final long INTEGER_SIGNED_BIT = 0x00_00_00_00_00_80_00_00_00L;
 
@@ -51,6 +54,8 @@ public class BitwiseUtils {
   }
 
   public static long bitCountTransform(long num, long bits) {
+    bitCountCheck(num, bits);
+
     if (bits == 64) {
       return Long.bitCount(num);
     }
@@ -59,75 +64,130 @@ public class BitwiseUtils {
     return Long.bitCount(num & mask);
   }
 
-  public static long bitwiseTransform(long leftValue, long rightValue, String functionName) {
-    TableBuiltinScalarFunction function = TableBuiltinScalarFunction.valueOf(functionName);
-    switch (function) {
-      case BITWISE_NOT:
-        return ~leftValue;
+  public static long bitwiseAndTransform(long leftValue, long rightValue) {
+    return leftValue & rightValue;
+  }
 
-      case BITWISE_AND:
-        return leftValue & rightValue;
+  public static long bitwiseNotTransform(long leftValue) {
+    return ~leftValue;
+  }
 
-      case BITWISE_OR:
-        return leftValue | rightValue;
+  public static long bitwiseOrTransform(long leftValue, long rightValue) {
+    return leftValue | rightValue;
+  }
 
-      case BITWISE_XOR:
-        return leftValue ^ rightValue;
+  public static long bitwiseXorTransform(long leftValue, long rightValue) {
+    return leftValue ^ rightValue;
+  }
 
-      case BITWISE_LEFT_SHIFT:
-        if (rightValue >= 64) {
-          return 0L;
-        }
-        long shifted1 = (leftValue << rightValue);
-        if (isTinyInt(leftValue)) {
-          return preserveSign(shifted1, TINYINT_MASK, TINYINT_SIGNED_BIT);
-        } else if (isSmallInt(leftValue)) {
-          return preserveSign(shifted1, SMALLINT_MASK, SMALLINT_SIGNED_BIT);
-        } else if (isInt32(leftValue)) {
-          return preserveSign(shifted1, INTEGER_MASK, INTEGER_SIGNED_BIT);
-        } else {
-          return shifted1;
-        }
-
-      case BITWISE_RIGHT_SHIFT:
-        if (rightValue >= 64) {
-          return 0L;
-        }
-        if (rightValue == 0) {
-          return leftValue;
-        }
-        if (isTinyInt(leftValue)) {
-          return (leftValue & TINYINT_MASK) >>> rightValue;
-        } else if (isSmallInt(leftValue)) {
-          return (leftValue & SMALLINT_MASK) >>> rightValue;
-        } else if (isInt32(leftValue)) {
-          return (leftValue & INTEGER_MASK) >>> rightValue;
-        } else {
-          return leftValue >>> rightValue;
-        }
-
-      case BITWISE_RIGHT_SHIFT_ARITHMETIC:
-        if (rightValue >= 64) {
-          if (leftValue >= 0) {
-            return 0L;
-          }
-          return -1L;
-        }
-        if (isTinyInt(leftValue)) {
-          return preserveSign(leftValue, TINYINT_MASK, TINYINT_SIGNED_BIT) >> rightValue;
-        } else if (isSmallInt(leftValue)) {
-          return preserveSign(leftValue, SMALLINT_MASK, SMALLINT_SIGNED_BIT) >> rightValue;
-        } else if (isInt32(leftValue)) {
-          return preserveSign(leftValue, INTEGER_MASK, INTEGER_SIGNED_BIT) >> rightValue;
-        } else {
-          return leftValue >> rightValue;
-        }
+  public static int bitwiseLeftShiftTransform(int value, long shift) {
+    if (shift >= 32) {
+      return 0;
     }
+    int shifted = (value << shift);
+    if (isTinyInt(value)) {
+      return preserveSign(shifted, TINYINT_MASK_IN_INT, TINYINT_SIGNED_BIT_IN_INT);
+    } else if (isSmallInt(value)) {
+      return preserveSign(shifted, SMALLINT_MASK_IN_INT, SMALLINT_SIGNED_BIT_IN_INT);
+    } else {
+      return shifted;
+    }
+  }
 
-    throw new SemanticException("Unsupported function: " + functionName);
+  public static long bitwiseLeftShiftTransform(long value, long shift) {
+    if (shift >= 64) {
+      return 0L;
+    }
+    long shifted = (value << shift);
+    if (isTinyInt(value)) {
+      return preserveSign(shifted, TINYINT_MASK, TINYINT_SIGNED_BIT);
+    } else if (isSmallInt(value)) {
+      return preserveSign(shifted, SMALLINT_MASK, SMALLINT_SIGNED_BIT);
+    } else if (isInt32(value)) {
+      return preserveSign(shifted, INTEGER_MASK, INTEGER_SIGNED_BIT);
+    } else {
+      return shifted;
+    }
+  }
+
+  public static int bitwiseRightShiftTransform(int value, long shift) {
+    if (shift >= 32) {
+      return 0;
+    }
+    if (shift == 0) {
+      return value;
+    }
+    if (isTinyInt(value)) {
+      return (value & TINYINT_MASK_IN_INT) >>> shift;
+    } else if (isSmallInt(value)) {
+      return (value & SMALLINT_MASK_IN_INT) >>> shift;
+    } else {
+      return value >>> shift;
+    }
+  }
+
+  public static long bitwiseRightShiftTransform(long value, long shift) {
+    if (shift >= 64) {
+      return 0L;
+    }
+    if (shift == 0) {
+      return value;
+    }
+    if (isTinyInt(value)) {
+      return (value & TINYINT_MASK) >>> shift;
+    } else if (isSmallInt(value)) {
+      return (value & SMALLINT_MASK) >>> shift;
+    } else if (isInt32(value)) {
+      return (value & INTEGER_MASK) >>> shift;
+    } else {
+      return value >>> shift;
+    }
+  }
+
+  public static int bitwiseRightShiftArithmeticTransform(int value, long shift) {
+    if (shift >= 32) {
+      if (value >= 0) {
+        return 0;
+      }
+      return -1;
+    }
+    if (isTinyInt(value)) {
+      return preserveSign(value, TINYINT_MASK_IN_INT, TINYINT_SIGNED_BIT_IN_INT) >> shift;
+    } else if (isSmallInt(value)) {
+      return preserveSign(value, SMALLINT_MASK_IN_INT, SMALLINT_SIGNED_BIT_IN_INT) >> shift;
+    } else {
+      return value >> shift;
+    }
+  }
+
+  public static long bitwiseRightShiftArithmeticTransform(long value, long shift) {
+    if (shift >= 64) {
+      if (value >= 0) {
+        return 0L;
+      }
+      return -1L;
+    }
+    if (isTinyInt(value)) {
+      return preserveSign(value, TINYINT_MASK, TINYINT_SIGNED_BIT) >> shift;
+    } else if (isSmallInt(value)) {
+      return preserveSign(value, SMALLINT_MASK, SMALLINT_SIGNED_BIT) >> shift;
+    } else if (isInt32(value)) {
+      return preserveSign(value, INTEGER_MASK, INTEGER_SIGNED_BIT) >> shift;
+    } else {
+      return value >> shift;
+    }
   }
 
   private static long preserveSign(long shiftedValue, long mask, long signedBit) {
+    // Preserve the sign in 2's complement format
+    if ((shiftedValue & signedBit) != 0) {
+      return shiftedValue | ~mask;
+    }
+
+    return shiftedValue & mask;
+  }
+
+  private static int preserveSign(int shiftedValue, int mask, int signedBit) {
     // Preserve the sign in 2's complement format
     if ((shiftedValue & signedBit) != 0) {
       return shiftedValue | ~mask;

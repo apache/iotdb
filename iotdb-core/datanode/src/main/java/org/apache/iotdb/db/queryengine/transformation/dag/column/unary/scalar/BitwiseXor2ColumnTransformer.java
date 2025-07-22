@@ -20,57 +20,25 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
-public class BitCount2ColumnTransformer extends BinaryColumnTransformer {
-  public BitCount2ColumnTransformer(
+public class BitwiseXor2ColumnTransformer extends AbstractBitwise2ColumnTransformer {
+
+  public BitwiseXor2ColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
   }
 
   @Override
-  protected void checkType() {
-    // do nothing
-  }
-
-  @Override
-  protected void doTransform(
-      Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
-    for (int i = 0; i < positionCount; i++) {
-      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        transform(leftColumn, rightColumn, builder, i);
-      } else {
-        builder.appendNull();
-      }
-    }
-  }
-
-  @Override
-  protected void doTransform(
-      Column leftColumn,
-      Column rightColumn,
-      ColumnBuilder builder,
-      int positionCount,
-      boolean[] selection) {
-    for (int i = 0; i < positionCount; i++) {
-      if (selection[i] && !leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        transform(leftColumn, rightColumn, builder, i);
-      } else {
-        builder.appendNull();
-      }
-    }
-  }
-
-  private void transform(
+  protected void transform(
       Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int i) {
-    long num = leftColumn.getLong(i);
-    long bits = rightColumn.getLong(i);
-    long currentValue = BitwiseUtils.bitCountTransform(num, bits);
+    long leftValue = leftColumn.getLong(i);
+    long rightValue = rightColumn.getLong(i);
+    long currentValue = BitwiseUtils.bitwiseXorTransform(leftValue, rightValue);
     columnBuilder.writeLong(currentValue);
   }
 }
