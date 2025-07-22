@@ -19,7 +19,7 @@ import threading
 
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.server import TServer
-from thrift.transport import TSocket, TTransport, TSSLSocket
+from thrift.transport import TSocket, TSSLSocket, TTransport
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.log import Logger
@@ -71,7 +71,8 @@ class AINodeRPCService(threading.Thread):
         self._handler = handler
         processor = IAINodeRPCService.Processor(handler=self._handler)
         if AINodeDescriptor().get_config().get_ain_internal_ssl_enabled():
-            import ssl, sys
+            import ssl
+            import sys
 
             if sys.version_info >= (3, 10):
                 context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
