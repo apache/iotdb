@@ -53,7 +53,6 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -141,7 +140,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private boolean isHistoricalExtractorEnabled = false;
   private long historicalDataExtractionStartTime = Long.MIN_VALUE; // Event time
   private long historicalDataExtractionEndTime = Long.MAX_VALUE; // Event time
-  private long historicalDataExtractionTimeLowerBound; // Arrival time
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
   private boolean sloppyPattern; // true to disable pattern filter after extraction
@@ -263,17 +261,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
     try {
       historicalDataExtractionStartTime =
-          isHistoricalExtractorEnabled
-                  && parameters.hasAnyAttributes(
-                      EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY)
+          parameters.hasAnyAttributes(
+                  EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY)
               ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
                   parameters.getStringByKeys(
                       EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY))
               : Long.MIN_VALUE;
       historicalDataExtractionEndTime =
-          isHistoricalExtractorEnabled
-                  && parameters.hasAnyAttributes(
-                      EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY)
+          parameters.hasAnyAttributes(EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY)
               ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
                   parameters.getStringByKeys(
                       EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY))
@@ -338,46 +333,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
           isDbNameCoveredByPattern = tablePattern.coversDb(databaseName);
         } else {
           isDbNameCoveredByPattern = treePattern.coversDb(databaseName);
-        }
-      }
-    }
-
-    // Enable historical extractor by default
-    historicalDataExtractionTimeLowerBound =
-        isHistoricalExtractorEnabled
-            ? Long.MIN_VALUE
-            // We define the realtime data as the data generated after the creation time
-            // of the pipe from user's perspective. But we still need to use
-            // PipeHistoricalDataRegionExtractor to extract the realtime data generated between the
-            // creation time of the pipe and the time when the pipe starts, because those data
-            // can not be listened by PipeRealtimeDataRegionExtractor, and should be extracted by
-            // PipeHistoricalDataRegionExtractor from implementation perspective.
-            : environment.getCreationTime();
-
-    // Only invoke flushDataRegionAllTsFiles() when the pipe runs in the realtime only mode.
-    // realtime only mode -> (historicalDataExtractionTimeLowerBound != Long.MIN_VALUE)
-    //
-    // Ensure that all data in the data region is flushed to disk before extracting data.
-    // This ensures the generation time of all newly generated TsFiles (realtime data) after the
-    // invocation of flushDataRegionAllTsFiles() is later than the creationTime of the pipe
-    // (historicalDataExtractionTimeLowerBound).
-    //
-    // Note that: the generation time of the TsFile is the time when the TsFile is created, not
-    // the time when the data is flushed to the TsFile.
-    //
-    // Then we can use the generation time of the TsFile to determine whether the data in the
-    // TsFile should be extracted by comparing the generation time of the TsFile with the
-    // historicalDataExtractionTimeLowerBound when starting the pipe in realtime only mode.
-    //
-    // If we don't invoke flushDataRegionAllTsFiles() in the realtime only mode, the data generated
-    // between the creation time of the pipe the time when the pipe starts will be lost.
-    if (historicalDataExtractionTimeLowerBound != Long.MIN_VALUE) {
-      synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
-        final long lastFlushedByPipeTime =
-            DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
-        if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
-          flushDataRegionAllTsFiles();
-          DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(dataRegionId, System.currentTimeMillis());
         }
       }
     }
@@ -597,8 +552,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
               .peek(originalResourceList::add)
               .filter(
                   resource ->
-                      // Some resource is marked as deleted but not removed from the list.
-                      !resource.isDeleted()
+                      isHistoricalExtractorEnabled
+                          &&
+                          // Some resource is marked as deleted but not removed from the list.
+                          !resource.isDeleted()
                           // Some resource is generated by pipe. We ignore them if the pipe should
                           // not transfer pipe requests.
                           && (!resource.isGeneratedByPipe() || isForwardingPipeRequests)
@@ -608,7 +565,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                           !resource.isClosed()
                               || mayTsFileContainUnprocessedData(resource)
                                   && isTsFileResourceOverlappedWithTimeRange(resource)
-                                  && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
                                   && mayTsFileResourceOverlappedWithPattern(resource)))
               .collect(Collectors.toList());
       filteredTsFileResources.addAll(sequenceTsFileResources);
@@ -618,8 +574,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
               .peek(originalResourceList::add)
               .filter(
                   resource ->
-                      // Some resource is marked as deleted but not removed from the list.
-                      !resource.isDeleted()
+                      isHistoricalExtractorEnabled
+                          &&
+                          // Some resource is marked as deleted but not removed from the list.
+                          !resource.isDeleted()
                           // Some resource is generated by pipe. We ignore them if the pipe should
                           // not transfer pipe requests.
                           && (!resource.isGeneratedByPipe() || isForwardingPipeRequests)
@@ -629,7 +587,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                           !resource.isClosed()
                               || mayTsFileContainUnprocessedData(resource)
                                   && isTsFileResourceOverlappedWithTimeRange(resource)
-                                  && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
                                   && mayTsFileResourceOverlappedWithPattern(resource)))
               .collect(Collectors.toList());
       filteredTsFileResources.addAll(unsequenceTsFileResources);
@@ -757,25 +714,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private boolean isTsFileResourceCoveredByTimeRange(final TsFileResource resource) {
     return historicalDataExtractionStartTime <= resource.getFileStartTime()
         && historicalDataExtractionEndTime >= resource.getFileEndTime();
-  }
-
-  private boolean isTsFileGeneratedAfterExtractionTimeLowerBound(final TsFileResource resource) {
-    try {
-      return historicalDataExtractionTimeLowerBound
-          <= TsFileNameGenerator.getTsFileName(resource.getTsFile().getName()).getTime();
-    } catch (final IOException e) {
-      LOGGER.warn(
-          "Pipe {}@{}: failed to get the generation time of TsFile {}, extract it anyway"
-              + " (historical data extraction time lower bound: {})",
-          pipeName,
-          dataRegionId,
-          resource.getTsFilePath(),
-          historicalDataExtractionTimeLowerBound,
-          e);
-      // If failed to get the generation time of the TsFile, we will extract the data in the TsFile
-      // anyway.
-      return true;
-    }
   }
 
   private void extractDeletions(
