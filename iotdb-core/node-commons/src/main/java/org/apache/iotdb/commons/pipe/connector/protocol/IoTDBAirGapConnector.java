@@ -89,6 +89,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
   protected final List<AirGapSocket> sockets = new ArrayList<>();
   protected final List<Boolean> isSocketAlive = new ArrayList<>();
+  private long lastCheckClientStatusTimestamp = 0L;
 
   private LoadBalancer loadBalancer;
   private long currentClientIndex = 0;
@@ -156,6 +157,15 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
   @Override
   @SuppressWarnings("java:S2095")
   public void handshake() throws Exception {
+    if (System.currentTimeMillis() - lastCheckClientStatusTimestamp
+        < PipeConfig.getInstance().getPipeCheckAllSyncClientLiveTimeIntervalMs()) {
+      for (int i = 0; i < sockets.size(); i++) {
+        if (Boolean.TRUE.equals(isSocketAlive.get(i))) {
+          return;
+        }
+      }
+    }
+
     for (int i = 0; i < sockets.size(); i++) {
       if (Boolean.TRUE.equals(isSocketAlive.get(i))) {
         continue;
@@ -212,6 +222,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
     for (int i = 0; i < sockets.size(); i++) {
       if (Boolean.TRUE.equals(isSocketAlive.get(i))) {
+        lastCheckClientStatusTimestamp = System.currentTimeMillis();
         return;
       }
     }
@@ -263,6 +274,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       while (true) {
+        mayLimitRateAndRecordIO(readFileBufferSize);
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
           break;
@@ -297,6 +309,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       }
     }
   }
+
+  protected abstract void mayLimitRateAndRecordIO(final long requiredBytes);
 
   protected abstract boolean mayNeedHandshakeWhenFail();
 

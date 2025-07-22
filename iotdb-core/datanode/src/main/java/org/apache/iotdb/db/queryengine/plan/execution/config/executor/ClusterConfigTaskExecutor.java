@@ -74,6 +74,7 @@ import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -243,6 +244,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
@@ -250,7 +252,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -3156,6 +3157,35 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> removeAINode(
+      RemoveAINodeStatement removeAINodeStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    LOGGER.info("Starting to remove AINode");
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TShowClusterResp showClusterResp = configNodeClient.showCluster();
+      if (showClusterResp.getAiNodeListSize() < 1) {
+        LOGGER.error("Remove AINode failed because there is no AINode in the cluster.");
+        future.setException(
+            new IOException("Remove AINode failed because there is no AINode in the cluster."));
+        return future;
+      }
+      TSStatus status = configNodeClient.removeAINode(new TAINodeRemoveReq());
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IOException("Remove AINode failed: " + status.getMessage()));
+        return future;
+      } else {
+        LOGGER.info("AINode in the cluster is removed.");
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+      return future;
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> reconstructRegion(
       ReconstructRegionTask reconstructRegionTask) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
@@ -3300,13 +3330,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createModel(
-      final CreateModelStatement createModelStatement, final MPPQueryContext context) {
+  public SettableFuture<ConfigTaskResult> createModel(String modelId, String uri) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TCreateModelReq req =
-          new TCreateModelReq(createModelStatement.getModelName(), createModelStatement.getUri());
+      final TCreateModelReq req = new TCreateModelReq(modelId, uri);
       final TSStatus status = client.createModel(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         future.setException(new IoTDBException(status.message, status.code));
@@ -3320,11 +3348,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropModel(final String modelName) {
+  public SettableFuture<ConfigTaskResult> dropModel(final String modelId) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus executionStatus = client.dropModel(new TDropModelReq(modelName));
+      final TSStatus executionStatus = client.dropModel(new TDropModelReq(modelId));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
@@ -3337,13 +3365,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showModels(final String modelName) {
+  public SettableFuture<ConfigTaskResult> showModels(final String modelId) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TShowModelReq req = new TShowModelReq();
-      if (modelName != null) {
-        req.setModelId(modelName);
+      if (modelId != null) {
+        req.setModelId(modelId);
       }
       final TShowModelResp showModelResp = client.showModel(req);
       if (showModelResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -3650,8 +3678,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   public static void unsetDatabaseIfNotExist(final String database, final IClientSession session) {
-    if (database.equals(session.getDatabaseName())) {
-      session.setDatabaseName(null);
+    if (session != null) {
+      if (database.equals(session.getDatabaseName())) {
+        session.setDatabaseName(null);
+      }
     }
   }
 

@@ -22,8 +22,8 @@ from typing import Callable, Dict, List
 import numpy as np
 from huggingface_hub import hf_hub_download
 from sklearn.preprocessing import MinMaxScaler
-from sktime.annotation.hmm_learn import GMMHMM, GaussianHMM
-from sktime.annotation.stray import STRAY
+from sktime.detection.hmm_learn import GMMHMM, GaussianHMM
+from sktime.detection.stray import STRAY
 from sktime.forecasting.arima import ARIMA
 from sktime.forecasting.exp_smoothing import ExponentialSmoothing
 from sktime.forecasting.naive import NaiveForecaster
@@ -103,7 +103,7 @@ def get_model_attributes(model_type: BuiltInModelType):
         attribute_map = naive_forecaster_attribute_map
     elif (
         model_type == BuiltInModelType.EXPONENTIAL_SMOOTHING
-        or model_type == BuiltInModelType.HOLTWINTERS.value
+        or model_type == BuiltInModelType.HOLTWINTERS
     ):
         attribute_map = exponential_smoothing_attribute_map
     elif model_type == BuiltInModelType.STL_FORECASTER:
@@ -123,7 +123,9 @@ def get_model_attributes(model_type: BuiltInModelType):
     return attribute_map
 
 
-def fetch_built_in_model(model_type: BuiltInModelType, model_dir) -> Callable:
+def fetch_built_in_model(
+    model_type: BuiltInModelType, model_dir, inference_attrs: Dict[str, str]
+) -> Callable:
     """
     Fetch the built-in model according to its id and directory, not that this directory only contains model weights and config.
     Args:
@@ -132,7 +134,9 @@ def fetch_built_in_model(model_type: BuiltInModelType, model_dir) -> Callable:
     Returns:
         model: the built-in model
     """
-    attributes = get_model_attributes(model_type)
+    default_attributes = get_model_attributes(model_type)
+    # parse the attributes from inference_attrs
+    attributes = parse_attribute(inference_attrs, default_attributes)
 
     # build the built-in model
     if model_type == BuiltInModelType.ARIMA:

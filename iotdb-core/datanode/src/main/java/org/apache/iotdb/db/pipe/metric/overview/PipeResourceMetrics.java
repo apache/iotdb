@@ -22,24 +22,29 @@ package org.apache.iotdb.db.pipe.metric.overview;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
-import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
-import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 public class PipeResourceMetrics implements IMetricSet {
 
   private static final String PIPE_USED_MEMORY = "PipeUsedMemory";
+  private static final String PIPE_USED_FLOATING_MEMORY = "PipeUsedFloatingMemory";
 
   private static final String PIPE_TABLET_USED_MEMORY = "PipeTabletUsedMemory";
 
   private static final String PIPE_TS_FILE_USED_MEMORY = "PipeTsFileUsedMemory";
 
   private static final String PIPE_TOTAL_MEMORY = "PipeTotalMemory";
+
+  private Counter diskIOCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private static final String PIPE_FLOATING_MEMORY = "PipeFloatingMemory";
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -74,28 +79,30 @@ public class PipeResourceMetrics implements IMetricSet {
         PipeMemoryManager::getTotalNonFloatingMemorySizeInBytes,
         Tag.NAME.toString(),
         PIPE_TOTAL_MEMORY);
-    // resource reference count
     metricService.createAutoGauge(
-        Metric.PIPE_PINNED_MEMTABLE_COUNT.toString(),
+        Metric.PIPE_MEM.toString(),
         MetricLevel.IMPORTANT,
-        PipeDataNodeResourceManager.wal(),
-        PipeWALResourceManager::getPinnedWalCount);
+        PipeDataNodeResourceManager.memory(),
+        o -> PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes(),
+        Tag.NAME.toString(),
+        PIPE_FLOATING_MEMORY);
     metricService.createAutoGauge(
-        Metric.PIPE_LINKED_TSFILE_COUNT.toString(),
+        Metric.PIPE_MEM.toString(),
         MetricLevel.IMPORTANT,
-        PipeDataNodeResourceManager.tsfile(),
-        PipeTsFileResourceManager::getLinkedTsfileCount);
-    metricService.createAutoGauge(
-        Metric.PIPE_LINKED_TSFILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        PipeDataNodeResourceManager.tsfile(),
-        PipeTsFileResourceManager::getTotalLinkedTsfileSize);
+        PipeDataNodeResourceManager.memory(),
+        o -> PipeDataNodeAgent.task().getAllFloatingMemoryUsageInByte(),
+        Tag.NAME.toString(),
+        PIPE_USED_FLOATING_MEMORY);
     // phantom reference count
     metricService.createAutoGauge(
         Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.ref(),
         PipePhantomReferenceManager::getPhantomReferenceCount);
+    // tsFile send rate
+    diskIOCounter =
+        metricService.getOrCreateCounter(
+            Metric.PIPE_TSFILE_SEND_DISK_IO.toString(), MetricLevel.IMPORTANT);
   }
 
   @Override
@@ -115,12 +122,27 @@ public class PipeResourceMetrics implements IMetricSet {
         PIPE_TS_FILE_USED_MEMORY);
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.PIPE_MEM.toString(), Tag.NAME.toString(), PIPE_TOTAL_MEMORY);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_MEM.toString(),
+        Tag.NAME.toString(),
+        PIPE_FLOATING_MEMORY);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_MEM.toString(),
+        Tag.NAME.toString(),
+        PIPE_USED_FLOATING_MEMORY);
     // resource reference count
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PINNED_MEMTABLE_COUNT.toString());
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_COUNT.toString());
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_SIZE.toString());
     // phantom reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString());
+
+    metricService.remove(MetricType.RATE, Metric.PIPE_TSFILE_SEND_DISK_IO.toString());
+  }
+
+  public void recordDiskIO(final long bytes) {
+    diskIOCounter.inc(bytes);
   }
 
   //////////////////////////// singleton ////////////////////////////

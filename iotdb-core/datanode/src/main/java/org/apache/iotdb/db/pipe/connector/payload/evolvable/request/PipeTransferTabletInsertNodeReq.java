@@ -97,7 +97,6 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
 
     insertNodeReq.version = transferReq.version;
     insertNodeReq.type = transferReq.type;
-    insertNodeReq.body = transferReq.body;
 
     return insertNodeReq;
   }

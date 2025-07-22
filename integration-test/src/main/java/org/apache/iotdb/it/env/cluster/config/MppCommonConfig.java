@@ -454,6 +454,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
+    setProperty("pipe_enable_memory_checked", String.valueOf(isPipeEnableMemoryCheck));
+    return this;
+  }
+
+  @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     setProperty("pipe_air_gap_receiver_enabled", String.valueOf(isPipeAirGapReceiverEnabled));
     return this;
@@ -527,6 +533,23 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    setProperty(
+        "subscription_prefetch_ts_file_batch_max_delay_in_ms",
+        String.valueOf(subscriptionPrefetchTsFileBatchMaxDelayInMs));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      int subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    setProperty(
+        "subscription_prefetch_ts_file_batch_max_size_in_bytes",
+        String.valueOf(subscriptionPrefetchTsFileBatchMaxSizeInBytes));
+    return this;
+  }
+
   public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
     setProperty("subscription_enabled", String.valueOf(subscriptionEnabled));
     return this;

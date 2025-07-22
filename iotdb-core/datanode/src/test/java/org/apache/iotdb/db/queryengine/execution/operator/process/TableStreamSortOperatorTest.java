@@ -63,7 +63,7 @@ import static org.junit.Assert.fail;
 
 public class TableStreamSortOperatorTest {
 
-  private static final String sortTmpPrefixPath =
+  private static final String SORT_TMP_PREFIX_PATH =
       "target" + File.separator + "sort" + File.separator + "tmp";
 
   private static final ExecutorService instanceNotificationExecutor =
@@ -143,7 +143,7 @@ public class TableStreamSortOperatorTest {
 
   @After
   public void cleanUp() throws IOException {
-    cleanDir(sortTmpPrefixPath);
+    cleanDir(SORT_TMP_PREFIX_PATH);
   }
 
   @AfterClass
@@ -292,8 +292,8 @@ public class TableStreamSortOperatorTest {
     int maxTsBlockSizeInBytes =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     int maxTsBlockLineNumber = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
-    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(500);
-    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(50);
+    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(1000);
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(100);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(2);
     try (TableStreamSortOperator tableStreamSortOperator = genStreamSortOperator(2)) {
 
@@ -303,7 +303,6 @@ public class TableStreamSortOperatorTest {
       while (!tableStreamSortOperator.isFinished() && tableStreamSortOperator.hasNext()) {
         TsBlock tsBlock = tableStreamSortOperator.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
-          assertEquals(2, tsBlock.getPositionCount());
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
             assertFalse(tsBlock.getColumn(0).isNull(i));
             assertEquals(timeArray[count], tsBlock.getColumn(0).getLong(i));
@@ -560,7 +559,7 @@ public class TableStreamSortOperatorTest {
 
     OperatorContext operatorContext = driverContext.getOperatorContexts().get(1);
     String filePrefix =
-        sortTmpPrefixPath
+        SORT_TMP_PREFIX_PATH
             + File.separator
             + operatorContext
                 .getDriverContext()

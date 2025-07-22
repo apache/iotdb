@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
@@ -44,6 +45,9 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.exception.UDFTypeMismatchException;
 
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -198,6 +202,12 @@ public class FragmentInstanceManager {
                             TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()));
                   } else if (t instanceof IoTDBRuntimeException) {
                     stateMachine.failed(t);
+                  } else if (t instanceof UDFTypeMismatchException) {
+                    stateMachine.failed(new SemanticException(t.getMessage()));
+                  } else if (t instanceof UDFException) {
+                    stateMachine.failed(
+                        new IoTDBRuntimeException(
+                            t.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true));
                   } else {
                     logger.warn("error when create FragmentInstanceExecution.", t);
                     stateMachine.failed(t);

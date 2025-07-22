@@ -20,11 +20,12 @@
 package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorConfig;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
-import org.apache.iotdb.commons.pipe.connector.limiter.GlobalRateLimiter;
+import org.apache.iotdb.commons.pipe.connector.limiter.GlobalRPCRateLimiter;
 import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
@@ -168,7 +169,7 @@ public abstract class IoTDBConnector implements PipeConnector {
   private static final Map<Pair<String, Long>, PipeEndPointRateLimiter>
       PIPE_END_POINT_RATE_LIMITER_MAP = new ConcurrentHashMap<>();
   private double endPointRateLimitBytesPerSecond = -1;
-  private static final GlobalRateLimiter GLOBAL_RATE_LIMITER = new GlobalRateLimiter();
+  private static final GlobalRPCRateLimiter GLOBAL_RATE_LIMITER = new GlobalRPCRateLimiter();
 
   protected boolean isTabletBatchModeEnabled = true;
 
@@ -180,6 +181,7 @@ public abstract class IoTDBConnector implements PipeConnector {
   private final AtomicLong totalCompressedSize = new AtomicLong(0);
   protected String attributeSortedString;
   protected Timer compressionTimer;
+  protected boolean isRealtimeFirst;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -469,6 +471,16 @@ public abstract class IoTDBConnector implements PipeConnector {
         "IoTDBConnector {} = {}",
         CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY,
         shouldReceiverConvertOnTypeMismatch);
+    isRealtimeFirst =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY,
+                PipeConnectorConstant.SINK_REALTIME_FIRST_KEY),
+            PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
+    LOGGER.info(
+        "IoTDBConnector {} = {}",
+        PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY,
+        isRealtimeFirst);
   }
 
   protected LinkedHashSet<TEndPoint> parseNodeUrls(final PipeParameters parameters)

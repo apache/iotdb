@@ -146,6 +146,8 @@ public interface CommonConfig {
 
   CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode);
 
+  CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck);
+
   CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);
 
   CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs);
@@ -167,6 +169,12 @@ public interface CommonConfig {
       int pipeConnectorRequestSliceThresholdBytes);
 
   CommonConfig setQueryMemoryProportion(String queryMemoryProportion);
+
+  CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs);
+
+  CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      int subscriptionPrefetchTsFileBatchMaxSizeInBytes);
 
   CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled);
 

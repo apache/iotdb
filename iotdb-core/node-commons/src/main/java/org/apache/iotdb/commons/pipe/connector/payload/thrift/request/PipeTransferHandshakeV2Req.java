@@ -74,7 +74,6 @@ public abstract class PipeTransferHandshakeV2Req extends TPipeTransferReq {
 
     version = transferReq.version;
     type = transferReq.type;
-    body = transferReq.body;
 
     return this;
   }

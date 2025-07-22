@@ -272,9 +272,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           groupId.getId(),
           new PipeTaskMeta(
               new RecoverProgressIndex(senderDataNodeId, new SimpleProgressIndex(0, 0)),
-              senderDataNodeId,
-              groupId.getId(),
-              false));
+              senderDataNodeId));
     } else if (pipeStaticMeta.isSourceExternal()) {
       // external source
       final PipeExternalSourceLoadBalancer loadBalancer =
@@ -298,9 +296,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           .forEach(
               (taskIndex, leaderNodeId) -> {
                 consensusGroupIdToTaskMetaMap.put(
-                    taskIndex,
-                    new PipeTaskMeta(
-                        MinimumProgressIndex.INSTANCE, leaderNodeId, taskIndex, false));
+                    taskIndex, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, leaderNodeId));
               });
     } else {
       // data regions & schema regions
@@ -317,11 +313,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   // Pipe only collect user's data, filter out metric database here.
                   consensusGroupIdToTaskMetaMap.put(
                       regionGroupId.getId(),
-                      new PipeTaskMeta(
-                          MinimumProgressIndex.INSTANCE,
-                          regionLeaderNodeId,
-                          regionGroupId.getId(),
-                          false));
+                      new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
                 }
               });
 
@@ -333,9 +325,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           new PipeTaskMeta(
               MinimumProgressIndex.INSTANCE,
               // The leader of the config region is the config node itself
-              ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-              Integer.MIN_VALUE,
-              false));
+              ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
     }
 
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);

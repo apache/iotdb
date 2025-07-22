@@ -360,6 +360,23 @@ public class IoTDBTableViewQueryIT {
 
       compareQueryResults(
           session,
+          "select time from view1 where time > 604800000",
+          "select time from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select time from view2 where current_rename > 1",
+          "select time from table1 where current > 1",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(*) from view1 where time < -1",
+          "select count(*) from table1 where time < -1",
+          true);
+      compareQueryResults(
+          session,
           "select count(distinct battery) from view4 where battery = 'b1'",
           "select count(distinct battery) from table1 where battery = 'b1'",
           true);

@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 import java.util.stream.Collectors;
 
@@ -43,8 +42,7 @@ public class PipeRealtimeEventFactory {
       final TsFileResource resource,
       final boolean isLoaded) {
     PipeTsFileInsertionEvent tsFileInsertionEvent =
-        new PipeTsFileInsertionEvent(
-            isTableModel, databaseNameFromDataRegion, resource, isLoaded, false);
+        new PipeTsFileInsertionEvent(isTableModel, databaseNameFromDataRegion, resource, isLoaded);
 
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(tsFileInsertionEvent, resource);
   }
@@ -52,14 +50,13 @@ public class PipeRealtimeEventFactory {
   public static PipeRealtimeEvent createRealtimeEvent(
       final Boolean isTableModel,
       final String databaseNameFromDataRegion,
-      final WALEntryHandler walEntryHandler,
       final InsertNode insertNode,
       final TsFileResource resource) {
     final PipeInsertNodeTabletInsertionEvent insertionEvent =
         new PipeInsertNodeTabletInsertionEvent(
             isTableModel,
             databaseNameFromDataRegion,
-            walEntryHandler,
+            insertNode,
             insertNode.getTargetPath(),
             (insertNode instanceof InsertRowsNode)
                 ? ((InsertRowsNode) insertNode)
@@ -70,10 +67,7 @@ public class PipeRealtimeEventFactory {
                                     .getDeviceID(node.getTargetPath())
                                     .getTableName())
                         .collect(Collectors.toSet())
-                : null,
-            insertNode.getProgressIndex(),
-            insertNode.isAligned(),
-            insertNode.isGeneratedByPipe());
+                : null);
 
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
         insertionEvent, insertNode, resource);

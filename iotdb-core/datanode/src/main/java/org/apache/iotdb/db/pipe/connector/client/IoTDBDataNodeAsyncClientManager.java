@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBClientManager;
@@ -48,7 +50,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY;
@@ -70,11 +74,18 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   // receiverAttributes -> IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
   private static final Map<String, IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new ConcurrentHashMap<>();
+  private static final Map<String, ExecutorService> TS_FILE_ASYNC_EXECUTOR_HOLDER =
+      new ConcurrentHashMap<>();
+  private static final AtomicInteger id = new AtomicInteger(0);
+
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> endPoint2Client;
+  private ExecutorService executor;
 
   private final LoadBalancer loadBalancer;
 
   private volatile boolean isClosed = false;
+
+  private final Map<TEndPoint, Long> unhealthyEndPointMap = new ConcurrentHashMap<>();
 
   public IoTDBDataNodeAsyncClientManager(
       final List<TEndPoint> endPoints,
@@ -123,6 +134,17 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       }
       endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
 
+      if (isTSFileUsed) {
+        if (!TS_FILE_ASYNC_EXECUTOR_HOLDER.containsKey(receiverAttributes)) {
+          TS_FILE_ASYNC_EXECUTOR_HOLDER.putIfAbsent(
+              receiverAttributes,
+              IoTDBThreadPoolFactory.newFixedThreadPool(
+                  PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize(),
+                  ThreadName.PIPE_TSFILE_ASYNC_SEND_POOL.getName() + "-" + id.getAndIncrement()));
+        }
+        executor = TS_FILE_ASYNC_EXECUTOR_HOLDER.get(receiverAttributes);
+      }
+
       RECEIVER_ATTRIBUTES_REF_COUNT.compute(
           receiverAttributes, (attributes, refCount) -> refCount == null ? 1 : refCount + 1);
     }
@@ -159,7 +181,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   public AsyncPipeDataTransferServiceClient borrowClient(final TEndPoint endPoint)
       throws Exception {
-    if (!useLeaderCache || Objects.isNull(endPoint)) {
+    if (!useLeaderCache || Objects.isNull(endPoint) || isUnhealthy(endPoint)) {
       return borrowClient();
     }
 
@@ -293,12 +315,28 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         waitHandshakeFinished(isHandshakeFinished);
       }
       if (exception.get() != null) {
+        markUnhealthy(targetNodeUrl);
         throw new PipeConnectionException("Failed to handshake.", exception.get());
+      } else {
+        markHealthy(targetNodeUrl);
       }
     } catch (TException e) {
       client.resetMethodStateIfStopped();
+      markUnhealthy(targetNodeUrl);
       throw e;
     } finally {
+      if (isClosed) {
+        try {
+          client.close();
+          client.invalidateAll();
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to close client {}:{} after handshake failure when the manager is closed.",
+              targetNodeUrl.getIp(),
+              targetNodeUrl.getPort(),
+              e);
+        }
+      }
       client.setShouldReturnSelf(true);
       client.returnSelf();
     }
@@ -336,6 +374,10 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
   }
 
+  public ExecutorService getExecutor() {
+    return executor;
+  }
+
   public void close() {
     isClosed = true;
     synchronized (IoTDBDataNodeAsyncClientManager.class) {
@@ -348,10 +390,28 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
               if (clientManager != null) {
                 try {
                   clientManager.close();
+                  LOGGER.info(
+                      "Closed AsyncPipeDataTransferServiceClientManager for receiver attributes: {}",
+                      receiverAttributes);
                 } catch (final Exception e) {
-                  LOGGER.warn("Failed to close client manager.", e);
+                  LOGGER.warn(
+                      "Failed to close AsyncPipeDataTransferServiceClientManager for receiver attributes: {}",
+                      receiverAttributes,
+                      e);
                 }
               }
+
+              final ExecutorService executor =
+                  TS_FILE_ASYNC_EXECUTOR_HOLDER.remove(receiverAttributes);
+              if (executor != null) {
+                try {
+                  executor.shutdown();
+                  LOGGER.info("Successfully shutdown executor {}.", executor);
+                } catch (final Exception e) {
+                  LOGGER.warn("Failed to shutdown executor {}.", executor);
+                }
+              }
+
               return null;
             }
             return refCount - 1;
@@ -369,8 +429,14 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     @Override
     public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
       final int clientSize = endPointList.size();
+      long n = 0;
       while (true) {
         final TEndPoint targetNodeUrl = endPointList.get((int) (currentClientIndex++ % clientSize));
+        if (isUnhealthy(targetNodeUrl) && n < clientSize) {
+          n++;
+          continue;
+        }
+
         final AsyncPipeDataTransferServiceClient client =
             endPoint2Client.borrowClient(targetNodeUrl);
         if (handshakeIfNecessary(targetNodeUrl, client)) {
@@ -384,8 +450,15 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     @Override
     public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
       final int clientSize = endPointList.size();
+      long n = 0;
+
       while (true) {
         final TEndPoint targetNodeUrl = endPointList.get((int) (Math.random() * clientSize));
+        if (isUnhealthy(targetNodeUrl) && n <= clientSize) {
+          n++;
+          continue;
+        }
+
         final AsyncPipeDataTransferServiceClient client =
             endPoint2Client.borrowClient(targetNodeUrl);
         if (handshakeIfNecessary(targetNodeUrl, client)) {
@@ -398,8 +471,15 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   private class PriorityLoadBalancer implements LoadBalancer {
     @Override
     public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
+      final int clientSize = endPointList.size();
+      long n = 0;
       while (true) {
         for (final TEndPoint targetNodeUrl : endPointList) {
+          if (isUnhealthy(targetNodeUrl) && n <= clientSize) {
+            n++;
+            continue;
+          }
+
           final AsyncPipeDataTransferServiceClient client =
               endPoint2Client.borrowClient(targetNodeUrl);
           if (handshakeIfNecessary(targetNodeUrl, client)) {
@@ -408,5 +488,26 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         }
       }
     }
+  }
+
+  private boolean isUnhealthy(TEndPoint endPoint) {
+    Long downTime = unhealthyEndPointMap.get(endPoint);
+    if (downTime == null) {
+      return false;
+    }
+    if (System.currentTimeMillis() - downTime
+        > PipeConfig.getInstance().getPipeCheckAllSyncClientLiveTimeIntervalMs()) {
+      markHealthy(endPoint);
+      return false;
+    }
+    return true;
+  }
+
+  private void markUnhealthy(TEndPoint endPoint) {
+    unhealthyEndPointMap.put(endPoint, System.currentTimeMillis());
+  }
+
+  private void markHealthy(TEndPoint endPoint) {
+    unhealthyEndPointMap.remove(endPoint);
   }
 }

@@ -118,8 +118,28 @@ public class PipeEventCommitManager {
         }
       }
     }
-    if (committerKey == null || event.getCommitId() <= EnrichedEvent.NO_COMMIT_ID) {
+    if (committerKey == null) {
       return;
+    }
+    if (event.hasMultipleCommitIds()) {
+      commitMultipleIds(committerKey, event);
+    } else {
+      commitSingleId(committerKey, event.getCommitId(), event);
+    }
+  }
+
+  private void commitMultipleIds(final CommitterKey committerKey, final EnrichedEvent event) {
+    for (final long commitId : event.getCommitIds()) {
+      if (commitSingleId(committerKey, commitId, event)) {
+        return;
+      }
+    }
+  }
+
+  private boolean commitSingleId(
+      final CommitterKey committerKey, final long commitId, final EnrichedEvent event) {
+    if (commitId <= EnrichedEvent.NO_COMMIT_ID) {
+      return false;
     }
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
 
@@ -142,10 +162,11 @@ public class PipeEventCommitManager {
               Thread.currentThread().getStackTrace());
         }
       }
-      return;
+      return false;
     }
 
     committer.commit(event);
+    return true;
   }
 
   private CommitterKey generateCommitterKey(

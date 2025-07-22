@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.LogicalIndexNavigation;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternPartitionExecutor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternVariableRecognizer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.PatternExpressionComputation;
@@ -83,6 +84,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
   private final Matcher matcher;
   private final List<PatternVariableRecognizer.PatternVariableComputation>
       labelPatternVariableComputations;
+  private final List<PatternAggregator> patternAggregators;
   private final List<PatternExpressionComputation> measureComputations;
   private final List<String> labelNames;
 
@@ -103,6 +105,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
       Optional<LogicalIndexNavigation> skipToNavigation,
       Matcher matcher,
       List<PatternVariableRecognizer.PatternVariableComputation> labelPatternVariableComputations,
+      List<PatternAggregator> patternAggregators,
       List<PatternExpressionComputation> measureComputations,
       List<String> labelNames) {
     this.operatorContext = operatorContext;
@@ -132,6 +135,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
     this.skipToNavigation = skipToNavigation;
     this.matcher = matcher;
     this.labelPatternVariableComputations = ImmutableList.copyOf(labelPatternVariableComputations);
+    this.patternAggregators = ImmutableList.copyOf(patternAggregators);
     this.measureComputations = ImmutableList.copyOf(measureComputations);
     this.labelNames = ImmutableList.copyOf(labelNames);
 
@@ -206,6 +210,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
               skipToNavigation,
               matcher,
               labelPatternVariableComputations,
+              patternAggregators,
               measureComputations,
               labelNames);
       cachedPartitionExecutors.addLast(partitionExecutor);
@@ -267,6 +272,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
                 skipToNavigation,
                 matcher,
                 labelPatternVariableComputations,
+                patternAggregators,
                 measureComputations,
                 labelNames);
 
@@ -305,6 +311,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
                   skipToNavigation,
                   matcher,
                   labelPatternVariableComputations,
+                  patternAggregators,
                   measureComputations,
                   labelNames);
         } else {
@@ -324,6 +331,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
                   skipToNavigation,
                   matcher,
                   labelPatternVariableComputations,
+                  patternAggregators,
                   measureComputations,
                   labelNames);
           // Clear TsBlock of last partition

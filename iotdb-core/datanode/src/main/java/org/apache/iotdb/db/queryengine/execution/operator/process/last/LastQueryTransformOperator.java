@@ -74,11 +74,11 @@ public class LastQueryTransformOperator implements ProcessOperator {
         if (tsBlock.getColumn(1).isNull(0)) {
           return null;
         }
-        LastQueryUtil.appendLastValue(
+        LastQueryUtil.appendLastValueRespectBlob(
             tsBlockBuilder,
             tsBlock.getColumn(0).getLong(0),
             viewPath,
-            tsBlock.getColumn(1).getTsPrimitiveType(0).getStringValue(),
+            tsBlock.getColumn(1).getTsPrimitiveType(0),
             dataType);
       }
     } else {

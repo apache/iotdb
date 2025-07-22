@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
@@ -122,6 +123,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Di
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.EndsWith2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.EndsWithColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ExpColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ExtractTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.FloorColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.FormatColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LTrim2ColumnTransformer;
@@ -338,6 +340,27 @@ public class ColumnTransformerBuilder
             node.isSafe()
                 ? new TryCastFunctionColumnTransformer(type, child, context.sessionInfo.getZoneId())
                 : new CastFunctionColumnTransformer(type, child, context.sessionInfo.getZoneId()));
+      }
+    }
+    return getColumnTransformerFromCacheAndAddReferenceCount(node, context);
+  }
+
+  @Override
+  protected ColumnTransformer visitExtract(Extract node, Context context) {
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        appendIdentityColumnTransformer(
+            node,
+            columnTransformer.getType(),
+            getTSDataType(columnTransformer.getType()),
+            context,
+            columnTransformer);
+      } else {
+        ColumnTransformer child = this.process(node.getExpression(), context);
+        context.cache.put(
+            node,
+            new ExtractTransformer(INT64, child, node.getField(), context.sessionInfo.getZoneId()));
       }
     }
     return getColumnTransformerFromCacheAndAddReferenceCount(node, context);
