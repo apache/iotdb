@@ -120,7 +120,7 @@ class ConfigNodeClient(object):
                 context.verify_mode = ssl.CERT_REQUIRED
             context.check_hostname = False
             context.load_verify_locations(
-                cafile=AINodeDescriptor().get_config().get_ain_thrift_ssl_ca_file()
+                cafile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file()
             )
             context.load_cert_chain(
                 certfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file(),

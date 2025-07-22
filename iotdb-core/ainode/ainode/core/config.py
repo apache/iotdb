@@ -90,7 +90,6 @@ class AINodeConfig(object):
         # use for ssl
         self._ain_cluster_ingress_ssl_enabled = False
         self._ain_internal_ssl_enabled = False
-        self._ain_thrift_ssl_ca_file = None
         self._ain_thrift_ssl_cert_file = None
         self._ain_thrift_ssl_key_file = None
 
@@ -192,12 +191,6 @@ class AINodeConfig(object):
 
     def set_ain_internal_ssl_enabled(self, ain_internal_ssl_enabled: int) -> None:
         self._ain_internal_ssl_enabled = ain_internal_ssl_enabled
-
-    def get_ain_thrift_ssl_ca_file(self) -> str:
-        return self._ain_thrift_ssl_ca_file
-
-    def set_ain_thrift_ssl_ca_file(self, ain_thrift_ssl_ca_file: str) -> None:
-        self._ain_thrift_ssl_ca_file = ain_thrift_ssl_ca_file
 
     def get_ain_thrift_ssl_cert_file(self) -> str:
         return self._ain_thrift_ssl_cert_file
@@ -343,11 +336,6 @@ class AINodeDescriptor(object):
             if "ain_internal_ssl_enabled" in config_keys:
                 self._config.set_ain_internal_ssl_enabled(
                     int(file_configs["ain_internal_ssl_enabled"])
-                )
-
-            if "ain_thrift_ssl_ca_file" in config_keys:
-                self._config.set_ain_thrift_ssl_ca_file(
-                    file_configs["ain_thrift_ssl_ca_file"]
                 )
 
             if "ain_thrift_ssl_cert_file" in config_keys:
