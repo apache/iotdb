@@ -80,6 +80,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setIsPipeEnableMemoryCheck(false);
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
 
     receiverEnv
         .getConfig()
