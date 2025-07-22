@@ -283,9 +283,36 @@ def _parse_inference_config(config_dict):
 def fetch_model_by_uri(uri: str, model_storage_path: str, config_storage_path: str):
     is_network_path, uri = _parse_uri(uri)
 
+    if "/" in uri and not uri.startswith(("http://", "https://", "file://")) and not os.path.exists(uri):
+        return _register_transformers_model_from_hf(uri, model_storage_path, config_storage_path)
+
     if is_network_path:
         return _register_model_from_network(
             uri, model_storage_path, config_storage_path
         )
     else:
         return _register_model_from_local(uri, model_storage_path, config_storage_path)
+
+def _register_transformers_model_from_hf(repo_id: str, model_storage_path: str, config_storage_path: str):
+    default_config = {
+        "configs": {
+            "input_shape": [96, 1],    
+            "output_shape": [96, 1],  
+            "input_type": ["float32"],
+            "output_type": ["float32"]
+        },
+        "attributes": {
+            "predict_length": 96,
+            "model_type": "transformers",
+            "repo_id": repo_id
+        }
+    }
+    
+    with open(config_storage_path, "w", encoding="utf-8") as f:
+        yaml.dump(default_config, f)
+    
+    with open(model_storage_path, "w") as f:
+        f.write(f"# Transformers model: {repo_id}\n")
+    
+    configs, attributes = _parse_inference_config(default_config)
+    return configs, attributes
