@@ -846,6 +846,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 ((RenameTablePlan) plan).getDatabase(),
                 null,
                 ((RenameTablePlan) plan).getTableName(),
+                ((RenameTablePlan) plan).getNewName(),
                 queryId,
                 ProcedureType.RENAME_TABLE_PROCEDURE,
                 new RenameTableProcedure(
