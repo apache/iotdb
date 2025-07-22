@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeTsFileResource implements AutoCloseable {
@@ -35,6 +36,8 @@ public class PipeTsFileResource implements AutoCloseable {
   private volatile long fileSize = -1L;
 
   private final AtomicInteger referenceCount;
+
+  private File unsuccessfulDeletedPath = null;
 
   public PipeTsFileResource(final File hardlinkOrCopiedFile) {
     this.hardlinkOrCopiedFile = hardlinkOrCopiedFile;
@@ -55,6 +58,10 @@ public class PipeTsFileResource implements AutoCloseable {
       }
     }
     return fileSize;
+  }
+
+  public Optional<File> getUnsuccessfulDeletedPath() {
+    return Optional.ofNullable(unsuccessfulDeletedPath);
   }
 
   ///////////////////// Reference Count /////////////////////
@@ -82,6 +89,7 @@ public class PipeTsFileResource implements AutoCloseable {
   @Override
   public synchronized void close() {
     boolean successful = false;
+
     try {
       successful = Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
     } catch (final Exception e) {
@@ -90,6 +98,7 @@ public class PipeTsFileResource implements AutoCloseable {
           hardlinkOrCopiedFile,
           e.getMessage(),
           e);
+      unsuccessfulDeletedPath = hardlinkOrCopiedFile;
     }
 
     if (successful) {

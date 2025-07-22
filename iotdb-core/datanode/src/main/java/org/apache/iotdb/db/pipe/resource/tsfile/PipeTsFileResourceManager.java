@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -35,14 +36,21 @@ import javax.annotation.Nullable;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeUnit;
 
 public class PipeTsFileResourceManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResourceManager.class);
+
+  private static final Set<File> UNSUCCESSFULLY_DELETED = new CopyOnWriteArraySet<>();
 
   // This is used to hold the assigner pinned tsFiles.
   // Also, it is used to provide metadata cache of the tsFile, and is shared by all the pipe's
@@ -54,6 +62,66 @@ public class PipeTsFileResourceManager {
   private final Map<String, Map<String, PipeTsFileResource>>
       hardlinkOrCopiedFileToPipeTsFileResourceMap = new ConcurrentHashMap<>();
   private final PipeTsFileResourceSegmentLock segmentLock = new PipeTsFileResourceSegmentLock();
+
+  public PipeTsFileResourceManager() {
+    PipeDataNodeAgent.runtime()
+        .registerPeriodicalJob(
+            "PipeTsFileResourceManager#tryDeleteAgainForUnsuccessfulUnlinked()",
+            this::tryDeleteAgainForUnsuccessfulUnlinked,
+            // 30 mins in seconds
+            30 * 60);
+  }
+
+  private void tryDeleteAgainForUnsuccessfulUnlinked() {
+    if (UNSUCCESSFULLY_DELETED.isEmpty()) {
+      return;
+    }
+
+    LOGGER.info(
+        "Trying to delete {} unsuccessfully unlinked files {} again",
+        UNSUCCESSFULLY_DELETED.size(),
+        UNSUCCESSFULLY_DELETED);
+
+    try {
+      deleteAgainForUnsuccessfulUnlinked();
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("failed to try lock when deleting unsuccessfully unlinked files", e);
+    } catch (final Exception e) {
+      LOGGER.warn("failed to try lock when deleting unsuccessfully unlinked files", e);
+    }
+  }
+
+  private void deleteAgainForUnsuccessfulUnlinked() throws InterruptedException {
+    final Iterator<File> iterator = UNSUCCESSFULLY_DELETED.iterator();
+    final long timeout =
+        PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() >> 1;
+
+    while (iterator.hasNext()) {
+      final File file = iterator.next();
+      if (!segmentLock.tryLock(file, timeout, TimeUnit.SECONDS)) {
+        LOGGER.warn(
+            "failed to try lock when deleting unsuccessfully unlinked file {} because of timeout ({}s)",
+            file,
+            timeout);
+        continue;
+      }
+
+      try {
+        if (Files.deleteIfExists(file.toPath())) {
+          LOGGER.info("Successfully deleted unsuccessfully unlinked file: {}", file);
+        } else {
+          LOGGER.info(
+              "Unsuccessfully unlinked file {} does not exist, no need to delete it again.", file);
+        }
+        iterator.remove();
+      } catch (final Exception e) {
+        LOGGER.warn("failed to delete unsuccessfully unlinked file {}", file, e);
+      } finally {
+        segmentLock.unlock(file);
+      }
+    }
+  }
 
   public File increaseFileReference(
       final File file, final boolean isTsFile, final @Nullable String pipeName) throws IOException {
@@ -220,6 +288,7 @@ public class PipeTsFileResourceManager {
       final PipeTsFileResource resource = getResourceMap(pipeName).get(filePath);
       if (resource != null && resource.decreaseReferenceCount()) {
         getResourceMap(pipeName).remove(filePath);
+        resource.getUnsuccessfulDeletedPath().ifPresent(UNSUCCESSFULLY_DELETED::add);
       }
       // Decrease the assigner's file to clear hard-link and memory cache
       // Note that it does not exist for historical files
