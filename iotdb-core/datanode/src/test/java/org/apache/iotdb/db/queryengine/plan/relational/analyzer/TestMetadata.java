@@ -224,6 +224,9 @@ public class TestMetadata implements Metadata {
               ColumnSchema.builder(ATTR2_CM)
                   .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
                   .build(),
+              ColumnSchema.builder(S1_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+              ColumnSchema.builder(S2_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+              ColumnSchema.builder(S3_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
               ColumnSchema.builder(S4_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
 
       return Optional.of(new TableSchema(TABLE2, columnSchemas));
