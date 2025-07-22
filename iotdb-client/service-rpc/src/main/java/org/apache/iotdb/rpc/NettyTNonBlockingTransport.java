@@ -160,7 +160,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
                             logger.debug(
                                 "SSL handshake completed successfully for {}:{}", host, port);
                           } else {
-                            logger.error(
+                            logger.debug(
                                 "SSL handshake failed for {}:{}: {}",
                                 host,
                                 port,
@@ -254,7 +254,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
           discard.clear();
         }
       } catch (IOException e) {
-        logger.warn("Failed to drain dummy channel", e);
+        logger.debug("Failed to drain dummy channel", e);
       }
       if (readingResponseSize) {
         // Trigger OP_READ on dummy by writing dummy byte
@@ -270,7 +270,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
 
       return available;
     } catch (Exception e) {
-      logger.error("ByteBuffer read failed: {}", e.getMessage());
+      logger.debug("ByteBuffer read failed: {}", e.getMessage());
       throw new TTransportException(TTransportException.UNKNOWN, "Read failed", e);
     } finally {
       if (byteBuf != null) {
@@ -290,7 +290,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
       ByteBuffer buffer = ByteBuffer.wrap(buf, off, len);
       return read(buffer);
     } catch (Exception e) {
-      logger.error("Read failed: {}", e.getMessage());
+      logger.debug("Read failed: {}", e.getMessage());
       throw new TTransportException(TTransportException.UNKNOWN, "Read failed", e);
     }
   }
@@ -320,13 +320,13 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
                   if (future1.isSuccess()) {
                     logger.debug("ByteBuffer write completed successfully: {} bytes", remaining);
                   } else {
-                    logger.error("ByteBuffer write failed: {}", future1.cause().getMessage());
+                    logger.debug("ByteBuffer write failed: {}", future1.cause().getMessage());
                   }
                 });
         return remaining;
       } catch (Exception e) {
         byteBuf.release();
-        logger.error("ByteBuffer write failed: {}", e.getMessage());
+        logger.debug("ByteBuffer write failed: {}", e.getMessage());
         throw new TTransportException(TTransportException.UNKNOWN, "Write failed", e);
       }
     }
@@ -375,7 +375,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
           dummyServer.close();
         }
       } catch (IOException e) {
-        logger.warn("Failed to close dummy channels", e);
+        logger.debug("Failed to close dummy channels", e);
       }
       eventLoopGroup.shutdownGracefully();
       logger.debug("EventLoopGroup shutdown initiated");
@@ -422,10 +422,10 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
                         }
                       }
                     } catch (IOException e) {
-                      logger.warn("Failed to accept dummy connection", e);
+                      logger.debug("Failed to accept dummy connection", e);
                     }
                   } else {
-                    logger.error(
+                    logger.debug(
                         "Connection failed to {}:{}: {}", host, port, future1.cause().getMessage());
                   }
                   connecting.set(false);
@@ -435,8 +435,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
       return false; // Return false to indicate pending connect for dummy
     } catch (Exception e) {
       connecting.set(false);
-      logger.error("Failed to start connection to {}:{}", host, port, e.getMessage());
-      throw new IOException("Failed to start connection", e);
+      return false;
     }
   }
 
@@ -493,20 +492,22 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
       if (msg instanceof ByteBuf) {
         ByteBuf byteBuf = (ByteBuf) msg;
         logger.debug("Received {} bytes", byteBuf.readableBytes());
-
-        synchronized (lock) {
-          readQueue.offer(byteBuf.retain());
-          // Trigger OP_READ on dummy by writing dummy byte
-          if (dummyServerAccepted != null) {
-            ByteBuffer dummyByte = ByteBuffer.wrap(new byte[1]);
-            dummyServerAccepted.write(dummyByte);
+        try {
+          synchronized (lock) {
+            readQueue.offer(byteBuf.retain());
+            // Trigger OP_READ on dummy by writing dummy byte
+            if (dummyServerAccepted != null) {
+              ByteBuffer dummyByte = ByteBuffer.wrap(new byte[1]);
+              dummyServerAccepted.write(dummyByte);
+            }
+            // Wakeup selector if needed
+            if (selector != null) {
+              selector.wakeup();
+            }
           }
-          // Wakeup selector if needed
-          if (selector != null) {
-            selector.wakeup();
-          }
+        } finally {
+          byteBuf.release();
         }
-        byteBuf.release();
       }
     }
 
@@ -522,7 +523,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-      logger.error("Channel exception: {}", cause.getMessage());
+      logger.debug("Channel exception: {}", cause.getMessage());
       synchronized (lock) {
         ctx.close();
       }

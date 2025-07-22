@@ -451,7 +451,7 @@ enable_https=false
 # Whether enable SSL for cluster internal connections
 # effectiveMode: restart
 # Datatype: boolean
-enable_internal_connection_ssl=false
+enable_internal_ssl=false
 
 # SSL key store path
 # linux e.g. /home/iotdb/server.keystore (absolute path) or server.keystore (relative path)

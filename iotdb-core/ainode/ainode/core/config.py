@@ -75,9 +75,11 @@ class AINodeConfig(object):
         self._ain_thrift_compression_enabled = AINODE_THRIFT_COMPRESSION_ENABLED
 
         # use for ssl
-        self._ain_thrift_ssl_enabled = False
+        self._ain_cluster_ingress_ssl_enabled = False
+        self._ain_internal_ssl_enabled = False
         self._ain_thrift_ssl_ca_file = None
         self._ain_thrift_ssl_cert_file = None
+        self._ain_thrift_ssl_key_file = None
 
         # Cache number of model storage to avoid repeated loading
         self._ain_model_storage_cache_size = 30
@@ -181,29 +183,37 @@ class AINodeConfig(object):
     ) -> None:
         self._ain_thrift_compression_enabled = ain_thrift_compression_enabled
 
-    def get_ain_thrift_ssl_enabled(self) -> bool:
-        return self._ain_thrift_ssl_enabled
+    def get_ain_cluster_ingress_ssl_enabled(self) -> bool:
+        return self._ain_cluster_ingress_ssl_enabled
 
-    def set_ain_thrift_ssl_enabled(
-        self, ain_thrift_ssl_enabled: int
+    def set_ain_cluster_ingress_ssl_enabled(
+        self, ain_cluster_ingress_ssl_enabled: int
     ) -> None:
-        self._ain_thrift_ssl_enabled = ain_thrift_ssl_enabled
+        self._ain_cluster_ingress_ssl_enabled = ain_cluster_ingress_ssl_enabled
+
+    def get_ain_internal_ssl_enabled(self) -> bool:
+        return self._ain_internal_ssl_enabled
+
+    def set_ain_internal_ssl_enabled(self, ain_internal_ssl_enabled: int) -> None:
+        self._ain_internal_ssl_enabled = ain_internal_ssl_enabled
 
     def get_ain_thrift_ssl_ca_file(self) -> str:
         return self._ain_thrift_ssl_ca_file
 
-    def set_ain_thrift_ssl_ca_file(
-        self, ain_thrift_ssl_ca_file: str
-    ) -> None:
+    def set_ain_thrift_ssl_ca_file(self, ain_thrift_ssl_ca_file: str) -> None:
         self._ain_thrift_ssl_ca_file = ain_thrift_ssl_ca_file
 
     def get_ain_thrift_ssl_cert_file(self) -> str:
         return self._ain_thrift_ssl_cert_file
 
-    def set_ain_thrift_ssl_cert_file(
-        self, ain_thrift_ssl_cert_file: str
-    ) -> None:
+    def set_ain_thrift_ssl_cert_file(self, ain_thrift_ssl_cert_file: str) -> None:
         self._ain_thrift_ssl_cert_file = ain_thrift_ssl_cert_file
+
+    def get_ain_thrift_ssl_key_file(self) -> str:
+        return self._ain_thrift_ssl_key_file
+
+    def set_ain_thrift_ssl_key_file(self, ain_thrift_ssl_key_file: str) -> None:
+        self._ain_thrift_ssl_key_file = ain_thrift_ssl_key_file
 
     def get_ain_model_storage_cache_size(self) -> int:
         return self._ain_model_storage_cache_size
@@ -338,9 +348,9 @@ class AINodeDescriptor(object):
                     int(file_configs["ain_thrift_compression_enabled"])
                 )
 
-            if "ain_thrift_ssl_enabled" in config_keys:
-                self._config.set_ain_thrift_ssl_enabled(
-                    int(file_configs["ain_thrift_ssl_enabled"])
+            if "ain_internal_ssl_enabled" in config_keys:
+                self._config.set_ain_internal_ssl_enabled(
+                    int(file_configs["ain_internal_ssl_enabled"])
                 )
 
             if "ain_thrift_ssl_ca_file" in config_keys:
@@ -351,6 +361,11 @@ class AINodeDescriptor(object):
             if "ain_thrift_ssl_cert_file" in config_keys:
                 self._config.set_ain_thrift_ssl_cert_file(
                     file_configs["ain_thrift_ssl_cert_file"]
+                )
+
+            if "ain_thrift_ssl_key_file" in config_keys:
+                self._config.set_ain_thrift_ssl_key_file(
+                    file_configs["ain_thrift_ssl_key_file"]
                 )
 
             if "ain_logs_dir" in config_keys:

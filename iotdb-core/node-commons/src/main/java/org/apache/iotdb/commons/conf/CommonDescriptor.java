@@ -458,7 +458,7 @@ public class CommonDescriptor {
     config.setEnableInternalSSL(
         Boolean.parseBoolean(
             properties.getProperty(
-                "enable_internal_connection_ssl", Boolean.toString(config.isEnableInternalSSL()))));
+                "enable_internal_ssl", Boolean.toString(config.isEnableInternalSSL()))));
     config.setKeyStorePath(properties.getProperty("key_store_path", config.getKeyStorePath()));
     config.setKeyStorePwd(properties.getProperty("key_store_pwd", config.getKeyStorePwd()));
     config.setTrustStorePath(

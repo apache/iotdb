@@ -109,8 +109,8 @@ class ConfigNodeClient(object):
         raise TException(self._MSG_RECONNECTION_FAIL)
 
     def _connect(self, target_config_node: TEndPoint) -> None:
-        if AINodeDescriptor().get_config().get_ain_thrift_ssl_enabled():
-            import ssl,sys
+        if AINodeDescriptor().get_config().get_ain_internal_ssl_enabled():
+            import ssl, sys
             from thrift.transport import TSSLSocket
 
             if sys.version_info >= (3, 10):
@@ -118,12 +118,18 @@ class ConfigNodeClient(object):
             else:
                 context = ssl.SSLContext(ssl.PROTOCOL_TLS)
                 context.verify_mode = ssl.CERT_REQUIRED
-                context.check_hostname = True
-            context.load_verify_locations(cafile=AINodeDescriptor().get_config().get_ain_thrift_ssl_ca_file())
+            context.check_hostname = False
+            context.load_verify_locations(
+                cafile=AINodeDescriptor().get_config().get_ain_thrift_ssl_ca_file()
+            )
             context.load_cert_chain(
-                certfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file())
+                certfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file(),
+                keyfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_key_file(),
+            )
             socket = TSSLSocket.TSSLSocket(
-                host=target_config_node.ip, port=target_config_node.port, ssl_context=context
+                host=target_config_node.ip,
+                port=target_config_node.port,
+                ssl_context=context,
             )
         else:
             socket = TSocket.TSocket(target_config_node.ip, target_config_node.port)

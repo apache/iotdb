@@ -71,8 +71,8 @@ class AINodeRPCService(threading.Thread):
         self._stop_event = threading.Event()
         self._handler = handler
         processor = IAINodeRPCService.Processor(handler=self._handler)
-        if AINodeDescriptor().get_config().get_ain_thrift_ssl_enabled():
-            import ssl,sys
+        if AINodeDescriptor().get_config().get_ain_internal_ssl_enabled():
+            import ssl, sys
             from thrift.transport import TSSLSocket
 
             if sys.version_info >= (3, 10):
@@ -80,13 +80,18 @@ class AINodeRPCService(threading.Thread):
             else:
                 context = ssl.SSLContext(ssl.PROTOCOL_TLS)
                 context.verify_mode = ssl.CERT_REQUIRED
-                context.check_hostname = True
-            context.load_verify_locations(cafile=AINodeDescriptor().get_config().get_ain_thrift_ssl_ca_file())
-            context.load_cert_chain(certfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file())
+            context.check_hostname = False
+            context.load_verify_locations(
+                cafile=AINodeDescriptor().get_config().get_ain_thrift_ssl_ca_file()
+            )
+            context.load_cert_chain(
+                certfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file(),
+                keyfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_key_file(),
+            )
             transport = TSSLSocket.TSSLServerSocket(
                 host=AINodeDescriptor().get_config().get_ain_inference_rpc_address(),
                 port=AINodeDescriptor().get_config().get_ain_inference_rpc_port(),
-                ssl_context=context
+                ssl_context=context,
             )
         else:
             transport = TSocket.TServerSocket(

@@ -119,6 +119,7 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
         transportFactory);
   }
 
+  /** for synced ThriftServiceThread with ssl enabled */
   public ThriftServiceThread(
       TProcessor processor,
       String serviceName,
