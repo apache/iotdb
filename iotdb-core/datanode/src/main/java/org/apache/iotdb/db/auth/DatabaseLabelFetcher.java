@@ -164,31 +164,20 @@ public class DatabaseLabelFetcher {
   }
 
   /**
-   * Get security label for a given path (can be device path or database path)
+   * Get security label for a device/timeseries path
    *
-   * @param path the path to get security label for
-   * @return SecurityLabel object, or null if not found
+   * @param devicePath full device or timeseries path
+   * @return SecurityLabel if the database has security labels, null otherwise
+   * @throws MetadataException if error occurs while processing
    */
-  public static SecurityLabel getSecurityLabelForPath(String path) {
-    try {
-      // First try to extract database path from the given path
-      String databasePath = LbacPermissionChecker.extractDatabasePathFromDevicePath(path);
-
-      if (databasePath != null) {
-        // Try to get security label using database path
-        SecurityLabel databaseLabel = getDatabaseSecurityLabel(databasePath);
-        if (databaseLabel != null) {
-          return databaseLabel;
-        }
-      }
-
-      // If database path extraction failed or no label found, try with original path
-      return getDatabaseSecurityLabel(path);
-
-    } catch (Exception e) {
-      LOGGER.error("Error getting security label for path: {}", path, e);
+  public static SecurityLabel getSecurityLabelForPath(String devicePath) throws MetadataException {
+    String databasePath = extractDatabasePath(devicePath);
+    if (databasePath == null) {
+      LOGGER.debug("No database found for path: {}, returning null security label", devicePath);
       return null;
     }
+
+    return getDatabaseSecurityLabel(databasePath);
   }
 
   /**
@@ -245,44 +234,26 @@ public class DatabaseLabelFetcher {
   }
 
   /**
-   * Fetch database security label from metadata store with optimized caching strategy. This method
-   * implements a multi-level approach: 1. Check local schema engine for database existence 2. Query
-   * ConfigNode for actual security labels 3. Apply intelligent caching with TTL and error handling
+   * Fetch database security label from metadata store This method should be implemented to
+   * interface with the actual metadata storage
    *
    * @param databasePath normalized database path
    * @return SecurityLabel or null if not found
    */
   private static SecurityLabel fetchDatabaseLabelFromMetadata(String databasePath) {
-    if (databasePath == null || databasePath.trim().isEmpty()) {
-      LOGGER.debug("Database path is null or empty, returning null");
-      return null;
-    }
-
     try {
-      LOGGER.debug("Fetching security label from metadata for database: {}", databasePath);
+      // TODO: This should interface with the actual metadata store where database
+      // labels are stored
+      // For now, we'll try to get it through the SchemaEngine or ConfigNode
 
-      // Step 1: Check if database exists in local schema engine
-      // This is a lightweight check to avoid unnecessary ConfigNode calls
-      boolean databaseExists = checkDatabaseExistsLocally(databasePath);
-      if (!databaseExists) {
-        LOGGER.debug("Database {} does not exist locally, skipping ConfigNode query", databasePath);
-        return null;
-      }
-
-      // Step 2: Query ConfigNode for security labels
-      SecurityLabel label = queryConfigNodeForSecurityLabel(databasePath);
-
-      // Step 3: Log the result for debugging
+      // Try to get from local schema engine first
+      SecurityLabel label = getFromLocalSchema(databasePath);
       if (label != null) {
-        LOGGER.debug(
-            "Successfully retrieved security label for database {}: {}",
-            databasePath,
-            label.getLabels());
-      } else {
-        LOGGER.debug("No security label found for database: {}", databasePath);
+        return label;
       }
 
-      return label;
+      // Fallback to ConfigNode if needed
+      return getFromConfigNode(databasePath);
 
     } catch (Exception e) {
       LOGGER.error("Error fetching database label from metadata for: {}", databasePath, e);
@@ -291,201 +262,119 @@ public class DatabaseLabelFetcher {
   }
 
   /**
-   * Check if database exists in local schema engine This is a lightweight check to avoid
-   * unnecessary ConfigNode calls
+   * Get security label from local schema engine
    *
-   * @param databasePath database path to check
-   * @return true if database exists locally, false otherwise
+   * @param databasePath database path
+   * @return SecurityLabel or null
    */
-  private static boolean checkDatabaseExistsLocally(String databasePath) {
+  private static SecurityLabel getFromLocalSchema(String databasePath) {
     try {
+      LOGGER.debug("Attempting to get security label from local schema for: {}", databasePath);
+
       SchemaEngine schemaEngine = SchemaEngine.getInstance();
       if (schemaEngine == null) {
-        LOGGER.debug("SchemaEngine not initialized");
-        return false;
+        LOGGER.debug("SchemaEngine not initialized for database: {}", databasePath);
+        return null;
       }
 
-      // Check if database exists in local schema regions
       Collection<ISchemaRegion> schemaRegions = schemaEngine.getAllSchemaRegions();
       if (schemaRegions != null) {
         for (ISchemaRegion schemaRegion : schemaRegions) {
           if (schemaRegion.getDatabaseFullPath().equals(databasePath)) {
-            LOGGER.debug("Database {} exists in local schema engine", databasePath);
-            return true;
+            LOGGER.debug(
+                "Database {} exists in local schema engine, but security labels are stored in ConfigNode",
+                databasePath);
+
+            return null;
           }
         }
       }
 
       LOGGER.debug("Database {} not found in local schema engine", databasePath);
-      return false;
+      return null;
 
     } catch (Exception e) {
-      LOGGER.debug("Error checking database existence locally for: {}", databasePath, e);
-      // If we can't check locally, assume it might exist and proceed with ConfigNode
-      // query
-      return true;
+      LOGGER.debug("Failed to get security label from local schema for: {}", databasePath, e);
+      return null;
     }
   }
 
   /**
-   * Query ConfigNode for security labels with optimized error handling and retry logic
+   * Get security label from ConfigNode
    *
-   * @param databasePath database path to query
-   * @return SecurityLabel or null if not found
+   * @param databasePath database path
+   * @return SecurityLabel or null
    */
-  private static SecurityLabel queryConfigNodeForSecurityLabel(String databasePath) {
-    int maxRetries = 2;
-    int retryCount = 0;
+  private static SecurityLabel getFromConfigNode(String databasePath) {
+    try {
+      LOGGER.debug("Attempting to get security label from ConfigNode for: {}", databasePath);
 
-    while (retryCount <= maxRetries) {
-      try {
+      // Use ConfigNodeClient to query database security labels
+      try (ConfigNodeClient configNodeClient =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+        // Create request for database security label
+        TGetDatabaseSecurityLabelReq req = new TGetDatabaseSecurityLabelReq();
+        req.setDatabasePath(databasePath);
+
+        // Call ConfigNode to get database security label
+        TGetDatabaseSecurityLabelResp resp = configNodeClient.getDatabaseSecurityLabel(req);
+
         LOGGER.debug(
-            "Querying ConfigNode for security label (attempt {}/{}): {}",
-            retryCount + 1,
-            maxRetries + 1,
-            databasePath);
+            "ConfigNode response for database {}: status={}",
+            databasePath,
+            resp.getStatus().getCode());
 
-        // Use ConfigNodeClient to query database security labels
-        try (ConfigNodeClient configNodeClient =
-            ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // Check if the request was successful
+        if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          Map<String, String> securityLabelMap = resp.getSecurityLabel();
 
-          // Create request for database security label
-          TGetDatabaseSecurityLabelReq req = new TGetDatabaseSecurityLabelReq();
-          req.setDatabasePath(databasePath);
+          if (securityLabelMap != null && !securityLabelMap.isEmpty()) {
+            // ConfigNode returns format: {"databasePath": "key1:value1,key2:value2"}
+            // We need to extract the label string and parse it
+            String labelString = securityLabelMap.get(databasePath);
+            if (labelString != null && !labelString.trim().isEmpty()) {
+              LOGGER.debug("Found security labels for database {}: {}", databasePath, labelString);
 
-          // Call ConfigNode to get database security label
-          TGetDatabaseSecurityLabelResp resp = configNodeClient.getDatabaseSecurityLabel(req);
+              // Parse the label string format: "key1 = value1,key2 = value2"
+              Map<String, String> parsedLabels = new HashMap<>();
+              String[] labelPairs = labelString.split(",");
+              for (String pair : labelPairs) {
+                String[] keyValue = pair.split("=", 2);
+                if (keyValue.length == 2) {
+                  parsedLabels.put(keyValue[0].trim(), keyValue[1].trim());
+                }
+              }
 
-          LOGGER.debug(
-              "ConfigNode response for database {}: status={}",
-              databasePath,
-              resp.getStatus().getCode());
-
-          // Check if the request was successful
-          if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            return parseSecurityLabelFromResponse(resp, databasePath);
-          } else {
-            LOGGER.warn(
-                "ConfigNode returned error for database {}: {}",
-                databasePath,
-                resp.getStatus().getMessage());
-            return null;
-          }
-
-        } catch (ClientManagerException | TException e) {
-          LOGGER.warn(
-              "Communication error with ConfigNode for database {} (attempt {}/{}): {}",
-              databasePath,
-              retryCount + 1,
-              maxRetries + 1,
-              e.getMessage());
-
-          if (retryCount < maxRetries) {
-            retryCount++;
-            // Exponential backoff: wait 100ms, 200ms, 400ms
-            try {
-              Thread.sleep(100 * (1 << retryCount));
-            } catch (InterruptedException ie) {
-              Thread.currentThread().interrupt();
-              LOGGER.warn("Interrupted during retry wait for database: {}", databasePath);
-              return null;
+              if (!parsedLabels.isEmpty()) {
+                // Convert Map to SecurityLabel object
+                SecurityLabel securityLabel = new SecurityLabel(parsedLabels);
+                return securityLabel;
+              }
             }
-            continue;
-          } else {
-            LOGGER.error(
-                "Failed to communicate with ConfigNode after {} attempts for database: {}",
-                maxRetries + 1,
-                databasePath);
-            return null;
           }
+
+          LOGGER.debug("Database {} has no security labels", databasePath);
+          return null;
+        } else {
+          LOGGER.warn(
+              "Failed to get security label from ConfigNode for database {}: {}",
+              databasePath,
+              resp.getStatus().getMessage());
+          return null;
         }
 
-      } catch (Exception e) {
+      } catch (ClientManagerException | TException e) {
         LOGGER.error(
-            "Unexpected error querying ConfigNode for database {}: {}",
+            "Error communicating with ConfigNode for database {}: {}",
             databasePath,
             e.getMessage());
-        return null;
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Parse security label from ConfigNode response
-   *
-   * @param resp ConfigNode response
-   * @param databasePath database path for logging
-   * @return SecurityLabel or null if parsing fails
-   */
-  private static SecurityLabel parseSecurityLabelFromResponse(
-      TGetDatabaseSecurityLabelResp resp, String databasePath) {
-    try {
-      Map<String, String> securityLabelMap = resp.getSecurityLabel();
-
-      if (securityLabelMap == null || securityLabelMap.isEmpty()) {
-        LOGGER.debug("No security labels found for database: {}", databasePath);
-        return null;
-      }
-
-      // ConfigNode returns format: {"databasePath": "key1=value1,key2=value2"}
-      // We need to extract the label string and parse it
-      String labelString = securityLabelMap.get(databasePath);
-      if (labelString == null || labelString.trim().isEmpty()) {
-        LOGGER.debug("No security label string found for database: {}", databasePath);
-        return null;
-      }
-
-      LOGGER.debug("Found security label string for database {}: {}", databasePath, labelString);
-
-      // Parse the label string format: "key1=value1,key2=value2"
-      Map<String, String> parsedLabels = new HashMap<>();
-      String[] labelPairs = labelString.split(",");
-
-      for (String pair : labelPairs) {
-        String trimmedPair = pair.trim();
-        if (trimmedPair.isEmpty()) {
-          continue;
-        }
-
-        // Support both "key=value" and "key:value" formats
-        String[] keyValue = trimmedPair.split("[=:]", 2);
-        if (keyValue.length == 2) {
-          String key = keyValue[0].trim();
-          String value = keyValue[1].trim();
-
-          // Remove quotes if present
-          if ((value.startsWith("'") && value.endsWith("'"))
-              || (value.startsWith("\"") && value.endsWith("\""))) {
-            value = value.substring(1, value.length() - 1);
-          }
-
-          if (!key.isEmpty() && !value.isEmpty()) {
-            parsedLabels.put(key, value);
-            LOGGER.debug("Parsed label pair: {} = {}", key, value);
-          }
-        } else {
-          LOGGER.warn("Invalid label pair format: {}", trimmedPair);
-        }
-      }
-
-      if (!parsedLabels.isEmpty()) {
-        // Convert Map to SecurityLabel object
-        SecurityLabel securityLabel = new SecurityLabel(parsedLabels);
-        LOGGER.debug(
-            "Successfully created SecurityLabel with {} pairs for database: {}",
-            parsedLabels.size(),
-            databasePath);
-        return securityLabel;
-      } else {
-        LOGGER.debug("No valid label pairs parsed for database: {}", databasePath);
         return null;
       }
 
     } catch (Exception e) {
       LOGGER.error(
-          "Error parsing security label response for database {}: {}",
+          "Unexpected error getting security label from ConfigNode for database {}: {}",
           databasePath,
           e.getMessage());
       return null;
