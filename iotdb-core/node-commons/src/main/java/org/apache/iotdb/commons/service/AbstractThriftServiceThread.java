@@ -153,12 +153,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
     }
   }
 
-  /**
-   * Synced ThriftServiceThread with ssl enabled. When use it, some error logs like below may be
-   * printed. org.apache.thrift.transport.TTransportException: java.net.SocketTimeoutException: Read
-   * timed out This issue is fixed in Thrift 0.15 and newer versions. See <a
-   * href="https://issues.apache.org/jira/browse/THRIFT-5411">https://issues.apache.org/jira/browse/THRIFT-5411</a>
-   */
+  /** Synced ThriftServiceThread with ssl enabled */
   @SuppressWarnings("squid:S107")
   protected AbstractThriftServiceThread(
       TProcessor processor,
