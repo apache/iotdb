@@ -211,7 +211,10 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         PipeDataNodeAgent.task()
             .decreaseFloatingMemoryUsageInByte(pipeName, creationTime, ramBytesUsed());
         PipeDataNodeSinglePipeMetrics.getInstance()
-            .decreaseInsertNodeEventCount(pipeName, creationTime, System.nanoTime() - extractTime);
+            .decreaseInsertNodeEventCount(
+                pipeName,
+                creationTime,
+                shouldReportOnCommit ? System.nanoTime() - extractTime : -1);
       }
       insertNode = null;
     }
