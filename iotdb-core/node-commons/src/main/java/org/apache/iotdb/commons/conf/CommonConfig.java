@@ -410,6 +410,8 @@ public class CommonConfig {
   /** Whether to save the encrypt key of TsFile in IoTDB, default value is false. */
   private boolean saveEncryptKey = false;
 
+  private String userEncryptTokenHint = "not set yet";
+
   CommonConfig() {
     // Empty constructor
   }
@@ -456,6 +458,16 @@ public class CommonConfig {
 
   public void setSaveEncryptKey(boolean saveEncryptKey) {
     this.saveEncryptKey = saveEncryptKey;
+  }
+
+  public void setUserEncryptTokenHint(String userEncryptTokenHint) {
+    if (userEncryptTokenHint != null && !userEncryptTokenHint.isEmpty()) {
+      this.userEncryptTokenHint = userEncryptTokenHint;
+    }
+  }
+
+  public String getUserEncryptTokenHint() {
+    return userEncryptTokenHint;
   }
 
   public String getOpenIdProviderUrl() {

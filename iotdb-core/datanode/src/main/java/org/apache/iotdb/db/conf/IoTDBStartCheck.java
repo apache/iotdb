@@ -81,6 +81,8 @@ public class IoTDBStartCheck {
   private static final String ENCRYPT_MAGIC_STRING = "encrypt_magic_string";
   private static final String ENCRYPT_SALT = "encrypt_salt";
   private static final String ENCRYPT_KEY = "encrypt_key";
+
+  private static final String ENCRYPT_TOKEN_HINT = "encrypt_token_hint";
   private static final String magicString = "thisisusedfortsfileencrypt";
 
   // Mutable system parameters
@@ -318,6 +320,21 @@ public class IoTDBStartCheck {
         throw new EncryptException(
             "encryptType is not UNENCRYPTED, but user_encrypt_token is not set. Please set it in the environment variable.");
       }
+      String tokenHint = System.getenv("user_encrypt_token_hint");
+      if (tokenHint != null && !tokenHint.trim().isEmpty()) {
+        // If user_encrypt_token_hint is set, it should follow some rules.
+        // For example, it could not include user_encrypt_token.
+        if (tokenHint.toLowerCase().contains(token.toLowerCase())) {
+          throw new EncryptException(
+              "user_encrypt_token_hint should not include user_encrypt_token, please check it in your environment variable.");
+        }
+        if (tokenHint
+            .toLowerCase()
+            .contains(new StringBuilder(token.toLowerCase()).reverse().toString())) {
+          throw new EncryptException(
+              "user_encrypt_token_hint should not include the reverse of user_encrypt_token, please check it in your environment variable.");
+        }
+      }
       if (CommonDescriptor.getInstance().getConfig().getSaveEncryptKey()) {
         String encryptKey =
             EncryptUtils.byteArrayToHexString(
@@ -333,6 +350,8 @@ public class IoTDBStartCheck {
         EncryptUtils.byteArrayToHexString(
             TSFileDescriptor.getInstance().getConfig().getEncryptSalt());
     systemProperties.put(ENCRYPT_SALT, () -> encryptSalt);
+    String encryptTokenHint = CommonDescriptor.getInstance().getConfig().getUserEncryptTokenHint();
+    systemProperties.put(ENCRYPT_TOKEN_HINT, () -> encryptTokenHint);
     generateOrOverwriteSystemPropertiesFile();
   }
 
@@ -372,6 +391,9 @@ public class IoTDBStartCheck {
 
   public void checkEncryptMagicString() throws IOException, ConfigurationException {
     properties = systemPropertiesHandler.read();
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setUserEncryptTokenHint(properties.getProperty(ENCRYPT_TOKEN_HINT));
     String encryptKey = properties.getProperty(ENCRYPT_KEY);
     if (encryptKey != null) {
       byte[] keyBytes = EncryptUtils.hexStringToByteArray(encryptKey);
@@ -392,7 +414,8 @@ public class IoTDBStartCheck {
         String token = System.getenv("user_encrypt_token");
         if (token == null || token.trim().isEmpty()) {
           throw new EncryptException(
-              "restart system after not storing key, but user_encrypt_token is not set. Please set it in the environment variable before restart.");
+              "restart system after not storing key, but user_encrypt_token is not set. Please set it in the environment variable before restart. Here is your token hint info: "
+                  + CommonDescriptor.getInstance().getConfig().getUserEncryptTokenHint());
         }
         TSFileDescriptor.getInstance().getConfig().setEncryptKeyFromToken(token);
       }
@@ -406,7 +429,8 @@ public class IoTDBStartCheck {
     if (!Objects.equals(decryptedMagicString, magicString)) {
       logger.error("encrypt_magic_string is not matched");
       throw new ConfigurationException(
-          "Changing encrypt type or key for tsfile encryption after first start is not permitted");
+          "Changing encrypt type or key for tsfile encryption after first start is not permitted. Here is your token hint info: "
+              + CommonDescriptor.getInstance().getConfig().getUserEncryptTokenHint());
     }
     if (encryptKey == null && CommonDescriptor.getInstance().getConfig().getSaveEncryptKey()) {
       if (!Objects.equals(
