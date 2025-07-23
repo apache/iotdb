@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.TimeSeriesMetadataCacheMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -39,6 +40,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.BloomFilter;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,6 +115,7 @@ public class TimeSeriesMetadataCache {
   public TimeseriesMetadata get(
       String filePath,
       TimeSeriesMetadataCacheKey key,
+      int deviceIndexInFI,
       Set<String> allSensors,
       boolean ignoreNotExists,
       boolean debug,
@@ -143,9 +146,27 @@ public class TimeSeriesMetadataCache {
         }
         loadBloomFilterTime = System.nanoTime() - startTime;
 
+        Pair<long[], Boolean> pair = null;
+        if (queryContext instanceof FragmentInstanceContext) {
+          pair =
+              ((FragmentInstanceContext) queryContext)
+                  .getMetadataIndexEntryCache()
+                  .getCachedDeviceMetadataIndexNodeOffset(deviceIndexInFI, filePath);
+          if (!pair.right) {
+            if (!ignoreNotExists) {
+              throw new IOException(
+                  "Device {" + key.device + "} is not in tsFileMetaData of " + filePath);
+            }
+            return null;
+          }
+        }
         TimeseriesMetadata timeseriesMetadata =
             reader.readTimeseriesMetadata(
-                key.device, key.measurement, ignoreNotExists, timeSeriesMetadataIoSizeRecorder);
+                key.device,
+                pair == null ? null : pair.left,
+                key.measurement,
+                ignoreNotExists,
+                timeSeriesMetadataIoSizeRecorder);
         return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
             ? null
             : timeseriesMetadata;
@@ -194,9 +215,24 @@ public class TimeSeriesMetadataCache {
             TsFileSequenceReader reader =
                 FileReaderManager.getInstance()
                     .get(filePath, true, timeSeriesMetadataIoSizeRecorder);
+            Pair<long[], Boolean> pair = null;
+            if (queryContext instanceof FragmentInstanceContext) {
+              pair =
+                  ((FragmentInstanceContext) queryContext)
+                      .getMetadataIndexEntryCache()
+                      .getCachedDeviceMetadataIndexNodeOffset(deviceIndexInFI, filePath);
+              if (!pair.right) {
+                if (!ignoreNotExists) {
+                  throw new IOException(
+                      "Device {" + key.device + "} is not in tsFileMetaData of " + filePath);
+                }
+                return null;
+              }
+            }
             List<TimeseriesMetadata> timeSeriesMetadataList =
                 reader.readTimeseriesMetadata(
                     key.device,
+                    pair == null ? null : pair.left,
                     key.measurement,
                     allSensors,
                     ignoreNotExists,

@@ -255,7 +255,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
         // construct AlignedSeriesScanUtil for next device
         constructAlignedSeriesScanUtil();
         queryDataSource.reset();
-        this.seriesScanUtil.initQueryDataSource(queryDataSource);
+        this.seriesScanUtil.initQueryDataSource(queryDataSource, getCurrentDeviceIndex());
       }
 
       if (currentDeviceIndex >= deviceCount) {
@@ -717,7 +717,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
         // construct AlignedSeriesScanUtil for next device
         constructAlignedSeriesScanUtil();
         queryDataSource.reset();
-        this.seriesScanUtil.initQueryDataSource(queryDataSource);
+        this.seriesScanUtil.initQueryDataSource(queryDataSource, getCurrentDeviceIndex());
       }
 
       if (currentDeviceIndex >= deviceCount) {
@@ -762,7 +762,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
     this.queryDataSource = (QueryDataSource) dataSource;
-    this.seriesScanUtil.initQueryDataSource(queryDataSource);
+    this.seriesScanUtil.initQueryDataSource(queryDataSource, getCurrentDeviceIndex());
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
   }
 
@@ -781,6 +781,11 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
     return timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.DATE_BIN_TIME_ITERATOR
         ? cachedRawDataSize
         : 0;
+  }
+
+  @Override
+  public int getCurrentDeviceIndex() {
+    return deviceIndexInFI == null ? -1 : deviceIndexInFI[currentDeviceIndex];
   }
 
   @Override

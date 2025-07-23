@@ -181,6 +181,11 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
+  public int getCurrentDeviceIndex() {
+    return deviceIndexInFI[currentDeviceIndex];
+  }
+
+  @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)

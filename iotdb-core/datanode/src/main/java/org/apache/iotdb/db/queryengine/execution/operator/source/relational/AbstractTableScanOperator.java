@@ -245,7 +245,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   public void initQueryDataSource(IQueryDataSource dataSource) {
     this.queryDataSource = (QueryDataSource) dataSource;
     if (this.seriesScanUtil != null) {
-      this.seriesScanUtil.initQueryDataSource(queryDataSource);
+      this.seriesScanUtil.initQueryDataSource(queryDataSource, getCurrentDeviceIndex());
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
@@ -260,7 +260,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
       // reset QueryDataSource
       queryDataSource.reset();
-      this.seriesScanUtil.initQueryDataSource(queryDataSource);
+      this.seriesScanUtil.initQueryDataSource(queryDataSource, getCurrentDeviceIndex());
       this.operatorContext.recordSpecifiedInfo(
           CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
     }
@@ -297,6 +297,11 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       Set<String> allSensors) {
     return new AlignedFullPath(
         deviceEntry.getDeviceID(), measurementColumnNames, measurementSchemas, allSensors);
+  }
+
+  @Override
+  public int getCurrentDeviceIndex() {
+    return deviceIndexInFI[currentDeviceIndex];
   }
 
   @Override

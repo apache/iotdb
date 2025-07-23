@@ -34,10 +34,26 @@ public abstract class AbstractDataSourceOperator extends AbstractSourceOperator
   // Using for building result tsBlock
   protected TsBlockBuilder resultTsBlockBuilder;
 
+  protected int firstDeviceIndexInFI;
+
+  protected int[] deviceIndexInFI;
+
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
-    seriesScanUtil.initQueryDataSource((QueryDataSource) dataSource);
+    seriesScanUtil.initQueryDataSource((QueryDataSource) dataSource, getCurrentDeviceIndex());
     resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
+  }
+
+  public int getCurrentDeviceIndex() {
+    return deviceIndexInFI[0];
+  }
+
+  public void setDeviceIndexArr(int[] arr) {
+    this.deviceIndexInFI = arr;
+  }
+
+  public void setFirstDeviceIndexInFI(int firstDeviceIndexInFI) {
+    this.firstDeviceIndexInFI = firstDeviceIndexInFI;
   }
 
   @Override

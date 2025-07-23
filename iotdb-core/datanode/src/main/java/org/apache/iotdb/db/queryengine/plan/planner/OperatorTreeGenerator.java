@@ -394,6 +394,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             scanOptionsBuilder.build());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
+    context
+        .getInstanceContext()
+        .getMetadataIndexEntryCache()
+        .addDevice(seriesScanOperator, seriesPath.getDeviceId());
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
     context.getDriverContext().setInputDriver(true);
 
@@ -499,6 +503,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             maxTsBlockLineNum);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
+    context
+        .getInstanceContext()
+        .getMetadataIndexEntryCache()
+        .addDevice(seriesScanOperator, seriesPath.getDeviceId());
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
     context.getDriverContext().setInputDriver(true);
 
@@ -686,6 +694,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             canUseStatistics);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggregateScanOperator);
+    context
+        .getInstanceContext()
+        .getMetadataIndexEntryCache()
+        .addDevice(aggregateScanOperator, seriesPath.getDeviceId());
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
     context.getDriverContext().setInputDriver(true);
     return aggregateScanOperator;
@@ -828,6 +840,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     ((DataDriverContext) context.getDriverContext())
         .addSourceOperator(seriesAggregationScanOperator);
+    context
+        .getInstanceContext()
+        .getMetadataIndexEntryCache()
+        .addDevice(seriesAggregationScanOperator, seriesPath.getDeviceId());
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
     context.getDriverContext().setInputDriver(true);
     return seriesAggregationScanOperator;
@@ -2958,6 +2974,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             !TSDataType.BLOB.equals(seriesPath.getSeriesType()));
     ((DataDriverContext) context.getDriverContext())
         .addSourceOperator(seriesAggregationScanOperator);
+    context
+        .getInstanceContext()
+        .getMetadataIndexEntryCache()
+        .addDevice(seriesAggregationScanOperator, seriesPath.getDeviceId());
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
     return seriesAggregationScanOperator;
   }
@@ -3003,6 +3023,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             canUseStatistics);
     ((DataDriverContext) context.getDriverContext())
         .addSourceOperator(seriesAggregationScanOperator);
+    context
+        .getInstanceContext()
+        .getMetadataIndexEntryCache()
+        .addDevice(seriesAggregationScanOperator, unCachedPath.getDeviceId());
     ((DataDriverContext) context.getDriverContext()).addPath(unCachedPath);
     return seriesAggregationScanOperator;
   }

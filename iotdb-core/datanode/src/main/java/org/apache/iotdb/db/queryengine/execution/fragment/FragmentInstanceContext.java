@@ -145,6 +145,9 @@ public class FragmentInstanceContext extends QueryContext {
   private long closedSeqFileNum = 0;
   private long closedUnseqFileNum = 0;
 
+  private DeviceMetadataIndexEntryCache metadataIndexEntryCache =
+      new DeviceMetadataIndexEntryCache();
+
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
     FragmentInstanceContext instanceContext =
@@ -325,6 +328,10 @@ public class FragmentInstanceContext extends QueryContext {
   // another thread, which will cause unsafe publication of this instance.
   private void initialize() {
     stateMachine.addStateChangeListener(this::updateStatsIfDone);
+  }
+
+  public DeviceMetadataIndexEntryCache getMetadataIndexEntryCache() {
+    return metadataIndexEntryCache;
   }
 
   private void updateStatsIfDone(FragmentInstanceState newState) {
