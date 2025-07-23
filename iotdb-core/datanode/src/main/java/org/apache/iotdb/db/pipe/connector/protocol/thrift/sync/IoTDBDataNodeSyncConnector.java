@@ -24,13 +24,10 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSslSyncConnector;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeSyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -38,47 +35,13 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.tsfile.utils.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeSyncConnector.class);
-
   protected IoTDBDataNodeSyncClientManager clientManager;
-
-  @Override
-  public void validate(final PipeParameterValidator validator) throws Exception {
-    super.validate(validator);
-
-    final IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
-    final Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
-
-    validator.validate(
-        empty -> {
-          try {
-            // Ensure the sink doesn't point to the thrift receiver on DataNode itself
-            return !NodeUrlUtils.containsLocalAddress(
-                givenNodeUrls.stream()
-                    .filter(tEndPoint -> tEndPoint.getPort() == iotdbConfig.getRpcPort())
-                    .map(TEndPoint::getIp)
-                    .collect(Collectors.toList()));
-          } catch (final UnknownHostException e) {
-            LOGGER.warn("Unknown host when checking pipe sink IP.", e);
-            return false;
-          }
-        },
-        String.format(
-            "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself, "
-                + "or unknown host when checking pipe sink IP.",
-            givenNodeUrls, new TEndPoint(iotdbConfig.getRpcAddress(), iotdbConfig.getRpcPort())));
-  }
 
   @Override
   protected IoTDBSyncClientManager constructClient(
