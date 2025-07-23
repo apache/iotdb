@@ -91,30 +91,27 @@ public class PipeTsFileResourceManager {
       throws IOException {
     // If the file is already a hardlink or copied file,
     // just increase reference count and return it
-    segmentLock.lock(file);
-    try {
-      if (increaseReferenceIfExists(file, pipeName, isTsFile)) {
-        return file;
-      }
-    } finally {
-      segmentLock.unlock(file);
+    if (increaseReferenceIfExists(file, pipeName, isTsFile)) {
+      return file;
     }
 
     // If the file is not a hardlink or copied file, check if there is a related hardlink or
     // copied file in pipe dir. if so, increase reference count and return it
     final File hardlinkOrCopiedFile =
         Objects.isNull(sourceFile) ? getHardlinkOrCopiedFileInPipeDir(file, pipeName) : file;
+
+    if (increaseReferenceIfExists(hardlinkOrCopiedFile, pipeName, isTsFile)) {
+      return getResourceMap(pipeName).get(hardlinkOrCopiedFile.getPath()).getFile();
+    }
+
+    // If the file is a tsfile, create a hardlink in pipe dir and will return it.
+    // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
+    final File source = Objects.isNull(sourceFile) ? file : sourceFile;
+    final File resultFile;
+
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
-      if (increaseReferenceIfExists(hardlinkOrCopiedFile, pipeName, isTsFile)) {
-        return getResourceMap(pipeName).get(hardlinkOrCopiedFile.getPath()).getFile();
-      }
-
-      // If the file is a tsfile, create a hardlink in pipe dir and will return it.
-      // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
-      final File source = Objects.isNull(sourceFile) ? file : sourceFile;
-
-      final File resultFile =
+      resultFile =
           isTsFile
               ? FileUtils.createHardLink(source, hardlinkOrCopiedFile)
               : FileUtils.copyFile(source, hardlinkOrCopiedFile);
@@ -130,25 +127,29 @@ public class PipeTsFileResourceManager {
         hardlinkOrCopiedFileToTsFilePublicResourceMap.put(
             resultFile.getPath(), new PipeTsFilePublicResource(resultFile));
       }
-
-      increasePublicReference(resultFile, pipeName, isTsFile);
-
-      return resultFile;
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
     }
+    increasePublicReference(resultFile, pipeName, isTsFile);
+    return resultFile;
   }
 
   private boolean increaseReferenceIfExists(
       final File file, final @Nullable String pipeName, final boolean isTsFile) throws IOException {
-    final String path = file.getPath();
-    final PipeTsFileResource resource = getResourceMap(pipeName).get(path);
-    if (resource != null) {
-      resource.increaseReferenceCount();
-      increasePublicReference(file, pipeName, isTsFile);
-      return true;
+    segmentLock.lock(file);
+    try {
+      final String path = file.getPath();
+      final PipeTsFileResource resource = getResourceMap(pipeName).get(path);
+      if (resource != null) {
+        resource.increaseReferenceCount();
+      } else {
+        return false;
+      }
+    } finally {
+      segmentLock.unlock(file);
     }
-    return false;
+    increasePublicReference(file, pipeName, isTsFile);
+    return true;
   }
 
   private void increasePublicReference(
@@ -221,12 +222,13 @@ public class PipeTsFileResourceManager {
       if (resource != null && resource.decreaseReferenceCount()) {
         getResourceMap(pipeName).remove(filePath);
       }
-      // Decrease the assigner's file to clear hard-link and memory cache
-      // Note that it does not exist for historical files
-      decreasePublicReferenceIfExists(hardlinkOrCopiedFile, pipeName);
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
     }
+
+    // Decrease the assigner's file to clear hard-link and memory cache
+    // Note that it does not exist for historical files
+    decreasePublicReferenceIfExists(hardlinkOrCopiedFile, pipeName);
   }
 
   private void decreasePublicReferenceIfExists(final File file, final @Nullable String pipeName) {

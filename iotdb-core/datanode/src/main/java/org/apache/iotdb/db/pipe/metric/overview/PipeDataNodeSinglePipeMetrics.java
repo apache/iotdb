@@ -404,18 +404,18 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   //////////////////////////// singleton ////////////////////////////
 
-  private static class PipeDataNodeRemainingEventAndTimeMetricsHolder {
+  private static class PipeDataNodeSinglePipeMetricsHolder {
 
     private static final PipeDataNodeSinglePipeMetrics INSTANCE =
         new PipeDataNodeSinglePipeMetrics();
 
-    private PipeDataNodeRemainingEventAndTimeMetricsHolder() {
+    private PipeDataNodeSinglePipeMetricsHolder() {
       // Empty constructor
     }
   }
 
   public static PipeDataNodeSinglePipeMetrics getInstance() {
-    return PipeDataNodeRemainingEventAndTimeMetricsHolder.INSTANCE;
+    return PipeDataNodeSinglePipeMetricsHolder.INSTANCE;
   }
 
   private PipeDataNodeSinglePipeMetrics() {
