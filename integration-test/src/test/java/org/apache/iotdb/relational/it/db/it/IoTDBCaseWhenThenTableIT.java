@@ -38,7 +38,6 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 
 // TODO:fix the different type exception
 @RunWith(IoTDBTestRunner.class)
