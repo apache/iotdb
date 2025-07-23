@@ -102,6 +102,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QueryDataSet'
+  /rest/v2/fastLastQuery:
+    post:
+      summary: executeFastLastQueryStatement
+      description: executeFastLastQueryStatement
+      operationId: executeFastLastQueryStatement
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrefixPathList'
+      responses:
+        "200":
+          description: QueryDataSet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryDataSet'
 
   /grafana/v2/login:
     get:
@@ -185,6 +202,14 @@ components:
           type: integer
           format: int32
 
+    PrefixPathList:
+      title: PrefixPathList
+      type: object
+      properties:
+        prefix_paths:
+          type: array
+          items:
+            type: string
     InsertTabletRequest:
       title: InsertTabletRequest
       type: object

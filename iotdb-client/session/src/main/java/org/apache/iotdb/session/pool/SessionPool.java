@@ -3168,6 +3168,33 @@ public class SessionPool implements ISessionPool {
   }
 
   @Override
+  public SessionDataSetWrapper executeFastLastDataQueryForOnePrefixPath(final List<String> prefixes)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      ISession session = getSession();
+      try {
+        SessionDataSet resp = session.executeFastLastDataQueryForOnePrefixPath(prefixes);
+        SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
+        occupy(session);
+        return wrapper;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        LOGGER.warn("executeLastDataQuery failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      } catch (Throwable e) {
+        LOGGER.error(EXECUTE_LASTDATAQUERY_ERROR, e);
+        putBack(session);
+        throw new RuntimeException(e);
+      }
+    }
+    // never go here
+    return null;
+  }
+
+  @Override
   public SessionDataSetWrapper executeLastDataQueryForOneDevice(
       String db, String device, List<String> sensors, boolean isLegalPathNodes)
       throws StatementExecutionException, IoTDBConnectionException {
