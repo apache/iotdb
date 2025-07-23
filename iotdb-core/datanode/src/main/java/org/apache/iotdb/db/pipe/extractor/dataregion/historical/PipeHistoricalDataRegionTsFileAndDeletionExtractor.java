@@ -51,6 +51,7 @@ import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -387,21 +388,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     }
   }
 
-  private void flushDataRegionAllTsFiles() {
-    final DataRegion dataRegion =
-        StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
-    if (Objects.isNull(dataRegion)) {
-      return;
-    }
-
-    dataRegion.writeLock("Pipe: create historical TsFile extractor");
-    try {
-      dataRegion.syncCloseAllWorkingTsFileProcessors();
-    } finally {
-      dataRegion.writeUnlock();
-    }
-  }
-
   /**
    * IoTV2 will only resend event that contains un-replicated local write data. So we only extract
    * ProgressIndex containing local writes for comparison to prevent misjudgment on whether
@@ -563,6 +549,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                           // Some resource may not be closed due to the control of
                           // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
                           !resource.isClosed()
+                                  && Optional.ofNullable(resource.getProcessor())
+                                      .map(TsFileProcessor::alreadyMarkedClosing)
+                                      .orElse(true)
                               || mayTsFileContainUnprocessedData(resource)
                                   && isTsFileResourceOverlappedWithTimeRange(resource)
                                   && mayTsFileResourceOverlappedWithPattern(resource)))
@@ -585,6 +574,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                           // Some resource may not be closed due to the control of
                           // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
                           !resource.isClosed()
+                                  && Optional.ofNullable(resource.getProcessor())
+                                      .map(TsFileProcessor::alreadyMarkedClosing)
+                                      .orElse(true)
                               || mayTsFileContainUnprocessedData(resource)
                                   && isTsFileResourceOverlappedWithTimeRange(resource)
                                   && mayTsFileResourceOverlappedWithPattern(resource)))
