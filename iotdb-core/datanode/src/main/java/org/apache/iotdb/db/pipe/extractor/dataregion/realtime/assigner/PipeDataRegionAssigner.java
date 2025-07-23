@@ -183,10 +183,7 @@ public class PipeDataRegionAssigner implements Closeable {
                         extractor.getPipeName(),
                         extractor.getCreationTime(),
                         extractor.getPipeTaskMeta(),
-                        extractor.getTreePattern(),
-                        extractor.getTablePattern(),
-                        extractor.getUserName(),
-                        extractor.isSkipIfNoPrivileges(),
+                        extractor.getPipePattern(),
                         extractor.getRealtimeDataExtractionStartTime(),
                         extractor.getRealtimeDataExtractionEndTime());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
