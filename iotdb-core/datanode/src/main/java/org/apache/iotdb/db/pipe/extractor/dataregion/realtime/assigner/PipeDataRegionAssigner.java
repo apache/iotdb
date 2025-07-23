@@ -31,11 +31,15 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSche
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.metric.source.PipeAssignerMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
+import java.util.Set;
 
 public class PipeDataRegionAssigner implements Closeable {
 
@@ -107,8 +111,11 @@ public class PipeDataRegionAssigner implements Closeable {
       return;
     }
 
-    matcher
-        .match(event)
+    final Pair<Set<PipeRealtimeDataRegionExtractor>, Set<PipeRealtimeDataRegionExtractor>>
+        matchedAndUnmatched = matcher.match(event);
+
+    matchedAndUnmatched
+        .getLeft()
         .forEach(
             extractor -> {
               if (disruptor.isClosed()) {
@@ -158,6 +165,36 @@ public class PipeDataRegionAssigner implements Closeable {
                 return;
               }
               extractor.extract(copiedEvent);
+            });
+
+    matchedAndUnmatched
+        .getRight()
+        .forEach(
+            extractor -> {
+              if (disruptor.isClosed()) {
+                return;
+              }
+
+              final EnrichedEvent innerEvent = event.getEvent();
+              if (innerEvent instanceof TabletInsertionEvent
+                  || innerEvent instanceof TsFileInsertionEvent) {
+                final ProgressReportEvent reportEvent =
+                    new ProgressReportEvent(
+                        extractor.getPipeName(),
+                        extractor.getCreationTime(),
+                        extractor.getPipeTaskMeta(),
+                        extractor.getPipePattern(),
+                        extractor.getRealtimeDataExtractionStartTime(),
+                        extractor.getRealtimeDataExtractionEndTime());
+                reportEvent.bindProgressIndex(event.getProgressIndex());
+                if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
+                  LOGGER.warn(
+                      "The reference count of the event {} cannot be increased, skipping it.",
+                      reportEvent);
+                  return;
+                }
+                extractor.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
+              }
             });
   }
 
