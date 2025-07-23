@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
@@ -632,5 +633,21 @@ public abstract class IoTDBConnector implements PipeConnector {
 
   public PipeReceiverStatusHandler statusHandler() {
     return receiverStatusHandler;
+  }
+
+  public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
+    // do nothing by default
+  }
+
+  public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
+    // do nothing by default
+  }
+
+  public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
+    // do nothing by default
+  }
+
+  public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
+    // do nothing by default
   }
 }

@@ -34,6 +34,7 @@ import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -335,6 +336,32 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     return outputPipeConnector instanceof IoTDBConnector
         ? ((IoTDBConnector) outputPipeConnector).getTotalCompressedSize()
         : 0;
+  }
+
+  public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
+    if (outputPipeConnector instanceof IoTDBConnector) {
+      ((IoTDBConnector) outputPipeConnector).setTabletBatchSizeHistogram(tabletBatchSizeHistogram);
+    }
+  }
+
+  public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
+    if (outputPipeConnector instanceof IoTDBConnector) {
+      ((IoTDBConnector) outputPipeConnector).setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
+    }
+  }
+
+  public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
+    if (outputPipeConnector instanceof IoTDBConnector) {
+      ((IoTDBConnector) outputPipeConnector)
+          .setTabletBatchTimeIntervalHistogram(tabletBatchTimeIntervalHistogram);
+    }
+  }
+
+  public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
+    if (outputPipeConnector instanceof IoTDBConnector) {
+      ((IoTDBConnector) outputPipeConnector)
+          .setTsFileBatchTimeIntervalHistogram(tsFileBatchTimeIntervalHistogram);
+    }
   }
 
   //////////////////////////// Error report ////////////////////////////
