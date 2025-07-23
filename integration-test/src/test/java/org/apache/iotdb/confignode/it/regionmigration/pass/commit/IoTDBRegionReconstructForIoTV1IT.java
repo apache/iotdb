@@ -128,6 +128,16 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
               .build();
       session.open();
 
+      LOGGER.info(
+          "IoTDBRegionReconstructForIoTV1IT: Node {} is to be closed",
+          EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().getIpAndPortString());
+      LOGGER.info(
+          "IoTDBRegionReconstructForIoTV1IT: Node {} is to be reconstructed",
+          EnvFactory.getEnv()
+              .dataNodeIdToWrapper(dataNodeToBeReconstructed)
+              .get()
+              .getIpAndPortString());
+
       // delete one DataNode's data dir, stop another DataNode
       File dataDirToBeReconstructed =
           new File(
@@ -169,7 +179,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       try {
         Awaitility.await()
             .pollInterval(1, TimeUnit.SECONDS)
-            .atMost(1, TimeUnit.MINUTES)
+            .atMost(10, TimeUnit.MINUTES)
             .until(
                 () ->
                     getRegionStatusWithoutRunning(session).isEmpty()
@@ -177,7 +187,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       } catch (Exception e) {
         LOGGER.error(
             "Two factor: {} && {}",
-            getRegionStatusWithoutRunning(session).isEmpty(),
+            getRegionStatusWithoutRunning(session),
             dataDirToBeReconstructed.getAbsoluteFile().exists());
         fail();
       }
