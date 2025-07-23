@@ -118,7 +118,7 @@ public class IoTDBExtractTableIT {
   }
 
   @Test
-  public void extractTimeFilterPushDownTest() {
+  public void extractFilterPushDownTest() {
     String[] expectedHeader = new String[] {"time", "s1"};
     String[] retArray =
         new String[] {
@@ -129,9 +129,14 @@ public class IoTDBExtractTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
-    // verify the pushdown result is same with non-pushdown
     tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from ts) > 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // verify the pushdown result is same with non-pushdown
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) + 1 > 2",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -140,12 +145,18 @@ public class IoTDBExtractTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
-    // verify the pushdown result is same with non-pushdown
     tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from ts) >= 2",
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    // verify the pushdown result is same with non-pushdown
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) + 1>= 3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
     retArray =
         new String[] {
           getTimeStrUTC8("2025-07-08T10:18:51") + ",2,",
@@ -163,6 +174,12 @@ public class IoTDBExtractTableIT {
         retArray,
         DATABASE_NAME);
     tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) + 1 > 10",
+        "+08:00",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from time) >= 10",
         "+08:00",
         expectedHeader,
@@ -170,6 +187,12 @@ public class IoTDBExtractTableIT {
         DATABASE_NAME);
     tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from ts) >= 10",
+        "+08:00",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts)+1>= 11",
         "+08:00",
         expectedHeader,
         retArray,
@@ -191,6 +214,11 @@ public class IoTDBExtractTableIT {
         retArray,
         DATABASE_NAME);
     tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) + 1< 2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from time) <= 0",
         expectedHeader,
         retArray,
@@ -201,12 +229,22 @@ public class IoTDBExtractTableIT {
         retArray,
         DATABASE_NAME);
     tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) +1<= 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from time) = 0",
         expectedHeader,
         retArray,
         DATABASE_NAME);
     tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from ts) = 0",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) +1= 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -227,6 +265,12 @@ public class IoTDBExtractTableIT {
         retArray,
         DATABASE_NAME);
     tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) + 1 < 10",
+        "+08:00",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from time) <= 8",
         "+08:00",
         expectedHeader,
@@ -239,6 +283,12 @@ public class IoTDBExtractTableIT {
         retArray,
         DATABASE_NAME);
     tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) +1<= 9",
+        "+08:00",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from time) = 8",
         "+08:00",
         expectedHeader,
@@ -246,6 +296,12 @@ public class IoTDBExtractTableIT {
         DATABASE_NAME);
     tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from ts) = 8",
+        "+08:00",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) +1= 9",
         "+08:00",
         expectedHeader,
         retArray,
@@ -266,6 +322,27 @@ public class IoTDBExtractTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) +1!= 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from time) between 1 and 2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) between 1 and 2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) +1 between 2 and 3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
     retArray =
         new String[] {
           getTimeStrUTC8("2025-07-08T09:18:51") + ",1,",
@@ -279,6 +356,30 @@ public class IoTDBExtractTableIT {
         DATABASE_NAME);
     tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from ts) != 8",
+        "+08:00",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) +1 != 9",
+        "+08:00",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from time) between 9 and 10",
+        "+08:00",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) between 9 and 10",
+        "+08:00",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM table1 where extract(hour from ts) +1 between 10 and 11",
         "+08:00",
         expectedHeader,
         retArray,
