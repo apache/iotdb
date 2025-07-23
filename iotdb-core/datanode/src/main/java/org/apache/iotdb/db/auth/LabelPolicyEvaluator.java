@@ -101,7 +101,7 @@ public class LabelPolicyEvaluator {
     }
 
     if (securityLabel == null) {
-      LOGGER.debug("Security label is null, policy evaluation fails");
+      LOGGER.debug("Security label is null, policy  evaluation fails");
       return false;
     }
 

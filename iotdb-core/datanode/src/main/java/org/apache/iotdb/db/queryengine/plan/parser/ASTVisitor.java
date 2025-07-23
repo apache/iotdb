@@ -4876,13 +4876,25 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     // Parse scope
     if (ctx.labelPolicyScope() != null) {
-      if (ctx.labelPolicyScope().READ() != null && ctx.labelPolicyScope().WRITE() != null) {
-        statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.READ_WRITE);
-      } else if (ctx.labelPolicyScope().READ() != null) {
+      // Get the raw text and normalize it
+      String scopeText = ctx.labelPolicyScope().getText().toUpperCase().trim();
+
+      // Parse based on the text content
+      if (scopeText.equals("READ")) {
         statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.READ);
-      } else if (ctx.labelPolicyScope().WRITE() != null) {
+      } else if (scopeText.equals("WRITE")) {
         statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.WRITE);
+      } else if (scopeText.equals("READ,WRITE") || scopeText.equals("READ , WRITE")) {
+        statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.READ_WRITE);
+      } else if (scopeText.equals("WRITE,READ") || scopeText.equals("WRITE , READ")) {
+        statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.WRITE_READ);
+      } else {
+        // Default to READ_WRITE if scope is not specified or unclear
+        statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.READ_WRITE);
       }
+    } else {
+      // Default to READ_WRITE if scope is not specified
+      statement.setScope(ShowUserLabelPolicyStatement.LabelPolicyScope.READ_WRITE);
     }
 
     return statement;

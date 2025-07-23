@@ -107,6 +107,7 @@ public class ShowUserLabelPolicyStatement extends Statement implements IConfigSt
   public enum LabelPolicyScope {
     READ,
     WRITE,
-    READ_WRITE
+    READ_WRITE,
+    WRITE_READ
   }
 }

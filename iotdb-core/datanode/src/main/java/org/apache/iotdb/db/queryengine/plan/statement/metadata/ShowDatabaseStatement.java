@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.db.auth.LbacPermissionChecker;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
@@ -94,7 +93,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
       final SettableFuture<ConfigTaskResult> future) {
 
     // Filter databases based on LBAC permissions using centralized checker
-    String currentUser = getCurrentUserName();
+    String currentUser = SessionManager.getInstance().getCurrSession().getUsername();
     Map<String, TDatabaseInfo> filteredDatabaseMap =
         LbacPermissionChecker.filterDatabaseInfoMapByLbac(databaseInfoMap, currentUser);
 
@@ -172,34 +171,8 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   }
 
   /**
-   * Get current user name from execution context This method retrieves the current user from the
-   * execution context which contains the session information
-   *
-   * @return Current user name or null if not available
-   */
-  private String getCurrentUserName() {
-    try {
-      // Try to get from SessionManager first
-      IClientSession currentSession = SessionManager.getInstance().getCurrSession();
-      if (currentSession != null) {
-        String userName = currentSession.getUsername();
-        LOGGER.debug("Retrieved current user from SessionManager: {}", userName);
-        return userName;
-      }
-
-      LOGGER.warn("Could not retrieve current user from session manager");
-      return null;
-    } catch (Exception e) {
-      LOGGER.warn("Failed to get current user name: {}", e.getMessage());
-      return null;
-    }
-  }
-
-  /**
-   * 构造只包含数据库名和安全标签的 TSBlock 添加LBAC过滤逻辑，只返回用户有权限访问的数据库
-   *
-   * @param securityLabelMap Map<数据库名, 标签字符串>
-   * @param future 返回结果
+   * @param securityLabelMap
+   * @param future
    */
   public void buildTSBlockFromSecurityLabel(
       Map<String, String> securityLabelMap, SettableFuture<ConfigTaskResult> future) {

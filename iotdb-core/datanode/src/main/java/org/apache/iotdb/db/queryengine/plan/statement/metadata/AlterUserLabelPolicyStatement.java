@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
@@ -92,6 +94,12 @@ public class AlterUserLabelPolicyStatement extends Statement implements IConfigS
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    // Prevent setting/dropping label policy for root user
+    if ("root".equalsIgnoreCase(this.username)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+          "Cannot set or drop label policy for root user.");
+    }
     return SUCCEED;
   }
 }

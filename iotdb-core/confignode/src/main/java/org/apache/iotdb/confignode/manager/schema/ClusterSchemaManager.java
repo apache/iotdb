@@ -204,7 +204,17 @@ public class ClusterSchemaManager {
               if (!securityLabelMap.isEmpty()) {
                 securityLabel =
                     securityLabelMap.entrySet().stream()
-                        .map(labelEntry -> labelEntry.getKey() + " = " + labelEntry.getValue())
+                        .map(
+                            labelEntry -> {
+                              String key = labelEntry.getKey();
+                              String value = labelEntry.getValue();
+                              // Add single quotes for string values, keep numeric values as is
+                              if (isNumericValue(value)) {
+                                return key + " = " + value;
+                              } else {
+                                return key + " = '" + value + "'";
+                              }
+                            })
                         .collect(Collectors.joining(" , "));
               }
             }
@@ -1740,5 +1750,20 @@ public class ClusterSchemaManager {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  /**
+   * Check if a string value is numeric
+   *
+   * @param value the string value to check
+   * @return true if the value is numeric, false otherwise
+   */
+  private boolean isNumericValue(String value) {
+    try {
+      Double.parseDouble(value);
+      return true;
+    } catch (NumberFormatException e) {
+      return false;
+    }
   }
 }

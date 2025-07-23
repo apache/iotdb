@@ -774,6 +774,15 @@ public class AuthorInfo implements SnapshotProcessor {
           return resp;
         }
 
+        // Skip root user
+        if ("root".equalsIgnoreCase(username)) {
+          resp.setStatus(
+              RpcUtils.getStatus(
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+                  "Cannot show label policy for root user."));
+          return resp;
+        }
+
         User user = authorizer.getUser(username);
         // Get both read and write policy expressions
         String readPolicyExpression = user.getReadLabelPolicyExpression();
@@ -781,43 +790,43 @@ public class AuthorInfo implements SnapshotProcessor {
 
         if (isReadWrite) {
           // For READ_WRITE scope, check both READ and WRITE policies
-          if (readPolicyExpression != null) {
-            TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
-            readPolicyInfo.setUsername(username);
-            readPolicyInfo.setScope("READ");
-            readPolicyInfo.setPolicyExpression(readPolicyExpression);
-            userLabelPolicyList.add(readPolicyInfo);
-          }
+          TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
+          readPolicyInfo.setUsername(username);
+          readPolicyInfo.setScope("READ");
+          readPolicyInfo.setPolicyExpression(
+              readPolicyExpression != null ? readPolicyExpression : "");
+          userLabelPolicyList.add(readPolicyInfo);
 
-          if (writePolicyExpression != null) {
-            TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
-            writePolicyInfo.setUsername(username);
-            writePolicyInfo.setScope("WRITE");
-            writePolicyInfo.setPolicyExpression(writePolicyExpression);
-            userLabelPolicyList.add(writePolicyInfo);
-          }
+          TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
+          writePolicyInfo.setUsername(username);
+          writePolicyInfo.setScope("WRITE");
+          writePolicyInfo.setPolicyExpression(
+              writePolicyExpression != null ? writePolicyExpression : "");
+          userLabelPolicyList.add(writePolicyInfo);
         } else if (scope.toUpperCase().contains("READ")) {
           // For READ scope only
-          if (readPolicyExpression != null) {
-            TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
-            policyInfo.setUsername(username);
-            policyInfo.setScope("READ");
-            policyInfo.setPolicyExpression(readPolicyExpression);
-            userLabelPolicyList.add(policyInfo);
-          }
+          TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+          policyInfo.setUsername(username);
+          policyInfo.setScope("READ");
+          policyInfo.setPolicyExpression(readPolicyExpression != null ? readPolicyExpression : "");
+          userLabelPolicyList.add(policyInfo);
         } else if (scope.toUpperCase().contains("WRITE")) {
           // For WRITE scope only
-          if (writePolicyExpression != null) {
-            TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
-            policyInfo.setUsername(username);
-            policyInfo.setScope("WRITE");
-            policyInfo.setPolicyExpression(writePolicyExpression);
-            userLabelPolicyList.add(policyInfo);
-          }
+          TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+          policyInfo.setUsername(username);
+          policyInfo.setScope("WRITE");
+          policyInfo.setPolicyExpression(
+              writePolicyExpression != null ? writePolicyExpression : "");
+          userLabelPolicyList.add(policyInfo);
         }
       } else {
-        // Show label policy for all users
+        // Show label policy for all users (excluding root)
         for (String user : authorizer.listAllUsers()) {
+          // Skip root user
+          if ("root".equalsIgnoreCase(user)) {
+            continue;
+          }
+
           User userObj = authorizer.getUser(user);
           // Get both read and write policy expressions
           String readPolicyExpression = userObj.getReadLabelPolicyExpression();
@@ -825,39 +834,35 @@ public class AuthorInfo implements SnapshotProcessor {
 
           if (isReadWrite) {
             // For READ_WRITE scope, check both READ and WRITE policies
-            if (readPolicyExpression != null) {
-              TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
-              readPolicyInfo.setUsername(user);
-              readPolicyInfo.setScope("READ");
-              readPolicyInfo.setPolicyExpression(readPolicyExpression);
-              userLabelPolicyList.add(readPolicyInfo);
-            }
+            TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
+            readPolicyInfo.setUsername(user);
+            readPolicyInfo.setScope("READ");
+            readPolicyInfo.setPolicyExpression(
+                readPolicyExpression != null ? readPolicyExpression : "");
+            userLabelPolicyList.add(readPolicyInfo);
 
-            if (writePolicyExpression != null) {
-              TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
-              writePolicyInfo.setUsername(user);
-              writePolicyInfo.setScope("WRITE");
-              writePolicyInfo.setPolicyExpression(writePolicyExpression);
-              userLabelPolicyList.add(writePolicyInfo);
-            }
+            TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
+            writePolicyInfo.setUsername(user);
+            writePolicyInfo.setScope("WRITE");
+            writePolicyInfo.setPolicyExpression(
+                writePolicyExpression != null ? writePolicyExpression : "");
+            userLabelPolicyList.add(writePolicyInfo);
           } else if (scope.toUpperCase().contains("READ")) {
             // For READ scope only
-            if (readPolicyExpression != null) {
-              TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
-              policyInfo.setUsername(user);
-              policyInfo.setScope("READ");
-              policyInfo.setPolicyExpression(readPolicyExpression);
-              userLabelPolicyList.add(policyInfo);
-            }
+            TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+            policyInfo.setUsername(user);
+            policyInfo.setScope("READ");
+            policyInfo.setPolicyExpression(
+                readPolicyExpression != null ? readPolicyExpression : "");
+            userLabelPolicyList.add(policyInfo);
           } else if (scope.toUpperCase().contains("WRITE")) {
             // For WRITE scope only
-            if (writePolicyExpression != null) {
-              TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
-              policyInfo.setUsername(user);
-              policyInfo.setScope("WRITE");
-              policyInfo.setPolicyExpression(writePolicyExpression);
-              userLabelPolicyList.add(policyInfo);
-            }
+            TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+            policyInfo.setUsername(user);
+            policyInfo.setScope("WRITE");
+            policyInfo.setPolicyExpression(
+                writePolicyExpression != null ? writePolicyExpression : "");
+            userLabelPolicyList.add(policyInfo);
           }
         }
       }
@@ -889,6 +894,13 @@ public class AuthorInfo implements SnapshotProcessor {
         return RpcUtils.getStatus(
             TSStatusCode.USER_NOT_EXIST.getStatusCode(),
             String.format("User [%s] does not exist.", username));
+      }
+
+      // Prevent setting label policy for root user
+      if ("root".equalsIgnoreCase(username)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+            "Cannot set label policy for root user.");
       }
 
       // Set the label policy using the authorizer
@@ -1008,6 +1020,13 @@ public class AuthorInfo implements SnapshotProcessor {
         return RpcUtils.getStatus(
             TSStatusCode.USER_NOT_EXIST.getStatusCode(),
             String.format("User [%s] does not exist.", username));
+      }
+
+      // Prevent dropping label policy for root user
+      if ("root".equalsIgnoreCase(username)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+            "Cannot drop label policy for root user.");
       }
 
       // Drop the label policy using the authorizer

@@ -336,13 +336,21 @@ public class DatabaseLabelFetcher {
             if (labelString != null && !labelString.trim().isEmpty()) {
               LOGGER.debug("Found security labels for database {}: {}", databasePath, labelString);
 
-              // Parse the label string format: "key1 = value1,key2 = value2"
+              // Parse the label string format: "key1 = 'value1',key2 = value2"
               Map<String, String> parsedLabels = new HashMap<>();
               String[] labelPairs = labelString.split(",");
               for (String pair : labelPairs) {
                 String[] keyValue = pair.split("=", 2);
                 if (keyValue.length == 2) {
-                  parsedLabels.put(keyValue[0].trim(), keyValue[1].trim());
+                  String key = keyValue[0].trim();
+                  String value = keyValue[1].trim();
+
+                  // Remove single quotes if present
+                  if (value.startsWith("'") && value.endsWith("'")) {
+                    value = value.substring(1, value.length() - 1);
+                  }
+
+                  parsedLabels.put(key, value);
                 }
               }
 
