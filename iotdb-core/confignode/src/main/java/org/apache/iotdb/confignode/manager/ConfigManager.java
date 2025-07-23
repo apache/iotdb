@@ -2926,7 +2926,7 @@ public class ConfigManager implements IManager {
                               table ->
                                   procedureManager
                                       .checkDuplicateTableTask(
-                                          entry.getKey(), null, table, null, null)
+                                          entry.getKey(), null, table, null, null, null)
                                       .getRight());
                       return true;
                     })

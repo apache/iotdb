@@ -71,8 +71,8 @@ class AINodeRPCService(threading.Thread):
         self._handler = handler
         processor = IAINodeRPCService.Processor(handler=self._handler)
         transport = TSocket.TServerSocket(
-            host=AINodeDescriptor().get_config().get_ain_inference_rpc_address(),
-            port=AINodeDescriptor().get_config().get_ain_inference_rpc_port(),
+            host=AINodeDescriptor().get_config().get_ain_rpc_address(),
+            port=AINodeDescriptor().get_config().get_ain_rpc_port(),
         )
         transport_factory = TTransport.TFramedTransportFactory()
         if AINodeDescriptor().get_config().get_ain_thrift_compression_enabled():

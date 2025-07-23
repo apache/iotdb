@@ -39,13 +39,13 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -126,26 +126,28 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   @Override
-  public Set<PipeRealtimeDataRegionExtractor> match(final PipeRealtimeEvent event) {
+  public Pair<Set<PipeRealtimeDataRegionExtractor>, Set<PipeRealtimeDataRegionExtractor>> match(
+      final PipeRealtimeEvent event) {
     final Set<PipeRealtimeDataRegionExtractor> matchedExtractors = new HashSet<>();
 
     lock.readLock().lock();
     try {
       if (extractors.isEmpty()) {
-        return matchedExtractors;
+        return new Pair<>(matchedExtractors, extractors);
       }
 
       // HeartbeatEvent will be assigned to all extractors
       if (event.getEvent() instanceof PipeHeartbeatEvent) {
-        return extractors;
+        return new Pair<>(extractors, Collections.EMPTY_SET);
       }
 
       // TODO: consider table pattern?
       // Deletion event will be assigned to extractors listened to it
       if (event.getEvent() instanceof PipeDeleteDataNodeEvent) {
-        return extractors.stream()
+        extractors.stream()
             .filter(PipeRealtimeDataRegionExtractor::shouldExtractDeletion)
-            .collect(Collectors.toSet());
+            .forEach(matchedExtractors::add);
+        return new Pair<>(matchedExtractors, findUnmatchedExtractors(matchedExtractors));
       }
 
       for (final Map.Entry<IDeviceID, String[]> entry : event.getSchemaInfo().entrySet()) {
@@ -171,11 +173,22 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
           break;
         }
       }
+
+      return new Pair<>(matchedExtractors, findUnmatchedExtractors(matchedExtractors));
     } finally {
       lock.readLock().unlock();
     }
+  }
 
-    return matchedExtractors;
+  private Set<PipeRealtimeDataRegionExtractor> findUnmatchedExtractors(
+      final Set<PipeRealtimeDataRegionExtractor> matchedExtractors) {
+    final Set<PipeRealtimeDataRegionExtractor> unmatchedExtractors = new HashSet<>();
+    for (final PipeRealtimeDataRegionExtractor extractor : extractors) {
+      if (!matchedExtractors.contains(extractor)) {
+        unmatchedExtractors.add(extractor);
+      }
+    }
+    return unmatchedExtractors;
   }
 
   protected void matchTreeModelEvent(

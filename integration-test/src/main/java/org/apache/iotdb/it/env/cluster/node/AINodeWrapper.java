@@ -111,7 +111,7 @@ public class AINodeWrapper extends AbstractNodeWrapper {
 
       // set attribute
       replaceAttribute(
-          new String[] {"ain_seed_config_node", "ain_inference_rpc_port"},
+          new String[] {"ain_seed_config_node", "ain_rpc_port"},
           new String[] {this.seedConfigNode, Integer.toString(getPort())},
           propertiesFile);
 
