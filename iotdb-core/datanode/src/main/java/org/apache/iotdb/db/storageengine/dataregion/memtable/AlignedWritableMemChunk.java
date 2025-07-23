@@ -845,7 +845,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       }
       IMeasurementSchema schemaInMemChunk = this.schemaList.get(measurementIndex);
       columnIndexList.add(
-          schemaInMemChunk.getType() == requiredMeasurementSchema.getType()
+          requiredMeasurementSchema.getType().isCompatible(schemaInMemChunk.getType())
               ? measurementIndex
               : -1);
     }
