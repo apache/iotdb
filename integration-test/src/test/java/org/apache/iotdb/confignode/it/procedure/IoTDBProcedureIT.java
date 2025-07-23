@@ -252,13 +252,13 @@ public class IoTDBProcedureIT {
                       EnvFactory.getEnv(),
                       Arrays.asList(
                           String.format(ttlSql, database, atomicLong.getAndIncrement())))) {}
-                  System.out.println("set TTL" + String.format(ttlSql, database, atomicLong.get()));
                   Thread.sleep(100L);
                 } catch (Exception e) {
                   break;
                 }
               }
             });
+    createTimeseriesThread.start();
     try {
       Awaitility.await()
           .atMost(1, TimeUnit.MINUTES)
