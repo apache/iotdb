@@ -22,7 +22,7 @@ import torch
 from transformers.modeling_outputs import MoeCausalLMOutputWithPast
 
 
-def _generate_req_id(length=10, charset=string.ascii_letters + string.digits) -> str:
+def generate_req_id(length=10, charset=string.ascii_letters + string.digits) -> str:
     """
     Generate a random req_id string of specified length.
     The length is 10 by default, with 10^{17} possible combinations.

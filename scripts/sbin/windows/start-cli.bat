@@ -106,7 +106,7 @@ IF "%JAVA_VERSION%" == "8" (
 ) ELSE (
     set ILLEGAL_ACCESS_PARAMS=--add-opens=java.base/java.lang=ALL-UNNAMED
 )
-
+set JAVA_OPTS=%JAVA_OPTS% -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8
 java %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
 set ret_code=%ERRORLEVEL%
 goto finally

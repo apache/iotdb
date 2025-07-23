@@ -134,7 +134,7 @@ class AINode:
                 raise e
 
         # Start the RPC service
-        self._rpc_handler = AINodeRPCServiceHandler(aiNode=self)
+        self._rpc_handler = AINodeRPCServiceHandler(ainode=self)
         self._rpc_service = AINodeRPCService(self._rpc_handler)
         self._rpc_service.start()
         self._rpc_service.join(1)
