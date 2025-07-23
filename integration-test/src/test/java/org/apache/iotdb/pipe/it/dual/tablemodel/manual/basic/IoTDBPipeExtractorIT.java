@@ -72,6 +72,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false);
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
+
     receiverEnv
         .getConfig()
         .getCommonConfig()
