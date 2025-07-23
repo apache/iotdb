@@ -19,65 +19,21 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapConnector;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.UnknownHostException;
 import java.util.HashMap;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @TreeModel
 @TableModel
 public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeAirGapConnector.class);
-
-  @Override
-  public void validate(final PipeParameterValidator validator) throws Exception {
-    super.validate(validator);
-
-    final PipeConfig pipeConfig = PipeConfig.getInstance();
-    final Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
-
-    validator.validate(
-        empty -> {
-          try {
-            // Ensure the sink doesn't point to the air gap receiver on DataNode itself
-            return !(pipeConfig.getPipeAirGapReceiverEnabled()
-                && NodeUrlUtils.containsLocalAddress(
-                    givenNodeUrls.stream()
-                        .filter(
-                            tEndPoint ->
-                                tEndPoint.getPort() == pipeConfig.getPipeAirGapReceiverPort())
-                        .map(TEndPoint::getIp)
-                        .collect(Collectors.toList())));
-          } catch (final UnknownHostException e) {
-            LOGGER.warn("Unknown host when checking pipe sink IP.", e);
-            return false;
-          }
-        },
-        String.format(
-            "One of the endpoints %s of the receivers is pointing back to the air gap receiver %s on sender itself, or unknown host when checking pipe sink IP.",
-            givenNodeUrls,
-            new TEndPoint(
-                IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-                pipeConfig.getPipeAirGapReceiverPort())));
-  }
 
   @Override
   protected boolean mayNeedHandshakeWhenFail() {
