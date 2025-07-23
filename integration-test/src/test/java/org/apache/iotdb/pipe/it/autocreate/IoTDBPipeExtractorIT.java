@@ -762,13 +762,6 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
-
-    boolean insertResult;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
