@@ -50,7 +50,7 @@ public class WALEntryCache implements WALCache {
   public WALEntryCache(long maxSize, Set<Long> memTablesNeedSearch) {
     this.bufferCache =
         Caffeine.newBuilder()
-            .maximumWeight(maxSize / 2)
+            .maximumWeight(maxSize)
             .weigher(
                 (Weigher<WALEntrySegmentPosition, ByteBuffer>)
                     (position, buffer) -> {

@@ -42,7 +42,7 @@ public class WALSegmentCache implements WALCache {
   public WALSegmentCache(long maxSize, Set<Long> memTablesNeedSearch) {
     this.bufferCache =
         Caffeine.newBuilder()
-            .maximumWeight(maxSize / 2)
+            .maximumWeight(maxSize)
             .weigher(
                 (Weigher<WALEntrySegmentPosition, ByteBuffer>)
                     (position, buffer) -> {
