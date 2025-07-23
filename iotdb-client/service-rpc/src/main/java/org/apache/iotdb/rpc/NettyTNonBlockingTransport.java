@@ -445,7 +445,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
     try {
       future.get();
     } catch (InterruptedException | ExecutionException e) {
-      throw new IOException(e);
+      return false;
     }
     synchronized (lock) {
       boolean dummyFinished = dummyClient.finishConnect();
