@@ -205,12 +205,12 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   public static TProcedureInfo toTProcedureInfo(Procedure<?> procedure) {
     TProcedureInfo procedureInfo = new TProcedureInfo();
     procedureInfo.setProcId(procedure.getProcId());
-    procedureInfo.setPhase(procedure.getState().name());
+    procedureInfo.setPhase(procedure.getCurrentStateForDisplay());
     procedureInfo.setSubmittedTime(procedure.getSubmittedTime());
     procedureInfo.setLastUpdateTime(procedure.getLastUpdate());
     procedureInfo.setParentProcId(procedure.getParentProcId());
     procedureInfo.setClassName(procedure.getClass().getSimpleName());
-    procedureInfo.setState(procedure.getCurrentStateForDisplay());
+    procedureInfo.setStatus(procedure.getState().name());
     procedureInfo.setProgress(procedure.getProgressForDisplay());
     return procedureInfo;
   }

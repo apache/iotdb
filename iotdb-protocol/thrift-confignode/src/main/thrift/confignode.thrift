@@ -639,7 +639,7 @@ struct TProcedureInfo {
   4: required i64 lastUpdateTime
   5: required i64 parentProcId
   6: required string className
-  7: required string state
+  7: required string status
   8: required string progress
 }
 
