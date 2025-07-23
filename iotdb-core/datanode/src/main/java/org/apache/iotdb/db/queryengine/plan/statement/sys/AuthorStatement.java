@@ -248,6 +248,18 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return AuthorityChecker.getTSStatus(
               false, "Cannot create user has same name with admin user");
         }
+
+        // Check if user is trying to set label policies during user creation
+        if ((readLabelPolicyExpression != null && !readLabelPolicyExpression.trim().isEmpty())
+            || (writeLabelPolicyExpression != null
+                && !writeLabelPolicyExpression.trim().isEmpty())) {
+          // Only root administrator can set label policies during user creation
+          if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+            return AuthorityChecker.getTSStatus(
+                false, "Only root administrator can set label policies during user creation");
+          }
+        }
+
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }

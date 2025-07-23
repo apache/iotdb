@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
@@ -106,6 +108,20 @@ public class SetUserLabelPolicyStatement extends Statement implements IConfigSta
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    // Only root administrator can manage label policies
+    if (!"root".equalsIgnoreCase(userName)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.NO_PERMISSION.getStatusCode(),
+          "Only root administrator can manage label policies.");
+    }
+
+    // Prevent setting label policy for root user
+    if ("root".equalsIgnoreCase(this.username)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+          "Cannot set label policy for root user.");
+    }
+
     return SUCCEED;
   }
 }

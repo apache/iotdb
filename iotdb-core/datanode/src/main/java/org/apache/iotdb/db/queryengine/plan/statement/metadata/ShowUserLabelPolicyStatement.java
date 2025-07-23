@@ -35,6 +35,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
@@ -100,6 +102,12 @@ public class ShowUserLabelPolicyStatement extends Statement implements IConfigSt
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    // Only root administrator can view label policies
+    if (!"root".equalsIgnoreCase(userName)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.NO_PERMISSION.getStatusCode(),
+          "Only root administrator can view label policies.");
+    }
     return SUCCEED;
   }
 

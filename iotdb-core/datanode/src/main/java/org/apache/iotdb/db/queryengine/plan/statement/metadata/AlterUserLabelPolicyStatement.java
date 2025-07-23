@@ -94,6 +94,13 @@ public class AlterUserLabelPolicyStatement extends Statement implements IConfigS
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    // Only root administrator can drop label policies
+    if (!"root".equalsIgnoreCase(userName)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.NO_PERMISSION.getStatusCode(),
+          "Only root administrator can drop label policies.");
+    }
+
     // Prevent setting/dropping label policy for root user
     if ("root".equalsIgnoreCase(this.username)) {
       return RpcUtils.getStatus(
