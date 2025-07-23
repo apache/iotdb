@@ -207,7 +207,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       return;
     }
 
-    TableModelUtils.createDataBaseAndTable(receiverEnv, "test", "test");
+    try {
+      TableModelUtils.createDataBaseAndTable(receiverEnv, "test", "test");
+    } catch (final Exception ignore) {
+      // Ignore because the db/table may be transferred because sender user may see these
+    }
 
     // Exception, block here
     TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, receiverEnv);
