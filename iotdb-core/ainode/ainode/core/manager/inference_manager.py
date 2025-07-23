@@ -30,6 +30,7 @@ from ainode.core.constant import TSStatusCode
 from ainode.core.exception import (
     InferenceModelInternalError,
     InvalidWindowArgumentError,
+    NumericalRangeException,
     runtime_error_extractor,
 )
 from ainode.core.inference.inference_request import (
@@ -40,7 +41,7 @@ from ainode.core.inference.inference_request_pool import InferenceRequestPool
 from ainode.core.inference.strategy.timer_sundial_inference_pipeline import (
     TimerSundialInferencePipeline,
 )
-from ainode.core.inference.utils import _generate_req_id
+from ainode.core.inference.utils import generate_req_id
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
 from ainode.core.model.sundial.configuration_sundial import SundialConfig
@@ -214,6 +215,20 @@ class InferenceManager:
             full_data = deserializer(raw)
             inference_attrs = extract_attrs(req)
 
+            predict_length = inference_attrs.get("predict_length", 96)
+            if (
+                predict_length
+                > AINodeDescriptor().get_config().get_ain_inference_max_predict_length()
+            ):
+                raise NumericalRangeException(
+                    "output_length",
+                    1,
+                    AINodeDescriptor()
+                    .get_config()
+                    .get_ain_inference_max_predict_length(),
+                    predict_length,
+                )
+
             if model_id == self.ACCELERATE_MODEL_ID and self.DEFAULT_POOL_SIZE > 0:
                 # TODO: Logic in this branch shall handle all LTSM inferences
                 # TODO: TSBlock -> Tensor codes should be unified
@@ -223,10 +238,10 @@ class InferenceManager:
                 # the inputs should be on CPU before passing to the inference request
                 inputs = torch.tensor(data).unsqueeze(0).float().to("cpu")
                 infer_req = InferenceRequest(
-                    req_id=_generate_req_id(),
+                    req_id=generate_req_id(),
                     inputs=inputs,
                     inference_pipeline=TimerSundialInferencePipeline(SundialConfig()),
-                    max_new_tokens=inference_attrs.get("predict_length", 96),
+                    max_new_tokens=predict_length,
                 )
                 infer_proxy = InferenceRequestProxy(infer_req.req_id)
                 with self._result_wrapper_lock:
