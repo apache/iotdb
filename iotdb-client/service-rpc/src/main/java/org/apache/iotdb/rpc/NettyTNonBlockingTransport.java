@@ -55,7 +55,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.security.KeyStore;
-import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -77,7 +77,8 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
   private volatile Channel channel;
   private final AtomicBoolean connected = new AtomicBoolean(false);
   private final AtomicBoolean connecting = new AtomicBoolean(false);
-  private final BlockingQueue<ByteBuf> readQueue = new LinkedBlockingQueue<>();
+  private ChannelFuture future;
+  private final LinkedBlockingQueue<ByteBuf> readQueue = new LinkedBlockingQueue<>();
   private final Object lock = new Object();
 
   // SSL configuration
@@ -225,7 +226,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
 
     ByteBuf byteBuf = null;
     try {
-      byteBuf = readQueue.poll();
+      byteBuf = readQueue.peek();
       if (byteBuf == null) {
         logger.debug("No data available for ByteBuffer read");
         return 0;
@@ -241,10 +242,11 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
       }
 
       if (byteBuf.readableBytes() > 0) {
-        ByteBuf remaining = byteBuf.slice();
-        remaining.retain();
-        readQueue.offer(remaining);
-        logger.debug("Put back {} remaining bytes", remaining.readableBytes());
+        logger.debug("ByteBuf remaining {} bytes", byteBuf.readableBytes());
+        // set null to avoid release in finally block
+        byteBuf = null;
+      } else {
+        readQueue.poll();
       }
 
       // Drain dummy channel to clear OP_READ
@@ -401,7 +403,7 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
       dummyClient.connect(new InetSocketAddress("localhost", dummyPort));
 
       // Initiate Netty connect
-      ChannelFuture future = bootstrap.connect(host, port);
+      future = bootstrap.connect(host, port);
       future.addListener(
           (GenericFutureListener<ChannelFuture>)
               future1 -> {
@@ -431,7 +433,6 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
                   connecting.set(false);
                 }
               });
-      future.get();
       return false; // Return false to indicate pending connect for dummy
     } catch (Exception e) {
       connecting.set(false);
@@ -441,6 +442,11 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
 
   @Override
   public boolean finishConnect() throws IOException {
+    try {
+      future.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw new IOException(e);
+    }
     synchronized (lock) {
       boolean dummyFinished = dummyClient.finishConnect();
       boolean isConnected = connected.get() && dummyFinished;
