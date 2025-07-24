@@ -394,9 +394,10 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
             .distinct()
             .collect(Collectors.toList());
     return new DeleteDataNode(
-        firstOne.getPlanNodeId(),
-        pathList,
-        firstOne.getDeleteStartTime(),
-        firstOne.getDeleteEndTime());
+            firstOne.getPlanNodeId(),
+            pathList,
+            firstOne.getDeleteStartTime(),
+            firstOne.getDeleteEndTime())
+        .setSearchIndex(firstOne.searchIndex);
   }
 }

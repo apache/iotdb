@@ -22,8 +22,8 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.service.metric.MetricService;
-
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
