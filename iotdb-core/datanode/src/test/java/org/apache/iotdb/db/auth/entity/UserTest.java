@@ -33,7 +33,7 @@ public class UserTest {
 
   @Test
   public void testUser() throws IllegalPathException {
-    User user = new User("user", "password");
+    User user = new User("user", "password123456");
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
     user.setPrivilegeList(Collections.singletonList(pathPrivilege));
     user.setPathPrivileges(

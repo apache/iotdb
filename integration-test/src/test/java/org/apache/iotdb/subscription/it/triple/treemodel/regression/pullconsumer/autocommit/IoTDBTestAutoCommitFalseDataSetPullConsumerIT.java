@@ -40,13 +40,17 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /***
  * If autoCommit is set to false, not using commit to submit consumption progress will lead to repeated consumption;
@@ -67,6 +71,9 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
   private String pattern = device + ".**";
   private static SubscriptionTreePullConsumer consumer;
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBTestAutoCommitFalseDataSetPullConsumerIT.class);
 
   @Override
   @Before
@@ -119,12 +126,9 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
     session_src.insertTablet(tablet);
   }
 
-  private void consume_data_noCommit(SubscriptionTreePullConsumer consumer, Session session)
-      throws InterruptedException,
-          TException,
-          IOException,
-          StatementExecutionException,
-          IoTDBConnectionException {
+  private int consume_data_noCommit(SubscriptionTreePullConsumer consumer, Session session)
+      throws InterruptedException, StatementExecutionException, IoTDBConnectionException {
+    int rowConsumed = 0;
     while (true) {
       Thread.sleep(1000);
       List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
@@ -135,12 +139,26 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
         for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
             it.hasNext(); ) {
           final Tablet tablet = it.next();
+          LOGGER.info(
+              "Inserting a tablet, device {}, times {}, measurements {}",
+              tablet.getDeviceId(),
+              Arrays.stream(tablet.getTimestamps())
+                  .boxed()
+                  .collect(Collectors.toList())
+                  .subList(0, tablet.getRowSize()),
+              tablet.getSchemas().stream()
+                  .map(IMeasurementSchema::getMeasurementName)
+                  .collect(Collectors.toList()));
           session.insertTablet(tablet);
+          rowConsumed +=
+              (int)
+                  Arrays.stream(tablet.getTimestamps(), 0, tablet.getRowSize()).distinct().count();
           System.out.println(
               FORMAT.format(new Date()) + " consume data no commit:" + tablet.getRowSize());
         }
       }
     }
+    return rowConsumed;
   }
 
   @Test
@@ -170,13 +188,14 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
 
     // Subscribe and then write data
     insert_data(System.currentTimeMillis());
-    consume_data_noCommit(consumer, session_dest2);
+    // a leader change may cause a progress-rollback, resulting in consuming more data
+    int dest2Consumed = consume_data_noCommit(consumer, session_dest2);
     System.out.println("src sql1: " + getCount(session_src, sql1));
     System.out.println("dest sql1: " + getCount(session_dest, sql1));
     System.out.println("dest2 sql1: " + getCount(session_dest2, sql1));
     check_count(4, sql1, "dest consume subscription data 2:s_0");
-    check_count2(4, sql1, "dest2 consumption subscription data 2:s_0");
-    check_count2(4, sql2, "dest2 consumption subscription data 2:s_1");
+    check_count2(dest2Consumed, sql1, "dest2 consumption subscription data 2:s_0");
+    check_count2(dest2Consumed, sql2, "dest2 consumption subscription data 2:s_1");
 
     //        insert_data(1706659300000L); //2024-01-31 08:00:00+08:00
     // Will consume again
@@ -186,6 +205,6 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
     System.out.println("dest2 sql1: " + getCount(session_dest2, sql1));
     check_count(4, sql1, "dest consumption subscription before data3:s_0");
     check_count(4, sql2, "dest consume subscription before data3:s_1");
-    check_count2(4, sql2, "dest2 consumption subscription before count 3 data:s_1");
+    check_count2(dest2Consumed, sql2, "dest2 consumption subscription before count 3 data:s_1");
   }
 }

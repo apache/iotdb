@@ -161,7 +161,7 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg3.**")) {
         while (resultSet.next()) {
           Assert.assertEquals("true", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
         }
@@ -170,7 +170,7 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
       statement.execute("DELETE timeseries root.sg3.d1.s1");
       statement.execute("DELETE timeseries root.sg3.d1.s2");
       statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) VALUES(1,1,2)");
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg3.**")) {
         while (resultSet.next()) {
           Assert.assertEquals("false", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
         }
@@ -191,7 +191,7 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
       statement.execute("DELETE timeseries root.sg3.d1.s1");
       statement.execute("DELETE timeseries root.sg3.d1.s2");
       statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg3.**")) {
         while (resultSet.next()) {
           Assert.assertEquals("true", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
         }

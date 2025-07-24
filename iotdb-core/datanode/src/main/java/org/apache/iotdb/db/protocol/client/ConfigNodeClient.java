@@ -704,6 +704,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TPermissionInfoResp getUser(String userName) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getUser(userName), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.checkUserPrivileges(req), resp -> !updateConfigNodeLeader(resp.status));

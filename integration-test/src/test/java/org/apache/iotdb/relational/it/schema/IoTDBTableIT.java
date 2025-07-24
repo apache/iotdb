@@ -69,6 +69,7 @@ public class IoTDBTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -627,14 +628,14 @@ public class IoTDBTableIT {
   public void testTableAuth() throws SQLException {
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("create user test 'password'");
+      adminStmt.execute("create user test 'password123456'");
       adminStmt.execute("create database db");
       adminStmt.execute("use db");
       adminStmt.execute("create table test (a tag, b attribute, c int32)");
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       Assert.assertThrows(SQLException.class, () -> userStmt.execute("select * from db.test"));
       TestUtils.assertResultSetEqual(
@@ -653,7 +654,7 @@ public class IoTDBTableIT {
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       try (final ResultSet resultSet = userStmt.executeQuery("SHOW DATABASES")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
@@ -677,7 +678,7 @@ public class IoTDBTableIT {
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       userStmt.execute("use db");
       userStmt.execute("drop table test");
@@ -960,13 +961,14 @@ public class IoTDBTableIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       // Test create & replace + restrict
-      statement.execute("create user testUser 'testUser'");
+      statement.execute("create user testUser 'testUser123456'");
     } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
     try (final Connection connection =
-            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
           "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
@@ -986,7 +988,8 @@ public class IoTDBTableIT {
     }
 
     try (final Connection connection =
-            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
           "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
@@ -1005,7 +1008,8 @@ public class IoTDBTableIT {
     }
 
     try (final Connection connection =
-            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
           "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
@@ -1024,7 +1028,8 @@ public class IoTDBTableIT {
     }
 
     try (final Connection connection =
-            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
           "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");

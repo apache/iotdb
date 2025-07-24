@@ -181,7 +181,7 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
         AWAIT.untilAsserted(
             () ->
                 TestUtils.assertSingleResultSetEqual(
-                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.db.**"),
                     new HashMap<String, String>() {
                       {
                         put("count(root.db.d1.s2)", "100");

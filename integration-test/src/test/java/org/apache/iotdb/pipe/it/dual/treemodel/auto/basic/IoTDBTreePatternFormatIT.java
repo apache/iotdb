@@ -66,7 +66,8 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
               "insert into root.db.d2(time, s) values (1, 1)",
-              "insert into root.db2.d1(time, s) values (1, 1)"))) {
+              "insert into root.db2.d1(time, s) values (1, 1)"),
+          null)) {
         return;
       }
       awaitUntilFlush(senderEnv);
@@ -97,7 +98,10 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
       final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,1.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s,root.db.d1.s1,", expectedResSet);
+          receiverEnv,
+          "select * from root.db.**",
+          "Time,root.db.d1.s,root.db.d1.s1,",
+          expectedResSet);
     }
   }
 
@@ -116,7 +120,8 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
               "insert into root.db.d2(time, s) values (1, 1)",
-              "insert into root.db2.d1(time, s) values (1, 1)"))) {
+              "insert into root.db2.d1(time, s) values (1, 1)"),
+          null)) {
         return;
       }
       awaitUntilFlush(senderEnv);
@@ -150,7 +155,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
       expectedResSet.add("1,1.0,1.0,1.0,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.db2.**,root.db.**",
           "Time,root.db2.d1.s,root.db.d1.s,root.db.d1.s1,",
           expectedResSet);
     }
@@ -171,7 +176,8 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
               "insert into root.db.d2(time, s) values (1, 1)",
-              "insert into root.db2.d1(time, s) values (1, 1)"))) {
+              "insert into root.db2.d1(time, s) values (1, 1)"),
+          null)) {
         return;
       }
       awaitUntilFlush(senderEnv);
@@ -204,7 +210,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
       expectedResSet.add("1,1.0,1.0,1.0,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.db2.**,root.db.**",
           "Time,root.db2.d1.s,root.db.d1.s,root.db.d1.s1,",
           expectedResSet);
     }

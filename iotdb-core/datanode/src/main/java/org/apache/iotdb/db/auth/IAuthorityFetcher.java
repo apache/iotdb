@@ -22,6 +22,7 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -79,4 +80,6 @@ public interface IAuthorityFetcher {
   IAuthorCache getAuthorCache();
 
   void refreshToken();
+
+  User getUser(String username);
 }

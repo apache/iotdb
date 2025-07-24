@@ -104,7 +104,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
               "alter table table1 drop column c",
               "alter table table1 set properties ttl=default",
               "insert into table1 (a, b, d) values(1, 1, 1)",
-              "create table noTransferTable(a id, b attribute, c int32) with (ttl=3000)"))) {
+              "create table noTransferTable(a id, b attribute, c int32) with (ttl=3000)"),
+          null)) {
         return;
       }
 
@@ -122,7 +123,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           receiverEnv, "show devices from table1", "a,b,", Collections.singleton("1,1,"), dbName);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
-          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "insert into table1 (a, b) values(1, 2)")) {
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "insert into table1 (a, b) values(1, 2)",
+          null)) {
         return;
       }
 
@@ -130,7 +135,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           receiverEnv, "show devices from table1", "a,b,", Collections.singleton("1,2,"), dbName);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
-          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "update table1 set b = '3'")) {
+          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "update table1 set b = '3'", null)) {
         return;
       }
 
@@ -138,7 +143,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           receiverEnv, "show devices from table1", "a,b,", Collections.singleton("1,3,"), dbName);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
-          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "delete from table1")) {
+          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "delete from table1", null)) {
         return;
       }
 
@@ -149,7 +154,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           dbName,
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,
-          "delete devices from table1 where a = '1'")) {
+          "delete devices from table1 where a = '1'",
+          null)) {
         return;
       }
 
@@ -177,7 +183,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           dbName);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
-          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "drop table table1")) {
+          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "drop table table1", null)) {
         return;
       }
 
@@ -189,7 +195,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           dbName);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
-          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "drop database test")) {
+          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "drop database test", null)) {
         return;
       }
 
@@ -239,7 +245,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
               "create database root.test",
               "alter database root.test with schema_region_group_num=2, data_region_group_num=3",
               "create timeSeries root.test.d1.s1 int32",
-              "insert into root.test.d1 (s1) values (1)"))) {
+              "insert into root.test.d1 (s1) values (1)"),
+          null)) {
         return;
       }
 
@@ -296,7 +303,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
               "create table table1(a id, b attribute, c int32) with (ttl=3000)",
               "alter table table1 add column d int64",
               "alter table table1 drop column b",
-              "alter table table1 set properties ttl=default"))) {
+              "alter table table1 set properties ttl=default"),
+          null)) {
         return;
       }
 
@@ -321,8 +329,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList(
-              "create user testUser 'password'", "grant all on root.** to user testUser"))) {
+          Arrays.asList("create user testUser 'password'", "grant all on root.** to user testUser"),
+          null)) {
         return;
       }
 
@@ -333,7 +341,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           senderEnv,
           Arrays.asList(
               "grant create on db.tb to user testUser",
-              "grant drop on database test to user testUser"))) {
+              "grant drop on database test to user testUser"),
+          null)) {
         return;
       }
 
@@ -367,7 +376,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           dbName,
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,
-          "grant alter on any to user testUser with grant option")) {
+          "grant alter on any to user testUser with grant option",
+          null)) {
         return;
       }
 

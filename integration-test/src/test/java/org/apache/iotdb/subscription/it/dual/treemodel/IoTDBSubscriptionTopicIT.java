@@ -184,7 +184,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         AWAIT.untilAsserted(
             () ->
                 TestUtils.assertSingleResultSetEqual(
-                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.db.**"),
                     new HashMap<String, String>() {
                       {
                         put("count(root.db.d1.s)", "100");
@@ -285,7 +285,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         AWAIT.untilAsserted(
             () ->
                 TestUtils.assertSingleResultSetEqual(
-                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.db.**"),
                     new HashMap<String, String>() {
                       {
                         put("count(root.db.d2.s)", "100");
@@ -386,7 +386,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         AWAIT.untilAsserted(
             () ->
                 TestUtils.assertResultSetEqual(
-                    TestUtils.executeQueryWithRetry(statement, "select * from root.**"),
+                    TestUtils.executeQueryWithRetry(statement, "select * from root.db.**"),
                     "Time,root.db.d1.at1,",
                     expectedResSet));
       }
@@ -506,7 +506,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         AWAIT.untilAsserted(
             () ->
                 TestUtils.assertSingleResultSetEqual(
-                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.db.**"),
                     new HashMap<String, String>() {
                       {
                         put("count(root.db.d1.s)", "300");

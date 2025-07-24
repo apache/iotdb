@@ -52,7 +52,8 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
           Arrays.asList(
               "create timeseries root.ln.wf01.wt01.temperature with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)",
               "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN, encoding=RLE, compression=SNAPPY",
-              "insert into root.ln.wf01.wt01(time, temperature, status) values (10000, 1, false)"))) {
+              "insert into root.ln.wf01.wt01(time, temperature, status) values (10000, 1, false)"),
+          null)) {
         return;
       }
 
@@ -89,7 +90,8 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
               "create timeSeries root.ln.wf01.wt01.string string",
               "create timeSeries root.ln.wf01.wt01.blob blob",
               "insert into root.ln.wf01.wt01(time, boolean, date, text, string, blob) values (20000, false, '2000-12-13', 'abc', 'def', X'f103')",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -107,7 +109,8 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
               "insert into root.ln.wf01.wt01(time, temperature, status) values (100000, 10, true)",
               "insert into root.ln.wf01.wt01(time, temperature, status) values (110000, 11, false)",
               "insert into root.ln.wf01.wt01(time, temperature, status) values (120000, 12, false)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 

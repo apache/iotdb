@@ -561,6 +561,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     return this;
   }
 
+  @Override
+  public CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword) {
+    setProperty("enforce_strong_password", String.valueOf(enforceStrongPassword));
+    return this;
+  }
+
   // For part of the log directory
   public String getClusterConfigStr() {
     return fromConsensusFullNameToAbbr(properties.getProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS))

@@ -2334,4 +2334,9 @@ public class TsFileProcessor {
           "{}: {} release flushQueryLock", dataRegionName, tsFileResource.getTsFile().getName());
     }
   }
+
+  @Override
+  public String toString() {
+    return "TsFileProcessor{" + "tsFileResource=" + tsFileResource + '}';
+  }
 }

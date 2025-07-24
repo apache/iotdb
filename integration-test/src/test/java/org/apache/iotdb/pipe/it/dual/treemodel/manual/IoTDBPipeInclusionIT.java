@@ -81,13 +81,14 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
               // banned
               "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "ALTER timeseries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
-              "ALTER timeseries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4"))) {
+              "ALTER timeseries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4"),
+          null)) {
         return;
       }
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "show timeseries",
+          "show timeseries root.ln.**",
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
           Collections.singleton(
               "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
@@ -95,12 +96,13 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.ln.wf01.wt01(time, status) values(now(), false)", "flush"))) {
+              "insert into root.ln.wf01.wt01(time, status) values(now(), false)", "flush"),
+          null)) {
         return;
       }
 
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.**", "Time,", Collections.emptySet());
+          receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
     }
   }
 
@@ -136,7 +138,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "create user `ln_write_user` 'write_pwd'")) {
+          senderEnv, "create user `ln_write_user` 'write_pwd123456'", null)) {
         return;
       }
 
@@ -179,9 +181,10 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "create user `ln_write_user` 'write_pwd'",
+              "create user `ln_write_user` 'write_pwd123456'",
               "grant manage_database,manage_user,manage_role,use_trigger,use_udf,use_cq,use_pipe on root.** to USER ln_write_user with grant option",
-              "GRANT READ_DATA, WRITE_DATA ON root.** TO USER ln_write_user;"))) {
+              "GRANT READ_DATA, WRITE_DATA ON root.** TO USER ln_write_user;"),
+          null)) {
         return;
       }
 
@@ -240,7 +243,8 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
           Arrays.asList(
               "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "insert into root.ln.wf01.wt01(time, status) values(0, true)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
@@ -251,19 +255,20 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
           Arrays.asList(
               "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
               "insert into root.ln.wf01.wt01(time, status1) values(0, true)",
-              "flush"))) {
+              "flush"),
+          null)) {
         return;
       }
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "delete from root.**")) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "delete from root.**", null)) {
         return;
       }
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.ln.**",
           "Time,root.ln.wf01.wt01.status1,",
           Collections.emptySet());
     }
