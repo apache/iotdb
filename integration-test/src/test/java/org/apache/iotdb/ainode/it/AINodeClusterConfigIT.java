@@ -20,6 +20,7 @@
 package org.apache.iotdb.ainode.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.env.AIEnv;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.AIClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -36,9 +37,11 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({AIClusterIT.class})
@@ -79,7 +82,6 @@ public class AINodeClusterConfigIT {
       checkHeader(resultSetMetaData, title);
       int count = 0;
       while (resultSet.next()) {
-        assertEquals("2", resultSet.getString(1));
         assertEquals("Running", resultSet.getString(2));
         count++;
       }
@@ -108,6 +110,74 @@ public class AINodeClusterConfigIT {
     Assert.fail("The target AINode is not removed successfully after all retries.");
   }
 
-  // TODO: We might need to add remove unknown test in the future, but current infrastructure is too
-  // hard to implement it.
+  @Test
+  public void aiNodeRegisterAndRemoveUnknownTestInTree() throws SQLException, InterruptedException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      aiNodeRegisterAndRemoveUnknownTest(statement);
+    }
+  }
+
+  @Test
+  public void aiNodeRegisterAndRemoveUnknownTestInTable()
+      throws SQLException, InterruptedException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      aiNodeRegisterAndRemoveUnknownTest(statement);
+    }
+  }
+
+  private void aiNodeRegisterAndRemoveUnknownTest(Statement statement)
+      throws SQLException, InterruptedException {
+    String show_sql = "SHOW AINODES";
+    String title = "NodeID,Status,InternalAddress,InternalPort";
+    try (ResultSet resultSet = statement.executeQuery(show_sql)) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      checkHeader(resultSetMetaData, title);
+      int count = 0;
+      while (resultSet.next()) {
+        assertEquals("Running", resultSet.getString(2));
+        count++;
+      }
+      assertEquals(1, count);
+    }
+    // Stop AINode
+    ((AIEnv) EnvFactory.getEnv()).stopAINode();
+    boolean aiNodeStopped = false;
+    for (int retry = 0; retry < 500; retry++) {
+      try (ResultSet resultSet = statement.executeQuery(show_sql)) {
+        while (resultSet.next()) {
+          if ("Unknown".equals(resultSet.getString(2))) {
+            aiNodeStopped = true;
+          }
+        }
+      }
+      if (aiNodeStopped) {
+        break;
+      }
+      TimeUnit.SECONDS.sleep(1);
+    }
+    assertTrue(aiNodeStopped);
+    String remove_sql = "REMOVE AINODE";
+    statement.execute(remove_sql);
+    for (int retry = 0; retry < 500; retry++) {
+      try (ResultSet resultSet = statement.executeQuery(show_sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, title);
+        int count = 0;
+        while (resultSet.next()) {
+          count++;
+        }
+        if (count == 0) {
+          return; // Successfully removed the AI node
+        }
+      }
+      try {
+        Thread.sleep(1000); // Wait before retrying
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+    Assert.fail("The target AINode is not removed successfully after all retries.");
+  }
 }

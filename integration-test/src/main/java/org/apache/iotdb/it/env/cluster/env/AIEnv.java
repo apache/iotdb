@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.it.env.cluster.env;
 
+import org.apache.iotdb.it.env.cluster.node.AINodeWrapper;
+
 public class AIEnv extends AbstractEnv {
   @Override
   public void initClusterEnvironment() {
@@ -34,5 +36,11 @@ public class AIEnv extends AbstractEnv {
   public void initClusterEnvironment(
       int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
     super.initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount, true);
+  }
+
+  public void stopAINode() {
+    for (AINodeWrapper aiNodeWrapper : this.aiNodeWrapperList) {
+      aiNodeWrapper.stop();
+    }
   }
 }
