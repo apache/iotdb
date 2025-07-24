@@ -523,8 +523,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       context.setFetchSchemaCost(schemaFetchCost);
       QueryPlanCostMetricSet.getInstance().recordTreePlanCost(SCHEMA_FETCHER, schemaFetchCost);
     }
-
-    analysis.setSchemaTree(schemaTree);
     return schemaTree;
   }
 

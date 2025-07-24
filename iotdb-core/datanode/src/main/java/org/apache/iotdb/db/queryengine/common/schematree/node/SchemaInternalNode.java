@@ -85,7 +85,10 @@ public class SchemaInternalNode extends SchemaNode {
 
   public void serialize(OutputStream outputStream) throws IOException {
     serializeChildren(outputStream);
+    serializeNodeOwnContent(outputStream);
+  }
 
+  public void serializeNodeOwnContent(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(getType(), outputStream);
     ReadWriteIOUtils.write(name, outputStream);
     ReadWriteIOUtils.write(children.size(), outputStream);

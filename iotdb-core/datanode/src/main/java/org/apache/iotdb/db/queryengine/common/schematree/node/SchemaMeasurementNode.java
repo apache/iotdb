@@ -143,6 +143,10 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
 
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
+    serializeNodeOwnContent(outputStream);
+  }
+
+  public void serializeNodeOwnContent(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(getType(), outputStream);
     ReadWriteIOUtils.write(name, outputStream);
     ReadWriteIOUtils.write(alias, outputStream);

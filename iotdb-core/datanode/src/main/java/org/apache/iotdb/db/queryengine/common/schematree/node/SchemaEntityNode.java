@@ -117,6 +117,11 @@ public class SchemaEntityNode extends SchemaInternalNode {
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
     serializeChildren(outputStream);
+    this.serializeNodeOwnContent(outputStream);
+  }
+
+  @Override
+  public void serializeNodeOwnContent(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(getType(), outputStream);
     ReadWriteIOUtils.write(name, outputStream);
     ReadWriteIOUtils.write(isAligned, outputStream);

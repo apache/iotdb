@@ -80,4 +80,6 @@ public abstract class SchemaNode implements ITreeNode {
   public abstract byte getType();
 
   public abstract void serialize(OutputStream outputStream) throws IOException;
+
+  public abstract void serializeNodeOwnContent(OutputStream outputStream) throws IOException;
 }
