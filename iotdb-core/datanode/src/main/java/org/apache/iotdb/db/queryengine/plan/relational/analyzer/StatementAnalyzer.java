@@ -230,6 +230,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -650,16 +651,17 @@ public class StatementAnalyzer {
               .collect(toImmutableList());
       analysis.registerTable(insert.getTable(), tableSchema, targetTable);
 
-      Set<String> tableColumns =
-          columns.stream().map(ColumnSchema::getName).collect(toImmutableSet());
-
-      Set<String> insertColumns;
+      LinkedHashSet<String> tableColumns =
+          columns.stream()
+              .map(ColumnSchema::getName)
+              .collect(Collectors.toCollection(LinkedHashSet::new));
+      LinkedHashSet<String> insertColumns;
       if (insert.getColumns().isPresent()) {
         insertColumns =
             insert.getColumns().get().stream()
                 .map(Identifier::getValue)
                 .map(column -> column.toLowerCase(ENGLISH))
-                .collect(toImmutableSet());
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         Set<String> columnNames = new HashSet<>();
         for (String insertColumn : insertColumns) {
           if (!tableColumns.contains(insertColumn)) {

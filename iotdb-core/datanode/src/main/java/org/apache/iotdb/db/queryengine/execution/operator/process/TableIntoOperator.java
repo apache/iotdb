@@ -44,12 +44,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 public class TableIntoOperator extends AbstractIntoOperator {
-  protected InsertTabletStatementGenerator insertTabletStatementGenerator;
+  protected final InsertTabletStatementGenerator insertTabletStatementGenerator;
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableIntoOperator.class);
-
-  private final PartialPath targetTable;
 
   public TableIntoOperator(
       OperatorContext operatorContext,
@@ -63,8 +61,8 @@ public class TableIntoOperator extends AbstractIntoOperator {
       boolean isAligned,
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
-    super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
-    this.targetTable = targetTable;
+    super(operatorContext, child, inputColumnTypes, intoOperationExecutor);
+    this.maxRowNumberInStatement = calculateMemAllowedMaxRowNumber(statementSizePerLine);
     insertTabletStatementGenerator =
         new TableInsertTabletStatementGenerator(
             databaseName,
@@ -75,6 +73,9 @@ public class TableIntoOperator extends AbstractIntoOperator {
             inputColumnCategories,
             isAligned,
             maxRowNumberInStatement);
+    // Build the sample TsBlock which contains only one row.
+    TsBlock tsBlock = constructResultTsBlock();
+    this.maxReturnSize = tsBlock.getRetainedSizeInBytes();
   }
 
   @Override
@@ -111,14 +112,10 @@ public class TableIntoOperator extends AbstractIntoOperator {
 
   @Override
   public long ramBytesUsed() {
-    System.out.println("***********************");
-    System.out.println("INSTANCE_SIZE: " + INSTANCE_SIZE);
-    System.out.println(
-        "insertTabletStatementGenerator: " + insertTabletStatementGenerator.ramBytesUsed());
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(targetTable)
+        + getTypeConvertorsBytes()
         + insertTabletStatementGenerator.ramBytesUsed();
   }
 

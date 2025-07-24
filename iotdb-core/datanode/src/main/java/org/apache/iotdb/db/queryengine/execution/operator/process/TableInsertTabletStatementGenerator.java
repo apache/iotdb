@@ -43,7 +43,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
   private final String databaseName;
   private final AtomicLong writtenCounter;
   private final int timeColumnIndex;
-  private final TsTableColumnCategory[] tsTableColumnCategories;
+  private final List<TsTableColumnCategory> tsTableColumnCategories;
 
   public TableInsertTabletStatementGenerator(
       String databaseName,
@@ -51,7 +51,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
       Map<String, InputLocation> measurementToInputLocationMap,
       Map<String, TSDataType> measurementToDataTypeMap,
       List<Type> sourceTypeConvertors,
-      List<TsTableColumnCategory> tsTableColumnCategoryList,
+      List<TsTableColumnCategory> tsTableColumnCategories,
       boolean isAligned,
       int rowLimit) {
     super(
@@ -62,12 +62,12 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
             .filter(entry -> !entry.getKey().equalsIgnoreCase(TIME_COLUMN_NAME))
             .map(Map.Entry::getValue)
             .toArray(InputLocation[]::new),
-        sourceTypeConvertors.toArray(new Type[0]),
+        sourceTypeConvertors,
         isAligned,
         rowLimit);
     this.databaseName = databaseName;
     this.writtenCounter = new AtomicLong(0);
-    this.tsTableColumnCategories = tsTableColumnCategoryList.toArray(new TsTableColumnCategory[0]);
+    this.tsTableColumnCategories = tsTableColumnCategories;
     this.timeColumnIndex =
         measurementToInputLocationMap.get(TIME_COLUMN_NAME).getValueColumnIndex();
     this.initialize();
@@ -89,7 +89,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
 
         bitMaps[i].unmark(rowCount);
         processColumn(
-            valueColumn, columns[i], dataTypes[i], sourceTypeConvertors[i], lastReadIndex);
+            valueColumn, columns[i], dataTypes[i], sourceTypeConvertors.get(i), lastReadIndex);
       }
 
       writtenCounter.getAndIncrement();
@@ -124,10 +124,10 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + super.ramBytesUsed()
-        + Integer.BYTES // timeColumnIndex
-        + RamUsageEstimator.sizeOf(databaseName)
-        + RamUsageEstimator.shallowSizeOf(writtenCounter)
-        + RamUsageEstimator.shallowSizeOf(tsTableColumnCategories);
+        + ramBytesUsedByTimeAndColumns()
+        + RamUsageEstimator.sizeOf(measurements)
+        + sizeOf(dataTypes, TSDataType.class)
+        + sizeOf(inputLocations, InputLocation.class)
+        + RamUsageEstimator.shallowSizeOfInstance(AtomicLong.class);
   }
 }

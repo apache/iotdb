@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.DataNodeInternalClient;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsSta
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import com.google.common.util.concurrent.Futures;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 
@@ -38,6 +40,9 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 
 public abstract class AbstractTreeIntoOperator extends AbstractIntoOperator {
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
   protected List<InsertTabletStatementGenerator> insertTabletStatementGenerators;
 
   protected AbstractTreeIntoOperator(
@@ -46,7 +51,13 @@ public abstract class AbstractTreeIntoOperator extends AbstractIntoOperator {
       List<TSDataType> inputColumnTypes,
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
-    super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
+    super(operatorContext, child, inputColumnTypes, intoOperationExecutor);
+    int memAllowedMaxRowNumber = calculateMemAllowedMaxRowNumber(statementSizePerLine);
+    this.maxRowNumberInStatement =
+        Math.min(
+            memAllowedMaxRowNumber,
+            IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit());
+    this.maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(

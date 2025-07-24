@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
@@ -35,6 +34,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Arrays;
+import java.util.List;
 
 public abstract class InsertTabletStatementGenerator implements Accountable {
   protected final int rowLimit;
@@ -43,7 +43,7 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
   protected final String[] measurements;
   protected final TSDataType[] dataTypes;
   protected final InputLocation[] inputLocations;
-  protected final Type[] sourceTypeConvertors;
+  protected final List<Type> sourceTypeConvertors;
 
   protected int rowCount = 0;
 
@@ -56,7 +56,7 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
       String[] measurements,
       TSDataType[] dataTypes,
       InputLocation[] inputLocations,
-      Type[] sourceTypeConvertors,
+      List<Type> sourceTypeConvertors,
       boolean isAligned,
       int rowLimit) {
     this.devicePath = devicePath;
@@ -208,18 +208,9 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
     return devicePath.toString();
   }
 
-  @Override
-  public long ramBytesUsed() {
-    return Integer.BYTES * 2 // rowLimit + rowCount
-        + Byte.BYTES // isAligned
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(devicePath)
-        + RamUsageEstimator.sizeOf(measurements)
-        + RamUsageEstimator.shallowSizeOf(dataTypes)
-        + RamUsageEstimator.shallowSizeOf(inputLocations)
-        + RamUsageEstimator.shallowSizeOf(sourceTypeConvertors)
-        + RamUsageEstimator.sizeOf(times)
-        + getColumnsBytes() // columns
-        + getBitMapsBytes(); // bitMaps
+  // calculate used ram of time, columns & bitmaps
+  protected long ramBytesUsedByTimeAndColumns() {
+    return RamUsageEstimator.sizeOf(times) + getColumnsBytes() + getBitMapsBytes();
   }
 
   public abstract long getWrittenCount();
@@ -263,6 +254,20 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
                 "data type %s is not supported when convert data at client",
                 valueColumn.getDataType()));
     }
+  }
+
+  protected long sizeOf(Object[] arr, Class<?> clazz) {
+    if (arr == null) {
+      return 0;
+    }
+    long size = RamUsageEstimator.shallowSizeOf(arr);
+    for (Object s : arr) {
+      if (s == null) {
+        continue;
+      }
+      size += RamUsageEstimator.shallowSizeOfInstance(clazz);
+    }
+    return size;
   }
 
   private long getBitMapsBytes() {

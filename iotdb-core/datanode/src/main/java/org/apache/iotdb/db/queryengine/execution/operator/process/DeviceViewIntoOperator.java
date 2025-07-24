@@ -185,6 +185,12 @@ public class DeviceViewIntoOperator extends AbstractTreeIntoOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + resultTsBlockBuilder.getRetainedSizeInBytes();
+        + getTypeConvertorsBytes()
+        + resultTsBlockBuilder.getRetainedSizeInBytes()
+        + (insertTabletStatementGenerators == null
+            ? 0
+            : insertTabletStatementGenerators.stream()
+                .mapToLong(InsertTabletStatementGenerator::ramBytesUsed)
+                .sum());
   }
 }

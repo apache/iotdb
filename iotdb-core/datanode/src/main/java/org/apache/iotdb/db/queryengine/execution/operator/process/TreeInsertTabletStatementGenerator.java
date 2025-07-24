@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGenerator {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(TableInsertTabletStatementGenerator.class);
+      RamUsageEstimator.shallowSizeOfInstance(TreeInsertTabletStatementGenerator.class);
 
   private final Map<String, AtomicLong> writtenCounter;
 
@@ -51,7 +51,7 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
         measurementToInputLocationMap.keySet().toArray(new String[0]),
         measurementToDataTypeMap.values().toArray(new TSDataType[0]),
         measurementToInputLocationMap.values().toArray(new InputLocation[0]),
-        sourceTypeConvertors.toArray(new Type[0]),
+        sourceTypeConvertors,
         isAligned,
         rowLimit);
     this.writtenCounter = new HashMap<>();
@@ -82,7 +82,7 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
             valueColumn,
             columns[i],
             dataTypes[i],
-            sourceTypeConvertors[valueColumnIndex],
+            sourceTypeConvertors.get(valueColumnIndex),
             lastReadIndex);
       }
 
@@ -110,6 +110,12 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
 
   @Override
   public long ramBytesUsed() {
-    return INSTANCE_SIZE + super.ramBytesUsed() + RamUsageEstimator.sizeOfMap(writtenCounter);
+    return INSTANCE_SIZE
+        + ramBytesUsedByTimeAndColumns()
+        + RamUsageEstimator.sizeOf(measurements)
+        + sizeOf(dataTypes, TSDataType.class)
+        + sizeOf(inputLocations, InputLocation.class)
+        + RamUsageEstimator.sizeOfMap(
+            writtenCounter, RamUsageEstimator.shallowSizeOfInstance(AtomicLong.class));
   }
 }
