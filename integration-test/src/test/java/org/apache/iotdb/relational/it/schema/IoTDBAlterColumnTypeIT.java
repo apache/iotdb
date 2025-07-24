@@ -165,7 +165,8 @@ public class IoTDBAlterColumnTypeIT {
         }
       }
 
-      // If don't execute the flush" operation, verify if result can get valid value, not be null when query memtable.
+      // If don't execute the flush" operation, verify if result can get valid value, not be null
+      // when query memtable.
       //      session.executeNonQueryStatement("FLUSH");
 
       SessionDataSet dataSet =
