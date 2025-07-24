@@ -38,8 +38,6 @@ public interface CommonConfig {
 
   CommonConfig setEncryptType(String encryptType);
 
-  CommonConfig setSaveEncryptKey(boolean saveEncryptKey);
-
   CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
 
   CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB);

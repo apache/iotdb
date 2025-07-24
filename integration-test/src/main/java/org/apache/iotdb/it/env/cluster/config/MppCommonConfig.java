@@ -104,12 +104,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setSaveEncryptKey(boolean saveEncryptKey) {
-    setProperty("save_encrypt_key", String.valueOf(saveEncryptKey));
-    return this;
-  }
-
-  @Override
   public CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     // udf_memory_budget_in_mb
     // udf_reader_transformer_collector_memory_proportion

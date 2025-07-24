@@ -83,13 +83,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setSaveEncryptKey(boolean saveEncryptKey) {
-    cnConfig.setProperty("encrypt_key_path", String.valueOf(saveEncryptKey));
-    dnConfig.setProperty("encrypt_key_path", String.valueOf(saveEncryptKey));
-    return this;
-  }
-
-  @Override
   public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     cnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
     dnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
