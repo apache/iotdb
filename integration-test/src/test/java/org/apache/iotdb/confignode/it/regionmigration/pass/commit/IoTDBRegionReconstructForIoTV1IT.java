@@ -65,17 +65,15 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       if (files != null) {
         for (File f : files) {
           if (!deleteTsFiles(f)) {
-            LOGGER.info("{} cannot be removed", f);
             return false;
-          } else {
-            LOGGER.info("{} is removed or ignored", f);
+          } else if (f.getName().endsWith(".tsfile")) {
+            LOGGER.info("{} is removed", f);
           }
         }
       }
     } else if (file.getName().endsWith(".tsfile")) {
       return file.delete();
     }
-    file.delete();
     return true;
   }
 
@@ -149,19 +147,17 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
       while (true) {
-        if (!deleteTsFiles(dataDirToBeReconstructed)) {
-          try (Connection flushConn =
-                  EnvFactory.getEnv()
-                      .getConnection(
-                          EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeReconstructed).get(),
-                          CommonDescriptor.getInstance().getConfig().getAdminName(),
-                          CommonDescriptor.getInstance().getConfig().getAdminPassword(),
-                          BaseEnv.TREE_SQL_DIALECT);
-              Statement flushStatement = flushConn.createStatement()) {
-            flushStatement.execute("FLUSH ON LOCAL");
-          }
-          deleteTsFiles(dataDirToBeReconstructed);
+        try (Connection flushConn =
+                EnvFactory.getEnv()
+                    .getConnection(
+                        EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeReconstructed).get(),
+                        CommonDescriptor.getInstance().getConfig().getAdminName(),
+                        CommonDescriptor.getInstance().getConfig().getAdminPassword(),
+                        BaseEnv.TREE_SQL_DIALECT);
+            Statement flushStatement = flushConn.createStatement()) {
+          flushStatement.execute("FLUSH ON LOCAL");
         }
+        deleteTsFiles(dataDirToBeReconstructed);
 
         // now, the query should throw exception
         try {
