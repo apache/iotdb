@@ -71,6 +71,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -445,21 +446,25 @@ public class PartitionCache {
    * @throws RuntimeException if failed to get regionReplicaSet from confignode
    * @throws StatementAnalyzeException if there are exception when try to get latestRegionRouteMap
    */
-  public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId consensusGroupId) {
-    TRegionReplicaSet result;
+  public List<TRegionReplicaSet> getRegionReplicaSet(List<TConsensusGroupId> consensusGroupIds) {
+    if (consensusGroupIds.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<TRegionReplicaSet> result;
     // try to get regionReplicaSet from cache
     regionReplicaSetLock.readLock().lock();
     try {
-      result = groupIdToReplicaSetMap.get(consensusGroupId);
+      result = getRegionReplicaSetInternal(consensusGroupIds);
     } finally {
       regionReplicaSetLock.readLock().unlock();
     }
-    if (result == null) {
+    if (result.isEmpty()) {
       // if not hit then try to get regionReplicaSet from confignode
       regionReplicaSetLock.writeLock().lock();
       try {
-        // verify that there are not hit in cache
-        if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
+        // double check after getting the write lock
+        result = getRegionReplicaSetInternal(consensusGroupIds);
+        if (result.isEmpty()) {
           try (ConfigNodeClient client =
               configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
             TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
@@ -471,23 +476,37 @@ public class PartitionCache {
                   resp.getStatus(),
                   resp.getRegionRouteMap());
             }
+            result = getRegionReplicaSetInternal(consensusGroupIds);
             // if confignode don't have then will throw RuntimeException
-            if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
+            if (result.isEmpty()) {
               // failed to get RegionReplicaSet from confignode
               throw new RuntimeException(
-                  "Failed to get replicaSet of consensus group[id= " + consensusGroupId + "]");
+                  "Failed to get replicaSet of consensus groups[ids= " + consensusGroupIds + "]");
             }
           } catch (ClientManagerException | TException e) {
             throw new StatementAnalyzeException(
                 "An error occurred when executing getRegionReplicaSet():" + e.getMessage());
           }
         }
-        result = groupIdToReplicaSetMap.get(consensusGroupId);
       } finally {
         regionReplicaSetLock.writeLock().unlock();
       }
     }
     // try to get regionReplicaSet by consensusGroupId
+    return result;
+  }
+
+  private List<TRegionReplicaSet> getRegionReplicaSetInternal(
+      List<TConsensusGroupId> consensusGroupIds) {
+    List<TRegionReplicaSet> result = new ArrayList<>(consensusGroupIds.size());
+    for (TConsensusGroupId groupId : consensusGroupIds) {
+      TRegionReplicaSet replicaSet = groupIdToReplicaSetMap.get(groupId);
+      if (replicaSet != null) {
+        result.add(replicaSet);
+      } else {
+        return Collections.emptyList();
+      }
+    }
     return result;
   }
 
@@ -562,6 +581,8 @@ public class PartitionCache {
         Map<TSeriesPartitionSlot, TConsensusGroupId> map =
             schemaPartitionTable.getSchemaPartitionMap();
         // check cache for each device
+        List<TSeriesPartitionSlot> seriesPartitionSlots = new ArrayList<>(entry.getValue().size());
+        List<TConsensusGroupId> consensusGroupIds = new ArrayList<>(entry.getValue().size());
         for (String device : entry.getValue()) {
           TSeriesPartitionSlot seriesPartitionSlot =
               partitionExecutor.getSeriesPartitionSlot(device);
@@ -574,9 +595,12 @@ public class PartitionCache {
             cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
             return null;
           }
-          TConsensusGroupId consensusGroupId = map.get(seriesPartitionSlot);
-          TRegionReplicaSet regionReplicaSet = getRegionReplicaSet(consensusGroupId);
-          regionReplicaSetMap.put(seriesPartitionSlot, regionReplicaSet);
+          seriesPartitionSlots.add(seriesPartitionSlot);
+          consensusGroupIds.add(map.get(seriesPartitionSlot));
+        }
+        List<TRegionReplicaSet> replicaSets = getRegionReplicaSet(consensusGroupIds);
+        for (int i = 0; i < replicaSets.size(); i++) {
+          regionReplicaSetMap.put(seriesPartitionSlots.get(i), replicaSets.get(i));
         }
       }
       logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
@@ -798,6 +822,41 @@ public class PartitionCache {
     }
     timePartitionSlotListMap.put(timePartitionSlot, regionReplicaSets);
     return true;
+  }
+
+  private static class TimeSlotRegionInfo {
+    final String databaseName;
+    final TSeriesPartitionSlot seriesPartitionSlot;
+    final TTimePartitionSlot timePartitionSlot;
+
+    TimeSlotRegionInfo(
+        String databaseName,
+        TSeriesPartitionSlot seriesPartitionSlot,
+        TTimePartitionSlot timePartitionSlot) {
+      this.databaseName = databaseName;
+      this.seriesPartitionSlot = seriesPartitionSlot;
+      this.timePartitionSlot = timePartitionSlot;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      TimeSlotRegionInfo that = (TimeSlotRegionInfo) o;
+      return Objects.equals(databaseName, that.databaseName)
+          && Objects.equals(seriesPartitionSlot, that.seriesPartitionSlot)
+          && Objects.equals(timePartitionSlot, that.timePartitionSlot);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = Objects.hashCode(databaseName);
+      result = 31 * result + Objects.hashCode(seriesPartitionSlot);
+      result = 31 * result + Objects.hashCode(timePartitionSlot);
+      return result;
+    }
   }
 
   /**
