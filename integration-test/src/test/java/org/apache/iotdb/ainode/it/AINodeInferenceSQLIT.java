@@ -79,7 +79,7 @@ public class AINodeInferenceSQLIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    // Init 1C1D1M cluster environment
+    // Init 1C1D1A cluster environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
     prepareData(WRITE_SQL_IN_TREE);
     prepareTableData(WRITE_SQL_IN_TABLE);
