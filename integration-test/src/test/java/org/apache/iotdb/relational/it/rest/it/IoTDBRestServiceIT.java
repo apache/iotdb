@@ -147,6 +147,7 @@ public class IoTDBRestServiceIT {
     testQuery();
     testQuery1();
     testQuery2();
+    inertDateAndBlob();
   }
 
   public void testQuery() {
@@ -277,7 +278,7 @@ public class IoTDBRestServiceIT {
       RestUtils.nonQuery(httpClient, port, sqlHandler("test", sql));
     }
     String json =
-        "{\"database\":\"test\",\"column_catogories\":[\"TAG\",\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
+        "{\"database\":\"test\",\"column_categories\":[\"TAG\",\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
     rightInsertTablet(json);
   }
 
@@ -289,7 +290,7 @@ public class IoTDBRestServiceIT {
       RestUtils.nonQuery(httpClient, port, sqlHandler("test", sql));
     }
     String json =
-        "{\"database\":\"\",\"column_catogories\":[\"TAG\",\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
+        "{\"database\":\"\",\"column_categories\":[\"TAG\",\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
     JsonObject result = RestUtils.insertTablet(httpClient, port, json);
     assertEquals(305, Integer.parseInt(result.get("code").toString()));
   }
@@ -302,11 +303,11 @@ public class IoTDBRestServiceIT {
       RestUtils.nonQuery(httpClient, port, sqlHandler("test", sql));
     }
     String json =
-        "{\"database\":\"test\",\"column_catogories\":[\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"id1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
+        "{\"database\":\"test\",\"column_categories\":[\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"id1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
     JsonObject result = RestUtils.insertTablet(httpClient, port, json);
     assertEquals(305, Integer.parseInt(result.get("code").toString()));
     assertEquals(
-        "column_names and column_catogories should have the same size,column_catogories and data_types should have the same size",
+        "column_names and column_categories should have the same size,column_categories and data_types should have the same size",
         result.get("message").getAsString());
   }
 
@@ -318,7 +319,7 @@ public class IoTDBRestServiceIT {
       RestUtils.nonQuery(httpClient, port, sqlHandler("test", sql));
     }
     String json =
-        "{\"database\":\"test\",\"column_catogories\":[\"TAG\",\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
+        "{\"database\":\"test\",\"column_categories\":[\"TAG\",\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
     JsonObject result = RestUtils.insertTablet(httpClient, port, json);
     assertEquals(305, Integer.parseInt(result.get("code").toString()));
     assertEquals(
@@ -349,5 +350,26 @@ public class IoTDBRestServiceIT {
       jsonObject.addProperty("sql", sqls[i]);
       RestUtils.nonQuery(httpClient, port, jsonObject.toString());
     }
+  }
+
+  public void inertDateAndBlob() {
+    RestUtils.nonQuery(httpClient, port, sqlHandler("", "create database test"));
+    String sql = "CREATE TABLE tt (time TIMESTAMP TIME,d Blob FIELD,e date FIELD)";
+    JsonObject result = RestUtils.nonQuery(httpClient, port, sqlHandler("test", sql));
+
+    assertEquals(200, Integer.parseInt(result.get("code").toString()));
+    String insertSql = "insert into tt(time,e,d) values(1,'2025-07-14',X'cafebabe')";
+    result = RestUtils.nonQuery(httpClient, port, sqlHandler("test", insertSql));
+    System.out.println(result);
+    assertEquals(200, Integer.parseInt(result.get("code").toString()));
+
+    JsonObject queryResult =
+        RestUtils.query(httpClient, port, sqlHandler("test", "select time,e,d from tt"));
+    JsonArray jsonArray = queryResult.get("values").getAsJsonArray();
+    System.out.println(jsonArray);
+    JsonArray jsonArray1 = jsonArray.get(0).getAsJsonArray();
+    assertEquals(1, jsonArray1.get(0).getAsInt());
+    assertEquals("2025-07-14", jsonArray1.get(1).getAsString());
+    assertEquals("0xcafebabe", jsonArray1.get(2).getAsString());
   }
 }

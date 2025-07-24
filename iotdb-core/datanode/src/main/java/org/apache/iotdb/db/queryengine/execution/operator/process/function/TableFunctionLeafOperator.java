@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionLeafProcessor;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -44,6 +45,7 @@ public class TableFunctionLeafOperator implements ProcessOperator {
   private final TsBlockBuilder blockBuilder;
 
   private final TableFunctionLeafProcessor processor;
+  private volatile boolean init = false;
 
   public TableFunctionLeafOperator(
       OperatorContext operatorContext,
@@ -51,8 +53,16 @@ public class TableFunctionLeafOperator implements ProcessOperator {
       List<TSDataType> outputDataTypes) {
     this.operatorContext = operatorContext;
     this.processor = processorProvider.getSplitProcessor();
-    this.processor.beforeStart();
     this.blockBuilder = new TsBlockBuilder(outputDataTypes);
+  }
+
+  @Override
+  public ListenableFuture<?> isBlocked() {
+    if (!init) {
+      init = true;
+      processor.beforeStart();
+    }
+    return NOT_BLOCKED;
   }
 
   @Override

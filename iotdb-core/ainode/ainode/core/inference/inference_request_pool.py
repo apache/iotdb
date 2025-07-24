@@ -23,7 +23,7 @@ import time
 import numpy as np
 import torch
 import torch.multiprocessing as mp
-from transformers import PretrainedConfig, PreTrainedModel
+from transformers import PretrainedConfig
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.inference.inference_request import InferenceRequest
@@ -46,7 +46,7 @@ class InferenceRequestPool(mp.Process):
     def __init__(
         self,
         pool_id: int,
-        model_id: int,
+        model_id: str,
         config: PretrainedConfig,
         request_queue: mp.Queue,
         result_queue: mp.Queue,
@@ -58,6 +58,7 @@ class InferenceRequestPool(mp.Process):
         self.config = config
         self.pool_kwargs = pool_kwargs
         self.model = None
+        self._model_manager = None
         self.device = None
 
         # TODO: A scheduler is necessary for better handling following queues

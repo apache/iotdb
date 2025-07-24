@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.rescon.memory;
 import org.slf4j.Logger;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -53,10 +54,23 @@ public abstract class AbstractPoolManager {
   }
 
   public synchronized Future<?> submit(Runnable task) {
+    if (pool == null) {
+      return CompletableFuture.runAsync(task);
+    }
     return pool.submit(task);
   }
 
   public synchronized <T> Future<T> submit(Callable<T> task) {
+    if (pool == null) {
+      return CompletableFuture.supplyAsync(
+          () -> {
+            try {
+              return task.call();
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+          });
+    }
     return pool.submit(task);
   }
 
@@ -91,7 +105,7 @@ public abstract class AbstractPoolManager {
 
   public abstract void start();
 
-  public void stop() {
+  public synchronized void stop() {
     if (pool != null) {
       close();
       pool = null;

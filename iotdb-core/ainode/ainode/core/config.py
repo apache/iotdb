@@ -31,6 +31,7 @@ from ainode.core.constant import (
     AINODE_CONF_GIT_FILE_NAME,
     AINODE_CONF_POM_FILE_NAME,
     AINODE_INFERENCE_BATCH_INTERVAL_IN_MS,
+    AINODE_INFERENCE_MAX_PREDICT_LENGTH,
     AINODE_LOG_DIR,
     AINODE_MODELS_DIR,
     AINODE_ROOT_CONF_DIRECTORY_NAME,
@@ -71,6 +72,9 @@ class AINodeConfig(object):
         # Inference configuration
         self._ain_inference_batch_interval_in_ms: int = (
             AINODE_INFERENCE_BATCH_INTERVAL_IN_MS
+        )
+        self._ain_inference_max_predict_length: int = (
+            AINODE_INFERENCE_MAX_PREDICT_LENGTH
         )
 
         # log directory
@@ -145,6 +149,14 @@ class AINodeConfig(object):
         self, ain_inference_batch_interval_in_ms: int
     ) -> None:
         self._ain_inference_batch_interval_in_ms = ain_inference_batch_interval_in_ms
+
+    def get_ain_inference_max_predict_length(self) -> int:
+        return self._ain_inference_max_predict_length
+
+    def set_ain_inference_max_predict_length(
+        self, ain_inference_max_predict_length: int
+    ) -> None:
+        self._ain_inference_max_predict_length = ain_inference_max_predict_length
 
     def get_ain_logs_dir(self) -> str:
         return self._ain_logs_dir

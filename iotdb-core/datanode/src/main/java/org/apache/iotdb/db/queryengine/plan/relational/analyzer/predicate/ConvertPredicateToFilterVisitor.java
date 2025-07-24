@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
@@ -47,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
@@ -54,6 +56,7 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.ValueFilterApi;
+import org.apache.tsfile.read.filter.operator.ExtractTimeFilterOperators;
 import org.apache.tsfile.utils.Binary;
 
 import javax.annotation.Nullable;
@@ -72,18 +75,24 @@ import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpressi
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor.getLongValue;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isExtractTimeColumn;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class ConvertPredicateToFilterVisitor
     extends PredicateVisitor<Filter, ConvertPredicateToFilterVisitor.Context> {
 
   @Nullable private final String timeColumnName;
   private final ConvertPredicateToTimeFilterVisitor timeFilterVisitor;
+  private final ZoneId zoneId;
+  private final TimeUnit currPrecision;
 
   public ConvertPredicateToFilterVisitor(
       @Nullable String timeColumnName, ZoneId zoneId, TimeUnit currPrecision) {
     this.timeColumnName = timeColumnName;
     this.timeFilterVisitor = new ConvertPredicateToTimeFilterVisitor(zoneId, currPrecision);
+    this.zoneId = zoneId;
+    this.currPrecision = currPrecision;
   }
 
   @Override
@@ -165,6 +174,48 @@ public class ConvertPredicateToFilterVisitor
       default:
         throw new IllegalArgumentException(
             String.format("Unsupported comparison operator %s", operator));
+    }
+  }
+
+  private Filter constructExtractCompareFilter(
+      ComparisonExpression.Operator operator,
+      SymbolReference symbolReference,
+      Extract.Field field,
+      Literal literal,
+      Context context) {
+
+    if (!context.isMeasurementColumn(symbolReference)) {
+      throw new IllegalStateException(
+          String.format("Only support measurement column in filter: %s", symbolReference));
+    }
+
+    int measurementIndex = context.getMeasurementIndex(symbolReference.getName());
+    long value = getValue(literal, TIMESTAMP);
+    ExtractTimeFilterOperators.Field field1 =
+        ExtractTimeFilterOperators.Field.values()[field.ordinal()];
+
+    switch (operator) {
+      case EQUAL:
+        return ValueFilterApi.extractValueEq(
+            measurementIndex, value, field1, zoneId, currPrecision);
+      case NOT_EQUAL:
+        return ValueFilterApi.extractValueNotEq(
+            measurementIndex, value, field1, zoneId, currPrecision);
+      case GREATER_THAN:
+        return ValueFilterApi.extractValueGt(
+            measurementIndex, value, field1, zoneId, currPrecision);
+      case GREATER_THAN_OR_EQUAL:
+        return ValueFilterApi.extractValueGtEq(
+            measurementIndex, value, field1, zoneId, currPrecision);
+      case LESS_THAN:
+        return ValueFilterApi.extractValueLt(
+            measurementIndex, value, field1, zoneId, currPrecision);
+      case LESS_THAN_OR_EQUAL:
+        return ValueFilterApi.extractValueLtEq(
+            measurementIndex, value, field1, zoneId, currPrecision);
+      default:
+        throw new IllegalArgumentException(
+            String.format("Unsupported extract comparison operator %s", operator));
     }
   }
 
@@ -273,6 +324,22 @@ public class ConvertPredicateToFilterVisitor
         && context.isMeasurementColumn((SymbolReference) right)) {
       return constructCompareFilter(
           node.getOperator().flip(), (SymbolReference) right, (Literal) left, context);
+    } else if (context.isExtractMeasurementColumn(left) && isLiteral(right)) {
+      Extract extract = (Extract) left;
+      return constructExtractCompareFilter(
+          node.getOperator(),
+          (SymbolReference) extract.getExpression(),
+          extract.getField(),
+          (Literal) right,
+          context);
+    } else if (isLiteral(left) && context.isExtractMeasurementColumn(right)) {
+      Extract extract = (Extract) right;
+      return constructExtractCompareFilter(
+          node.getOperator().flip(),
+          (SymbolReference) extract.getExpression(),
+          extract.getField(),
+          (Literal) left,
+          context);
     } else {
       throw new IllegalStateException(
           String.format("%s is not supported in value push down", node));
@@ -307,7 +374,10 @@ public class ConvertPredicateToFilterVisitor
 
     if (isTimeColumn(firstExpression, timeColumnName)
         || isTimeColumn(secondExpression, timeColumnName)
-        || isTimeColumn(thirdExpression, timeColumnName)) {
+        || isTimeColumn(thirdExpression, timeColumnName)
+        || isExtractTimeColumn(firstExpression, timeColumnName)
+        || isExtractTimeColumn(secondExpression, timeColumnName)
+        || isExtractTimeColumn(thirdExpression, timeColumnName)) {
       return timeFilterVisitor.process(node, null);
     }
 
@@ -331,6 +401,33 @@ public class ConvertPredicateToFilterVisitor
           (SymbolReference) thirdExpression,
           (Literal) firstExpression,
           context);
+    } else if (context.isExtractMeasurementColumn(firstExpression)) {
+      checkArgument(isLiteral(secondExpression));
+      checkArgument(isLiteral(thirdExpression));
+      long minValue = getLongValue(secondExpression);
+      long maxValue = getLongValue(thirdExpression);
+      Extract extract = (Extract) firstExpression;
+      int measurementIndex =
+          context.getMeasurementIndex(((SymbolReference) extract.getExpression()).getName());
+      ExtractTimeFilterOperators.Field field =
+          ExtractTimeFilterOperators.Field.values()[extract.getField().ordinal()];
+
+      if (minValue == maxValue) {
+        return ValueFilterApi.extractValueEq(
+            measurementIndex, minValue, field, zoneId, currPrecision);
+      }
+      return FilterFactory.and(
+          ImmutableList.of(
+              ValueFilterApi.extractValueGtEq(
+                  measurementIndex, minValue, field, zoneId, currPrecision),
+              ValueFilterApi.extractValueLtEq(
+                  measurementIndex, maxValue, field, zoneId, currPrecision)));
+    } else if (context.isExtractMeasurementColumn(secondExpression)) {
+      throw new IllegalStateException(
+          "Should not reach here before PredicateCombineIntoTableScanChecker support Extract push-down in third child");
+    } else if (context.isExtractMeasurementColumn(thirdExpression)) {
+      throw new IllegalStateException(
+          "Should not reach here before PredicateCombineIntoTableScanChecker support Extract push-down in third child");
     } else {
       throw new IllegalStateException(
           String.format("%s is not supported in value push down", node));
@@ -428,6 +525,15 @@ public class ConvertPredicateToFilterVisitor
     public boolean isMeasurementColumn(SymbolReference symbolReference) {
       ColumnSchema schema = schemaMap.get(Symbol.from(symbolReference));
       return schema != null && schema.getColumnCategory() == TsTableColumnCategory.FIELD;
+    }
+
+    public boolean isExtractMeasurementColumn(Expression expression) {
+      if (expression instanceof Extract
+          && ((Extract) expression).getExpression() instanceof SymbolReference) {
+        ColumnSchema schema = schemaMap.get(Symbol.from(((Extract) expression).getExpression()));
+        return schema != null && schema.getColumnCategory() == TsTableColumnCategory.FIELD;
+      }
+      return false;
     }
   }
 }

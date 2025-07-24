@@ -183,7 +183,7 @@ public class DataNodeShutdownHook extends Thread {
         .forEach(
             id -> {
               try {
-                DataRegionConsensusImpl.getInstance().triggerSnapshot(id, false);
+                DataRegionConsensusImpl.getInstance().triggerSnapshot(id, true);
               } catch (ConsensusException e) {
                 logger.warn(
                     "Something wrong happened while calling consensus layer's "

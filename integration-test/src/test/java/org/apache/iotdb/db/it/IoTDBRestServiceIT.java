@@ -385,7 +385,6 @@ public class IoTDBRestServiceIT {
   @Test
   public void insertAndQuery() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    //
     rightInsertTablet(httpClient);
     query(httpClient);
     queryGroupByLevel(httpClient);
@@ -717,7 +716,7 @@ public class IoTDBRestServiceIT {
         errorInsertRecords(httpClient, json, hp);
       }
     }
-
+    insertDate();
     try {
       httpClient.close();
     } catch (IOException e) {
@@ -2121,5 +2120,147 @@ public class IoTDBRestServiceIT {
     Assert.assertEquals(values1, valuesResult.get(0));
     Assert.assertEquals(values2.get(0), valuesResult.get(1).get(0));
     Assert.assertEquals(values3, valuesResult.get(2));
+  }
+
+  public void insertDate() {
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    HttpPost httpPost2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+    HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+    nonQuery(
+        httpClient,
+        "{\"sql\":\"CREATE TIMESERIES root.sg1.d1.s4 WITH DATATYPE=DATE, ENCODING=PLAIN, COMPRESSOR=SNAPPY\"}",
+        httpPost2);
+    nonQuery(
+        httpClient,
+        "{\"sql\":\"CREATE TIMESERIES root.sg1.d1.s5 WITH DATATYPE=Blob, ENCODING=PLAIN, COMPRESSOR=SNAPPY\"}",
+        httpPost2);
+
+    String sql =
+        "{\"sql\":\"insert into root.sg1.d1(time,s4,s5) values(1,'2025-07-14',\\\"X'cafebabe'\\\")\"}";
+    nonQuery(httpClient, sql, httpPost2);
+    queryDateAndBlob(httpClient);
+    queryDateAndBlobV2(httpClient);
+  }
+
+  public void queryDateAndBlob(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      String sql = "{\"sql\":\"select s4,s5 from root.sg1.d1\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+          new ArrayList<Object>() {
+            {
+              add("root.sg1.d1.s4");
+              add("root.sg1.d1.s5");
+            }
+          };
+      List<Object> timestamps =
+          new ArrayList<Object>() {
+            {
+              add(1);
+            }
+          };
+      List<Object> values1 =
+          new ArrayList<Object>() {
+            {
+              add("2025-07-14");
+            }
+          };
+      List<Object> values2 =
+          new ArrayList<Object>() {
+            {
+              add("0xcafebabe");
+            }
+          };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(timestamps, timestampsResult);
+      Assert.assertEquals(values1, valuesResult.get(0));
+      Assert.assertEquals(values2, valuesResult.get(1));
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void queryDateAndBlobV2(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      String sql = "{\"sql\":\"select s4,s5 from root.sg1.d1\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+          new ArrayList<Object>() {
+            {
+              add("root.sg1.d1.s4");
+              add("root.sg1.d1.s5");
+            }
+          };
+      List<Object> timestamps =
+          new ArrayList<Object>() {
+            {
+              add(1);
+            }
+          };
+      List<Object> values1 =
+          new ArrayList<Object>() {
+            {
+              add("2025-07-14");
+            }
+          };
+      List<Object> values2 =
+          new ArrayList<Object>() {
+            {
+              add("0xcafebabe");
+            }
+          };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(timestamps, timestampsResult);
+      Assert.assertEquals(values1, valuesResult.get(0));
+      Assert.assertEquals(values2, valuesResult.get(1));
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
   }
 }

@@ -133,6 +133,8 @@ public class TestMetadata implements Metadata {
 
   public static final String DB2 = "db2";
   public static final String TABLE2 = "table2";
+  private static final String S4 = "s4";
+  private static final ColumnMetadata S4_CM = new ColumnMetadata(S4, TIMESTAMP);
 
   public static final String TREE_VIEW_DB = "tree_view";
   public static final String DEVICE_VIEW_TEST_TABLE = "root.test.device_view";
@@ -191,23 +193,44 @@ public class TestMetadata implements Metadata {
       return Optional.of(new TableSchema(table.getTableName(), columnSchemaList));
     }
 
-    final List<ColumnSchema> columnSchemas =
-        Arrays.asList(
-            ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build(),
-            ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
-            ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
-            ColumnSchema.builder(TAG3_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
-            ColumnSchema.builder(ATTR1_CM)
-                .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
-                .build(),
-            ColumnSchema.builder(ATTR2_CM)
-                .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
-                .build(),
-            ColumnSchema.builder(S1_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
-            ColumnSchema.builder(S2_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
-            ColumnSchema.builder(S3_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
+    if (name.getObjectName().equalsIgnoreCase(TABLE1)) {
+      final List<ColumnSchema> columnSchemas =
+          Arrays.asList(
+              ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build(),
+              ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
+              ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
+              ColumnSchema.builder(TAG3_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
+              ColumnSchema.builder(ATTR1_CM)
+                  .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
+                  .build(),
+              ColumnSchema.builder(ATTR2_CM)
+                  .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
+                  .build(),
+              ColumnSchema.builder(S1_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+              ColumnSchema.builder(S2_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+              ColumnSchema.builder(S3_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
 
-    return Optional.of(new TableSchema(TABLE1, columnSchemas));
+      return Optional.of(new TableSchema(TABLE1, columnSchemas));
+    } else {
+      List<ColumnSchema> columnSchemas =
+          Arrays.asList(
+              ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build(),
+              ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
+              ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
+              ColumnSchema.builder(TAG3_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
+              ColumnSchema.builder(ATTR1_CM)
+                  .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
+                  .build(),
+              ColumnSchema.builder(ATTR2_CM)
+                  .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
+                  .build(),
+              ColumnSchema.builder(S1_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+              ColumnSchema.builder(S2_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+              ColumnSchema.builder(S3_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+              ColumnSchema.builder(S4_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
+
+      return Optional.of(new TableSchema(TABLE2, columnSchemas));
+    }
   }
 
   @Override
