@@ -116,6 +116,10 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
     return remainingEvents >= 0 ? remainingEvents : 0;
   }
 
+  public int getInsertNodeEventCount() {
+    return insertNodeEventCount.get();
+  }
+
   long getRemainingEvents() {
     final long remainingEvents =
         tsfileEventCount.get()
