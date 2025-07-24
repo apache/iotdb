@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,5 +130,14 @@ public class VisibilityUtils {
         "BROKEN INVARIANT: DETECT INVISIBLE EXTRACTOR PARAMETERS {}",
         extractorParameters.getAttribute());
     return Visibility.NONE;
+  }
+
+  public static Visibility calculateFromTopicConfig(final TopicConfig config) {
+    final boolean isTreeDialect =
+        config
+            .getStringOrDefault(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
+    return !isTreeDialect ? Visibility.TABLE_ONLY : Visibility.TREE_ONLY;
   }
 }

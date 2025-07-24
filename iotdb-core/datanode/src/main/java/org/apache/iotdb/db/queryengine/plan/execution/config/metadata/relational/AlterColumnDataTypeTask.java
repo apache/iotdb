@@ -37,8 +37,9 @@ public class AlterColumnDataTypeTask extends AbstractAlterOrDropTableTask {
       boolean tableIfExists,
       boolean ifColumnExists,
       String columnName,
-      TSDataType newType) {
-    super(database, tableName, queryId, tableIfExists);
+      TSDataType newType,
+      final boolean view) {
+    super(database, tableName, queryId, tableIfExists, view);
     this.columnName = columnName;
     this.newType = newType;
     this.ifColumnExists = ifColumnExists;
@@ -48,6 +49,6 @@ public class AlterColumnDataTypeTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterColumnDataType(
-        database, tableName, columnName, newType, queryId, tableIfExists, ifColumnExists);
+        database, tableName, columnName, newType, queryId, tableIfExists, ifColumnExists, view);
   }
 }

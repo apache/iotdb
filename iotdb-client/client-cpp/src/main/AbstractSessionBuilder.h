@@ -32,6 +32,9 @@ public:
     int fetchSize = 10000;
     std::string sqlDialect = "tree";
     std::string database = "";
+    bool enableAutoFetch = true;
+    bool enableRedirections = true;
+    bool enableRPCCompression = false;
 };
 
 #endif // IOTDB_ABSTRACTSESSIONBUILDER_H

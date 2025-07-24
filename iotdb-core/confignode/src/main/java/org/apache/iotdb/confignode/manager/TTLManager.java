@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -136,8 +137,12 @@ public class TTLManager {
    * @return the maximum ttl of the subtree of the corresponding database. return NULL_TTL if the
    *     TTL is not set or the database does not exist.
    */
-  public long getDatabaseMaxTTL(String database) {
-    return ttlInfo.getDatabaseMaxTTL(database);
+  public long getDatabaseMaxTTL(final String database) {
+    final long ttl = ttlInfo.getDatabaseMaxTTL(database);
+    return ttl == Long.MAX_VALUE || ttl < 0
+        ? ttl
+        : CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   /** Only used for upgrading from old database-level ttl to device-level ttl. */

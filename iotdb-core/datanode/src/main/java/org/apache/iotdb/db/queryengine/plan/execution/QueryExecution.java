@@ -621,8 +621,12 @@ public class QueryExecution implements IQueryExecution {
     // If RETRYING is triggered by this QueryExecution, the stateMachine.getFailureStatus() is also
     // not null. We should only return the failure status when QueryExecution is in Done state.
     // a partial insert also returns an error code but the QueryState is FINISHED
-    if (state.isDone() && stateMachine.getFailureStatus() != null) {
-      tsstatus = stateMachine.getFailureStatus();
+    if (state.isDone()) {
+      if (analysis.getFailStatus() != null) {
+        tsstatus = analysis.getFailStatus();
+      } else if (stateMachine.getFailureStatus() != null) {
+        tsstatus = stateMachine.getFailureStatus();
+      }
     }
 
     // collect redirect info to client for writing

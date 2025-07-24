@@ -49,7 +49,7 @@ def get_data2():
         user_name=username_,
         password=password_,
         fetch_size=1024,
-        time_zone="UTC+8",
+        time_zone="Asia/Shanghai",
         max_retry=3,
         use_ssl=use_ssl,
         ca_certs=ca_certs,
@@ -71,7 +71,7 @@ def get_table_data():
         username=username_,
         password=password_,
         fetch_size=1024,
-        time_zone="UTC+8",
+        time_zone="Asia/Shanghai",
         use_ssl=use_ssl,
         ca_certs=ca_certs,
     )

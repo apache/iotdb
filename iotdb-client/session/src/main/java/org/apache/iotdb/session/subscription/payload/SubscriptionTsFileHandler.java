@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
+import org.apache.iotdb.rpc.subscription.annotation.TableModel;
+
+import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
 
@@ -26,16 +29,19 @@ import java.io.IOException;
 
 public class SubscriptionTsFileHandler extends SubscriptionFileHandler {
 
-  public SubscriptionTsFileHandler(final String absolutePath) {
+  @Nullable private final String databaseName;
+
+  public SubscriptionTsFileHandler(final String absolutePath, @Nullable final String databaseName) {
     super(absolutePath);
+    this.databaseName = databaseName;
   }
 
   public TsFileReader openReader() throws IOException {
     return new TsFileReader(new TsFileSequenceReader(absolutePath));
   }
 
-  @Override
-  public SubscriptionTsFileHandler getTsFileHandler() {
-    return this;
+  @TableModel
+  public String getDatabaseName() {
+    return databaseName;
   }
 }

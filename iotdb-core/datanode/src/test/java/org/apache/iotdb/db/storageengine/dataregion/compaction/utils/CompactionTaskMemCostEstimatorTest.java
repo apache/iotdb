@@ -23,9 +23,13 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCrossSpaceCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.NewSizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -43,12 +47,13 @@ import java.util.List;
 
 public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
 
-  int compactionBatchSize =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
+  int compactionBatchSize;
 
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
+    compactionBatchSize =
+        IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
     super.setUp();
   }
 
@@ -116,39 +121,57 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testEstimateWithNegativeBatchSize() throws IOException {
-    TsFileResource resource = createEmptyFileAndResource(true);
-    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
-      writer.startChunkGroup("d1");
-      List<String> measurements = new ArrayList<>();
-      for (int i = 0; i < 10; i++) {
-        measurements.add("s" + i);
-      }
-      writer.generateSimpleAlignedSeriesToCurrentDevice(
-          measurements,
-          new TimeRange[] {new TimeRange(0, 10000)},
-          TSEncoding.PLAIN,
-          CompressionType.UNCOMPRESSED);
-      writer.endChunkGroup();
-
-      writer.startChunkGroup("d2");
-      for (int i = 0; i < 10; i++) {
-        writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-            "s" + i,
-            new TimeRange[] {new TimeRange(0, 10000)},
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED);
-      }
-      writer.endChunkGroup();
-      writer.endFile();
+  public void testRoughEstimate() throws IOException {
+    boolean cacheEnabled = AbstractCompactionEstimator.isGlobalFileInfoCacheEnabled();
+    if (!cacheEnabled) {
+      AbstractCompactionEstimator.enableFileInfoCacheForTest(100, 100);
     }
-    seqResources.add(resource);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(-1);
-    ReadChunkInnerCompactionEstimator estimator = new ReadChunkInnerCompactionEstimator();
-    long v1 = estimator.roughEstimateInnerCompactionMemory(seqResources);
-    Assert.assertTrue(v1 < 0);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(10);
-    long v2 = estimator.roughEstimateInnerCompactionMemory(seqResources);
-    Assert.assertTrue(v2 > 0);
+    try {
+      for (int i = 0; i < 10; i++) {
+        TsFileResource resource = createEmptyFileAndResource(false);
+        try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+          writer.startChunkGroup("d1");
+          List<String> measurements = new ArrayList<>();
+          for (int j = 0; j < 10; j++) {
+            measurements.add("s" + j);
+          }
+          writer.generateSimpleAlignedSeriesToCurrentDevice(
+              measurements,
+              new TimeRange[] {new TimeRange(0, 10000)},
+              TSEncoding.PLAIN,
+              CompressionType.UNCOMPRESSED);
+          writer.endChunkGroup();
+
+          writer.startChunkGroup("d2");
+          for (int j = 0; j < 10; j++) {
+            writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+                "s" + j,
+                new TimeRange[] {new TimeRange(0, 10000)},
+                TSEncoding.PLAIN,
+                CompressionType.UNCOMPRESSED);
+          }
+          writer.endChunkGroup();
+          writer.endFile();
+        }
+        seqResources.add(resource);
+      }
+      NewSizeTieredCompactionSelector selector =
+          new NewSizeTieredCompactionSelector(
+              COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext());
+      List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+          selector.selectInnerSpaceTask(seqResources);
+      Assert.assertEquals(1, innerSpaceCompactionTasks.size());
+      Assert.assertEquals(-1, innerSpaceCompactionTasks.get(0).getRoughMemoryCost());
+      long estimatedMemoryCost = innerSpaceCompactionTasks.get(0).getEstimatedMemoryCost();
+      Assert.assertTrue(estimatedMemoryCost > 0);
+
+      innerSpaceCompactionTasks = selector.selectInnerSpaceTask(seqResources);
+      Assert.assertEquals(1, innerSpaceCompactionTasks.size());
+      Assert.assertTrue(innerSpaceCompactionTasks.get(0).getRoughMemoryCost() > 0);
+    } finally {
+      if (!cacheEnabled) {
+        AbstractCompactionEstimator.disableFileInfoCacheForTest();
+      }
+    }
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.connector;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
@@ -29,6 +30,8 @@ import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeC
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -46,6 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeConnectorSubtaskManager {
 
@@ -78,8 +82,9 @@ public class PipeConnectorSubtaskManager {
 
     final boolean isDataRegionConnector =
         StorageEngine.getInstance()
-            .getAllDataRegionIds()
-            .contains(new DataRegionId(environment.getRegionId()));
+                .getAllDataRegionIds()
+                .contains(new DataRegionId(environment.getRegionId()))
+            || PipeRuntimeMeta.isSourceExternal(environment.getRegionId());
 
     final int connectorNum;
     boolean realTimeFirst = false;
@@ -104,16 +109,22 @@ public class PipeConnectorSubtaskManager {
       connectorNum = 1;
       attributeSortedString = "schema_" + attributeSortedString;
     }
+    environment.setAttributeSortedString(attributeSortedString);
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
+      AtomicInteger counter = new AtomicInteger(0);
       // Shared pending queue for all subtasks
       final UnboundedBlockingPendingQueue<Event> pendingQueue =
           realTimeFirst
               ? new PipeRealtimePriorityBlockingQueue()
               : new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
+
+      if (realTimeFirst) {
+        ((PipeRealtimePriorityBlockingQueue) pendingQueue).setOfferTsFileCounter(counter);
+      }
 
       for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
         final PipeConnector pipeConnector =
@@ -125,6 +136,9 @@ public class PipeConnectorSubtaskManager {
         // 1. Construct, validate and customize PipeConnector, and then handshake (create
         // connection) with the target
         try {
+          if (pipeConnector instanceof IoTDBDataRegionAsyncConnector) {
+            ((IoTDBDataRegionAsyncConnector) pipeConnector).setTransferTsFileCounter(counter);
+          }
           pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
           pipeConnector.customize(
               pipeConnectorParameters, new PipeTaskRuntimeConfiguration(environment));
@@ -188,6 +202,9 @@ public class PipeConnectorSubtaskManager {
     }
 
     PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, regionId);
+    // Reset IoTV2 replicate index to prevent index jumps. Do this when a consensus pipe no longer
+    // replicates data, since extractor and processor are already dropped now.
+    ReplicateProgressDataNodeManager.resetReplicateIndexForIoTV2(pipeName);
   }
 
   public synchronized void start(final String attributeSortedString) {

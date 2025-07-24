@@ -31,7 +31,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTree
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Measure;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.MatchNumberValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ScalarValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
@@ -42,11 +51,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.groupingSets;
 
@@ -235,6 +246,54 @@ public class SymbolMapper {
     return new OrderingScheme(newSymbols.build(), newOrderings.buildOrThrow());
   }
 
+  public WindowNode map(WindowNode node, PlanNode source) {
+    ImmutableMap.Builder<Symbol, WindowNode.Function> newFunctions = ImmutableMap.builder();
+    node.getWindowFunctions()
+        .forEach(
+            (symbol, function) -> {
+              List<Expression> newArguments =
+                  function.getArguments().stream().map(this::map).collect(toImmutableList());
+              WindowNode.Frame newFrame = map(function.getFrame());
+
+              newFunctions.put(
+                  map(symbol),
+                  new WindowNode.Function(
+                      function.getResolvedFunction(),
+                      newArguments,
+                      newFrame,
+                      function.isIgnoreNulls()));
+            });
+
+    ImmutableList<Symbol> newPartitionBy =
+        node.getSpecification().getPartitionBy().stream().map(this::map).collect(toImmutableList());
+    Optional<OrderingScheme> newOrderingScheme =
+        node.getSpecification().getOrderingScheme().map(this::map);
+    DataOrganizationSpecification newSpecification =
+        new DataOrganizationSpecification(newPartitionBy, newOrderingScheme);
+
+    return new WindowNode(
+        node.getPlanNodeId(),
+        source,
+        newSpecification,
+        newFunctions.buildOrThrow(),
+        node.getHashSymbol().map(this::map),
+        node.getPrePartitionedInputs().stream().map(this::map).collect(toImmutableSet()),
+        node.getPreSortedOrderPrefix());
+  }
+
+  private WindowNode.Frame map(WindowNode.Frame frame) {
+    return new WindowNode.Frame(
+        frame.getType(),
+        frame.getStartType(),
+        frame.getStartValue().map(this::map),
+        frame.getSortKeyCoercedForFrameStartComparison().map(this::map),
+        frame.getEndType(),
+        frame.getEndValue().map(this::map),
+        frame.getSortKeyCoercedForFrameEndComparison().map(this::map),
+        frame.getOriginalStartValue(),
+        frame.getOriginalEndValue());
+  }
+
   public TopKNode map(TopKNode node, List<PlanNode> source) {
     return map(node, source, node.getPlanNodeId());
   }
@@ -247,6 +306,67 @@ public class SymbolMapper {
         node.getCount(),
         node.getOutputSymbols().stream().map(this::map).collect(Collectors.toList()),
         node.isChildrenDataInOrder());
+  }
+
+  public PatternRecognitionNode map(PatternRecognitionNode node, PlanNode source) {
+    ImmutableMap.Builder<Symbol, Measure> newMeasures = ImmutableMap.builder();
+    node.getMeasures()
+        .forEach(
+            (symbol, measure) -> {
+              ExpressionAndValuePointers newExpression =
+                  map(measure.getExpressionAndValuePointers());
+              newMeasures.put(map(symbol), new Measure(newExpression, measure.getType()));
+            });
+
+    ImmutableMap.Builder<IrLabel, ExpressionAndValuePointers> newVariableDefinitions =
+        ImmutableMap.builder();
+    node.getVariableDefinitions()
+        .forEach((label, expression) -> newVariableDefinitions.put(label, map(expression)));
+
+    return new PatternRecognitionNode(
+        node.getPlanNodeId(),
+        source,
+        mapAndDistinct(node.getPartitionBy()),
+        node.getOrderingScheme(),
+        node.getHashSymbol().map(this::map),
+        newMeasures.buildOrThrow(),
+        node.getRowsPerMatch(),
+        node.getSkipToLabels(),
+        node.getSkipToPosition(),
+        node.getPattern(),
+        newVariableDefinitions.buildOrThrow());
+  }
+
+  private ExpressionAndValuePointers map(ExpressionAndValuePointers expressionAndValuePointers) {
+    // Map only the input symbols of ValuePointers. These are the symbols produced by the source
+    // node.
+    // Other symbols present in the ExpressionAndValuePointers structure are synthetic unique
+    // symbols
+    // with no outer usage or dependencies.
+    ImmutableList.Builder<ExpressionAndValuePointers.Assignment> newAssignments =
+        ImmutableList.builder();
+    for (ExpressionAndValuePointers.Assignment assignment :
+        expressionAndValuePointers.getAssignments()) {
+      ValuePointer newPointer;
+      if (assignment.getValuePointer() instanceof ClassifierValuePointer) {
+        newPointer = (ClassifierValuePointer) assignment.getValuePointer();
+      } else if (assignment.getValuePointer() instanceof MatchNumberValuePointer) {
+        newPointer = (MatchNumberValuePointer) assignment.getValuePointer();
+      } else if (assignment.getValuePointer() instanceof ScalarValuePointer) {
+        ScalarValuePointer pointer = (ScalarValuePointer) assignment.getValuePointer();
+        newPointer =
+            new ScalarValuePointer(pointer.getLogicalIndexPointer(), map(pointer.getInputSymbol()));
+      } else {
+        throw new IllegalArgumentException(
+            "Unsupported ValuePointer type: " + assignment.getValuePointer().getClass().getName());
+      }
+
+      newAssignments.add(
+          new ExpressionAndValuePointers.Assignment(assignment.getSymbol(), newPointer));
+    }
+
+    return new ExpressionAndValuePointers(
+        expressionAndValuePointers.getExpression(), newAssignments.build());
   }
 
   public static Builder builder() {

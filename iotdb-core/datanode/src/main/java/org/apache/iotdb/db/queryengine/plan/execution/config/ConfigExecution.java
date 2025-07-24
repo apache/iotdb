@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -159,8 +160,13 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   private void fail(final Throwable cause) {
-    if (!(cause instanceof IoTDBException)
-        || !userExceptionCodes.contains(((IoTDBException) cause).getErrorCode())) {
+    int errorCode = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
+    if (cause instanceof IoTDBException) {
+      errorCode = ((IoTDBException) cause).getErrorCode();
+    } else if (cause instanceof IoTDBRuntimeException) {
+      errorCode = ((IoTDBRuntimeException) cause).getErrorCode();
+    }
+    if (!userExceptionCodes.contains(errorCode)) {
       LOGGER.warn(
           "Failures happened during running ConfigExecution when executing {}.",
           Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
@@ -170,20 +176,15 @@ public class ConfigExecution implements IQueryExecution {
           "Failures happened during running ConfigExecution when executing {}, message: {}, status: {}",
           Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
           cause.getMessage(),
-          ((IoTDBException) cause).getErrorCode());
+          errorCode);
     }
     stateMachine.transitionToFailed(cause);
-    ConfigTaskResult result;
-    if (cause instanceof IoTDBException) {
-      result =
-          new ConfigTaskResult(TSStatusCode.representOf(((IoTDBException) cause).getErrorCode()));
-    } else if (cause instanceof StatementExecutionException) {
-      result =
-          new ConfigTaskResult(
-              TSStatusCode.representOf(((StatementExecutionException) cause).getStatusCode()));
-    } else {
-      result = new ConfigTaskResult(TSStatusCode.INTERNAL_SERVER_ERROR);
-    }
+    final ConfigTaskResult result =
+        cause instanceof StatementExecutionException
+            ? new ConfigTaskResult(
+                TSStatusCode.representOf(((StatementExecutionException) cause).getStatusCode()))
+            : new ConfigTaskResult(TSStatusCode.representOf(errorCode));
+
     taskFuture.set(result);
   }
 

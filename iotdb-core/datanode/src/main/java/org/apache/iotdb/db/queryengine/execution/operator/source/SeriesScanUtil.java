@@ -36,20 +36,19 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityM
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.CommonUtils;
 
-import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IMetadata;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.TsBlockUtil;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -81,6 +80,7 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUI
 public class SeriesScanUtil implements Accountable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SeriesScanUtil.class);
+  public static final StringArrayDeviceID EMPTY_DEVICE_ID = new StringArrayDeviceID("");
   protected final FragmentInstanceContext context;
 
   // The path of the target series which will be scanned.
@@ -187,22 +187,24 @@ public class SeriesScanUtil implements Accountable {
     this.dataSource = dataSource;
 
     // updated filter concerning TTL
-    long ttl;
-    // Only the data in the table model needs to retain rows where all value
-    // columns are null values, so we can use isIgnoreAllNullRows to
-    // differentiate the data of tree model and table model.
-    if (context.isIgnoreAllNullRows()) {
-      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
-      scanOptions.setTTL(ttl);
+    // IgnoreAllNullRows is false indicating that the current query is a table model query.
+    // In most cases, We can use this condition to determine from which model to obtain the ttl
+    // of the current device. However, it should be noted that for tree model data queried using
+    // table view, ttl also needs to be obtained from the tree model.
+    if (context.isIgnoreAllNullRows() || scanOptions.isTableViewForTreeModel()) {
+      if (deviceID != EMPTY_DEVICE_ID) {
+        long ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+        scanOptions.setTTLForTreeDevice(ttl);
+      }
     } else {
-      if (scanOptions.timeFilterNeedUpdatedByTll()) {
+      if (scanOptions.timeFilterNeedUpdatedByTtl()) {
         String databaseName = dataSource.getDatabaseName();
-        ttl =
+        long ttl =
             databaseName == null
                 ? Long.MAX_VALUE
                 : DataNodeTTLCache.getInstance()
                     .getTTLForTable(databaseName, deviceID.getTableName());
-        scanOptions.setTTL(ttl);
+        scanOptions.setTTLForTableDevice(ttl);
       }
     }
 
@@ -1305,18 +1307,6 @@ public class SeriesScanUtil implements Accountable {
         TsBlock tsBlock = data.getAllSatisfiedData();
         if (!ascending) {
           tsBlock.reverse();
-        }
-        StringBuilder tsBlockBuilder = new StringBuilder();
-        for (Column column : tsBlock.getAllColumns()) {
-          tsBlockBuilder.append("[");
-          for (int i = 0; i < column.getPositionCount(); i++) {
-            if (column instanceof TimeColumn) {
-              tsBlockBuilder.append(column.getLong(i)).append(",");
-            } else {
-              tsBlockBuilder.append(column.getTsPrimitiveType(i)).append(",");
-            }
-          }
-          tsBlockBuilder.append("] ");
         }
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug("[getAllSatisfiedPageData] TsBlock:{}", CommonUtils.toString(tsBlock));

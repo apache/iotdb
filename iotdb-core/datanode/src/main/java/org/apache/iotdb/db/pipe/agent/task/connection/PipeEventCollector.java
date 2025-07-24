@@ -35,7 +35,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDele
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -116,10 +115,11 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeRawTabletInsertionEvent sourceEvent) {
-    collectParsedRawTableEvent(
-        sourceEvent.shouldParseTimeOrPattern()
-            ? sourceEvent.parseEventWithPatternOrTime()
-            : sourceEvent);
+    if (sourceEvent.shouldParseTimeOrPattern()) {
+      collectParsedRawTableEvent(sourceEvent.parseEventWithPatternOrTime());
+    } else {
+      collectEvent(sourceEvent);
+    }
   }
 
   private void parseAndCollectEvent(final PipeTsFileInsertionEvent sourceEvent) throws Exception {
@@ -141,15 +141,14 @@ public class PipeEventCollector implements EventCollector {
     }
 
     try {
-      for (final TabletInsertionEvent parsedEvent : sourceEvent.toTabletInsertionEvents()) {
-        collectParsedRawTableEvent((PipeRawTabletInsertionEvent) parsedEvent);
-      }
+      sourceEvent.consumeTabletInsertionEventsWithRetry(
+          this::collectParsedRawTableEvent, "PipeEventCollector::parseAndCollectEvent");
     } finally {
       sourceEvent.close();
     }
   }
 
-  private boolean canSkipParsing4TsFileEvent(final PipeTsFileInsertionEvent sourceEvent) {
+  public static boolean canSkipParsing4TsFileEvent(final PipeTsFileInsertionEvent sourceEvent) {
     return !sourceEvent.shouldParseTimeOrPattern()
         || (sourceEvent.isTableModelEvent()
             && (sourceEvent.getTablePattern() == null

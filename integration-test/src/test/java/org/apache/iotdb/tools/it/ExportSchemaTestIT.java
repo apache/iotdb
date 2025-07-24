@@ -87,7 +87,13 @@ public class ExportSchemaTestIT extends AbstractScriptIT {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-schema.bat",
+            toolsPath
+                + File.separator
+                + "windows"
+                + File.separator
+                + "schema"
+                + File.separator
+                + "export-schema.bat",
             "-h",
             ip,
             "-p",
@@ -114,7 +120,7 @@ public class ExportSchemaTestIT extends AbstractScriptIT {
     ProcessBuilder builder =
         new ProcessBuilder(
             "bash",
-            toolsPath + File.separator + "export-schema.sh",
+            toolsPath + File.separator + "schema" + File.separator + "export-schema.sh",
             "-h",
             ip,
             "-p",

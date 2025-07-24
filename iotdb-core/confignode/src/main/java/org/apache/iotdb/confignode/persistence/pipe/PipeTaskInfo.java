@@ -594,6 +594,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             return; // pipe consensus pipe task will not change
                           }
 
+                          if (pipeMeta.getStaticMeta().isSourceExternal()) {
+                            // external source pipe tasks are not balanced here since non-leaders
+                            // don't know about RegionLeader Map and will be balanced in the meta
+                            // sync procedure
+                            LOGGER.info(
+                                "Pipe {} is using external source, skip region leader change. PipeHandleLeaderChangePlan: {}",
+                                pipeMeta.getStaticMeta().getPipeName(),
+                                plan.getConsensusGroupId2NewLeaderIdMap());
+                            return;
+                          }
+
                           final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
                               pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 
@@ -616,7 +627,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap.put(
                                   consensusGroupId.getId(),
-                                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
+                                  new PipeTaskMeta(
+                                      MinimumProgressIndex.INSTANCE,
+                                      newLeader,
+                                      consensusGroupId.getId(),
+                                      false));
                             }
                             // else:
                             // "The pipe task meta does not contain the data region group {} or
@@ -790,6 +805,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
                   // Mark the status of the pipe with exception as stopped
                   runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+                  runtimeMeta.onSetPipeDroppedOrStopped();
                   runtimeMeta.setIsStoppedByRuntimeException(true);
 
                   final Map<Integer, PipeRuntimeException> exceptionMap =

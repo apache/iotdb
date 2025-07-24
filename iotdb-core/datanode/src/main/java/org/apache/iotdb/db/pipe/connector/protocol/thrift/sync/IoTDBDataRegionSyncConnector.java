@@ -43,6 +43,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -118,11 +119,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     try {
       if (isTabletBatchModeEnabled) {
-        final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch =
-            tabletBatchBuilder.onEvent(tabletInsertionEvent);
-        if (Objects.nonNull(endPointAndBatch)) {
-          doTransferWrapper(endPointAndBatch);
-        }
+        tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        doTransferWrapper();
       } else {
         if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
           doTransferWrapper((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
@@ -242,9 +240,9 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   }
 
   private void doTransferWrapper() throws IOException, WriteProcessException {
-    for (final Pair<TEndPoint, PipeTabletEventBatch> nonEmptyBatch :
-        tabletBatchBuilder.getAllNonEmptyBatches()) {
-      doTransferWrapper(nonEmptyBatch);
+    for (final Pair<TEndPoint, PipeTabletEventBatch> nonEmptyAndShouldEmitBatch :
+        tabletBatchBuilder.getAllNonEmptyAndShouldEmitBatches()) {
+      doTransferWrapper(nonEmptyAndShouldEmitBatch);
     }
   }
 
@@ -578,8 +576,23 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   }
 
   @Override
+  public TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
+    if (Objects.isNull(compressionTimer) && Objects.nonNull(attributeSortedString)) {
+      compressionTimer =
+          PipeDataRegionConnectorMetrics.getInstance().getCompressionTimer(attributeSortedString);
+    }
+    return super.compressIfNeeded(req);
+  }
+
+  @Override
   public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
-    tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, regionId);
+    if (Objects.nonNull(tabletBatchBuilder)) {
+      tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, regionId);
+    }
+  }
+
+  public int getBatchSize() {
+    return Objects.nonNull(tabletBatchBuilder) ? tabletBatchBuilder.size() : 0;
   }
 
   @Override

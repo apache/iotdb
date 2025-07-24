@@ -55,7 +55,7 @@ public class OperatorContext implements Accountable {
   private final int operatorId;
   // It seems it's never used.
   private final PlanNodeId planNodeId;
-  private final String operatorType;
+  private String operatorType;
   private DriverContext driverContext;
 
   private long totalExecutionTimeInNanos = 0L;
@@ -94,6 +94,10 @@ public class OperatorContext implements Accountable {
 
   public String getOperatorType() {
     return operatorType;
+  }
+
+  public void setOperatorType(String operatorType) {
+    this.operatorType = operatorType;
   }
 
   public DriverContext getDriverContext() {

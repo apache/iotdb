@@ -21,7 +21,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "apache-iotdb-ainode"
-version = "2.0.0.dev"
+version = "2.0.5.dev"
 description = "Apache IoTDB AINode"
 readme = "README.md"
 authors = ["Apache Software Foundation <dev@iotdb.apache.org>"]
@@ -46,10 +46,10 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8, <3.13"
+python = ">=3.9, <3.13"
 numpy = "^1.21.4"
 pandas = "^1.3.5"
-torch = ">=2.2.0"
+torch = "=2.4.0"
 pylru = "^1.2.1"
 thrift = ">=0.14.0"
 dynaconf = "^3.1.11"
@@ -59,7 +59,17 @@ psutil = "^5.9.5"
 sktime = "^0.24.1"
 pmdarima = "^2.0.4"
 hmmlearn = "^0.3.0"
-apache-iotdb = "2.0.1b0"
+apache-iotdb = "2.0.4.dev0"
+einops = "^0.8.1"
+safetensors = "^0.5.1"
+huggingface_hub = "^0.30.1"
+black = "25.1.0"
+isort = "6.0.1"
+transformers = "==4.40.1"
+torchmetrics = ">=1.2.0"
 
 [tool.poetry.scripts]
 ainode = "ainode.core.script:main"
+
+[tool.isort]
+profile = "black"

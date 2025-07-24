@@ -34,9 +34,6 @@ public class TimePartitionUtils {
   private static long timePartitionOrigin =
       CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin();
 
-  private static String timestampPrecision =
-      CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
-
   /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
   private static long timePartitionInterval =
       CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
@@ -71,16 +68,6 @@ public class TimePartitionUtils {
           maxPartitionEndTime.subtract(bigTimePartitionInterval).longValue();
     } else {
       timePartitionUpperBoundWithoutOverflow = maxPartitionEndTime.longValue();
-    }
-  }
-
-  public static TTimePartitionSlot getCurrentTimePartitionSlot() {
-    if ("ms".equals(timestampPrecision)) {
-      return getTimePartitionSlot(System.currentTimeMillis());
-    } else if ("us".equals(timestampPrecision)) {
-      return getTimePartitionSlot(System.currentTimeMillis() * 1000);
-    } else {
-      return getTimePartitionSlot(System.currentTimeMillis() * 1000_000);
     }
   }
 

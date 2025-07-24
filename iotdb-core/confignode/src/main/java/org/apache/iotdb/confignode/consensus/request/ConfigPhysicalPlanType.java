@@ -191,7 +191,7 @@ public enum ConfigPhysicalPlanType {
   CommitSetSchemaTemplate((short) 813),
   ExtendSchemaTemplate((short) 814),
 
-  /* Table */
+  /* Table or View */
   PreCreateTable((short) 850),
   RollbackCreateTable((short) 851),
   CommitCreateTable((short) 852),
@@ -209,8 +209,19 @@ public enum ConfigPhysicalPlanType {
   DescTable4InformationSchema((short) 864),
   SetTableColumnComment((short) 865),
   SetTableComment((short) 866),
-  AlterColumnDataType((short) 867),
-  CommitAlterColumnDataType((short) 868),
+  RenameTable((short) 867),
+  PreCreateTableView((short) 868),
+  SetViewComment((short) 869),
+  AddViewColumn((short) 870),
+  CommitDeleteViewColumn((short) 871),
+  CommitDeleteView((short) 872),
+  RenameView((short) 873),
+  SetViewProperties((short) 874),
+  PreDeleteViewColumn((short) 875),
+  PreDeleteView((short) 876),
+  RenameViewColumn((short) 877),
+  AlterColumnDataType((short) 878),
+  CommitAlterColumnDataType((short) 879),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
@@ -286,7 +297,7 @@ public enum ConfigPhysicalPlanType {
   PipeDeleteLogicalView((short) 1703),
   PipeDeactivateTemplate((short) 1704),
   PipeSetTTL((short) 1705),
-  PipeCreateTable((short) 1706),
+  PipeCreateTableOrView((short) 1706),
   PipeDeleteDevices((short) 1707),
 
   /** Subscription */

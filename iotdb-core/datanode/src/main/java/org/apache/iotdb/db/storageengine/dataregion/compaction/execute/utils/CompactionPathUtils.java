@@ -38,7 +38,8 @@ public class CompactionPathUtils {
       String[] nodes = new String[device.segmentNum() + tableNameSegments.length];
       System.arraycopy(tableNameSegments, 0, nodes, 0, tableNameSegments.length);
       for (int i = 0; i < device.segmentNum() - 1; i++) {
-        nodes[i + tableNameSegments.length] = device.segment(i + 1).toString();
+        nodes[i + tableNameSegments.length] =
+            device.segment(i + 1) == null ? null : device.segment(i + 1).toString();
       }
       nodes[device.segmentNum() + tableNameSegments.length - 1] = measurement;
       MeasurementPath path = new MeasurementPath(nodes);

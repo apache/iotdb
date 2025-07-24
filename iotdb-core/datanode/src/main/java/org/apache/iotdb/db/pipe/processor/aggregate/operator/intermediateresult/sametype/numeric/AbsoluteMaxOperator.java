@@ -26,46 +26,46 @@ public class AbsoluteMaxOperator extends AbstractSameTypeNumericOperator {
   }
 
   @Override
-  public boolean initAndGetIsSupport(int initialInput, long initialTimestamp) {
+  public boolean initAndGetIsSupport(final int initialInput, final long initialTimestamp) {
     intValue = Math.abs(initialInput);
     return super.initAndGetIsSupport(initialInput, initialTimestamp);
   }
 
   @Override
-  public boolean initAndGetIsSupport(long initialInput, long initialTimestamp) {
+  public boolean initAndGetIsSupport(final long initialInput, final long initialTimestamp) {
     longValue = Math.abs(initialInput);
     return super.initAndGetIsSupport(initialInput, initialTimestamp);
   }
 
   @Override
-  public boolean initAndGetIsSupport(float initialInput, long initialTimestamp) {
+  public boolean initAndGetIsSupport(final float initialInput, final long initialTimestamp) {
     floatValue = Math.abs(initialInput);
     return super.initAndGetIsSupport(initialInput, initialTimestamp);
   }
 
   @Override
-  public boolean initAndGetIsSupport(double initialInput, long initialTimestamp) {
+  public boolean initAndGetIsSupport(final double initialInput, final long initialTimestamp) {
     doubleValue = Math.abs(initialInput);
     return super.initAndGetIsSupport(initialInput, initialTimestamp);
   }
 
   @Override
-  public void updateValue(int input, long timestamp) {
+  public void updateValue(final int input, final long timestamp) {
     intValue = Math.max(intValue, Math.abs(input));
   }
 
   @Override
-  public void updateValue(long input, long timestamp) {
+  public void updateValue(final long input, final long timestamp) {
     longValue = Math.max(longValue, Math.abs(input));
   }
 
   @Override
-  public void updateValue(float input, long timestamp) {
+  public void updateValue(final float input, final long timestamp) {
     floatValue = Math.max(floatValue, Math.abs(input));
   }
 
   @Override
-  public void updateValue(double input, long timestamp) {
+  public void updateValue(final double input, final long timestamp) {
     doubleValue = Math.max(doubleValue, Math.abs(input));
   }
 }

@@ -20,10 +20,13 @@
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -37,13 +40,14 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.satisfy;
-import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
+import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTableDeviceTsBlockColumns;
 
 public abstract class DevicePredicateHandler implements AutoCloseable {
   private final List<LeafColumnTransformer> filterLeafColumnTransformerList;
   protected final ColumnTransformer filterOutputTransformer;
   private final List<TSDataType> inputDataTypes;
   private final List<TsTableColumnSchema> columnSchemaList;
+  private final int idIndex;
 
   // Batch logic
   protected static final int DEFAULT_MAX_TS_BLOCK_LINE_NUMBER =
@@ -58,7 +62,9 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
   protected DevicePredicateHandler(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,
-      final List<TsTableColumnSchema> columnSchemaList) {
+      final List<TsTableColumnSchema> columnSchemaList,
+      final String database,
+      final TsTable table) {
     this.filterLeafColumnTransformerList = filterLeafColumnTransformerList;
     this.filterOutputTransformer = filterOutputTransformer;
     this.columnSchemaList = columnSchemaList;
@@ -66,6 +72,10 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
         columnSchemaList.stream()
             .map(TsTableColumnSchema::getDataType)
             .collect(Collectors.toList());
+    this.idIndex =
+        PathUtils.isTableModelDatabase(database)
+            ? 3
+            : DataNodeTreeViewSchemaUtils.getPatternNodes(table).length;
   }
 
   public void addBatch(final IDeviceSchemaInfo deviceSchemaInfo) {
@@ -89,7 +99,8 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
     final TsBlockBuilder builder = new TsBlockBuilder(inputDataTypes);
     deviceSchemaBatch.forEach(
         deviceSchemaInfo ->
-            transformToTsBlockColumns(deviceSchemaInfo, builder, columnSchemaList, 3));
+            transformToTableDeviceTsBlockColumns(
+                deviceSchemaInfo, builder, columnSchemaList, idIndex));
     curBlock = builder.build();
     if (withoutFilter()) {
       return;

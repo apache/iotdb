@@ -20,8 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 
 public interface IModelFetcher {
   /** Get model information by model id from configNode. */
   TSStatus fetchModel(String modelId, Analysis analysis);
+
+  // currently only used by table model
+  ModelInferenceDescriptor fetchModel(String modelName);
 }

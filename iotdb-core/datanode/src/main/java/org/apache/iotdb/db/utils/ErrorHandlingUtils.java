@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.exception.QuerySchemaFetchFailedException;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
@@ -115,7 +116,9 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()
             || status.getCode() == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
-            || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()) {
+            || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode()
+            || status.getCode() == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()) {
           LOGGER.info(message);
         } else {
           LOGGER.warn(message, e);
@@ -156,7 +159,8 @@ public class ErrorHandlingUtils {
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + rootCause.getMessage());
     } else if (t instanceof RootFIPlacementException
-        || t instanceof ReplicaSetUnreachableException) {
+        || t instanceof ReplicaSetUnreachableException
+        || t instanceof QuerySchemaFetchFailedException) {
       return RpcUtils.getStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION, rootCause.getMessage());
     } else if (t instanceof IoTDBException) {
       return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), rootCause.getMessage());

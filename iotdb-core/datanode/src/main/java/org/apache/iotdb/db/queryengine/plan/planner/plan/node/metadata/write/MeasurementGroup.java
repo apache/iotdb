@@ -45,7 +45,7 @@ public class MeasurementGroup {
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
 
-  private final transient Set<String> measurementSet = new HashSet<>();
+  private transient Set<String> measurementSet = new HashSet<>();
 
   public List<String> getMeasurements() {
     return measurements;
@@ -392,6 +392,29 @@ public class MeasurementGroup {
         }
       }
     }
+  }
+
+  // This won't be affected by "removeMeasurements"
+  public MeasurementGroup deepCopy() {
+    final MeasurementGroup result = new MeasurementGroup();
+    result.measurements =
+        Objects.nonNull(this.measurements) ? new ArrayList<>(this.measurements) : null;
+    result.dataTypes = Objects.nonNull(this.dataTypes) ? new ArrayList<>(this.dataTypes) : null;
+    result.encodings = Objects.nonNull(this.encodings) ? new ArrayList<>(this.encodings) : null;
+    result.compressors =
+        Objects.nonNull(this.compressors) ? new ArrayList<>(this.compressors) : null;
+    result.aliasList = Objects.nonNull(this.aliasList) ? new ArrayList<>(this.aliasList) : null;
+    result.propsList = Objects.nonNull(this.propsList) ? new ArrayList<>(this.propsList) : null;
+    result.tagsList = Objects.nonNull(this.tagsList) ? new ArrayList<>(this.tagsList) : null;
+    result.attributesList =
+        Objects.nonNull(this.attributesList) ? new ArrayList<>(this.attributesList) : null;
+    result.measurementSet = new HashSet<>(measurementSet);
+    return result;
+  }
+
+  @Override
+  public String toString() {
+    return Objects.nonNull(measurements) ? measurements.toString() : "null";
   }
 
   @Override

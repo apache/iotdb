@@ -58,11 +58,8 @@ struct TRegisterModelResp {
 struct TInferenceReq {
   1: required string modelId
   2: required binary dataset
-  3: required list<string> typeList
-  4: required list<string> columnNameList
-  5: required map<string, i32> columnNameIndexMap
-  6: optional TWindowParams windowParams
-  7: optional map<string, string> inferenceAttributes
+  3: optional TWindowParams windowParams
+  4: optional map<string, string> inferenceAttributes
 }
 
 struct TWindowParams {
@@ -83,15 +80,35 @@ struct IDataSchema {
 struct TTrainingReq {
   1: required string dbType
   2: required string modelId
-  3: required string modelType
+  3: required string existingModelId
   4: optional list<IDataSchema> targetDataSchema;
   5: optional map<string, string> parameters;
-  6: optional string existingModelId
+}
+
+struct TForecastReq {
+  1: required string modelId
+  2: required binary inputData
+  3: required i32 outputLength
+  4: optional map<string, string> options
+}
+
+struct TForecastResp {
+  1: required common.TSStatus status
+  2: required binary forecastResult
+}
+
+struct TShowModelsResp {
+  1: required common.TSStatus status
+  2: optional list<string> modelIdList
+  3: optional map<string, string> modelTypeMap
+  4: optional map<string, string> categoryMap
+  5: optional map<string, string> stateMap
 }
 
 service IAINodeRPCService {
 
   // -------------- For Config Node --------------
+  TShowModelsResp showModels()
 
   common.TSStatus deleteModel(TDeleteModelReq req)
 
@@ -104,4 +121,6 @@ service IAINodeRPCService {
   // -------------- For Data Node --------------
 
   TInferenceResp inference(TInferenceReq req)
+
+  TForecastResp forecast(TForecastReq req)
 }

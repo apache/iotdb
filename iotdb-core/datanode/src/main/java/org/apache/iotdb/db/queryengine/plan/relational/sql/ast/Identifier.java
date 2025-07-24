@@ -79,7 +79,11 @@ public class Identifier extends Expression {
   }
 
   public Identifier(String value) {
-    this(value, !isValidIdentifier(value));
+    super(null);
+    this.value = requireNonNull(value, "value is null");
+    this.delimited = !isValidIdentifier(value);
+
+    checkArgument(!value.isEmpty(), "value is empty");
   }
 
   public String getValue() {
@@ -152,6 +156,12 @@ public class Identifier extends Expression {
   @Override
   public TableExpressionType getExpressionType() {
     return TableExpressionType.IDENTIFIER;
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(this.value, buffer);
+    ReadWriteIOUtils.write(this.delimited, buffer);
   }
 
   @Override

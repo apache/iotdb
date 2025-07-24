@@ -20,8 +20,18 @@
 package org.apache.iotdb.commons.pipe.config.plugin.env;
 
 public class PipeTaskConnectorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
+  private String attributeSortedString;
 
-  public PipeTaskConnectorRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
+  public PipeTaskConnectorRuntimeEnvironment(
+      final String pipeName, final long creationTime, final int regionId) {
     super(pipeName, creationTime, regionId);
+  }
+
+  public String getAttributeSortedString() {
+    return attributeSortedString;
+  }
+
+  public void setAttributeSortedString(String attributeSortedString) {
+    this.attributeSortedString = attributeSortedString;
   }
 }

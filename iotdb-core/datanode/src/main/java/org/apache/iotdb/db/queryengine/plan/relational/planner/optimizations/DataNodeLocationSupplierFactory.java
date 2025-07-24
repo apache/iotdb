@@ -24,8 +24,6 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -40,8 +38,6 @@ import java.util.List;
 import static org.apache.iotdb.rpc.TSStatusCode.QUERY_PROCESS_ERROR;
 
 public class DataNodeLocationSupplierFactory {
-
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private DataNodeLocationSupplierFactory() {}
 
@@ -98,6 +94,14 @@ public class DataNodeLocationSupplierFactory {
         case InformationSchema.PIPE_PLUGINS:
         case InformationSchema.TOPICS:
         case InformationSchema.SUBSCRIPTIONS:
+        case InformationSchema.VIEWS:
+        case InformationSchema.MODELS:
+        case InformationSchema.FUNCTIONS:
+        case InformationSchema.CONFIGURATIONS:
+        case InformationSchema.KEYWORDS:
+        case InformationSchema.NODES:
+        case InformationSchema.CONFIG_NODES:
+        case InformationSchema.DATA_NODES:
           return Collections.singletonList(DataNodeEndPoints.getLocalDataNodeLocation());
         default:
           throw new UnsupportedOperationException("Unknown table: " + tableName);

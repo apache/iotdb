@@ -123,7 +123,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
+  @Deprecated
   public boolean allSnapshotTopicMessagesHaveBeenConsumed() {
+    return allTopicMessagesHaveBeenConsumed(subscribedTopics.keySet());
+  }
+
+  public boolean allTopicMessagesHaveBeenConsumed() {
     return allTopicMessagesHaveBeenConsumed(subscribedTopics.keySet());
   }
 
@@ -723,7 +728,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     final Path filePath = getFilePath(commitContext, topicName, fileName, true, true);
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
-      return Optional.of(pollFileInternal(commitContext, fileName, file, fileWriter, timer));
+      return pollFileInternal(commitContext, fileName, file, fileWriter, timer);
     } catch (final Exception e) {
       if (!(e instanceof SubscriptionPollTimeoutException)) {
         inFlightFilesCommitContextSet.remove(commitContext);
@@ -731,12 +736,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       // construct temporary message to nack
       nack(
           Collections.singletonList(
-              new SubscriptionMessage(commitContext, file.getAbsolutePath())));
+              new SubscriptionMessage(commitContext, file.getAbsolutePath(), null)));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
 
-  private SubscriptionMessage pollFileInternal(
+  private Optional<SubscriptionMessage> pollFileInternal(
       final SubscriptionCommitContext commitContext,
       final String rawFileName,
       final File file,
@@ -769,13 +774,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final List<SubscriptionPollResponse> responses =
           pollFileInternal(commitContext, writingOffset, timer.remainingMs());
 
-      // It's agreed that the server will always return at least one response, even in case of
-      // failure.
+      // If responses is empty, it means that some outdated subscription events may be being polled,
+      // so just return.
       if (responses.isEmpty()) {
-        final String errorMessage =
-            String.format("SubscriptionConsumer %s poll empty response", this);
-        LOGGER.warn(errorMessage);
-        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+        return Optional.empty();
       }
 
       // only one SubscriptionEvent polled currently
@@ -884,7 +886,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
             // generate subscription message
             inFlightFilesCommitContextSet.remove(commitContext);
-            return new SubscriptionMessage(commitContext, file.getAbsolutePath());
+            return Optional.of(
+                new SubscriptionMessage(
+                    commitContext,
+                    file.getAbsolutePath(),
+                    ((FileSealPayload) payload).getDatabaseName()));
           }
         case ERROR:
           {
@@ -934,24 +940,26 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       // construct temporary message to nack
       nack(
           Collections.singletonList(
-              new SubscriptionMessage(response.getCommitContext(), Collections.emptyList())));
+              new SubscriptionMessage(response.getCommitContext(), Collections.emptyMap())));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
 
   private Optional<SubscriptionMessage> pollTabletsInternal(
       final SubscriptionPollResponse initialResponse, final PollTimer timer) {
-    final List<Tablet> tablets = ((TabletsPayload) initialResponse.getPayload()).getTablets();
+    final Map<String, List<Tablet>> tablets =
+        ((TabletsPayload) initialResponse.getPayload()).getTabletsWithDBInfo();
     final SubscriptionCommitContext commitContext = initialResponse.getCommitContext();
 
     int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
     while (true) {
       if (nextOffset <= 0) {
-        if (!Objects.equals(tablets.size(), -nextOffset)) {
+        final int tabletsSize = tablets.values().stream().mapToInt(List::size).sum();
+        if (!Objects.equals(tabletsSize, -nextOffset)) {
           final String errorMessage =
               String.format(
                   "inconsistent tablet size, current is %s, incoming is %s, consumer: %s",
-                  tablets.size(), -nextOffset, this);
+                  tabletsSize, -nextOffset, this);
           LOGGER.warn(errorMessage);
           throw new SubscriptionRuntimeNonCriticalException(errorMessage);
         }
@@ -1003,7 +1011,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             }
 
             // update tablets
-            tablets.addAll(((TabletsPayload) response.getPayload()).getTablets());
+            for (Map.Entry<String, List<Tablet>> entry :
+                ((TabletsPayload) response.getPayload()).getTabletsWithDBInfo().entrySet()) {
+              tablets
+                  .computeIfAbsent(entry.getKey(), databaseName -> new ArrayList<>())
+                  .addAll(entry.getValue());
+            }
 
             // update offset
             nextOffset = ((TabletsPayload) payload).getNextOffset();
@@ -1369,7 +1382,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
     for (final AbstractSubscriptionProvider provider : providers) {
       try {
-        return provider.getSessionConnection().fetchAllEndPoints();
+        return provider.heartbeat().getEndPoints();
       } catch (final Exception e) {
         LOGGER.warn(
             "{} failed to fetch all endpoints from subscription provider {}, try next subscription provider...",

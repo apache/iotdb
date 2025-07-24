@@ -88,6 +88,9 @@ public abstract class AbstractSubscriptionProvider {
   private final TEndPoint endPoint;
   private int dataNodeId;
 
+  private final String username;
+  private final String password;
+
   protected abstract AbstractSessionBuilder constructSubscriptionSessionBuilder(
       final String host,
       final int port,
@@ -109,9 +112,11 @@ public abstract class AbstractSubscriptionProvider {
     this.endPoint = endPoint;
     this.consumerId = consumerId;
     this.consumerGroupId = consumerGroupId;
+    this.username = username;
+    this.password = password;
   }
 
-  SubscriptionSessionConnection getSessionConnection() {
+  SubscriptionSessionConnection getSessionConnection() throws IoTDBConnectionException {
     return session.getSessionConnection();
   }
 
@@ -156,6 +161,9 @@ public abstract class AbstractSubscriptionProvider {
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
+    consumerAttributes.put(ConsumerConstant.USERNAME_KEY, username);
+    consumerAttributes.put(ConsumerConstant.PASSWORD_KEY, password);
+    consumerAttributes.put(ConsumerConstant.SQL_DIALECT_KEY, session.getSqlDialect());
 
     final PipeSubscribeHandshakeResp resp =
         handshake(new ConsumerConfig(consumerAttributes)); // throw SubscriptionException
@@ -183,10 +191,10 @@ public abstract class AbstractSubscriptionProvider {
     final TPipeSubscribeResp resp;
     try {
       resp = getSessionConnection().pipeSubscribe(req);
-    } catch (final TException e) {
+    } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} handshake with request {}, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} handshake with request {}, set SubscriptionProvider unavailable",
           this,
           consumerConfig,
           e);
@@ -215,10 +223,10 @@ public abstract class AbstractSubscriptionProvider {
     final TPipeSubscribeResp resp;
     try {
       resp = getSessionConnection().pipeSubscribe(PipeSubscribeCloseReq.toTPipeSubscribeReq());
-    } catch (final TException e) {
+    } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} close, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} close, set SubscriptionProvider unavailable",
           this,
           e);
       setUnavailable();
@@ -229,23 +237,21 @@ public abstract class AbstractSubscriptionProvider {
 
   /////////////////////////////// subscription APIs ///////////////////////////////
 
-  Map<String, TopicConfig> heartbeat() throws SubscriptionException {
+  PipeSubscribeHeartbeatResp heartbeat() throws SubscriptionException {
     final TPipeSubscribeResp resp;
     try {
       resp = getSessionConnection().pipeSubscribe(PipeSubscribeHeartbeatReq.toTPipeSubscribeReq());
-    } catch (final TException e) {
+    } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} heartbeat, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} heartbeat, set SubscriptionProvider unavailable",
           this,
           e);
       setUnavailable();
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
-    final PipeSubscribeHeartbeatResp heartbeatResp =
-        PipeSubscribeHeartbeatResp.fromTPipeSubscribeResp(resp);
-    return heartbeatResp.getTopics();
+    return PipeSubscribeHeartbeatResp.fromTPipeSubscribeResp(resp);
   }
 
   Map<String, TopicConfig> subscribe(final Set<String> topicNames) throws SubscriptionException {
@@ -263,10 +269,10 @@ public abstract class AbstractSubscriptionProvider {
     final TPipeSubscribeResp resp;
     try {
       resp = getSessionConnection().pipeSubscribe(req);
-    } catch (final TException e) {
+    } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} subscribe with request {}, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} subscribe with request {}, set SubscriptionProvider unavailable",
           this,
           topicNames,
           e);
@@ -294,10 +300,10 @@ public abstract class AbstractSubscriptionProvider {
     final TPipeSubscribeResp resp;
     try {
       resp = getSessionConnection().pipeSubscribe(req);
-    } catch (final TException e) {
+    } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} unsubscribe with request {}, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} unsubscribe with request {}, set SubscriptionProvider unavailable",
           this,
           topicNames,
           e);
@@ -358,10 +364,10 @@ public abstract class AbstractSubscriptionProvider {
     final TPipeSubscribeResp resp;
     try {
       resp = getSessionConnection().pipeSubscribe(req);
-    } catch (final TException e) {
+    } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} poll with request {}, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} poll with request {}, set SubscriptionProvider unavailable",
           this,
           pollMessage,
           e);
@@ -389,10 +395,10 @@ public abstract class AbstractSubscriptionProvider {
     final TPipeSubscribeResp resp;
     try {
       resp = getSessionConnection().pipeSubscribe(req);
-    } catch (final TException e) {
+    } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} commit with request {}, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} commit with request {}, set SubscriptionProvider unavailable",
           this,
           subscriptionCommitContexts,
           e);
@@ -426,6 +432,7 @@ public abstract class AbstractSubscriptionProvider {
       case 1900: // SUBSCRIPTION_VERSION_ERROR
       case 1901: // SUBSCRIPTION_TYPE_ERROR
       case 1909: // SUBSCRIPTION_MISSING_CUSTOMER
+      case 1912: // SUBSCRIPTION_NOT_ENABLED_ERROR
       default:
         {
           final String errorMessage =

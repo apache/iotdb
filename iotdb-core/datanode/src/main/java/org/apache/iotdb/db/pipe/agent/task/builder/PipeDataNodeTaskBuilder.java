@@ -21,10 +21,12 @@ package org.apache.iotdb.db.pipe.agent.task.builder;
 
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
@@ -49,8 +51,15 @@ import java.util.Map;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TABLET_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TS_FILE_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_SNAPSHOT_KEY;
 
 public class PipeDataNodeTaskBuilder {
 
@@ -93,6 +102,7 @@ public class PipeDataNodeTaskBuilder {
     final PipeParameters connectorParameters =
         blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters());
     checkConflict(extractorParameters, connectorParameters);
+    injectParameters(extractorParameters, connectorParameters);
 
     // We first build the extractor and connector, then build the processor.
     final PipeTaskExtractorStage extractorStage =
@@ -141,15 +151,7 @@ public class PipeDataNodeTaskBuilder {
                     Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY),
                     CONNECTOR_FORMAT_HYBRID_VALUE)
                 .equals(CONNECTOR_FORMAT_TABLET_VALUE),
-            PipeType.SUBSCRIPTION.equals(pipeType)
-                &&
-                // should not skip parsing when the format is tsfile
-                !pipeStaticMeta
-                    .getConnectorParameters()
-                    .getStringOrDefault(
-                        Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY),
-                        CONNECTOR_FORMAT_HYBRID_VALUE)
-                    .equals(CONNECTOR_FORMAT_TS_FILE_VALUE));
+            PipeType.SUBSCRIPTION.equals(pipeType));
 
     return new PipeDataNodeTask(
         pipeStaticMeta.getPipeName(), regionId, extractorStage, processorStage, connectorStage);
@@ -171,14 +173,33 @@ public class PipeDataNodeTaskBuilder {
 
   private void checkConflict(
       final PipeParameters extractorParameters, final PipeParameters connectorParameters) {
+    final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair;
+    final boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
 
     try {
-      final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
+      insertionDeletionListeningOptionPair =
           DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(extractorParameters);
-      if (!insertionDeletionListeningOptionPair.right) {
+
+      if (extractorParameters.hasAnyAttributes(
+          EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY)) {
+        shouldTerminatePipeOnAllHistoricalEventsConsumed =
+            extractorParameters.getBooleanOrDefault(
+                Arrays.asList(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY),
+                EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE);
+      } else {
+        final String extractorModeValue =
+            extractorParameters.getStringOrDefault(
+                Arrays.asList(EXTRACTOR_MODE_KEY, SOURCE_MODE_KEY), EXTRACTOR_MODE_DEFAULT_VALUE);
+        shouldTerminatePipeOnAllHistoricalEventsConsumed =
+            extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_SNAPSHOT_VALUE)
+                || extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_QUERY_VALUE);
+      }
+
+      if (!insertionDeletionListeningOptionPair.right
+          && !shouldTerminatePipeOnAllHistoricalEventsConsumed) {
         return;
       }
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       LOGGER.warn(
           "PipeDataNodeTaskBuilder failed to parse 'inclusion' and 'exclusion' parameters: {}",
           e.getMessage(),
@@ -192,14 +213,51 @@ public class PipeDataNodeTaskBuilder {
             PipeConnectorConstant.SINK_REALTIME_FIRST_KEY);
     if (isRealtime == null) {
       connectorParameters.addAttribute(PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY, "false");
-      LOGGER.info(
-          "PipeDataNodeTaskBuilder: When 'inclusion' contains 'data.delete', 'realtime-first' is defaulted to 'false' to prevent sync issues after deletion.");
+      if (insertionDeletionListeningOptionPair.right) {
+        LOGGER.info(
+            "PipeDataNodeTaskBuilder: When 'inclusion' contains 'data.delete', 'realtime-first' is defaulted to 'false' to prevent sync issues after deletion.");
+      } else {
+        LOGGER.info(
+            "PipeDataNodeTaskBuilder: When extractor uses snapshot model, 'realtime-first' is defaulted to 'false' to prevent premature halt before transfer completion.");
+      }
       return;
     }
 
     if (isRealtime) {
-      LOGGER.warn(
-          "PipeDataNodeTaskBuilder: When 'inclusion' includes 'data.delete', 'realtime-first' set to 'true' may result in data synchronization issues after deletion.");
+      if (insertionDeletionListeningOptionPair.right) {
+        LOGGER.warn(
+            "PipeDataNodeTaskBuilder: When 'inclusion' includes 'data.delete', 'realtime-first' set to 'true' may result in data synchronization issues after deletion.");
+      } else {
+        LOGGER.warn(
+            "PipeDataNodeTaskBuilder: When extractor uses snapshot model, 'realtime-first' set to 'true' may cause prevent premature halt before transfer completion.");
+      }
+    }
+  }
+
+  private void injectParameters(
+      final PipeParameters extractorParameters, final PipeParameters connectorParameters) {
+    final boolean isSourceExternal =
+        !BuiltinPipePlugin.BUILTIN_SOURCES.contains(
+            extractorParameters
+                .getStringOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                    BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+                .toLowerCase());
+
+    final String connectorPluginName =
+        connectorParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+            .toLowerCase();
+    final boolean isWriteBackSink =
+        BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName().equals(connectorPluginName)
+            || BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName().equals(connectorPluginName);
+
+    if (isSourceExternal && isWriteBackSink) {
+      connectorParameters.addAttribute(
+          PipeConnectorConstant.CONNECTOR_USE_EVENT_USER_NAME_KEY, Boolean.TRUE.toString());
     }
   }
 }

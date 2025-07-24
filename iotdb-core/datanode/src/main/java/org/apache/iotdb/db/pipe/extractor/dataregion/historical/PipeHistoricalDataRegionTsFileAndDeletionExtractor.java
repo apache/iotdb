@@ -21,6 +21,9 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.historical;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -34,6 +37,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
@@ -87,12 +91,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_STRICT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_STRICT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_DEFAULT_VALUE;
@@ -105,8 +103,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_SNAPSHOT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_STRICT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_KEY;
@@ -155,7 +151,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private boolean shouldTransferModFile; // Whether to transfer mods
   protected String userName;
   protected boolean skipIfNoPrivileges = true;
-  private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
 
   private volatile boolean hasBeenStarted = false;
@@ -313,7 +308,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
-    startIndex = environment.getPipeTaskMeta().getProgressIndex();
+
+    // progressIndex is immutable in `updateToMinimumEqualOrIsAfterProgressIndex`, so data
+    // consistency in `environment.getPipeTaskMeta().getProgressIndex()` is ensured.
+    startIndex = environment.getPipeTaskMeta().restoreProgressIndex();
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      startIndex = tryToExtractLocalProgressIndexForIoTV2(startIndex);
+    }
 
     dataRegionId = environment.getRegionId();
     synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
@@ -394,20 +395,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                   listeningOptionPair.getRight());
     }
 
-    if (parameters.hasAnyAttributes(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY)) {
-      shouldTerminatePipeOnAllHistoricalEventsConsumed =
-          parameters.getBooleanOrDefault(
-              Arrays.asList(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY),
-              EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE);
-    } else {
-      final String extractorModeValue =
-          parameters.getStringOrDefault(
-              Arrays.asList(EXTRACTOR_MODE_KEY, SOURCE_MODE_KEY), EXTRACTOR_MODE_DEFAULT_VALUE);
-      shouldTerminatePipeOnAllHistoricalEventsConsumed =
-          extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_SNAPSHOT_VALUE)
-              || extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_QUERY_VALUE);
-    }
-
     userName =
         parameters.getStringByKeys(
             PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY,
@@ -419,7 +406,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}, should transfer mod file {}, should terminate pipe on all historical events consumed {}, username: {}, skip if no privileges: {}",
+          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}, should transfer mod file {}, username: {}, skip if no privileges: {}",
           pipeName,
           dataRegionId,
           DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
@@ -429,7 +416,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
           sloppyPattern,
           sloppyTimeRange,
           shouldTransferModFile,
-          shouldTerminatePipeOnAllHistoricalEventsConsumed,
           userName,
           skipIfNoPrivileges);
     }
@@ -448,6 +434,61 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     } finally {
       dataRegion.writeUnlock();
     }
+  }
+
+  /**
+   * IoTV2 will only resend event that contains un-replicated local write data. So we only extract
+   * ProgressIndex containing local writes for comparison to prevent misjudgment on whether
+   * high-level tsFiles with mixed progressIndexes need to be retransmitted
+   *
+   * @return recoverProgressIndex dedicated in local DataNodeId or origin for fallback.
+   */
+  private ProgressIndex tryToExtractLocalProgressIndexForIoTV2(ProgressIndex origin) {
+    // There are only 2 cases:
+    // 1. origin is RecoverProgressIndex
+    if (origin instanceof RecoverProgressIndex) {
+      RecoverProgressIndex toBeTransformed = (RecoverProgressIndex) origin;
+      return extractRecoverProgressIndex(toBeTransformed);
+    }
+    // 2. origin is HybridProgressIndex
+    else if (origin instanceof HybridProgressIndex) {
+      HybridProgressIndex toBeTransformed = (HybridProgressIndex) origin;
+      // if hybridProgressIndex contains recoverProgressIndex, which is what we expected.
+      if (toBeTransformed
+          .getType2Index()
+          .containsKey(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType())) {
+        // 2.1. transform recoverProgressIndex
+        RecoverProgressIndex specificToBeTransformed =
+            (RecoverProgressIndex)
+                toBeTransformed
+                    .getType2Index()
+                    .get(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType());
+        return extractRecoverProgressIndex(specificToBeTransformed);
+      }
+      // if hybridProgressIndex doesn't contain recoverProgressIndex, which is not what we expected,
+      // fallback.
+      return origin;
+    } else {
+      // fallback
+      LOGGER.warn(
+          "Pipe {}@{}: unexpected ProgressIndex type {}, fallback to origin {}.",
+          pipeName,
+          dataRegionId,
+          origin.getType(),
+          origin);
+      return origin;
+    }
+  }
+
+  private ProgressIndex extractRecoverProgressIndex(RecoverProgressIndex toBeTransformed) {
+    return new RecoverProgressIndex(
+        toBeTransformed.getDataNodeId2LocalIndex().entrySet().stream()
+            .filter(
+                entry ->
+                    entry
+                        .getKey()
+                        .equals(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
   }
 
   @Override
@@ -639,17 +680,21 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     }
 
     if (startIndex instanceof StateProgressIndex) {
-      // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
-      // "equals" max progressIndex must be transmitted to avoid data loss
-      final ProgressIndex innerProgressIndex =
-          ((StateProgressIndex) startIndex).getInnerProgressIndex();
-      return !innerProgressIndex.isAfter(resource.getMaxProgressIndexAfterClose())
-          && !innerProgressIndex.equals(resource.getMaxProgressIndexAfterClose());
+      startIndex = ((StateProgressIndex) startIndex).getInnerProgressIndex();
     }
 
-    // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
-    // "equals" max progressIndex must be transmitted to avoid data loss
-    return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      // For consensus pipe, we only focus on the progressIndex that is generated from local write
+      // instead of replication or something else.
+      ProgressIndex dedicatedProgressIndex =
+          tryToExtractLocalProgressIndexForIoTV2(resource.getMaxProgressIndexAfterClose());
+      return greaterThanStartIndex(dedicatedProgressIndex);
+    }
+    return greaterThanStartIndex(resource.getMaxProgressIndexAfterClose());
+  }
+
+  private boolean greaterThanStartIndex(ProgressIndex progressIndex) {
+    return !startIndex.isAfter(progressIndex) && !startIndex.equals(progressIndex);
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
@@ -743,12 +788,26 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     // For deletions that are filtered and will not be sent, we should manually decrease its
     // reference count. Because the initial value of referenceCount is `ReplicaNum - 1`
     allDeletionResources.stream()
-        .filter(resource -> startIndex.isAfter(resource.getProgressIndex()))
+        .filter(
+            resource -> {
+              ProgressIndex toBeCompared = resource.getProgressIndex();
+              if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+                toBeCompared = tryToExtractLocalProgressIndexForIoTV2(toBeCompared);
+              }
+              return !greaterThanStartIndex(toBeCompared);
+            })
         .forEach(DeletionResource::decreaseReference);
     // Get deletions that should be sent.
     allDeletionResources =
         allDeletionResources.stream()
-            .filter(resource -> !startIndex.isAfter(resource.getProgressIndex()))
+            .filter(
+                resource -> {
+                  ProgressIndex toBeCompared = resource.getProgressIndex();
+                  if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+                    toBeCompared = tryToExtractLocalProgressIndexForIoTV2(toBeCompared);
+                  }
+                  return greaterThanStartIndex(toBeCompared);
+                })
             .collect(Collectors.toList());
     resourceList.addAll(allDeletionResources);
     LOGGER.info(
@@ -818,13 +877,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
         && PipeConsensusProcessor.isShouldReplicate(event)) {
       event.setReplicateIndexForIoTV2(
-          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(
-              resource.getDataRegionId()));
-      LOGGER.debug(
-          "[Region{}]Set {} for event {}",
-          resource.getDataRegionId(),
-          event.getReplicateIndexForIoTV2(),
-          event);
+          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(pipeName));
+      LOGGER.info(
+          "[{}]Set {} for historical event {}", pipeName, event.getReplicateIndexForIoTV2(), event);
     }
 
     if (sloppyPattern || isDbNameCoveredByPattern) {
@@ -903,9 +958,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     // If the pendingQueue is null when the function is called, it implies that the extractor only
     // extracts deletion thus the historical event has nothing to consume.
     return hasBeenStarted
-        && (Objects.isNull(pendingQueue)
-            || pendingQueue.isEmpty()
-                && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent));
+        && (Objects.isNull(pendingQueue) || pendingQueue.isEmpty() && isTerminateSignalSent);
   }
 
   @Override

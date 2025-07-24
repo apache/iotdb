@@ -112,7 +112,10 @@ public class ClusterSchemaInfoTest {
 
     GetDatabasePlan getStorageGroupReq =
         new GetDatabasePlan(
-            Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")), ALL_MATCH_SCOPE, false);
+            Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")),
+            ALL_MATCH_SCOPE,
+            false,
+            false);
     Map<String, TDatabaseSchema> reloadResult =
         clusterSchemaInfo.getMatchedDatabaseSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);

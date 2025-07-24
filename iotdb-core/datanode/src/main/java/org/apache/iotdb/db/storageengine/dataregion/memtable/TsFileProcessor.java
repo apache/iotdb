@@ -204,6 +204,8 @@ public class TsFileProcessor {
 
   public static final int MEMTABLE_NOT_EXIST = -1;
 
+  private int walEntryNum = 0;
+
   @SuppressWarnings("squid:S107")
   public TsFileProcessor(
       String dataRegionName,
@@ -320,6 +322,7 @@ public class TsFileProcessor {
       // recordScheduleWalCost
       infoForMetrics[2] += System.nanoTime() - startTime;
     }
+    walEntryNum++;
 
     startTime = System.nanoTime();
 
@@ -417,6 +420,7 @@ public class TsFileProcessor {
       // recordScheduleWalCost
       infoForMetrics[2] += System.nanoTime() - startTime;
     }
+    walEntryNum++;
 
     startTime = System.nanoTime();
 
@@ -590,6 +594,7 @@ public class TsFileProcessor {
       // recordScheduleWalCost
       infoForMetrics[2] += System.nanoTime() - startTime;
     }
+    walEntryNum++;
 
     startTime = System.nanoTime();
 
@@ -1211,10 +1216,12 @@ public class TsFileProcessor {
   }
 
   public WALFlushListener logDeleteDataNodeInWAL(DeleteDataNode deleteDataNode) {
+    walEntryNum++;
     return walNode.log(workMemTable.getMemTableId(), deleteDataNode);
   }
 
   public WALFlushListener logDeleteDataNodeInWAL(RelationalDeleteDataNode deleteDataNode) {
+    walEntryNum++;
     return walNode.log(workMemTable.getMemTableId(), deleteDataNode);
   }
 
@@ -1440,6 +1447,7 @@ public class TsFileProcessor {
         .recordMemTableLiveDuration(System.currentTimeMillis() - getWorkMemTableCreatedTime());
     WritingMetrics.getInstance()
         .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), -1);
+    WritingMetrics.getInstance().recordWALEntryNumForOneTsFile(walEntryNum);
     workMemTable = null;
     return FlushManager.getInstance().registerTsFileProcessor(this);
   }
