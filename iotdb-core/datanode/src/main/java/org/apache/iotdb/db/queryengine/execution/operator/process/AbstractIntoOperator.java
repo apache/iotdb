@@ -29,11 +29,11 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Arrays;
 import java.util.List;
@@ -57,27 +57,21 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   protected boolean finished = false;
 
   protected int maxRowNumberInStatement;
-  private long maxRetainedSize;
-  private long maxReturnSize;
+  protected long maxReturnSize;
 
   protected final List<Type> typeConvertors;
-
-  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   protected AbstractIntoOperator(
       OperatorContext operatorContext,
       Operator child,
       List<TSDataType> inputColumnTypes,
-      ExecutorService intoOperationExecutor,
-      long statementSizePerLine) {
+      ExecutorService intoOperationExecutor) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.typeConvertors =
         inputColumnTypes.stream().map(TypeFactory::getType).collect(Collectors.toList());
 
     this.writeOperationExecutor = intoOperationExecutor;
-    initMemoryEstimates(statementSizePerLine);
   }
 
   @Override
@@ -142,7 +136,9 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return maxReturnSize + maxRetainedSize + child.calculateMaxPeekMemoryWithCounter();
+    return Math.max(
+        child.calculateMaxPeekMemoryWithCounter(),
+        calculateRetainedSizeAfterCallingNext() + calculateMaxReturnSize());
   }
 
   @Override
@@ -152,11 +148,11 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return maxRetainedSize + child.calculateRetainedSizeAfterCallingNext();
+    return child.calculateMaxReturnSize() + child.calculateRetainedSizeAfterCallingNext();
   }
 
   @TestOnly
-  public int getMaxRowNumberInStatement() {
+  public long getMaxRowNumberInStatement() {
     return maxRowNumberInStatement;
   }
 
@@ -199,6 +195,15 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     }
   }
 
+  protected long getTypeConvertorsBytes() {
+    if (typeConvertors == null) {
+      return 0;
+    }
+    return typeConvertors.stream()
+        .mapToLong(x -> RamUsageEstimator.shallowSizeOfInstance(Type.class))
+        .sum();
+  }
+
   /**
    * Write the data of the input TsBlock into Statement.
    *
@@ -212,21 +217,14 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   protected abstract void resetInsertTabletStatementGenerators();
 
-  private void initMemoryEstimates(long statementSizePerLine) {
+  protected int calculateMemAllowedMaxRowNumber(long statementSizePerLine) {
     long intoOperationBufferSizeInByte =
         IoTDBDescriptor.getInstance().getConfig().getIntoOperationBufferSizeInByte();
     long memAllowedMaxRowNumber = Math.max(intoOperationBufferSizeInByte / statementSizePerLine, 1);
     if (memAllowedMaxRowNumber > Integer.MAX_VALUE) {
       memAllowedMaxRowNumber = Integer.MAX_VALUE;
     }
-    this.maxRowNumberInStatement =
-        Math.min(
-            (int) memAllowedMaxRowNumber,
-            IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit());
-    long maxStatementSize = maxRowNumberInStatement * statementSizePerLine;
-
-    this.maxRetainedSize = child.calculateMaxReturnSize() + maxStatementSize;
-    this.maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    return (int) memAllowedMaxRowNumber;
   }
 
   private boolean writeOperationDone() {
