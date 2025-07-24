@@ -44,7 +44,8 @@ public class AINodeWrapper extends AbstractNodeWrapper {
   private final long startTime;
   private final String seedConfigNode;
 
-  private static final String SCRIPT_FILE = "start-ainode.sh";
+  private static final String START_SCRIPT_FILE = "start-ainode.sh";
+  private static final String STOP_SCRIPT_FILE = "stop-ainode.sh";
 
   private static final String SHELL_COMMAND = "bash";
 
@@ -118,7 +119,8 @@ public class AINodeWrapper extends AbstractNodeWrapper {
       // start AINode
       List<String> startCommand = new ArrayList<>();
       startCommand.add(SHELL_COMMAND);
-      startCommand.add(filePrefix + File.separator + SCRIPT_PATH + File.separator + SCRIPT_FILE);
+      startCommand.add(
+          filePrefix + File.separator + SCRIPT_PATH + File.separator + START_SCRIPT_FILE);
       startCommand.add("-i");
       startCommand.add(filePrefix + File.separator + PYTHON_PATH);
       startCommand.add("-r");
@@ -131,6 +133,31 @@ public class AINodeWrapper extends AbstractNodeWrapper {
       logger.info("In test {} {} started.", getTestLogDirName(), getId());
     } catch (Exception e) {
       throw new AssertionError("Start AI Node failed. " + e + Paths.get(""));
+    }
+  }
+
+  @Override
+  public void stop() {
+    try {
+      String filePrefix =
+          System.getProperty(USER_DIR)
+              + File.separator
+              + TARGET
+              + File.separator
+              + AI_NODE_NAME
+              + getPort();
+      String stopCmd =
+          SHELL_COMMAND
+              + " "
+              + filePrefix
+              + File.separator
+              + SCRIPT_PATH
+              + File.separator
+              + STOP_SCRIPT_FILE;
+      Runtime.getRuntime().exec(stopCmd);
+      super.stop();
+    } catch (Exception e) {
+      throw new AssertionError("Stop AI Node failed. " + e + Paths.get(""));
     }
   }
 
