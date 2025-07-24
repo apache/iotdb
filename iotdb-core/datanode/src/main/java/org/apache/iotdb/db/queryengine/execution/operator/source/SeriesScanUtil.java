@@ -1226,11 +1226,11 @@ public class SeriesScanUtil implements Accountable {
   private boolean typeCompatible(ITimeSeriesMetadata timeseriesMetadata) {
     if (timeseriesMetadata instanceof TimeseriesMetadata) {
       return getTsDataTypeList()
-              .get(0)
-              .isCompatible(((TimeseriesMetadata) timeseriesMetadata).getTsDataType());
+          .get(0)
+          .isCompatible(((TimeseriesMetadata) timeseriesMetadata).getTsDataType());
     } else {
       List<TimeseriesMetadata> valueTimeseriesMetadataList =
-              ((AbstractAlignedTimeSeriesMetadata) timeseriesMetadata).getValueTimeseriesMetadataList();
+          ((AbstractAlignedTimeSeriesMetadata) timeseriesMetadata).getValueTimeseriesMetadataList();
       if (getTsDataTypeList().isEmpty()) {
         return true;
       }
@@ -1239,7 +1239,7 @@ public class SeriesScanUtil implements Accountable {
         for (int i = 0, size = getTsDataTypeList().size(); i < size; i++) {
           TimeseriesMetadata valueTimeSeriesMetadata = valueTimeseriesMetadataList.get(i);
           if (valueTimeSeriesMetadata != null
-                  && !getTsDataTypeList()
+              && !getTsDataTypeList()
                   .get(i)
                   .isCompatible(valueTimeSeriesMetadata.getTsDataType())) {
             valueTimeseriesMetadataList.set(i, null);

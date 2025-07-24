@@ -212,7 +212,8 @@ public class FirstAccumulator implements TableAccumulator {
         break;
       case INT64:
       case TIMESTAMP:
-        updateLongFirstValue(((Number) statistics[0].getFirstValue()).longValue(), statistics[0].getStartTime());
+        updateLongFirstValue(
+            ((Number) statistics[0].getFirstValue()).longValue(), statistics[0].getStartTime());
         break;
       case FLOAT:
         updateFloatFirstValue(
