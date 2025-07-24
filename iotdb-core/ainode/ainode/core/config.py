@@ -333,6 +333,11 @@ class AINodeDescriptor(object):
                     int(file_configs["ain_thrift_compression_enabled"])
                 )
 
+            if "ain_cluster_ingress_ssl_enabled" in config_keys:
+                self._config.set_ain_cluster_ingress_ssl_enabled(
+                    int(file_configs["ain_cluster_ingress_ssl_enabled"])
+                )
+
             if "ain_internal_ssl_enabled" in config_keys:
                 self._config.set_ain_internal_ssl_enabled(
                     int(file_configs["ain_internal_ssl_enabled"])
