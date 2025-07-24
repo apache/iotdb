@@ -286,7 +286,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeSinglePipeMetrics.getInstance()
-            .decreaseTsFileEventCount(pipeName, creationTime, System.nanoTime() - extractTime);
+            .decreaseTsFileEventCount(
+                pipeName,
+                creationTime,
+                shouldReportOnCommit ? System.nanoTime() - extractTime : -1);
       }
     }
   }
