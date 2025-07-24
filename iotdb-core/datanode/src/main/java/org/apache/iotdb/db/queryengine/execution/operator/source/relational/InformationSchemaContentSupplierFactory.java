@@ -522,8 +522,11 @@ public class InformationSchemaContentSupplierFactory {
       if (regionInfo.getConsensusGroupId().getType().ordinal()
           == TConsensusGroupType.DataRegion.ordinal()) {
         columnBuilders[12].writeLong(regionInfo.getTsFileSize());
+        columnBuilders[13].writeDouble(
+            (double) regionInfo.getRawDataSize() / regionInfo.getTsFileSize());
       } else {
         columnBuilders[12].appendNull();
+        columnBuilders[13].appendNull();
       }
       resultBuilder.declarePosition();
     }

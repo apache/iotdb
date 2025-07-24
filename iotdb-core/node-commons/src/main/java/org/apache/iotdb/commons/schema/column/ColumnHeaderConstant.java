@@ -225,6 +225,7 @@ public class ColumnHeaderConstant {
   public static final String INTERNAL_ADDRESS_TABLE_MODEL = "internal_address";
   public static final String CREATE_TIME_TABLE_MODEL = "create_time";
   public static final String TS_FILE_SIZE_BYTES_TABLE_MODEL = "tsfile_size_bytes";
+  public static final String COMPRESSION_RATIO_TABLE_MODEL = "compression_ratio";
 
   public static final String CREATION_TIME_TABLE_MODEL = "creation_time";
   public static final String PIPE_SOURCE_TABLE_MODEL = "pipe_source";
