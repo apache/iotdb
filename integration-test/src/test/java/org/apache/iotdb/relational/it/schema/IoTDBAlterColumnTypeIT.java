@@ -140,6 +140,15 @@ public class IoTDBAlterColumnTypeIT {
       session.insert(tablet);
       tablet.reset();
 
+      SessionDataSet dataSet1 =
+          session.executeQueryStatement("select * from write_and_alter_column_type order by time");
+      RowRecord rec1;
+      for (int i = 1; i <= 2; i++) {
+        rec1 = dataSet1.next();
+        assertEquals(i, rec1.getFields().get(0).getLongV());
+        System.out.println(i + " is " + rec1.getFields().get(1).toString());
+      }
+
       // alter the type to "to"
       boolean isCompatible = MetadataUtils.canAlter(from, to);
       if (isCompatible) {
@@ -155,6 +164,9 @@ public class IoTDBAlterColumnTypeIT {
               e.getMessage());
         }
       }
+
+      // If don't execute the flush" operation, verify if result can get valid value, not be null when query memtable.
+      //      session.executeNonQueryStatement("FLUSH");
 
       SessionDataSet dataSet =
           session.executeQueryStatement("select * from write_and_alter_column_type order by time");
@@ -743,7 +755,7 @@ public class IoTDBAlterColumnTypeIT {
         new TsFileWriterBuilder().file(file).tableSchema(schema2).build()) {
       Tablet tablet =
           new Tablet(
-              schema1.getTableName(),
+              schema2.getTableName(),
               Arrays.asList("dId", "s1"),
               Arrays.asList(TSDataType.STRING, TSDataType.DOUBLE),
               Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD));
