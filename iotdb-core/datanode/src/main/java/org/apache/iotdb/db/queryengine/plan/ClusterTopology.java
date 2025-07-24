@@ -22,7 +22,9 @@ package org.apache.iotdb.db.queryengine.plan;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,12 +73,18 @@ public class ClusterTopology {
     }
     final List<TRegionReplicaSet> allSets =
         input.stream().map(Map.Entry::getKey).collect(Collectors.toList());
-    final List<TRegionReplicaSet> candidates = getReachableCandidates(allSets);
+    final List<TRegionReplicaSet> candidates =
+        getReachableCandidates(
+            allSets.stream().filter(TRegionReplicaSet::isSetRegionId).collect(Collectors.toList()));
     final Map<TConsensusGroupId, TRegionReplicaSet> newMap = new HashMap<>();
     candidates.forEach(set -> newMap.put(set.getRegionId(), set));
     final Map<TRegionReplicaSet, T> candidateMap = new HashMap<>();
     for (final Map.Entry<TRegionReplicaSet, T> entry : input) {
       final TConsensusGroupId gid = entry.getKey().getRegionId();
+      if (gid == null) {
+        candidateMap.put(DataPartition.NOT_ASSIGNED, entry.getValue());
+        continue;
+      }
       final TRegionReplicaSet replicaSet = newMap.get(gid);
       if (replicaSet != null) {
         candidateMap.put(replicaSet, entry.getValue());
@@ -89,9 +97,11 @@ public class ClusterTopology {
     if (!isPartitioned.get() || all == null || all.isEmpty()) {
       return all;
     }
-    if (all.stream().anyMatch(set -> set.getDataNodeLocationsSize() == 0)) {
+    for (TRegionReplicaSet replicaSet : all) {
       // some TRegionReplicaSet is unreachable since all DataNodes are down
-      return Collections.emptyList();
+      if (replicaSet.getDataNodeLocationsSize() == 0) {
+        throw new ReplicaSetUnreachableException(replicaSet);
+      }
     }
     final Map<Integer, Set<Integer>> topologyMapCurrent =
         Collections.unmodifiableMap(this.topologyMap.get());

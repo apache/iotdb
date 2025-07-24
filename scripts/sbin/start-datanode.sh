@@ -130,7 +130,7 @@ if [ "x$SHOW_VERSION" != "x" ]; then
     else
         JAVA=java
     fi
-    exec "$JAVA" -cp "$CLASSPATH" $IOTDB_JVM_OPTS "-Dlogback.configurationFile=${IOTDB_LOG_CONFIG}" "$classname"
+    exec "$JAVA" $IOTDB_JMX_OPTS $IOTDB_JVM_OPTS "-Dlogback.configurationFile=${IOTDB_LOG_CONFIG}" -cp "$CLASSPATH" "$classname"
     exit 0
 fi
 
@@ -174,19 +174,19 @@ launch_service()
         iotdb_parms="$iotdb_parms -Diotdb-foreground=yes"
         if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
           [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
-            exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
+            exec $NUMACTL "$JAVA" "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS $IOTDB_JVM_OPTS -cp "$CLASSPATH" "$class" $PARAMS
         else
             [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
-            exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
+            exec $NUMACTL "$JAVA" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS $IOTDB_JVM_OPTS -cp "$CLASSPATH" "$class" $PARAMS
         fi
     # Startup IoTDB, background it, and write the pid.
     else
         if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
-              exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null  <&- &
+              exec $NUMACTL "$JAVA" "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS $IOTDB_JVM_OPTS -cp "$CLASSPATH" "$class" $PARAMS 2>&1 > /dev/null  <&- &
               [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
               true
         else
-              exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null <&- &
+              exec $NUMACTL "$JAVA" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS $IOTDB_JVM_OPTS -cp "$CLASSPATH" "$class" $PARAMS 2>&1 > /dev/null <&- &
               [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
               true
         fi

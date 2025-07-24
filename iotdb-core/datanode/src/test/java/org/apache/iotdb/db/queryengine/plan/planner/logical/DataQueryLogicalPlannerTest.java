@@ -39,9 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAgg
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
@@ -53,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -77,31 +76,39 @@ public class DataQueryLogicalPlannerTest {
     // fake initResultNodeContext()
     queryId.genPlanNodeId();
 
-    LastQueryScanNode d1s1 =
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1"), null);
-    LastQueryScanNode d1s2 =
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2"), null);
-    LastQueryScanNode d1s3 =
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3"), null);
-    LastQueryScanNode d2s1 =
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s1"), null);
-    LastQueryScanNode d2s2 =
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2"), null);
-    LastQueryScanNode d2s4 =
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4"), null);
-    AlignedLastQueryScanNode d2a =
-        new AlignedLastQueryScanNode(
-            queryId.genPlanNodeId(), (AlignedPath) schemaMap.get("root.sg.d2.a"), null);
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            ((MeasurementPath) schemaMap.get("root.sg.d1.s1")).getMeasurementSchema(),
+            ((MeasurementPath) schemaMap.get("root.sg.d1.s2")).getMeasurementSchema(),
+            ((MeasurementPath) schemaMap.get("root.sg.d1.s3")).getMeasurementSchema());
+    MeasurementPath d1s1Path = (MeasurementPath) schemaMap.get("root.sg.d1.s1");
+    LastQueryNode lastQueryNode = new LastQueryNode(queryId.genPlanNodeId(), Ordering.ASC, false);
 
-    List<PlanNode> sourceNodeList = Arrays.asList(d1s1, d1s2, d1s3, d2a, d2s1, d2s2, d2s4);
-    LastQueryNode lastQueryNode =
-        new LastQueryNode(queryId.genPlanNodeId(), sourceNodeList, Ordering.ASC, false);
+    lastQueryNode.addDeviceLastQueryScanNode(
+        queryId.genPlanNodeId(),
+        d1s1Path.getDevicePath(),
+        d1s1Path.isUnderAlignedEntity(),
+        measurementSchemas,
+        null,
+        null);
+
+    measurementSchemas =
+        Arrays.asList(
+            ((MeasurementPath) schemaMap.get("root.sg.d2.s1")).getMeasurementSchema(),
+            ((MeasurementPath) schemaMap.get("root.sg.d2.s2")).getMeasurementSchema(),
+            ((MeasurementPath) schemaMap.get("root.sg.d2.s4")).getMeasurementSchema());
+    MeasurementPath d2s1Path = (MeasurementPath) schemaMap.get("root.sg.d2.s1");
+    lastQueryNode.addDeviceLastQueryScanNode(
+        queryId.genPlanNodeId(),
+        d2s1Path.getDevicePath(),
+        d2s1Path.isUnderAlignedEntity(),
+        measurementSchemas,
+        null,
+        null);
+
+    AlignedPath aPath = (AlignedPath) schemaMap.get("root.sg.d2.a");
+    lastQueryNode.addDeviceLastQueryScanNode(
+        queryId.genPlanNodeId(), aPath.getDevicePath(), true, aPath.getSchemaList(), null, null);
 
     PlanNode actualPlan = parseSQLToPlanNode(sql);
     Assert.assertEquals(actualPlan, lastQueryNode);
@@ -115,19 +122,21 @@ public class DataQueryLogicalPlannerTest {
     // fake initResultNodeContext()
     queryId.genPlanNodeId();
 
-    LastQueryScanNode d1s3 =
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3"), null);
-    LastQueryScanNode d1s1 =
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1"), null);
-    LastQueryScanNode d1s2 =
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2"), null);
+    LastQueryNode lastQueryNode = new LastQueryNode(queryId.genPlanNodeId(), null, false);
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            ((MeasurementPath) schemaMap.get("root.sg.d1.s3")).getMeasurementSchema(),
+            ((MeasurementPath) schemaMap.get("root.sg.d1.s1")).getMeasurementSchema(),
+            ((MeasurementPath) schemaMap.get("root.sg.d1.s2")).getMeasurementSchema());
+    MeasurementPath s3Path = (MeasurementPath) schemaMap.get("root.sg.d1.s3");
+    lastQueryNode.addDeviceLastQueryScanNode(
+        queryId.genPlanNodeId(),
+        s3Path.getDevicePath(),
+        s3Path.isUnderAlignedEntity(),
+        measurementSchemas,
+        null,
+        null);
 
-    List<PlanNode> sourceNodeList = Arrays.asList(d1s3, d1s1, d1s2);
-    LastQueryNode lastQueryNode =
-        new LastQueryNode(queryId.genPlanNodeId(), sourceNodeList, null, false);
     SortNode sortNode =
         new SortNode(
             queryId.genPlanNodeId(),

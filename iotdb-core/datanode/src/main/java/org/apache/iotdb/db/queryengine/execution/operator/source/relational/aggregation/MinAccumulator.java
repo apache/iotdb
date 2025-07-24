@@ -209,10 +209,8 @@ public class MinAccumulator implements TableAccumulator {
         updateIntMinValue(((Number) statistics[0].getMinValue()).intValue());
         break;
       case INT64:
-        updateLongMinValue(((Number) statistics[0].getMinValue()).longValue());
-        break;
       case TIMESTAMP:
-        updateLongMinValue(statistics[0].getStartTime());
+        updateLongMinValue(((Number) statistics[0].getMinValue()).longValue());
         break;
       case FLOAT:
         updateFloatMinValue(((Number) statistics[0].getMinValue()).floatValue());

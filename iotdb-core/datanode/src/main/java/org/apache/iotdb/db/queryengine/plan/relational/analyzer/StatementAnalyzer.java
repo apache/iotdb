@@ -95,6 +95,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
@@ -1994,6 +1995,22 @@ public class StatementAnalyzer {
       protected List<Expression> visitRow(Row node, Scope context) {
         throw new SemanticException(
             String.format("%s are not supported now", node.getClass().getSimpleName()));
+      }
+
+      @Override
+      protected List<Expression> visitExtract(Extract node, Scope context) {
+        List<Expression> childResult = process(node.getExpression(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new Extract(expression, node.getField()));
+        }
+
+        return resultBuilder.build();
       }
 
       @Override

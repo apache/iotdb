@@ -225,9 +225,14 @@ public class SeriesScanUtil implements Accountable {
   // file level methods
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public boolean hasNextFile() throws IOException {
+  // When Optional.empty() is returned, it means that the current hasNextFile has not been fully
+  // executed. In order to avoid the execution time of this method exceeding the allocated time
+  // slice, it is return early in this way. For the upper-level method, when encountering
+  // Optional.empty(), it needs to return directly to the checkpoint method that checks the operator
+  // execution time slice.
+  public Optional<Boolean> hasNextFile() throws IOException {
     if (!paginationController.hasCurLimit()) {
-      return false;
+      return Optional.of(false);
     }
 
     if (!unSeqPageReaders.isEmpty()
@@ -247,21 +252,25 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (firstTimeSeriesMetadata != null) {
-      return true;
+      return Optional.of(true);
     }
 
-    while (firstTimeSeriesMetadata == null
-        && (orderUtils.hasNextSeqResource()
-            || orderUtils.hasNextUnseqResource()
-            || !seqTimeSeriesMetadata.isEmpty()
-            || !unSeqTimeSeriesMetadata.isEmpty())) {
+    boolean checked = false;
+    if (orderUtils.hasNextSeqResource()
+        || orderUtils.hasNextUnseqResource()
+        || !seqTimeSeriesMetadata.isEmpty()
+        || !unSeqTimeSeriesMetadata.isEmpty()) {
       // init first time series metadata whose startTime is minimum
       tryToUnpackAllOverlappedFilesToTimeSeriesMetadata();
       // filter file based on push-down conditions
       filterFirstTimeSeriesMetadata();
+      checked = true;
     }
 
-    return firstTimeSeriesMetadata != null;
+    if (checked && firstTimeSeriesMetadata == null) {
+      return Optional.empty();
+    }
+    return Optional.of(firstTimeSeriesMetadata != null);
   }
 
   private boolean currentFileOverlapped() {
@@ -305,11 +314,16 @@ public class SeriesScanUtil implements Accountable {
    * This method should be called after hasNextFile() until no next chunk, make sure that all
    * overlapped chunks are consumed.
    *
+   * @return Optional<Boolean> When Optional.empty() is returned, it means that the current
+   *     hasNextFile has not been fully executed. In order to avoid the execution time of this
+   *     method exceeding the allocated time slice, it is return early in this way. For the
+   *     upper-level method, when encountering Optional.empty(), it needs to return directly to the
+   *     checkpoint method who checks the operator execution time slice.
    * @throws IllegalStateException illegal state
    */
-  public boolean hasNextChunk() throws IOException {
+  public Optional<Boolean> hasNextChunk() throws IOException {
     if (!paginationController.hasCurLimit()) {
-      return false;
+      return Optional.of(false);
     }
 
     if (!unSeqPageReaders.isEmpty()
@@ -325,18 +339,28 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (firstChunkMetadata != null) {
-      return true;
+      return Optional.of(true);
       // hasNextFile() has not been invoked
     } else if (firstTimeSeriesMetadata == null && cachedChunkMetadata.isEmpty()) {
-      return false;
+      return Optional.of(false);
     }
 
-    while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
+    Optional<Boolean> hasNextFileReturnValue = null;
+    while (firstChunkMetadata == null) {
+      if (cachedChunkMetadata.isEmpty()) {
+        if (hasNextFileReturnValue != null) {
+          return Optional.empty();
+        }
+        hasNextFileReturnValue = hasNextFile();
+        if (!hasNextFileReturnValue.isPresent() || !hasNextFileReturnValue.get()) {
+          return hasNextFileReturnValue;
+        }
+      }
       initFirstChunkMetadata();
       // filter chunk based on push-down conditions
       filterFirstChunkMetadata();
     }
-    return firstChunkMetadata != null;
+    return Optional.of(firstChunkMetadata != null);
   }
 
   private void filterFirstChunkMetadata() {
@@ -1078,15 +1102,21 @@ public class SeriesScanUtil implements Accountable {
     /*
      * Fill sequence TimeSeriesMetadata List until it is not empty
      */
-    while (seqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextSeqResource()) {
-      unpackSeqTsFileResource();
+    if (seqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextSeqResource()) {
+      // Avoid exceeding the time slice when a series cannot be found
+      if (!unpackSeqTsFileResource().isPresent()) {
+        return;
+      }
     }
 
     /*
      * Fill unSequence TimeSeriesMetadata Priority Queue until it is not empty
      */
-    while (unSeqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextUnseqResource()) {
-      unpackUnseqTsFileResource();
+    if (unSeqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextUnseqResource()) {
+      // Avoid exceeding the time slice when a series cannot be found
+      if (!unpackUnseqTsFileResource().isPresent()) {
+        return;
+      }
     }
 
     /*
@@ -1196,11 +1226,11 @@ public class SeriesScanUtil implements Accountable {
   private boolean typeCompatible(ITimeSeriesMetadata timeseriesMetadata) {
     if (timeseriesMetadata instanceof TimeseriesMetadata) {
       return getTsDataTypeList()
-          .get(0)
-          .isCompatible(((TimeseriesMetadata) timeseriesMetadata).getTsDataType());
+              .get(0)
+              .isCompatible(((TimeseriesMetadata) timeseriesMetadata).getTsDataType());
     } else {
       List<TimeseriesMetadata> valueTimeseriesMetadataList =
-          ((AbstractAlignedTimeSeriesMetadata) timeseriesMetadata).getValueTimeseriesMetadataList();
+              ((AbstractAlignedTimeSeriesMetadata) timeseriesMetadata).getValueTimeseriesMetadataList();
       if (getTsDataTypeList().isEmpty()) {
         return true;
       }
@@ -1209,7 +1239,7 @@ public class SeriesScanUtil implements Accountable {
         for (int i = 0, size = getTsDataTypeList().size(); i < size; i++) {
           TimeseriesMetadata valueTimeSeriesMetadata = valueTimeseriesMetadataList.get(i);
           if (valueTimeSeriesMetadata != null
-              && !getTsDataTypeList()
+                  && !getTsDataTypeList()
                   .get(i)
                   .isCompatible(valueTimeSeriesMetadata.getTsDataType())) {
             valueTimeseriesMetadataList.set(i, null);
@@ -1222,13 +1252,16 @@ public class SeriesScanUtil implements Accountable {
     }
   }
 
-  private void unpackUnseqTsFileResource() throws IOException {
+  private Optional<ITimeSeriesMetadata> unpackUnseqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true), false);
     // skip if data type is mismatched which may be caused by delete
     if (timeseriesMetadata != null && typeCompatible(timeseriesMetadata)) {
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
+      return Optional.of(timeseriesMetadata);
+    } else {
+      return Optional.empty();
     }
   }
 

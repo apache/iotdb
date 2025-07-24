@@ -36,7 +36,7 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionExtractorMetrics;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -98,7 +98,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     listenedTypeSet = SchemaRegionListeningFilter.parseListeningPlanTypeSet(parameters);
 
     PipeSchemaRegionExtractorMetrics.getInstance().register(this);
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().register(this);
+    PipeDataNodeSinglePipeMetrics.getInstance().register(this);
   }
 
   @Override

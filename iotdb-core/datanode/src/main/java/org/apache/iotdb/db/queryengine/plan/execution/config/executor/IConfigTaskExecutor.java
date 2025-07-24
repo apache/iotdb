@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
@@ -62,7 +63,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -272,6 +272,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> removeConfigNode(
       RemoveConfigNodeStatement removeConfigNodeStatement);
 
+  SettableFuture<ConfigTaskResult> removeAINode(RemoveAINodeStatement removeAINodeStatement);
+
   SettableFuture<ConfigTaskResult> createContinuousQuery(
       CreateContinuousQueryStatement createContinuousQueryStatement, MPPQueryContext context);
 
@@ -426,12 +428,11 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showCurrentTimestamp();
 
   // =============================== AI =========================================
-  SettableFuture<ConfigTaskResult> createModel(
-      CreateModelStatement createModelStatement, MPPQueryContext context);
+  SettableFuture<ConfigTaskResult> createModel(String modelId, String uri);
 
-  SettableFuture<ConfigTaskResult> dropModel(String modelName);
+  SettableFuture<ConfigTaskResult> dropModel(String modelId);
 
-  SettableFuture<ConfigTaskResult> showModels(String modelName);
+  SettableFuture<ConfigTaskResult> showModels(String modelId);
 
   SettableFuture<ConfigTaskResult> createTraining(
       String modelId,

@@ -32,17 +32,35 @@ import org.apache.iotdb.db.storageengine.rescon.disk.strategy.SequenceStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class FolderManager {
   private static final Logger logger = LoggerFactory.getLogger(FolderManager.class);
 
+  /** Represents the operational states of a data folder. */
+  public enum FolderState {
+    /** Indicates the folder is functioning normally with no issues. */
+    HEALTHY,
+    /** Indicates the folder has operational problems requiring attention. */
+    ABNORMAL
+  }
+
   private final List<String> folders;
+
+  /**
+   * Map storing the state of each folder (HEALTHY/ABNORMAL). Key: folder path as String Value:
+   * corresponding FolderState enum value
+   */
+  private final Map<String, FolderState> foldersStates = new HashMap<>();
+
   private final DirectoryStrategy selectStrategy;
 
   public FolderManager(List<String> folders, DirectoryStrategyType type)
       throws DiskSpaceInsufficientException {
     this.folders = folders;
+    folders.forEach(dir -> foldersStates.put(dir, FolderState.HEALTHY));
     switch (type) {
       case SEQUENCE_STRATEGY:
         this.selectStrategy = new SequenceStrategy();
@@ -61,12 +79,18 @@ public class FolderManager {
     }
     try {
       this.selectStrategy.setFolders(folders);
+      this.selectStrategy.setFoldersStates(foldersStates);
     } catch (DiskSpaceInsufficientException e) {
       logger.error("All folders are full, change system mode to read-only.", e);
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
       throw e;
     }
+  }
+
+  public void updateFolderState(String folder, FolderState state) {
+    foldersStates.replace(folder, state);
+    selectStrategy.updateFolderState(folder, state);
   }
 
   public String getNextFolder() throws DiskSpaceInsufficientException {
@@ -78,6 +102,45 @@ public class FolderManager {
       CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
       throw e;
     }
+  }
+
+  boolean hasHealthyFolder() {
+    return folders.stream()
+        .anyMatch(
+            folder ->
+                foldersStates.getOrDefault(folder, FolderState.ABNORMAL) == FolderState.HEALTHY);
+  }
+
+  @FunctionalInterface
+  public interface ThrowingFunction<T, R, E extends Exception> {
+    R apply(T t) throws E;
+  }
+
+  /*
+   * Encapsulates the retry logic for folder operations
+   * @param folderConsumer The operation to perform on the folder (e.g., creating TsFileWriterManager)
+   * @return The result of the operation
+   */
+  public <T, E extends Exception> T getNextWithRetry(ThrowingFunction<String, T, E> folderConsumer)
+      throws DiskSpaceInsufficientException {
+    String folder = null;
+    while (hasHealthyFolder()) {
+      try {
+        folder = folders.get(selectStrategy.nextFolderIndex());
+      } catch (DiskSpaceInsufficientException e) {
+        logger.error("All folders are full, change system mode to read-only.", e);
+        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+        CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
+        throw e;
+      }
+      try {
+        return folderConsumer.apply(folder);
+      } catch (Exception e) {
+        updateFolderState(folder, FolderState.ABNORMAL);
+        logger.warn("Failed to process folder '" + folder);
+      }
+    }
+    throw new DiskSpaceInsufficientException(folders);
   }
 
   public List<String> getFolders() {

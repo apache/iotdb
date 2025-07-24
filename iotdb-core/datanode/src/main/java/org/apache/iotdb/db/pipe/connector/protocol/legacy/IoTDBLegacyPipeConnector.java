@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.legacy.TsFilePipeData;
@@ -64,14 +63,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
@@ -139,24 +136,6 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
             parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY),
             parameters.hasAttribute(SINK_IOTDB_IP_KEY),
             parameters.hasAttribute(SINK_IOTDB_PORT_KEY))
-        .validate(
-            empty -> {
-              try {
-                // Ensure the sink doesn't point to the legacy receiver on DataNode itself
-                return !NodeUrlUtils.containsLocalAddress(
-                    givenNodeUrls.stream()
-                        .filter(tEndPoint -> tEndPoint.getPort() == ioTDBConfig.getRpcPort())
-                        .map(TEndPoint::getIp)
-                        .collect(Collectors.toList()));
-              } catch (final UnknownHostException e) {
-                LOGGER.warn("Unknown host when checking pipe sink IP.", e);
-                return false;
-              }
-            },
-            String.format(
-                "One of the endpoints %s of the receivers is pointing back to the legacy receiver %s on sender itself, or unknown host when checking pipe sink IP.",
-                givenNodeUrls,
-                new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())))
         .validate(
             args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
             String.format(

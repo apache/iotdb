@@ -191,7 +191,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
       types.add(inferType(value));
       values.add(value);
     }
-    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
+    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values, measurements);
 
     request.setPrefixPath(prefix);
     request.setTimestamp(time);

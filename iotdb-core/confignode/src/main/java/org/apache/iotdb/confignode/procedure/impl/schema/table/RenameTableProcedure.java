@@ -179,6 +179,10 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
     }
   }
 
+  public String getNewName() {
+    return newName;
+  }
+
   @Override
   protected RenameTableState getState(final int stateId) {
     return RenameTableState.values()[stateId];

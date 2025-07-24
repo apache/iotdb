@@ -45,6 +45,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -78,6 +79,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertTabletReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -96,6 +98,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedTabletReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -105,6 +108,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertRecordsReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -139,6 +143,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertRecordReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -179,6 +184,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedRecordReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -227,6 +233,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedRecordsReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -255,6 +262,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertStringRecordsOfOneDeviceReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -283,6 +291,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedStringRecordsOfOneDeviceReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -387,13 +396,12 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
     String sql =
         String.format(
             "create pipe test%s"
-                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='%s','realtime.enable'='%s','history.enable'='%s')"
+                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='%s','realtime.enable'='%s','history.enable'='true')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='%s')",
             diff,
             isTSFile ? "file" : "forced-log",
             !isTSFile,
-            isTSFile,
             receiverEnv.getIP(),
             receiverEnv.getPort(),
             isTSFile ? "tsfile" : "tablet");

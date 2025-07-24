@@ -185,9 +185,8 @@ public class PipeHeartbeatParser {
         final PipeTaskMeta runtimeMetaFromAgent =
             pipeTaskMetaMapFromAgent.get(runtimeMetaFromCoordinator.getKey());
         if (runtimeMetaFromAgent == null) {
-          LOGGER.warn(
-              "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "
-                  + "runtimeMetaFromAgent is null, runtimeMetaFromCoordinator: {}",
+          LOGGER.info(
+              "No corresponding Pipe is running in the reported DataRegion. runtimeMetaFromAgent is null, runtimeMetaFromCoordinator: {}",
               runtimeMetaFromCoordinator);
           continue;
         }
@@ -244,7 +243,6 @@ public class PipeHeartbeatParser {
                 .equals(PipeStatus.STOPPED)) {
               PipeRuntimeMeta runtimeMeta = pipeMetaFromCoordinator.getRuntimeMeta();
               runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-              runtimeMeta.onSetPipeDroppedOrStopped();
               runtimeMeta.setIsStoppedByRuntimeException(true);
 
               needWriteConsensusOnConfigNodes.set(true);
@@ -274,7 +272,6 @@ public class PipeHeartbeatParser {
                               exceptionMap.put(nodeId, exception);
                             }
                             runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-                            runtimeMeta.onSetPipeDroppedOrStopped();
                             runtimeMeta.setIsStoppedByRuntimeException(true);
 
                             needWriteConsensusOnConfigNodes.set(true);

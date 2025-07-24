@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TLoadSample;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSender;
 import org.apache.iotdb.common.rpc.thrift.TServiceType;
@@ -40,6 +41,9 @@ import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
@@ -245,7 +249,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
@@ -313,12 +316,18 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -364,6 +373,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private final ClusterTopology clusterTopology = ClusterTopology.getInstance();
 
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+
+  private final ExecutorService schemaExecutor =
+      new WrappedThreadPoolExecutor(
+          0,
+          IoTDBDescriptor.getInstance().getConfig().getSchemaThreadCount(),
+          0L,
+          TimeUnit.SECONDS,
+          new ArrayBlockingQueue<>(
+              IoTDBDescriptor.getInstance().getConfig().getSchemaThreadCount()),
+          new IoTThreadFactory(ThreadName.SCHEMA_PARALLEL_POOL.getName()),
+          ThreadName.SCHEMA_PARALLEL_POOL.getName(),
+          new ThreadPoolExecutor.CallerRunsPolicy());
 
   private static final String SYSTEM = "system";
 
@@ -1153,6 +1174,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       .map(PipeMeta::deserialize4TaskAgent)
                       .collect(Collectors.toList()));
 
+      if (Objects.isNull(exceptionMessages)) {
+        return new TPushPipeMetaResp()
+            .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_TIMEOUT.getStatusCode()));
+      }
       return exceptionMessages.isEmpty()
           ? new TPushPipeMetaResp()
               .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
@@ -1429,16 +1454,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     final List<TSStatus> statusList = Collections.synchronizedList(new ArrayList<>());
     final AtomicBoolean hasFailure = new AtomicBoolean(false);
 
-    consensusGroupIdList.parallelStream()
-        .forEach(
-            consensusGroupId -> {
-              final TSStatus status = executeOnOneRegion.apply(consensusGroupId);
-              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                  && status.getCode() != TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
-                hasFailure.set(true);
-              }
-              statusList.add(status);
-            });
+    final Set<Future<?>> schemaFuture = new HashSet<>();
+
+    consensusGroupIdList.forEach(
+        consensusGroupId ->
+            schemaFuture.add(
+                schemaExecutor.submit(
+                    () -> {
+                      final TSStatus status = executeOnOneRegion.apply(consensusGroupId);
+                      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                          && status.getCode() != TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
+                        hasFailure.set(true);
+                      }
+                      statusList.add(status);
+                    })));
+
+    for (final Future<?> future : schemaFuture) {
+      try {
+        future.get();
+      } catch (final ExecutionException | InterruptedException e) {
+        LOGGER.warn("Exception occurs when executing internal schema task: ", e);
+        statusList.add(
+            new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                .setMessage(e.toString()));
+      }
+    }
 
     if (hasFailure.get()) {
       return RpcUtils.getStatus(statusList);
@@ -1457,15 +1497,30 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     final List<TSStatus> statusList = Collections.synchronizedList(new ArrayList<>());
     final AtomicBoolean hasFailure = new AtomicBoolean(false);
 
-    consensusGroupIdList.parallelStream()
-        .forEach(
-            consensusGroupId -> {
-              final TSStatus status = executeOnOneRegion.apply(consensusGroupId);
-              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                hasFailure.set(true);
-              }
-              statusList.add(status);
-            });
+    final Set<Future<?>> schemaFuture = new HashSet<>();
+
+    consensusGroupIdList.forEach(
+        consensusGroupId ->
+            schemaFuture.add(
+                schemaExecutor.submit(
+                    () -> {
+                      final TSStatus status = executeOnOneRegion.apply(consensusGroupId);
+                      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                        hasFailure.set(true);
+                      }
+                      statusList.add(status);
+                    })));
+
+    for (final Future<?> future : schemaFuture) {
+      try {
+        future.get();
+      } catch (final ExecutionException | InterruptedException e) {
+        LOGGER.warn("Exception occurs when executing internal schema task: ", e);
+        statusList.add(
+            new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                .setMessage(e.toString()));
+      }
+    }
 
     if (hasFailure.get()) {
       return RpcUtils.getStatus(statusList);

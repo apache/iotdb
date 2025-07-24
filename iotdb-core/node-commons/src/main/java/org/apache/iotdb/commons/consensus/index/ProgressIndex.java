@@ -215,7 +215,7 @@ public abstract class ProgressIndex implements Accountable {
    * <p>Notice:TotalOrderSumTuple is an ordered tuple, the larger the subscript the higher the
    * weight of the element when comparing sizes, e.g. (1, 2) is larger than (2, 1).
    */
-  protected static class TotalOrderSumTuple implements Comparable<TotalOrderSumTuple> {
+  public static class TotalOrderSumTuple implements Comparable<TotalOrderSumTuple> {
     private final ImmutableList<Long> tuple;
 
     /**

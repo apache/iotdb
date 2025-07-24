@@ -70,6 +70,7 @@ public enum ThreadName {
   PBTREE_FLUSH_MONITOR("PBTree-Flush-Monitor"),
   PBTREE_WORKER_POOL("PBTree-Worker-Pool"),
   GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE("General-Region-Attribute-Security-Service"),
+  SCHEMA_PARALLEL_POOL("Schema-Parallel-Pool"),
 
   // -------------------------- ClientService --------------------------
   CLIENT_RPC_SERVICE("ClientRPC-Service"),
@@ -140,6 +141,7 @@ public enum ThreadName {
   PIPE_CONSENSUS_EXECUTOR_POOL("Pipe-Consensus-Executor-Pool"),
   PIPE_CONFIGNODE_EXECUTOR_POOL("Pipe-ConfigNode-Executor-Pool"),
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
+  PIPE_TSFILE_ASYNC_SEND_POOL("Pipe-TsFile-Async-Send-Pool"),
   PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
   PIPE_RUNTIME_HEARTBEAT("Pipe-Runtime-Heartbeat"),
   PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),
@@ -149,7 +151,7 @@ public enum ThreadName {
   PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
   PIPE_RECEIVER_AIR_GAP_AGENT("Pipe-Receiver-Air-Gap-Agent"),
   PIPE_AIR_GAP_RECEIVER("Pipe-Air-Gap-Receiver"),
-  PIPE_PROGRESS_INDEX_BACKGROUND_SERVICE("Pipe-Progress-Index-Background-Service"),
+  PIPE_PARALLEL_EXECUTION_POOL("Pipe-Parallel-Execution-Pool"),
   LOAD_DATATYPE_CONVERT_POOL("Load-Datatype-Convert-Pool"),
   SUBSCRIPTION_EXECUTOR_POOL("Subscription-Executor-Pool"),
   SUBSCRIPTION_RUNTIME_META_SYNCER("Subscription-Runtime-Meta-Syncer"),
@@ -250,7 +252,8 @@ public enum ThreadName {
               SCHEMA_FORCE_MLOG,
               PBTREE_FLUSH_MONITOR,
               PBTREE_WORKER_POOL,
-              GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE));
+              GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE,
+              SCHEMA_PARALLEL_POOL));
 
   private static final Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));
@@ -271,8 +274,7 @@ public enum ThreadName {
               PIPE_CONSENSUS_RPC_PROCESSOR,
               ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL,
               PIPE_CONSENSUS_DELETION_SERIALIZE,
-              PIPE_CONSENSUS_TSFILE_WRITER_CHECKER,
-              PIPE_CONSENSUS_BACKGROUND_TASK_EXECUTOR));
+              PIPE_CONSENSUS_TSFILE_WRITER_CHECKER));
 
   private static final Set<ThreadName> ratisThreadNames =
       new HashSet<>(
@@ -309,7 +311,7 @@ public enum ThreadName {
               PIPE_ASYNC_CONNECTOR_CLIENT_POOL,
               PIPE_RECEIVER_AIR_GAP_AGENT,
               PIPE_AIR_GAP_RECEIVER,
-              PIPE_PROGRESS_INDEX_BACKGROUND_SERVICE,
+              PIPE_PARALLEL_EXECUTION_POOL,
               SUBSCRIPTION_EXECUTOR_POOL,
               SUBSCRIPTION_RUNTIME_META_SYNCER,
               WINDOW_EVALUATION_SERVICE,

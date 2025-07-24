@@ -270,7 +270,7 @@ public class ProcedureManager {
             && System.currentTimeMillis() - startCheckTimeForProcedures < PROCEDURE_WAIT_TIME_OUT) {
           final Pair<Long, Boolean> procedureIdDuplicatePair =
               checkDuplicateTableTask(
-                  database, null, null, null, ProcedureType.DELETE_DATABASE_PROCEDURE);
+                  database, null, null, null, null, ProcedureType.DELETE_DATABASE_PROCEDURE);
           hasOverlappedTask = procedureIdDuplicatePair.getRight();
 
           if (Boolean.FALSE.equals(procedureIdDuplicatePair.getRight())) {
@@ -1978,25 +1978,17 @@ public class ProcedureManager {
 
   public TSStatus renameTable(final TAlterOrDropTableReq req) {
     final boolean isView = req.isSetIsView() && req.isIsView();
+    final String newName = ReadWriteIOUtils.readString(req.updateInfo);
     return executeWithoutDuplicate(
         req.database,
         null,
         req.tableName,
+        newName,
         req.queryId,
         isView ? ProcedureType.RENAME_VIEW_PROCEDURE : ProcedureType.RENAME_TABLE_PROCEDURE,
         isView
-            ? new RenameViewProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readString(req.updateInfo),
-                false)
-            : new RenameTableProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readString(req.updateInfo),
-                false));
+            ? new RenameViewProcedure(req.database, req.tableName, req.queryId, newName, false)
+            : new RenameTableProcedure(req.database, req.tableName, req.queryId, newName, false));
   }
 
   public TDeleteTableDeviceResp deleteDevices(
@@ -2010,6 +2002,7 @@ public class ProcedureManager {
               req.database,
               null,
               req.tableName,
+              null,
               req.queryId,
               ProcedureType.DELETE_DEVICES_PROCEDURE);
       procedureId = procedureIdDuplicatePair.getLeft();
@@ -2054,10 +2047,21 @@ public class ProcedureManager {
       final String queryId,
       final ProcedureType thisType,
       final Procedure<ConfigNodeProcedureEnv> procedure) {
+    return executeWithoutDuplicate(database, table, tableName, null, queryId, thisType, procedure);
+  }
+
+  public TSStatus executeWithoutDuplicate(
+      final String database,
+      final TsTable table,
+      final String tableName,
+      final @Nullable String newName,
+      final String queryId,
+      final ProcedureType thisType,
+      final Procedure<ConfigNodeProcedureEnv> procedure) {
     final long procedureId;
     synchronized (this) {
       final Pair<Long, Boolean> procedureIdDuplicatePair =
-          checkDuplicateTableTask(database, table, tableName, queryId, thisType);
+          checkDuplicateTableTask(database, table, tableName, newName, queryId, thisType);
       procedureId = procedureIdDuplicatePair.getLeft();
 
       if (procedureId == -1) {
@@ -2078,6 +2082,7 @@ public class ProcedureManager {
       final @Nonnull String database,
       final TsTable table,
       final String tableName,
+      final String newName,
       final String queryId,
       final ProcedureType thisType) {
     ProcedureType type;
@@ -2098,7 +2103,9 @@ public class ProcedureManager {
           // tableName == null indicates delete database procedure
           if (database.equals(createTableProcedure.getDatabase())
               && (Objects.isNull(tableName)
-                  || Objects.equals(tableName, createTableProcedure.getTable().getTableName()))) {
+                  || Objects.equals(tableName, createTableProcedure.getTable().getTableName())
+                  || Objects.nonNull(newName)
+                      && Objects.equals(newName, createTableProcedure.getTable().getTableName()))) {
             return new Pair<>(-1L, true);
           }
           break;
@@ -2113,8 +2120,6 @@ public class ProcedureManager {
         case DROP_TABLE_PROCEDURE:
         case DROP_VIEW_PROCEDURE:
         case DELETE_DEVICES_PROCEDURE:
-        case RENAME_TABLE_PROCEDURE:
-        case RENAME_VIEW_PROCEDURE:
         case ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE:
           final AbstractAlterOrDropTableProcedure<?> alterTableProcedure =
               (AbstractAlterOrDropTableProcedure<?>) procedure;
@@ -2124,7 +2129,26 @@ public class ProcedureManager {
           // tableName == null indicates delete database procedure
           if (database.equals(alterTableProcedure.getDatabase())
               && (Objects.isNull(tableName)
-                  || Objects.equals(tableName, alterTableProcedure.getTableName()))) {
+                  || Objects.equals(tableName, alterTableProcedure.getTableName())
+                  || Objects.nonNull(newName)
+                      && Objects.equals(newName, alterTableProcedure.getTableName()))) {
+            return new Pair<>(-1L, true);
+          }
+          break;
+        case RENAME_TABLE_PROCEDURE:
+        case RENAME_VIEW_PROCEDURE:
+          final RenameTableProcedure renameTableProcedure = (RenameTableProcedure) procedure;
+          if (type == thisType && queryId.equals(renameTableProcedure.getQueryId())) {
+            return new Pair<>(procedure.getProcId(), false);
+          }
+          // tableName == null indicates delete database procedure
+          if (database.equals(renameTableProcedure.getDatabase())
+              && (Objects.isNull(tableName)
+                  || Objects.equals(tableName, renameTableProcedure.getTableName())
+                  || Objects.equals(tableName, renameTableProcedure.getNewName())
+                  || Objects.nonNull(newName)
+                      && (Objects.equals(newName, renameTableProcedure.getTableName())
+                          || Objects.equals(newName, renameTableProcedure.getNewName())))) {
             return new Pair<>(-1L, true);
           }
           break;

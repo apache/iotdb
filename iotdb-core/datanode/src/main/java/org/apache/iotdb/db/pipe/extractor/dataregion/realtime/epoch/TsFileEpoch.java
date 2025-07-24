@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch;
 
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -29,13 +30,13 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class TsFileEpoch {
 
-  private final String filePath;
+  private final TsFileResource resource;
   private final ConcurrentMap<PipeRealtimeDataRegionExtractor, AtomicReference<State>>
       dataRegionExtractor2State;
   private final AtomicLong insertNodeMinTime;
 
-  public TsFileEpoch(final String filePath) {
-    this.filePath = filePath;
+  public TsFileEpoch(final TsFileResource resource) {
+    this.resource = resource;
     this.dataRegionExtractor2State = new ConcurrentHashMap<>();
     this.insertNodeMinTime = new AtomicLong(Long.MAX_VALUE);
   }
@@ -64,19 +65,19 @@ public class TsFileEpoch {
     insertNodeMinTime.updateAndGet(recordedMinTime -> Math.min(recordedMinTime, newComingMinTime));
   }
 
-  public long getInsertNodeMinTime() {
-    return insertNodeMinTime.get();
+  public TsFileResource getResource() {
+    return resource;
   }
 
   public String getFilePath() {
-    return filePath;
+    return resource.getTsFilePath();
   }
 
   @Override
   public String toString() {
     return "TsFileEpoch{"
-        + "filePath='"
-        + filePath
+        + "resource='"
+        + resource
         + '\''
         + ", dataRegionExtractor2State="
         + dataRegionExtractor2State

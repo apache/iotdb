@@ -201,9 +201,5 @@ public interface IMemTable extends WALEntryValue {
 
   void setDatabaseAndDataRegionId(String database, String dataRegionId);
 
-  void markAsNotGeneratedByPipe();
-
-  boolean isTotallyGeneratedByPipe();
-
   void checkDataType(InsertNode node) throws DataTypeInconsistentException;
 }

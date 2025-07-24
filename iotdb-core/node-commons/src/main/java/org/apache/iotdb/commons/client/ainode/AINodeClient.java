@@ -28,6 +28,7 @@ import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelReq;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelResp;
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsReq;
 import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
 import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
@@ -56,7 +57,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Optional;
 
@@ -115,6 +115,22 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     return transport;
   }
 
+  public TSStatus stopAINode() throws TException {
+    try {
+      TSStatus status = client.stopAINode();
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new TException(status.message);
+      }
+      return status;
+    } catch (TException e) {
+      logger.warn(
+          "Failed to connect to AINode from ConfigNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
+      throw new TException(MSG_CONNECTION_FAIL);
+    }
+  }
+
   public ModelInformation registerModel(String modelName, String uri) throws LoadModelException {
     try {
       TRegisterModelReq req = new TRegisterModelReq(uri, modelName);
@@ -159,9 +175,9 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     }
   }
 
-  public TShowModelsResp showModels() throws TException {
+  public TShowModelsResp showModels(TShowModelsReq req) throws TException {
     try {
-      return client.showModels();
+      return client.showModels(req);
     } catch (TException e) {
       logger.warn(
           "Failed to connect to AINode from ConfigNode when executing {}: {}",
@@ -207,14 +223,14 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     } catch (IOException e) {
       TSStatus tsStatus = new TSStatus(INTERNAL_SERVER_ERROR.getStatusCode());
       tsStatus.setMessage(String.format("Failed to serialize input tsblock %s", e.getMessage()));
-      return new TForecastResp(tsStatus, ByteBuffer.allocate(0));
+      return new TForecastResp(tsStatus);
     } catch (TException e) {
       TSStatus tsStatus = new TSStatus(CAN_NOT_CONNECT_AINODE.getStatusCode());
       tsStatus.setMessage(
           String.format(
               "Failed to connect to AINode when executing %s: %s",
               Thread.currentThread().getStackTrace()[1].getMethodName(), e.getMessage()));
-      return new TForecastResp(tsStatus, ByteBuffer.allocate(0));
+      return new TForecastResp(tsStatus);
     }
   }
 

@@ -789,6 +789,8 @@ public class TableDistributedPlanGenerator
     DataPartition dataPartition = analysis.getDataPartitionInfo();
     if (dataPartition == null || node.getTreeDBName() == null) {
       node.setRegionReplicaSet(NOT_ASSIGNED);
+      node.setDeviceEntries(Collections.emptyList());
+      node.setTreeDBName(null);
       return Collections.singletonList(node);
     }
 
@@ -871,6 +873,8 @@ public class TableDistributedPlanGenerator
 
     if (tableScanNodeMap.isEmpty()) {
       node.setRegionReplicaSet(NOT_ASSIGNED);
+      node.setDeviceEntries(Collections.emptyList());
+      node.setTreeDBName(null);
       return Collections.singletonList(node);
     }
 
@@ -1034,11 +1038,11 @@ public class TableDistributedPlanGenerator
         node instanceof AggregationTreeDeviceViewScanNode
             ? ((AggregationTreeDeviceViewScanNode) node).getTreeDBName()
             : node.getQualifiedObjectName().getDatabaseName();
-    if (dbName == null) {
+    DataPartition dataPartition = analysis.getDataPartitionInfo();
+    if (dbName == null || dataPartition == null) {
       node.setRegionReplicaSet(NOT_ASSIGNED);
       return Collections.singletonList(node);
     }
-    DataPartition dataPartition = analysis.getDataPartitionInfo();
     boolean needSplit = false;
     List<List<TRegionReplicaSet>> regionReplicaSetsList = new ArrayList<>();
     if (dataPartition != null) {
