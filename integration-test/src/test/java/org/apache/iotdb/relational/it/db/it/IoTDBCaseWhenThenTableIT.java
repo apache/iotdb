@@ -673,4 +673,12 @@ public class IoTDBCaseWhenThenTableIT {
     String[] retArray = new String[] {"null,", "just so so~~~,", "null,", "very well~~~,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
   }
+
+  @Test
+  public void testThenWithBinarySameConstant() {
+    String sql = "SELECT CASE WHEN true THEN 200 + (s1 - 200) END AS result FROM table1";
+    String[] expectedHeader = new String[] {"result"};
+    String[] retArray = new String[] {"0,", "11,", "22,", "33,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
+  }
 }

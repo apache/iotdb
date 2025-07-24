@@ -269,8 +269,10 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
     operator.decreaseInsertNodeEventCount();
 
-    operator.getInsertNodeTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-    PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
+    if (transferTime > 0) {
+      operator.getInsertNodeTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
+      PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
+    }
   }
 
   public void increaseRawTabletEventCount(final String pipeName, final long creationTime) {
@@ -305,8 +307,10 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
 
     operator.decreaseTsFileEventCount();
-    operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-    PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
+    if (transferTime > 0) {
+      operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
+      PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
+    }
   }
 
   public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {
@@ -404,18 +408,18 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   //////////////////////////// singleton ////////////////////////////
 
-  private static class PipeDataNodeRemainingEventAndTimeMetricsHolder {
+  private static class PipeDataNodeSinglePipeMetricsHolder {
 
     private static final PipeDataNodeSinglePipeMetrics INSTANCE =
         new PipeDataNodeSinglePipeMetrics();
 
-    private PipeDataNodeRemainingEventAndTimeMetricsHolder() {
+    private PipeDataNodeSinglePipeMetricsHolder() {
       // Empty constructor
     }
   }
 
   public static PipeDataNodeSinglePipeMetrics getInstance() {
-    return PipeDataNodeRemainingEventAndTimeMetricsHolder.INSTANCE;
+    return PipeDataNodeSinglePipeMetricsHolder.INSTANCE;
   }
 
   private PipeDataNodeSinglePipeMetrics() {
