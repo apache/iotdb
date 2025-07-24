@@ -550,6 +550,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         if (!this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS)) {
           logger.error("Cannot forcibly stop node {}", getId());
         }
+      } else {
+        logger.info("In test {} Node {} is stopped", getTestLogDirName(), getId());
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
