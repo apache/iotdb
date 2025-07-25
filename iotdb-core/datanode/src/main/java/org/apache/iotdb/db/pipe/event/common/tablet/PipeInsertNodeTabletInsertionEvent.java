@@ -281,11 +281,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       throw new AccessDeniedException(
           String.format(
               "No privilege for SELECT for user %s at table %s.%s",
-              userName,
-              tableModelDatabaseName,
-              DeviceIDFactory.getInstance()
-                  .getDeviceID(insertNode.getTargetPath())
-                  .getTableName()));
+              userName, tableModelDatabaseName, tableName));
     }
   }
 
