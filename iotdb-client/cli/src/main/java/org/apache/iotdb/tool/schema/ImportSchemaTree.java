@@ -67,7 +67,7 @@ public class ImportSchemaTree extends AbstractImportSchema {
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)
-            .enableCompression(false)
+            .enableIoTDBRpcCompression(false)
             .enableRedirection(false)
             .enableAutoFetch(false)
             .build();
