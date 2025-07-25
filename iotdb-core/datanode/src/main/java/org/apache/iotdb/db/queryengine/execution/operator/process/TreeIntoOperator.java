@@ -67,7 +67,7 @@ public class TreeIntoOperator extends AbstractTreeIntoOperator {
             targetPathToSourceInputLocationMap,
             targetPathToDataTypeMap,
             targetDeviceToAlignedMap,
-            typeConvertors,
+            inputColumnTypes,
             maxRowNumberInStatement);
   }
 
@@ -130,7 +130,6 @@ public class TreeIntoOperator extends AbstractTreeIntoOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
-        + getTypeConvertorsBytes()
         + (sourceTargetPathPairList == null
             ? 0
             : sourceTargetPathPairList.stream()

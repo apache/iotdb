@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import com.google.common.util.concurrent.Futures;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +54,7 @@ public abstract class AbstractTreeIntoOperator extends AbstractIntoOperator {
       Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
       Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
       Map<String, Boolean> targetDeviceToAlignedMap,
-      List<Type> sourceTypeConvertors,
+      List<TSDataType> inputColumnTypes,
       int maxRowNumberInStatement) {
     List<InsertTabletStatementGenerator> insertTabletStatementGenerators =
         new ArrayList<>(targetPathToSourceInputLocationMap.size());
@@ -67,7 +66,7 @@ public abstract class AbstractTreeIntoOperator extends AbstractIntoOperator {
               targetDevice,
               entry.getValue(),
               targetPathToDataTypeMap.get(targetDevice),
-              sourceTypeConvertors,
+              inputColumnTypes,
               targetDeviceToAlignedMap.get(targetDevice.toString()),
               maxRowNumberInStatement);
       insertTabletStatementGenerators.add(generator);

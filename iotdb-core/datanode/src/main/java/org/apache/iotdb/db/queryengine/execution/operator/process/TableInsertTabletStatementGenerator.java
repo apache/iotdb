@@ -28,6 +28,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
@@ -50,7 +51,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
       PartialPath targetTable,
       Map<String, InputLocation> measurementToInputLocationMap,
       Map<String, TSDataType> measurementToDataTypeMap,
-      List<Type> sourceTypeConvertors,
+      List<TSDataType> inputColumnTypes,
       List<TsTableColumnCategory> tsTableColumnCategories,
       boolean isAligned,
       int rowLimit) {
@@ -62,7 +63,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
             .filter(entry -> !entry.getKey().equalsIgnoreCase(TIME_COLUMN_NAME))
             .map(Map.Entry::getValue)
             .toArray(InputLocation[]::new),
-        sourceTypeConvertors,
+        inputColumnTypes.stream().map(TypeFactory::getType).toArray(Type[]::new),
         isAligned,
         rowLimit);
     this.databaseName = databaseName;
@@ -88,8 +89,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
         }
 
         bitMaps[i].unmark(rowCount);
-        processColumn(
-            valueColumn, columns[i], dataTypes[i], sourceTypeConvertors.get(i), lastReadIndex);
+        processColumn(valueColumn, columns[i], dataTypes[i], typeConvertors[i], lastReadIndex);
       }
 
       writtenCounter.getAndIncrement();
@@ -128,6 +128,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
         + RamUsageEstimator.sizeOf(measurements)
         + sizeOf(dataTypes, TSDataType.class)
         + sizeOf(inputLocations, InputLocation.class)
+        + sizeOf(typeConvertors, Type.class)
         + RamUsageEstimator.shallowSizeOfInstance(AtomicLong.class);
   }
 }

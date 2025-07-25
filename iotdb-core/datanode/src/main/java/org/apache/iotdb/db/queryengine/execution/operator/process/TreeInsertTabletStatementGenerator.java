@@ -26,6 +26,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.HashMap;
@@ -43,7 +44,7 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
       PartialPath targetDevice,
       Map<String, InputLocation> measurementToInputLocationMap,
       Map<String, TSDataType> measurementToDataTypeMap,
-      List<Type> sourceTypeConvertors,
+      List<TSDataType> inputColumnTypes,
       boolean isAligned,
       int rowLimit) {
     super(
@@ -51,7 +52,7 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
         measurementToInputLocationMap.keySet().toArray(new String[0]),
         measurementToDataTypeMap.values().toArray(new TSDataType[0]),
         measurementToInputLocationMap.values().toArray(new InputLocation[0]),
-        sourceTypeConvertors,
+        inputColumnTypes.stream().map(TypeFactory::getType).toArray(Type[]::new),
         isAligned,
         rowLimit);
     this.writtenCounter = new HashMap<>();
@@ -79,11 +80,7 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
         bitMaps[i].unmark(rowCount);
         writtenCounter.get(measurements[i]).getAndIncrement();
         processColumn(
-            valueColumn,
-            columns[i],
-            dataTypes[i],
-            sourceTypeConvertors.get(valueColumnIndex),
-            lastReadIndex);
+            valueColumn, columns[i], dataTypes[i], typeConvertors[valueColumnIndex], lastReadIndex);
       }
 
       ++rowCount;
@@ -115,6 +112,7 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
         + RamUsageEstimator.sizeOf(measurements)
         + sizeOf(dataTypes, TSDataType.class)
         + sizeOf(inputLocations, InputLocation.class)
+        + sizeOf(typeConvertors, Type.class)
         + RamUsageEstimator.sizeOfMap(
             writtenCounter, RamUsageEstimator.shallowSizeOfInstance(AtomicLong.class));
   }
