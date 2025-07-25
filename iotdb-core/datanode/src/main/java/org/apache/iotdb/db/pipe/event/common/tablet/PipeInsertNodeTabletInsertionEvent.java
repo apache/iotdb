@@ -91,6 +91,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private InsertNode insertNode;
 
   private ProgressIndex progressIndex;
+  private long bytes = Long.MIN_VALUE;
 
   private long extractTime = 0;
 
@@ -550,9 +551,12 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   // invoked, the event will soon be released.
   @Override
   public long ramBytesUsed() {
-    return INSTANCE_SIZE
-        + (Objects.nonNull(insertNode) ? InsertNodeMemoryEstimator.sizeOf(insertNode) : 0)
-        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
+    return bytes > 0
+        ? bytes
+        : (bytes =
+            INSTANCE_SIZE
+                + (Objects.nonNull(insertNode) ? InsertNodeMemoryEstimator.sizeOf(insertNode) : 0)
+                + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0));
   }
 
   private static class PipeInsertNodeTabletInsertionEventResource extends PipeEventResource {
