@@ -18,13 +18,16 @@
 
 import concurrent.futures
 import json
+import numpy as np
 import os
 import shutil
+import yaml
 from collections.abc import Callable
 from typing import Dict
 
 import torch
 from torch import nn
+from transformers import AutoModel, AutoConfig
 
 from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import (
@@ -310,24 +313,105 @@ class ModelStorage(object):
             else:
                 # load the user-defined model
                 model_dir = os.path.join(self._model_dir, f"{model_id}")
-                model_path = os.path.join(model_dir, DEFAULT_MODEL_FILE_NAME)
+                if self._is_huggingface_format(model_dir):
+                    return self._load_huggingface_user_model(model_dir, inference_attrs)
+                else:
+                    model_path = os.path.join(model_dir, DEFAULT_MODEL_FILE_NAME)
 
-                if not os.path.exists(model_path):
-                    raise ModelNotExistError(model_path)
-                model = torch.jit.load(model_path)
-                if (
-                    isinstance(model, torch._dynamo.eval_frame.OptimizedModule)
-                    or not acceleration
-                ):
+                    if not os.path.exists(model_path):
+                        raise ModelNotExistError(model_path)
+                    model = torch.jit.load(model_path)
+                    if (
+                        isinstance(model, torch._dynamo.eval_frame.OptimizedModule)
+                        or not acceleration
+                    ):
+                        return model
+
+                    try:
+                        model = torch.compile(model)
+                    except Exception as e:
+                        logger.warning(
+                            f"acceleration failed, fallback to normal mode: {str(e)}"
+                        )
                     return model
+                
+    def _is_huggingface_format(self, model_dir: str) -> bool:
+        config_path = os.path.join(model_dir, DEFAULT_CONFIG_FILE_NAME)
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config_dict = yaml.safe_load(f)
+                model_type = config_dict.get("attributes", {}).get("model_type", "")
+                return model_type == "huggingface_transformers"
+            except:
+                return False
+        return False
+    
+    def _load_huggingface_user_model(self, model_dir: str, inference_attrs: Dict[str, str]) -> Callable:
+        config_path = os.path.join(model_dir, DEFAULT_CONFIG_FILE_NAME)
+        
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_dict = yaml.safe_load(f)
+        
+        source_dir = config_dict.get("attributes", {}).get("source_dir", model_dir)
+        predict_length = int(inference_attrs.get("predict_length", 
+                                                config_dict.get("attributes", {}).get("predict_length", 96)))
+        
+        try:           
+            config = AutoConfig.from_pretrained(source_dir, trust_remote_code=True)
+            model = AutoModel.from_pretrained(source_dir, config=config, trust_remote_code=True)
+            
+            def inference(data):
+                return self._generic_transformers_inference(model, data, predict_length)
+            
+            return inference
+            
+        except Exception as e:
+            logger.error(f"Failed to load HuggingFace model: {e}")
 
-                try:
-                    model = torch.compile(model)
-                except Exception as e:
-                    logger.warning(
-                        f"acceleration failed, fallback to normal mode: {str(e)}"
-                    )
-                return model
+    def _generic_transformers_inference(self, model, data, predict_length: int):
+        try:
+            if isinstance(data, np.ndarray):
+                if len(data.shape) == 1:
+                    input_data = data.tolist()
+                else:
+                    input_data = [row.tolist() for row in data]
+            else:
+                input_data = data if isinstance(data, list) else [data]
+            
+            inference_methods = [
+                ('predict', lambda: model.predict(input_data)),
+                ('generate', lambda: model.generate(inputs=input_data, max_length=predict_length)),
+                ('forward', lambda: model(input_data)),
+                ('__call__', lambda: model(input_data)),
+            ]
+            
+            for method_name, method in inference_methods:
+                if hasattr(model, method_name):
+                    try:
+                        result = method()
+                        
+                        if hasattr(result, 'predictions'):
+                            return np.array(result.predictions, dtype=np.float64)
+                        elif hasattr(result, 'last_hidden_state'):
+                            return result.last_hidden_state.detach().numpy().astype(np.float64)
+                        elif isinstance(result, (list, tuple)) and len(result) > 0:
+                            return np.array(result[0], dtype=np.float64)
+                        else:
+                            result_array = np.array(result, dtype=np.float64)
+                            if result_array.size > 0:
+                                return result_array
+                                
+                    except Exception as e:
+                        logger.debug(f"Method {method_name} failed: {e}")
+                        continue
+            
+            logger.warning(f"All inference methods failed, returning zeros")
+            return np.zeros(predict_length, dtype=np.float64)
+            
+        except Exception as e:
+            logger.error(f"Transformers inference failed: {e}")
+            return np.zeros(predict_length, dtype=np.float64)
 
     def save_model(self, model_id: str, model: nn.Module):
         """

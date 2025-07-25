@@ -18,6 +18,7 @@
 import os
 import shutil
 from urllib.parse import urljoin, urlparse
+from huggingface_hub import snapshot_download
 
 import yaml
 from requests import Session
@@ -34,6 +35,7 @@ from ainode.core.exception import BadConfigValueError, InvalidUriError
 from ainode.core.log import Logger
 from ainode.core.util.serde import get_data_type_byte_from_str
 from ainode.thrift.ainode.ttypes import TConfigs
+from ainode.core.model.model_info import get_model_loading_strategy
 
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"
@@ -281,38 +283,99 @@ def _parse_inference_config(config_dict):
 
 
 def fetch_model_by_uri(uri: str, model_storage_path: str, config_storage_path: str):
-    is_network_path, uri = _parse_uri(uri)
-
-    if "/" in uri and not uri.startswith(("http://", "https://", "file://")) and not os.path.exists(uri):
-        return _register_transformers_model_from_hf(uri, model_storage_path, config_storage_path)
-
-    if is_network_path:
-        return _register_model_from_network(
-            uri, model_storage_path, config_storage_path
-        )
+    """
+    """
+    is_network_path, parsed_uri = _parse_uri(uri)
+    strategy = get_model_loading_strategy(uri)
+    
+    if strategy == "network_huggingface":
+        return _register_huggingface_model_from_network(parsed_uri, model_storage_path, config_storage_path)
+    elif strategy == "local_huggingface":
+        return _register_huggingface_model_from_local(parsed_uri, model_storage_path, config_storage_path)
+    elif strategy == "local_pytorch":
+        return _register_model_from_local(parsed_uri, model_storage_path, config_storage_path)
+    elif is_network_path:
+        return _register_model_from_network(parsed_uri, model_storage_path, config_storage_path)
     else:
-        return _register_model_from_local(uri, model_storage_path, config_storage_path)
+        return _register_model_from_local(parsed_uri, model_storage_path, config_storage_path)
+    
+def _register_huggingface_model_from_network(repo_id: str, model_storage_path: str, config_storage_path: str):
+    import tempfile
+    
+    temp_dir = tempfile.mkdtemp(prefix="hf_model_")
+    
+    try:
+        snapshot_download(
+            repo_id=repo_id,
+            local_dir=temp_dir,
+            local_dir_use_symlinks=False,
+        )
+        
+        return _process_huggingface_files(temp_dir, model_storage_path, config_storage_path)
+        
+    except Exception as e:
+        logger.error(f"Failed to download HuggingFace model {repo_id}: {e}")
+        raise InvalidUriError(repo_id)
 
-def _register_transformers_model_from_hf(repo_id: str, model_storage_path: str, config_storage_path: str):
-    default_config = {
+def _register_huggingface_model_from_local(local_path: str, model_storage_path: str, config_storage_path: str):
+    return _process_huggingface_files(local_path, model_storage_path, config_storage_path)
+
+def _process_huggingface_files(source_dir: str, model_storage_path: str, config_storage_path: str):
+    import glob
+    import json
+    
+    config_file = None
+    for config_name in ["config.json", "model_config.json"]:
+        config_path = os.path.join(source_dir, config_name)
+        if os.path.exists(config_path):
+            config_file = config_path
+            break
+    
+    if not config_file:
+        raise InvalidUriError(f"No config.json found in {source_dir}")
+    
+    safetensors_files = glob.glob(os.path.join(source_dir, "*.safetensors"))
+    if not safetensors_files:
+        raise InvalidUriError(f"No .safetensors files found in {source_dir}")
+    
+    with open(config_file, "r", encoding="utf-8") as f:
+        hf_config = json.load(f)
+    
+    ainode_config = _convert_hf_config_to_ainode(hf_config, source_dir)
+    
+    with open(config_storage_path, "w", encoding="utf-8") as f:
+        yaml.dump(ainode_config, f)
+    
+    with open(model_storage_path, "w") as f:
+        f.write(f"# HuggingFace model from: {source_dir}\n")
+        f.write(f"# Model files: {[os.path.basename(f) for f in safetensors_files]}\n")
+        f.write(f"# Source directory: {source_dir}\n")
+    
+    configs, attributes = _parse_inference_config(ainode_config)
+    return configs, attributes
+
+def _convert_hf_config_to_ainode(hf_config: dict, source_dir: str) -> dict:
+    input_length = 96  
+    output_length = 96  
+    
+    if "max_position_embeddings" in hf_config:
+        input_length = min(hf_config["max_position_embeddings"], 512)
+    if "prediction_length" in hf_config:
+        output_length = hf_config["prediction_length"]
+    
+    ainode_config = {
         "configs": {
-            "input_shape": [96, 1],    
-            "output_shape": [96, 1],  
+            "input_shape": [input_length, 1],
+            "output_shape": [output_length, 1],
             "input_type": ["float32"],
             "output_type": ["float32"]
         },
         "attributes": {
-            "predict_length": 96,
-            "model_type": "transformers",
-            "repo_id": repo_id
+            "model_type": "huggingface_transformers",
+            "source_dir": source_dir,
+            "hf_config": hf_config,
+            "predict_length": output_length
         }
     }
     
-    with open(config_storage_path, "w", encoding="utf-8") as f:
-        yaml.dump(default_config, f)
-    
-    with open(model_storage_path, "w") as f:
-        f.write(f"# Transformers model: {repo_id}\n")
-    
-    configs, attributes = _parse_inference_config(default_config)
-    return configs, attributes
+    return ainode_config

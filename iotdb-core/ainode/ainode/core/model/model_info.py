@@ -20,14 +20,6 @@ import glob
 from enum import Enum
 from typing import List
 
-MODEL_LOADING_STRATEGY = {
-    "timer_xl": "builtin_traditional",
-    "sundial": "builtin_traditional", 
-    
-    "timesfm": "builtin_transformers",
-    "chronos": "builtin_transformers",
-}
-
 class BuiltInModelType(Enum):
     # forecast models
     ARIMA = "Arima"
@@ -67,17 +59,33 @@ def get_built_in_model_type(model_type: str) -> BuiltInModelType:
     return BuiltInModelType(model_type)
 
 def get_model_loading_strategy(model_id_or_uri: str) -> str:
-    if model_id_or_uri in MODEL_LOADING_STRATEGY:
-        return MODEL_LOADING_STRATEGY[model_id_or_uri]
     if "/" in model_id_or_uri and not model_id_or_uri.startswith(("http://", "https://", "file://")):
-        return "network"
-    if os.path.exists(model_id_or_uri):
-        python_files = glob.glob(os.path.join(model_id_or_uri, "*.py"))
-        if python_files:
-            return "user_defined"
+        return "network_huggingface"
     
-    return "network"
+    if os.path.exists(model_id_or_uri):
+        if _has_huggingface_format(model_id_or_uri):
+            return "local_huggingface"
+        elif _has_pytorch_format(model_id_or_uri):
+            return "local_pytorch"
+        else:
+            return "local_unknown"
 
+    return "network_huggingface"
+
+def _has_huggingface_format(path: str) -> bool:
+    
+    safetensors_files = glob.glob(os.path.join(path, "*.safetensors"))
+    json_files = glob.glob(os.path.join(path, "*.json"))
+    
+    return len(safetensors_files) > 0 and len(json_files) > 0
+
+
+def _has_pytorch_format(path: str) -> bool:
+    
+    pt_files = glob.glob(os.path.join(path, "*.pt"))
+    yaml_files = glob.glob(os.path.join(path, "*.yaml")) + glob.glob(os.path.join(path, "*.yml"))
+    
+    return len(pt_files) > 0 and len(yaml_files) > 0
 
 class ModelCategory(Enum):
     BUILT_IN = "BUILT-IN"
@@ -111,8 +119,6 @@ class ModelInfo:
 TIMER_REPO_ID = {
     BuiltInModelType.TIMER_XL: "thuml/timer-base-84m",
     BuiltInModelType.SUNDIAL: "thuml/sundial-base-128m",
-    BuiltInModelType.TIMESFM: "google/timesfm-1.0-200m",
-    BuiltInModelType.CHRONOS: "amazon/chronos-t5-small",
 }
 
 # Built-in machine learning models, they can be employed directly
@@ -182,19 +188,5 @@ BUILT_IN_LTSM_MAP = {
         model_type=BuiltInModelType.SUNDIAL.value,
         category=ModelCategory.BUILT_IN,
         state=ModelStates.LOADING,
-    ),
-    "timesfm": ModelInfo(
-        model_id="timesfm",
-        model_type=BuiltInModelType.TIMESFM.value,
-        category=ModelCategory.BUILT_IN,
-        state=ModelStates.LOADING,
-        repo_id=TIMER_REPO_ID[BuiltInModelType.TIMESFM],
-    ),
-    "chronos": ModelInfo(
-        model_id="chronos",
-        model_type=BuiltInModelType.CHRONOS.value,
-        category=ModelCategory.BUILT_IN,
-        state=ModelStates.LOADING,
-        repo_id=TIMER_REPO_ID[BuiltInModelType.CHRONOS],
     ),
 }

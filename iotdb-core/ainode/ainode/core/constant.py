@@ -273,19 +273,5 @@ class AttributeName(Enum):
     NUM_SAMPLING_STEPS = "num_sampling_steps"
     DIFFUSION_BATCH_MUL = "diffusion_batch_mul"
 
-    # timesfm
-    PATCH_LENGTH = "patch_length"
-    CONTEXT_LENGTH = "context_length"
-    HORIZON_LENGTH = "horizon_length"
-    HEAD_DIM = "head_dim"
-    FREQ_SIZE = "freq_size"
-    USE_POSITIONAL_EMBEDDING = "use_positional_embedding"
-    MIN_TIMESCALE = "min_timescale"
-    MAX_TIMESCALE = "max_timescale"
-    RMS_NORM_EPS = "rms_norm_eps"
-    PAD_VAL = "pad_val"
-    TOLERANCE = "tolerance"
-    QUANTILES = "quantiles"
-
     def name(self) -> str:
         return self.value
