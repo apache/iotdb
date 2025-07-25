@@ -107,6 +107,7 @@ public class IoTDBWindowFunctionIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(1024 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
