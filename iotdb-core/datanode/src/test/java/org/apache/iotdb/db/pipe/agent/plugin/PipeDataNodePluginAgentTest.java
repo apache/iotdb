@@ -46,9 +46,9 @@ public class PipeDataNodePluginAgentTest {
   private static final PipePluginMeta PIPE_PLUGIN_META =
       new PipePluginMeta(
           "PLUGIN-NAME",
-          "org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor",
+          "org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource",
           false,
-          "IoTDBDataRegionExtractor.jar",
+          "IoTDBDataRegionESource.jar",
           "md5");
 
   @Before
