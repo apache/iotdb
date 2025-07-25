@@ -67,6 +67,7 @@ public enum TableBuiltinScalarFunction {
   FORMAT("format"),
   GREATEST("greatest"),
   LEAST("least"),
+  TO_BASE64("to_base64"),
   ;
 
   private final String functionName;
