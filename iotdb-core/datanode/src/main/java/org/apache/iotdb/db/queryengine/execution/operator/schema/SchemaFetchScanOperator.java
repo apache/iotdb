@@ -66,9 +66,9 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   private Iterator<SchemaNode> schemaNodeIteratorForSerialize = null;
   private long schemaTreeMemCost;
-  // Reserve some bytes to avoid capacity expansion
-  private PublicBAOS baos = new PublicBAOS(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + 1024);
-
+  private PublicBAOS baos = null;
+  // Reserve some bytes to avoid capacity grow
+  private static final int EXTRA_SIZE_TO_AVOID_GROW = 1024;
   private static int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
@@ -219,6 +219,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
               : schemaRegion.fetchSeriesSchema(
                   patternTree, templateMap, withTags, withAttributes, withTemplate, withAliasForce);
       schemaNodeIteratorForSerialize = schemaTree.getIteratorForSerialize();
+      baos = new PublicBAOS(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + EXTRA_SIZE_TO_AVOID_GROW);
       if (operatorContext != null) {
         schemaTreeMemCost = schemaTree.ramBytesUsed();
         operatorContext
@@ -250,6 +251,8 @@ public class SchemaFetchScanOperator implements SourceOperator {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES
+        + EXTRA_SIZE_TO_AVOID_GROW
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId);
   }
 
