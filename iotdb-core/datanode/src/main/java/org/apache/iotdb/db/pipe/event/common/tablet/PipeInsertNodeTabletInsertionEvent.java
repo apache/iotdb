@@ -548,10 +548,10 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   }
 
   // Notes:
-  // 1. We only consider insertion event's memory for degrade and restart, because degrade/restart
-  // may not be of use for releasing other events' memory.
-  // 2. We do not consider eventParsers because they may not exist and if it is invoked, the event
-  // will soon be released.
+  // 1. We only consider insertion event's memory for degrading, because degrading may not be of use
+  // for releasing other events' memory.
+  // 2. We do not consider eventParsers and database names because they may not exist and if it is
+  // invoked, the event will soon be released.
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
