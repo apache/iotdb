@@ -570,6 +570,47 @@ public class TableMetadataImpl implements Metadata {
                 + " must have at least two arguments, and all type must be the same.");
       }
       return argumentTypes.get(0);
+    } else if (TableBuiltinScalarFunction.BIT_COUNT.getFunctionName().equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.BITWISE_AND.getFunctionName().equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.BITWISE_OR.getFunctionName().equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.BITWISE_XOR
+            .getFunctionName()
+            .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 2
+          || !(isIntegerNumber(argumentTypes.get(0)) && isIntegerNumber(argumentTypes.get(1)))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts two arguments and they must be Int32 or Int64 data type.",
+                functionName));
+      }
+      return INT64;
+    } else if (TableBuiltinScalarFunction.BITWISE_NOT
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isIntegerNumber(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Int32 or Int64 data type.",
+                functionName));
+      }
+      return INT64;
+    } else if (TableBuiltinScalarFunction.BITWISE_LEFT_SHIFT
+            .getFunctionName()
+            .equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.BITWISE_RIGHT_SHIFT
+            .getFunctionName()
+            .equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.BITWISE_RIGHT_SHIFT_ARITHMETIC
+            .getFunctionName()
+            .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 2
+          || !(isIntegerNumber(argumentTypes.get(0)) && isIntegerNumber(argumentTypes.get(1)))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts two arguments and they must be Int32 or Int64 data type.",
+                functionName));
+      }
+      return argumentTypes.get(0);
     }
 
     // builtin aggregation function
