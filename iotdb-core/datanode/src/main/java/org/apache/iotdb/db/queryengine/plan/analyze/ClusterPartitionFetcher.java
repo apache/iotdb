@@ -56,9 +56,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -415,15 +416,21 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   private SchemaPartition parseSchemaPartitionTableResp(
       TSchemaPartitionTableResp schemaPartitionTableResp) {
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> regionReplicaMap = new HashMap<>();
-    for (Map.Entry<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> entry1 :
+    for (final Map.Entry<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> entry1 :
         schemaPartitionTableResp.getSchemaPartitionTable().entrySet()) {
-      Map<TSeriesPartitionSlot, TRegionReplicaSet> result1 =
-          regionReplicaMap.computeIfAbsent(entry1.getKey(), k -> new HashMap<>());
-      for (Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> entry2 :
-          entry1.getValue().entrySet()) {
-        TSeriesPartitionSlot seriesPartitionSlot = entry2.getKey();
-        TConsensusGroupId consensusGroupId = entry2.getValue();
-        result1.put(seriesPartitionSlot, partitionCache.getRegionReplicaSet(consensusGroupId));
+      String database = entry1.getKey();
+      final Map<TSeriesPartitionSlot, TRegionReplicaSet> result1 =
+          regionReplicaMap.computeIfAbsent(database, k -> new HashMap<>());
+
+      Map<TSeriesPartitionSlot, TConsensusGroupId> orderedMap =
+          new LinkedHashMap<>(entry1.getValue());
+      List<TConsensusGroupId> orderedGroupIds = new ArrayList<>(orderedMap.values());
+      List<TRegionReplicaSet> regionReplicaSets =
+          partitionCache.getRegionReplicaSet(orderedGroupIds);
+
+      int index = 0;
+      for (Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> entry2 : orderedMap.entrySet()) {
+        result1.put(entry2.getKey(), regionReplicaSets.get(index++));
       }
     }
 
@@ -443,6 +450,29 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private DataPartition parseDataPartitionResp(TDataPartitionTableResp dataPartitionTableResp) {
+    final Set<TConsensusGroupId> uniqueConsensusGroupIds = new HashSet<>();
+    for (final Map<
+            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+        partitionTable : Collections.singleton(dataPartitionTableResp.getDataPartitionTable())) {
+      for (final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
+          seriesPartitionMap : partitionTable.values()) {
+        for (final Map<TTimePartitionSlot, List<TConsensusGroupId>> timePartitionMap :
+            seriesPartitionMap.values()) {
+          for (final List<TConsensusGroupId> consensusGroupIds : timePartitionMap.values()) {
+            uniqueConsensusGroupIds.addAll(consensusGroupIds);
+          }
+        }
+      }
+    }
+
+    final List<TRegionReplicaSet> allRegionReplicaSets =
+        partitionCache.getRegionReplicaSet(new ArrayList<>(uniqueConsensusGroupIds));
+    final List<TConsensusGroupId> consensusGroupIds = new ArrayList<>(uniqueConsensusGroupIds);
+    final Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new HashMap<>();
+    for (int i = 0; i < allRegionReplicaSets.size(); i++) {
+      regionReplicaSetMap.put(consensusGroupIds.get(i), allRegionReplicaSets.get(i));
+    }
+
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         regionReplicaSet = new HashMap<>();
     for (Map.Entry<
@@ -456,9 +486,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             result1.computeIfAbsent(entry2.getKey(), k -> new HashMap<>());
         for (Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry3 :
             entry2.getValue().entrySet()) {
-          List<TRegionReplicaSet> regionReplicaSets = new LinkedList<>();
-          for (TConsensusGroupId consensusGroupId : entry3.getValue()) {
-            regionReplicaSets.add(partitionCache.getRegionReplicaSet(consensusGroupId));
+          final List<TRegionReplicaSet> regionReplicaSets = new ArrayList<>();
+          for (TConsensusGroupId groupId : entry3.getValue()) {
+            regionReplicaSets.add(regionReplicaSetMap.get(groupId));
           }
           result2.put(entry3.getKey(), regionReplicaSets);
         }
