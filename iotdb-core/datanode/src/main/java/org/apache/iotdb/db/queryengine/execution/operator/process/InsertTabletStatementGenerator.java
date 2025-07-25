@@ -261,11 +261,12 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
       return 0;
     }
     long size = RamUsageEstimator.shallowSizeOf(arr);
+    long clazzSize = RamUsageEstimator.shallowSizeOfInstance(clazz);
     for (Object s : arr) {
       if (s == null) {
         continue;
       }
-      size += RamUsageEstimator.shallowSizeOfInstance(clazz);
+      size += clazzSize;
     }
     return size;
   }
