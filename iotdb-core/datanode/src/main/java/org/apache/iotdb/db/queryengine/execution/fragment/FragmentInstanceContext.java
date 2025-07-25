@@ -145,8 +145,8 @@ public class FragmentInstanceContext extends QueryContext {
   private long closedSeqFileNum = 0;
   private long closedUnseqFileNum = 0;
 
-  private DeviceMetadataIndexEntryCache metadataIndexEntryCache =
-      new DeviceMetadataIndexEntryCache();
+  private final DeviceMetadataIndexEntryCache metadataIndexEntryCache =
+      new DeviceMetadataIndexEntryCache(this);
 
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {

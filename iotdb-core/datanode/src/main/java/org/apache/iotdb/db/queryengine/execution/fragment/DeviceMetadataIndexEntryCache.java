@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,10 +36,16 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class DeviceMetadataIndexEntryCache {
+  private static final long MAX_CACHED_SIZE = 32 * 1024 * 1024;
+  private final FragmentInstanceContext context;
   private TreeMap<IDeviceID, Integer> deviceIndexMap;
   private final Map<String, long[]> deviceMetadataIndexNodeOffsetsCache = new HashMap<>();
   private List<IDeviceID> sortedDevices;
   private int[] deviceIdxArr;
+
+  public DeviceMetadataIndexEntryCache(FragmentInstanceContext context) {
+    this.context = context;
+  }
 
   public void addDevices(AbstractDataSourceOperator operator, List<DeviceEntry> deviceEntries) {
     deviceIndexMap = deviceIndexMap == null ? new TreeMap<>(IDeviceID::compareTo) : deviceIndexMap;
@@ -84,6 +91,9 @@ public class DeviceMetadataIndexEntryCache {
     if (offsets != null) {
       return offsets;
     }
+    if (!reserveMemory()) {
+      return null;
+    }
     TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
     IDeviceID firstDevice = getSortedDevices().get(0);
     offsets =
@@ -109,5 +119,18 @@ public class DeviceMetadataIndexEntryCache {
       deviceIdxArr[entry.getValue()] = i++;
     }
     deviceIndexMap = null;
+  }
+
+  private boolean reserveMemory() {
+    long costOfOneFile = RamUsageEstimator.sizeOfLongArray(sortedDevices.size());
+    if (costOfOneFile * (deviceMetadataIndexNodeOffsetsCache.size() + 1) > MAX_CACHED_SIZE) {
+      return false;
+    }
+    try {
+      context.getMemoryReservationContext().reserveMemoryCumulatively(costOfOneFile);
+      return true;
+    } catch (Exception ignored) {
+      return false;
+    }
   }
 }
