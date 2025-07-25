@@ -433,22 +433,6 @@ public class PipeDescriptor {
                 "pipe_receiver_req_decompressed_max_length_in_bytes",
                 String.valueOf(config.getPipeReceiverReqDecompressedMaxLengthInBytes()))));
 
-    config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_max_allowed_historical_tsfile_per_data_region",
-                String.valueOf(config.getPipeMaxAllowedHistoricalTsFilePerDataRegion()))));
-    config.setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
-                String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
-    config.setPipeMaxAllowedLinkedTsFileCount(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_max_allowed_linked_tsfile_count",
-                String.valueOf(config.getPipeMaxAllowedLinkedTsFileCount()))));
-
     config.setPipeMemoryAllocateMaxRetries(
         Integer.parseInt(
             properties.getProperty(
