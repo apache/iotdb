@@ -53,10 +53,20 @@ public class MemoryEstimationHelper {
 
   public static final long SHALLOW_SIZE_OF_HASHMAP =
       RamUsageEstimator.shallowSizeOfInstance(HashMap.class);
-  public static final long SHALLOW_SIZE_OF_HASHMAP_ENTRY = 32;
+  public static long SHALLOW_SIZE_OF_HASHMAP_ENTRY;
   public static final long SHALLOW_SIZE_OF_CONCURRENT_HASHMAP =
       RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
-  public static final long SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY = 24;
+  public static long SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY;
+
+  static {
+    Map<Integer, Integer> map = new HashMap<>(1);
+    map.put(1, 1);
+    Map.Entry<Integer, Integer> next = map.entrySet().iterator().next();
+    SHALLOW_SIZE_OF_HASHMAP_ENTRY = RamUsageEstimator.shallowSizeOf(next);
+    map = new ConcurrentHashMap<>(map);
+    SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY =
+        RamUsageEstimator.shallowSizeOf(map.entrySet().iterator().next());
+  }
 
   private MemoryEstimationHelper() {
     // hide the constructor
