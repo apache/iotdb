@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.donothing.DoNothingConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBLegacyPipeConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.donothing.DoNothingProcessor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.donothing.DoNothingSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBLegacyPipeSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.iotdb.IoTDBSource;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -106,7 +106,7 @@ public class BuiltinPipePluginTest {
       Assert.fail();
     }
 
-    PipeConnector connector = new DoNothingConnector();
+    PipeConnector connector = new DoNothingSink();
     try {
       connector.validate(mock(PipeParameterValidator.class));
       connector.customize(
@@ -121,8 +121,8 @@ public class BuiltinPipePluginTest {
       Assert.fail();
     }
 
-    testConnectorAllThrow(new IoTDBLegacyPipeConnector());
-    testConnectorAllThrow(new IoTDBThriftConnector());
+    testConnectorAllThrow(new IoTDBLegacyPipeSink());
+    testConnectorAllThrow(new IoTDBThriftSink());
   }
 
   private void testConnectorAllThrow(PipeConnector connector) {

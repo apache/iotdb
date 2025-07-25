@@ -25,17 +25,17 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
-import org.apache.iotdb.db.pipe.agent.task.stage.PipeTaskConnectorStage;
 import org.apache.iotdb.db.pipe.agent.task.stage.PipeTaskProcessorStage;
+import org.apache.iotdb.db.pipe.agent.task.stage.PipeTaskSinkStage;
 import org.apache.iotdb.db.pipe.agent.task.stage.PipeTaskSourceStage;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
-import org.apache.iotdb.db.subscription.task.stage.SubscriptionTaskConnectorStage;
+import org.apache.iotdb.db.subscription.task.stage.SubscriptionTaskSinkStage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.utils.Pair;
@@ -46,10 +46,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TABLET_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_TABLET_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_QUERY_VALUE;
@@ -103,12 +103,12 @@ public class PipeDataNodeTaskBuilder {
             regionId,
             pipeTaskMeta);
 
-    final PipeTaskConnectorStage connectorStage;
+    final PipeTaskSinkStage connectorStage;
     final PipeType pipeType = pipeStaticMeta.getPipeType();
 
     if (PipeType.SUBSCRIPTION.equals(pipeType)) {
       connectorStage =
-          new SubscriptionTaskConnectorStage(
+          new SubscriptionTaskSinkStage(
               pipeStaticMeta.getPipeName(),
               pipeStaticMeta.getCreationTime(),
               connectorParameters,
@@ -116,7 +116,7 @@ public class PipeDataNodeTaskBuilder {
               PipeSubtaskExecutorManager.getInstance().getSubscriptionExecutor());
     } else { // user pipe or consensus pipe
       connectorStage =
-          new PipeTaskConnectorStage(
+          new PipeTaskSinkStage(
               pipeStaticMeta.getPipeName(),
               pipeStaticMeta.getCreationTime(),
               connectorParameters,
@@ -199,11 +199,10 @@ public class PipeDataNodeTaskBuilder {
         || shouldTerminatePipeOnAllHistoricalEventsConsumed) {
       final Boolean isRealtime =
           connectorParameters.getBooleanByKeys(
-              PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY,
-              PipeConnectorConstant.SINK_REALTIME_FIRST_KEY);
+              PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY,
+              PipeSinkConstant.SINK_REALTIME_FIRST_KEY);
       if (isRealtime == null) {
-        connectorParameters.addAttribute(
-            PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY, "false");
+        connectorParameters.addAttribute(PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY, "false");
         if (insertionDeletionListeningOptionPair.right) {
           LOGGER.info(
               "PipeDataNodeTaskBuilder: When 'inclusion' contains 'data.delete', 'realtime-first' is defaulted to 'false' to prevent sync issues after deletion.");
@@ -230,12 +229,11 @@ public class PipeDataNodeTaskBuilder {
     if (isRealtimeEnabled && !shouldTerminatePipeOnAllHistoricalEventsConsumed) {
       final Boolean enableSendTsFileLimit =
           connectorParameters.getBooleanByKeys(
-              PipeConnectorConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
-              PipeConnectorConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT);
+              PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
+              PipeSinkConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT);
 
       if (enableSendTsFileLimit == null) {
-        connectorParameters.addAttribute(
-            PipeConnectorConstant.SINK_ENABLE_SEND_TSFILE_LIMIT, "true");
+        connectorParameters.addAttribute(PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT, "true");
         LOGGER.info(
             "PipeDataNodeTaskBuilder: When the realtime sync is enabled, we enable rate limiter in sending tsfile by default to reserve disk and network IO for realtime sending.");
       } else if (!enableSendTsFileLimit) {
@@ -258,7 +256,7 @@ public class PipeDataNodeTaskBuilder {
     final String connectorPluginName =
         connectorParameters
             .getStringOrDefault(
-                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
                 BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
             .toLowerCase();
     final boolean isWriteBackSink =
@@ -267,7 +265,7 @@ public class PipeDataNodeTaskBuilder {
 
     if (isSourceExternal && isWriteBackSink) {
       connectorParameters.addAttribute(
-          PipeConnectorConstant.CONNECTOR_USE_EVENT_USER_NAME_KEY, Boolean.TRUE.toString());
+          PipeSinkConstant.CONNECTOR_USE_EVENT_USER_NAME_KEY, Boolean.TRUE.toString());
     }
   }
 }

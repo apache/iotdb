@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -109,10 +109,10 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final boolean checkSink =
         new PipeParameters(alterPipeRequest.getConnectorAttributes())
             .hasAnyAttributes(
-                PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY,
-                PipeConnectorConstant.SINK_IOTDB_USER_KEY,
-                PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
-                PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY);
+                PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+                PipeSinkConstant.SINK_IOTDB_USER_KEY,
+                PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+                PipeSinkConstant.SINK_IOTDB_USERNAME_KEY);
 
     pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
 

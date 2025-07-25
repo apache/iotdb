@@ -53,11 +53,11 @@ import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
-import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -2246,13 +2246,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final PipeParameters extractorOrConnectorParameters =
         new PipeParameters(extractorOrConnectorAttributes);
     return extractorOrConnectorParameters.hasAnyAttributes(
-            PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY,
-            PipeConnectorConstant.SINK_IOTDB_USER_KEY,
-            PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
-            PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY)
+            PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+            PipeSinkConstant.SINK_IOTDB_USER_KEY,
+            PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+            PipeSinkConstant.SINK_IOTDB_USERNAME_KEY)
         && !extractorOrConnectorParameters.hasAnyAttributes(
-            PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
-            PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY);
+            PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+            PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
   }
 
   private static void checkSinkType(
@@ -2261,7 +2261,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final String pluginName =
         connectorParameters
             .getStringOrDefault(
-                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
                 BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
             .toLowerCase();
 

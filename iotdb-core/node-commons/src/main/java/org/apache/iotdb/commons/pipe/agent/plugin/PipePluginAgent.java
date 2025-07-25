@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeConnectorConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeProcessorConstructor;
+import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSourceConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
@@ -51,13 +51,13 @@ public abstract class PipePluginAgent {
   protected final PipePluginMetaKeeper pipePluginMetaKeeper;
   private final PipeSourceConstructor pipeExtractorConstructor;
   private final PipeProcessorConstructor pipeProcessorConstructor;
-  private final PipeConnectorConstructor pipeConnectorConstructor;
+  private final PipeSinkConstructor pipeSinkConstructor;
 
   protected PipePluginAgent(PipePluginMetaKeeper pipePluginMetaKeeper) {
     this.pipePluginMetaKeeper = pipePluginMetaKeeper;
     pipeExtractorConstructor = createPipeExtractorConstructor(pipePluginMetaKeeper);
     pipeProcessorConstructor = createPipeProcessorConstructor(pipePluginMetaKeeper);
-    pipeConnectorConstructor = createPipeConnectorConstructor(pipePluginMetaKeeper);
+    pipeSinkConstructor = createPipeConnectorConstructor(pipePluginMetaKeeper);
   }
 
   protected abstract PipeSourceConstructor createPipeExtractorConstructor(
@@ -66,7 +66,7 @@ public abstract class PipePluginAgent {
   protected abstract PipeProcessorConstructor createPipeProcessorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
-  protected abstract PipeConnectorConstructor createPipeConnectorConstructor(
+  protected abstract PipeSinkConstructor createPipeConnectorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
   public final PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
@@ -78,7 +78,7 @@ public abstract class PipePluginAgent {
   }
 
   public final PipeConnector reflectConnector(PipeParameters connectorParameters) {
-    return pipeConnectorConstructor.reflectPlugin(connectorParameters);
+    return pipeSinkConstructor.reflectPlugin(connectorParameters);
   }
 
   public void validate(

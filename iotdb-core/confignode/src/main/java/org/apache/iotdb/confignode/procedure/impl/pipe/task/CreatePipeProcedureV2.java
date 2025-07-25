@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -204,7 +204,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final String pluginName =
         connectorParameters
             .getStringOrDefault(
-                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
                 BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
             .toLowerCase();
 
@@ -213,29 +213,28 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return;
     }
 
-    if (connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY)
-        || connectorParameters.hasAttribute(PipeConnectorConstant.SINK_IOTDB_USER_KEY)
-        || connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY)
-        || connectorParameters.hasAttribute(PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY)) {
+    if (connectorParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY)
+        || connectorParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_USER_KEY)
+        || connectorParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY)
+        || connectorParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY)) {
       final String hashedPassword =
           env.getConfigManager()
               .getPermissionManager()
               .login4Pipe(
                   connectorParameters.getStringByKeys(
-                      PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY,
-                      PipeConnectorConstant.SINK_IOTDB_USER_KEY,
-                      PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
-                      PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY),
+                      PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+                      PipeSinkConstant.SINK_IOTDB_USER_KEY,
+                      PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+                      PipeSinkConstant.SINK_IOTDB_USERNAME_KEY),
                   connectorParameters.getStringByKeys(
-                      PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
-                      PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY));
+                      PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+                      PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY));
       if (Objects.isNull(hashedPassword)) {
         throw new PipeException("Authentication failed.");
       }
       connectorParameters.addOrReplaceEquivalentAttributes(
           new PipeParameters(
-              Collections.singletonMap(
-                  PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY, hashedPassword)));
+              Collections.singletonMap(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY, hashedPassword)));
     }
   }
 

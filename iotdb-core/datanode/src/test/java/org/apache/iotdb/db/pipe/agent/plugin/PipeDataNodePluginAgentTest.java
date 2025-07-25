@@ -23,10 +23,10 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
+import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -119,7 +119,7 @@ public class PipeDataNodePluginAgentTest {
                     }))
             .getClass());
     Assert.assertEquals(
-        IoTDBDataRegionAsyncConnector.class,
+        IoTDBDataRegionAsyncSink.class,
         agent
             .dataRegion()
             .reflectConnector(
@@ -127,7 +127,7 @@ public class PipeDataNodePluginAgentTest {
                     new HashMap<String, String>() {
                       {
                         put(
-                            PipeConnectorConstant.CONNECTOR_KEY,
+                            PipeSinkConstant.CONNECTOR_KEY,
                             BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
                       }
                     }))

@@ -26,8 +26,8 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.metric.receiver.PipeDataNodeReceiverMetrics;
-import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionListenerMetrics;
+import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionSourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeAssignerMetrics;
@@ -50,7 +50,7 @@ public class PipeDataNodeMetrics implements IMetricSet {
     PipeEventCommitMetrics.getInstance().bindTo(metricService);
     PipeSchemaRegionListenerMetrics.getInstance().bindTo(metricService);
     PipeSchemaRegionSourceMetrics.getInstance().bindTo(metricService);
-    PipeSchemaRegionConnectorMetrics.getInstance().bindTo(metricService);
+    PipeSchemaRegionSinkMetrics.getInstance().bindTo(metricService);
     PipeDataNodeSinglePipeMetrics.getInstance().bindTo(metricService);
     PipeDataNodeReceiverMetrics.getInstance().bindTo(metricService);
     PipeTsFileToTabletsMetrics.getInstance().bindTo(metricService);
@@ -67,7 +67,7 @@ public class PipeDataNodeMetrics implements IMetricSet {
     PipeEventCommitMetrics.getInstance().unbindFrom(metricService);
     PipeSchemaRegionListenerMetrics.getInstance().unbindFrom(metricService);
     PipeSchemaRegionSourceMetrics.getInstance().unbindFrom(metricService);
-    PipeSchemaRegionConnectorMetrics.getInstance().unbindFrom(metricService);
+    PipeSchemaRegionSinkMetrics.getInstance().unbindFrom(metricService);
     PipeDataNodeSinglePipeMetrics.getInstance().unbindFrom(metricService);
     PipeDataNodeReceiverMetrics.getInstance().unbindFrom(metricService);
     PipeTsFileToTabletsMetrics.getInstance().unbindFrom(metricService);

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
@@ -1083,7 +1083,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final String pluginName =
         connectorParameters
             .getStringOrDefault(
-                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
                 BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
             .toLowerCase();
 
@@ -1093,14 +1093,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
 
     if (!connectorParameters.hasAnyAttributes(
-        PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY,
-        PipeConnectorConstant.SINK_IOTDB_USER_KEY,
-        PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
-        PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY)) {
-      connectorAttributes.put(PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY, userName);
+        PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+        PipeSinkConstant.SINK_IOTDB_USER_KEY,
+        PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+        PipeSinkConstant.SINK_IOTDB_USERNAME_KEY)) {
+      connectorAttributes.put(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY, userName);
     } else if (!connectorParameters.hasAnyAttributes(
-        PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
-        PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY)) {
+        PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY, PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
           String.format(
               "Failed to %s pipe %s, in write-back-sink, password must be set when the username is specified.",
