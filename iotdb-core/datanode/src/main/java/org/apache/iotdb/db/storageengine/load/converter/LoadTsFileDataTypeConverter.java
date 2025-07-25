@@ -89,18 +89,24 @@ public class LoadTsFileDataTypeConverter {
   }
 
   private TSStatus executeForTableModel(final Statement statement, final String databaseName) {
-    final IClientSession session =
-        new InternalClientSession(
-            String.format(
-                "%s_%s",
-                LoadTsFileDataTypeConverter.class.getSimpleName(),
-                Thread.currentThread().getName()));
-    session.setUsername(AuthorityChecker.SUPER_USER);
-    session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-    session.setZoneId(ZoneId.systemDefault());
-    session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+    final IClientSession session;
+    final boolean needToCreateSession = SESSION_MANAGER.getCurrSession() == null;
+    if (needToCreateSession) {
+      session =
+          new InternalClientSession(
+              String.format(
+                  "%s_%s",
+                  LoadTsFileDataTypeConverter.class.getSimpleName(),
+                  Thread.currentThread().getName()));
+      session.setUsername(AuthorityChecker.SUPER_USER);
+      session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+      session.setZoneId(ZoneId.systemDefault());
+      session.setSqlDialect(IClientSession.SqlDialect.TABLE);
 
-    SESSION_MANAGER.registerSession(session);
+      SESSION_MANAGER.registerSession(session);
+    } else {
+      session = SESSION_MANAGER.getCurrSession();
+    }
     try {
       return Coordinator.getInstance()
           .executeForTableModel(
@@ -114,7 +120,9 @@ public class LoadTsFileDataTypeConverter {
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
           .status;
     } finally {
-      SESSION_MANAGER.removeCurrSession();
+      if (needToCreateSession) {
+        SESSION_MANAGER.removeCurrSession();
+      }
     }
   }
 
