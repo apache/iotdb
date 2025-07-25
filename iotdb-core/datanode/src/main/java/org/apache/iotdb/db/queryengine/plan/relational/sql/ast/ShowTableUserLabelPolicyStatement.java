@@ -17,10 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 
 import javax.annotation.Nullable;
 
@@ -29,42 +28,47 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Statement for setting user write label policy in table model ALTER USER username SET LABEL_POLICY
- * 'expression' FOR WRITE
+ * Statement for showing user label policy in table model SHOW USER (username)? LABEL_POLICY FOR
+ * (READ | WRITE | READ_WRITE)
  */
-public class SetUserWriteLabelPolicyStatement extends Statement {
+public class ShowTableUserLabelPolicyStatement extends Statement {
 
   private final String username;
-  private final String policyExpression;
+  private final PolicyScope policyScope;
 
-  public SetUserWriteLabelPolicyStatement(
-      @Nullable NodeLocation location, String username, String policyExpression) {
+  public enum PolicyScope {
+    READ,
+    WRITE,
+    READ_WRITE
+  }
+
+  public ShowTableUserLabelPolicyStatement(
+      @Nullable NodeLocation location, String username, PolicyScope policyScope) {
     super(location);
     this.username = username;
-    this.policyExpression = policyExpression;
+    this.policyScope = policyScope;
   }
 
   public String getUsername() {
     return username;
   }
 
-  public String getPolicyExpression() {
-    return policyExpression;
+  public PolicyScope getPolicyScope() {
+    return policyScope;
   }
 
-  public String getStatementType() {
-    return "SET_USER_WRITE_LABEL_POLICY";
+  public StatementType getStatementType() {
+    return StatementType.SHOW_TABLE_USER_LABEL_POLICY;
   }
 
   @Override
-  public List<? extends org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node>
-      getChildren() {
+  public List<? extends Node> getChildren() {
     return Collections.emptyList();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(username, policyExpression);
+    return Objects.hash(username, policyScope);
   }
 
   @Override
@@ -75,15 +79,19 @@ public class SetUserWriteLabelPolicyStatement extends Statement {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    SetUserWriteLabelPolicyStatement that = (SetUserWriteLabelPolicyStatement) obj;
-    return Objects.equals(username, that.username)
-        && Objects.equals(policyExpression, that.policyExpression);
+    ShowTableUserLabelPolicyStatement that = (ShowTableUserLabelPolicyStatement) obj;
+    return Objects.equals(username, that.username) && policyScope == that.policyScope;
   }
 
   @Override
   public String toString() {
     return String.format(
-        "SetUserWriteLabelPolicyStatement{username='%s', policyExpression='%s'}",
-        username, policyExpression);
+        "ShowTableUserLabelPolicyStatement{username='%s', policyScope='%s'}",
+        username, policyScope);
+  }
+
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitShowUserLabelPolicy(this, context);
   }
 }

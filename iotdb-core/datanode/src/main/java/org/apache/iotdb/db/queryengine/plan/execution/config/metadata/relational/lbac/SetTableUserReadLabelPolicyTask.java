@@ -22,38 +22,28 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.SetUserLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetUserReadLabelPolicyStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 /**
- * SetTableUserLabelPolicyTask handles the execution of setting user label policies in table model.
- * This task specifically handles the creation and modification of label policies for users to
- * support Label-Based Access Control (LBAC) functionality in the table model.
+ * SetTableUserReadLabelPolicyTask handles the execution of setting user read label policies in
+ * table model. This task specifically handles the creation and modification of read label policies
+ * for users to support Label-Based Access Control (LBAC) functionality in the table model.
  */
-public class SetTableUserLabelPolicyTask implements IConfigTask {
+public class SetTableUserReadLabelPolicyTask implements IConfigTask {
 
   private final String username;
-  private final String policyExpression;
-  private final String scope;
+  private final String readPolicyExpression;
 
-  public SetTableUserLabelPolicyTask(SetUserLabelPolicyStatement statement) {
+  public SetTableUserReadLabelPolicyTask(SetUserReadLabelPolicyStatement statement) {
     this.username = statement.getUsername();
-    this.policyExpression = statement.getPolicyExpression();
-    this.scope = statement.getScope();
+    this.readPolicyExpression = statement.getPolicyExpression();
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
-    // For setting policy, determine if it's READ or WRITE based on scope
-    if ("READ".equalsIgnoreCase(scope)) {
-      return configTaskExecutor.setUserReadLabelPolicy(username, policyExpression);
-    } else if ("WRITE".equalsIgnoreCase(scope)) {
-      return configTaskExecutor.setUserWriteLabelPolicy(username, policyExpression);
-    } else {
-      // Handle READ,WRITE or WRITE,READ - set both policies
-      return configTaskExecutor.setUserReadLabelPolicy(username, policyExpression);
-      // Note: WRITE policy will be set in a separate call if needed
-    }
+    // Set read policy specifically
+    return configTaskExecutor.setUserReadLabelPolicy(username, readPolicyExpression);
   }
 }

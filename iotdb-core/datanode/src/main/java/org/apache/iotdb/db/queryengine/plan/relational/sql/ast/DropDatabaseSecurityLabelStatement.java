@@ -17,10 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 
 import javax.annotation.Nullable;
 
@@ -45,8 +44,8 @@ public class DropDatabaseSecurityLabelStatement extends Statement {
     return database;
   }
 
-  public String getStatementType() {
-    return "DROP_DATABASE_SECURITY_LABEL";
+  public StatementType getStatementType() {
+    return StatementType.ALTER_TABLE_DATABASE_SECURITY_LABEL;
   }
 
   @Override
@@ -75,5 +74,10 @@ public class DropDatabaseSecurityLabelStatement extends Statement {
   @Override
   public String toString() {
     return String.format("DropDatabaseSecurityLabelStatement{database='%s'}", database);
+  }
+
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitDropDatabaseSecurityLabel(this, context);
   }
 }

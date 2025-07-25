@@ -22,41 +22,28 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterUserLabelPolicyStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTableUserLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetUserWriteLabelPolicyStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 /**
- * AlterTableUserLabelPolicyTask handles the execution of altering user label policies in table
- * model. This task specifically handles the modification of existing label policies for users to
- * support Label-Based Access Control (LBAC) functionality in the table model.
+ * SetTableUserWriteLabelPolicyTask handles the execution of setting user write label policies in
+ * table model. This task specifically handles the creation and modification of write label policies
+ * for users to support Label-Based Access Control (LBAC) functionality in the table model.
  */
-public class AlterTableUserLabelPolicyTask implements IConfigTask {
+public class SetTableUserWriteLabelPolicyTask implements IConfigTask {
 
   private final String username;
-  private final String policyExpression;
-  private final String scope;
+  private final String writePolicyExpression;
 
-  public AlterTableUserLabelPolicyTask(AlterUserLabelPolicyStatement statement) {
+  public SetTableUserWriteLabelPolicyTask(SetUserWriteLabelPolicyStatement statement) {
     this.username = statement.getUsername();
-    this.policyExpression = null; // AlterUserLabelPolicyStatement is for DROP operations
-    this.scope = statement.getScope();
+    this.writePolicyExpression = statement.getPolicyExpression();
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
-    // For dropping policy, use alterUserLabelPolicyTableModel
-    return configTaskExecutor.alterUserLabelPolicyTableModel(username, parseScope(scope));
-  }
-
-  private ShowTableUserLabelPolicyStatement.PolicyScope parseScope(String scope) {
-    if ("READ".equalsIgnoreCase(scope)) {
-      return ShowTableUserLabelPolicyStatement.PolicyScope.READ;
-    } else if ("WRITE".equalsIgnoreCase(scope)) {
-      return ShowTableUserLabelPolicyStatement.PolicyScope.WRITE;
-    } else {
-      return ShowTableUserLabelPolicyStatement.PolicyScope.READ_WRITE;
-    }
+    // Set write policy specifically
+    return configTaskExecutor.setUserWriteLabelPolicy(username, writePolicyExpression);
   }
 }

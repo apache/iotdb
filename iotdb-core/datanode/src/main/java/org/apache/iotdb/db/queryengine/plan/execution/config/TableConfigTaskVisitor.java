@@ -95,7 +95,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.DropTableDatabaseSecurityLabelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.DropTableUserLabelPolicyTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.SetTableDatabaseSecurityLabelTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.SetTableUserLabelPolicyTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.SetTableUserReadLabelPolicyTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.SetTableUserWriteLabelPolicyTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.ShowTableDatabaseSecurityLabelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.ShowTableUserLabelPolicyTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.SetSqlDialectTask;
@@ -130,7 +131,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHea
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
@@ -149,6 +152,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
@@ -156,6 +160,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
@@ -181,6 +186,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetUserReadLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetUserWriteLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -197,6 +204,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTableDatabaseSecurityLabelStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTableUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
@@ -207,13 +216,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.AlterDatabaseSecurityLabelStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.AlterUserLabelPolicyStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.DropDatabaseSecurityLabelStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.DropUserLabelPolicyStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.SetUserLabelPolicyStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.ShowTableDatabaseSecurityLabelStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.ShowTableUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
@@ -1433,11 +1435,19 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
 
   @Override
-  protected IConfigTask visitSetUserLabelPolicy(
-      SetUserLabelPolicyStatement node, MPPQueryContext context) {
+  protected IConfigTask visitSetUserReadLabelPolicy(
+      SetUserReadLabelPolicyStatement node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserIsAdmin(context.getSession().getUserName());
-    return new SetTableUserLabelPolicyTask(node);
+    return new SetTableUserReadLabelPolicyTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitSetUserWriteLabelPolicy(
+      SetUserWriteLabelPolicyStatement node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    return new SetTableUserWriteLabelPolicyTask(node);
   }
 
   @Override

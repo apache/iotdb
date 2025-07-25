@@ -39,7 +39,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AnchorPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
@@ -77,6 +79,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
@@ -172,6 +175,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetUserReadLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetUserWriteLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -192,6 +197,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueriesStatem
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTableDatabaseSecurityLabelStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTableUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
@@ -3969,20 +3976,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitAlterUserLabelPolicyStatement(
       RelationalSqlParser.AlterUserLabelPolicyStatementContext ctx) {
     String username = ((Identifier) visit(ctx.userName)).getValue();
-    String policyExpression = null;
-    String scope = null;
 
-    // Parse policy expression and scope based on the context
-    if (ctx.readPolicyExpression != null) {
-      policyExpression = parsePolicyExpression(ctx.readPolicyExpression);
-      scope = "READ";
-    } else if (ctx.writePolicyExpression != null) {
-      policyExpression = parsePolicyExpression(ctx.writePolicyExpression);
-      scope = "WRITE";
+    if (ctx.readPolicyExpression != null && ctx.writePolicyExpression == null) {
+      String readPolicyExpression = parsePolicyExpression(ctx.readPolicyExpression);
+      return new SetUserReadLabelPolicyStatement(getLocation(ctx), username, readPolicyExpression);
+    } else if (ctx.writePolicyExpression != null && ctx.readPolicyExpression == null) {
+      String writePolicyExpression = parsePolicyExpression(ctx.writePolicyExpression);
+      return new SetUserWriteLabelPolicyStatement(
+          getLocation(ctx), username, writePolicyExpression);
+    } else {
+      throw parseError("You must set either READ or WRITE label policy, not both.", ctx);
     }
-
-    return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-        .SetUserLabelPolicyStatement(getLocation(ctx), username, policyExpression, scope);
   }
 
   /**
@@ -3995,8 +3999,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     String username = ((Identifier) visit(ctx.userName)).getValue();
     String scope = parseLabelPolicyScope(ctx.labelPolicyScope());
 
-    return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-        .AlterUserLabelPolicyStatement(getLocation(ctx), username, scope);
+    return new AlterUserLabelPolicyStatement(getLocation(ctx), username, scope);
   }
 
   /**
@@ -4010,12 +4013,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       username = ((Identifier) visit(ctx.userName)).getValue();
     }
 
-    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-            .ShowTableUserLabelPolicyStatement.PolicyScope
-        policyScope = parseTableUserLabelPolicyScope(ctx.labelPolicyScope());
+    ShowTableUserLabelPolicyStatement.PolicyScope policyScope =
+        parseTableUserLabelPolicyScope(ctx.labelPolicyScope());
 
-    return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-        .ShowTableUserLabelPolicyStatement(getLocation(ctx), username, policyScope);
+    return new ShowTableUserLabelPolicyStatement(getLocation(ctx), username, policyScope);
   }
 
   /**
@@ -4028,8 +4029,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     String database = ((Identifier) visit(ctx.database)).getValue();
     Map<String, String> securityLabels = parseSecurityLabelClause(ctx.securityLabelClause());
 
-    return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-        .AlterDatabaseSecurityLabelStatement(getLocation(ctx), database, securityLabels);
+    return new AlterDatabaseSecurityLabelStatement(getLocation(ctx), database, securityLabels);
   }
 
   /** Parse ALTER DATABASE database DROP SECURITY_LABEL for table model LBAC */
@@ -4038,8 +4038,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       RelationalSqlParser.DropDatabaseSecurityLabelStatementContext ctx) {
     String database = ((Identifier) visit(ctx.database)).getValue();
 
-    return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-        .DropDatabaseSecurityLabelStatement(getLocation(ctx), database);
+    return new DropDatabaseSecurityLabelStatement(getLocation(ctx), database);
   }
 
   /** Parse SHOW DATABASES (database)? SECURITY_LABEL for table model LBAC */
@@ -4051,8 +4050,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       database = ((Identifier) visit(ctx.database)).getValue();
     }
 
-    return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-        .ShowTableDatabaseSecurityLabelStatement(getLocation(ctx), database);
+    return new ShowTableDatabaseSecurityLabelStatement(getLocation(ctx), database);
   }
 
   // =============================== Helper Methods for Table Model LBAC
@@ -4218,30 +4216,24 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
    * @param ctx the label policy scope context
    * @return the parsed PolicyScope enum
    */
-  private org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-          .ShowTableUserLabelPolicyStatement.PolicyScope
-      parseTableUserLabelPolicyScope(RelationalSqlParser.LabelPolicyScopeContext ctx) {
+  private ShowTableUserLabelPolicyStatement.PolicyScope parseTableUserLabelPolicyScope(
+      RelationalSqlParser.LabelPolicyScopeContext ctx) {
     if (ctx == null) {
-      return org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-          .ShowTableUserLabelPolicyStatement.PolicyScope.READ;
+      return ShowTableUserLabelPolicyStatement.PolicyScope.READ;
     }
 
     String scope = ctx.getText().toUpperCase();
 
     // Handle combined scopes
     if (scope.contains("READ") && scope.contains("WRITE")) {
-      return org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-          .ShowTableUserLabelPolicyStatement.PolicyScope.READ_WRITE;
+      return ShowTableUserLabelPolicyStatement.PolicyScope.READ_WRITE;
     } else if (scope.contains("READ")) {
-      return org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-          .ShowTableUserLabelPolicyStatement.PolicyScope.READ;
+      return ShowTableUserLabelPolicyStatement.PolicyScope.READ;
     } else if (scope.contains("WRITE")) {
-      return org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-          .ShowTableUserLabelPolicyStatement.PolicyScope.WRITE;
+      return ShowTableUserLabelPolicyStatement.PolicyScope.WRITE;
     }
 
-    return org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-        .ShowTableUserLabelPolicyStatement.PolicyScope.READ;
+    return ShowTableUserLabelPolicyStatement.PolicyScope.READ;
   }
 
   /**

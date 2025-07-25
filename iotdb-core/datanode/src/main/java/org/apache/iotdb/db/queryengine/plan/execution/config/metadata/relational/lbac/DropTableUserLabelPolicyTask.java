@@ -22,7 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.DropUserLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropUserLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTableUserLabelPolicyStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -47,18 +48,13 @@ public class DropTableUserLabelPolicyTask implements IConfigTask {
     return configTaskExecutor.dropTableUserLabelPolicy(username, parseScope(scope));
   }
 
-  private org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-          .ShowTableUserLabelPolicyStatement.PolicyScope
-      parseScope(String scope) {
+  private ShowTableUserLabelPolicyStatement.PolicyScope parseScope(String scope) {
     if ("READ".equalsIgnoreCase(scope)) {
-      return org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-          .ShowTableUserLabelPolicyStatement.PolicyScope.READ;
+      return ShowTableUserLabelPolicyStatement.PolicyScope.READ;
     } else if ("WRITE".equalsIgnoreCase(scope)) {
-      return org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-          .ShowTableUserLabelPolicyStatement.PolicyScope.WRITE;
+      return ShowTableUserLabelPolicyStatement.PolicyScope.WRITE;
     } else {
-      return org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement
-          .ShowTableUserLabelPolicyStatement.PolicyScope.READ_WRITE;
+      return ShowTableUserLabelPolicyStatement.PolicyScope.READ_WRITE;
     }
   }
 }

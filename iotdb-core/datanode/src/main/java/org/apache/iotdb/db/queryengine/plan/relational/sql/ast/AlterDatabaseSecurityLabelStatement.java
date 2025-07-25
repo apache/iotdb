@@ -17,49 +17,40 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 
 import javax.annotation.Nullable;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
-/**
- * Statement for showing user label policy in table model SHOW USER (username)? LABEL_POLICY FOR
- * (READ | WRITE | READ_WRITE)
- */
-public class ShowTableUserLabelPolicyStatement extends Statement {
+/** Statement for altering database security labels in table model. */
+public class AlterDatabaseSecurityLabelStatement extends Statement {
 
-  private final String username;
-  private final PolicyScope policyScope;
+  private final String database;
+  private final Map<String, String> securityLabels;
 
-  public enum PolicyScope {
-    READ,
-    WRITE,
-    READ_WRITE
-  }
-
-  public ShowTableUserLabelPolicyStatement(
-      @Nullable NodeLocation location, String username, PolicyScope policyScope) {
+  public AlterDatabaseSecurityLabelStatement(
+      @Nullable NodeLocation location, String database, Map<String, String> securityLabels) {
     super(location);
-    this.username = username;
-    this.policyScope = policyScope;
+    this.database = database;
+    this.securityLabels = securityLabels;
   }
 
-  public String getUsername() {
-    return username;
+  public String getDatabase() {
+    return database;
   }
 
-  public PolicyScope getPolicyScope() {
-    return policyScope;
+  public Map<String, String> getSecurityLabels() {
+    return securityLabels;
   }
 
-  public String getStatementType() {
-    return "SHOW_TABLE_USER_LABEL_POLICY";
+  public StatementType getStatementType() {
+    return StatementType.ALTER_TABLE_DATABASE_SECURITY_LABEL;
   }
 
   @Override
@@ -70,7 +61,7 @@ public class ShowTableUserLabelPolicyStatement extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(username, policyScope);
+    return Objects.hash(database, securityLabels);
   }
 
   @Override
@@ -81,14 +72,20 @@ public class ShowTableUserLabelPolicyStatement extends Statement {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    ShowTableUserLabelPolicyStatement that = (ShowTableUserLabelPolicyStatement) obj;
-    return Objects.equals(username, that.username) && policyScope == that.policyScope;
+    AlterDatabaseSecurityLabelStatement that = (AlterDatabaseSecurityLabelStatement) obj;
+    return Objects.equals(database, that.database)
+        && Objects.equals(securityLabels, that.securityLabels);
   }
 
   @Override
   public String toString() {
     return String.format(
-        "ShowTableUserLabelPolicyStatement{username='%s', policyScope='%s'}",
-        username, policyScope);
+        "AlterDatabaseSecurityLabelStatement{database='%s', securityLabels=%s}",
+        database, securityLabels);
+  }
+
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitAlterDatabaseSecurityLabel(this, context);
   }
 }

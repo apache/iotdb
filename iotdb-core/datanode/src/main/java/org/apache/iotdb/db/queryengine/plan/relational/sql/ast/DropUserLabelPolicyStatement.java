@@ -17,10 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 
 import javax.annotation.Nullable;
 
@@ -29,15 +28,15 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Statement for altering user label policy in table model ALTER USER username DROP LABEL_POLICY FOR
- * (READ | WRITE | READ_WRITE)
+ * Statement for dropping user label policy in table model ALTER USER username DROP LABEL_POLICY FOR
+ * (READ | WRITE | READ,WRITE)
  */
-public class AlterUserLabelPolicyStatement extends Statement {
+public class DropUserLabelPolicyStatement extends Statement {
 
   private final String username;
   private final String scope;
 
-  public AlterUserLabelPolicyStatement(
+  public DropUserLabelPolicyStatement(
       @Nullable NodeLocation location, String username, String scope) {
     super(location);
     this.username = username;
@@ -52,13 +51,12 @@ public class AlterUserLabelPolicyStatement extends Statement {
     return scope;
   }
 
-  public String getStatementType() {
-    return "ALTER_USER_LABEL_POLICY";
+  public StatementType getStatementType() {
+    return StatementType.ALTER_TABLE_USER_LABEL_POLICY;
   }
 
   @Override
-  public List<? extends org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node>
-      getChildren() {
+  public List<? extends Node> getChildren() {
     return Collections.emptyList();
   }
 
@@ -75,13 +73,18 @@ public class AlterUserLabelPolicyStatement extends Statement {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    AlterUserLabelPolicyStatement that = (AlterUserLabelPolicyStatement) obj;
+    DropUserLabelPolicyStatement that = (DropUserLabelPolicyStatement) obj;
     return Objects.equals(username, that.username) && Objects.equals(scope, that.scope);
   }
 
   @Override
   public String toString() {
     return String.format(
-        "AlterUserLabelPolicyStatement{username='%s', scope='%s'}", username, scope);
+        "DropUserLabelPolicyStatement{username='%s', scope='%s'}", username, scope);
+  }
+
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitDropUserLabelPolicy(this, context);
   }
 }

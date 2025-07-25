@@ -20,13 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.AlterDatabaseSecurityLabelStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.AlterUserLabelPolicyStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.DropDatabaseSecurityLabelStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.DropUserLabelPolicyStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.SetUserLabelPolicyStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.ShowTableDatabaseSecurityLabelStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.ShowTableUserLabelPolicyStatement;
 
 import javax.annotation.Nullable;
 
@@ -843,7 +836,11 @@ public abstract class AstVisitor<R, C> {
 
   // =============================== Table Model LBAC =========================================
 
-  protected R visitSetUserLabelPolicy(SetUserLabelPolicyStatement node, C context) {
+  protected R visitSetUserReadLabelPolicy(SetUserReadLabelPolicyStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitSetUserWriteLabelPolicy(SetUserWriteLabelPolicyStatement node, C context) {
     return visitStatement(node, context);
   }
 

@@ -17,10 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 
 import javax.annotation.Nullable;
 
@@ -29,20 +28,18 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Statement for setting user label policy in table model ALTER USER username SET LABEL_POLICY
- * 'expression' FOR (READ | WRITE | READ,WRITE)
+ * Statement for altering user label policy in table model ALTER USER username DROP LABEL_POLICY FOR
+ * (READ | WRITE | READ_WRITE)
  */
-public class SetUserLabelPolicyStatement extends Statement {
+public class AlterUserLabelPolicyStatement extends Statement {
 
   private final String username;
-  private final String policyExpression;
   private final String scope;
 
-  public SetUserLabelPolicyStatement(
-      @Nullable NodeLocation location, String username, String policyExpression, String scope) {
+  public AlterUserLabelPolicyStatement(
+      @Nullable NodeLocation location, String username, String scope) {
     super(location);
     this.username = username;
-    this.policyExpression = policyExpression;
     this.scope = scope;
   }
 
@@ -50,16 +47,12 @@ public class SetUserLabelPolicyStatement extends Statement {
     return username;
   }
 
-  public String getPolicyExpression() {
-    return policyExpression;
-  }
-
   public String getScope() {
     return scope;
   }
 
-  public String getStatementType() {
-    return "SET_USER_LABEL_POLICY";
+  public StatementType getStatementType() {
+    return StatementType.ALTER_TABLE_USER_LABEL_POLICY;
   }
 
   @Override
@@ -70,7 +63,7 @@ public class SetUserLabelPolicyStatement extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(username, policyExpression, scope);
+    return Objects.hash(username, scope);
   }
 
   @Override
@@ -81,16 +74,18 @@ public class SetUserLabelPolicyStatement extends Statement {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    SetUserLabelPolicyStatement that = (SetUserLabelPolicyStatement) obj;
-    return Objects.equals(username, that.username)
-        && Objects.equals(policyExpression, that.policyExpression)
-        && Objects.equals(scope, that.scope);
+    AlterUserLabelPolicyStatement that = (AlterUserLabelPolicyStatement) obj;
+    return Objects.equals(username, that.username) && Objects.equals(scope, that.scope);
   }
 
   @Override
   public String toString() {
     return String.format(
-        "SetUserLabelPolicyStatement{username='%s', policyExpression='%s', scope='%s'}",
-        username, policyExpression, scope);
+        "AlterUserLabelPolicyStatement{username='%s', scope='%s'}", username, scope);
+  }
+
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitAlterUserLabelPolicy(this, context);
   }
 }
