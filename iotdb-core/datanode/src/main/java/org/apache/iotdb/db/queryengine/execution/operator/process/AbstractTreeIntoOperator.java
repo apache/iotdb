@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.DataNodeInternalClient;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -51,12 +50,7 @@ public abstract class AbstractTreeIntoOperator extends AbstractIntoOperator {
       List<TSDataType> inputColumnTypes,
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
-    super(operatorContext, child, inputColumnTypes, intoOperationExecutor);
-    int memAllowedMaxRowNumber = calculateMemAllowedMaxRowNumber(statementSizePerLine);
-    this.maxRowNumberInStatement =
-        Math.min(
-            memAllowedMaxRowNumber,
-            IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit());
+    super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
     this.maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
