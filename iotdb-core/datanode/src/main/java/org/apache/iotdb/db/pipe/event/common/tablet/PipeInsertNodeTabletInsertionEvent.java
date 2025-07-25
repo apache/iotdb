@@ -64,10 +64,8 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -84,35 +82,26 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
           + RamUsageEstimator.shallowSizeOfInstance(AtomicInteger.class)
           + RamUsageEstimator.shallowSizeOfInstance(AtomicBoolean.class)
           + RamUsageEstimator.shallowSizeOf(Boolean.class);
-  private static final long SET_SIZE = RamUsageEstimator.shallowSizeOfInstance(HashSet.class);
 
   private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
   private volatile List<Tablet> tablets;
 
   private List<TabletInsertionEventParser> eventParsers;
 
-  private final PartialPath devicePath;
   private InsertNode insertNode;
 
   private ProgressIndex progressIndex;
-
-  // Only useful for insertRows
-  private final Set<String> tableNames;
 
   private long extractTime = 0;
 
   public PipeInsertNodeTabletInsertionEvent(
       final Boolean isTableModel,
       final String databaseNameFromDataRegion,
-      final InsertNode insertNode,
-      final PartialPath devicePath,
-      final Set<String> tableNames) {
+      final InsertNode insertNode) {
     this(
         isTableModel,
         databaseNameFromDataRegion,
         insertNode,
-        devicePath,
-        tableNames,
         null,
         0,
         null,
@@ -128,8 +117,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final Boolean isTableModelEvent,
       final String databaseNameFromDataRegion,
       final InsertNode insertNode,
-      final PartialPath devicePath,
-      final Set<String> tableNames,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -152,9 +139,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         isTableModelEvent,
         databaseNameFromDataRegion);
     this.insertNode = insertNode;
-    // Record device path here so there's no need to get it from InsertNode cache later.
-    this.devicePath = devicePath;
-    this.tableNames = tableNames;
     this.progressIndex = insertNode.getProgressIndex();
 
     this.allocatedMemoryBlock = new AtomicReference<>();
@@ -169,7 +153,12 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   }
 
   public String getDeviceId() {
-    return Objects.nonNull(devicePath) ? devicePath.getFullPath() : null;
+    if (Objects.isNull(insertNode)) {
+      return null;
+    }
+    return Objects.nonNull(insertNode.getTargetPath())
+        ? insertNode.getTargetPath().getFullPath()
+        : null;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -245,8 +234,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         getRawIsTableModelEvent(),
         getSourceDatabaseNameFromDataRegion(),
         insertNode,
-        devicePath,
-        tableNames,
         pipeName,
         creationTime,
         pipeTaskMeta,
@@ -268,10 +255,19 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     if (skipIfNoPrivileges || !isTableModelEvent()) {
       return;
     }
-    if (Objects.nonNull(devicePath)) {
-      checkTableName(DeviceIDFactory.getInstance().getDeviceID(devicePath).getTableName());
-    } else {
-      for (final String tableName : tableNames) {
+    if (Objects.nonNull(insertNode.getTargetPath())) {
+      checkTableName(
+          DeviceIDFactory.getInstance().getDeviceID(insertNode.getTargetPath()).getTableName());
+    } else if (insertNode instanceof InsertRowsNode) {
+      for (final String tableName :
+          ((InsertRowsNode) insertNode)
+              .getInsertRowNodeList().stream()
+                  .map(
+                      node ->
+                          DeviceIDFactory.getInstance()
+                              .getDeviceID(node.getTargetPath())
+                              .getTableName())
+                  .collect(Collectors.toSet())) {
         checkTableName(tableName);
       }
     }
@@ -287,7 +283,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
               "No privilege for SELECT for user %s at table %s.%s",
               userName,
               tableModelDatabaseName,
-              DeviceIDFactory.getInstance().getDeviceID(devicePath).getTableName()));
+              DeviceIDFactory.getInstance()
+                  .getDeviceID(insertNode.getTargetPath())
+                  .getTableName()));
     }
   }
 
@@ -557,13 +555,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + (Objects.nonNull(devicePath) ? PartialPath.estimateSize(devicePath) : 0)
         + (Objects.nonNull(insertNode) ? InsertNodeMemoryEstimator.sizeOf(insertNode) : 0)
-        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0)
-        + (Objects.nonNull(tableNames)
-            ? SET_SIZE
-                + tableNames.stream().mapToLong(RamUsageEstimator::sizeOf).reduce(0L, Long::sum)
-            : 0);
+        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
   }
 
   private static class PipeInsertNodeTabletInsertionEventResource extends PipeEventResource {
