@@ -23,12 +23,12 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -69,7 +69,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
   // Reserve some bytes to avoid capacity expansion
   private PublicBAOS baos = new PublicBAOS(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + 1024);
 
-  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+  private static int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private static final long INSTANCE_SIZE =
@@ -219,10 +219,13 @@ public class SchemaFetchScanOperator implements SourceOperator {
               : schemaRegion.fetchSeriesSchema(
                   patternTree, templateMap, withTags, withAttributes, withTemplate, withAliasForce);
       schemaNodeIteratorForSerialize = schemaTree.getIteratorForSerialize();
-      schemaTreeMemCost = schemaTree.ramBytesUsed();
-      MemoryReservationManager memoryReservationContext =
-          operatorContext.getInstanceContext().getMemoryReservationContext();
-      memoryReservationContext.reserveMemoryCumulatively(schemaTreeMemCost);
+      if (operatorContext != null) {
+        schemaTreeMemCost = schemaTree.ramBytesUsed();
+        operatorContext
+            .getInstanceContext()
+            .getMemoryReservationContext()
+            .reserveMemoryCumulatively(schemaTreeMemCost);
+      }
     } catch (MetadataException e) {
       throw new SchemaExecutionException(e);
     }
@@ -251,7 +254,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
   }
 
   private void releaseSchemaTree() {
-    if (schemaTreeMemCost <= 0) {
+    if (schemaTreeMemCost <= 0 || operatorContext == null) {
       return;
     }
     operatorContext
@@ -260,5 +263,10 @@ public class SchemaFetchScanOperator implements SourceOperator {
         .releaseMemoryCumulatively(schemaTreeMemCost);
     schemaTreeMemCost = 0;
     schemaNodeIteratorForSerialize = null;
+  }
+
+  @TestOnly
+  public static void setDefaultMaxTsBlockSizeInBytes(int newSize) {
+    DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES = newSize;
   }
 }

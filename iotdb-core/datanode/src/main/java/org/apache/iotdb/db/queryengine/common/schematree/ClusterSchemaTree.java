@@ -501,9 +501,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     if (memCost > 0) {
       return memCost;
     }
-    long startTime = System.currentTimeMillis();
     memCost = root.ramBytesUsed() + SHALLOW_SIZE + RamUsageEstimator.sizeOfMap(templateMap);
-    System.out.println(System.currentTimeMillis() - startTime);
     return memCost;
   }
 
