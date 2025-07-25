@@ -133,6 +133,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     isSealSignalSent = new AtomicBoolean(false);
   }
 
+  public File getTsFile() {
+    return tsFile;
+  }
+
   public void transfer(
       final IoTDBDataNodeAsyncClientManager clientManager,
       final AsyncPipeDataTransferServiceClient client)
@@ -460,8 +464,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   @Override
   public void close() {
     super.close();
+
     if (memoryBlock != null) {
       memoryBlock.close();
+      memoryBlock = null;
     }
   }
 
