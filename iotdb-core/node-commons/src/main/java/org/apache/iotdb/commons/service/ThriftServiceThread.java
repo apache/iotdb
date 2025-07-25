@@ -72,6 +72,31 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
       int timeoutSecond,
       TServerEventHandler serverEventHandler,
       boolean compress,
+      TTransportFactory transportFactory) {
+    super(
+        processor,
+        serviceName,
+        threadsName,
+        bindAddress,
+        port,
+        maxWorkerThreads,
+        timeoutSecond,
+        serverEventHandler,
+        compress,
+        transportFactory);
+  }
+
+  /** for synced ThriftServiceThread with ssl enabled */
+  public ThriftServiceThread(
+      TProcessor processor,
+      String serviceName,
+      String threadsName,
+      String bindAddress,
+      int port,
+      int maxWorkerThreads,
+      int timeoutSecond,
+      TServerEventHandler serverEventHandler,
+      boolean compress,
       String keyStorePath,
       String keyStorePwd,
       int clientTimeout,
@@ -88,10 +113,13 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
         compress,
         keyStorePath,
         keyStorePwd,
+        null,
+        null,
         clientTimeout,
         transportFactory);
   }
 
+  /** for synced ThriftServiceThread with ssl enabled */
   public ThriftServiceThread(
       TProcessor processor,
       String serviceName,
@@ -102,6 +130,11 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
       int timeoutSecond,
       TServerEventHandler serverEventHandler,
       boolean compress,
+      String keyStorePath,
+      String keyStorePwd,
+      String trustStorePath,
+      String trustStorePwd,
+      int clientTimeout,
       TTransportFactory transportFactory) {
     super(
         processor,
@@ -113,6 +146,11 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
         timeoutSecond,
         serverEventHandler,
         compress,
+        keyStorePath,
+        keyStorePwd,
+        trustStorePath,
+        trustStorePwd,
+        clientTimeout,
         transportFactory);
   }
 }
