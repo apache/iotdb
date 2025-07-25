@@ -34,7 +34,6 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Arrays;
-import java.util.List;
 
 public abstract class InsertTabletStatementGenerator implements Accountable {
   protected final int rowLimit;
@@ -43,7 +42,7 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
   protected final String[] measurements;
   protected final TSDataType[] dataTypes;
   protected final InputLocation[] inputLocations;
-  protected final List<Type> sourceTypeConvertors;
+  protected final Type[] typeConvertors;
 
   protected int rowCount = 0;
 
@@ -56,14 +55,14 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
       String[] measurements,
       TSDataType[] dataTypes,
       InputLocation[] inputLocations,
-      List<Type> sourceTypeConvertors,
+      Type[] typeConvertors,
       boolean isAligned,
       int rowLimit) {
     this.devicePath = devicePath;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
     this.inputLocations = inputLocations;
-    this.sourceTypeConvertors = sourceTypeConvertors;
+    this.typeConvertors = typeConvertors;
     this.isAligned = isAligned;
     this.rowLimit = rowLimit;
   }

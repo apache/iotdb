@@ -31,15 +31,11 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.read.common.type.TypeFactory;
-import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
@@ -59,7 +55,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   protected int maxRowNumberInStatement;
   protected long maxReturnSize;
 
-  protected final List<Type> typeConvertors;
+  protected final List<TSDataType> inputColumnTypes;
 
   protected AbstractIntoOperator(
       OperatorContext operatorContext,
@@ -69,8 +65,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       long statementSizePerLine) {
     this.operatorContext = operatorContext;
     this.child = child;
-    this.typeConvertors =
-        inputColumnTypes.stream().map(TypeFactory::getType).collect(Collectors.toList());
+    this.inputColumnTypes = inputColumnTypes;
 
     this.writeOperationExecutor = intoOperationExecutor;
     setMaxRowNumberInStatement(statementSizePerLine);
@@ -195,14 +190,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     } catch (ExecutionException e) {
       throw new IntoProcessException(e);
     }
-  }
-
-  protected long getTypeConvertorsBytes() {
-    if (typeConvertors == null) {
-      return 0;
-    }
-    long typeSize = RamUsageEstimator.shallowSizeOfInstance(Type.class);
-    return typeConvertors.stream().mapToLong(x -> typeSize).sum();
   }
 
   /**

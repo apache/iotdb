@@ -153,7 +153,7 @@ public class DeviceViewIntoOperator extends AbstractTreeIntoOperator {
         targetPathToSourceInputLocationMap,
         targetPathToDataTypeMap,
         targetDeviceToAlignedMap,
-        typeConvertors,
+        inputColumnTypes,
         maxRowNumberInStatement);
   }
 
@@ -185,7 +185,6 @@ public class DeviceViewIntoOperator extends AbstractTreeIntoOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + getTypeConvertorsBytes()
         + resultTsBlockBuilder.getRetainedSizeInBytes()
         + (insertTabletStatementGenerators == null
             ? 0

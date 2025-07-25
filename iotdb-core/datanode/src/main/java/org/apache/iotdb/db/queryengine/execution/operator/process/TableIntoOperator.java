@@ -54,6 +54,8 @@ public class TableIntoOperator extends AbstractIntoOperator {
           .map(ColumnHeader::getColumnType)
           .collect(Collectors.toList());
 
+  private static final long MAX_RETURN_SIZE = getResultTsBlockSize();
+
   public TableIntoOperator(
       OperatorContext operatorContext,
       Operator child,
@@ -67,14 +69,14 @@ public class TableIntoOperator extends AbstractIntoOperator {
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
     super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
-    this.maxReturnSize = getResultTsBlockSize();
+    this.maxReturnSize = MAX_RETURN_SIZE;
     insertTabletStatementGenerator =
         new TableInsertTabletStatementGenerator(
             databaseName,
             targetTable,
             measurementToInputLocationMap,
             measurementToDataTypeMap,
-            typeConvertors,
+            inputColumnTypes,
             inputColumnCategories,
             isAligned,
             maxRowNumberInStatement);
@@ -117,7 +119,6 @@ public class TableIntoOperator extends AbstractIntoOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
-        + getTypeConvertorsBytes()
         + insertTabletStatementGenerator.ramBytesUsed();
   }
 
