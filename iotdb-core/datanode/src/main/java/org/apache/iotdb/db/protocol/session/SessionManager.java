@@ -411,6 +411,16 @@ public class SessionManager implements SessionManagerMBean {
         IClientSession.SqlDialect.TREE);
   }
 
+  public SessionInfo getSessionInfoOfTreeModel(IClientSession session) {
+    return new SessionInfo(
+        session.getId(),
+        session.getUsername(),
+        ZoneId.systemDefault(),
+        session.getClientVersion(),
+        session.getDatabaseName(),
+        IClientSession.SqlDialect.TREE);
+  }
+
   public SessionInfo getSessionInfoOfTableModel(IClientSession session) {
     return new SessionInfo(
         session.getId(),
