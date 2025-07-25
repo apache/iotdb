@@ -44,6 +44,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 public class TableIntoOperator extends AbstractIntoOperator {
+  private static final int DEFAULT_MAX_ROW_NUMBER = 10000;
+
   protected final InsertTabletStatementGenerator insertTabletStatementGenerator;
 
   private static final long INSTANCE_SIZE =
@@ -62,7 +64,8 @@ public class TableIntoOperator extends AbstractIntoOperator {
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
     super(operatorContext, child, inputColumnTypes, intoOperationExecutor);
-    this.maxRowNumberInStatement = calculateMemAllowedMaxRowNumber(statementSizePerLine);
+    int memAllowedMaxRowNumber = calculateMemAllowedMaxRowNumber(statementSizePerLine);
+    this.maxRowNumberInStatement = Math.min(memAllowedMaxRowNumber, DEFAULT_MAX_ROW_NUMBER);
     insertTabletStatementGenerator =
         new TableInsertTabletStatementGenerator(
             databaseName,

@@ -166,4 +166,8 @@ public class IntoNode extends SingleChildProcessNode {
   public List<ColumnSchema> getColumns() {
     return columns;
   }
+
+  public Symbol getRowCountSymbol() {
+    return rowCountSymbol;
+  }
 }
