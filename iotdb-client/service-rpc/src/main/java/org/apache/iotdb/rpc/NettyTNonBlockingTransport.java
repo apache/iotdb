@@ -151,6 +151,8 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
                 SslContext sslContext = createSslContext();
                 SslHandler sslHandler = sslContext.newHandler(ch.alloc(), host, port);
                 sslHandler.setHandshakeTimeoutMillis(sslHandshakeTimeoutMs);
+                // set this for avoiding error log on server side
+                sslHandler.setCloseNotifyReadTimeoutMillis(100);
 
                 pipeline.addLast("ssl", sslHandler);
                 sslHandler
