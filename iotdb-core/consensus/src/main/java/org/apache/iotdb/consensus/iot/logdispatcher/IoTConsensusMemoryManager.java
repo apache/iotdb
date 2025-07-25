@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,17 @@ public class IoTConsensusMemoryManager {
     MetricService.getInstance().addMetricSet(new IoTConsensusMemoryManagerMetrics(this));
   }
 
+  public boolean reserve(IndexedConsensusRequest request, boolean fromQueue) {
+    synchronized (request) {
+      long prevRef = request.incRef();
+      if (prevRef == 0) {
+        return reserve(request.getMemorySize(), fromQueue);
+      } else {
+        return true;
+      }
+    }
+  }
+
   public boolean reserve(long size, boolean fromQueue) {
     boolean result =
         fromQueue
@@ -53,6 +65,15 @@ public class IoTConsensusMemoryManager {
       }
     }
     return result;
+  }
+
+  public void free(IndexedConsensusRequest request, boolean fromQueue) {
+    synchronized (request) {
+      long prevRef = request.decRef();
+      if (prevRef == 0) {
+        free(request.getMemorySize(), fromQueue);
+      }
+    }
   }
 
   public void free(long size, boolean fromQueue) {
