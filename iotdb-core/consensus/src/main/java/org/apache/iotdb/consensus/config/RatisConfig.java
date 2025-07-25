@@ -196,8 +196,9 @@ public class RatisConfig {
       return this;
     }
 
-    public void setUtils(Utils utils) {
+    public Builder setUtils(Utils utils) {
       this.utils = utils;
+      return this;
     }
   }
 
@@ -1096,10 +1097,13 @@ public class RatisConfig {
 
     private final int sleepDeviationThresholdMs;
     private final int closeThresholdMs;
+    private final int transferLeaderTimeoutMs;
 
-    private Utils(int sleepDeviationThresholdMs, int closeThresholdMs) {
+    private Utils(
+        int sleepDeviationThresholdMs, int closeThresholdMs, int transferLeaderTimeoutMs) {
       this.sleepDeviationThresholdMs = sleepDeviationThresholdMs;
       this.closeThresholdMs = closeThresholdMs;
+      this.transferLeaderTimeoutMs = transferLeaderTimeoutMs;
     }
 
     public int getSleepDeviationThresholdMs() {
@@ -1108,6 +1112,10 @@ public class RatisConfig {
 
     public int getCloseThresholdMs() {
       return closeThresholdMs;
+    }
+
+    public int getTransferLeaderTimeoutMs() {
+      return transferLeaderTimeoutMs;
     }
 
     public static Utils.Builder newBuilder() {
@@ -1119,16 +1127,25 @@ public class RatisConfig {
       private int sleepDeviationThresholdMs = 4 * 1000;
       private int closeThresholdMs = Integer.MAX_VALUE;
 
+      private int transferLeaderTimeoutMs = 30 * 1000;
+
       public Utils build() {
-        return new Utils(sleepDeviationThresholdMs, closeThresholdMs);
+        return new Utils(sleepDeviationThresholdMs, closeThresholdMs, transferLeaderTimeoutMs);
       }
 
-      public void setSleepDeviationThresholdMs(int sleepDeviationThresholdMs) {
+      public Utils.Builder setSleepDeviationThresholdMs(int sleepDeviationThresholdMs) {
         this.sleepDeviationThresholdMs = sleepDeviationThresholdMs;
+        return this;
       }
 
-      public void setCloseThresholdMs(int closeThresholdMs) {
+      public Utils.Builder setCloseThresholdMs(int closeThresholdMs) {
         this.closeThresholdMs = closeThresholdMs;
+        return this;
+      }
+
+      public Utils.Builder setTransferLeaderTimeoutMs(int transferLeaderTimeoutMs) {
+        this.transferLeaderTimeoutMs = transferLeaderTimeoutMs;
+        return this;
       }
     }
   }

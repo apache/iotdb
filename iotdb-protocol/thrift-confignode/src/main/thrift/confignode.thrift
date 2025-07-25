@@ -93,6 +93,8 @@ struct TRatisConfig {
 
   33: required i64 schemaRegionPeriodicSnapshotInterval
   34: required i64 dataRegionPeriodicSnapshotInterval
+
+  35: required i32 ratisTransferLeaderTimeoutMs;
 }
 
 struct TCQConfig {
