@@ -201,9 +201,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     if (typeConvertors == null) {
       return 0;
     }
-    return typeConvertors.stream()
-        .mapToLong(x -> RamUsageEstimator.shallowSizeOfInstance(Type.class))
-        .sum();
+    long typeSize = RamUsageEstimator.shallowSizeOfInstance(Type.class);
+    return typeConvertors.stream().mapToLong(x -> typeSize).sum();
   }
 
   /**

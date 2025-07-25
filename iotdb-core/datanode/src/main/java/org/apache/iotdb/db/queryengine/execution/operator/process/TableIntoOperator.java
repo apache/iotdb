@@ -44,10 +44,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 public class TableIntoOperator extends AbstractIntoOperator {
-  protected final InsertTabletStatementGenerator insertTabletStatementGenerator;
+  private final InsertTabletStatementGenerator insertTabletStatementGenerator;
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableIntoOperator.class);
+
+  private static final List<TSDataType> outputDataTypes =
+      ColumnHeaderConstant.selectIntoTableColumnHeaders.stream()
+          .map(ColumnHeader::getColumnType)
+          .collect(Collectors.toList());
 
   public TableIntoOperator(
       OperatorContext operatorContext,
@@ -62,6 +67,7 @@ public class TableIntoOperator extends AbstractIntoOperator {
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
     super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
+    this.maxReturnSize = getResultTsBlockSize();
     insertTabletStatementGenerator =
         new TableInsertTabletStatementGenerator(
             databaseName,
@@ -72,9 +78,6 @@ public class TableIntoOperator extends AbstractIntoOperator {
             inputColumnCategories,
             isAligned,
             maxRowNumberInStatement);
-    // Build the sample TsBlock which contains only one row.
-    TsBlock tsBlock = constructResultTsBlock();
-    this.maxReturnSize = tsBlock.getRetainedSizeInBytes();
   }
 
   @Override
@@ -149,10 +152,6 @@ public class TableIntoOperator extends AbstractIntoOperator {
   }
 
   private TsBlock constructResultTsBlock() {
-    List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.selectIntoTableColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
     TsBlockBuilder resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     timeColumnBuilder.writeLong(0);
@@ -164,5 +163,15 @@ public class TableIntoOperator extends AbstractIntoOperator {
 
   private long findWritten() {
     return insertTabletStatementGenerator.getWrittenCount();
+  }
+
+  private static long getResultTsBlockSize() {
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
+    timeColumnBuilder.writeLong(0);
+    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    columnBuilders[0].writeLong(0);
+    tsBlockBuilder.declarePosition();
+    return tsBlockBuilder.getRetainedSizeInBytes();
   }
 }

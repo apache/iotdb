@@ -39,9 +39,6 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 
 public abstract class AbstractTreeIntoOperator extends AbstractIntoOperator {
-  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-
   protected List<InsertTabletStatementGenerator> insertTabletStatementGenerators;
 
   protected AbstractTreeIntoOperator(
@@ -51,7 +48,7 @@ public abstract class AbstractTreeIntoOperator extends AbstractIntoOperator {
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
     super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
-    this.maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    this.maxReturnSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
   }
 
   protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
