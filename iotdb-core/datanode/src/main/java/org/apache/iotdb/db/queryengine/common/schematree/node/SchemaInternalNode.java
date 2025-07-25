@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.common.schematree.node;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -29,6 +32,9 @@ import java.util.Iterator;
 import java.util.Map;
 
 public class SchemaInternalNode extends SchemaNode {
+
+  private static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SchemaInternalNode.class);
 
   protected Map<String, SchemaNode> children = new HashMap<>();
 
@@ -104,5 +110,15 @@ public class SchemaInternalNode extends SchemaNode {
     String name = ReadWriteIOUtils.readString(inputStream);
 
     return new SchemaInternalNode(name);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE
+        + RamUsageEstimator.sizeOf(name)
+        + MemoryEstimationHelper.getEstimatedSizeOfMap(
+            children,
+            MemoryEstimationHelper.SHALLOW_SIZE_OF_HASHMAP,
+            MemoryEstimationHelper.SHALLOW_SIZE_OF_HASHMAP_ENTRY);
   }
 }

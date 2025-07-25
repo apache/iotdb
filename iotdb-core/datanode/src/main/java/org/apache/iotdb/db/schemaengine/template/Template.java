@@ -20,11 +20,14 @@
 package org.apache.iotdb.db.schemaengine.template;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -39,8 +42,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Template implements Serializable {
+public class Template implements Serializable, Accountable {
 
+  private static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(Template.class);
   private int id;
   private String name;
   private boolean isDirectAligned;
@@ -225,5 +229,15 @@ public class Template implements Serializable {
   @Override
   public int hashCode() {
     return new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE
+        + RamUsageEstimator.sizeOf(name)
+        + MemoryEstimationHelper.getEstimatedSizeOfMap(
+            schemaMap,
+            MemoryEstimationHelper.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP,
+            MemoryEstimationHelper.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY);
   }
 }

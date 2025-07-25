@@ -40,6 +40,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -63,6 +64,8 @@ import static org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode.
 import static org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode.SCHEMA_MEASUREMENT_NODE;
 
 public class ClusterSchemaTree implements ISchemaTree {
+  private static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ClusterSchemaTree.class);
   private static final ClusterTemplateManager templateManager =
       ClusterTemplateManager.getInstance();
 
@@ -77,6 +80,8 @@ public class ClusterSchemaTree implements ISchemaTree {
   private boolean hasNormalTimeSeries = false;
 
   private Map<Integer, Template> templateMap = new HashMap<>();
+
+  private long memCost;
 
   public ClusterSchemaTree() {
     root = new SchemaInternalNode(PATH_ROOT);
@@ -491,6 +496,21 @@ public class ClusterSchemaTree implements ISchemaTree {
     return new SchemaNodePostOrderIterator(root);
   }
 
+  @Override
+  public long ramBytesUsed() {
+    if (memCost > 0) {
+      return memCost;
+    }
+    long startTime = System.currentTimeMillis();
+    memCost = root.ramBytesUsed() + SHALLOW_SIZE + RamUsageEstimator.sizeOfMap(templateMap);
+    System.out.println(System.currentTimeMillis() - startTime);
+    return memCost;
+  }
+
+  public void setMemCost(long memCost) {
+    this.memCost = memCost;
+  }
+
   private static class SchemaNodePostOrderIterator implements Iterator<SchemaNode> {
     private final Deque<Pair<SchemaNode, Iterator<SchemaNode>>> stack = new ArrayDeque<>();
     private SchemaNode nextNode;
@@ -534,15 +554,21 @@ public class ClusterSchemaTree implements ISchemaTree {
   }
 
   public static class SchemaNodeBatchDeserializer {
-    byte nodeType;
-    int childNum;
-    Deque<SchemaNode> stack = new ArrayDeque<>();
-    SchemaNode child;
-    boolean hasLogicalView = false;
-    boolean hasNormalTimeSeries = false;
-    Map<Integer, Template> templateMap = new HashMap<>();
+    private byte nodeType;
+    private int childNum;
+    private Deque<SchemaNode> stack = new ArrayDeque<>();
+    private SchemaNode child;
+    private boolean hasLogicalView = false;
+    private boolean hasNormalTimeSeries = false;
+    private Map<Integer, Template> templateMap = new HashMap<>();
+    private boolean isFirstBatch = true;
+
+    public boolean isFirstBatch() {
+      return isFirstBatch;
+    }
 
     public void deserializeFromBatch(InputStream inputStream) throws IOException {
+      isFirstBatch = false;
       while (inputStream.available() > 0) {
         nodeType = ReadWriteIOUtils.readByte(inputStream);
         if (nodeType == SCHEMA_MEASUREMENT_NODE) {
@@ -598,6 +624,7 @@ public class ClusterSchemaTree implements ISchemaTree {
         hasLogicalView = false;
         hasNormalTimeSeries = false;
         templateMap = new HashMap<>();
+        isFirstBatch = true;
       }
     }
   }

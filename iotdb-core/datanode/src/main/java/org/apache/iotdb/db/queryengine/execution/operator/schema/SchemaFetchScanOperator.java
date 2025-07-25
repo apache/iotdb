@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -64,6 +65,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
   private final PathPatternTree authorityScope;
 
   private Iterator<SchemaNode> schemaNodeIteratorForSerialize = null;
+  private long schemaTreeMemCost;
   // Reserve some bytes to avoid capacity expansion
   private PublicBAOS baos = new PublicBAOS(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + 1024);
 
@@ -158,9 +160,14 @@ public class SchemaFetchScanOperator implements SourceOperator {
       throw new NoSuchElementException();
     }
 
-    prepareSchemaNodeIterator();
+    boolean isFirstBatch = schemaNodeIteratorForSerialize == null;
+    prepareSchemaNodeIteratorForSerialize();
     // to indicate this binary data is database info
     ReadWriteIOUtils.write((byte) 1, baos);
+    // the estimated mem cost to deserialize the total schema tree
+    if (isFirstBatch) {
+      ReadWriteIOUtils.write(schemaTreeMemCost, baos);
+    }
     while (schemaNodeIteratorForSerialize.hasNext()
         && baos.size() < DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES) {
       SchemaNode node = schemaNodeIteratorForSerialize.next();
@@ -172,7 +179,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
     if (isFinished) {
       // indicate all continuous binary data is finished
       currentBatch[0] = 2;
-      schemaNodeIteratorForSerialize = null;
+      releaseSchemaTree();
       baos = null;
     }
     return new TsBlock(
@@ -192,7 +199,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   @Override
   public void close() throws Exception {
-    schemaNodeIteratorForSerialize = null;
+    releaseSchemaTree();
     baos = null;
   }
 
@@ -201,7 +208,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
     return sourceId;
   }
 
-  private void prepareSchemaNodeIterator() {
+  private void prepareSchemaNodeIteratorForSerialize() {
     if (schemaNodeIteratorForSerialize != null) {
       return;
     }
@@ -212,6 +219,10 @@ public class SchemaFetchScanOperator implements SourceOperator {
               : schemaRegion.fetchSeriesSchema(
                   patternTree, templateMap, withTags, withAttributes, withTemplate, withAliasForce);
       schemaNodeIteratorForSerialize = schemaTree.getIteratorForSerialize();
+      schemaTreeMemCost = schemaTree.ramBytesUsed();
+      MemoryReservationManager memoryReservationContext =
+          operatorContext.getInstanceContext().getMemoryReservationContext();
+      memoryReservationContext.reserveMemoryCumulatively(schemaTreeMemCost);
     } catch (MetadataException e) {
       throw new SchemaExecutionException(e);
     }
@@ -237,5 +248,17 @@ public class SchemaFetchScanOperator implements SourceOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId);
+  }
+
+  private void releaseSchemaTree() {
+    if (schemaTreeMemCost <= 0) {
+      return;
+    }
+    operatorContext
+        .getInstanceContext()
+        .getMemoryReservationContext()
+        .releaseMemoryCumulatively(schemaTreeMemCost);
+    schemaTreeMemCost = 0;
+    schemaNodeIteratorForSerialize = null;
   }
 }

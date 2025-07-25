@@ -30,7 +30,10 @@ import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MemoryEstimationHelper {
 
@@ -47,6 +50,13 @@ public class MemoryEstimationHelper {
       RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
   private static final long INTEGER_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Integer.class);
+
+  public static final long SHALLOW_SIZE_OF_HASHMAP =
+      RamUsageEstimator.shallowSizeOfInstance(HashMap.class);
+  public static final long SHALLOW_SIZE_OF_HASHMAP_ENTRY = 32;
+  public static final long SHALLOW_SIZE_OF_CONCURRENT_HASHMAP =
+      RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
+  public static final long SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY = 24;
 
   private MemoryEstimationHelper() {
     // hide the constructor
@@ -118,5 +128,19 @@ public class MemoryEstimationHelper {
             + (long) integerArrayList.size() * (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     size += INTEGER_INSTANCE_SIZE * integerArrayList.size();
     return RamUsageEstimator.alignObjectSize(size);
+  }
+
+  public static long getEstimatedSizeOfMap(
+      Map<?, ? extends Accountable> map, long shallowSizeOfMap, long shallowSizeOfMapEntry) {
+    if (map == null) {
+      return 0;
+    }
+    long result = shallowSizeOfMap;
+    for (Map.Entry<?, ? extends Accountable> entry : map.entrySet()) {
+      result += RamUsageEstimator.sizeOfObject(entry.getKey());
+      result += entry.getValue() == null ? 0 : entry.getValue().ramBytesUsed();
+    }
+    result += map.size() * shallowSizeOfMapEntry;
+    return RamUsageEstimator.alignObjectSize(result);
   }
 }

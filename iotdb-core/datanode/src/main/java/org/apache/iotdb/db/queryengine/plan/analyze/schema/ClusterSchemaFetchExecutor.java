@@ -276,7 +276,7 @@ class ClusterSchemaFetchExecutor {
           }
           Column column = tsBlock.get().getColumn(0);
           for (int i = 0; i < column.getPositionCount(); i++) {
-            parseFetchedData(column.getBinary(i), result, deserializer, databaseSet);
+            parseFetchedData(column.getBinary(i), result, deserializer, databaseSet, context);
           }
         }
         result.setDatabases(databaseSet);
@@ -294,7 +294,8 @@ class ClusterSchemaFetchExecutor {
       Binary data,
       ClusterSchemaTree resultSchemaTree,
       ClusterSchemaTree.SchemaNodeBatchDeserializer deserializer,
-      Set<String> databaseSet) {
+      Set<String> databaseSet,
+      MPPQueryContext context) {
     InputStream inputStream = new ByteArrayInputStream(data.getValues());
     try {
       byte type = ReadWriteIOUtils.readByte(inputStream);
@@ -303,11 +304,16 @@ class ClusterSchemaFetchExecutor {
         for (int i = 0; i < size; i++) {
           databaseSet.add(ReadWriteIOUtils.readString(inputStream));
         }
-      } else if (type == 1) {
+      } else if (type == 1 || type == 2) {
+        if (deserializer.isFirstBatch()) {
+          long memCost = ReadWriteIOUtils.readLong(inputStream);
+          context.reserveMemoryForSchemaTree(memCost);
+        }
         deserializer.deserializeFromBatch(inputStream);
-      } else if (type == 2) {
-        deserializer.deserializeFromBatch(inputStream);
-        resultSchemaTree.mergeSchemaTree(deserializer.finish());
+        if (type == 2) {
+          // 'type == 2' indicates this batch is finished
+          resultSchemaTree.mergeSchemaTree(deserializer.finish());
+        }
       } else {
         throw new RuntimeException(
             new MetadataException("Failed to fetch schema because of unrecognized data"));
