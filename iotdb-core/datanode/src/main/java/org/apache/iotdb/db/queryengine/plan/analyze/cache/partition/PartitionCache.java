@@ -568,7 +568,7 @@ public class PartitionCache {
             schemaPartitionMap.computeIfAbsent(storageGroupName, k -> new HashMap<>());
         SchemaPartitionTable schemaPartitionTable =
             schemaPartitionCache.getIfPresent(storageGroupName);
-        if (null == schemaPartitionTable) {
+        if (logger.isDebugEnabled() && null == schemaPartitionTable) {
           // if database not find, then return cache miss.
           logger.debug(
               "[{} Cache] miss when search database {}",
@@ -585,7 +585,7 @@ public class PartitionCache {
         for (String device : entry.getValue()) {
           TSeriesPartitionSlot seriesPartitionSlot =
               partitionExecutor.getSeriesPartitionSlot(device);
-          if (!map.containsKey(seriesPartitionSlot)) {
+          if (logger.isDebugEnabled() && !map.containsKey(seriesPartitionSlot)) {
             // if one device not find, then return cache miss.
             logger.debug(
                 "[{} Cache] miss when search device {}",
@@ -602,7 +602,9 @@ public class PartitionCache {
           regionReplicaSetMap.put(seriesPartitionSlots.get(i), replicaSets.get(i));
         }
       }
-      logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+      if (logger.isDebugEnabled()) {
+        logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+      }
       // cache hit
       cacheMetrics.record(true, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
       return new SchemaPartition(
@@ -697,7 +699,7 @@ public class PartitionCache {
         }
 
         DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(databaseName);
-        if (null == dataPartitionTable) {
+        if (logger.isDebugEnabled() && null == dataPartitionTable) {
           logger.debug(
               "[{} Cache] miss when search database {}",
               CacheMetrics.DATA_PARTITION_CACHE_NAME,
@@ -719,7 +721,7 @@ public class PartitionCache {
 
           SeriesPartitionTable cachedSeriesPartitionTable =
               cachedDatabasePartitionMap.get(seriesPartitionSlot);
-          if (null == cachedSeriesPartitionTable) {
+          if (logger.isDebugEnabled() && null == cachedSeriesPartitionTable) {
             if (logger.isDebugEnabled()) {
               logger.debug(
                   "[{} Cache] miss when search device {}",
@@ -740,7 +742,7 @@ public class PartitionCache {
           for (TTimePartitionSlot timePartitionSlot : param.getTimePartitionSlotList()) {
             List<TConsensusGroupId> cacheConsensusGroupIds =
                 cachedTimePartitionSlot.get(timePartitionSlot);
-            if (null == cacheConsensusGroupIds
+            if (logger.isDebugEnabled() && null == cacheConsensusGroupIds
                 || cacheConsensusGroupIds.isEmpty()
                 || null == timePartitionSlot) {
               logger.debug(
@@ -907,12 +909,16 @@ public class PartitionCache {
   // endregion
 
   public void invalidAllCache() {
-    logger.debug("[Partition Cache] invalid");
+    if (logger.isDebugEnabled()) {
+      logger.debug("[Partition Cache] invalid");
+    }
     removeFromStorageGroupCache();
     invalidAllDataPartitionCache();
     invalidAllSchemaPartitionCache();
     invalidReplicaSetCache();
-    logger.debug("[Partition Cache] is invalid:{}", this);
+    if (logger.isDebugEnabled()) {
+      logger.debug("[Partition Cache] is invalid:{}", this);
+    }
   }
 
   @Override
