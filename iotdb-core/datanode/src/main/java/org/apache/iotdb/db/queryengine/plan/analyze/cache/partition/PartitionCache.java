@@ -416,10 +416,12 @@ public class PartitionCache {
       for (final IDeviceID devicePath : deviceIDs) {
         final String databaseName = getDatabaseName(devicePath);
         if (null == databaseName) {
-          logger.debug(
-              "[{} Cache] miss when search device {}",
-              CacheMetrics.DATABASE_CACHE_NAME,
-              devicePath);
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "[{} Cache] miss when search device {}",
+                CacheMetrics.DATABASE_CACHE_NAME,
+                devicePath);
+          }
           status = false;
           if (failFast) {
             break;
@@ -434,8 +436,10 @@ public class PartitionCache {
       if (!status) {
         result.setFailed();
       }
-      logger.debug(
-          "[{} Cache] hit when search device {}", CacheMetrics.DATABASE_CACHE_NAME, deviceIDs);
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "[{} Cache] hit when search device {}", CacheMetrics.DATABASE_CACHE_NAME, deviceIDs);
+      }
       cacheMetrics.record(status, CacheMetrics.DATABASE_CACHE_NAME);
     } finally {
       databaseCacheLock.readLock().unlock();
@@ -673,10 +677,12 @@ public class PartitionCache {
             schemaPartitionCache.getIfPresent(databaseName);
         if (null == schemaPartitionTable) {
           // if database not find, then return cache miss.
-          logger.debug(
-              "[{} Cache] miss when search database {}",
-              CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
-              databaseName);
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "[{} Cache] miss when search database {}",
+                CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
+                databaseName);
+          }
           cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
           return null;
         }
@@ -690,10 +696,12 @@ public class PartitionCache {
               partitionExecutor.getSeriesPartitionSlot(device);
           if (!map.containsKey(seriesPartitionSlot)) {
             // if one device not find, then return cache miss.
-            logger.debug(
-                "[{} Cache] miss when search device {}",
-                CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
-                device);
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "[{} Cache] miss when search device {}",
+                  CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
+                  device);
+            }
             cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
             return null;
           }
@@ -705,7 +713,9 @@ public class PartitionCache {
           regionReplicaSetMap.put(seriesPartitionSlots.get(i), replicaSets.get(i));
         }
       }
-      logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+      if (logger.isDebugEnabled()) {
+        logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+      }
       // cache hit
       cacheMetrics.record(true, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
       return new SchemaPartition(
@@ -727,10 +737,12 @@ public class PartitionCache {
       SchemaPartitionTable schemaPartitionTable = schemaPartitionCache.getIfPresent(database);
       if (null == schemaPartitionTable) {
         // if database not find, then return cache miss.
-        logger.debug(
-            "[{} Cache] miss when search database {}",
-            CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
-            database);
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "[{} Cache] miss when search database {}",
+              CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
+              database);
+        }
         cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
         return null;
       }
@@ -749,7 +761,9 @@ public class PartitionCache {
         regionReplicaSetMap.put(entry.getKey(), regionReplicaSets.get(index++));
       }
 
-      logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+      if (logger.isDebugEnabled()) {
+        logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+      }
       // cache hit
       cacheMetrics.record(true, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
       return new SchemaPartition(
@@ -830,10 +844,12 @@ public class PartitionCache {
 
         DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(databaseName);
         if (null == dataPartitionTable) {
-          logger.debug(
-              "[{} Cache] miss when search database {}",
-              CacheMetrics.DATA_PARTITION_CACHE_NAME,
-              databaseName);
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "[{} Cache] miss when search database {}",
+                CacheMetrics.DATA_PARTITION_CACHE_NAME,
+                databaseName);
+          }
           cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
           return null;
         }
@@ -875,10 +891,12 @@ public class PartitionCache {
             if (null == cacheConsensusGroupIds
                 || cacheConsensusGroupIds.isEmpty()
                 || null == timePartitionSlot) {
-              logger.debug(
-                  "[{} Cache] miss when search time partition {}",
-                  CacheMetrics.DATA_PARTITION_CACHE_NAME,
-                  timePartitionSlot);
+              if (logger.isDebugEnabled()) {
+                logger.debug(
+                    "[{} Cache] miss when search time partition {}",
+                    CacheMetrics.DATA_PARTITION_CACHE_NAME,
+                    timePartitionSlot);
+              }
               cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
               return null;
             }
@@ -913,7 +931,9 @@ public class PartitionCache {
         }
       }
 
-      logger.debug("[{} Cache] hit", CacheMetrics.DATA_PARTITION_CACHE_NAME);
+      if (logger.isDebugEnabled()) {
+        logger.debug("[{} Cache] hit", CacheMetrics.DATA_PARTITION_CACHE_NAME);
+      }
       cacheMetrics.record(true, CacheMetrics.DATA_PARTITION_CACHE_NAME);
       return new DataPartition(dataPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
     } finally {
@@ -1022,12 +1042,16 @@ public class PartitionCache {
   // endregion
 
   public void invalidAllCache() {
-    logger.debug("[Partition Cache] invalid");
+    if (logger.isDebugEnabled()) {
+      logger.debug("[Partition Cache] invalid");
+    }
     removeFromDatabaseCache();
     invalidAllDataPartitionCache();
     invalidAllSchemaPartitionCache();
     invalidReplicaSetCache();
-    logger.debug("[Partition Cache] is invalid:{}", this);
+    if (logger.isDebugEnabled()) {
+      logger.debug("[Partition Cache] is invalid:{}", this);
+    }
   }
 
   @Override
