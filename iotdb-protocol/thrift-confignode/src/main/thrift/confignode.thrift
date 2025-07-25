@@ -1177,6 +1177,63 @@ struct TSetUserLabelPolicyReq {
   3: required string scope
 }
 
+struct TAlterUserLabelPolicyReq {
+  1: required string username
+  2: required string scope
+}
+
+struct TShowDatabaseSecurityLabelReq {
+  1: optional string databaseName
+}
+
+struct TShowDatabaseSecurityLabelResp {
+  1: required common.TSStatus status
+  2: optional map<string, string> securityLabel
+}
+
+// ======================================================
+// Table Model LBAC - Additional structures
+// ======================================================
+struct TSetTableUserLabelPolicyReq {
+  1: required string username
+  2: required string policyExpression
+  3: required string scope
+}
+
+struct TShowTableUserLabelPolicyReq {
+  1: optional string username
+  2: required string scope
+}
+
+struct TShowTableUserLabelPolicyResp {
+  1: required common.TSStatus status
+  2: required list<TUserLabelPolicyInfo> userLabelPolicyList
+}
+
+struct TAlterTableUserLabelPolicyReq {
+  1: required string username
+  2: required string scope
+}
+
+struct TDropTableUserLabelPolicyReq {
+  1: required string username
+  2: required string scope
+}
+
+struct TShowTableDatabaseSecurityLabelReq {
+  1: optional string databaseName
+}
+
+struct TShowTableDatabaseSecurityLabelResp {
+  1: required common.TSStatus status
+  2: optional map<string, string> securityLabel
+}
+
+struct TAlterTableDatabaseSecurityLabelReq {
+  1: required string databaseName
+  2: optional map<string, string> securityLabel
+}
+
 // ======================================================
 // Activation
 // ======================================================
@@ -2104,6 +2161,33 @@ service IConfigNodeRPCService {
 
   /** Set user label policy */
   common.TSStatus setUserLabelPolicy(TSetUserLabelPolicyReq req)
+
+  /** Alter user label policy */
+  common.TSStatus alterUserLabelPolicy(TAlterUserLabelPolicyReq req)
+
+  /** Show database security label */
+  TShowDatabaseSecurityLabelResp showDatabaseSecurityLabel(TShowDatabaseSecurityLabelReq req)
+
+  // ======================================================
+  // Table Model LBAC - Complete CRUD operations
+  // ======================================================
+  /** Set table user label policy (for table model) */
+  common.TSStatus setTableUserLabelPolicy(TSetTableUserLabelPolicyReq req)
+
+  /** Show table user label policy (for table model) */
+  TShowTableUserLabelPolicyResp showTableUserLabelPolicy(TShowTableUserLabelPolicyReq req)
+
+  /** Alter table user label policy (for table model) */
+  common.TSStatus alterTableUserLabelPolicy(TAlterTableUserLabelPolicyReq req)
+
+  /** Drop table user label policy (for table model) */
+  common.TSStatus dropTableUserLabelPolicy(TDropTableUserLabelPolicyReq req)
+
+  /** Show table database security label (for table model) */
+  TShowTableDatabaseSecurityLabelResp showTableDatabaseSecurityLabel(TShowTableDatabaseSecurityLabelReq req)
+
+  /** Alter table database security label (for table model) */
+  common.TSStatus alterTableDatabaseSecurityLabel(TAlterTableDatabaseSecurityLabelReq req)
 
   // ======================================================
   // Table Or View

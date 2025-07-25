@@ -1581,7 +1581,6 @@ policyOperator
     | OPERATOR_GTE       // >=
     | OPERATOR_LTE       // <=
     ;
-
 policyValue
     : STRING_LITERAL     // For string values
     | INTEGER_LITERAL    // For numeric values

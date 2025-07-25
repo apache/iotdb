@@ -54,6 +54,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTableDatabaseSecurityLabelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTableUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -104,6 +107,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq;
@@ -152,6 +156,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTableUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
@@ -163,6 +168,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseSecurityLabelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseSecurityLabelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
@@ -174,7 +181,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
@@ -1458,7 +1469,16 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TShowUserLabelPolicyResp showUserLabelPolicy(TShowUserLabelPolicyReq req)
       throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showUserLabelPolicy(req), resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.showUserLabelPolicy(req),
+        resp -> resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TShowDatabaseSecurityLabelResp showDatabaseSecurityLabel(TShowDatabaseSecurityLabelReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showDatabaseSecurityLabel(req),
+        resp -> resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
@@ -1470,7 +1490,60 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TSStatus setUserLabelPolicy(TSetUserLabelPolicyReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.setUserLabelPolicy(req), status -> !updateConfigNodeLeader(status));
+        () -> client.setUserLabelPolicy(req),
+        resp -> resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TSStatus alterUserLabelPolicy(TAlterUserLabelPolicyReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.alterUserLabelPolicy(req),
+        resp -> resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TSStatus alterTableUserLabelPolicy(TAlterTableUserLabelPolicyReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.alterTableUserLabelPolicy(req),
+        resp -> resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TSStatus setTableUserLabelPolicy(TSetTableUserLabelPolicyReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.setTableUserLabelPolicy(req),
+        resp -> resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TShowTableUserLabelPolicyResp showTableUserLabelPolicy(TShowTableUserLabelPolicyReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showTableUserLabelPolicy(req),
+        resp -> resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TSStatus dropTableUserLabelPolicy(TDropTableUserLabelPolicyReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.dropTableUserLabelPolicy(req),
+        resp -> resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TSStatus alterTableDatabaseSecurityLabel(TAlterTableDatabaseSecurityLabelReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.alterTableDatabaseSecurityLabel(req),
+        resp -> resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TShowTableDatabaseSecurityLabelResp showTableDatabaseSecurityLabel(
+      TShowTableDatabaseSecurityLabelReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showTableDatabaseSecurityLabel(req),
+        resp -> resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

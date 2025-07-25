@@ -80,6 +80,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTableDatabaseSecurityLabelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTableUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -110,6 +112,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq;
@@ -133,6 +136,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTableUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
@@ -150,7 +154,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
@@ -217,6 +225,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.ShowTableDatabaseSecurityLabelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
@@ -240,6 +249,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.ShowTableUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
@@ -4606,6 +4616,253 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
+    return future;
+  }
+
+  // =============================== Table Model LBAC
+  // =========================================
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setUserReadLabelPolicy(
+      String username, String policyExpression) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      // Build request parameters for table model LBAC
+      final TSetUserLabelPolicyReq req = new TSetUserLabelPolicyReq();
+      req.setUsername(username);
+      req.setPolicyExpression(policyExpression);
+      req.setScope("READ"); // Table model separates read and write policies
+
+      // Send request to ConfigNode
+      final TSStatus resp = configNodeClient.setUserLabelPolicy(req);
+
+      // Process response
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getCode()) {
+        LOGGER.warn(
+            "Failed to execute set user read label policy for table model in config node, status is {}.",
+            resp);
+        future.setException(new IoTDBException(resp.message, resp.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setUserWriteLabelPolicy(
+      String username, String policyExpression) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      // Build request parameters for table model LBAC
+      final TSetUserLabelPolicyReq req = new TSetUserLabelPolicyReq();
+      req.setUsername(username);
+      req.setPolicyExpression(policyExpression);
+      req.setScope("WRITE"); // Table model separates read and write policies
+
+      // Send request to ConfigNode
+      final TSStatus resp = configNodeClient.setUserLabelPolicy(req);
+
+      // Process response
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getCode()) {
+        LOGGER.warn(
+            "Failed to execute set user write label policy for table model in config node, status is {}.",
+            resp);
+        future.setException(new IoTDBException(resp.message, resp.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showUserLabelPolicyTableModel(
+      String username, ShowTableUserLabelPolicyStatement.PolicyScope scope) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      // Build request parameters for table model LBAC
+      final TShowTableUserLabelPolicyReq req = new TShowTableUserLabelPolicyReq();
+      if (username != null) {
+        req.setUsername(username);
+      }
+      req.setScope(scope.name());
+
+      // Send request to ConfigNode
+      final TShowTableUserLabelPolicyResp resp = configNodeClient.showTableUserLabelPolicy(req);
+
+      // Process response
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.getCode()) {
+        LOGGER.warn(
+            "Failed to execute show user label policy for table model in config node, status is {}.",
+            resp.status);
+        future.setException(new IoTDBException(resp.status.message, resp.status.code));
+      } else {
+        // Build result using table model specific logic
+        ShowUserLabelPolicyTask.buildTsBlock(
+            username, ShowUserLabelPolicyStatement.LabelPolicyScope.valueOf(scope.name()), future);
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterUserLabelPolicyTableModel(
+      String username, ShowTableUserLabelPolicyStatement.PolicyScope scope) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TAlterTableUserLabelPolicyReq req = new TAlterTableUserLabelPolicyReq();
+      req.setUsername(username);
+      req.setScope(scope.name());
+      final TSStatus resp = configNodeClient.alterTableUserLabelPolicy(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getCode()) {
+        future.setException(new IoTDBException(resp.message, resp.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterDatabaseSecurityLabelTableModel(
+      String databaseName, String securityLabel) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      // Build request parameters for table model LBAC
+      final TAlterDatabaseSecurityLabelReq req = new TAlterDatabaseSecurityLabelReq();
+      req.setDatabasePath(databaseName);
+      req.setSecurityLabel(new java.util.HashMap<>());
+      // Send request to ConfigNode
+      final TSStatus resp = configNodeClient.alterDatabaseSecurityLabel(req);
+
+      // Process response
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getCode()) {
+        LOGGER.warn(
+            "Failed to execute alter database security label for table model in config node, status is {}.",
+            resp);
+        future.setException(new IoTDBException(resp.message, resp.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showDatabaseSecurityLabelTableModel(String databaseName) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TShowTableDatabaseSecurityLabelReq req = new TShowTableDatabaseSecurityLabelReq();
+      if (databaseName != null) {
+        req.setDatabaseName(databaseName);
+      }
+      final TShowTableDatabaseSecurityLabelResp resp =
+          configNodeClient.showTableDatabaseSecurityLabel(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
+        future.setException(
+            new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode()));
+      } else {
+        // Build TsBlock using the new buildTsBlock method
+        ShowTableDatabaseSecurityLabelTask.buildTsBlock(databaseName, resp, future);
+      }
+    } catch (final Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropDatabaseSecurityLabelTableModel(String databaseName) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to ConfigNode for table model
+      final TAlterTableDatabaseSecurityLabelReq req = new TAlterTableDatabaseSecurityLabelReq();
+      req.setDatabaseName(databaseName);
+      req.setSecurityLabel(new java.util.HashMap<>());
+      final TSStatus resp = configNodeClient.alterTableDatabaseSecurityLabel(req);
+
+      if (resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(new IoTDBException(resp.message, resp.code));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setTableUserLabelPolicy(
+      String username,
+      String policyExpression,
+      ShowTableUserLabelPolicyStatement.PolicyScope scope) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to ConfigNode
+      final TSetTableUserLabelPolicyReq req = new TSetTableUserLabelPolicyReq();
+      req.setUsername(username);
+      req.setPolicyExpression(policyExpression);
+      req.setScope(scope.name());
+      final TSStatus resp = configNodeClient.setTableUserLabelPolicy(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getCode()) {
+        future.setException(new IoTDBException(resp.message, resp.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropTableUserLabelPolicy(
+      String username, ShowTableUserLabelPolicyStatement.PolicyScope scope) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to ConfigNode
+      final TDropTableUserLabelPolicyReq req = new TDropTableUserLabelPolicyReq();
+      req.setUsername(username);
+      req.setScope(scope.name());
+      final TSStatus resp = configNodeClient.dropTableUserLabelPolicy(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getCode()) {
+        future.setException(new IoTDBException(resp.message, resp.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+
     return future;
   }
 }

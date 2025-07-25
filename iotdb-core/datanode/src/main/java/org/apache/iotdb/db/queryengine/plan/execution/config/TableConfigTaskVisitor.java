@@ -90,6 +90,14 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.AlterTableDatabaseSecurityLabelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.AlterTableUserLabelPolicyTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.DropTableDatabaseSecurityLabelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.DropTableUserLabelPolicyTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.SetTableDatabaseSecurityLabelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.SetTableUserLabelPolicyTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.ShowTableDatabaseSecurityLabelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.lbac.ShowTableUserLabelPolicyTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.SetSqlDialectTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentSqlDialectTask;
@@ -199,6 +207,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.AlterDatabaseSecurityLabelStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.AlterUserLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.DropDatabaseSecurityLabelStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.DropUserLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.SetUserLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.ShowTableDatabaseSecurityLabelStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.ShowTableUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
@@ -1128,7 +1143,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
                 pipeName, extractorAttributeKey));
       }
     }
-    // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
+    // If the source is replaced, sql-dialect uses the current Alter Pipe
+    // sql-dialect. If it is
     // modified, the original sql-dialect is used.
     if (node.isReplaceAllExtractorAttributes()) {
       extractorAttributes.put(
@@ -1414,5 +1430,69 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitDropModel(DropModel node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new DropModelTask(node.getModelId());
+
+
+  @Override
+  protected IConfigTask visitSetUserLabelPolicy(
+      SetUserLabelPolicyStatement node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    return new SetTableUserLabelPolicyTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitDropUserLabelPolicy(
+      DropUserLabelPolicyStatement node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    return new DropTableUserLabelPolicyTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitAlterUserLabelPolicy(
+      AlterUserLabelPolicyStatement node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    return new AlterTableUserLabelPolicyTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitShowUserLabelPolicy(
+      ShowTableUserLabelPolicyStatement node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    return new ShowTableUserLabelPolicyTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitSetDatabaseSecurityLabel(
+      AlterDatabaseSecurityLabelStatement node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    return new SetTableDatabaseSecurityLabelTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitDropDatabaseSecurityLabel(
+      DropDatabaseSecurityLabelStatement node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    return new DropTableDatabaseSecurityLabelTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitAlterDatabaseSecurityLabel(
+      AlterDatabaseSecurityLabelStatement node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    return new AlterTableDatabaseSecurityLabelTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitShowDatabaseSecurityLabel(
+      ShowTableDatabaseSecurityLabelStatement node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
+    return new ShowTableDatabaseSecurityLabelTask(node);
   }
 }

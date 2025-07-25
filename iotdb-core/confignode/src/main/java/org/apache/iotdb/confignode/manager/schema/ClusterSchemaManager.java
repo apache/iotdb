@@ -245,18 +245,28 @@ public class ClusterSchemaManager {
   }
 
   /** Get single database security label from cache */
-  public String getDatabaseSecurityLabel(String databaseName) {
+  public Map<String, String> getDatabaseSecurityLabel(String databaseName) {
     synchronized (CACHE_LOCK) {
       long currentTime = System.currentTimeMillis();
 
       // Check if cache is valid
       if (lastCacheUpdateTime > 0 && (currentTime - lastCacheUpdateTime) < CACHE_TTL_MS) {
-        return SECURITY_LABEL_CACHE.getOrDefault(databaseName, "");
+        String label = SECURITY_LABEL_CACHE.getOrDefault(databaseName, "");
+        Map<String, String> result = new HashMap<>();
+        if (!label.isEmpty()) {
+          result.put(databaseName, label);
+        }
+        return result;
       }
 
       // Cache expired, update all and return specific one
       getAllDatabaseSecurityLabelsOptimized();
-      return SECURITY_LABEL_CACHE.getOrDefault(databaseName, "");
+      String label = SECURITY_LABEL_CACHE.getOrDefault(databaseName, "");
+      Map<String, String> result = new HashMap<>();
+      if (!label.isEmpty()) {
+        result.put(databaseName, label);
+      }
+      return result;
     }
   }
 

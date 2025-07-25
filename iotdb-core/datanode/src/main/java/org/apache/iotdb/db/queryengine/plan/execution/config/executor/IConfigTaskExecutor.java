@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.ShowTableUserLabelPolicyStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterDatabaseSecurityLabelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
@@ -433,6 +434,33 @@ public interface IConfigTaskExecutor {
       String username,
       String policyExpression,
       ShowUserLabelPolicyStatement.LabelPolicyScope scope);
+
+  SettableFuture<ConfigTaskResult> showUserLabelPolicyTableModel(
+      String username, ShowTableUserLabelPolicyStatement.PolicyScope scope);
+
+  SettableFuture<ConfigTaskResult> alterUserLabelPolicyTableModel(
+      String username, ShowTableUserLabelPolicyStatement.PolicyScope scope);
+
+  SettableFuture<ConfigTaskResult> setTableUserLabelPolicy(
+      String username,
+      String policyExpression,
+      ShowTableUserLabelPolicyStatement.PolicyScope scope);
+
+  SettableFuture<ConfigTaskResult> dropTableUserLabelPolicy(
+      String username, ShowTableUserLabelPolicyStatement.PolicyScope scope);
+
+  SettableFuture<ConfigTaskResult> setUserReadLabelPolicy(String username, String policyExpression);
+
+  SettableFuture<ConfigTaskResult> setUserWriteLabelPolicy(
+      String username, String policyExpression);
+
+  // =============================== Table Model LBAC  =========================================
+  SettableFuture<ConfigTaskResult> alterDatabaseSecurityLabelTableModel(
+      String databaseName, String securityLabel);
+
+  SettableFuture<ConfigTaskResult> dropDatabaseSecurityLabelTableModel(String databaseName);
+
+  SettableFuture<ConfigTaskResult> showDatabaseSecurityLabelTableModel(String databaseName);
 
   // =============================== AI =========================================
   SettableFuture<ConfigTaskResult> createModel(String modelId, String uri);

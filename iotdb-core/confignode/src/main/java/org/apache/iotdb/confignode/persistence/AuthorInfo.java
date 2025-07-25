@@ -50,11 +50,17 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelational
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTableUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTableUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableUserLabelPolicyReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowUserLabelPolicyResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserLabelPolicyInfo;
@@ -1085,6 +1091,514 @@ public class AuthorInfo implements SnapshotProcessor {
       } catch (Exception e) {
         LOGGER.warn(
             "Error triggering user cache invalidation for user label policy drop: {}", username, e);
+        // Don't fail the operation if cache invalidation fails
+        // The policy drop is already applied, cache invalidation is just for immediate
+        // effect
+      }
+
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (AuthException e) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getMessage());
+    }
+  }
+
+  // =============================== Table Model User Label Policy
+  // ===============================
+
+  public TSStatus setTableUserLabelPolicy(TSetTableUserLabelPolicyReq req) {
+    try {
+      String username = req.getUsername();
+      String policyExpression = req.getPolicyExpression();
+      String scope = req.getScope();
+
+      policyExpression = fixPolicyExpressionSpacing(policyExpression);
+
+      // Check if scope contains both READ and WRITE regardless of order
+      boolean isReadWrite =
+          "READ_WRITE".equals(scope)
+              || (scope.toUpperCase().contains("READ") && scope.toUpperCase().contains("WRITE"));
+
+      if (!authorizer.hasUser(username)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.USER_NOT_EXIST.getStatusCode(),
+            String.format("User [%s] does not exist.", username));
+      }
+
+      // Prevent setting label policy for root user
+      if ("root".equalsIgnoreCase(username)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+            "Cannot set label policy for root user.");
+      }
+
+      // Set the label policy using the authorizer
+      if (isReadWrite) {
+        // Set both READ and WRITE policies
+        authorizer.setUserLabelPolicy(username, policyExpression, "READ");
+        authorizer.setUserLabelPolicy(username, policyExpression, "WRITE");
+      } else {
+        // Set single policy
+        authorizer.setUserLabelPolicy(username, policyExpression, scope);
+      }
+
+      // Directly invalidate user cache to ensure immediate effect
+      // This ensures DataNode caches are cleared immediately after policy changes
+      try {
+        if (configManager != null) {
+          List<TDataNodeConfiguration> allDataNodes =
+              configManager.getNodeManager().getRegisteredDataNodes();
+
+          // Send cache invalidation request to all DataNodes
+          for (TDataNodeConfiguration dataNode : allDataNodes) {
+            TInvalidatePermissionCacheReq cacheReq = new TInvalidatePermissionCacheReq();
+            cacheReq.setUsername(username);
+            cacheReq.setRoleName("");
+
+            TSStatus status =
+                (TSStatus)
+                    SyncDataNodeClientPool.getInstance()
+                        .sendSyncRequestToDataNodeWithRetry(
+                            dataNode.getLocation().getInternalEndPoint(),
+                            cacheReq,
+                            CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE);
+
+            if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              LOGGER.debug(
+                  "Successfully invalidated user cache for {} on DataNode {}",
+                  username,
+                  dataNode.getLocation().getDataNodeId());
+            } else {
+              LOGGER.warn(
+                  "Failed to invalidate user cache for {} on DataNode {}: {}",
+                  username,
+                  dataNode.getLocation().getDataNodeId(),
+                  status.getMessage());
+            }
+          }
+
+          LOGGER.info(
+              "Successfully triggered user cache invalidation for table model label policy set: {}",
+              username);
+        } else {
+          LOGGER.warn(
+              "ConfigManager is null, cannot trigger user cache invalidation for user: {}",
+              username);
+        }
+
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Error triggering user cache invalidation for table model user label policy set: {}",
+            username,
+            e);
+        // Don't fail the operation if cache invalidation fails
+        // The policy set is already applied, cache invalidation is just for immediate
+        // effect
+      }
+
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (AuthException e) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getMessage());
+    }
+  }
+
+  public TShowTableUserLabelPolicyResp showTableUserLabelPolicy(TShowTableUserLabelPolicyReq req) {
+    TShowTableUserLabelPolicyResp resp = new TShowTableUserLabelPolicyResp();
+    try {
+      List<TUserLabelPolicyInfo> userLabelPolicyList = new ArrayList<>();
+
+      String username = req.getUsername();
+      String scope = req.getScope();
+      // Check if scope contains both READ and WRITE regardless of order
+      boolean isReadWrite =
+          "READ_WRITE".equals(scope) || (scope.contains("READ") && scope.contains("WRITE"));
+
+      if (username != null && !username.isEmpty()) {
+        // Show label policy for a specific user
+        if (!authorizer.hasUser(username)) {
+          resp.setStatus(
+              RpcUtils.getStatus(
+                  TSStatusCode.USER_NOT_EXIST.getStatusCode(),
+                  String.format("User [%s] does not exist.", username)));
+          return resp;
+        }
+
+        // Skip root user
+        if ("root".equalsIgnoreCase(username)) {
+          resp.setStatus(
+              RpcUtils.getStatus(
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+                  "Cannot show label policy for root user."));
+          return resp;
+        }
+
+        User user = authorizer.getUser(username);
+        // Get both read and write policy expressions
+        String readPolicyExpression = user.getReadLabelPolicyExpression();
+        String writePolicyExpression = user.getWriteLabelPolicyExpression();
+
+        if (isReadWrite) {
+          // For READ_WRITE scope, check both READ and WRITE policies
+          TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
+          readPolicyInfo.setUsername(username);
+          readPolicyInfo.setScope("READ");
+          readPolicyInfo.setPolicyExpression(
+              readPolicyExpression != null ? readPolicyExpression : "");
+          userLabelPolicyList.add(readPolicyInfo);
+
+          TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
+          writePolicyInfo.setUsername(username);
+          writePolicyInfo.setScope("WRITE");
+          writePolicyInfo.setPolicyExpression(
+              writePolicyExpression != null ? writePolicyExpression : "");
+          userLabelPolicyList.add(writePolicyInfo);
+        } else if (scope.toUpperCase().contains("READ")) {
+          // For READ scope only
+          TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+          policyInfo.setUsername(username);
+          policyInfo.setScope("READ");
+          policyInfo.setPolicyExpression(readPolicyExpression != null ? readPolicyExpression : "");
+          userLabelPolicyList.add(policyInfo);
+        } else if (scope.toUpperCase().contains("WRITE")) {
+          // For WRITE scope only
+          TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+          policyInfo.setUsername(username);
+          policyInfo.setScope("WRITE");
+          policyInfo.setPolicyExpression(
+              writePolicyExpression != null ? writePolicyExpression : "");
+          userLabelPolicyList.add(policyInfo);
+        }
+      } else {
+        // Show label policy for all users (excluding root)
+        for (String user : authorizer.listAllUsers()) {
+          // Skip root user
+          if ("root".equalsIgnoreCase(user)) {
+            continue;
+          }
+
+          User userObj = authorizer.getUser(user);
+          // Get both read and write policy expressions
+          String readPolicyExpression = userObj.getReadLabelPolicyExpression();
+          String writePolicyExpression = userObj.getWriteLabelPolicyExpression();
+
+          if (isReadWrite) {
+            // For READ_WRITE scope, check both READ and WRITE policies
+            TUserLabelPolicyInfo readPolicyInfo = new TUserLabelPolicyInfo();
+            readPolicyInfo.setUsername(user);
+            readPolicyInfo.setScope("READ");
+            readPolicyInfo.setPolicyExpression(
+                readPolicyExpression != null ? readPolicyExpression : "");
+            userLabelPolicyList.add(readPolicyInfo);
+
+            TUserLabelPolicyInfo writePolicyInfo = new TUserLabelPolicyInfo();
+            writePolicyInfo.setUsername(user);
+            writePolicyInfo.setScope("WRITE");
+            writePolicyInfo.setPolicyExpression(
+                writePolicyExpression != null ? writePolicyExpression : "");
+            userLabelPolicyList.add(writePolicyInfo);
+          } else if (scope.toUpperCase().contains("READ")) {
+            // For READ scope only
+            TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+            policyInfo.setUsername(user);
+            policyInfo.setScope("READ");
+            policyInfo.setPolicyExpression(
+                readPolicyExpression != null ? readPolicyExpression : "");
+            userLabelPolicyList.add(policyInfo);
+          } else if (scope.toUpperCase().contains("WRITE")) {
+            // For WRITE scope only
+            TUserLabelPolicyInfo policyInfo = new TUserLabelPolicyInfo();
+            policyInfo.setUsername(user);
+            policyInfo.setScope("WRITE");
+            policyInfo.setPolicyExpression(
+                writePolicyExpression != null ? writePolicyExpression : "");
+            userLabelPolicyList.add(policyInfo);
+          }
+        }
+      }
+
+      resp.setUserLabelPolicyList(userLabelPolicyList);
+      resp.setStatus(StatusUtils.OK);
+    } catch (AuthException e) {
+      resp.setStatus(
+          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getMessage()));
+    }
+    return resp;
+  }
+
+  public TSStatus alterTableUserLabelPolicy(TAlterTableUserLabelPolicyReq req) {
+    try {
+      String username = req.getUsername();
+      String scope = req.getScope();
+
+      // Check if scope contains both READ and WRITE regardless of order
+      boolean isReadWrite =
+          "READ_WRITE".equals(scope)
+              || (scope.toUpperCase().contains("READ") && scope.toUpperCase().contains("WRITE"));
+
+      if (!authorizer.hasUser(username)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.USER_NOT_EXIST.getStatusCode(),
+            String.format("User [%s] does not exist.", username));
+      }
+
+      // Prevent dropping label policy for root user
+      if ("root".equalsIgnoreCase(username)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+            "Cannot drop label policy for root user.");
+      }
+
+      // Drop the label policy using the authorizer
+      if (isReadWrite) {
+        // Drop both READ and WRITE policies
+        authorizer.dropUserLabelPolicy(username, "READ");
+        authorizer.dropUserLabelPolicy(username, "WRITE");
+      } else {
+        // Drop single policy
+        authorizer.dropUserLabelPolicy(username, scope);
+      }
+
+      // Directly invalidate user cache to ensure immediate effect
+      // This ensures DataNode caches are cleared immediately after policy drops
+      try {
+        if (configManager != null) {
+          List<TDataNodeConfiguration> allDataNodes =
+              configManager.getNodeManager().getRegisteredDataNodes();
+
+          // Send cache invalidation request to all DataNodes
+          for (TDataNodeConfiguration dataNode : allDataNodes) {
+            TInvalidatePermissionCacheReq cacheReq = new TInvalidatePermissionCacheReq();
+            cacheReq.setUsername(username);
+            cacheReq.setRoleName("");
+
+            TSStatus status =
+                (TSStatus)
+                    SyncDataNodeClientPool.getInstance()
+                        .sendSyncRequestToDataNodeWithRetry(
+                            dataNode.getLocation().getInternalEndPoint(),
+                            cacheReq,
+                            CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE);
+
+            if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              LOGGER.debug(
+                  "Successfully invalidated user cache for {} on DataNode {}",
+                  username,
+                  dataNode.getLocation().getDataNodeId());
+            } else {
+              LOGGER.warn(
+                  "Failed to invalidate user cache for {} on DataNode {}: {}",
+                  username,
+                  dataNode.getLocation().getDataNodeId(),
+                  status.getMessage());
+            }
+          }
+
+          LOGGER.info(
+              "Successfully triggered user cache invalidation for table model label policy alter: {}",
+              username);
+        } else {
+          LOGGER.warn(
+              "ConfigManager is null, cannot trigger user cache invalidation for user: {}",
+              username);
+        }
+
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Error triggering user cache invalidation for table model user label policy alter: {}",
+            username,
+            e);
+        // Don't fail the operation if cache invalidation fails
+        // The policy drop is already applied, cache invalidation is just for immediate
+        // effect
+      }
+
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (AuthException e) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getMessage());
+    }
+  }
+
+  public TSStatus dropTableUserLabelPolicy(TDropTableUserLabelPolicyReq req) {
+    try {
+      String username = req.getUsername();
+      String scope = req.getScope();
+
+      // Check if scope contains both READ and WRITE regardless of order
+      boolean isReadWrite =
+          "READ_WRITE".equals(scope)
+              || (scope.toUpperCase().contains("READ") && scope.toUpperCase().contains("WRITE"));
+
+      if (!authorizer.hasUser(username)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.USER_NOT_EXIST.getStatusCode(),
+            String.format("User [%s] does not exist.", username));
+      }
+
+      // Prevent dropping label policy for root user
+      if ("root".equalsIgnoreCase(username)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+            "Cannot drop label policy for root user.");
+      }
+
+      // Drop the label policy using the authorizer
+      if (isReadWrite) {
+        // Drop both READ and WRITE policies
+        authorizer.dropUserLabelPolicy(username, "READ");
+        authorizer.dropUserLabelPolicy(username, "WRITE");
+      } else {
+        // Drop single policy
+        authorizer.dropUserLabelPolicy(username, scope);
+      }
+
+      // Directly invalidate user cache to ensure immediate effect
+      // This ensures DataNode caches are cleared immediately after policy drops
+      try {
+        if (configManager != null) {
+          List<TDataNodeConfiguration> allDataNodes =
+              configManager.getNodeManager().getRegisteredDataNodes();
+
+          // Send cache invalidation request to all DataNodes
+          for (TDataNodeConfiguration dataNode : allDataNodes) {
+            TInvalidatePermissionCacheReq cacheReq = new TInvalidatePermissionCacheReq();
+            cacheReq.setUsername(username);
+            cacheReq.setRoleName("");
+
+            TSStatus status =
+                (TSStatus)
+                    SyncDataNodeClientPool.getInstance()
+                        .sendSyncRequestToDataNodeWithRetry(
+                            dataNode.getLocation().getInternalEndPoint(),
+                            cacheReq,
+                            CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE);
+
+            if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              LOGGER.debug(
+                  "Successfully invalidated user cache for {} on DataNode {}",
+                  username,
+                  dataNode.getLocation().getDataNodeId());
+            } else {
+              LOGGER.warn(
+                  "Failed to invalidate user cache for {} on DataNode {}: {}",
+                  username,
+                  dataNode.getLocation().getDataNodeId(),
+                  status.getMessage());
+            }
+          }
+
+          LOGGER.info(
+              "Successfully triggered user cache invalidation for table model label policy drop: {}",
+              username);
+        } else {
+          LOGGER.warn(
+              "ConfigManager is null, cannot trigger user cache invalidation for user: {}",
+              username);
+        }
+
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Error triggering user cache invalidation for table model user label policy drop: {}",
+            username,
+            e);
+        // Don't fail the operation if cache invalidation fails
+        // The policy drop is already applied, cache invalidation is just for immediate
+        // effect
+      }
+
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (AuthException e) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getMessage());
+    }
+  }
+
+  // =============================== Tree Model User Label Policy
+  // ===============================
+
+  public TSStatus alterUserLabelPolicy(TAlterUserLabelPolicyReq req) {
+    try {
+      String username = req.getUsername();
+      String scope = req.getScope();
+
+      // Check if scope contains both READ and WRITE regardless of order
+      boolean isReadWrite =
+          "READ_WRITE".equals(scope)
+              || (scope.toUpperCase().contains("READ") && scope.toUpperCase().contains("WRITE"));
+
+      if (!authorizer.hasUser(username)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.USER_NOT_EXIST.getStatusCode(),
+            String.format("User [%s] does not exist.", username));
+      }
+
+      // Prevent dropping label policy for root user
+      if ("root".equalsIgnoreCase(username)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+            "Cannot drop label policy for root user.");
+      }
+
+      // Drop the label policy using the authorizer
+      if (isReadWrite) {
+        // Drop both READ and WRITE policies
+        authorizer.dropUserLabelPolicy(username, "READ");
+        authorizer.dropUserLabelPolicy(username, "WRITE");
+      } else {
+        // Drop single policy
+        authorizer.dropUserLabelPolicy(username, scope);
+      }
+
+      // Directly invalidate user cache to ensure immediate effect
+      // This ensures DataNode caches are cleared immediately after policy drops
+      try {
+        if (configManager != null) {
+          List<TDataNodeConfiguration> allDataNodes =
+              configManager.getNodeManager().getRegisteredDataNodes();
+
+          // Send cache invalidation request to all DataNodes
+          for (TDataNodeConfiguration dataNode : allDataNodes) {
+            TInvalidatePermissionCacheReq cacheReq = new TInvalidatePermissionCacheReq();
+            cacheReq.setUsername(username);
+            cacheReq.setRoleName("");
+
+            TSStatus status =
+                (TSStatus)
+                    SyncDataNodeClientPool.getInstance()
+                        .sendSyncRequestToDataNodeWithRetry(
+                            dataNode.getLocation().getInternalEndPoint(),
+                            cacheReq,
+                            CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE);
+
+            if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              LOGGER.debug(
+                  "Successfully invalidated user cache for {} on DataNode {}",
+                  username,
+                  dataNode.getLocation().getDataNodeId());
+            } else {
+              LOGGER.warn(
+                  "Failed to invalidate user cache for {} on DataNode {}: {}",
+                  username,
+                  dataNode.getLocation().getDataNodeId(),
+                  status.getMessage());
+            }
+          }
+
+          LOGGER.info(
+              "Successfully triggered user cache invalidation for tree model label policy alter: {}",
+              username);
+        } else {
+          LOGGER.warn(
+              "ConfigManager is null, cannot trigger user cache invalidation for user: {}",
+              username);
+        }
+
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Error triggering user cache invalidation for tree model user label policy alter: {}",
+            username,
+            e);
         // Don't fail the operation if cache invalidation fails
         // The policy drop is already applied, cache invalidation is just for immediate
         // effect

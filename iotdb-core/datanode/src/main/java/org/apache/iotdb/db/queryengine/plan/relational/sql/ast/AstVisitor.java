@@ -20,6 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.AlterDatabaseSecurityLabelStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.AlterUserLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.DropDatabaseSecurityLabelStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.DropUserLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.SetUserLabelPolicyStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.ShowTableDatabaseSecurityLabelStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.statement.ShowTableUserLabelPolicyStatement;
 
 import javax.annotation.Nullable;
 
@@ -832,5 +839,40 @@ public abstract class AstVisitor<R, C> {
 
   protected R visitRangeQuantifier(RangeQuantifier node, C context) {
     return visitPatternQuantifier(node, context);
+  }
+
+  // =============================== Table Model LBAC =========================================
+
+  protected R visitSetUserLabelPolicy(SetUserLabelPolicyStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropUserLabelPolicy(DropUserLabelPolicyStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitAlterUserLabelPolicy(AlterUserLabelPolicyStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowUserLabelPolicy(ShowTableUserLabelPolicyStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropDatabaseSecurityLabel(DropDatabaseSecurityLabelStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitAlterDatabaseSecurityLabel(AlterDatabaseSecurityLabelStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowDatabaseSecurityLabel(
+      ShowTableDatabaseSecurityLabelStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitSetDatabaseSecurityLabel(AlterDatabaseSecurityLabelStatement node, C context) {
+    return visitStatement(node, context);
   }
 }
