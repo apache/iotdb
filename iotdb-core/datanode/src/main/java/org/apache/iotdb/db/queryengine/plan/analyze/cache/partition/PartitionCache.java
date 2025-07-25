@@ -318,10 +318,12 @@ public class PartitionCache {
       for (String devicePath : devicePaths) {
         String storageGroupName = getStorageGroupName(devicePath);
         if (null == storageGroupName) {
-          logger.debug(
-              "[{} Cache] miss when search device {}",
-              CacheMetrics.STORAGE_GROUP_CACHE_NAME,
-              devicePath);
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "[{} Cache] miss when search device {}",
+                CacheMetrics.STORAGE_GROUP_CACHE_NAME,
+                devicePath);
+          }
           status = false;
           if (failFast) {
             break;
@@ -336,10 +338,12 @@ public class PartitionCache {
       if (!status) {
         result.setFailed();
       }
-      logger.debug(
-          "[{} Cache] hit when search device {}",
-          CacheMetrics.STORAGE_GROUP_CACHE_NAME,
-          devicePaths);
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "[{} Cache] hit when search device {}",
+            CacheMetrics.STORAGE_GROUP_CACHE_NAME,
+            devicePaths);
+      }
       cacheMetrics.record(status, CacheMetrics.STORAGE_GROUP_CACHE_NAME);
     } finally {
       storageGroupCacheLock.readLock().unlock();
@@ -568,12 +572,14 @@ public class PartitionCache {
             schemaPartitionMap.computeIfAbsent(storageGroupName, k -> new HashMap<>());
         SchemaPartitionTable schemaPartitionTable =
             schemaPartitionCache.getIfPresent(storageGroupName);
-        if (logger.isDebugEnabled() && null == schemaPartitionTable) {
+        if (null == schemaPartitionTable) {
           // if database not find, then return cache miss.
-          logger.debug(
-              "[{} Cache] miss when search database {}",
-              CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
-              storageGroupName);
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "[{} Cache] miss when search database {}",
+                CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
+                storageGroupName);
+          }
           cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
           return null;
         }
@@ -585,12 +591,14 @@ public class PartitionCache {
         for (String device : entry.getValue()) {
           TSeriesPartitionSlot seriesPartitionSlot =
               partitionExecutor.getSeriesPartitionSlot(device);
-          if (logger.isDebugEnabled() && !map.containsKey(seriesPartitionSlot)) {
+          if (!map.containsKey(seriesPartitionSlot)) {
             // if one device not find, then return cache miss.
-            logger.debug(
-                "[{} Cache] miss when search device {}",
-                CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
-                device);
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "[{} Cache] miss when search device {}",
+                  CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
+                  device);
+            }
             cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
             return null;
           }
@@ -699,11 +707,13 @@ public class PartitionCache {
         }
 
         DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(databaseName);
-        if (logger.isDebugEnabled() && null == dataPartitionTable) {
-          logger.debug(
-              "[{} Cache] miss when search database {}",
-              CacheMetrics.DATA_PARTITION_CACHE_NAME,
-              databaseName);
+        if (null == dataPartitionTable) {
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "[{} Cache] miss when search database {}",
+                CacheMetrics.DATA_PARTITION_CACHE_NAME,
+                databaseName);
+          }
           cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
           return null;
         }
@@ -721,7 +731,7 @@ public class PartitionCache {
 
           SeriesPartitionTable cachedSeriesPartitionTable =
               cachedDatabasePartitionMap.get(seriesPartitionSlot);
-          if (logger.isDebugEnabled() && null == cachedSeriesPartitionTable) {
+          if (null == cachedSeriesPartitionTable) {
             if (logger.isDebugEnabled()) {
               logger.debug(
                   "[{} Cache] miss when search device {}",
@@ -742,13 +752,15 @@ public class PartitionCache {
           for (TTimePartitionSlot timePartitionSlot : param.getTimePartitionSlotList()) {
             List<TConsensusGroupId> cacheConsensusGroupIds =
                 cachedTimePartitionSlot.get(timePartitionSlot);
-            if (logger.isDebugEnabled() && null == cacheConsensusGroupIds
+            if (null == cacheConsensusGroupIds
                 || cacheConsensusGroupIds.isEmpty()
                 || null == timePartitionSlot) {
-              logger.debug(
-                  "[{} Cache] miss when search time partition {}",
-                  CacheMetrics.DATA_PARTITION_CACHE_NAME,
-                  timePartitionSlot);
+              if (logger.isDebugEnabled()) {
+                logger.debug(
+                    "[{} Cache] miss when search time partition {}",
+                    CacheMetrics.DATA_PARTITION_CACHE_NAME,
+                    timePartitionSlot);
+              }
               cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
               return null;
             }
