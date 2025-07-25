@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeDevic
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeDeviceVisitor;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorFactory;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -81,7 +82,7 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   private Map<Integer, Template> templateMap = new HashMap<>();
 
-  private long memCost;
+  private long ramBytesUsed;
 
   public ClusterSchemaTree() {
     root = new SchemaInternalNode(PATH_ROOT);
@@ -498,15 +499,21 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   @Override
   public long ramBytesUsed() {
-    if (memCost > 0) {
-      return memCost;
+    if (ramBytesUsed > 0) {
+      return ramBytesUsed;
     }
-    memCost = root.ramBytesUsed() + SHALLOW_SIZE + RamUsageEstimator.sizeOfMap(templateMap);
-    return memCost;
+    ramBytesUsed =
+        root.ramBytesUsed()
+            + SHALLOW_SIZE
+            + MemoryEstimationHelper.getEstimatedSizeOfMap(
+                templateMap,
+                MemoryEstimationHelper.SHALLOW_SIZE_OF_HASHMAP,
+                MemoryEstimationHelper.SHALLOW_SIZE_OF_HASHMAP_ENTRY);
+    return ramBytesUsed;
   }
 
-  public void setMemCost(long memCost) {
-    this.memCost = memCost;
+  public void setRamBytesUsed(long ramBytesUsed) {
+    this.ramBytesUsed = ramBytesUsed;
   }
 
   private static class SchemaNodePostOrderIterator implements Iterator<SchemaNode> {
