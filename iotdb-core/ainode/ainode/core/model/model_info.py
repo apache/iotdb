@@ -15,9 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import os
+import glob
 from enum import Enum
 from typing import List
-
 
 class BuiltInModelType(Enum):
     # forecast models
@@ -36,6 +37,9 @@ class BuiltInModelType(Enum):
     TIMER_XL = "Timer-XL"
     # sundial
     SUNDIAL = "Timer-Sundial"
+    # transformer models
+    TIMESFM = "TimesFM"
+    CHRONOS = "Chronos"
 
     @classmethod
     def values(cls) -> List[str]:
@@ -54,6 +58,34 @@ def get_built_in_model_type(model_type: str) -> BuiltInModelType:
         raise ValueError(f"Invalid built-in model type: {model_type}")
     return BuiltInModelType(model_type)
 
+def get_model_loading_strategy(model_id_or_uri: str) -> str:
+    if "/" in model_id_or_uri and not model_id_or_uri.startswith(("http://", "https://", "file://")):
+        return "network_huggingface"
+    
+    if os.path.exists(model_id_or_uri):
+        if _has_huggingface_format(model_id_or_uri):
+            return "local_huggingface"
+        elif _has_pytorch_format(model_id_or_uri):
+            return "local_pytorch"
+        else:
+            return "local_unknown"
+
+    return "network_huggingface"
+
+def _has_huggingface_format(path: str) -> bool:
+    
+    safetensors_files = glob.glob(os.path.join(path, "*.safetensors"))
+    json_files = glob.glob(os.path.join(path, "*.json"))
+    
+    return len(safetensors_files) > 0 and len(json_files) > 0
+
+
+def _has_pytorch_format(path: str) -> bool:
+    
+    pt_files = glob.glob(os.path.join(path, "*.pt"))
+    yaml_files = glob.glob(os.path.join(path, "*.yaml")) + glob.glob(os.path.join(path, "*.yml"))
+    
+    return len(pt_files) > 0 and len(yaml_files) > 0
 
 class ModelCategory(Enum):
     BUILT_IN = "BUILT-IN"
