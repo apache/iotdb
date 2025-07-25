@@ -209,7 +209,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     try {
       TableModelUtils.createDataBaseAndTable(receiverEnv, "test", "test");
-    } catch (final Exception ignore) {
+    } catch (final Exception | Error ignore) {
       // Ignore because the db/table may be transferred because sender user may see these
     }
 

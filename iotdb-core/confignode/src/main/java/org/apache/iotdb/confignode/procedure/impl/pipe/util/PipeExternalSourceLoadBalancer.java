@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -56,7 +56,7 @@ public class PipeExternalSourceLoadBalancer {
 
   public PipeExternalSourceLoadBalancer(final String balanceStrategy) {
     switch (balanceStrategy) {
-      case PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY:
+      case PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY:
         this.strategy = new ProportionalBalanceStrategy();
         break;
       default:
@@ -99,9 +99,9 @@ public class PipeExternalSourceLoadBalancer {
           .getExtractorParameters()
           .getBooleanOrDefault(
               Arrays.asList(
-                  PipeExtractorConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_KEY,
-                  PipeExtractorConstant.EXTERNAL_SOURCE_SINGLE_INSTANCE_PER_NODE_KEY),
-              PipeExtractorConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_DEFAULT_VALUE)) {
+                  PipeSourceConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_KEY,
+                  PipeSourceConstant.EXTERNAL_SOURCE_SINGLE_INSTANCE_PER_NODE_KEY),
+              PipeSourceConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_DEFAULT_VALUE)) {
         final List<Integer> runningDataNodes =
             configManager.getLoadManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
                 .sorted()

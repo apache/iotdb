@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtaskLifeCycle;
-import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeRealtimePriorityBlockingQueue;
+import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeRealtimePriorityBlockingQueue;
+import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtaskLifeCycle;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -32,17 +32,17 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 public class PipeCompactionManager {
 
-  private final Set<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycles =
+  private final Set<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycles =
       new CopyOnWriteArraySet<>();
 
   public void registerPipeConnectorSubtaskLifeCycle(
-      final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle) {
-    pipeConnectorSubtaskLifeCycles.add(pipeConnectorSubtaskLifeCycle);
+      final PipeSinkSubtaskLifeCycle pipeSinkSubtaskLifeCycle) {
+    pipeSinkSubtaskLifeCycles.add(pipeSinkSubtaskLifeCycle);
   }
 
   public void deregisterPipeConnectorSubtaskLifeCycle(
-      final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle) {
-    pipeConnectorSubtaskLifeCycles.remove(pipeConnectorSubtaskLifeCycle);
+      final PipeSinkSubtaskLifeCycle pipeSinkSubtaskLifeCycle) {
+    pipeSinkSubtaskLifeCycles.remove(pipeSinkSubtaskLifeCycle);
   }
 
   public void emitResult(
@@ -55,7 +55,7 @@ public class PipeCompactionManager {
     final Set<TsFileResource> sourceFileResources = new HashSet<>(seqFileResources);
     sourceFileResources.addAll(unseqFileResources);
 
-    for (final PipeConnectorSubtaskLifeCycle lifeCycle : pipeConnectorSubtaskLifeCycles) {
+    for (final PipeSinkSubtaskLifeCycle lifeCycle : pipeSinkSubtaskLifeCycles) {
       final UnboundedBlockingPendingQueue<Event> pendingQueue = lifeCycle.getPendingQueue();
       if (pendingQueue instanceof PipeRealtimePriorityBlockingQueue) {
         final PipeRealtimePriorityBlockingQueue realtimePriorityBlockingQueue =

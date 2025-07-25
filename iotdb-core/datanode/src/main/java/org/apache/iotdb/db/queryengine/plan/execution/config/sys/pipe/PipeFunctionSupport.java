@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -80,6 +80,6 @@ public class PipeFunctionSupport {
   }
 
   private static boolean isNowFunction(final String value) {
-    return PipeExtractorConstant.NOW_TIME_VALUE.equalsIgnoreCase(value.trim());
+    return PipeSourceConstant.NOW_TIME_VALUE.equalsIgnoreCase(value.trim());
   }
 }

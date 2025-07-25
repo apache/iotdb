@@ -20,11 +20,11 @@ package org.apache.iotdb.db.pipe.consensus;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class PipeConsensusSubtaskExecutor extends PipeConnectorSubtaskExecutor {
+public class PipeConsensusSubtaskExecutor extends PipeSinkSubtaskExecutor {
 
   private static final AtomicInteger id = new AtomicInteger(0);
 

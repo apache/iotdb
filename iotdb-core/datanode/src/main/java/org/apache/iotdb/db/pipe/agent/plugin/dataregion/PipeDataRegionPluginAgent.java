@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.pipe.agent.plugin.dataregion;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
-import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeConnectorConstructor;
-import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeExtractorConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeProcessorConstructor;
+import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructor;
+import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSourceConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
@@ -42,10 +42,9 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
   }
 
   @Override
-  protected PipeExtractorConstructor createPipeExtractorConstructor(
+  protected PipeSourceConstructor createPipeExtractorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper) {
-    return new PipeDataRegionExtractorConstructor(
-        (DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
+    return new PipeDataRegionSourceConstructor((DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
   }
 
   @Override
@@ -56,10 +55,9 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
   }
 
   @Override
-  protected PipeConnectorConstructor createPipeConnectorConstructor(
+  protected PipeSinkConstructor createPipeConnectorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper) {
-    return new PipeDataRegionConnectorConstructor(
-        (DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
+    return new PipeDataRegionSinkConstructor((DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
   }
 
   @Override

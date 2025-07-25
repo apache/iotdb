@@ -30,7 +30,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
+import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -174,14 +174,14 @@ public class PipeEventCollector implements EventCollector {
     // Only used by events containing delete data node, no need to bind progress index here since
     // delete data event does not have progress index currently
     (deleteDataEvent.getDeleteDataNode() instanceof DeleteDataNode
-            ? IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR.process(
+            ? IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR.process(
                 deleteDataEvent.getDeleteDataNode(),
                 (IoTDBTreePattern) deleteDataEvent.getTreePattern())
-            : IoTDBSchemaRegionExtractor.TABLE_PATTERN_PARSE_VISITOR
+            : IoTDBSchemaRegionSource.TABLE_PATTERN_PARSE_VISITOR
                 .process(deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTablePattern())
                 .flatMap(
                     planNode ->
-                        IoTDBSchemaRegionExtractor.TABLE_PRIVILEGE_PARSE_VISITOR.process(
+                        IoTDBSchemaRegionSource.TABLE_PRIVILEGE_PARSE_VISITOR.process(
                             planNode, deleteDataEvent.getUserName())))
         .map(
             planNode ->

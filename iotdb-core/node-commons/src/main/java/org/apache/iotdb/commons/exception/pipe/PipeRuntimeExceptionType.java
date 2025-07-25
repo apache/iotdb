@@ -62,7 +62,7 @@ public enum PipeRuntimeExceptionType {
       case 2:
         return PipeRuntimeCriticalException.deserializeFrom(version, byteBuffer);
       case 3:
-        return PipeRuntimeConnectorCriticalException.deserializeFrom(version, byteBuffer);
+        return PipeRuntimeSinkCriticalException.deserializeFrom(version, byteBuffer);
       case 4:
         return PipeRuntimeOutOfMemoryCriticalException.deserializeFrom(version, byteBuffer);
       default:
@@ -80,7 +80,7 @@ public enum PipeRuntimeExceptionType {
       case 2:
         return PipeRuntimeCriticalException.deserializeFrom(version, stream);
       case 3:
-        return PipeRuntimeConnectorCriticalException.deserializeFrom(version, stream);
+        return PipeRuntimeSinkCriticalException.deserializeFrom(version, stream);
       case 4:
         return PipeRuntimeOutOfMemoryCriticalException.deserializeFrom(version, stream);
       default:

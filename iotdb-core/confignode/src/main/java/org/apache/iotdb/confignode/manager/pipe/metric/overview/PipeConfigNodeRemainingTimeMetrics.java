@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.metric.overview;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
+import org.apache.iotdb.confignode.manager.pipe.source.IoTDBConfigRegionSource;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -99,7 +99,7 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final IoTDBConfigRegionExtractor extractor) {
+  public void register(final IoTDBConfigRegionSource extractor) {
     // The metric is global thus the regionId is omitted
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingTimeOperatorMap

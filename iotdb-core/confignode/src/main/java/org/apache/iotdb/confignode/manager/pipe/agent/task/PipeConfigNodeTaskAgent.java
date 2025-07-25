@@ -31,10 +31,10 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningFilter;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeConfigNodeRemainingTimeMetrics;
-import org.apache.iotdb.confignode.manager.pipe.metric.source.PipeConfigRegionExtractorMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.source.PipeConfigRegionSourceMetrics;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
+import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningFilter;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -225,7 +225,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
 
         final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
         final long remainingEventCount =
-            PipeConfigRegionExtractorMetrics.getInstance()
+            PipeConfigRegionSourceMetrics.getInstance()
                 .getRemainingEventCount(staticMeta.getPipeName(), staticMeta.getCreationTime());
         final double estimatedRemainingTime =
             PipeConfigNodeRemainingTimeMetrics.getInstance()
