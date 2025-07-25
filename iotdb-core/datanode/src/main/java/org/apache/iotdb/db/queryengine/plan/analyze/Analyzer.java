@@ -43,8 +43,18 @@ public class Analyzer {
 
   public Analysis analyze(Statement statement) {
     long startTime = System.nanoTime();
-    Analysis analysis =
-        new AnalyzeVisitor(partitionFetcher, schemaFetcher).process(statement, context);
+    AnalyzeVisitor visitor = new AnalyzeVisitor(partitionFetcher, schemaFetcher);
+    Analysis analysis = null;
+    context.setReserveMemoryForSchemaTreeFunc(context::reserveMemoryForFrontEnd);
+    try {
+      analysis = visitor.process(statement, context);
+    } finally {
+      if (analysis != null && context.releaseSchemaTreeAfterAnalyzing()) {
+        analysis.setSchemaTree(null);
+        context.releaseMemoryForSchemaTree();
+      }
+      context.setReserveMemoryForSchemaTreeFunc(null);
+    }
     if (context.getSession() != null) {
       // for test compatibility
       analysis.setDatabaseName(context.getDatabaseName().orElse(null));

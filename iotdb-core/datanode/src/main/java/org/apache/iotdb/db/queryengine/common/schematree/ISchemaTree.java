@@ -25,12 +25,13 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Set;
 
-public interface ISchemaTree {
+public interface ISchemaTree extends Accountable {
   /**
    * Return all measurement paths for given path pattern and filter the result by slimit and offset.
    *
