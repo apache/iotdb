@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
-import org.apache.iotdb.metrics.impl.DoNothingHistogram;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
@@ -45,14 +44,6 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeDataRegionConnectorMetrics.class);
-
-  public static Histogram tabletBatchSizeHistogram = new DoNothingHistogram();
-
-  public static Histogram tsFileBatchSizeHistogram = new DoNothingHistogram();
-
-  public static Histogram tabletBatchTimeIntervalHistogram = new DoNothingHistogram();
-
-  public static Histogram tsFileBatchTimeIntervalHistogram = new DoNothingHistogram();
 
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
@@ -76,28 +67,13 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
     for (String taskID : taskIDs) {
       createMetrics(taskID);
     }
-
-    tabletBatchSizeHistogram =
-        metricService.getOrCreateHistogram(
-            Metric.PIPE_INSERT_NODE_BATCH_SIZE.toString(), MetricLevel.IMPORTANT);
-
-    tsFileBatchSizeHistogram =
-        metricService.getOrCreateHistogram(
-            Metric.PIPE_TSFILE_BATCH_SIZE.toString(), MetricLevel.IMPORTANT);
-
-    tabletBatchTimeIntervalHistogram =
-        metricService.getOrCreateHistogram(
-            Metric.PIPE_INSERT_NODE_BATCH_TIME_COST.toString(), MetricLevel.IMPORTANT);
-
-    tsFileBatchTimeIntervalHistogram =
-        metricService.getOrCreateHistogram(
-            Metric.PIPE_TSFILE_BATCH_TIME_COST.toString(), MetricLevel.IMPORTANT);
   }
 
   private void createMetrics(final String taskID) {
     createAutoGauge(taskID);
     createRate(taskID);
     createTimer(taskID);
+    createHistogram(taskID);
   }
 
   private void createAutoGauge(final String taskID) {
@@ -246,6 +222,50 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
             String.valueOf(connector.getCreationTime())));
   }
 
+  private void createHistogram(final String taskID) {
+    final PipeConnectorSubtask connector = connectorMap.get(taskID);
+
+    final Histogram tabletBatchSizeHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.PIPE_INSERT_NODE_BATCH_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            connector.getAttributeSortedString(),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(connector.getCreationTime()));
+    connector.setTabletBatchSizeHistogram(tabletBatchSizeHistogram);
+
+    final Histogram tsFileBatchSizeHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.PIPE_TSFILE_BATCH_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            connector.getAttributeSortedString(),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(connector.getCreationTime()));
+    connector.setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
+
+    final Histogram tabletBatchTimeIntervalHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.PIPE_INSERT_NODE_BATCH_TIME_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            connector.getAttributeSortedString(),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(connector.getCreationTime()));
+    connector.setTabletBatchTimeIntervalHistogram(tabletBatchTimeIntervalHistogram);
+
+    final Histogram tsFileBatchTimeIntervalHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.PIPE_TSFILE_BATCH_TIME_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            connector.getAttributeSortedString(),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(connector.getCreationTime()));
+    connector.setTsFileBatchTimeIntervalHistogram(tsFileBatchTimeIntervalHistogram);
+  }
+
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
     final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(connectorMap.keySet());
@@ -256,20 +276,13 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
       LOGGER.warn(
           "Failed to unbind from pipe data region connector metrics, connector map not empty");
     }
-
-    metricService.remove(MetricType.HISTOGRAM, Metric.PIPE_INSERT_NODE_BATCH_SIZE.toString());
-
-    metricService.remove(MetricType.HISTOGRAM, Metric.PIPE_TSFILE_BATCH_SIZE.toString());
-
-    metricService.remove(MetricType.HISTOGRAM, Metric.PIPE_INSERT_NODE_BATCH_TIME_COST.toString());
-
-    metricService.remove(MetricType.HISTOGRAM, Metric.PIPE_TSFILE_BATCH_TIME_COST.toString());
   }
 
   private void removeMetrics(final String taskID) {
     removeAutoGauge(taskID);
     removeRate(taskID);
     removeTimer(taskID);
+    removeHistogram(taskID);
   }
 
   private void removeAutoGauge(final String taskID) {
@@ -396,6 +409,38 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
     compressionTimerMap.remove(connector.getAttributeSortedString());
+  }
+
+  private void removeHistogram(final String taskID) {
+    final PipeConnectorSubtask connector = connectorMap.get(taskID);
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.PIPE_INSERT_NODE_BATCH_SIZE.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.PIPE_TSFILE_BATCH_SIZE.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.PIPE_INSERT_NODE_BATCH_TIME_COST.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.PIPE_TSFILE_BATCH_TIME_COST.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
