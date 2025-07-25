@@ -65,13 +65,15 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       OperatorContext operatorContext,
       Operator child,
       List<TSDataType> inputColumnTypes,
-      ExecutorService intoOperationExecutor) {
+      ExecutorService intoOperationExecutor,
+      long statementSizePerLine) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.typeConvertors =
         inputColumnTypes.stream().map(TypeFactory::getType).collect(Collectors.toList());
 
     this.writeOperationExecutor = intoOperationExecutor;
+    setMaxRowNumberInStatement(statementSizePerLine);
   }
 
   @Override
@@ -217,14 +219,17 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   protected abstract void resetInsertTabletStatementGenerators();
 
-  protected int calculateMemAllowedMaxRowNumber(long statementSizePerLine) {
+  private void setMaxRowNumberInStatement(long statementSizePerLine) {
     long intoOperationBufferSizeInByte =
         IoTDBDescriptor.getInstance().getConfig().getIntoOperationBufferSizeInByte();
     long memAllowedMaxRowNumber = Math.max(intoOperationBufferSizeInByte / statementSizePerLine, 1);
     if (memAllowedMaxRowNumber > Integer.MAX_VALUE) {
       memAllowedMaxRowNumber = Integer.MAX_VALUE;
     }
-    return (int) memAllowedMaxRowNumber;
+    this.maxRowNumberInStatement =
+        Math.min(
+            (int) memAllowedMaxRowNumber,
+            IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit());
   }
 
   private boolean writeOperationDone() {
