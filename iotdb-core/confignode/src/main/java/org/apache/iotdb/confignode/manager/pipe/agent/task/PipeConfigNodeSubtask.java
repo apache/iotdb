@@ -32,8 +32,8 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeE
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
 import org.apache.iotdb.confignode.manager.pipe.metric.sink.PipeConfigRegionConnectorMetrics;
+import org.apache.iotdb.confignode.manager.pipe.source.IoTDBConfigRegionSource;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -164,7 +164,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
   }
 
   /**
-   * Try to consume an {@link Event} by the {@link IoTDBConfigRegionExtractor}.
+   * Try to consume an {@link Event} by the {@link IoTDBConfigRegionSource}.
    *
    * @return {@code true} if the {@link Event} is consumed successfully, {@code false} if no more
    *     {@link Event} can be consumed

@@ -31,7 +31,7 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionConnectorMetrics;
-import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
+import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -77,7 +77,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     this.inputPendingQueue = inputPendingQueue;
 
     if (!attributeSortedString.startsWith("schema_")) {
-      PipeDataRegionConnectorMetrics.getInstance().register(this);
+      PipeDataRegionSinkMetrics.getInstance().register(this);
     } else {
       PipeSchemaRegionConnectorMetrics.getInstance().register(this);
     }
@@ -108,10 +108,10 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
-        PipeDataRegionConnectorMetrics.getInstance().markTabletEvent(taskID);
+        PipeDataRegionSinkMetrics.getInstance().markTabletEvent(taskID);
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
-        PipeDataRegionConnectorMetrics.getInstance().markTsFileEvent(taskID);
+        PipeDataRegionSinkMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
         outputPipeConnector.transfer(event);
         if (((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType()
@@ -185,13 +185,13 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     }
 
     event.onTransferred();
-    PipeDataRegionConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
+    PipeDataRegionSinkMetrics.getInstance().markPipeHeartbeatEvent(taskID);
   }
 
   @Override
   public void close() {
     if (!attributeSortedString.startsWith("schema_")) {
-      PipeDataRegionConnectorMetrics.getInstance().deregister(taskID);
+      PipeDataRegionSinkMetrics.getInstance().deregister(taskID);
     } else {
       PipeSchemaRegionConnectorMetrics.getInstance().deregister(taskID);
     }

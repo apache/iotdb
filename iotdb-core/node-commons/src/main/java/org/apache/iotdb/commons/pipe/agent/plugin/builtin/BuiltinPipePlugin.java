@@ -31,9 +31,6 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.opcda.OpcDaC
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.opcua.OpcUaConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.websocket.WebSocketConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.writeback.WriteBackConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.donothing.DoNothingExtractor;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.iotdb.IoTDBExtractor;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.mqtt.MQTTExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.AggregateProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.StandardStatisticsProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.TumblingWindowingProcessor;
@@ -45,6 +42,9 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.pipeconsensu
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.schemachange.RenameDatabaseProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.throwing.ThrowingExceptionProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.twostage.TwoStageCountProcessor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.donothing.DoNothingSource;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.iotdb.IoTDBSource;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.mqtt.MQTTSource;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -54,13 +54,13 @@ import java.util.Set;
 public enum BuiltinPipePlugin {
 
   // extractors
-  DO_NOTHING_EXTRACTOR("do-nothing-extractor", DoNothingExtractor.class),
-  IOTDB_EXTRACTOR("iotdb-extractor", IoTDBExtractor.class),
-  MQTT_EXTRACTOR("mqtt-extractor", MQTTExtractor.class),
+  DO_NOTHING_EXTRACTOR("do-nothing-extractor", DoNothingSource.class),
+  IOTDB_EXTRACTOR("iotdb-extractor", IoTDBSource.class),
+  MQTT_EXTRACTOR("mqtt-extractor", MQTTSource.class),
 
-  DO_NOTHING_SOURCE("do-nothing-source", DoNothingExtractor.class),
-  IOTDB_SOURCE("iotdb-source", IoTDBExtractor.class),
-  MQTT_SOURCE("mqtt-source", MQTTExtractor.class),
+  DO_NOTHING_SOURCE("do-nothing-source", DoNothingSource.class),
+  IOTDB_SOURCE("iotdb-source", IoTDBSource.class),
+  MQTT_SOURCE("mqtt-source", MQTTSource.class),
 
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),

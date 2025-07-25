@@ -54,7 +54,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableMa
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
@@ -2098,10 +2098,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         // We don't allow changing the extractor plugin type
         if (alterPipeStatement
                 .getExtractorAttributes()
-                .containsKey(PipeExtractorConstant.EXTRACTOR_KEY)
+                .containsKey(PipeSourceConstant.EXTRACTOR_KEY)
             || alterPipeStatement
                 .getExtractorAttributes()
-                .containsKey(PipeExtractorConstant.SOURCE_KEY)
+                .containsKey(PipeSourceConstant.SOURCE_KEY)
             || alterPipeStatement.isReplaceAllExtractorAttributes()) {
           checkIfSourcePluginChanged(
               pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
@@ -2205,15 +2205,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final String oldPluginName =
         oldPipeParameters
             .getStringOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
             .toLowerCase();
     final String newPluginName =
         newPipeParameters
             .getStringOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
             .toLowerCase();
     if (!PipeDataNodeAgent.plugin().checkIfPluginSameType(oldPluginName, newPluginName)) {
@@ -2230,8 +2228,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final String pluginName =
         extractorParameters
             .getStringOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
             .toLowerCase();
 

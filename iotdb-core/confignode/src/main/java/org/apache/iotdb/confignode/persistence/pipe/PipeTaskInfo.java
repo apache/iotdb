@@ -35,8 +35,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordina
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -399,7 +399,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       PipeParameters extractorParameters = pipeMeta.getStaticMeta().getExtractorParameters();
       final String extractorPluginName =
           extractorParameters.getStringOrDefault(
-              Arrays.asList(PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+              Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
               BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
       if (pluginName.equals(extractorPluginName)) {
         String exceptionMessage =

@@ -36,7 +36,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
-import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
+import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
@@ -402,7 +402,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   protected byte[] compressIfNeeded(final byte[] reqInBytes) throws IOException {
     if (Objects.isNull(compressionTimer) && Objects.nonNull(attributeSortedString)) {
       compressionTimer =
-          PipeDataRegionConnectorMetrics.getInstance().getCompressionTimer(attributeSortedString);
+          PipeDataRegionSinkMetrics.getInstance().getCompressionTimer(attributeSortedString);
     }
     return super.compressIfNeeded(reqInBytes);
   }

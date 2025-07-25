@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -53,9 +53,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_SOURCE_PARALLELISM_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_EXTRACTOR_PARALLELISM_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_SOURCE_PARALLELISM_KEY;
 
 public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
@@ -130,10 +130,9 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
                           .getExtractorParameters()
                           .getStringOrDefault(
                               Arrays.asList(
-                                  PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
-                                  PipeExtractorConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
-                              PipeExtractorConstant
-                                  .EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
+                                  PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
+                                  PipeSourceConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
+                              PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
               final int parallelism =
                   pipeMeta
                       .getStaticMeta()
