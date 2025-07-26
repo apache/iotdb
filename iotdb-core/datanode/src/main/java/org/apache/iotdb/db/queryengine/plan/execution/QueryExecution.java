@@ -185,7 +185,7 @@ public class QueryExecution implements IQueryExecution {
     doDistributedPlan();
 
     stateMachine.transitionToPlanned();
-    if (context.getQueryType() == QueryType.READ) {
+    if (context.isQuery()) {
       initResultHandle();
     }
     PERFORMANCE_OVERVIEW_METRICS.recordPlanCost(System.nanoTime() - startTime);
@@ -647,7 +647,12 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public boolean isQuery() {
-    return context.getQueryType() == QueryType.READ;
+    return context.getQueryType() != QueryType.WRITE;
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return context.getQueryType();
   }
 
   @Override

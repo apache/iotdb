@@ -44,7 +44,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
-public class DeviceViewIntoOperator extends AbstractIntoOperator {
+public class DeviceViewIntoOperator extends AbstractTreeIntoOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(DeviceViewIntoOperator.class);
@@ -115,8 +115,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     int readIndex = 0;
     while (readIndex < inputTsBlock.getPositionCount()) {
       int lastReadIndex = readIndex;
-      for (AbstractIntoOperator.InsertTabletStatementGenerator generator :
-          insertTabletStatementGenerators) {
+      for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
         lastReadIndex = Math.max(lastReadIndex, generator.processTsBlock(inputTsBlock, readIndex));
       }
       readIndex = lastReadIndex;
@@ -144,8 +143,8 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     return resultTsBlockBuilder.build();
   }
 
-  private List<AbstractIntoOperator.InsertTabletStatementGenerator>
-      constructInsertTabletStatementGeneratorsByDevice(String currentDevice) {
+  private List<InsertTabletStatementGenerator> constructInsertTabletStatementGeneratorsByDevice(
+      String currentDevice) {
     Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =
         deviceToTargetPathSourceInputLocationMap.get(currentDevice);
     Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap =
@@ -154,7 +153,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
         targetPathToSourceInputLocationMap,
         targetPathToDataTypeMap,
         targetDeviceToAlignedMap,
-        typeConvertors,
+        inputColumnTypes,
         maxRowNumberInStatement);
   }
 
@@ -173,7 +172,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
           new Binary(sourceTargetPathPair.left, TSFileConfig.STRING_CHARSET));
       columnBuilders[2].writeBinary(
           new Binary(sourceTargetPathPair.right.toString(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[3].writeInt(
+      columnBuilders[3].writeLong(
           findWritten(
               sourceTargetPathPair.right.getIDeviceID().toString(),
               sourceTargetPathPair.right.getMeasurement()));
@@ -186,6 +185,11 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + resultTsBlockBuilder.getRetainedSizeInBytes();
+        + resultTsBlockBuilder.getRetainedSizeInBytes()
+        + (insertTabletStatementGenerators == null
+            ? 0
+            : insertTabletStatementGenerators.stream()
+                .mapToLong(InsertTabletStatementGenerator::ramBytesUsed)
+                .sum());
   }
 }

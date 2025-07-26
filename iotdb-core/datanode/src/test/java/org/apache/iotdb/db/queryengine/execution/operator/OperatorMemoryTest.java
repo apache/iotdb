@@ -38,12 +38,12 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.IntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
@@ -1462,60 +1462,44 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
 
     long statementSizePerLine1 = 8 + 1000 * (4 + 8 + 4 + 8 + 1 + 512);
-    IntoOperator intoOperator1 = createIntoOperator(child, statementSizePerLine1);
+    TreeIntoOperator intoOperator1 = createIntoOperator(child, statementSizePerLine1);
     int expectedMaxRowNumber = 195;
-    long expectedMaxStatementSize = expectedMaxRowNumber * statementSizePerLine1;
     assertEquals(expectedMaxRowNumber, intoOperator1.getMaxRowNumberInStatement());
-    assertEquals(
-        expectedMaxStatementSize + 3L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator1.calculateMaxPeekMemory());
+    assertEquals(2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator1.calculateMaxPeekMemory());
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator1.calculateMaxReturnSize());
     assertEquals(
-        expectedMaxStatementSize + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator1.calculateRetainedSizeAfterCallingNext());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator1.calculateRetainedSizeAfterCallingNext());
 
     long statementSizePerLine2 = 8 + 1000 * (4 + 8 + 4 + 8 + 1);
-    IntoOperator intoOperator2 = createIntoOperator(child, statementSizePerLine2);
+    TreeIntoOperator intoOperator2 = createIntoOperator(child, statementSizePerLine2);
     expectedMaxRowNumber = 4192;
-    expectedMaxStatementSize = expectedMaxRowNumber * statementSizePerLine2;
     assertEquals(expectedMaxRowNumber, intoOperator2.getMaxRowNumberInStatement());
-    assertEquals(
-        expectedMaxStatementSize + 3L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator2.calculateMaxPeekMemory());
+    assertEquals(2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator2.calculateMaxPeekMemory());
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator2.calculateMaxReturnSize());
     assertEquals(
-        expectedMaxStatementSize + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator2.calculateRetainedSizeAfterCallingNext());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator2.calculateRetainedSizeAfterCallingNext());
 
     long statementSizePerLine3 = 8 + 100 * (4 + 8 + 4 + 8 + 1);
-    IntoOperator intoOperator3 = createIntoOperator(child, statementSizePerLine3);
+    TreeIntoOperator intoOperator3 = createIntoOperator(child, statementSizePerLine3);
     expectedMaxRowNumber = 10000;
-    expectedMaxStatementSize = expectedMaxRowNumber * statementSizePerLine3;
     assertEquals(expectedMaxRowNumber, intoOperator3.getMaxRowNumberInStatement());
-    assertEquals(
-        expectedMaxStatementSize + 3L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator3.calculateMaxPeekMemory());
+    assertEquals(2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator3.calculateMaxPeekMemory());
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator3.calculateMaxReturnSize());
     assertEquals(
-        expectedMaxStatementSize + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator3.calculateRetainedSizeAfterCallingNext());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator3.calculateRetainedSizeAfterCallingNext());
 
     long statementSizePerLine4 = 8 + 1000000 * (4 + 8 + 4 + 8 + 1 + 512);
-    IntoOperator intoOperator4 = createIntoOperator(child, statementSizePerLine4);
+    TreeIntoOperator intoOperator4 = createIntoOperator(child, statementSizePerLine4);
     expectedMaxRowNumber = 1;
-    expectedMaxStatementSize = expectedMaxRowNumber * statementSizePerLine4;
     assertEquals(expectedMaxRowNumber, intoOperator4.getMaxRowNumberInStatement());
-    assertEquals(
-        expectedMaxStatementSize + 3L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator4.calculateMaxPeekMemory());
+    assertEquals(2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator4.calculateMaxPeekMemory());
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator4.calculateMaxReturnSize());
     assertEquals(
-        expectedMaxStatementSize + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator4.calculateRetainedSizeAfterCallingNext());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator4.calculateRetainedSizeAfterCallingNext());
   }
 
-  private IntoOperator createIntoOperator(Operator child, long statementSizePerLine) {
-    return new IntoOperator(
+  private TreeIntoOperator createIntoOperator(Operator child, long statementSizePerLine) {
+    return new TreeIntoOperator(
         Mockito.mock(OperatorContext.class),
         child,
         Collections.emptyList(),

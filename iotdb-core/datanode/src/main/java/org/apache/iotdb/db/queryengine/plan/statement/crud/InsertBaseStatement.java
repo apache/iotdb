@@ -301,6 +301,10 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     this.columnCategories = columnCategories;
   }
 
+  public void setColumnCategories(List<TsTableColumnCategory> columnCategories) {
+    this.columnCategories = columnCategories.toArray(new TsTableColumnCategory[0]);
+  }
+
   public void setColumnCategory(TsTableColumnCategory columnCategory, int i) {
     if (columnCategories == null) {
       columnCategories = new TsTableColumnCategory[measurements.length];
