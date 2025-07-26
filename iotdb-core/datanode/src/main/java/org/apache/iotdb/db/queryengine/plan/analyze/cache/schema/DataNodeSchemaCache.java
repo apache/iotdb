@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
@@ -195,6 +196,10 @@ public class DataNodeSchemaCache {
 
   public TimeValuePair getLastCache(PartialPath seriesPath) {
     return timeSeriesSchemaCache.getLastCache(seriesPath);
+  }
+
+  public boolean getLastCache(final Map<PartialPath, Map<String, TimeValuePair>> inputMap) {
+    return timeSeriesSchemaCache.getLastCache(inputMap);
   }
 
   public void invalidateLastCache(PartialPath path) {
