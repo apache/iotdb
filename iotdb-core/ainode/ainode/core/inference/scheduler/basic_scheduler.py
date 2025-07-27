@@ -16,6 +16,9 @@
 # under the License.
 #
 
+import os
+
+import psutil
 import torch
 
 from ainode.core.inference.inference_request import InferenceRequest
@@ -32,6 +35,7 @@ class BasicScheduler(AbstractScheduler):
         waiting_queue,
         running_queue,
         finished_queue,
+        pool_id,
         max_memory_bytes=1 << 30,
         max_activate_size=10,
         max_step_size=10,
@@ -40,13 +44,27 @@ class BasicScheduler(AbstractScheduler):
         self.max_memory_bytes = max_memory_bytes
         self.max_activate_size = max_activate_size
         self.max_step_size = max_step_size
+        self.pool_id = pool_id
+        self.device = None
 
     def memory_is_available(self):
-        used = torch.cuda.memory_allocated()  # memory allocated to tensors
-        reserved = (
-            torch.cuda.memory_reserved()
-        )  # memory reserved by the caching allocator
-        # logger.debug(f"Memory used: {used} bytes, Max memory: {self.max_memory_bytes} bytes")
+        if "cuda" in self.device.type:
+            used = torch.cuda.memory_allocated(self.device)
+            reserved = torch.cuda.memory_reserved(self.device)
+        elif "cpu" in self.device.type:
+            process = psutil.Process(os.getpid())
+            used = process.memory_info().rss
+            reserved = used
+        else:
+            used = 0
+            reserved = 0
+            logger.warning(
+                f"[Inference] Unsupported device type: {self.device.type}. Memory checks will not be performed."
+            )
+        logger.debug(
+            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] "
+            f"Memory used: {used} bytes, Max memory: {self.max_memory_bytes} bytes"
+        )
         return used < self.max_memory_bytes
 
     def schedule_activate(self) -> list:
@@ -54,10 +72,7 @@ class BasicScheduler(AbstractScheduler):
         while not self.waiting_queue.empty() and len(requests) < self.max_activate_size:
             if not self.memory_is_available():
                 break
-            request = self.waiting_queue.get()
-            request.mark_running()
-            self.running_queue.put(request)
-            requests.append(request)
+            requests.append(self.waiting_queue.get())
         return requests
 
     def schedule_step(self) -> list:
