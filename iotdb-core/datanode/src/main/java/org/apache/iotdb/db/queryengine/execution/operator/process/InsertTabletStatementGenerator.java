@@ -149,9 +149,12 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
     InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
     insertTabletStatement.setDevicePath(devicePath);
     insertTabletStatement.setAligned(isAligned);
-    // measurements and dataTypes should be cloned due to adjustIdColumns
-    insertTabletStatement.setMeasurements(measurements.clone());
-    insertTabletStatement.setDataTypes(dataTypes.clone());
+    // Make sure measurements, dataTypes, typeConverters and inputLocations
+    // be swapped in adjustIdColumns method
+    insertTabletStatement.setMeasurements(measurements);
+    insertTabletStatement.setDataTypes(dataTypes);
+    insertTabletStatement.setTypeConvertors(typeConvertors);
+    insertTabletStatement.setInputLocations(inputLocations);
     insertTabletStatement.setRowCount(rowCount);
 
     if (rowCount != rowLimit) {

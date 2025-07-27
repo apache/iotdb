@@ -38,8 +38,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -59,15 +57,15 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBInsertQueryIT {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInsertQueryIT.class);
   private static final String[] creationSqls =
       new String[] {
         "CREATE DATABASE IF NOT EXISTS test",
         "USE test",
         "CREATE TABLE IF NOT EXISTS vehicle0(deviceId STRING TAG, manufacturer STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
+        "CREATE TABLE IF NOT EXISTS tb_0(s0 INT32 FIELD, s1 TEXT FIELD, deviceId STRING TAG)",
       };
   private static final String insertTemplate =
-      "INSERT INTO vehicle0(time,deviceId,manufacturer,s0,s1,s2,s3,s4) VALUES(%d,'d%d',%s,%d,%d,%f,%s,%b)";
+      "INSERT INTO vehicle0(time,deviceId,manufacturer,s0,s1,s2,s3,s4) VALUES(%d,'d%d','%s',%d,%d,%f,'%d',%b)";
 
   private static final String insertIntoQuery = "INSERT INTO vehicle%d SELECT * FROM vehicle0";
 
@@ -163,6 +161,27 @@ public class IoTDBInsertQueryIT {
       for (int tableId = 1; tableId <= 3; tableId++) {
         statement.execute(String.format(dropTableTemplate, tableId));
       }
+    }
+  }
+
+  @Test
+  public void testTagCategory() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      List<String> expectedHeader = new ArrayList<>();
+      List<String> expectedRetArray = new ArrayList<>();
+
+      statement.execute("USE test");
+      ResultSet resultSet = statement.executeQuery("select * from tb_0 order by time, deviceId");
+      buildExpectedResult(resultSet, expectedHeader, expectedRetArray);
+
+      statement.execute(
+          "CREATE TABLE IF NOT EXISTS tb_1(s0 INT32 FIELD, s1 TEXT FIELD, deviceId STRING TAG)");
+      statement.execute("INSERT INTO tb_1 SELECT * FROM tb_0");
+      ResultSet r1 = statement.executeQuery("select * from tb_1 order by time, deviceId");
+      resultSetEqualTest(r1, expectedHeader, expectedRetArray);
+
+      statement.execute("DROP TABLE IF EXISTS tb_1");
     }
   }
 
@@ -518,16 +537,10 @@ public class IoTDBInsertQueryIT {
         for (int i = 201; i <= 300; i++) {
           String sql =
               String.format(
-                  insertTemplate,
-                  i,
-                  d,
-                  "'" + manufacturers[i % 2] + "'",
-                  i,
-                  i,
-                  (double) i,
-                  "'" + i + "'",
-                  i % 2 == 0);
+                  insertTemplate, i, d, manufacturers[i % 2], i, i, (double) i, i, i % 2 == 0);
           statement.execute(sql);
+          statement.execute(
+              String.format("insert into tb_0 values(%d, %d, '%d', 'd%d')", i, i, i, d));
         }
       }
       statement.execute("flush");
@@ -537,16 +550,10 @@ public class IoTDBInsertQueryIT {
         for (int i = 1; i <= 100; i++) {
           String sql =
               String.format(
-                  insertTemplate,
-                  i,
-                  d,
-                  "'" + manufacturers[i % 2] + "'",
-                  i,
-                  i,
-                  (double) i,
-                  "'" + i + "'",
-                  i % 2 == 0);
+                  insertTemplate, i, d, manufacturers[i % 2], i, i, (double) i, i, i % 2 == 0);
           statement.execute(sql);
+          statement.execute(
+              String.format("insert into tb_0 values(%d, %d, '%d', 'd%d')", i, i, i, d));
         }
       }
       statement.execute("flush");
@@ -556,31 +563,19 @@ public class IoTDBInsertQueryIT {
         for (int i = 301; i <= 400; i++) {
           String sql =
               String.format(
-                  insertTemplate,
-                  i,
-                  d,
-                  "'" + manufacturers[i % 2] + "'",
-                  i,
-                  i,
-                  (double) i,
-                  "'" + i + "'",
-                  i % 2 == 0);
+                  insertTemplate, i, d, manufacturers[i % 2], i, i, (double) i, i, i % 2 == 0);
           statement.execute(sql);
+          statement.execute(
+              String.format("insert into tb_0 values(%d, %d, '%d', 'd%d')", i, i, i, d));
         }
         // prepare Overflow cache
         for (int i = 101; i <= 200; i++) {
           String sql =
               String.format(
-                  insertTemplate,
-                  i,
-                  d,
-                  "'" + manufacturers[i % 2] + "'",
-                  i,
-                  i,
-                  (double) i,
-                  "'" + i + "'",
-                  i % 2 == 0);
+                  insertTemplate, i, d, manufacturers[i % 2], i, i, (double) i, i, i % 2 == 0);
           statement.execute(sql);
+          statement.execute(
+              String.format("insert into tb_0 values(%d, %d, '%d', 'd%d')", i, i, i, d));
         }
       }
     }

@@ -44,7 +44,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
   private final String databaseName;
   private final AtomicLong writtenCounter;
   private final int timeColumnIndex;
-  private final List<TsTableColumnCategory> tsTableColumnCategories;
+  private final TsTableColumnCategory[] columnCategories;
 
   public TableInsertTabletStatementGenerator(
       String databaseName,
@@ -68,7 +68,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
         rowLimit);
     this.databaseName = databaseName;
     this.writtenCounter = new AtomicLong(0);
-    this.tsTableColumnCategories = tsTableColumnCategories;
+    this.columnCategories = tsTableColumnCategories.toArray(new TsTableColumnCategory[0]);
     this.timeColumnIndex =
         measurementToInputLocationMap.get(TIME_COLUMN_NAME).getValueColumnIndex();
     this.initialize();
@@ -107,7 +107,6 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
     InsertTabletStatement insertTabletStatement = super.constructInsertTabletStatement();
     insertTabletStatement.setDatabaseName(databaseName);
     insertTabletStatement.setWriteToTable(true);
-    insertTabletStatement.setColumnCategories(tsTableColumnCategories);
     return insertTabletStatement;
   }
 
@@ -129,6 +128,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
         + sizeOf(dataTypes, TSDataType.class)
         + sizeOf(inputLocations, InputLocation.class)
         + sizeOf(typeConvertors, Type.class)
+        + sizeOf(columnCategories, TsTableColumnCategory.class)
         + RamUsageEstimator.shallowSizeOfInstance(AtomicLong.class);
   }
 }
