@@ -318,6 +318,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.ski
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_PERCENTILE;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
@@ -3296,6 +3297,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               || !(arguments.get(2) instanceof LongLiteral))) {
         throw new SemanticException(
             "The second and third argument of 'approx_most_frequent' function must be positive integer literal");
+      }
+    } else if (name.toString().equalsIgnoreCase(APPROX_PERCENTILE)) {
+      if (arguments.size() == 2 && !(arguments.get(1) instanceof DoubleLiteral)) {
+        throw new SemanticException(
+            "The second argument of 'approx_percentile' function percentage must be a double literal");
+      } else if (arguments.size() == 3 && !(arguments.get(2) instanceof DoubleLiteral)) {
+        throw new SemanticException(
+            "The third argument of 'approx_percentile' function percentage must be a double literal");
       }
     }
 

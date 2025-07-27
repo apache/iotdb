@@ -669,6 +669,21 @@ public class TableMetadataImpl implements Metadata {
                   "Aggregation functions [%s] should only have three arguments", functionName));
         }
         break;
+      case SqlConstant.APPROX_PERCENTILE:
+        if (argumentTypes.size() != 2 && argumentTypes.size() != 3) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should only have two or three arguments",
+                  functionName));
+        }
+        if ((argumentTypes.size() == 2 && !isDecimalType(argumentTypes.get(1)))
+            || (argumentTypes.size() == 3 && !isDecimalType(argumentTypes.get(2)))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should have percentage as decimal type",
+                  functionName));
+        }
+        break;
       case SqlConstant.COUNT:
         break;
       default:
@@ -692,6 +707,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.MIN:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
+      case SqlConstant.APPROX_PERCENTILE:
         return argumentTypes.get(0);
       case SqlConstant.AVG:
       case SqlConstant.SUM:
@@ -968,6 +984,10 @@ public class TableMetadataImpl implements Metadata {
 
   public static boolean isBool(Type type) {
     return BOOLEAN.equals(type);
+  }
+
+  public static boolean isDecimalType(Type type) {
+    return DOUBLE.equals(type) || FLOAT.equals(type);
   }
 
   public static boolean isSupportedMathNumericType(Type type) {
