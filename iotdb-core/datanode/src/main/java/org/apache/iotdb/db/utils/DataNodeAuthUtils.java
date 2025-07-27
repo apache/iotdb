@@ -129,7 +129,7 @@ public class DataNodeAuthUtils {
       throw new SemanticException(
           String.format(
               "The password has been used recently, and it cannot be reused before %s",
-              new Date(passwordChangeTime + passwordReuseIntervalDays)));
+              new Date(passwordChangeTime + reuseIntervalMillis)));
     }
     LOGGER.info(
         "It has been {}ms, since the password was changed {} -> {}",
