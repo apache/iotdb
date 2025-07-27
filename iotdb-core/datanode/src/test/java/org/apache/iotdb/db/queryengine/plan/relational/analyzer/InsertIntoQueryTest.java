@@ -63,7 +63,7 @@ public class InsertIntoQueryTest {
   @Test
   public void simpleInsertIntoQuery() {
     sql =
-        "INSERT INTO testdb.table2 SELECT * FROM testdb.table1 order by tag2 desc, time desc limit 10";
+        "INSERT INTO testdb.table3 SELECT * FROM testdb.table2 order by tag2 desc, time desc limit 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     SymbolAllocator symbolAllocator = new SymbolAllocator();
     logicalQueryPlan =
@@ -76,16 +76,16 @@ public class InsertIntoQueryTest {
     assertTrue(logicalPlanNode instanceof OutputNode);
     assertTrue(getChildrenNode(logicalPlanNode, 1) instanceof IntoNode);
     intoNode = (IntoNode) getChildrenNode(logicalPlanNode, 1);
-    assertEquals(9, intoNode.getColumns().size());
+    assertEquals(10, intoNode.getColumns().size());
     assertEquals(1, intoNode.getOutputSymbols().size());
     assertEquals("testdb", intoNode.getDatabase());
-    assertEquals("table2", intoNode.getTable());
+    assertEquals("table3", intoNode.getTable());
     assertTrue(getChildrenNode(logicalPlanNode, 2) instanceof LimitNode);
     assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof StreamSortNode);
     assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof DeviceTableScanNode);
     deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(logicalPlanNode, 4);
-    assertEquals("testdb.table1", deviceTableScanNode.getQualifiedObjectName().toString());
-    assertEquals(9, deviceTableScanNode.getAssignments().size());
+    assertEquals("testdb.table2", deviceTableScanNode.getQualifiedObjectName().toString());
+    assertEquals(10, deviceTableScanNode.getAssignments().size());
     assertEquals(6, deviceTableScanNode.getDeviceEntries().size());
     assertEquals(5, deviceTableScanNode.getTagAndAttributeIndexMap().size());
     assertEquals(ASC, deviceTableScanNode.getScanOrder());
