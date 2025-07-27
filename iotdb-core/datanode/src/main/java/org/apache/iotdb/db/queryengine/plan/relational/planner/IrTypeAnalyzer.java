@@ -241,7 +241,10 @@ public class IrTypeAnalyzer {
                   })
               .collect(Collectors.toSet());
 
-      checkArgument(resultTypes.size() == 1, "All result types must be the same: %s", resultTypes);
+      if (resultTypes.size() != 1) {
+        throw new SemanticException(
+            String.format("All result types must be the same: %s", resultTypes));
+      }
       Type resultType = resultTypes.iterator().next();
       node.getDefaultValue()
           .ifPresent(
@@ -275,7 +278,11 @@ public class IrTypeAnalyzer {
                   })
               .collect(Collectors.toSet());
 
-      checkArgument(resultTypes.size() == 1, "All result types must be the same: %s", resultTypes);
+      if (resultTypes.size() != 1) {
+        throw new SemanticException(
+            String.format("All result types must be the same: %s", resultTypes));
+      }
+
       Type resultType = resultTypes.iterator().next();
       node.getDefaultValue()
           .ifPresent(
