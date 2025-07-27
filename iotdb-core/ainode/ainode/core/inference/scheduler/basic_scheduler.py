@@ -29,6 +29,9 @@ logger = Logger()
 
 
 class BasicScheduler(AbstractScheduler):
+    """
+    A simple FIFO scheduler that selects requests based on memory availability and activation/step size.
+    """
 
     def __init__(
         self,
