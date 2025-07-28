@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.metric.overview;
 import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
+import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
 import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   // Calculate from schema region extractors directly for it requires less computation
-  private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
+  private final Set<IoTDBSchemaRegionSource> schemaRegionExtractors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   private final AtomicInteger insertNodeEventCount = new AtomicInteger(0);
@@ -106,7 +106,7 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
             + rawTabletEventCount.get()
             + insertNodeEventCount.get()
             + schemaRegionExtractors.stream()
-                .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
+                .map(IoTDBSchemaRegionSource::getUnTransferredEventCount)
                 .reduce(Long::sum)
                 .orElse(0L);
 
@@ -127,7 +127,7 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
             + insertNodeEventCount.get()
             + heartbeatEventCount.get()
             + schemaRegionExtractors.stream()
-                .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
+                .map(IoTDBSchemaRegionSource::getUnTransferredEventCount)
                 .reduce(Long::sum)
                 .orElse(0L);
 
@@ -175,7 +175,7 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
 
     final long totalSchemaRegionWriteEventCount =
         schemaRegionExtractors.stream()
-            .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
+            .map(IoTDBSchemaRegionSource::getUnTransferredEventCount)
             .reduce(Long::sum)
             .orElse(0L);
 
@@ -209,7 +209,7 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
-  void register(final IoTDBSchemaRegionExtractor extractor) {
+  void register(final IoTDBSchemaRegionSource extractor) {
     schemaRegionExtractors.add(extractor);
   }
 

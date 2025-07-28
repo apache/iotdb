@@ -27,13 +27,13 @@ import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractConnectorSub
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
 import org.apache.iotdb.confignode.manager.pipe.metric.sink.PipeConfigRegionConnectorMetrics;
+import org.apache.iotdb.confignode.manager.pipe.source.IoTDBConfigRegionSource;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -97,7 +97,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
       // 3. Customize extractor
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment(
+              new PipeTaskSourceRuntimeEnvironment(
                   pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
       extractor.customize(extractorParameters, runtimeConfiguration);
     } catch (final Exception e) {
@@ -164,7 +164,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
   }
 
   /**
-   * Try to consume an {@link Event} by the {@link IoTDBConfigRegionExtractor}.
+   * Try to consume an {@link Event} by the {@link IoTDBConfigRegionSource}.
    *
    * @return {@code true} if the {@link Event} is consumed successfully, {@code false} if no more
    *     {@link Event} can be consumed
