@@ -369,6 +369,11 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
     return this;
   }
 
+  public TableSessionBuilder tabletCompressionMinRowSize(int tabletCompressionMinRowSize) {
+    this.tabletCompressionMinRowSize = tabletCompressionMinRowSize;
+    return this;
+  }
+
   /**
    * Builds and returns a configured {@link ITableSession} instance.
    *
@@ -382,7 +387,8 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
     }
     this.sqlDialect = TABLE;
     Session newSession = new Session(this);
-    newSession.enableRPCCompression = isIoTDBRpcCompressionEnabled;
+    newSession.enableIoTDBRpcCompression = isIoTDBRpcCompressionEnabled;
+    newSession.tabletCompressionMinRowSize = tabletCompressionMinRowSize;
 
     try {
       newSession.open(isThriftRpcCompactionEnabled, connectionTimeoutInMs);

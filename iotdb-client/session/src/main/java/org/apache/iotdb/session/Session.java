@@ -138,8 +138,9 @@ public class Session implements ISession {
    */
   private long queryTimeoutInMs = -1;
 
-  protected boolean enableRPCCompaction;
-  protected boolean enableRPCCompression;
+  protected boolean enableThriftRpcCompaction;
+  protected boolean enableIoTDBRpcCompression = true;
+  protected int tabletCompressionMinRowSize = 10;
   protected int connectionTimeoutInMs;
   protected ZoneId zoneId;
   protected int thriftDefaultBufferSize;
@@ -454,8 +455,9 @@ public class Session implements ISession {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
       this.enableQueryRedirection = builder.enableRedirection;
     }
-    this.enableRPCCompaction = builder.isThriftRpcCompactionEnabled;
-    this.enableRPCCompression = builder.isIoTDBRpcCompressionEnabled;
+    this.enableThriftRpcCompaction = builder.isThriftRpcCompactionEnabled;
+    this.enableIoTDBRpcCompression = builder.isIoTDBRpcCompressionEnabled;
+    this.tabletCompressionMinRowSize = builder.tabletCompressionMinRowSize;
     this.compressionType = builder.compressionType;
     this.columnEncodersMap = builder.columnEncodersMap;
     this.enableRedirection = builder.enableRedirection;
@@ -584,7 +586,7 @@ public class Session implements ISession {
 
   @Override
   public synchronized void open(
-      boolean enableRPCCompression,
+      boolean enableThriftRpcCompaction,
       int connectionTimeoutInMs,
       Map<String, TEndPoint> deviceIdToEndpoint,
       INodeSupplier nodesSupplier)
@@ -594,7 +596,7 @@ public class Session implements ISession {
     }
 
     this.availableNodes = nodesSupplier;
-    this.enableRPCCompression = enableRPCCompression;
+    this.enableThriftRpcCompaction = enableThriftRpcCompaction;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
     getDefaultSessionConnection().setEnableRedirect(enableQueryRedirection);
@@ -609,7 +611,7 @@ public class Session implements ISession {
 
   @Override
   public synchronized void open(
-      boolean enableRPCCompression,
+      boolean enableThriftRpcCompaction,
       int connectionTimeoutInMs,
       Map<String, TEndPoint> deviceIdToEndpoint,
       Map<IDeviceID, TEndPoint> tableModelDeviceIdToEndpoint,
@@ -620,7 +622,7 @@ public class Session implements ISession {
     }
 
     this.availableNodes = nodesSupplier;
-    this.enableRPCCompression = enableRPCCompression;
+    this.enableThriftRpcCompaction = enableThriftRpcCompaction;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
     getDefaultSessionConnection().setEnableRedirect(enableQueryRedirection);
@@ -3004,8 +3006,11 @@ public class Session implements ISession {
     request.setPrefixPath(tablet.getDeviceId());
     request.setIsAligned(isAligned);
 
+    boolean trulyEnableRpcCompression =
+        enableIoTDBRpcCompression && tablet.getRowSize() >= tabletCompressionMinRowSize;
+
     List<Byte> encodingTypes;
-    if (enableRPCCompression) {
+    if (trulyEnableRpcCompression) {
       encodingTypes = new ArrayList<>(tablet.getSchemas().size() + 1);
       encodingTypes.add(this.columnEncodersMap.get(TSDataType.INT64).serialize());
       for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
@@ -3021,11 +3026,11 @@ public class Session implements ISession {
 
     TabletEncoder encoder =
         new TabletEncoder(
-            enableRPCCompression ? this.compressionType : CompressionType.UNCOMPRESSED,
+            trulyEnableRpcCompression ? this.compressionType : CompressionType.UNCOMPRESSED,
             encodingTypes.stream().map(TSEncoding::deserialize).collect(Collectors.toList()));
 
-    request.setIsCompressed(this.enableRPCCompression);
-    if (this.enableRPCCompression) {
+    request.setIsCompressed(trulyEnableRpcCompression);
+    if (trulyEnableRpcCompression) {
       request.setCompressType(compressionType.serialize());
       request.setEncodingTypes(encodingTypes);
     }
@@ -4238,12 +4243,12 @@ public class Session implements ISession {
     this.defaultSessionConnection = defaultSessionConnection;
   }
 
-  public boolean isEnableRPCCompaction() {
-    return enableRPCCompaction;
+  public boolean isEnableThriftRpcCompaction() {
+    return enableThriftRpcCompaction;
   }
 
-  public void setEnableRPCCompaction(boolean enableRPCCompaction) {
-    this.enableRPCCompaction = enableRPCCompaction;
+  public void setEnableThriftRpcCompaction(boolean enableThriftRpcCompaction) {
+    this.enableThriftRpcCompaction = enableThriftRpcCompaction;
   }
 
   public static class Builder extends AbstractSessionBuilder {

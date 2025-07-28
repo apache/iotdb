@@ -75,13 +75,15 @@ public abstract class AbstractSessionBuilder {
 
   public String database;
 
-  public Boolean isIoTDBRpcCompressionEnabled = false;
+  public Boolean isIoTDBRpcCompressionEnabled = true;
 
   public Boolean isThriftRpcCompactionEnabled = false;
 
   public CompressionType compressionType = CompressionType.UNCOMPRESSED;
 
   public Map<TSDataType, TSEncoding> columnEncodersMap;
+
+  public int tabletCompressionMinRowSize = 10;
 
   {
     columnEncodersMap = new HashMap<>();
