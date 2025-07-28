@@ -430,9 +430,19 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void initDiskSelector() {
     final ILoadDiskSelector.DiskDirectorySelector selector =
-        (sourceDirectory, fileName, tierLevel) ->
-            fsFactory.getFile(
-                TierManager.getInstance().getNextFolderForTsFile(tierLevel, false), fileName);
+        (sourceDirectory, fileName, tierLevel) -> {
+          try {
+            return TierManager.getInstance()
+                .getFolderManager(tierLevel, false)
+                .getNextWithRetry(folder -> fsFactory.getFile(folder, fileName));
+          } catch (DiskSpaceInsufficientException e) {
+            throw e;
+          } catch (Exception e) {
+            throw new LoadFileException(
+                String.format("Storage allocation failed for %s (tier %d)", fileName, tierLevel),
+                e);
+          }
+        };
 
     final String[] dirs =
         Arrays.stream(config.getTierDataDirs()[0])
