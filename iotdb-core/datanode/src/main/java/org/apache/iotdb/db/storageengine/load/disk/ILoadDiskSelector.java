@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.disk;
 
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 
 import java.io.File;
 
@@ -28,7 +29,7 @@ public interface ILoadDiskSelector {
   @FunctionalInterface
   interface DiskDirectorySelector {
     File selectDirectory(final File sourceDirectory, final String fileName, final int tierLevel)
-        throws DiskSpaceInsufficientException;
+        throws DiskSpaceInsufficientException, LoadFileException;
   }
 
   File selectTargetDirectory(
@@ -36,7 +37,7 @@ public interface ILoadDiskSelector {
       final String fileName,
       final boolean appendFileName,
       final int tierLevel)
-      throws DiskSpaceInsufficientException;
+      throws DiskSpaceInsufficientException, LoadFileException;
 
   static ILoadDiskSelector initDiskSelector(
       final String selectStrategy, final String[] dirs, final DiskDirectorySelector selector) {

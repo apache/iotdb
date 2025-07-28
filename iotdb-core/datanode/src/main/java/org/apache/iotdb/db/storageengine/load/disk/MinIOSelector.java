@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.disk;
 
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
 import org.slf4j.Logger;
@@ -77,7 +78,7 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
       final String fileName,
       final boolean appendFileName,
       final int tierLevel)
-      throws DiskSpaceInsufficientException {
+      throws DiskSpaceInsufficientException, LoadFileException {
     String fileDirRoot = null;
     try {
       fileDirRoot =

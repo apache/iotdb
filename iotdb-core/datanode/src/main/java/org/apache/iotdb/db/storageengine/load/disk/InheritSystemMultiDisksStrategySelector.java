@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.disk;
 
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
@@ -41,7 +42,7 @@ public class InheritSystemMultiDisksStrategySelector implements ILoadDiskSelecto
       final String FileName,
       final boolean appendFileName,
       final int tierLevel)
-      throws DiskSpaceInsufficientException {
+      throws DiskSpaceInsufficientException, LoadFileException {
     return directorySelector.selectDirectory(sourceDirectory, FileName, tierLevel);
   }
 }

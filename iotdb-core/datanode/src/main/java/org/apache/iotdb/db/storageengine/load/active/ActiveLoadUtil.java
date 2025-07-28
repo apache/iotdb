@@ -75,7 +75,7 @@ public class ActiveLoadUtil {
     try {
       targetFilePath =
           loadDiskSelector.selectTargetDirectory(file.getParentFile(), file.getName(), false, 0);
-    } catch (DiskSpaceInsufficientException e) {
+    } catch (Exception e) {
       LOGGER.warn("Fail to load disk space of file {}", file.getAbsolutePath(), e);
       return false;
     }
@@ -111,7 +111,7 @@ public class ActiveLoadUtil {
       final File file = new File(files.get(0));
       targetFilePath =
           loadDiskSelector.selectTargetDirectory(file.getParentFile(), file.getName(), false, 0);
-    } catch (DiskSpaceInsufficientException e) {
+    } catch (Exception e) {
       LOGGER.warn("Fail to load disk space of file {}", files.get(0), e);
       return false;
     }
