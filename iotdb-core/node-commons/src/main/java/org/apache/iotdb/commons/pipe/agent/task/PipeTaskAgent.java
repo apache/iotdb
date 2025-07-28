@@ -22,9 +22,9 @@ package org.apache.iotdb.commons.pipe.agent.task;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
@@ -35,7 +35,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
+import org.apache.iotdb.commons.pipe.sink.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
@@ -987,7 +987,7 @@ public abstract class PipeTaskAgent {
   private void stopAllPipesWithCriticalExceptionInternal(final int currentNodeId) {
     // 1. track exception in all pipe tasks that share the same connector that have critical
     // exceptions.
-    final Map<PipeParameters, PipeRuntimeConnectorCriticalException>
+    final Map<PipeParameters, PipeRuntimeSinkCriticalException>
         reusedConnectorParameters2ExceptionMap = new HashMap<>();
 
     pipeMetaKeeper
@@ -1007,10 +1007,10 @@ public abstract class PipeTaskAgent {
                         }
 
                         for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
-                          if (e instanceof PipeRuntimeConnectorCriticalException) {
+                          if (e instanceof PipeRuntimeSinkCriticalException) {
                             reusedConnectorParameters2ExceptionMap.putIfAbsent(
                                 staticMeta.getConnectorParameters(),
-                                (PipeRuntimeConnectorCriticalException) e);
+                                (PipeRuntimeSinkCriticalException) e);
                           }
                         }
                       });
@@ -1033,7 +1033,7 @@ public abstract class PipeTaskAgent {
                             && !pipeTaskMeta.containsExceptionMessage(
                                 reusedConnectorParameters2ExceptionMap.get(
                                     staticMeta.getConnectorParameters()))) {
-                          final PipeRuntimeConnectorCriticalException exception =
+                          final PipeRuntimeSinkCriticalException exception =
                               reusedConnectorParameters2ExceptionMap.get(
                                   staticMeta.getConnectorParameters());
                           pipeTaskMeta.trackExceptionMessage(exception);
