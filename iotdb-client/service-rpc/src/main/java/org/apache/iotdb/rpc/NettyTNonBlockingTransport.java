@@ -219,7 +219,6 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
 
   @Override
   public int read(ByteBuffer buffer) throws TTransportException {
-    boolean readingResponseSize = buffer.remaining() == 4;
 
     if (!isOpen()) {
       logger.debug("Transport not open for ByteBuffer read");
@@ -260,16 +259,14 @@ public class NettyTNonBlockingTransport extends TNonblockingTransport {
       } catch (IOException e) {
         logger.debug("Failed to drain dummy channel", e);
       }
-      if (readingResponseSize) {
-        // Trigger OP_READ on dummy by writing dummy byte
-        if (dummyServerAccepted != null) {
-          ByteBuffer dummyByte = ByteBuffer.wrap(new byte[1]);
-          dummyServerAccepted.write(dummyByte);
-        }
-        // Wakeup selector if needed
-        if (selector != null) {
-          selector.wakeup();
-        }
+      // Trigger OP_READ on dummy by writing dummy byte
+      if (dummyServerAccepted != null) {
+        ByteBuffer dummyByte = ByteBuffer.wrap(new byte[1]);
+        dummyServerAccepted.write(dummyByte);
+      }
+      // Wakeup selector if needed
+      if (selector != null) {
+        selector.wakeup();
       }
 
       return available;
