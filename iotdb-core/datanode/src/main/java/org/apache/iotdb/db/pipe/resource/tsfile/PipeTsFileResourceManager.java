@@ -354,7 +354,7 @@ public class PipeTsFileResourceManager {
     if (withMods && resource.getModFile().exists()) {
       // Avoid mod compaction
       synchronized (resource.getModFile()) {
-        increaseFileReference(new File(resource.getModFile().getFilePath()), false, null);
+        increaseFileReference(new File(resource.getModFile().getFilePath()), false, pipeName);
       }
     }
   }
