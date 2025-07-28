@@ -546,7 +546,10 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     this.instance.destroy();
     try {
       if (!this.instance.waitFor(20, TimeUnit.SECONDS)) {
-        this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
+        logger.warn("Node {} does not exit within 20s, killing it", getId());
+        if (!this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS)) {
+          logger.error("Cannot forcibly stop node {}", getId());
+        }
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -817,5 +820,13 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     } catch (final Throwable ignored) {
       return -1;
     }
+  }
+
+  public Process getInstance() {
+    return instance;
+  }
+
+  public int[] getPortList() {
+    return portList;
   }
 }

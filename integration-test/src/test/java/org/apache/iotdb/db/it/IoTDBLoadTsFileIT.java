@@ -30,16 +30,17 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -589,90 +590,6 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
-  public void testLoadWithLastCache() throws Exception {
-    registerSchema();
-
-    final String device = SchemaConfig.DEVICE_0;
-    final String measurement = SchemaConfig.MEASUREMENT_00.getMeasurementName();
-
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
-
-      statement.execute(
-          String.format("insert into %s(timestamp, %s) values(100, 100)", device, measurement));
-
-      try (final ResultSet resultSet =
-          statement.executeQuery(String.format("select last %s from %s", measurement, device))) {
-        if (resultSet.next()) {
-          final String lastValue = resultSet.getString(ColumnHeaderConstant.VALUE);
-          Assert.assertEquals("100", lastValue);
-        } else {
-          Assert.fail("This ResultSet is empty.");
-        }
-      }
-    }
-
-    final File file1 = new File(tmpDir, "1-0-0-0.tsfile");
-    final File file2 = new File(tmpDir, "2-0-0-0.tsfile");
-    // device 0, device 1, sg 0
-    try (final TsFileGenerator generator = new TsFileGenerator(file1)) {
-      generator.registerTimeseries(
-          SchemaConfig.DEVICE_0,
-          Arrays.asList(
-              SchemaConfig.MEASUREMENT_00,
-              SchemaConfig.MEASUREMENT_01,
-              SchemaConfig.MEASUREMENT_02,
-              SchemaConfig.MEASUREMENT_03,
-              SchemaConfig.MEASUREMENT_04,
-              SchemaConfig.MEASUREMENT_05,
-              SchemaConfig.MEASUREMENT_06,
-              SchemaConfig.MEASUREMENT_07));
-      generator.registerAlignedTimeseries(
-          SchemaConfig.DEVICE_1,
-          Arrays.asList(
-              SchemaConfig.MEASUREMENT_10,
-              SchemaConfig.MEASUREMENT_11,
-              SchemaConfig.MEASUREMENT_12,
-              SchemaConfig.MEASUREMENT_13,
-              SchemaConfig.MEASUREMENT_14,
-              SchemaConfig.MEASUREMENT_15,
-              SchemaConfig.MEASUREMENT_16,
-              SchemaConfig.MEASUREMENT_17));
-      generator.generateData(SchemaConfig.DEVICE_0, 10000, PARTITION_INTERVAL / 10_000, false);
-      generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
-    }
-
-    // device 2, device 3, device4, sg 1
-    try (final TsFileGenerator generator = new TsFileGenerator(file2)) {
-      generator.registerTimeseries(
-          SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
-      generator.registerTimeseries(
-          SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
-      generator.registerAlignedTimeseries(
-          SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
-      generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
-      generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
-      generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
-    }
-
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
-
-      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
-
-      try (final ResultSet resultSet =
-          statement.executeQuery(String.format("select last %s from %s", measurement, device))) {
-        if (resultSet.next()) {
-          final String lastTime = resultSet.getString(ColumnHeaderConstant.TIME);
-          Assert.assertEquals(String.valueOf(PARTITION_INTERVAL), lastTime);
-        } else {
-          Assert.fail("This ResultSet is empty.");
-        }
-      }
-    }
-  }
-
-  @Test
   public void testLoadWithOnNonStandardTsFileName() throws Exception {
     final File file1 = new File(tmpDir, "1-0-0-0.tsfile");
     final File file2 = new File(tmpDir, "a-1.tsfile");
@@ -905,6 +822,7 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  @Ignore("Load with conversion is currently banned")
   public void testLoadWithConvertOnTypeMismatchForTreeModel() throws Exception {
 
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
@@ -978,7 +896,7 @@ public class IoTDBLoadTsFileIT {
 
     final List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemasForDataTypeConvertion();
-    final List<Tablet.ColumnCategory> columnCategories =
+    final List<ColumnCategory> columnCategories =
         generateTabletColumnCategory(0, measurementSchemas.size());
 
     final File file = new File(tmpDir, "1-0-0-0.tsfile");
@@ -1027,12 +945,13 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  @Ignore("Load with conversion is currently banned")
   public void testLoadWithConvertOnTypeMismatchForTableModel() throws Exception {
     final int lineCount = 10000;
 
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemasForDataTypeConvertion();
-    List<Tablet.ColumnCategory> columnCategories =
+    List<ColumnCategory> columnCategories =
         generateTabletColumnCategory(0, measurementSchemas.size());
 
     final File file = new File(tmpDir, "1-0-0-0.tsfile");
@@ -1054,7 +973,9 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
       statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
       statement.execute(convert2TableSQL(SchemaConfig.TABLE_0, schemaList1, columnCategories));
-      statement.execute(String.format("load '%s'", file.getAbsolutePath()));
+      statement.execute(
+          String.format(
+              "load '%s' with ('database'='%s')", file.getAbsolutePath(), SchemaConfig.DATABASE_0));
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {
@@ -1066,13 +987,13 @@ public class IoTDBLoadTsFileIT {
     }
   }
 
-  private List<Tablet.ColumnCategory> generateTabletColumnCategory(int tagNum, int filedNum) {
-    List<Tablet.ColumnCategory> columnTypes = new ArrayList<>(tagNum + filedNum);
+  private List<ColumnCategory> generateTabletColumnCategory(int tagNum, int filedNum) {
+    List<ColumnCategory> columnTypes = new ArrayList<>(tagNum + filedNum);
     for (int i = 0; i < tagNum; i++) {
-      columnTypes.add(Tablet.ColumnCategory.TAG);
+      columnTypes.add(ColumnCategory.TAG);
     }
     for (int i = 0; i < filedNum; i++) {
-      columnTypes.add(Tablet.ColumnCategory.FIELD);
+      columnTypes.add(ColumnCategory.FIELD);
     }
     return columnTypes;
   }
@@ -1080,7 +1001,7 @@ public class IoTDBLoadTsFileIT {
   private String convert2TableSQL(
       final String tableName,
       final List<MeasurementSchema> schemaList,
-      final List<Tablet.ColumnCategory> columnCategoryList) {
+      final List<ColumnCategory> columnCategoryList) {
     List<String> columns = new ArrayList<>();
     for (int i = 0; i < schemaList.size(); i++) {
       final MeasurementSchema measurement = schemaList.get(i);

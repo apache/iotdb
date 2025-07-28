@@ -1,0 +1,66 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+FROM python:3.12-slim-bullseye
+ARG version=2.0.5-SNAPSHOT
+ARG target=apache-iotdb-${version}-ainode-bin
+
+# replace deb source when necessary
+# RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list && \
+#     sed -i 's|security.debian.org/debian-security|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list
+
+# replace pip source when necessary
+# RUN pip config set global.index-url https://mirrors.ustc.edu.cn/pypi/web/simple
+
+RUN apt update \
+  && apt install lsof dos2unix procps unzip dumb-init wget inetutils-ping libopenblas-dev liblapack-dev gfortran gcc g++ -y \
+  && apt autoremove -y \
+  && apt purge --auto-remove -y \
+  && apt clean -y
+
+COPY target/${target}.zip /
+RUN cd / && unzip ${target}.zip \
+  && rm ${target}.zip \
+  && mv ${target} ainode
+
+ENV IOTDB_AINODE_HOME=/ainode VERSION=${version}
+WORKDIR ${IOTDB_AINODE_HOME}/sbin
+
+COPY DockerCompose/replace-conf-from-env.sh .
+COPY DockerCompose/entrypoint.sh .
+
+RUN chmod +x *.sh && dos2unix *.sh \
+  && dos2unix ${IOTDB_AINODE_HOME}/conf/*.sh
+
+# use huggingface mirrors when necessary
+ARG hf_web=huggingface.co
+# ARG hf_web=hf-mirror.com
+RUN mkdir -p ${IOTDB_AINODE_HOME}/data/ainode/models/weights/sundial && \
+    mkdir -p ${IOTDB_AINODE_HOME}/data/ainode/models/weights/timer_xl
+RUN wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/sundial/config.json https://${hf_web}/thuml/sundial-base-128m/resolve/main/config.json && \
+    wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/sundial/model.safetensors https://${hf_web}/thuml/sundial-base-128m/resolve/main/model.safetensors
+RUN wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/timer_xl/config.json https://${hf_web}/thuml/timer-base-84m/resolve/main/config.json && \
+    wget -O ${IOTDB_AINODE_HOME}/data/ainode/models/weights/timer_xl/model.safetensors https://${hf_web}/thuml/timer-base-84m/resolve/main/model.safetensors
+
+
+ENV PATH="${IOTDB_AINODE_HOME}/sbin/:${IOTDB_AINODE_HOME}/tools/:${PATH}"
+RUN bash start-ainode.sh || true
+RUN rm -r ${IOTDB_AINODE_HOME}/logs/*
+
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["bash", "-c", "entrypoint.sh ainode"]

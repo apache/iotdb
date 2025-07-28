@@ -672,11 +672,10 @@ public class SessionPool implements ISessionPool {
           long timeOut = Math.min(waitToGetSessionTimeoutInMs, 60_000);
           if (System.currentTimeMillis() - start > timeOut) {
             LOGGER.warn(
-                "the SessionPool has wait for {} seconds to get a new connection: {} with {}, {}",
+                "the SessionPool has wait for {} seconds to get a new connection: {} with {}",
                 (System.currentTimeMillis() - start) / 1000,
                 formattedNodeUrls,
-                user,
-                password);
+                user);
             LOGGER.warn(
                 "current occupied size {}, queue size {}, considered size {} ",
                 occupied.size(),
@@ -3201,6 +3200,33 @@ public class SessionPool implements ISessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         LOGGER.warn(EXECUTE_LASTDATAQUERY_FAIL, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      } catch (Throwable e) {
+        LOGGER.error(EXECUTE_LASTDATAQUERY_ERROR, e);
+        putBack(session);
+        throw new RuntimeException(e);
+      }
+    }
+    // never go here
+    return null;
+  }
+
+  @Override
+  public SessionDataSetWrapper executeFastLastDataQueryForOnePrefixPath(final List<String> prefixes)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      ISession session = getSession();
+      try {
+        SessionDataSet resp = session.executeFastLastDataQueryForOnePrefixPath(prefixes);
+        SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
+        occupy(session);
+        return wrapper;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        LOGGER.warn("executeLastDataQuery failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);

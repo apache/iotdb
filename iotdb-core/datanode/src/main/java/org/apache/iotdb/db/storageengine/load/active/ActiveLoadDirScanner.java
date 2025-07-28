@@ -38,6 +38,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -100,8 +101,9 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
       final boolean isGeneratedByPipe =
           listeningDir.equals(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
+      final File listeningDirFile = new File(listeningDir);
       try (final Stream<File> fileStream =
-          FileUtils.streamFiles(new File(listeningDir), true, (String[]) null)) {
+          FileUtils.streamFiles(listeningDirFile, true, (String[]) null)) {
         try {
           fileStream
               .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
@@ -114,7 +116,15 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
               .filter(this::isTsFileCompleted)
               .limit(currentAllowedPendingSize)
               .forEach(
-                  file -> activeLoadTsFileLoader.tryTriggerTsFileLoad(file, isGeneratedByPipe));
+                  file -> {
+                    final File parentFile = new File(file).getParentFile();
+                    activeLoadTsFileLoader.tryTriggerTsFileLoad(
+                        file,
+                        parentFile != null
+                            && !Objects.equals(
+                                parentFile.getAbsoluteFile(), listeningDirFile.getAbsoluteFile()),
+                        isGeneratedByPipe);
+                  });
         } catch (final Exception e) {
           LOGGER.warn("Exception occurred during scanning dir: {}", listeningDir, e);
         }

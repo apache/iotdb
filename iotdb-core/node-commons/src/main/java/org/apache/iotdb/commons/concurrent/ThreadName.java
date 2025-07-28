@@ -33,6 +33,7 @@ public enum ThreadName {
   TIMED_QUERY_SQL_COUNT("Timed-Query-SQL-Count"),
   FRAGMENT_INSTANCE_MANAGEMENT("Fragment-Instance-Management"),
   FRAGMENT_INSTANCE_NOTIFICATION("Fragment-Instance-Notification"),
+  FRAGMENT_INSTANCE_DISPATCH("Fragment-Instance-Dispatch"),
   DRIVER_TASK_SCHEDULER_NOTIFICATION("Driver-Task-Scheduler-Notification"),
   // -------------------------- MPP --------------------------
   MPP_COORDINATOR_SCHEDULED_EXECUTOR("MPP-Coordinator-Scheduled-Executor"),
@@ -69,6 +70,8 @@ public enum ThreadName {
   PBTREE_FLUSH_MONITOR("PBTree-Flush-Monitor"),
   PBTREE_WORKER_POOL("PBTree-Worker-Pool"),
   GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE("General-Region-Attribute-Security-Service"),
+  SCHEMA_PARALLEL_POOL("Schema-Parallel-Pool"),
+
   // -------------------------- ClientService --------------------------
   CLIENT_RPC_SERVICE("ClientRPC-Service"),
   CLIENT_RPC_PROCESSOR("ClientRPC-Processor"),
@@ -105,6 +108,7 @@ public enum ThreadName {
   ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL("AsyncDataNodePipeConsensusServiceClientPool"),
   PIPE_CONSENSUS_DELETION_SERIALIZE("DAL-Serialize"),
   PIPE_CONSENSUS_TSFILE_WRITER_CHECKER("PipeConsensus-TsFileWriter-Checker"),
+  PIPE_CONSENSUS_BACKGROUND_TASK_EXECUTOR("PipeConsensusBackgroundTaskExecutor"),
 
   // -------------------------- IoTConsensus --------------------------
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
@@ -137,6 +141,7 @@ public enum ThreadName {
   PIPE_CONSENSUS_EXECUTOR_POOL("Pipe-Consensus-Executor-Pool"),
   PIPE_CONFIGNODE_EXECUTOR_POOL("Pipe-ConfigNode-Executor-Pool"),
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
+  PIPE_TSFILE_ASYNC_SEND_POOL("Pipe-TsFile-Async-Send-Pool"),
   PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
   PIPE_RUNTIME_HEARTBEAT("Pipe-Runtime-Heartbeat"),
   PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),
@@ -146,6 +151,8 @@ public enum ThreadName {
   PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
   PIPE_RECEIVER_AIR_GAP_AGENT("Pipe-Receiver-Air-Gap-Agent"),
   PIPE_AIR_GAP_RECEIVER("Pipe-Air-Gap-Receiver"),
+  PIPE_PARALLEL_EXECUTION_POOL("Pipe-Parallel-Execution-Pool"),
+  LOAD_DATATYPE_CONVERT_POOL("Load-Datatype-Convert-Pool"),
   SUBSCRIPTION_EXECUTOR_POOL("Subscription-Executor-Pool"),
   SUBSCRIPTION_RUNTIME_META_SYNCER("Subscription-Runtime-Meta-Syncer"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
@@ -186,17 +193,16 @@ public enum ThreadName {
   INFLUXDB_RPC_SERVICE("InfluxdbRPC-Service"),
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),
   STORAGE_ENGINE_CACHED_POOL("StorageEngine"),
-  AINODE_RPC_SERVICE("AINodeRpc-Service"),
   DATANODE_SHUTDOWN_HOOK("DataNode-Shutdown-Hook"),
   UPGRADE_TASK("UpgradeThread"),
   REGION_MIGRATE("Region-Migrate-Pool"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
-  REPAIR_DATA("RepairData"),
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
   BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
+  BINARY_ALLOCATOR_AUTO_RELEASER("BinaryAllocator-Auto-Releaser"),
 
   // the unknown thread name is used for metrics
-  UNKOWN("UNKNOWN");
+  UNKNOWN("UNKNOWN");
 
   private final String name;
   private static final Logger LOGGER = LoggerFactory.getLogger(ThreadName.class);
@@ -246,7 +252,8 @@ public enum ThreadName {
               SCHEMA_FORCE_MLOG,
               PBTREE_FLUSH_MONITOR,
               PBTREE_WORKER_POOL,
-              GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE));
+              GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE,
+              SCHEMA_PARALLEL_POOL));
 
   private static final Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));
@@ -304,6 +311,7 @@ public enum ThreadName {
               PIPE_ASYNC_CONNECTOR_CLIENT_POOL,
               PIPE_RECEIVER_AIR_GAP_AGENT,
               PIPE_AIR_GAP_RECEIVER,
+              PIPE_PARALLEL_EXECUTION_POOL,
               SUBSCRIPTION_EXECUTOR_POOL,
               SUBSCRIPTION_RUNTIME_META_SYNCER,
               WINDOW_EVALUATION_SERVICE,
@@ -383,7 +391,6 @@ public enum ThreadName {
               INFLUXDB_RPC_SERVICE,
               INFLUXDB_RPC_PROCESSOR,
               STORAGE_ENGINE_CACHED_POOL,
-              AINODE_RPC_SERVICE,
               DATANODE_SHUTDOWN_HOOK,
               UPGRADE_TASK,
               REGION_MIGRATE,
@@ -491,6 +498,6 @@ public enum ThreadName {
       }
     }
     LOGGER.debug("Unknown thread name: {}", givenThreadName);
-    return ThreadName.UNKOWN;
+    return ThreadName.UNKNOWN;
   }
 }

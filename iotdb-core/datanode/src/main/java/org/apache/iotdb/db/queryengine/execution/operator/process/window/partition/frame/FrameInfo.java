@@ -20,8 +20,66 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
+
+import java.util.Optional;
 
 public class FrameInfo {
+  public FrameInfo(
+      WindowFrame.Type frameType,
+      FrameBound.Type startType,
+      Optional<Integer> startOffsetChannel,
+      FrameBound.Type endType,
+      Optional<Integer> endOffsetChannel,
+      Optional<Integer> sortChannel,
+      Optional<SortOrder> sortOrder) {
+    this.frameType = convertFrameType(frameType);
+    this.startType = convertFrameBoundType(startType);
+    this.startOffsetChannel = startOffsetChannel.orElse(-1);
+    this.endType = convertFrameBoundType(endType);
+    this.endOffsetChannel = endOffsetChannel.orElse(-1);
+
+    if (sortChannel.isPresent()) {
+      assert sortOrder.isPresent();
+      this.sortChannel = sortChannel.get();
+      this.sortOrder = sortOrder.get();
+    } else {
+      this.sortChannel = -1;
+      this.sortOrder = SortOrder.ASC_NULLS_FIRST;
+    }
+  }
+
+  private FrameType convertFrameType(WindowFrame.Type frameType) {
+    switch (frameType) {
+      case RANGE:
+        return FrameType.RANGE;
+      case ROWS:
+        return FrameType.ROWS;
+      case GROUPS:
+        return FrameType.GROUPS;
+      default:
+        throw new IllegalArgumentException("Unsupported frame bound type: " + frameType);
+    }
+  }
+
+  private FrameBoundType convertFrameBoundType(FrameBound.Type frameBoundType) {
+    switch (frameBoundType) {
+      case UNBOUNDED_PRECEDING:
+        return FrameBoundType.UNBOUNDED_PRECEDING;
+      case UNBOUNDED_FOLLOWING:
+        return FrameBoundType.UNBOUNDED_FOLLOWING;
+      case CURRENT_ROW:
+        return FrameBoundType.CURRENT_ROW;
+      case PRECEDING:
+        return FrameBoundType.PRECEDING;
+      case FOLLOWING:
+        return FrameBoundType.FOLLOWING;
+      default:
+        throw new IllegalArgumentException("Unsupported frame bound type: " + frameBoundType);
+    }
+  }
+
   public enum FrameType {
     RANGE,
     ROWS,

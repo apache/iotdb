@@ -43,6 +43,8 @@ import java.sql.Statement;
 import java.text.DateFormat;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -227,7 +229,24 @@ public class TestUtils {
         expectedRetArray,
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
-        database);
+        database,
+        "+00:00");
+  }
+
+  public static void tableResultSetEqualTest(
+      String sql,
+      String timeZone,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String database) {
+    tableResultSetEqualTest(
+        sql,
+        expectedHeader,
+        expectedRetArray,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        database,
+        timeZone);
   }
 
   public static void tableResultSetEqualTest(
@@ -237,9 +256,21 @@ public class TestUtils {
       String userName,
       String password,
       String database) {
+    tableResultSetEqualTest(
+        sql, expectedHeader, expectedRetArray, userName, password, database, "+00:00");
+  }
+
+  public static void tableResultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String userName,
+      String password,
+      String database,
+      String timeZone) {
     try (Connection connection =
         EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
-      connection.setClientInfo("time_zone", "+00:00");
+      connection.setClientInfo("time_zone", timeZone);
       try (Statement statement = connection.createStatement()) {
         statement.execute("use " + database);
         try (ResultSet resultSet = statement.executeQuery(sql)) {
@@ -619,16 +650,19 @@ public class TestUtils {
   }
 
   public static void assertResultSetEqual(
-      ResultSet actualResultSet, String expectedHeader, Set<String> expectedRetSet) {
+      final ResultSet actualResultSet,
+      final String expectedHeader,
+      final Collection<String> expectedResult) {
     try {
-      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
-      StringBuilder header = new StringBuilder();
+      final ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+      final StringBuilder header = new StringBuilder();
       for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
         header.append(resultSetMetaData.getColumnName(i)).append(",");
       }
       assertEquals(expectedHeader, header.toString());
 
-      Set<String> actualRetSet = new HashSet<>();
+      final Collection<String> actualRetSet =
+          expectedResult instanceof Set ? new HashSet<>() : new ArrayList<>();
 
       while (actualResultSet.next()) {
         StringBuilder builder = new StringBuilder();
@@ -637,8 +671,8 @@ public class TestUtils {
         }
         actualRetSet.add(builder.toString());
       }
-      assertEquals(expectedRetSet, actualRetSet);
-    } catch (Exception e) {
+      assertEquals(expectedResult, actualRetSet);
+    } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));
     }

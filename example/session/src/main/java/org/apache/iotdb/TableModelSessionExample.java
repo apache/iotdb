@@ -25,6 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.TableSessionBuilder;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
 
@@ -87,15 +88,15 @@ public class TableModelSessionExample {
               TSDataType.STRING,
               TSDataType.FLOAT,
               TSDataType.DOUBLE);
-      List<Tablet.ColumnCategory> columnTypeList =
+      List<ColumnCategory> columnTypeList =
           new ArrayList<>(
               Arrays.asList(
-                  Tablet.ColumnCategory.TAG,
-                  Tablet.ColumnCategory.TAG,
-                  Tablet.ColumnCategory.TAG,
-                  Tablet.ColumnCategory.ATTRIBUTE,
-                  Tablet.ColumnCategory.FIELD,
-                  Tablet.ColumnCategory.FIELD));
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.ATTRIBUTE,
+                  ColumnCategory.FIELD,
+                  ColumnCategory.FIELD));
       Tablet tablet = new Tablet("test1", columnNameList, dataTypeList, columnTypeList, 100);
       for (long timestamp = 0; timestamp < 100; timestamp++) {
         int rowIndex = tablet.getRowSize();

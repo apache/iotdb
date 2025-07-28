@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
@@ -72,6 +73,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -100,6 +102,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
@@ -149,7 +152,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
@@ -497,7 +502,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus removeAINode(TAINodeRemoveReq req) throws TException {
-    throw new UnsupportedOperationException(UNSUPPORTED_INVOCATION);
+    return executeRemoteCallWithRetry(
+        () -> client.removeAINode(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -842,9 +848,24 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TShowDataNodes4InformationSchemaResp showDataNodes4InformationSchema() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showDataNodes4InformationSchema(),
+        resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TShowConfigNodesResp showConfigNodes() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showConfigNodes(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema()
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showConfigNodes4InformationSchema(),
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -1173,6 +1194,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus dropSubscriptionById(TDropSubscriptionReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.dropSubscriptionById(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showSubscription(req), resp -> !updateConfigNodeLeader(resp.status));
@@ -1385,6 +1412,19 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.deleteDevice(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TSStatus createTableView(TCreateTableViewReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.createTableView(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.pushHeartbeat(dataNodeId, resp), status -> !updateConfigNodeLeader(status));
   }
 
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {

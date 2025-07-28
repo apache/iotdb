@@ -32,7 +32,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.Expressio
 public class TableFunctionTableArgument extends Node {
   private final Relation table;
   private final Optional<List<Expression>> partitionBy; // it is allowed to partition by empty list
-  private final Optional<OrderBy> orderBy;
+  private Optional<OrderBy> orderBy;
 
   public TableFunctionTableArgument(
       NodeLocation location,
@@ -55,6 +55,10 @@ public class TableFunctionTableArgument extends Node {
 
   public Optional<OrderBy> getOrderBy() {
     return orderBy;
+  }
+
+  public void updateOrderBy(OrderBy orderBy) {
+    this.orderBy = Optional.of(orderBy);
   }
 
   @Override

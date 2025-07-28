@@ -134,6 +134,7 @@ public class TransformCorrelatedDistinctAggregationWithoutProjection
             inputWithUniqueId,
             source,
             ImmutableList.of(),
+            Optional.empty(),
             inputWithUniqueId.getOutputSymbols(),
             source.getOutputSymbols(),
             decorrelatedSource.get().getCorrelatedPredicates(),

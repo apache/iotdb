@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
@@ -58,7 +59,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataParti
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -81,6 +81,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListRe
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
@@ -113,6 +114,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -141,6 +143,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
@@ -190,7 +193,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
@@ -340,11 +345,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus removeAINode(TAINodeRemoveReq req) {
-    LOGGER.info("ConfigNode RPC Service start to remove AINode, req: {}", req);
-    RemoveAINodePlan removeAINodePlan = new RemoveAINodePlan(req.getAiNodeLocation());
-    TSStatus status = configManager.removeAINode(removeAINodePlan);
-    LOGGER.info(
-        "ConfigNode RPC Service finished to remove AINode, req: {}, result: {}", req, status);
+    LOGGER.info("ConfigNode RPC Service start to remove AINode");
+    TSStatus status = configManager.removeAINode();
+    LOGGER.info("ConfigNode RPC Service finished to remove AINode, result: {}", status);
     return status;
   }
 
@@ -404,83 +407,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus setDatabase(final TDatabaseSchema databaseSchema) {
-    TSStatus errorResp = null;
-    final boolean isSystemDatabase =
-        databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
-
-    if (databaseSchema.getTTL() < 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to create database. The TTL should be positive.");
+    final TSStatus setDefaultStatus =
+        ClusterSchemaManager.enrichDatabaseSchemaWithDefaultProperties(databaseSchema);
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != setDefaultStatus.getCode()) {
+      return setDefaultStatus;
     }
-
-    if (!databaseSchema.isSetSchemaReplicationFactor()) {
-      databaseSchema.setSchemaReplicationFactor(configNodeConfig.getSchemaReplicationFactor());
-    } else if (databaseSchema.getSchemaReplicationFactor() <= 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  "Failed to create database. The schemaReplicationFactor should be positive.");
-    }
-
-    if (!databaseSchema.isSetDataReplicationFactor()) {
-      databaseSchema.setDataReplicationFactor(configNodeConfig.getDataReplicationFactor());
-    } else if (databaseSchema.getDataReplicationFactor() <= 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  "Failed to create database. The dataReplicationFactor should be positive.");
-    }
-
-    if (!databaseSchema.isSetTimePartitionOrigin()) {
-      databaseSchema.setTimePartitionOrigin(commonConfig.getTimePartitionOrigin());
-    } else if (databaseSchema.getTimePartitionOrigin() < 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  "Failed to create database. The timePartitionOrigin should be non-negative.");
-    }
-
-    if (!databaseSchema.isSetTimePartitionInterval()) {
-      databaseSchema.setTimePartitionInterval(commonConfig.getTimePartitionInterval());
-    } else if (databaseSchema.getTimePartitionInterval() <= 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  "Failed to create database. The timePartitionInterval should be positive.");
-    }
-
-    if (isSystemDatabase) {
-      databaseSchema.setMinSchemaRegionGroupNum(1);
-    } else if (!databaseSchema.isSetMinSchemaRegionGroupNum()) {
-      databaseSchema.setMinSchemaRegionGroupNum(
-          configNodeConfig.getDefaultSchemaRegionGroupNumPerDatabase());
-    } else if (databaseSchema.getMinSchemaRegionGroupNum() <= 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  "Failed to create database. The schemaRegionGroupNum should be positive.");
-    }
-
-    if (isSystemDatabase) {
-      databaseSchema.setMinDataRegionGroupNum(1);
-    } else if (!databaseSchema.isSetMinDataRegionGroupNum()) {
-      databaseSchema.setMinDataRegionGroupNum(
-          configNodeConfig.getDefaultDataRegionGroupNumPerDatabase());
-    } else if (databaseSchema.getMinDataRegionGroupNum() <= 0) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to create database. The dataRegionGroupNum should be positive.");
-    }
-
-    if (errorResp != null) {
-      LOGGER.warn("Execute SetDatabase: {} with result: {}", databaseSchema, errorResp);
-      return errorResp;
-    }
-
-    // The maxRegionGroupNum is equal to the minRegionGroupNum when initialize
-    databaseSchema.setMaxSchemaRegionGroupNum(databaseSchema.getMinSchemaRegionGroupNum());
-    databaseSchema.setMaxDataRegionGroupNum(databaseSchema.getMinDataRegionGroupNum());
 
     final DatabaseSchemaPlan setPlan =
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema);
@@ -607,7 +538,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
     final GetDatabasePlan plan =
         new GetDatabasePlan(
-            req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
+            req.getDatabasePathPattern(),
+            scope,
+            req.isSetIsTableModel() && req.isIsTableModel(),
+            false);
     final DatabaseSchemaResp databaseSchemaResp =
         (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
@@ -1099,8 +1033,18 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TShowDataNodes4InformationSchemaResp showDataNodes4InformationSchema() {
+    return configManager.showDataNodes4InformationSchema();
+  }
+
+  @Override
   public TShowConfigNodesResp showConfigNodes() {
     return configManager.showConfigNodes();
+  }
+
+  @Override
+  public TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema() {
+    return configManager.showConfigNodes4InformationSchema();
   }
 
   @Override
@@ -1295,6 +1239,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus dropSubscriptionById(TDropSubscriptionReq req) {
+    return configManager.dropSubscriptionById(req);
+  }
+
+  @Override
   public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) {
     return configManager.showSubscription(req);
   }
@@ -1458,5 +1407,15 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
     return configManager.deleteDevice(req);
+  }
+
+  @Override
+  public TSStatus createTableView(final TCreateTableViewReq req) {
+    return configManager.createTableView(req);
+  }
+
+  @Override
+  public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp) {
+    return configManager.pushHeartbeat(dataNodeId, resp);
   }
 }

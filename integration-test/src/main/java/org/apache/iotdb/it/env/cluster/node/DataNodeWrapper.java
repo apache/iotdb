@@ -168,6 +168,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
         .setMaxHeapSize(EnvUtils.getIntFromSysVar(DATANODE_MAX_HEAP_SIZE, 256, clusterIndex))
         .setMaxDirectMemorySize(
             EnvUtils.getIntFromSysVar(DATANODE_MAX_DIRECT_MEMORY_SIZE, 256, clusterIndex))
+        .setTimezone("Asia/Shanghai")
         .build();
   }
 

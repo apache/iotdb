@@ -229,10 +229,8 @@ public class LastAccumulator implements TableAccumulator {
         updateIntLastValue((int) statistics[0].getLastValue(), statistics[0].getEndTime());
         break;
       case INT64:
-        updateLongLastValue((long) statistics[0].getLastValue(), statistics[0].getEndTime());
-        break;
       case TIMESTAMP:
-        updateLongLastValue(statistics[0].getEndTime(), statistics[0].getEndTime());
+        updateLongLastValue((long) statistics[0].getLastValue(), statistics[0].getEndTime());
         break;
       case FLOAT:
         updateFloatLastValue((float) statistics[0].getLastValue(), statistics[0].getEndTime());

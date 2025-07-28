@@ -268,7 +268,7 @@ calculate_memory_sizes
 # off heap memory size
 #OFF_HEAP_MEMORY="512M"
 
-# configure JVM memory with set environment variable of IOTDB_JMX_OPTS
+# configure JVM memory with setting environment variable of IOTDB_JMX_OPTS
 if [[ "$IOTDB_JMX_OPTS" =~ -Xmx ]];then
     item_arr=(${IOTDB_JMX_OPTS})
     for item in ${item_arr[@]};do
@@ -327,9 +327,9 @@ fi
 
 
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Diotdb.jmx.local=$JMX_LOCAL"
-if [[ ! "$CONFIGNODE_JMX_OPTS" =~ -Xms ]]; then  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${ON_HEAP_MEMORY}"; fi
-if [[ ! "$CONFIGNODE_JMX_OPTS" =~ -Xmx ]]; then IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${ON_HEAP_MEMORY}"; fi
-if [[ ! "$CONFIGNODE_JMX_OPTS" =~ -XX:MaxDirectMemorySize= ]]; then IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY}"; fi
+if [[ ! "$IOTDB_JMX_OPTS" =~ -Xms ]]; then IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${ON_HEAP_MEMORY}"; fi
+if [[ ! "$IOTDB_JMX_OPTS" =~ -Xmx ]]; then IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${ON_HEAP_MEMORY}"; fi
+if [[ ! "$IOTDB_JMX_OPTS" =~ -XX:MaxDirectMemorySize= ]]; then IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY}"; fi
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFER_SIZE}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+CrashOnOutOfMemoryError"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UseAdaptiveSizePolicy"
@@ -337,6 +337,7 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xss512k"
 # these two options print safepoints with pauses longer than 1000ms to the standard output. You can see these logs via redirection when starting in the background like "start-datanode.sh > log_datanode_safepoint.log"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:SafepointTimeoutDelay=1000"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+SafepointTimeout"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
 
 # option below tries to optimize safepoint stw time for large counted loop.
 # NOTE: it may have an impact on JIT's black-box optimization.

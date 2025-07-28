@@ -225,6 +225,7 @@ public class TransformCorrelatedGlobalAggregationWithProjection
             inputWithUniqueId,
             source,
             ImmutableList.of(),
+            Optional.empty(),
             inputWithUniqueId.getOutputSymbols(),
             source.getOutputSymbols(),
             decorrelatedSource.get().getCorrelatedPredicates(),

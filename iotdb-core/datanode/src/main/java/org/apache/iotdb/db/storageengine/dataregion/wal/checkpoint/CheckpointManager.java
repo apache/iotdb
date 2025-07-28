@@ -25,11 +25,9 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
-import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ILogWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.CheckpointFileUtils;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALInsertNodeCache;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -177,9 +175,7 @@ public class CheckpointManager implements AutoCloseable {
         return;
       }
       memTableInfo.setFlushed();
-      if (!memTableInfo.isPinned()) {
-        memTableId2Info.remove(memTableId);
-      }
+      memTableId2Info.remove(memTableId);
       Checkpoint checkpoint =
           new Checkpoint(
               CheckpointType.FLUSH_MEMORY_TABLE, Collections.singletonList(memTableInfo));
@@ -261,71 +257,9 @@ public class CheckpointManager implements AutoCloseable {
 
   // endregion
 
-  // region methods for pipe
-  /**
-   * Pin the wal files of the given memory table. Notice: cannot pin one memTable too long,
-   * otherwise the wal disk usage may too large.
-   *
-   * @throws MemTablePinException If the memTable has been flushed
-   */
-  public void pinMemTable(long memTableId) throws MemTablePinException {
-    infoLock.lock();
-    try {
-      if (!memTableId2Info.containsKey(memTableId)) {
-        throw new MemTablePinException(
-            String.format(
-                "Fail to pin memTable-%d because this memTable doesn't exist in the wal.",
-                memTableId));
-      }
-      MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
-      if (!memTableInfo.isPinned()) {
-        WALInsertNodeCache.getInstance(memTableInfo.getDataRegionId()).addMemTable(memTableId);
-      }
-      memTableInfo.pin();
-    } finally {
-      infoLock.unlock();
-    }
-  }
-
-  /**
-   * Unpin the wal files of the given memory table.
-   *
-   * @throws MemTablePinException If there aren't corresponding pin operations
-   */
-  public void unpinMemTable(long memTableId) throws MemTablePinException {
-    infoLock.lock();
-    try {
-      if (!memTableId2Info.containsKey(memTableId)) {
-        throw new MemTablePinException(
-            String.format(
-                "Fail to unpin memTable-%d because this memTable doesn't exist in the wal.",
-                memTableId));
-      }
-      if (!memTableId2Info.get(memTableId).isPinned()) {
-        throw new MemTablePinException(
-            String.format(
-                "Fail to unpin memTable-%d because this memTable hasn't been pinned.", memTableId));
-      }
-      MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
-      memTableInfo.unpin();
-      if (!memTableInfo.isPinned()) {
-        WALInsertNodeCache.getInstance(memTableInfo.getDataRegionId()).removeMemTable(memTableId);
-        if (memTableInfo.isFlushed()) {
-          memTableId2Info.remove(memTableId);
-        }
-      }
-    } finally {
-      infoLock.unlock();
-    }
-  }
-
-  // endregion
-
-  /** Get MemTableInfo of oldest unpinned MemTable, whose first version id is smallest. */
-  public MemTableInfo getOldestUnpinnedMemTableInfo() {
+  public MemTableInfo getOldestMemTableInfo() {
     // find oldest memTable
     return activeOrPinnedMemTables().stream()
-        .filter(memTableInfo -> !memTableInfo.isPinned())
         .min(Comparator.comparingLong(MemTableInfo::getMemTableId))
         .orElse(null);
   }

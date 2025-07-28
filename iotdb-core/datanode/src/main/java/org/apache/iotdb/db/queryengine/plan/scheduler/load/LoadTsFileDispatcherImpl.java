@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
@@ -56,8 +58,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -99,7 +103,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   @Override
-  public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
+  public Future<FragInstanceDispatchResult> dispatch(
+      SubPlan root, List<FragmentInstance> instances) {
     return executor.submit(
         () -> {
           for (FragmentInstance instance : instances) {
@@ -167,6 +172,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       final TsFileResource tsFileResource = ((LoadSingleTsFileNode) planNode).getTsFileResource();
       try {
         PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
+        tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
         tsFileResource.serialize();
 
         StorageEngine.getInstance()
@@ -174,7 +180,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
             .loadNewTsFile(
                 tsFileResource,
                 ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad(),
-                isGeneratedByPipe);
+                isGeneratedByPipe,
+                false);
       } catch (LoadFileException e) {
         LOGGER.warn("Load TsFile Node {} error.", planNode, e);
         TSStatus resultStatus = new TSStatus();
@@ -219,7 +226,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   public Future<FragInstanceDispatchResult> dispatchCommand(
-      TLoadCommandReq loadCommandReq, Set<TRegionReplicaSet> replicaSets) {
+      TLoadCommandReq originalLoadCommandReq, Set<TRegionReplicaSet> replicaSets) {
     Set<TEndPoint> allEndPoint = new HashSet<>();
     for (TRegionReplicaSet replicaSet : replicaSets) {
       for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
@@ -228,23 +235,27 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     }
 
     for (TEndPoint endPoint : allEndPoint) {
+      // duplicate for progress index binary serialization
+      final TLoadCommandReq duplicatedLoadCommandReq = originalLoadCommandReq.deepCopy();
       try (SetThreadName threadName =
           new SetThreadName(
               "load-dispatcher"
                   + "-"
-                  + LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType]
+                  + LoadTsFileScheduler.LoadCommand.values()[duplicatedLoadCommandReq.commandType]
                   + "-"
-                  + loadCommandReq.uuid)) {
+                  + duplicatedLoadCommandReq.uuid)) {
         if (isDispatchedToLocal(endPoint)) {
-          dispatchLocally(loadCommandReq);
+          dispatchLocally(duplicatedLoadCommandReq);
         } else {
-          dispatchRemote(loadCommandReq, endPoint);
+          dispatchRemote(duplicatedLoadCommandReq, endPoint);
         }
       } catch (FragmentInstanceDispatchException e) {
-        LOGGER.warn("Cannot dispatch LoadCommand for load operation {}", loadCommandReq, e);
+        LOGGER.warn(
+            "Cannot dispatch LoadCommand for load operation {}", duplicatedLoadCommandReq, e);
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
       } catch (Exception t) {
-        LOGGER.warn("Cannot dispatch LoadCommand for load operation {}", loadCommandReq, t);
+        LOGGER.warn(
+            "Cannot dispatch LoadCommand for load operation {}", duplicatedLoadCommandReq, t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
@@ -256,17 +267,18 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   private void dispatchLocally(TLoadCommandReq loadCommandReq)
       throws FragmentInstanceDispatchException {
-    final ProgressIndex progressIndex;
-    if (loadCommandReq.isSetProgressIndex()) {
-      progressIndex =
-          ProgressIndexType.deserializeFrom(ByteBuffer.wrap(loadCommandReq.getProgressIndex()));
+    final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap = new HashMap<>();
+    if (loadCommandReq.isSetTimePartition2ProgressIndex()) {
+      for (Map.Entry<TTimePartitionSlot, ByteBuffer> entry :
+          loadCommandReq.getTimePartition2ProgressIndex().entrySet()) {
+        timePartitionProgressIndexMap.put(
+            entry.getKey(), ProgressIndexType.deserializeFrom(entry.getValue()));
+      }
     } else {
-      // fallback to use local generated progress index for compatibility
-      progressIndex = PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad();
-      LOGGER.info(
-          "Use local generated load progress index {} for uuid {}.",
-          progressIndex,
-          loadCommandReq.uuid);
+      final TSStatus status = new TSStatus();
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setMessage("Load command requires time partition to progress index map");
+      throw new FragmentInstanceDispatchException(status);
     }
 
     final TSStatus resultStatus =
@@ -275,7 +287,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
                 LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
                 loadCommandReq.uuid,
                 loadCommandReq.isSetIsGeneratedByPipe() && loadCommandReq.isGeneratedByPipe,
-                progressIndex);
+                timePartitionProgressIndexMap);
     if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
       throw new FragmentInstanceDispatchException(resultStatus);
     }

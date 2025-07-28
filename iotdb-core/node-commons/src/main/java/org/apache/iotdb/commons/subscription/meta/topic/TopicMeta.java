@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.commons.subscription.meta.topic;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 
@@ -219,12 +221,19 @@ public class TopicMeta {
   public Map<String, String> generateConnectorAttributes(final String consumerGroupId) {
     final Map<String, String> connectorAttributes = new HashMap<>();
     connectorAttributes.put("sink", "subscription-sink");
-    connectorAttributes.put(PipeConnectorConstant.SINK_TOPIC_KEY, topicName);
-    connectorAttributes.put(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
+    connectorAttributes.put(PipeSinkConstant.SINK_TOPIC_KEY, topicName);
+    connectorAttributes.put(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
     connectorAttributes.putAll(config.getAttributesWithSinkFormat());
     // backdoor configs
     connectorAttributes.putAll(config.getAttributesWithSinkPrefix());
     return connectorAttributes;
+  }
+
+  /////////////////////////////////  Tree & Table Isolation  /////////////////////////////////
+
+  public boolean visibleUnder(final boolean isTableModel) {
+    final Visibility visibility = VisibilityUtils.calculateFromTopicConfig(config);
+    return VisibilityUtils.isCompatible(visibility, isTableModel);
   }
 
   ////////////////////////////////////// Object ////////////////////////////////

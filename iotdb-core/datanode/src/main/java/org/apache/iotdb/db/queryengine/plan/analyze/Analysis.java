@@ -114,6 +114,10 @@ public class Analysis implements IAnalysis {
   // map from device name to series/aggregation under this device
   private Set<Expression> sourceExpressions;
 
+  // In order to perform some optimization, when the source expression is
+  // not used later, nothing will be placed in this structure.
+  private boolean shouldHaveSourceExpression;
+
   // input expressions of aggregations to be calculated
   private Set<Expression> sourceTransformExpressions = new HashSet<>();
 
@@ -234,7 +238,9 @@ public class Analysis implements IAnalysis {
   // Key: non-writable view expression, Value: corresponding source expressions
   private Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap;
 
-  private Set<Expression> lastQueryBaseExpressions;
+  private Map<IDeviceID, Map<String, Expression>> lastQueryOutputPathToSourceExpressionMap;
+
+  private Set<IDeviceID> deviceExistViewSet;
 
   // header of result dataset
   private DatasetHeader respDatasetHeader;
@@ -619,6 +625,14 @@ public class Analysis implements IAnalysis {
     this.sourceExpressions = sourceExpressions;
   }
 
+  public void setShouldHaveSourceExpression(boolean shouldHaveSourceExpression) {
+    this.shouldHaveSourceExpression = shouldHaveSourceExpression;
+  }
+
+  public boolean shouldHaveSourceExpression() {
+    return shouldHaveSourceExpression;
+  }
+
   public Set<Expression> getSourceTransformExpressions() {
     return sourceTransformExpressions;
   }
@@ -886,12 +900,21 @@ public class Analysis implements IAnalysis {
     this.timeseriesOrderingForLastQuery = timeseriesOrderingForLastQuery;
   }
 
-  public Set<Expression> getLastQueryBaseExpressions() {
-    return this.lastQueryBaseExpressions;
+  public Map<IDeviceID, Map<String, Expression>> getLastQueryOutputPathToSourceExpressionMap() {
+    return lastQueryOutputPathToSourceExpressionMap;
   }
 
-  public void setLastQueryBaseExpressions(Set<Expression> lastQueryBaseExpressions) {
-    this.lastQueryBaseExpressions = lastQueryBaseExpressions;
+  public void setLastQueryOutputPathToSourceExpressionMap(
+      Map<IDeviceID, Map<String, Expression>> lastQueryOutputPathToSourceExpressionMap) {
+    this.lastQueryOutputPathToSourceExpressionMap = lastQueryOutputPathToSourceExpressionMap;
+  }
+
+  public Set<IDeviceID> getDeviceExistViewSet() {
+    return deviceExistViewSet;
+  }
+
+  public void setDeviceExistViewSet(Set<IDeviceID> deviceExistViewSet) {
+    this.deviceExistViewSet = deviceExistViewSet;
   }
 
   public Map<Expression, List<Expression>> getLastQueryNonWritableViewSourceExpressionMap() {

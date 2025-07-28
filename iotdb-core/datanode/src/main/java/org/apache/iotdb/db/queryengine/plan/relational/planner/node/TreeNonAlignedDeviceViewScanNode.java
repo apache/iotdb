@@ -43,7 +43,7 @@ public class TreeNonAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
       List<DeviceEntry> deviceEntries,
-      Map<Symbol, Integer> idAndAttributeIndexMap,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
       Expression pushDownPredicate,
@@ -59,7 +59,7 @@ public class TreeNonAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,
@@ -86,7 +86,7 @@ public class TreeNonAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,
@@ -114,7 +114,7 @@ public class TreeNonAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
 
   public static TreeNonAlignedDeviceViewScanNode deserialize(ByteBuffer byteBuffer) {
     TreeNonAlignedDeviceViewScanNode node = new TreeNonAlignedDeviceViewScanNode();
-    TreeDeviceViewScanNode.deserializeMemberVariables(byteBuffer, node, true);
+    TreeDeviceViewScanNode.deserializeMemberVariables(byteBuffer, node);
 
     node.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
     return node;

@@ -88,11 +88,6 @@ public final class PartitionExecutor {
     peerGroupComparator = new RowComparator(sortDataTypes);
     sortedColumns = partition.getSortedColumnList(sortChannels);
 
-    // Reset functions for new partition
-    for (WindowFunction windowFunction : windowFunctions) {
-      windowFunction.reset();
-    }
-
     currentPosition = partitionStart;
     needPeerGroup =
         windowFunctions.stream().anyMatch(WindowFunction::needPeerGroup)
@@ -111,7 +106,7 @@ public final class PartitionExecutor {
             frame = new RangeFrame(partition, frameInfo, sortedColumns, peerGroupComparator);
             break;
           case ROWS:
-            frame = new RowsFrame(partition, frameInfo, partitionStart, partitionEnd);
+            frame = new RowsFrame(partition, frameInfo);
             break;
           case GROUPS:
             frame =
@@ -147,7 +142,11 @@ public final class PartitionExecutor {
     for (int i = 0; i < outputChannels.size(); i++) {
       Column column = tsBlock.getColumn(outputChannels.get(i));
       ColumnBuilder columnBuilder = builder.getColumnBuilder(i);
-      columnBuilder.write(column, offsetInTsBlock);
+      if (column.isNull(offsetInTsBlock)) {
+        columnBuilder.appendNull();
+      } else {
+        columnBuilder.write(column, offsetInTsBlock);
+      }
       channel++;
     }
 
@@ -192,6 +191,12 @@ public final class PartitionExecutor {
         && peerGroupComparator.equalColumnLists(
             sortedColumns, peerGroupStart - partitionStart, peerGroupEnd - partitionStart)) {
       peerGroupEnd++;
+    }
+  }
+
+  public void resetWindowFunctions() {
+    for (WindowFunction windowFunction : windowFunctions) {
+      windowFunction.reset();
     }
   }
 }

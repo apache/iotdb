@@ -34,11 +34,11 @@ public final class RelationalSqlKeywords {
   private RelationalSqlKeywords() {}
 
   public static Set<String> sqlKeywords() {
-    ImmutableSet.Builder<String> names = ImmutableSet.builder();
-    Vocabulary vocabulary = RelationalSqlLexer.VOCABULARY;
+    final ImmutableSet.Builder<String> names = ImmutableSet.builder();
+    final Vocabulary vocabulary = RelationalSqlLexer.VOCABULARY;
     for (int i = 0; i <= vocabulary.getMaxTokenType(); i++) {
-      String name = nullToEmpty(vocabulary.getLiteralName(i));
-      Matcher matcher = IDENTIFIER.matcher(name);
+      final String name = nullToEmpty(vocabulary.getLiteralName(i));
+      final Matcher matcher = IDENTIFIER.matcher(name);
       if (matcher.matches()) {
         names.add(matcher.group(1));
       }

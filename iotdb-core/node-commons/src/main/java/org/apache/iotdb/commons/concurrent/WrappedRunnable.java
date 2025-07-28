@@ -35,9 +35,9 @@ public abstract class WrappedRunnable implements Runnable {
 
   public abstract void runMayThrow() throws Throwable;
 
-  public static Runnable wrap(Runnable runnable) {
+  public static WrappedRunnable wrap(Runnable runnable) {
     if (runnable instanceof WrappedRunnable) {
-      return runnable;
+      return (WrappedRunnable) runnable;
     }
     return new WrappedRunnable() {
       @Override

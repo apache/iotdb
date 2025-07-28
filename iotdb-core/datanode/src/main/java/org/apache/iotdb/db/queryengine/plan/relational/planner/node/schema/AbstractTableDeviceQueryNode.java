@@ -45,32 +45,32 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
    * <p>The inner list represents the AND between different expression.
    *
    * <p>Each inner list represents a device pattern and each expression of it represents one
-   * condition on some id column.
+   * condition on some tag column.
    */
-  protected final List<List<SchemaFilter>> idDeterminedPredicateList;
+  protected final List<List<SchemaFilter>> tagDeterminedPredicateList;
 
-  /** filters/conditions involving non-id columns and concat by OR to id column filters */
-  protected final Expression idFuzzyPredicate;
+  /** filters/conditions involving non-tag columns and concat by OR to tag column filters */
+  protected final Expression tagFuzzyPredicate;
 
   protected AbstractTableDeviceQueryNode(
       final PlanNodeId planNodeId,
       final String database,
       final String tableName,
-      final List<List<SchemaFilter>> idDeterminedPredicateList,
-      final Expression idFuzzyPredicate,
+      final List<List<SchemaFilter>> tagDeterminedPredicateList,
+      final Expression tagFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList,
       final TDataNodeLocation senderLocation) {
     super(planNodeId, database, tableName, columnHeaderList, senderLocation);
-    this.idDeterminedPredicateList = idDeterminedPredicateList;
-    this.idFuzzyPredicate = idFuzzyPredicate;
+    this.tagDeterminedPredicateList = tagDeterminedPredicateList;
+    this.tagFuzzyPredicate = tagFuzzyPredicate;
   }
 
-  public List<List<SchemaFilter>> getIdDeterminedFilterList() {
-    return idDeterminedPredicateList;
+  public List<List<SchemaFilter>> getTagDeterminedFilterList() {
+    return tagDeterminedPredicateList;
   }
 
-  public Expression getIdFuzzyPredicate() {
-    return idFuzzyPredicate;
+  public Expression getTagFuzzyPredicate() {
+    return tagFuzzyPredicate;
   }
 
   @Override
@@ -79,17 +79,17 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     ReadWriteIOUtils.write(database, byteBuffer);
     ReadWriteIOUtils.write(tableName, byteBuffer);
 
-    ReadWriteIOUtils.write(idDeterminedPredicateList.size(), byteBuffer);
-    for (final List<SchemaFilter> filterList : idDeterminedPredicateList) {
+    ReadWriteIOUtils.write(tagDeterminedPredicateList.size(), byteBuffer);
+    for (final List<SchemaFilter> filterList : tagDeterminedPredicateList) {
       ReadWriteIOUtils.write(filterList.size(), byteBuffer);
       for (final SchemaFilter filter : filterList) {
         SchemaFilter.serialize(filter, byteBuffer);
       }
     }
 
-    ReadWriteIOUtils.write(idFuzzyPredicate == null ? (byte) 0 : (byte) 1, byteBuffer);
-    if (idFuzzyPredicate != null) {
-      Expression.serialize(idFuzzyPredicate, byteBuffer);
+    ReadWriteIOUtils.write(tagFuzzyPredicate == null ? (byte) 0 : (byte) 1, byteBuffer);
+    if (tagFuzzyPredicate != null) {
+      Expression.serialize(tagFuzzyPredicate, byteBuffer);
     }
 
     ReadWriteIOUtils.write(columnHeaderList.size(), byteBuffer);
@@ -111,17 +111,17 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);
 
-    ReadWriteIOUtils.write(idDeterminedPredicateList.size(), stream);
-    for (final List<SchemaFilter> filterList : idDeterminedPredicateList) {
+    ReadWriteIOUtils.write(tagDeterminedPredicateList.size(), stream);
+    for (final List<SchemaFilter> filterList : tagDeterminedPredicateList) {
       ReadWriteIOUtils.write(filterList.size(), stream);
       for (final SchemaFilter filter : filterList) {
         SchemaFilter.serialize(filter, stream);
       }
     }
 
-    ReadWriteIOUtils.write(idFuzzyPredicate == null ? (byte) 0 : (byte) 1, stream);
-    if (idFuzzyPredicate != null) {
-      Expression.serialize(idFuzzyPredicate, stream);
+    ReadWriteIOUtils.write(tagFuzzyPredicate == null ? (byte) 0 : (byte) 1, stream);
+    if (tagFuzzyPredicate != null) {
+      Expression.serialize(tagFuzzyPredicate, stream);
     }
 
     ReadWriteIOUtils.write(columnHeaderList.size(), stream);
@@ -142,18 +142,18 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     final String tableName = ReadWriteIOUtils.readString(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
-    final List<List<SchemaFilter>> idDeterminedFilterList = new ArrayList<>(size);
+    final List<List<SchemaFilter>> tagDeterminedFilterList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       final int singleSize = ReadWriteIOUtils.readInt(buffer);
-      idDeterminedFilterList.add(new ArrayList<>(singleSize));
+      tagDeterminedFilterList.add(new ArrayList<>(singleSize));
       for (int k = 0; k < singleSize; k++) {
-        idDeterminedFilterList.get(i).add(SchemaFilter.deserialize(buffer));
+        tagDeterminedFilterList.get(i).add(SchemaFilter.deserialize(buffer));
       }
     }
 
-    Expression idFuzzyFilter = null;
+    Expression tagFuzzyFilter = null;
     if (buffer.get() == 1) {
-      idFuzzyFilter = Expression.deserialize(buffer);
+      tagFuzzyFilter = Expression.deserialize(buffer);
     }
 
     size = ReadWriteIOUtils.readInt(buffer);
@@ -169,6 +169,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     }
 
     final long limit = isScan ? ReadWriteIOUtils.readLong(buffer) : 0;
+    final boolean needAligned = isScan ? ReadWriteIOUtils.readBool(buffer) : false;
 
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return isScan
@@ -176,17 +177,18 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
             planNodeId,
             database,
             tableName,
-            idDeterminedFilterList,
-            idFuzzyFilter,
+            tagDeterminedFilterList,
+            tagFuzzyFilter,
             columnHeaderList,
             senderLocation,
-            limit)
+            limit,
+            needAligned)
         : new TableDeviceQueryCountNode(
             planNodeId,
             database,
             tableName,
-            idDeterminedFilterList,
-            idFuzzyFilter,
+            tagDeterminedFilterList,
+            tagFuzzyFilter,
             columnHeaderList);
   }
 
@@ -204,8 +206,8 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     final AbstractTableDeviceQueryNode that = (AbstractTableDeviceQueryNode) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
-        && Objects.equals(idDeterminedPredicateList, that.idDeterminedPredicateList)
-        && Objects.equals(idFuzzyPredicate, that.idFuzzyPredicate)
+        && Objects.equals(tagDeterminedPredicateList, that.tagDeterminedPredicateList)
+        && Objects.equals(tagFuzzyPredicate, that.tagFuzzyPredicate)
         && Objects.equals(columnHeaderList, that.columnHeaderList)
         && Objects.equals(schemaRegionReplicaSet, that.schemaRegionReplicaSet);
   }
@@ -216,8 +218,8 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
         super.hashCode(),
         database,
         tableName,
-        idDeterminedPredicateList,
-        idFuzzyPredicate,
+        tagDeterminedPredicateList,
+        tagFuzzyPredicate,
         columnHeaderList,
         schemaRegionReplicaSet);
   }
@@ -229,10 +231,10 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
         + ", tableName='"
         + tableName
         + '\''
-        + ", idDeterminedFilterList="
-        + idDeterminedPredicateList
-        + ", idFuzzyFilter="
-        + idFuzzyPredicate
+        + ", tagDeterminedFilterList="
+        + tagDeterminedPredicateList
+        + ", tagFuzzyFilter="
+        + tagFuzzyPredicate
         + ", columnHeaderList="
         + columnHeaderList
         + ", schemaRegionReplicaSet="

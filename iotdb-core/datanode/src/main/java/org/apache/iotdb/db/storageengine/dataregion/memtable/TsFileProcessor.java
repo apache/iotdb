@@ -36,7 +36,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
@@ -110,6 +110,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
@@ -187,6 +188,8 @@ public class TsFileProcessor {
   /** Total memtable size for mem control. */
   private long totalMemTableSize;
 
+  private final AtomicBoolean isTotallyGeneratedByPipe = new AtomicBoolean(true);
+
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE =
       "{}: {} get flushQueryLock write lock released";
@@ -203,6 +206,8 @@ public class TsFileProcessor {
       QueryResourceMetricSet.getInstance();
 
   public static final int MEMTABLE_NOT_EXIST = -1;
+
+  private int walEntryNum = 0;
 
   @SuppressWarnings("squid:S107")
   public TsFileProcessor(
@@ -318,18 +323,18 @@ public class TsFileProcessor {
       // recordScheduleWalCost
       infoForMetrics[2] += System.nanoTime() - startTime;
     }
+    walEntryNum++;
 
     startTime = System.nanoTime();
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
     if (!insertRowNode.isGeneratedByPipe()) {
-      workMemTable.markAsNotGeneratedByPipe();
+      this.isTotallyGeneratedByPipe.set(false);
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
             dataRegionInfo.getDataRegion().getDatabaseName(),
-            walFlushListener.getWalEntryHandler(),
             insertRowNode,
             tsFileResource);
 
@@ -414,18 +419,18 @@ public class TsFileProcessor {
       // recordScheduleWalCost
       infoForMetrics[2] += System.nanoTime() - startTime;
     }
+    walEntryNum++;
 
     startTime = System.nanoTime();
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
     if (!insertRowsNode.isGeneratedByPipe()) {
-      workMemTable.markAsNotGeneratedByPipe();
+      this.isTotallyGeneratedByPipe.set(false);
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
             dataRegionInfo.getDataRegion().getDatabaseName(),
-            walFlushListener.getWalEntryHandler(),
             insertRowsNode,
             tsFileResource);
 
@@ -586,18 +591,18 @@ public class TsFileProcessor {
       // recordScheduleWalCost
       infoForMetrics[2] += System.nanoTime() - startTime;
     }
+    walEntryNum++;
 
     startTime = System.nanoTime();
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
     if (!insertTabletNode.isGeneratedByPipe()) {
-      workMemTable.markAsNotGeneratedByPipe();
+      this.isTotallyGeneratedByPipe.set(false);
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
             dataRegionInfo.getDataRegion().getDatabaseName(),
-            walFlushListener.getWalEntryHandler(),
             insertTabletNode,
             tsFileResource);
 
@@ -1207,10 +1212,12 @@ public class TsFileProcessor {
   }
 
   public WALFlushListener logDeleteDataNodeInWAL(DeleteDataNode deleteDataNode) {
+    walEntryNum++;
     return walNode.log(workMemTable.getMemTableId(), deleteDataNode);
   }
 
   public WALFlushListener logDeleteDataNodeInWAL(RelationalDeleteDataNode deleteDataNode) {
+    walEntryNum++;
     return walNode.log(workMemTable.getMemTableId(), deleteDataNode);
   }
 
@@ -1292,16 +1299,9 @@ public class TsFileProcessor {
       // we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
+      tsFileResource.setGeneratedByPipe(isTotallyGeneratedByPipe.get());
 
       try {
-        PipeInsertionDataNodeListener.getInstance()
-            .listenToTsFile(
-                dataRegionInfo.getDataRegion().getDataRegionId(),
-                dataRegionInfo.getDataRegion().getDatabaseName(),
-                tsFileResource,
-                false,
-                tmpMemTable.isTotallyGeneratedByPipe());
-
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
@@ -1436,6 +1436,7 @@ public class TsFileProcessor {
         .recordMemTableLiveDuration(System.currentTimeMillis() - getWorkMemTableCreatedTime());
     WritingMetrics.getInstance()
         .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), -1);
+    WritingMetrics.getInstance().recordWALEntryNumForOneTsFile(walEntryNum);
     workMemTable = null;
     return FlushManager.getInstance().registerTsFileProcessor(this);
   }
@@ -1731,6 +1732,16 @@ public class TsFileProcessor {
       logger.debug("Start to end file {}", tsFileResource);
     }
     writer.endFile();
+
+    // Listen after "endFile" to avoid unnecessary waiting for tsFile close
+    // before resource serialization to avoid missing hardlink after restart
+    PipeInsertionDataNodeListener.getInstance()
+        .listenToTsFile(
+            dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
+            tsFileResource,
+            false);
+
     tsFileResource.serialize();
     FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
     if (logger.isDebugEnabled()) {

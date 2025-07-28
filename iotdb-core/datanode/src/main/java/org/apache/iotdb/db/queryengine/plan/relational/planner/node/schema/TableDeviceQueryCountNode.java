@@ -40,15 +40,15 @@ public class TableDeviceQueryCountNode extends AbstractTableDeviceQueryNode {
       final PlanNodeId planNodeId,
       final String database,
       final String tableName,
-      final List<List<SchemaFilter>> idDeterminedPredicateList,
-      final Expression idFuzzyPredicate,
+      final List<List<SchemaFilter>> tagDeterminedPredicateList,
+      final Expression tagFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList) {
     super(
         planNodeId,
         database,
         tableName,
-        idDeterminedPredicateList,
-        idFuzzyPredicate,
+        tagDeterminedPredicateList,
+        tagFuzzyPredicate,
         columnHeaderList,
         null);
   }
@@ -79,8 +79,8 @@ public class TableDeviceQueryCountNode extends AbstractTableDeviceQueryNode {
         getPlanNodeId(),
         database,
         tableName,
-        idDeterminedPredicateList,
-        idFuzzyPredicate,
+        tagDeterminedPredicateList,
+        tagFuzzyPredicate,
         columnHeaderList);
   }
 

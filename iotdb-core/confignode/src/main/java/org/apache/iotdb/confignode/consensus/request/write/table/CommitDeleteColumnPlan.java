@@ -23,12 +23,20 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 public class CommitDeleteColumnPlan extends AbstractTableColumnPlan {
 
-  public CommitDeleteColumnPlan() {
-    super(ConfigPhysicalPlanType.CommitDeleteColumn);
+  public CommitDeleteColumnPlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   public CommitDeleteColumnPlan(
       final String database, final String tableName, final String columnName) {
-    super(ConfigPhysicalPlanType.CommitDeleteColumn, database, tableName, columnName);
+    this(ConfigPhysicalPlanType.CommitDeleteColumn, database, tableName, columnName);
+  }
+
+  protected CommitDeleteColumnPlan(
+      final ConfigPhysicalPlanType type,
+      final String database,
+      final String tableName,
+      final String columnName) {
+    super(type, database, tableName, columnName);
   }
 }

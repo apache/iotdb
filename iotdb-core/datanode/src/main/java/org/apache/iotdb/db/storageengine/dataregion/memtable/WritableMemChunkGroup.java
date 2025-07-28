@@ -54,7 +54,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       int end,
       TSStatus[] results) {
     for (int i = 0; i < columns.length; i++) {
-      if (columns[i] == null) {
+      if (columns[i] == null || schemaList.get(i) == null) {
         continue;
       }
       IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
@@ -97,7 +97,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   @Override
   public void writeRow(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
     for (int i = 0; i < objectValue.length; i++) {
-      if (objectValue[i] == null) {
+      if (objectValue[i] == null || schemaList.get(i) == null) {
         continue;
       }
       IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));

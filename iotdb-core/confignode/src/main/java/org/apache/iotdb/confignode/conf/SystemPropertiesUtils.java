@@ -63,7 +63,6 @@ public class SystemPropertiesUtils {
     throw new IllegalStateException("Utility class: SystemPropertiesUtils.");
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     systemPropertiesHandler.resetFilePath(
         ConfigNodeDescriptor.getInstance().getConf().getSystemDir()

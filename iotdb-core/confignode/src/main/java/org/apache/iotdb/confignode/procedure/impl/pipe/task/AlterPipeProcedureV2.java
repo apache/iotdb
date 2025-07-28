@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -102,17 +102,17 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final boolean checkSource =
         new PipeParameters(alterPipeRequest.getExtractorAttributes())
             .hasAnyAttributes(
-                PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY,
-                PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
-                PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
-                PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY);
+                PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+                PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+                PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+                PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
     final boolean checkSink =
         new PipeParameters(alterPipeRequest.getConnectorAttributes())
             .hasAnyAttributes(
-                PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY,
-                PipeConnectorConstant.SINK_IOTDB_USER_KEY,
-                PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
-                PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY);
+                PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+                PipeSinkConstant.SINK_IOTDB_USER_KEY,
+                PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+                PipeSinkConstant.SINK_IOTDB_USERNAME_KEY);
 
     pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
 
@@ -162,40 +162,50 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     final ConcurrentMap<Integer, PipeTaskMeta> updatedConsensusGroupIdToTaskMetaMap =
         new ConcurrentHashMap<>();
-    // data regions & schema regions
-    env.getConfigManager()
-        .getLoadManager()
-        .getRegionLeaderMap()
-        .forEach(
-            (regionGroupId, regionLeaderNodeId) -> {
-              final String databaseName =
-                  env.getConfigManager().getPartitionManager().getRegionDatabase(regionGroupId);
-              final PipeTaskMeta currentPipeTaskMeta =
-                  currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
-              if (databaseName != null
-                  && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
-                  && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
-                  && currentPipeTaskMeta != null
-                  && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
-                // Pipe only collect user's data, filter metric database here.
-                updatedConsensusGroupIdToTaskMetaMap.put(
-                    regionGroupId.getId(),
-                    new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
-              }
-            });
+    if (currentPipeStaticMeta.isSourceExternal()) {
+      currentConsensusGroupId2PipeTaskMeta.forEach(
+          (taskId, pipeTaskMeta) -> {
+            updatedConsensusGroupIdToTaskMetaMap.put(
+                taskId,
+                new PipeTaskMeta(pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderNodeId()));
+          });
+    } else {
+      // data regions & schema regions
+      env.getConfigManager()
+          .getLoadManager()
+          .getRegionLeaderMap()
+          .forEach(
+              (regionGroupId, regionLeaderNodeId) -> {
+                final String databaseName =
+                    env.getConfigManager().getPartitionManager().getRegionDatabase(regionGroupId);
+                final PipeTaskMeta currentPipeTaskMeta =
+                    currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
+                if (databaseName != null
+                    && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
+                    && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
+                    && currentPipeTaskMeta != null
+                    && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
+                  // Pipe only collect user's data, filter metric database here.
+                  updatedConsensusGroupIdToTaskMetaMap.put(
+                      regionGroupId.getId(),
+                      new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
+                }
+              });
 
-    final PipeTaskMeta configRegionTaskMeta =
-        currentConsensusGroupId2PipeTaskMeta.get(Integer.MIN_VALUE);
-    if (Objects.nonNull(configRegionTaskMeta)) {
-      // config region
-      updatedConsensusGroupIdToTaskMetaMap.put(
-          // 0 is the consensus group id of the config region, but data region id and schema region
-          // id also start from 0, so we use Integer.MIN_VALUE to represent the config region
-          Integer.MIN_VALUE,
-          new PipeTaskMeta(
-              configRegionTaskMeta.getProgressIndex(),
-              // The leader of the config region is the config node itself
-              ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+      final PipeTaskMeta configRegionTaskMeta =
+          currentConsensusGroupId2PipeTaskMeta.get(Integer.MIN_VALUE);
+      if (Objects.nonNull(configRegionTaskMeta)) {
+        // config region
+        updatedConsensusGroupIdToTaskMetaMap.put(
+            // 0 is the consensus group id of the config region, but data region id and schema
+            // region id also start from 0, so we use Integer.MIN_VALUE to represent the config
+            // region
+            Integer.MIN_VALUE,
+            new PipeTaskMeta(
+                configRegionTaskMeta.getProgressIndex(),
+                // The leader of the config region is the config node itself
+                ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+      }
     }
 
     updatedPipeRuntimeMeta = new PipeRuntimeMeta(updatedConsensusGroupIdToTaskMetaMap);

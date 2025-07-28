@@ -32,6 +32,13 @@ public abstract class AbstractSubscriptionLocalIT extends AbstractSubscriptionIT
   public void setUp() throws Exception {
     super.setUp();
 
+    // enable subscription
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSubscriptionEnabled(true)
+        .setIsPipeEnableMemoryCheck(false);
+
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

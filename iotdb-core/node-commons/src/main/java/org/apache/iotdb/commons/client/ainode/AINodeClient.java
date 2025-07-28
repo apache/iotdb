@@ -22,10 +22,14 @@ package org.apache.iotdb.commons.client.ainode;
 import org.apache.iotdb.ainode.rpc.thrift.IAINodeRPCService;
 import org.apache.iotdb.ainode.rpc.thrift.TConfigs;
 import org.apache.iotdb.ainode.rpc.thrift.TDeleteModelReq;
+import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
+import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelReq;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelResp;
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsReq;
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
 import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -53,9 +57,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
+import static org.apache.iotdb.rpc.TSStatusCode.INTERNAL_SERVER_ERROR;
 
 public class AINodeClient implements AutoCloseable, ThriftClient {
 
@@ -109,6 +115,22 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     return transport;
   }
 
+  public TSStatus stopAINode() throws TException {
+    try {
+      TSStatus status = client.stopAINode();
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new TException(status.message);
+      }
+      return status;
+    } catch (TException e) {
+      logger.warn(
+          "Failed to connect to AINode from ConfigNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
+      throw new TException(MSG_CONNECTION_FAIL);
+    }
+  }
+
   public ModelInformation registerModel(String modelName, String uri) throws LoadModelException {
     try {
       TRegisterModelReq req = new TRegisterModelReq(uri, modelName);
@@ -153,23 +175,26 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     }
   }
 
+  public TShowModelsResp showModels(TShowModelsReq req) throws TException {
+    try {
+      return client.showModels(req);
+    } catch (TException e) {
+      logger.warn(
+          "Failed to connect to AINode from ConfigNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
+      throw new TException(MSG_CONNECTION_FAIL);
+    }
+  }
+
   public TInferenceResp inference(
       String modelId,
-      List<String> inputColumnNames,
-      List<String> inputTypeList,
-      Map<String, Integer> columnIndexMap,
       TsBlock inputTsBlock,
       Map<String, String> inferenceAttributes,
       TWindowParams windowParams)
       throws TException {
     try {
-      TInferenceReq inferenceReq =
-          new TInferenceReq(
-              modelId,
-              tsBlockSerde.serialize(inputTsBlock),
-              inputTypeList,
-              inputColumnNames,
-              columnIndexMap);
+      TInferenceReq inferenceReq = new TInferenceReq(modelId, tsBlockSerde.serialize(inputTsBlock));
       if (windowParams != null) {
         inferenceReq.setWindowParams(windowParams);
       }
@@ -178,13 +203,34 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       }
       return client.inference(inferenceReq);
     } catch (IOException e) {
-      throw new TException("An exception occurred while serializing input tsblock", e);
+      throw new TException("An exception occurred while serializing input data", e);
     } catch (TException e) {
       logger.warn(
-          "Failed to connect to AINode from DataNode when executing {}: {}",
+          "Error happens in AINode when executing {}: {}",
           Thread.currentThread().getStackTrace()[1].getMethodName(),
           e.getMessage());
       throw new TException(MSG_CONNECTION_FAIL);
+    }
+  }
+
+  public TForecastResp forecast(
+      String modelId, TsBlock inputTsBlock, int outputLength, Map<String, String> options) {
+    try {
+      TForecastReq forecastReq =
+          new TForecastReq(modelId, tsBlockSerde.serialize(inputTsBlock), outputLength);
+      forecastReq.setOptions(options);
+      return client.forecast(forecastReq);
+    } catch (IOException e) {
+      TSStatus tsStatus = new TSStatus(INTERNAL_SERVER_ERROR.getStatusCode());
+      tsStatus.setMessage(String.format("Failed to serialize input tsblock %s", e.getMessage()));
+      return new TForecastResp(tsStatus);
+    } catch (TException e) {
+      TSStatus tsStatus = new TSStatus(CAN_NOT_CONNECT_AINODE.getStatusCode());
+      tsStatus.setMessage(
+          String.format(
+              "Failed to connect to AINode when executing %s: %s",
+              Thread.currentThread().getStackTrace()[1].getMethodName(), e.getMessage()));
+      return new TForecastResp(tsStatus);
     }
   }
 
@@ -193,7 +239,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       return client.createTrainingTask(req);
     } catch (TException e) {
       logger.warn(
-          "Failed to connect to AINode from DataNode when executing {}: {}",
+          "Failed to connect to AINode when executing {}: {}",
           Thread.currentThread().getStackTrace()[1].getMethodName(),
           e.getMessage());
       throw new TException(MSG_CONNECTION_FAIL);
@@ -202,7 +248,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   @Override
   public void close() throws Exception {
-    Optional.ofNullable(transport).ifPresent(TTransport::close);
+    clientManager.returnClient(endPoint, this);
   }
 
   @Override
@@ -231,7 +277,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     @Override
     public void destroyObject(TEndPoint tEndPoint, PooledObject<AINodeClient> pooledObject)
         throws Exception {
-      pooledObject.getObject().close();
+      pooledObject.getObject().invalidate();
     }
 
     @Override

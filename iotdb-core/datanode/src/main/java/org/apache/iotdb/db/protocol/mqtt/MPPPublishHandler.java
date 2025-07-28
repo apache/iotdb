@@ -91,6 +91,10 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onConnect(InterceptConnectMessage msg) {
+    if (msg.getClientID() == null || msg.getClientID().trim().isEmpty()) {
+      LOG.error(
+          "Connection refused: client_id is missing or empty. A valid client_id is required to establish a connection.");
+    }
     if (!clientIdToSessionMap.containsKey(msg.getClientID())) {
       MqttClientSession session = new MqttClientSession(msg.getClientID());
       sessionManager.login(
@@ -101,7 +105,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
           TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
           ClientVersion.V_1_0,
           useTableInsert ? IClientSession.SqlDialect.TABLE : IClientSession.SqlDialect.TREE);
-      sessionManager.registerSession(session);
+      sessionManager.registerSessionForMqtt(session);
       clientIdToSessionMap.put(msg.getClientID(), session);
     }
   }
@@ -110,7 +114,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   public void onDisconnect(InterceptDisconnectMessage msg) {
     MqttClientSession session = clientIdToSessionMap.remove(msg.getClientID());
     if (null != session) {
-      sessionManager.removeCurrSession();
+      sessionManager.removeCurrSessionForMqtt(session);
       sessionManager.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
     }
   }
@@ -136,7 +140,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
           topic,
           payload);
 
-      List<Message> messages = payloadFormat.format(payload);
+      List<Message> messages = payloadFormat.format(topic, payload);
       if (messages == null) {
         return;
       }
@@ -146,14 +150,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
           continue;
         }
         if (useTableInsert) {
-          TableMessage tableMessage = (TableMessage) message;
-          // '/' previously defined as a database name
-          String database =
-              !msg.getTopicName().contains("/")
-                  ? msg.getTopicName()
-                  : msg.getTopicName().substring(0, msg.getTopicName().indexOf("/"));
-          tableMessage.setDatabase(database);
-          insertTable(tableMessage, session);
+          insertTable((TableMessage) message, session);
         } else {
           insertTree((TreeMessage) message, session);
         }

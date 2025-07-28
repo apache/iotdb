@@ -40,7 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.Predic
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
@@ -68,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -106,6 +107,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTim
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ExpressionSymbolInliner.inlineSymbols;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor.extractUnique;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
@@ -119,7 +121,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinN
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.ONLY_SUPPORT_EQUI_JOIN;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.UNSUPPORTED_JOIN_CRITERIA;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processInnerJoin;
@@ -443,7 +445,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       // no predicate, just scan all matched deviceEntries
       if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
-        getDeviceEntriesWithDataPartitions(tableScanNode, Collections.emptyList(), null);
+        getDeviceEntriesWithDataPartitions(tableScanNode, Collections.emptyList());
         return tableScanNode;
       }
 
@@ -482,10 +484,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       // do index scan after expressionCanPushDown is processed
-      getDeviceEntriesWithDataPartitions(
-          tableScanNode,
-          splitExpression.getMetadataExpressions(),
-          splitExpression.getTimeColumnName());
+      getDeviceEntriesWithDataPartitions(tableScanNode, splitExpression.getMetadataExpressions());
 
       // exist expressions can not push down to scan operator
       if (!splitExpression.getExpressionsCannotPushDown().isEmpty()) {
@@ -503,16 +502,16 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     private SplitExpression splitPredicate(DeviceTableScanNode node, Expression predicate) {
       Set<String> idOrAttributeColumnNames = new HashSet<>(node.getAssignments().size());
-      Set<String> measurementColumnNames = new HashSet<>(node.getAssignments().size());
+      Set<String> timeOrMeasurementColumnNames = new HashSet<>(node.getAssignments().size());
       String timeColumnName = null;
       for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
         Symbol columnSymbol = entry.getKey();
         ColumnSchema columnSchema = entry.getValue();
         if (TIME.equals(columnSchema.getColumnCategory())) {
-          measurementColumnNames.add(columnSymbol.getName());
+          timeOrMeasurementColumnNames.add(columnSymbol.getName());
           timeColumnName = columnSymbol.getName();
         } else if (FIELD.equals(columnSchema.getColumnCategory())) {
-          measurementColumnNames.add(columnSymbol.getName());
+          timeOrMeasurementColumnNames.add(columnSymbol.getName());
         } else {
           idOrAttributeColumnNames.add(columnSymbol.getName());
         }
@@ -529,7 +528,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, expression)) {
             metadataExpressions.add(expression);
           } else if (PredicateCombineIntoTableScanChecker.check(
-              measurementColumnNames, expression)) {
+              timeOrMeasurementColumnNames, expression)) {
             expressionsCanPushDown.add(expression);
           } else {
             expressionsCannotPushDown.add(expression);
@@ -542,7 +541,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, predicate)) {
         metadataExpressions.add(predicate);
-      } else if (PredicateCombineIntoTableScanChecker.check(measurementColumnNames, predicate)) {
+      } else if (PredicateCombineIntoTableScanChecker.check(
+          timeOrMeasurementColumnNames, predicate)) {
         expressionsCanPushDown.add(predicate);
       } else {
         expressionsCannotPushDown.add(predicate);
@@ -553,9 +553,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private void getDeviceEntriesWithDataPartitions(
-        final DeviceTableScanNode tableScanNode,
-        final List<Expression> metadataExpressions,
-        String timeColumnName) {
+        final DeviceTableScanNode tableScanNode, final List<Expression> metadataExpressions) {
 
       final List<String> attributeColumns = new ArrayList<>();
       int attributeIndex = 0;
@@ -565,12 +563,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         final ColumnSchema columnSchema = entry.getValue();
         if (ATTRIBUTE.equals(columnSchema.getColumnCategory())) {
           attributeColumns.add(columnSchema.getName());
-          tableScanNode.getIdAndAttributeIndexMap().put(columnSymbol, attributeIndex++);
+          tableScanNode.getTagAndAttributeIndexMap().put(columnSymbol, attributeIndex++);
         }
       }
 
       long startTime = System.nanoTime();
-      final List<DeviceEntry> deviceEntries =
+      final Map<String, List<DeviceEntry>> deviceEntriesMap =
           metadata.indexScan(
               tableScanNode.getQualifiedObjectName(),
               metadataExpressions.stream()
@@ -581,10 +579,24 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                   .collect(Collectors.toList()),
               attributeColumns,
               queryContext);
+      if (deviceEntriesMap.size() > 1) {
+        throw new SemanticException("Tree device view with multiple databases is unsupported yet.");
+      }
+      final String deviceDatabase =
+          !deviceEntriesMap.isEmpty() ? deviceEntriesMap.keySet().iterator().next() : null;
+      final List<DeviceEntry> deviceEntries =
+          Objects.nonNull(deviceDatabase)
+              ? deviceEntriesMap.get(deviceDatabase)
+              : Collections.emptyList();
+
       tableScanNode.setDeviceEntries(deviceEntries);
       if (deviceEntries.stream()
-          .anyMatch(deviceEntry -> deviceEntry instanceof NonAlignedAlignedDeviceEntry)) {
+          .anyMatch(deviceEntry -> deviceEntry instanceof NonAlignedDeviceEntry)) {
         tableScanNode.setContainsNonAlignedDevice();
+      }
+
+      if (tableScanNode instanceof TreeDeviceViewScanNode) {
+        ((TreeDeviceViewScanNode) tableScanNode).setTreeDBName(deviceDatabase);
       }
 
       final long schemaFetchCost = System.nanoTime() - startTime;
@@ -601,7 +613,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         final Filter timeFilter =
             tableScanNode
                 .getTimePredicate()
-                .map(value -> value.accept(new ConvertPredicateToTimeFilterVisitor(), null))
+                .map(
+                    value ->
+                        value.accept(
+                            new ConvertPredicateToTimeFilterVisitor(
+                                queryContext.getZoneId(), TimestampPrecisionUtils.currPrecision),
+                            null))
                 .orElse(null);
 
         tableScanNode.setTimeFilter(timeFilter);
@@ -611,7 +628,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             fetchDataPartitionByDevices(
                 // for tree view, we need to pass actual tree db name to this method
                 tableScanNode instanceof TreeDeviceViewScanNode
-                    ? ((TreeDeviceViewScanNode) tableScanNode).getTreeDBName()
+                    ? deviceDatabase
                     : tableScanNode.getQualifiedObjectName().getDatabaseName(),
                 deviceEntries,
                 timeFilter);
@@ -737,8 +754,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
           equiJoinClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
         } else {
+          if (conjunct.equals(TRUE_LITERAL) && node.getAsofCriteria().isPresent()) {
+            continue;
+          }
           if (node.getJoinType() != INNER) {
-            throw new SemanticException(ONLY_SUPPORT_EQUI_JOIN);
+            throw new SemanticException(String.format(UNSUPPORTED_JOIN_CRITERIA, conjunct));
           }
           joinFilterBuilder.add(conjunct);
         }
@@ -811,6 +831,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 leftSource,
                 rightSource,
                 equiJoinClauses,
+                node.getAsofCriteria(),
                 leftSource.getOutputSymbols(),
                 rightSource.getOutputSymbols(),
                 newJoinFilter,
@@ -874,6 +895,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     private void appendSortNodeForMergeSortJoin(JoinNode joinNode) {
       int size = joinNode.getCriteria().size();
+      JoinNode.AsofJoinClause asofJoinClause = joinNode.getAsofCriteria().orElse(null);
+      if (asofJoinClause != null) {
+        size++;
+      }
       List<Symbol> leftOrderBy = new ArrayList<>(size);
       List<Symbol> rightOrderBy = new ArrayList<>(size);
       Map<Symbol, SortOrder> leftOrderings = new HashMap<>(size);
@@ -883,6 +908,15 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         leftOrderings.put(equiJoinClause.getLeft(), ASC_NULLS_LAST);
         rightOrderBy.add(equiJoinClause.getRight());
         rightOrderings.put(equiJoinClause.getRight(), ASC_NULLS_LAST);
+      }
+      if (asofJoinClause != null) {
+        // if operator of AsofJoinClause is '>' or '>=', use DESC ordering for convenience of
+        // process in BE
+        boolean needDesc = asofJoinClause.isOperatorContainsGreater();
+        leftOrderBy.add(asofJoinClause.getLeft());
+        leftOrderings.put(asofJoinClause.getLeft(), needDesc ? DESC_NULLS_LAST : ASC_NULLS_LAST);
+        rightOrderBy.add(asofJoinClause.getRight());
+        rightOrderings.put(asofJoinClause.getRight(), needDesc ? DESC_NULLS_LAST : ASC_NULLS_LAST);
       }
       OrderingScheme leftOrderingScheme = new OrderingScheme(leftOrderBy, leftOrderings);
       OrderingScheme rightOrderingScheme = new OrderingScheme(rightOrderBy, rightOrderings);
@@ -1174,6 +1208,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               node.getLeftChild(),
               node.getRightChild(),
               node.getCriteria(),
+              node.getAsofCriteria(),
               node.getLeftOutputSymbols(),
               node.getRightOutputSymbols(),
               node.getFilter(),
@@ -1186,6 +1221,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               node.getLeftChild(),
               node.getRightChild(),
               node.getCriteria(),
+              node.getAsofCriteria(),
               node.getLeftOutputSymbols(),
               node.getRightOutputSymbols(),
               node.getFilter(),
@@ -1220,6 +1256,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           node.getLeftChild(),
           node.getRightChild(),
           node.getCriteria(),
+          node.getAsofCriteria(),
           node.getLeftOutputSymbols(),
           node.getRightOutputSymbols(),
           node.getFilter(),

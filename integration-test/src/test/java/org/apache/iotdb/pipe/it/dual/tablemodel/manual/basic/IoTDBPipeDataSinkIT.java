@@ -130,20 +130,25 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testSinkTabletFormat() throws Exception {
-    testSinkFormat("tablet");
+    testSinkFormat("tablet", false);
   }
 
   @Test
   public void testSinkTsFileFormat() throws Exception {
-    testSinkFormat("tsfile");
+    testSinkFormat("tsfile", false);
+  }
+
+  @Test
+  public void testTsFileFormatAndAsyncLoad() throws Exception {
+    testSinkFormat("tsfile", true);
   }
 
   @Test
   public void testSinkHybridFormat() throws Exception {
-    testSinkFormat("hybrid");
+    testSinkFormat("hybrid", false);
   }
 
-  private void testSinkFormat(final String format) throws Exception {
+  private void testSinkFormat(final String format, final boolean isAsyncLoad) throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -179,6 +184,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.format", format);
+      connectorAttributes.put("connector.load-tsfile-strategy", isAsyncLoad ? "async" : "sync");
       connectorAttributes.put("connector.realtime-first", "false");
 
       Assert.assertEquals(

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -32,12 +33,14 @@ import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
@@ -555,7 +558,6 @@ public class ConfigMTree {
           protected boolean shouldVisitSubtreeOfFullMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return node.getSchemaTemplateId() == NON_TEMPLATE
-                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
 
@@ -563,7 +565,6 @@ public class ConfigMTree {
           protected boolean shouldVisitSubtreeOfInternalMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return node.getSchemaTemplateId() == NON_TEMPLATE
-                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfInternalMatchedNode(node);
           }
         }) {
@@ -572,7 +573,10 @@ public class ConfigMTree {
     return resSet;
   }
 
-  /** This method returns the templateId set on paths covered by input path pattern. */
+  /**
+   * This method returns the templateId set on paths if the path set matches or is a prefix of input
+   * path pattern.
+   */
   public Map<Integer, Set<PartialPath>> getTemplateSetInfo(final PartialPath pathPattern)
       throws MetadataException {
     final Map<Integer, Set<PartialPath>> result = new HashMap<>();
@@ -603,7 +607,6 @@ public class ConfigMTree {
           protected boolean shouldVisitSubtreeOfFullMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return node.getSchemaTemplateId() == NON_TEMPLATE
-                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
 
@@ -611,7 +614,6 @@ public class ConfigMTree {
           protected boolean shouldVisitSubtreeOfInternalMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return node.getSchemaTemplateId() == NON_TEMPLATE
-                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfInternalMatchedNode(node);
           }
         }) {
@@ -677,6 +679,26 @@ public class ConfigMTree {
     }
   }
 
+  public void preCreateTableView(
+      final PartialPath database, final TsTable table, final TableNodeStatus status)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    final IConfigMNode node = databaseNode.getChild(table.getTableName());
+    if (Objects.nonNull(node)) {
+      if (!TreeViewSchema.isTreeViewTable(((ConfigTableNode) node).getTable())) {
+        throw new TableAlreadyExistsException(
+            database.getFullPath().substring(ROOT.length() + 1), table.getTableName());
+      }
+      databaseNode.deleteChild(table.getTableName());
+    }
+    final ConfigTableNode tableNode =
+        (ConfigTableNode)
+            databaseNode.addChild(
+                table.getTableName(), new ConfigTableNode(databaseNode, table.getTableName()));
+    tableNode.setTable(table);
+    tableNode.setStatus(status);
+  }
+
   public void rollbackCreateTable(final PartialPath database, final String tableName)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
@@ -697,7 +719,8 @@ public class ConfigMTree {
     tableNode.setStatus(TableNodeStatus.USING);
   }
 
-  public void preDeleteTable(final PartialPath database, final String tableName)
+  public void preDeleteTable(
+      final PartialPath database, final String tableName, final boolean isView)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
     if (!databaseNode.hasChild(tableName)) {
@@ -705,6 +728,15 @@ public class ConfigMTree {
           database.getFullPath().substring(ROOT.length() + 1), tableName);
     }
     final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    final Optional<Pair<TSStatus, TsTable>> check =
+        ClusterSchemaManager.checkTable4View(
+            database.getTailNode(),
+            ((ConfigTableNode) databaseNode.getChild(tableName)).getTable(),
+            isView);
+    if (check.isPresent()) {
+      throw new SemanticException(
+          check.get().getLeft().getMessage(), check.get().getLeft().getCode());
+    }
     if (tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
       throw new IllegalStateException();
     }
@@ -717,10 +749,38 @@ public class ConfigMTree {
     store.deleteChild(databaseNode, tableName);
   }
 
+  public void renameTable(final PartialPath database, final String tableName, final String newName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    store.deleteChild(databaseNode, tableName);
+    tableNode.setName(newName);
+    store.addChild(databaseNode, newName, tableNode);
+  }
+
+  public void renameTableColumn(
+      final PartialPath database,
+      final String tableName,
+      final String oldName,
+      final String newName)
+      throws MetadataException {
+    final ConfigTableNode tableNode = getTableNode(database, tableName);
+    tableNode.getTable().renameColumnSchema(oldName, newName);
+  }
+
   public void setTableComment(
-      final PartialPath database, final String tableName, final String comment)
+      final PartialPath database,
+      final String tableName,
+      final String comment,
+      final boolean isView)
       throws MetadataException {
     final TsTable table = getTable(database, tableName);
+    final Optional<Pair<TSStatus, TsTable>> check =
+        ClusterSchemaManager.checkTable4View(database.getTailNode(), table, isView);
+    if (check.isPresent()) {
+      throw new SemanticException(
+          check.get().getLeft().getMessage(), check.get().getLeft().getCode());
+    }
     if (Objects.nonNull(comment)) {
       table.addProp(TsTable.COMMENT_KEY, comment);
     } else {
@@ -865,15 +925,6 @@ public class ConfigMTree {
     columnSchemaList.forEach(o -> table.removeColumnSchema(o.getColumnName()));
   }
 
-  public void renameTableColumn(
-      final PartialPath database,
-      final String tableName,
-      final String oldName,
-      final String newName)
-      throws MetadataException {
-    getTable(database, tableName).renameColumnSchema(oldName, newName);
-  }
-
   public void setTableProperties(
       final PartialPath database, final String tableName, final Map<String, String> tableProperties)
       throws MetadataException {
@@ -900,9 +951,19 @@ public class ConfigMTree {
   // Return true if removed column is an attribute column
   // false if measurement column
   public boolean preDeleteColumn(
-      final PartialPath database, final String tableName, final String columnName)
+      final PartialPath database,
+      final String tableName,
+      final String columnName,
+      final boolean isView)
       throws MetadataException, SemanticException {
     final ConfigTableNode node = getTableNode(database, tableName);
+    final Optional<Pair<TSStatus, TsTable>> check =
+        ClusterSchemaManager.checkTable4View(database.getTailNode(), node.getTable(), isView);
+    if (check.isPresent()) {
+      throw new SemanticException(
+          check.get().getLeft().getMessage(), check.get().getLeft().getCode());
+    }
+
     final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);
     if (Objects.isNull(columnSchema)) {
       throw new ColumnNotExistsException(
@@ -950,14 +1011,14 @@ public class ConfigMTree {
     return getTableNode(database, tableName).getTable();
   }
 
-  public Optional<TsTable> getTableIfExists(final PartialPath database, final String tableName)
-      throws MetadataException {
+  public Optional<Pair<TsTable, TableNodeStatus>> getTableAndStatusIfExists(
+      final PartialPath database, final String tableName) throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
     if (!databaseNode.hasChild(tableName)) {
       return Optional.empty();
     }
     final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
-    return Optional.of(tableNode.getTable());
+    return Optional.of(new Pair<>(tableNode.getTable(), tableNode.getStatus()));
   }
 
   private ConfigTableNode getTableNode(final PartialPath database, final String tableName)

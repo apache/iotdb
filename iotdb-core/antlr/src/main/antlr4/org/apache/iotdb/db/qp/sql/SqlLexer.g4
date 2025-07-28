@@ -153,6 +153,10 @@ CLUSTERID
     : C L U S T E R I D
     ;
 
+COMMENT
+    : C O M M E N T
+    ;
+
 CONCAT
     : C O N C A T
     ;
@@ -258,6 +262,10 @@ DELETE
     : D E L E T E
     ;
 
+DEFAULT
+    : D E F A U L T
+    ;
+
 DESC
     : D E S C
     ;
@@ -328,6 +336,10 @@ EXTRACTOR
 
 FALSE
     : F A L S E
+    ;
+
+FIELD
+    : F I E L D
     ;
 
 FILL
@@ -484,6 +496,10 @@ METADATA
 
 MIGRATE
     : M I G R A T E
+    ;
+
+AINODE
+    : A I N O D E
     ;
 
 AINODES
@@ -706,6 +722,10 @@ REPLACE
     : R E P L A C E
     ;
 
+RESTRICT
+    : R E S T R I C T
+    ;
+
 REVOKE
     : R E V O K E
     ;
@@ -810,6 +830,10 @@ STOP
     : S T O P
     ;
 
+SUBSCRIPTION
+    : S U B S C R I P T I O N
+    ;
+
 SUBSCRIPTIONS
     : S U B S C R I P T I O N S
     ;
@@ -824,6 +848,10 @@ SYSTEM
 
 TABLE
     : T A B L E
+    ;
+
+TAG
+    : T A G
     ;
 
 TAGS

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.resource.memory.strategy.ThresholdAllocationStrategy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +47,7 @@ public class PipeMemoryManager {
       PipeConfig.getInstance().getPipeMemoryManagementEnabled();
 
   // TODO @spricoder: consider combine memory block and used MemorySizeInBytes
-  private IMemoryBlock memoryBlock =
+  private final IMemoryBlock memoryBlock =
       IoTDBDescriptor.getInstance()
           .getMemoryConfig()
           .getPipeMemoryManager()
@@ -57,9 +58,6 @@ public class PipeMemoryManager {
   private volatile long usedMemorySizeInBytesOfTablets;
 
   private volatile long usedMemorySizeInBytesOfTsFiles;
-
-  private static final double FLOATING_MEMORY_RATIO =
-      PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion();
 
   // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
@@ -225,6 +223,39 @@ public class PipeMemoryManager {
     }
   }
 
+  public PipeModelFixedMemoryBlock forceAllocateForModelFixedMemoryBlock(
+      long fixedSizeInBytes, PipeMemoryBlockType type)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      return new PipeModelFixedMemoryBlock(Long.MAX_VALUE, new ThresholdAllocationStrategy());
+    }
+
+    if (fixedSizeInBytes == 0) {
+      return (PipeModelFixedMemoryBlock) registerMemoryBlock(0, type);
+    }
+
+    for (int i = 1, size = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries(); i <= size; i++) {
+      if (getFreeMemorySizeInBytes() >= fixedSizeInBytes) {
+        break;
+      }
+
+      try {
+        Thread.sleep(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
+      } catch (InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
+      }
+    }
+
+    synchronized (this) {
+      if (getFreeMemorySizeInBytes() < fixedSizeInBytes) {
+        return (PipeModelFixedMemoryBlock) forceAllocateWithRetry(getFreeMemorySizeInBytes(), type);
+      }
+
+      return (PipeModelFixedMemoryBlock) forceAllocateWithRetry(fixedSizeInBytes, type);
+    }
+  }
+
   private PipeMemoryBlock forceAllocateWithRetry(long sizeInBytes, PipeMemoryBlockType type)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
@@ -233,6 +264,9 @@ public class PipeMemoryManager {
           return new PipeTabletMemoryBlock(sizeInBytes);
         case TS_FILE:
           return new PipeTsFileMemoryBlock(sizeInBytes);
+        case BATCH:
+        case WAL:
+          return new PipeModelFixedMemoryBlock(sizeInBytes, new ThresholdAllocationStrategy());
         default:
           return new PipeMemoryBlock(sizeInBytes);
       }
@@ -466,6 +500,11 @@ public class PipeMemoryManager {
       case TS_FILE:
         returnedMemoryBlock = new PipeTsFileMemoryBlock(sizeInBytes);
         break;
+      case BATCH:
+      case WAL:
+        returnedMemoryBlock =
+            new PipeModelFixedMemoryBlock(sizeInBytes, new ThresholdAllocationStrategy());
+        break;
       default:
         returnedMemoryBlock = new PipeMemoryBlock(sizeInBytes);
         break;
@@ -592,15 +631,29 @@ public class PipeMemoryManager {
     return usedMemorySizeInBytesOfTsFiles;
   }
 
+  public long getAllocatedMemorySizeInBytesOfBatch() {
+    return (long)
+        (PipeConfig.getInstance().getPipeDataStructureBatchMemoryProportion()
+            * getTotalNonFloatingMemorySizeInBytes());
+  }
+
   public long getFreeMemorySizeInBytes() {
     return memoryBlock.getFreeMemoryInBytes();
   }
 
   public long getTotalNonFloatingMemorySizeInBytes() {
-    return (long) (memoryBlock.getTotalMemorySizeInBytes() * (1 - FLOATING_MEMORY_RATIO));
+    return (long)
+        (memoryBlock.getTotalMemorySizeInBytes()
+            * (1 - PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion()));
   }
 
   public long getTotalFloatingMemorySizeInBytes() {
-    return (long) (memoryBlock.getTotalMemorySizeInBytes() * FLOATING_MEMORY_RATIO);
+    return (long)
+        (memoryBlock.getTotalMemorySizeInBytes()
+            * PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion());
+  }
+
+  public long getTotalMemorySizeInBytes() {
+    return memoryBlock.getTotalMemorySizeInBytes();
   }
 }

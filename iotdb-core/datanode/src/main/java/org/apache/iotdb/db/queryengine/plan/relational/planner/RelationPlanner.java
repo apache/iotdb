@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -38,6 +39,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.AggregationDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ClassifierDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.MatchNumberDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.Navigation;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ScalarInputDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
@@ -51,15 +58,33 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Measure;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowsPerMatch;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SkipToPosition;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationLabelSet;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers.Assignment;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrRowPattern;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.LogicalIndexPointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.MatchNumberValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.RowPatternToIrRewriter;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ScalarValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
@@ -68,20 +93,29 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MeasureDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.VariableDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -91,11 +125,13 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -104,16 +140,30 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import static com.google.gson.internal.$Gson$Preconditions.checkArgument;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.NavigationAnchor.LAST;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.NavigationMode.RUNNING;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerce;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.extractPatternRecognitionExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractPredicates;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.CROSS;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.IMPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.INNER;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.LEFT;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.Position.PAST_LAST;
+import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.StringType.STRING;
 
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
@@ -192,7 +242,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
     // on the basis of that the order of fields is same with the column category order of segments
     // in DeviceEntry
-    final Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>();
+    final Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>();
     int idIndex = 0;
     for (final Field field : fields) {
       final TsTableColumnCategory category = field.getColumnCategory();
@@ -203,7 +253,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           new ColumnSchema(
               field.getName().orElse(null), field.getType(), field.isHidden(), category));
       if (category == TsTableColumnCategory.TAG) {
-        idAndAttributeIndexMap.put(symbol, idIndex++);
+        tagAndAttributeIndexMap.put(symbol, idIndex++);
       }
     }
 
@@ -221,9 +271,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
               qualifiedObjectName,
               outputSymbols,
               tableColumnSchema,
-              idAndAttributeIndexMap,
-              treeDeviceViewSchema.getTreeDBName(),
-              treeDeviceViewSchema.getMeasurementColumnNameMap()),
+              tagAndAttributeIndexMap,
+              null,
+              treeDeviceViewSchema.getColumn2OriginalNameMap()),
           scope,
           outputSymbols,
           outerContext);
@@ -238,7 +288,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
                 qualifiedObjectName,
                 outputSymbols,
                 tableColumnSchema,
-                idAndAttributeIndexMap);
+                tagAndAttributeIndexMap);
     return new RelationPlan(tableScanNode, scope, outputSymbols, outerContext);
 
     // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);
@@ -277,8 +327,17 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       return planJoinUsing(node, leftPlan, rightPlan);
     }
 
+    Expression asofCriteria = null;
+    if (node.getCriteria().isPresent()) {
+      JoinCriteria criteria = node.getCriteria().get();
+      checkArgument(criteria instanceof JoinOn);
+      if (criteria instanceof AsofJoinOn) {
+        asofCriteria = ((AsofJoinOn) criteria).getAsofExpression();
+      }
+    }
     return planJoin(
         analysis.getJoinCriteria(node),
+        asofCriteria,
         node.getType(),
         analysis.getScope(node),
         leftPlan,
@@ -364,10 +423,15 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             leftCoercion,
             rightCoercion,
             clauses.build(),
+            Optional.empty(),
             leftCoercion.getOutputSymbols(),
             rightCoercion.getOutputSymbols(),
             Optional.empty(),
             Optional.empty());
+    // Transform RIGHT JOIN to LEFT
+    if (join.getJoinType() == JoinNode.JoinType.RIGHT) {
+      join = join.flip();
+    }
 
     // Add a projection to produce the outputs of the columns in the USING clause,
     // which are defined as coalesce(l.k, r.k)
@@ -377,7 +441,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     for (Identifier column : joinColumns) {
       Symbol output = symbolAllocator.newSymbol(column, analysis.getType(column));
       outputs.add(output);
-      if (node.getType() == INNER) {
+      if (node.getType() == INNER || node.getType() == LEFT) {
         assignments.put(output, leftJoinColumns.get(column).toSymbolReference());
       } else if (node.getType() == FULL) {
         assignments.put(
@@ -385,6 +449,10 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             new CoalesceExpression(
                 leftJoinColumns.get(column).toSymbolReference(),
                 rightJoinColumns.get(column).toSymbolReference()));
+      } else if (node.getType() == RIGHT) {
+        assignments.put(output, rightJoinColumns.get(column).toSymbolReference());
+      } else {
+        throw new IllegalStateException("Unexpected Join Type: " + node.getType());
       }
     }
 
@@ -409,6 +477,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
   public RelationPlan planJoin(
       Expression criteria,
+      Expression asofCriteria,
       Join.Type type,
       Scope scope,
       RelationPlan leftPlan,
@@ -427,6 +496,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         newPlanBuilder(rightPlan, analysis).withScope(scope, outputSymbols);
 
     ImmutableList.Builder<JoinNode.EquiJoinClause> equiClauses = ImmutableList.builder();
+    Optional<JoinNode.AsofJoinClause> asofJoinClause = Optional.empty();
     List<Expression> complexJoinExpressions = new ArrayList<>();
     List<Expression> postInnerJoinConditions = new ArrayList<>();
 
@@ -438,49 +508,79 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       List<Expression> rightComparisonExpressions = new ArrayList<>();
       List<ComparisonExpression.Operator> joinConditionComparisonOperators = new ArrayList<>();
 
-      for (Expression conjunct : extractPredicates(LogicalExpression.Operator.AND, criteria)) {
-        if (!isEqualComparisonExpression(conjunct) && type != INNER) {
-          complexJoinExpressions.add(conjunct);
-          continue;
+      if (asofCriteria != null) {
+        Expression firstExpression = ((ComparisonExpression) asofCriteria).getLeft();
+        Expression secondExpression = ((ComparisonExpression) asofCriteria).getRight();
+        ComparisonExpression.Operator comparisonOperator =
+            ((ComparisonExpression) asofCriteria).getOperator();
+        Set<QualifiedName> firstDependencies =
+            SymbolsExtractor.extractNames(firstExpression, analysis.getColumnReferences());
+        Set<QualifiedName> secondDependencies =
+            SymbolsExtractor.extractNames(secondExpression, analysis.getColumnReferences());
+
+        if (firstDependencies.stream().allMatch(left::canResolve)
+            && secondDependencies.stream().allMatch(right::canResolve)) {
+          leftComparisonExpressions.add(firstExpression);
+          rightComparisonExpressions.add(secondExpression);
+          joinConditionComparisonOperators.add(comparisonOperator);
+        } else if (firstDependencies.stream().allMatch(right::canResolve)
+            && secondDependencies.stream().allMatch(left::canResolve)) {
+          leftComparisonExpressions.add(secondExpression);
+          rightComparisonExpressions.add(firstExpression);
+          joinConditionComparisonOperators.add(comparisonOperator.flip());
+        } else {
+          // the case when we mix symbols from both left and right join side on either side of
+          // condition.
+          throw new SemanticException(
+              format("Complex ASOF main join expression [%s] is not supported", asofCriteria));
         }
+      }
 
-        Set<QualifiedName> dependencies =
-            SymbolsExtractor.extractNames(conjunct, analysis.getColumnReferences());
+      if (criteria != null) {
+        for (Expression conjunct : extractPredicates(LogicalExpression.Operator.AND, criteria)) {
+          if (!isEqualComparisonExpression(conjunct) && type != INNER) {
+            complexJoinExpressions.add(conjunct);
+            continue;
+          }
 
-        if (dependencies.stream().allMatch(left::canResolve)
-            || dependencies.stream().allMatch(right::canResolve)) {
-          // If the conjunct can be evaluated entirely with the inputs on either side of the join,
-          // add
-          // it to the list complex expressions and let the optimizers figure out how to push it
-          // down later.
-          complexJoinExpressions.add(conjunct);
-        } else if (conjunct instanceof ComparisonExpression) {
-          Expression firstExpression = ((ComparisonExpression) conjunct).getLeft();
-          Expression secondExpression = ((ComparisonExpression) conjunct).getRight();
-          ComparisonExpression.Operator comparisonOperator =
-              ((ComparisonExpression) conjunct).getOperator();
-          Set<QualifiedName> firstDependencies =
-              SymbolsExtractor.extractNames(firstExpression, analysis.getColumnReferences());
-          Set<QualifiedName> secondDependencies =
-              SymbolsExtractor.extractNames(secondExpression, analysis.getColumnReferences());
+          Set<QualifiedName> dependencies =
+              SymbolsExtractor.extractNames(conjunct, analysis.getColumnReferences());
 
-          if (firstDependencies.stream().allMatch(left::canResolve)
-              && secondDependencies.stream().allMatch(right::canResolve)) {
-            leftComparisonExpressions.add(firstExpression);
-            rightComparisonExpressions.add(secondExpression);
-            joinConditionComparisonOperators.add(comparisonOperator);
-          } else if (firstDependencies.stream().allMatch(right::canResolve)
-              && secondDependencies.stream().allMatch(left::canResolve)) {
-            leftComparisonExpressions.add(secondExpression);
-            rightComparisonExpressions.add(firstExpression);
-            joinConditionComparisonOperators.add(comparisonOperator.flip());
+          if (dependencies.stream().allMatch(left::canResolve)
+              || dependencies.stream().allMatch(right::canResolve)) {
+            // If the conjunct can be evaluated entirely with the inputs on either side of the join,
+            // add
+            // it to the list complex expressions and let the optimizers figure out how to push it
+            // down later.
+            complexJoinExpressions.add(conjunct);
+          } else if (conjunct instanceof ComparisonExpression) {
+            Expression firstExpression = ((ComparisonExpression) conjunct).getLeft();
+            Expression secondExpression = ((ComparisonExpression) conjunct).getRight();
+            ComparisonExpression.Operator comparisonOperator =
+                ((ComparisonExpression) conjunct).getOperator();
+            Set<QualifiedName> firstDependencies =
+                SymbolsExtractor.extractNames(firstExpression, analysis.getColumnReferences());
+            Set<QualifiedName> secondDependencies =
+                SymbolsExtractor.extractNames(secondExpression, analysis.getColumnReferences());
+
+            if (firstDependencies.stream().allMatch(left::canResolve)
+                && secondDependencies.stream().allMatch(right::canResolve)) {
+              leftComparisonExpressions.add(firstExpression);
+              rightComparisonExpressions.add(secondExpression);
+              joinConditionComparisonOperators.add(comparisonOperator);
+            } else if (firstDependencies.stream().allMatch(right::canResolve)
+                && secondDependencies.stream().allMatch(left::canResolve)) {
+              leftComparisonExpressions.add(secondExpression);
+              rightComparisonExpressions.add(firstExpression);
+              joinConditionComparisonOperators.add(comparisonOperator.flip());
+            } else {
+              // the case when we mix symbols from both left and right join side on either side of
+              // condition.
+              complexJoinExpressions.add(conjunct);
+            }
           } else {
-            // the case when we mix symbols from both left and right join side on either side of
-            // condition.
             complexJoinExpressions.add(conjunct);
           }
-        } else {
-          complexJoinExpressions.add(conjunct);
         }
       }
 
@@ -507,6 +607,17 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       rightPlanBuilder = rightCoercions.getSubPlan();
 
       for (int i = 0; i < leftComparisonExpressions.size(); i++) {
+        if (asofCriteria != null && i == 0) {
+          Symbol leftSymbol = leftCoercions.get(leftComparisonExpressions.get(i));
+          Symbol rightSymbol = rightCoercions.get(rightComparisonExpressions.get(i));
+
+          asofJoinClause =
+              Optional.of(
+                  new JoinNode.AsofJoinClause(
+                      joinConditionComparisonOperators.get(i), leftSymbol, rightSymbol));
+          continue;
+        }
+
         if (joinConditionComparisonOperators.get(i) == ComparisonExpression.Operator.EQUAL) {
           Symbol leftSymbol = leftCoercions.get(leftComparisonExpressions.get(i));
           Symbol rightSymbol = rightCoercions.get(rightComparisonExpressions.get(i));
@@ -529,10 +640,14 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             leftPlanBuilder.getRoot(),
             rightPlanBuilder.getRoot(),
             equiClauses.build(),
+            asofJoinClause,
             leftPlanBuilder.getRoot().getOutputSymbols(),
             rightPlanBuilder.getRoot().getOutputSymbols(),
             Optional.empty(),
             Optional.empty());
+    if (type == RIGHT && asofCriteria == null) {
+      root = ((JoinNode) root).flip();
+    }
 
     if (type != INNER) {
       for (Expression complexExpression : complexJoinExpressions) {
@@ -576,6 +691,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
               leftPlanBuilder.getRoot(),
               rightPlanBuilder.getRoot(),
               equiClauses.build(),
+              asofJoinClause,
               leftPlanBuilder.getRoot().getOutputSymbols(),
               rightPlanBuilder.getRoot().getOutputSymbols(),
               Optional.of(
@@ -584,6 +700,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
                           .map(e -> coerceIfNecessary(analysis, e, translationMap.rewrite(e)))
                           .collect(Collectors.toList()))),
               Optional.empty());
+      if (type == RIGHT && asofCriteria == null) {
+        root = ((JoinNode) root).flip();
+      }
     }
 
     if (type == INNER) {
@@ -657,6 +776,324 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     return process(node.getQuery(), context);
   }
 
+  @Override
+  protected RelationPlan visitPatternRecognitionRelation(
+      PatternRecognitionRelation node, Void context) {
+    RelationPlan subPlan = process(node.getInput(), context);
+
+    // Pre-project inputs for PARTITION BY and ORDER BY
+    List<Expression> inputs =
+        ImmutableList.<Expression>builder()
+            .addAll(node.getPartitionBy())
+            .addAll(
+                getSortItemsFromOrderBy(node.getOrderBy()).stream()
+                    .map(SortItem::getSortKey)
+                    .collect(toImmutableList()))
+            .build();
+
+    PlanBuilder planBuilder = newPlanBuilder(subPlan, analysis);
+
+    // no handleSubqueries because subqueries are not allowed here
+    planBuilder = planBuilder.appendProjections(inputs, symbolAllocator, queryContext);
+
+    ImmutableList.Builder<Symbol> outputLayout = ImmutableList.builder();
+    RowsPerMatch rowsPerMatch = mapRowsPerMatch(node.getRowsPerMatch().orElse(ONE));
+    boolean oneRowOutput = rowsPerMatch.isOneRow();
+
+    // Rewrite PARTITION BY
+    ImmutableList.Builder<Symbol> partitionBySymbols = ImmutableList.builder();
+    for (Expression expression : node.getPartitionBy()) {
+      partitionBySymbols.add(planBuilder.translate(expression));
+    }
+    List<Symbol> partitionBy = partitionBySymbols.build();
+
+    // Rewrite ORDER BY
+    LinkedHashMap<Symbol, SortOrder> orderings = new LinkedHashMap<>();
+    for (SortItem item : getSortItemsFromOrderBy(node.getOrderBy())) {
+      Symbol symbol = planBuilder.translate(item.getSortKey());
+      // don't override existing keys, i.e. when "ORDER BY a ASC, a DESC" is specified
+      orderings.putIfAbsent(symbol, sortItemToSortOrder(item));
+    }
+
+    Optional<OrderingScheme> orderingScheme = Optional.empty();
+    if (!orderings.isEmpty()) {
+      orderingScheme =
+          Optional.of(new OrderingScheme(ImmutableList.copyOf(orderings.keySet()), orderings));
+    }
+
+    outputLayout.addAll(partitionBy);
+    if (!oneRowOutput) {
+      getSortItemsFromOrderBy(node.getOrderBy()).stream()
+          .map(SortItem::getSortKey)
+          .map(planBuilder::translate)
+          .forEach(outputLayout::add);
+    }
+
+    planBuilder =
+        subqueryPlanner.handleSubqueries(
+            planBuilder,
+            extractPatternRecognitionExpressions(node.getVariableDefinitions(), node.getMeasures()),
+            analysis.getSubqueries(node));
+
+    PatternRecognitionComponents components =
+        planPatternRecognitionComponents(
+            planBuilder.getTranslations(),
+            node.getSubsets(),
+            node.getMeasures(),
+            node.getAfterMatchSkipTo(),
+            node.getPattern(),
+            node.getVariableDefinitions());
+
+    outputLayout.addAll(components.getMeasureOutputs());
+
+    if (!oneRowOutput) {
+      Set<Symbol> inputSymbolsOnOutput = ImmutableSet.copyOf(outputLayout.build());
+      subPlan.getFieldMappings().stream()
+          .filter(symbol -> !inputSymbolsOnOutput.contains(symbol))
+          .forEach(outputLayout::add);
+    }
+
+    PatternRecognitionNode planNode =
+        new PatternRecognitionNode(
+            idAllocator.genPlanNodeId(),
+            planBuilder.getRoot(),
+            partitionBy,
+            orderingScheme,
+            Optional.empty(),
+            components.getMeasures(),
+            rowsPerMatch,
+            components.getSkipToLabels(),
+            components.getSkipToPosition(),
+            components.getPattern(),
+            components.getVariableDefinitions());
+
+    return new RelationPlan(planNode, analysis.getScope(node), outputLayout.build(), outerContext);
+  }
+
+  private RowsPerMatch mapRowsPerMatch(PatternRecognitionRelation.RowsPerMatch rowsPerMatch) {
+    switch (rowsPerMatch) {
+      case ONE:
+        return RowsPerMatch.ONE;
+      case ALL_SHOW_EMPTY:
+        return RowsPerMatch.ALL_SHOW_EMPTY;
+      case ALL_OMIT_EMPTY:
+        return RowsPerMatch.ALL_OMIT_EMPTY;
+      case ALL_WITH_UNMATCHED:
+        return RowsPerMatch.ALL_WITH_UNMATCHED;
+      default:
+        throw new SemanticException("Unexpected rows per match: " + rowsPerMatch);
+    }
+  }
+
+  public PatternRecognitionComponents planPatternRecognitionComponents(
+      TranslationMap translations,
+      List<SubsetDefinition> subsets,
+      List<MeasureDefinition> measures,
+      Optional<SkipTo> skipTo,
+      RowPattern pattern,
+      List<VariableDefinition> variableDefinitions) {
+    // NOTE: There might be aggregate functions in measure definitions and variable definitions.
+    // They are handled different than top level aggregations in a query:
+    // 1. Their arguments are not pre-projected and replaced with single symbols. This is because
+    // the arguments might
+    //    not be eligible for pre-projection, when they contain references to CLASSIFIER() or
+    // MATCH_NUMBER() functions
+    //    which are evaluated at runtime. If some aggregation arguments can be pre-projected, it
+    // will be done in the
+    //    Optimizer.
+    // 2. Their arguments do not need to be coerced by hand. Since the pattern aggregation arguments
+    // are rewritten as
+    //    parts of enclosing expressions, and not as standalone expressions, all necessary coercions
+    // will be applied by the
+    //    TranslationMap.
+
+    // rewrite subsets
+    ImmutableMap.Builder<IrLabel, Set<IrLabel>> rewrittenSubsetsBuilder = ImmutableMap.builder();
+    for (SubsetDefinition subsetDefinition : subsets) {
+      String label = analysis.getResolvedLabel(subsetDefinition.getName());
+      Set<IrLabel> elements =
+          analysis.getSubsetLabels(subsetDefinition).stream()
+              .map(IrLabel::new)
+              .collect(toImmutableSet());
+      rewrittenSubsetsBuilder.put(new IrLabel(label), elements);
+    }
+    Map<IrLabel, Set<IrLabel>> rewrittenSubsets = rewrittenSubsetsBuilder.buildOrThrow();
+
+    // rewrite measures
+    ImmutableMap.Builder<Symbol, Measure> rewrittenMeasures = ImmutableMap.builder();
+    ImmutableList.Builder<Symbol> measureOutputs = ImmutableList.builder();
+
+    for (MeasureDefinition definition : measures) {
+      Type type = analysis.getType(definition.getExpression());
+      Symbol symbol = symbolAllocator.newSymbol(definition.getName().getValue(), type);
+      ExpressionAndValuePointers measure =
+          planPatternRecognitionExpression(
+              translations,
+              rewrittenSubsets,
+              definition.getName().getValue(),
+              definition.getExpression());
+      rewrittenMeasures.put(symbol, new Measure(measure, type));
+      measureOutputs.add(symbol);
+    }
+
+    // rewrite variable definitions
+    ImmutableMap.Builder<IrLabel, ExpressionAndValuePointers> rewrittenVariableDefinitions =
+        ImmutableMap.builder();
+    for (VariableDefinition definition : variableDefinitions) {
+      String label = analysis.getResolvedLabel(definition.getName());
+      ExpressionAndValuePointers variable =
+          planPatternRecognitionExpression(
+              translations,
+              rewrittenSubsets,
+              definition.getName().getValue(),
+              definition.getExpression());
+      rewrittenVariableDefinitions.put(new IrLabel(label), variable);
+    }
+    // add `true` definition for undefined labels
+    for (String label : analysis.getUndefinedLabels(pattern)) {
+      IrLabel irLabel = new IrLabel(label);
+      rewrittenVariableDefinitions.put(irLabel, ExpressionAndValuePointers.TRUE);
+    }
+
+    Set<IrLabel> skipToLabels =
+        skipTo
+            .flatMap(SkipTo::getIdentifier)
+            .map(Identifier::getValue)
+            .map(
+                label ->
+                    rewrittenSubsets.getOrDefault(
+                        new IrLabel(label), ImmutableSet.of(new IrLabel(label))))
+            .orElse(ImmutableSet.of());
+
+    return new PatternRecognitionComponents(
+        rewrittenMeasures.buildOrThrow(),
+        measureOutputs.build(),
+        skipToLabels,
+        mapSkipToPosition(skipTo.map(SkipTo::getPosition).orElse(PAST_LAST)),
+        RowPatternToIrRewriter.rewrite(pattern, analysis),
+        rewrittenVariableDefinitions.buildOrThrow());
+  }
+
+  private ExpressionAndValuePointers planPatternRecognitionExpression(
+      TranslationMap translations,
+      Map<IrLabel, Set<IrLabel>> subsets,
+      String name,
+      Expression expression) {
+    Map<NodeRef<Expression>, Symbol> patternVariableTranslations = new HashMap<>();
+
+    ImmutableList.Builder<Assignment> assignments = ImmutableList.builder();
+    for (PatternRecognitionAnalysis.PatternFunctionAnalysis accessor :
+        analysis.getPatternInputsAnalysis(expression)) {
+      ValuePointer pointer;
+      if (accessor.getDescriptor() instanceof MatchNumberDescriptor) {
+        pointer = new MatchNumberValuePointer();
+      } else if (accessor.getDescriptor() instanceof ClassifierDescriptor) {
+        ClassifierDescriptor descriptor = (ClassifierDescriptor) accessor.getDescriptor();
+        pointer =
+            new ClassifierValuePointer(
+                planValuePointer(descriptor.getLabel(), descriptor.getNavigation(), subsets));
+      } else if (accessor.getDescriptor() instanceof ScalarInputDescriptor) {
+        ScalarInputDescriptor descriptor = (ScalarInputDescriptor) accessor.getDescriptor();
+        pointer =
+            new ScalarValuePointer(
+                planValuePointer(descriptor.getLabel(), descriptor.getNavigation(), subsets),
+                Symbol.from(translations.rewrite(accessor.getExpression())));
+      } else if (accessor.getDescriptor() instanceof AggregationDescriptor) {
+        AggregationDescriptor descriptor = (AggregationDescriptor) accessor.getDescriptor();
+
+        Map<NodeRef<Expression>, Symbol> mappings = new HashMap<>();
+
+        Optional<Symbol> matchNumberSymbol = Optional.empty();
+        if (!descriptor.getMatchNumberCalls().isEmpty()) {
+          Symbol symbol = symbolAllocator.newSymbol("match_number", INT64);
+          for (Expression call : descriptor.getMatchNumberCalls()) {
+            mappings.put(NodeRef.of(call), symbol);
+          }
+          matchNumberSymbol = Optional.of(symbol);
+        }
+
+        Optional<Symbol> classifierSymbol = Optional.empty();
+        if (!descriptor.getClassifierCalls().isEmpty()) {
+          Symbol symbol = symbolAllocator.newSymbol("classifier", STRING);
+
+          for (Expression call : descriptor.getClassifierCalls()) {
+            mappings.put(NodeRef.of(call), symbol);
+          }
+          classifierSymbol = Optional.of(symbol);
+        }
+
+        TranslationMap argumentTranslation = translations.withAdditionalIdentityMappings(mappings);
+
+        Set<IrLabel> labels =
+            descriptor.getLabels().stream()
+                .flatMap(label -> planLabels(Optional.of(label), subsets).stream())
+                .collect(Collectors.toSet());
+
+        pointer =
+            new AggregationValuePointer(
+                descriptor.getFunction(),
+                new AggregationLabelSet(labels, descriptor.getMode() == RUNNING),
+                descriptor.getArguments().stream()
+                    .filter(
+                        argument -> !DereferenceExpression.isQualifiedAllFieldsReference(argument))
+                    .map(
+                        argument ->
+                            coerceIfNecessary(
+                                analysis, argument, argumentTranslation.rewrite(argument)))
+                    .collect(Collectors.toList()),
+                classifierSymbol,
+                matchNumberSymbol);
+      } else {
+        throw new SemanticException(
+            "Unexpected descriptor type: " + accessor.getDescriptor().getClass().getName());
+      }
+
+      Symbol symbol = symbolAllocator.newSymbol(name, analysis.getType(accessor.getExpression()));
+      assignments.add(new Assignment(symbol, pointer));
+
+      patternVariableTranslations.put(NodeRef.of(accessor.getExpression()), symbol);
+    }
+
+    Expression rewritten =
+        translations
+            .withAdditionalIdentityMappings(patternVariableTranslations)
+            .rewrite(expression);
+
+    return new ExpressionAndValuePointers(rewritten, assignments.build());
+  }
+
+  private Set<IrLabel> planLabels(Optional<String> label, Map<IrLabel, Set<IrLabel>> subsets) {
+    return label
+        .map(IrLabel::new)
+        .map(value -> subsets.getOrDefault(value, ImmutableSet.of(value)))
+        .orElse(ImmutableSet.of());
+  }
+
+  private LogicalIndexPointer planValuePointer(
+      Optional<String> label, Navigation navigation, Map<IrLabel, Set<IrLabel>> subsets) {
+    return new LogicalIndexPointer(
+        planLabels(label, subsets),
+        navigation.getAnchor() == LAST,
+        navigation.getMode() == RUNNING,
+        navigation.getLogicalOffset(),
+        navigation.getPhysicalOffset());
+  }
+
+  private SkipToPosition mapSkipToPosition(SkipTo.Position position) {
+    switch (position) {
+      case NEXT:
+        return SkipToPosition.NEXT;
+      case PAST_LAST:
+        return SkipToPosition.PAST_LAST;
+      case FIRST:
+        return SkipToPosition.FIRST;
+      case LAST:
+        return SkipToPosition.LAST;
+      default:
+        throw new SemanticException("Unexpected skip to position: " + position);
+    }
+  }
+
   // ================================ Implemented later =====================================
 
   @Override
@@ -682,14 +1119,19 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitInsertTablet(InsertTablet node, Void context) {
     final InsertTabletStatement insertTabletStatement = node.getInnerTreeStatement();
+
+    String[] measurements = insertTabletStatement.getMeasurements();
+    MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
+    stayConsistent(measurements, measurementSchemas);
+
     RelationalInsertTabletNode insertNode =
         new RelationalInsertTabletNode(
             idAllocator.genPlanNodeId(),
             insertTabletStatement.getDevicePath(),
             insertTabletStatement.isAligned(),
-            insertTabletStatement.getMeasurements(),
+            measurements,
             insertTabletStatement.getDataTypes(),
-            insertTabletStatement.getMeasurementSchemas(),
+            measurementSchemas,
             insertTabletStatement.getTimes(),
             insertTabletStatement.getBitMaps(),
             insertTabletStatement.getColumns(),
@@ -713,19 +1155,24 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
   protected RelationalInsertRowNode fromInsertRowStatement(
       final InsertRowStatement insertRowStatement) {
+
+    String[] measurements = insertRowStatement.getMeasurements();
+    MeasurementSchema[] measurementSchemas = insertRowStatement.getMeasurementSchemas();
+    stayConsistent(measurements, measurementSchemas);
+
     final RelationalInsertRowNode insertNode =
         new RelationalInsertRowNode(
             idAllocator.genPlanNodeId(),
             insertRowStatement.getDevicePath(),
             insertRowStatement.isAligned(),
-            insertRowStatement.getMeasurements(),
+            measurements,
             insertRowStatement.getDataTypes(),
+            measurementSchemas,
             insertRowStatement.getTime(),
             insertRowStatement.getValues(),
             insertRowStatement.isNeedInferType(),
             insertRowStatement.getColumnCategories());
     insertNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
-    insertNode.setMeasurementSchemas(insertRowStatement.getMeasurementSchemas());
     return insertNode;
   }
 
@@ -924,5 +1371,64 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             sourceProperties.build());
 
     return new RelationPlan(root, analysis.getScope(node), outputSymbols.build(), outerContext);
+  }
+
+  private static void stayConsistent(
+      String[] measurements, MeasurementSchema[] measurementSchemas) {
+    int minLength = Math.min(measurements.length, measurementSchemas.length);
+    for (int j = 0; j < minLength; j++) {
+      if (measurements[j] == null || measurementSchemas[j] == null) {
+        measurements[j] = null;
+        measurementSchemas[j] = null;
+      }
+    }
+  }
+
+  public static class PatternRecognitionComponents {
+    private final Map<Symbol, Measure> measures;
+    private final List<Symbol> measureOutputs;
+    private final Set<IrLabel> skipToLabels;
+    private final SkipToPosition skipToPosition;
+    private final IrRowPattern pattern;
+    private final Map<IrLabel, ExpressionAndValuePointers> variableDefinitions;
+
+    public PatternRecognitionComponents(
+        Map<Symbol, Measure> measures,
+        List<Symbol> measureOutputs,
+        Set<IrLabel> skipToLabels,
+        SkipToPosition skipToPosition,
+        IrRowPattern pattern,
+        Map<IrLabel, ExpressionAndValuePointers> variableDefinitions) {
+      this.measures = requireNonNull(measures, "measures is null");
+      this.measureOutputs = requireNonNull(measureOutputs, "measureOutputs is null");
+      this.skipToLabels = ImmutableSet.copyOf(skipToLabels);
+      this.skipToPosition = requireNonNull(skipToPosition, "skipToPosition is null");
+      this.pattern = requireNonNull(pattern, "pattern is null");
+      this.variableDefinitions = requireNonNull(variableDefinitions, "variableDefinitions is null");
+    }
+
+    public Map<Symbol, Measure> getMeasures() {
+      return measures;
+    }
+
+    public List<Symbol> getMeasureOutputs() {
+      return measureOutputs;
+    }
+
+    public Set<IrLabel> getSkipToLabels() {
+      return skipToLabels;
+    }
+
+    public SkipToPosition getSkipToPosition() {
+      return skipToPosition;
+    }
+
+    public IrRowPattern getPattern() {
+      return pattern;
+    }
+
+    public Map<IrLabel, ExpressionAndValuePointers> getVariableDefinitions() {
+      return variableDefinitions;
+    }
   }
 }

@@ -21,6 +21,11 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -36,10 +41,10 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanContext;
 import org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
@@ -50,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -61,6 +67,8 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.operator.Or;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
@@ -80,6 +88,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.Operator.NOT_BLOCKED;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -87,8 +96,10 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
 
   private static final String NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST =
       "root.NonAlignedTreeDeviceViewScanOperatorTreeTest";
+  private static final String tableDbName = "test";
+  private static final String tableViewName = "view1";
   private final TableOperatorGenerator tableOperatorGenerator =
-      new TableOperatorGenerator(new TestMatadata());
+      new TableOperatorGenerator(new TestMetadata());
   private final List<String> deviceIds = new ArrayList<>();
   private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
@@ -115,36 +126,75 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
         new Symbol("time"),
         new ColumnSchema(
             "time", TypeFactory.getType(TSDataType.INT64), false, TsTableColumnCategory.TIME));
-    columnSchemaMap.put(
-        new Symbol("sensor0"),
-        new ColumnSchema(
-            "sensor0", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
-    columnSchemaMap.put(
-        new Symbol("sensor1"),
-        new ColumnSchema(
-            "sensor1", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
-    columnSchemaMap.put(
-        new Symbol("sensor2"),
-        new ColumnSchema(
-            "sensor2", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
-    columnSchemaMap.put(
-        new Symbol("sensor3"),
-        new ColumnSchema(
-            "sensor3", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
+    for (int i = 0; i < 10000; i++) {
+      columnSchemaMap.put(
+          new Symbol("sensor" + i),
+          new ColumnSchema(
+              "sensor" + i,
+              TypeFactory.getType(TSDataType.INT32),
+              false,
+              TsTableColumnCategory.FIELD));
+    }
 
     Map<Symbol, Type> symbolTSDataTypeMap = new HashMap<>();
-    symbolTSDataTypeMap.put(new Symbol("sensor0"), TypeFactory.getType(TSDataType.INT32));
-    symbolTSDataTypeMap.put(new Symbol("sensor1"), TypeFactory.getType(TSDataType.INT32));
-    symbolTSDataTypeMap.put(new Symbol("sensor2"), TypeFactory.getType(TSDataType.INT32));
-    symbolTSDataTypeMap.put(new Symbol("sensor3"), TypeFactory.getType(TSDataType.INT32));
+    for (int i = 0; i < 10000; i++) {
+      symbolTSDataTypeMap.put(new Symbol("sensor" + i), TypeFactory.getType(TSDataType.INT32));
+    }
     symbolTSDataTypeMap.put(new Symbol("time"), TypeFactory.getType(TypeEnum.INT64));
     symbolTSDataTypeMap.put(new Symbol("tag1"), TypeFactory.getType(TSDataType.TEXT));
     typeProvider = new TypeProvider(symbolTSDataTypeMap);
+
+    DataNodeTableCache.getInstance().invalid(tableDbName);
+
+    TsTable tsTable = new TsTable(tableViewName);
+    tsTable.addColumnSchema(new TagColumnSchema("id_column", TSDataType.STRING));
+    tsTable.addColumnSchema(new TimeColumnSchema("time", TSDataType.INT64));
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.TEXT));
+    for (int i = 0; i < 10000; i++) {
+      tsTable.addColumnSchema(new FieldColumnSchema("sensor" + i, TSDataType.INT32));
+    }
+    tsTable.addProp(TsTable.TTL_PROPERTY, Long.MAX_VALUE + "");
+    tsTable.addProp(
+        TreeViewSchema.TREE_PATH_PATTERN,
+        NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST + ".**");
+    DataNodeTableCache.getInstance().preUpdateTable(tableDbName, tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(tableDbName, tableViewName, null);
   }
 
   @After
   public void tearDown() throws IOException {
+    DataNodeTableCache.getInstance().invalid(tableDbName);
     SeriesReaderTestUtil.tearDown(seqResources, unSeqResources);
+  }
+
+  @Test
+  public void testQueryManyDevices() throws Exception {
+    List<String> outputColumnList = new ArrayList<>(10000 + 2);
+    TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
+    node.setPushDownOffset(500);
+    node.setPushDownLimit(500);
+    node.setPushDownPredicate(
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN,
+            new Symbol("sensor1").toSymbolReference(),
+            new LongLiteral("1000")));
+    for (int i = 0; i < 10000; i++) {
+      outputColumnList.add("sensor" + i);
+    }
+    outputColumnList.add("time");
+    outputColumnList.add("tag1");
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    try {
+      assertTrue(operator instanceof DeviceIteratorScanOperator);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      operator.close();
+      instanceNotificationExecutor.shutdown();
+    }
   }
 
   @Test
@@ -153,6 +203,37 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
     node.setPushDownOffset(500);
     node.setPushDownLimit(500);
+    node.setPushDownPredicate(
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN,
+            new Symbol("sensor1").toSymbolReference(),
+            new LongLiteral("1000")));
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    assertTrue(operator instanceof DeviceIteratorScanOperator);
+    try {
+      checkResult(operator, outputColumnList, 500);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      operator.close();
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void testScanWithPushDownPredicateAndLimitAndOffsetAndTimePredicate() throws Exception {
+    List<String> outputColumnList = Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1");
+    TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
+    node.setPushDownOffset(500);
+    node.setPushDownLimit(500);
+    node.setTimePredicate(
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN,
+            new Symbol("time").toSymbolReference(),
+            new LongLiteral("0")));
     node.setPushDownPredicate(
         new ComparisonExpression(
             ComparisonExpression.Operator.GREATER_THAN,
@@ -238,6 +319,29 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
       checkResult(operator, outputColumnList, 300);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      operator.close();
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void testScanSingleFieldColumnWithPushLimitToEachDevice1() throws Exception {
+    List<String> outputColumnList = Arrays.asList("sensor0");
+    TreeNonAlignedDeviceViewScanNode node =
+        getTreeNonAlignedDeviceViewScanNode(outputColumnList, Arrays.asList("sensor0"));
+    node.setPushLimitToEachDevice(false);
+    node.setPushDownLimit(1);
+    node.setPushDownOffset(1);
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    assertTrue(operator instanceof DeviceIteratorScanOperator);
+    try {
+      checkResult(operator, outputColumnList, 1);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -584,6 +688,11 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
       }
       count += tsBlock.getPositionCount();
     }
+    FragmentInstanceContext fragmentInstance = operator.getOperatorContext().getInstanceContext();
+    Filter globalTimeFilter = fragmentInstance.getGlobalTimeFilter();
+    if (globalTimeFilter != null) {
+      assertFalse(globalTimeFilter instanceof Or);
+    }
     assertEquals(expectedCount, count);
   }
 
@@ -603,20 +712,20 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
       assignments.put(symbol, columnSchemaMap.get(symbol));
     }
 
-    Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>();
-    idAndAttributeIndexMap.put(new Symbol("tag1"), 0);
+    Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>();
+    tagAndAttributeIndexMap.put(new Symbol("tag1"), 0);
 
     List<DeviceEntry> deviceEntries =
         Arrays.asList(
-            new NonAlignedAlignedDeviceEntry(
+            new NonAlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(
                     NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST + ".device0"),
                 new Binary[0]),
-            new NonAlignedAlignedDeviceEntry(
+            new NonAlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(
                     NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST + ".device1"),
                 new Binary[0]),
-            new NonAlignedAlignedDeviceEntry(
+            new NonAlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(
                     NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST + ".device1"),
                 new Binary[0]));
@@ -631,12 +740,11 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     Map<String, String> measurementColumnNameMap = new HashMap<>();
     return new TreeNonAlignedDeviceViewScanNode(
         new PlanNodeId("1"),
-        new QualifiedObjectName(
-            NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST.toLowerCase(), "table1"),
+        new QualifiedObjectName(tableDbName, tableViewName),
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         Ordering.ASC,
         timePredicate,
         pushDownPredicate,

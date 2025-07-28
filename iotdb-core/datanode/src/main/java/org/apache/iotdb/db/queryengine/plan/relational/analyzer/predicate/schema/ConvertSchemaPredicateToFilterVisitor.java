@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.ComparisonFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
@@ -158,12 +158,16 @@ public class ConvertSchemaPredicateToFilterVisitor
     final boolean isOrdered;
     if (node.getLeft() instanceof Literal) {
       value = ((StringLiteral) (node.getLeft())).getValue();
-      checkArgument(isSymbolReference(node.getRight()));
+      if (!isSymbolReference(node.getRight())) {
+        return null;
+      }
       columnName = ((SymbolReference) (node.getRight())).getName();
       isOrdered = false;
     } else if (node.getRight() instanceof Literal) {
       value = ((StringLiteral) (node.getRight())).getValue();
-      checkArgument(isSymbolReference(node.getLeft()));
+      if (!isSymbolReference(node.getLeft())) {
+        return null;
+      }
       columnName = ((SymbolReference) (node.getLeft())).getName();
       isOrdered = true;
     } else {
@@ -239,7 +243,7 @@ public class ConvertSchemaPredicateToFilterVisitor
             .getColumnSchema(columnName)
             .getColumnCategory()
             .equals(TsTableColumnCategory.TAG)
-        ? new IdFilter(filter, context.idColumnIndexMap.get(columnName))
+        ? new TagFilter(filter, context.idColumnIndexMap.get(columnName))
         : new AttributeFilter(filter, columnName);
   }
 

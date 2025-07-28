@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.commons.pipe.agent.task;
 
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
@@ -32,9 +34,10 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.sink.limiter.PipeEndPointRateLimiter;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -45,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -54,8 +58,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -167,6 +173,13 @@ public abstract class PipeTaskAgent {
   private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
       throws IllegalPathException {
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
+
+    // Do nothing with the subscription pipe if disable subscription
+    if (PipeStaticMeta.isSubscriptionPipe(pipeName)
+        && !SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return;
+    }
+
     final PipeMeta metaInAgent = pipeMetaKeeper.getPipeMeta(pipeName);
 
     // If pipe meta does not exist on local agent, create a new pipe
@@ -337,7 +350,10 @@ public abstract class PipeTaskAgent {
 
   public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
       final List<PipeMeta> pipeMetaListFromCoordinator) {
-    acquireWriteLock();
+    if (!tryWriteLockWithTimeOut(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return null;
+    }
     try {
       return handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
     } finally {
@@ -419,7 +435,11 @@ public abstract class PipeTaskAgent {
   }
 
   public void dropAllPipeTasks() {
-    acquireWriteLock();
+    if (!tryWriteLockWithTimeOut(
+        TimeUnit.MILLISECONDS.toSeconds(PipeConfig.getInstance().getPipeMaxWaitFinishTime()))) {
+      LOGGER.info("Failed to acquire lock when dropping all pipe tasks, will skip dropping");
+      return;
+    }
     try {
       dropAllPipeTasksInternal();
     } finally {
@@ -457,6 +477,11 @@ public abstract class PipeTaskAgent {
     final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
     final long creationTime = pipeMetaFromCoordinator.getStaticMeta().getCreationTime();
 
+    calculateMemoryUsage(
+        pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
+        pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters(),
+        pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters());
+
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     if (existedPipeMeta != null) {
       if (!checkBeforeCreatePipe(existedPipeMeta, pipeName, creationTime)) {
@@ -475,7 +500,7 @@ public abstract class PipeTaskAgent {
 
     // Trigger create() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::create);
+    runPipeTasks(pipeTasks.values(), PipeTask::create);
     LOGGER.info(
         "Create all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -495,6 +520,13 @@ public abstract class PipeTaskAgent {
 
     // If the pipe status from coordinator is RUNNING, we will start the pipe later.
     return needToStartPipe;
+  }
+
+  protected void calculateMemoryUsage(
+      final PipeParameters extractorParameters,
+      final PipeParameters processorParameters,
+      final PipeParameters connectorParameters) {
+    // do nothing
   }
 
   protected abstract Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromCoordinator)
@@ -529,7 +561,7 @@ public abstract class PipeTaskAgent {
 
     // Trigger drop() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::drop);
+    runPipeTasks(pipeTasks.values(), PipeTask::drop);
     LOGGER.info(
         "Drop all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -567,7 +599,7 @@ public abstract class PipeTaskAgent {
 
     // Trigger drop() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::drop);
+    runPipeTasks(pipeTasks.values(), PipeTask::drop);
     LOGGER.info(
         "Drop all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -600,7 +632,7 @@ public abstract class PipeTaskAgent {
 
     // Trigger start() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::start);
+    runPipeTasks(pipeTasks.values(), PipeTask::start);
     LOGGER.info(
         "Start all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -639,7 +671,7 @@ public abstract class PipeTaskAgent {
 
     // Trigger stop() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::stop);
+    runPipeTasks(pipeTasks.values(), PipeTask::stop);
     LOGGER.info(
         "Stop all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
@@ -661,7 +693,10 @@ public abstract class PipeTaskAgent {
       final PipeMeta existedPipeMeta, final String pipeName, final long creationTime)
       throws IllegalStateException {
     // Verify that Pipe is disabled if TSFile encryption is enabled
-    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+    if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+        && !Objects.equals(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            "org.apache.tsfile.encrypt.UNENCRYPTED")) {
       throw new PipeException(
           String.format(
               "Failed to create Pipe %s because TSFile is configured with encryption, which prohibits the use of Pipe",
@@ -952,7 +987,7 @@ public abstract class PipeTaskAgent {
   private void stopAllPipesWithCriticalExceptionInternal(final int currentNodeId) {
     // 1. track exception in all pipe tasks that share the same connector that have critical
     // exceptions.
-    final Map<PipeParameters, PipeRuntimeConnectorCriticalException>
+    final Map<PipeParameters, PipeRuntimeSinkCriticalException>
         reusedConnectorParameters2ExceptionMap = new HashMap<>();
 
     pipeMetaKeeper
@@ -972,10 +1007,10 @@ public abstract class PipeTaskAgent {
                         }
 
                         for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
-                          if (e instanceof PipeRuntimeConnectorCriticalException) {
+                          if (e instanceof PipeRuntimeSinkCriticalException) {
                             reusedConnectorParameters2ExceptionMap.putIfAbsent(
                                 staticMeta.getConnectorParameters(),
-                                (PipeRuntimeConnectorCriticalException) e);
+                                (PipeRuntimeSinkCriticalException) e);
                           }
                         }
                       });
@@ -998,7 +1033,7 @@ public abstract class PipeTaskAgent {
                             && !pipeTaskMeta.containsExceptionMessage(
                                 reusedConnectorParameters2ExceptionMap.get(
                                     staticMeta.getConnectorParameters()))) {
-                          final PipeRuntimeConnectorCriticalException exception =
+                          final PipeRuntimeSinkCriticalException exception =
                               reusedConnectorParameters2ExceptionMap.get(
                                   staticMeta.getConnectorParameters());
                           pipeTaskMeta.trackExceptionMessage(exception);
@@ -1046,7 +1081,10 @@ public abstract class PipeTaskAgent {
 
   public void collectPipeMetaList(final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp)
       throws TException {
-    acquireReadLock();
+    if (!tryReadLockWithTimeOut(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return;
+    }
     try {
       collectPipeMetaListInternal(req, resp);
     } finally {
@@ -1056,6 +1094,9 @@ public abstract class PipeTaskAgent {
 
   protected abstract void collectPipeMetaListInternal(
       final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException;
+
+  public abstract void runPipeTasks(
+      final Collection<PipeTask> pipeTasks, final Consumer<PipeTask> runSingle);
 
   ///////////////////////// Maintain meta info /////////////////////////
 
@@ -1099,17 +1140,21 @@ public abstract class PipeTaskAgent {
         : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getFloatingMemoryUsageInByte();
   }
 
-  public void addFloatingMemoryUsageInByte(final String pipeName, final long sizeInByte) {
+  public void addFloatingMemoryUsageInByte(
+      final String pipeName, final long creationTime, final long sizeInByte) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    if (Objects.nonNull(pipeMeta)) {
+    // To avoid stale pipe before alter
+    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
       ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
           .addFloatingMemoryUsageInByte(sizeInByte);
     }
   }
 
-  public void decreaseFloatingMemoryUsageInByte(final String pipeName, final long sizeInByte) {
+  public void decreaseFloatingMemoryUsageInByte(
+      final String pipeName, final long creationTime, final long sizeInByte) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    if (Objects.nonNull(pipeMeta)) {
+    // To avoid stale pipe before alter
+    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
       ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
           .decreaseFloatingMemoryUsageInByte(sizeInByte);
     }

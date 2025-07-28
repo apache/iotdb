@@ -38,6 +38,7 @@ import java.util.concurrent.CompletableFuture;
  * be discarded.
  */
 public class PipeTerminateEvent extends EnrichedEvent {
+
   private final int dataRegionId;
 
   public PipeTerminateEvent(

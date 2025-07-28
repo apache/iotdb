@@ -46,7 +46,7 @@ abstract class AbstractSubscriptionSession {
     this.session = session;
   }
 
-  public SubscriptionSessionConnection getSessionConnection() {
+  public SubscriptionSessionConnection getSessionConnection() throws IoTDBConnectionException {
     return session.getSessionConnection();
   }
 
@@ -177,6 +177,20 @@ abstract class AbstractSubscriptionSession {
     }
   }
 
+  protected void dropSubscription(final String subscriptionId)
+      throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(subscriptionId); // ignore the parse result
+    final String sql = String.format("DROP SUBSCRIPTION %s", subscriptionId);
+    session.executeNonQueryStatement(sql);
+  }
+
+  protected void dropSubscriptionIfExists(final String subscriptionId)
+      throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(subscriptionId); // ignore the parse result
+    final String sql = String.format("DROP SUBSCRIPTION IF EXISTS %s", subscriptionId);
+    session.executeNonQueryStatement(sql);
+  }
+
   /////////////////////////////// utility ///////////////////////////////
 
   private Set<Topic> convertDataSetToTopics(final SessionDataSet dataSet)
@@ -202,7 +216,7 @@ abstract class AbstractSubscriptionSession {
     while (dataSet.hasNext()) {
       final RowRecord record = dataSet.next();
       final List<Field> fields = record.getFields();
-      if (fields.size() != 3) {
+      if (fields.size() != 4) {
         throw new SubscriptionException(
             String.format(
                 "Unexpected fields %s was obtained during SHOW SUBSCRIPTION...",
@@ -212,7 +226,8 @@ abstract class AbstractSubscriptionSession {
           new Subscription(
               fields.get(0).getStringValue(),
               fields.get(1).getStringValue(),
-              fields.get(2).getStringValue()));
+              fields.get(2).getStringValue(),
+              fields.get(3).getStringValue()));
     }
     return subscriptions;
   }

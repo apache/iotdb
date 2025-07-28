@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TLoadSample;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSender;
 import org.apache.iotdb.common.rpc.thrift.TServiceType;
@@ -37,8 +38,12 @@ import org.apache.iotdb.common.rpc.thrift.TSettleReq;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
@@ -50,6 +55,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
@@ -58,17 +64,19 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.view.ViewType;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -154,6 +162,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -214,6 +223,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
@@ -237,7 +248,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
@@ -290,6 +300,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -304,11 +315,18 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -354,6 +372,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private final ClusterTopology clusterTopology = ClusterTopology.getInstance();
 
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+
+  private final ExecutorService schemaExecutor =
+      new WrappedThreadPoolExecutor(
+          0,
+          IoTDBDescriptor.getInstance().getConfig().getSchemaThreadCount(),
+          0L,
+          TimeUnit.SECONDS,
+          new ArrayBlockingQueue<>(
+              IoTDBDescriptor.getInstance().getConfig().getSchemaThreadCount()),
+          new IoTThreadFactory(ThreadName.SCHEMA_PARALLEL_POOL.getName()),
+          ThreadName.SCHEMA_PARALLEL_POOL.getName(),
+          new ThreadPoolExecutor.CallerRunsPolicy());
 
   private static final String SYSTEM = "system";
 
@@ -510,14 +540,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) {
-    final ProgressIndex progressIndex;
-    if (req.isSetProgressIndex()) {
-      progressIndex = ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex()));
+    final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap = new HashMap<>();
+    if (req.isSetTimePartition2ProgressIndex()) {
+      for (Map.Entry<TTimePartitionSlot, ByteBuffer> entry :
+          req.getTimePartition2ProgressIndex().entrySet()) {
+        timePartitionProgressIndexMap.put(
+            entry.getKey(), ProgressIndexType.deserializeFrom(entry.getValue()));
+      }
     } else {
-      // fallback to use local generated progress index for compatibility
-      progressIndex = PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad();
-      LOGGER.info(
-          "Use local generated load progress index {} for uuid {}.", progressIndex, req.uuid);
+      final TSStatus status = new TSStatus();
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setMessage("Load command requires time partition to progress index map");
+      return createTLoadResp(status);
     }
 
     return createTLoadResp(
@@ -526,7 +560,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 LoadTsFileScheduler.LoadCommand.values()[req.commandType],
                 req.uuid,
                 req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
-                progressIndex));
+                timePartitionProgressIndexMap));
   }
 
   @Override
@@ -574,10 +608,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       TreeDeviceSchemaCacheManager.getInstance().takeWriteLock();
       try {
         final String database = req.getFullPath();
-        // req.getFullPath() is a database path
-        ClusterTemplateManager.getInstance().invalid(database);
-        // clear table related cache
-        DataNodeTableCache.getInstance().invalid(database);
+        if (PathUtils.isTableModelDatabase(database)) {
+          // clear table related cache
+          DataNodeTableCache.getInstance().invalid(database);
+        } else {
+          ClusterTemplateManager.getInstance().invalid(database);
+        }
         tableDeviceSchemaCache.invalidate(database);
         LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -1137,6 +1173,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       .map(PipeMeta::deserialize4TaskAgent)
                       .collect(Collectors.toList()));
 
+      if (Objects.isNull(exceptionMessages)) {
+        return new TPushPipeMetaResp()
+            .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_TIMEOUT.getStatusCode()));
+      }
       return exceptionMessages.isEmpty()
           ? new TPushPipeMetaResp()
               .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
@@ -1225,6 +1265,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushTopicMetaResp pushTopicMeta(TPushTopicMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushTopicMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     final List<TopicMeta> topicMetas = new ArrayList<>();
     for (ByteBuffer byteBuffer : req.getTopicMetas()) {
       topicMetas.add(TopicMeta.deserialize(byteBuffer));
@@ -1248,6 +1293,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushTopicMetaResp pushSingleTopicMeta(TPushSingleTopicMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushTopicMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     try {
       final TPushTopicMetaRespExceptionMessage exceptionMessage;
       if (req.isSetTopicNameToDrop()) {
@@ -1276,6 +1326,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushTopicMetaResp pushMultiTopicMeta(TPushMultiTopicMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushTopicMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     boolean hasException = false;
     // If there is any exception, we use the size of exceptionMessages to record the fail index
     List<TPushTopicMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
@@ -1323,6 +1378,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushConsumerGroupMetaResp pushConsumerGroupMeta(TPushConsumerGroupMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushConsumerGroupMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     final List<ConsumerGroupMeta> consumerGroupMetas = new ArrayList<>();
     for (ByteBuffer byteBuffer : req.getConsumerGroupMetas()) {
       consumerGroupMetas.add(ConsumerGroupMeta.deserialize(byteBuffer));
@@ -1347,6 +1407,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(
       TPushSingleConsumerGroupMetaReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPushConsumerGroupMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
     try {
       final TPushConsumerGroupMetaRespExceptionMessage exceptionMessage;
       if (req.isSetConsumerGroupNameToDrop()) {
@@ -1388,16 +1453,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     final List<TSStatus> statusList = Collections.synchronizedList(new ArrayList<>());
     final AtomicBoolean hasFailure = new AtomicBoolean(false);
 
-    consensusGroupIdList.parallelStream()
-        .forEach(
-            consensusGroupId -> {
-              final TSStatus status = executeOnOneRegion.apply(consensusGroupId);
-              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                  && status.getCode() != TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
-                hasFailure.set(true);
-              }
-              statusList.add(status);
-            });
+    final Set<Future<?>> schemaFuture = new HashSet<>();
+
+    consensusGroupIdList.forEach(
+        consensusGroupId ->
+            schemaFuture.add(
+                schemaExecutor.submit(
+                    () -> {
+                      final TSStatus status = executeOnOneRegion.apply(consensusGroupId);
+                      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                          && status.getCode() != TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
+                        hasFailure.set(true);
+                      }
+                      statusList.add(status);
+                    })));
+
+    for (final Future<?> future : schemaFuture) {
+      try {
+        future.get();
+      } catch (final ExecutionException | InterruptedException e) {
+        LOGGER.warn("Exception occurs when executing internal schema task: ", e);
+        statusList.add(
+            new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                .setMessage(e.toString()));
+      }
+    }
 
     if (hasFailure.get()) {
       return RpcUtils.getStatus(statusList);
@@ -1416,15 +1496,30 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     final List<TSStatus> statusList = Collections.synchronizedList(new ArrayList<>());
     final AtomicBoolean hasFailure = new AtomicBoolean(false);
 
-    consensusGroupIdList.parallelStream()
-        .forEach(
-            consensusGroupId -> {
-              final TSStatus status = executeOnOneRegion.apply(consensusGroupId);
-              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                hasFailure.set(true);
-              }
-              statusList.add(status);
-            });
+    final Set<Future<?>> schemaFuture = new HashSet<>();
+
+    consensusGroupIdList.forEach(
+        consensusGroupId ->
+            schemaFuture.add(
+                schemaExecutor.submit(
+                    () -> {
+                      final TSStatus status = executeOnOneRegion.apply(consensusGroupId);
+                      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                        hasFailure.set(true);
+                      }
+                      statusList.add(status);
+                    })));
+
+    for (final Future<?> future : schemaFuture) {
+      try {
+        future.get();
+      } catch (final ExecutionException | InterruptedException e) {
+        LOGGER.warn("Exception occurs when executing internal schema task: ", e);
+        statusList.add(
+            new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                .setMessage(e.toString()));
+      }
+    }
 
     if (hasFailure.get()) {
       return RpcUtils.getStatus(statusList);
@@ -1550,21 +1645,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus updateTable(final TUpdateTableReq req) {
     switch (TsTableInternalRPCType.getType(req.type)) {
       case PRE_UPDATE_TABLE:
-        Pair<String, TsTable> pair =
+        final Pair<String, TsTable> pair =
             TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
-        DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right);
+        DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right, req.oldName);
         break;
       case ROLLBACK_UPDATE_TABLE:
         DataNodeTableCache.getInstance()
             .rollbackUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo));
+                ReadWriteIOUtils.readString(req.tableInfo),
+                req.oldName);
         break;
       case COMMIT_UPDATE_TABLE:
         DataNodeTableCache.getInstance()
             .commitUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo));
+                ReadWriteIOUtils.readString(req.tableInfo),
+                req.oldName);
         break;
       default:
         LOGGER.warn("Unsupported type {} when updating table", req.type);
@@ -1706,6 +1803,62 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     new DeleteTableDevicesInBlackListNode(
                         new PlanNodeId(""), req.getTableName(), req.getPatternOrModInfo()))
                 .getStatus());
+  }
+
+  @Override
+  public TDeviceViewResp detectTreeDeviceViewFieldType(final TDeviceViewReq req) {
+    final TDeviceViewResp resp = new TDeviceViewResp();
+    resp.setDeviewViewFieldTypeMap(new ConcurrentHashMap<>());
+    final TSStatus status =
+        executeInternalSchemaTask(
+            req.getRegionIds(),
+            consensusGroupId -> {
+              final ISchemaRegion schemaRegion =
+                  schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+              // Get pattern nodes, length is (prefix - 1) + tagNumber + 1(measurement)
+              final String[] nodes = new String[req.getTagNumber() + req.getPrefixPattern().size()];
+              Arrays.fill(nodes, "*");
+              for (int i = 0; i < req.getPrefixPattern().size() - 1; ++i) {
+                nodes[i] = req.getPrefixPattern().get(i);
+              }
+              final ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
+                  SchemaSourceFactory.getTimeSeriesSchemaCountSource(
+                      new ExtendedPartialPath(nodes, req.isRestrict()),
+                      false,
+                      // Does not support logical view currently
+                      SchemaFilterFactory.createViewTypeFilter(ViewType.BASE),
+                      null,
+                      SchemaConstant.ALL_MATCH_SCOPE);
+              try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
+                  schemaSource.getSchemaReader(schemaRegion)) {
+                final Map<String, Byte> updateMap = resp.getDeviewViewFieldTypeMap();
+                while (schemaReader.hasNext()) {
+                  final IMeasurementSchema schema = schemaReader.next().getSchema();
+                  final String measurementName = schema.getMeasurementName();
+
+                  // For trimming
+                  if (req.isSetRequiredMeasurements()
+                      && !req.getRequiredMeasurements().contains(measurementName)) {
+                    continue;
+                  }
+                  if (!updateMap.containsKey(measurementName)) {
+                    updateMap.put(measurementName, schema.getTypeInByte());
+                  } else if (schema.getTypeInByte() != updateMap.get(measurementName)) {
+                    return RpcUtils.getStatus(
+                        TSStatusCode.DATA_TYPE_MISMATCH,
+                        String.format(
+                            "Multiple types encountered when auto detecting type of measurement '%s', please check",
+                            measurementName));
+                  }
+                }
+              } catch (final Exception e) {
+                LOGGER.warn(e.getMessage(), e);
+                return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+              }
+              return RpcUtils.SUCCESS_STATUS;
+            });
+
+    return resp.setStatus(status);
   }
 
   @Override

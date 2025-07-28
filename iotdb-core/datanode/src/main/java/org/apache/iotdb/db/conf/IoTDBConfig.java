@@ -30,6 +30,7 @@ import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -278,6 +279,8 @@ public class IoTDBConfig {
   /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
   private String extPipeDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
+
+  private int pipeTaskThreadCount = 5;
 
   /** External lib directory for MQTT, stores user-uploaded JAR files */
   private String mqttDir =
@@ -967,6 +970,7 @@ public class IoTDBConfig {
   private long generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch = 600L;
   private int generalRegionAttributeSecurityServiceFailureTimesToFetch = 20;
   private long detailContainerMinDegradeMemoryInBytes = 1024 * 1024L;
+  private int schemaThreadCount = 5;
 
   private String readConsistencyLevel = "strong";
 
@@ -1082,8 +1086,9 @@ public class IoTDBConfig {
 
   private long loadTsFileTabletConversionBatchMemorySizeInBytes = 4096 * 1024;
 
-  private int loadTsFileMaxDeviceCountToUseDeviceTimeIndex = 10000;
+  private int loadTsFileTabletConversionThreadCount = 5;
 
+  private int loadTsFileMaxDeviceCountToUseDeviceTimeIndex = 10000;
   private long loadChunkMetadataMemorySizeInBytes = 33554432; // 32MB
 
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
@@ -1147,6 +1152,17 @@ public class IoTDBConfig {
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
   private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
+
+  private LastCacheLoadStrategy lastCacheLoadStrategy = LastCacheLoadStrategy.UPDATE;
+
+  /**
+   * Whether to cache last values when constructing TsFileResource during LOAD. When set to true,
+   * blob series will be forcibly ignored even if lastCacheLoadStrategy =
+   * LastCacheLoadStrategy.UPDATE.
+   */
+  private boolean cacheLastValuesForLoad = true;
+
+  private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
 
   IoTDBConfig() {}
 
@@ -3104,6 +3120,14 @@ public class IoTDBConfig {
     this.extPipeDir = extPipeDir;
   }
 
+  public int getPipeTaskThreadCount() {
+    return pipeTaskThreadCount;
+  }
+
+  public void setPipeTaskThreadCount(int pipeTaskThreadCount) {
+    this.pipeTaskThreadCount = pipeTaskThreadCount;
+  }
+
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
   }
@@ -3263,6 +3287,14 @@ public class IoTDBConfig {
   public void setDetailContainerMinDegradeMemoryInBytes(
       long detailContainerMinDegradeMemoryInBytes) {
     this.detailContainerMinDegradeMemoryInBytes = detailContainerMinDegradeMemoryInBytes;
+  }
+
+  public int getSchemaThreadCount() {
+    return schemaThreadCount;
+  }
+
+  public void setSchemaThreadCount(int schemaThreadCount) {
+    this.schemaThreadCount = schemaThreadCount;
   }
 
   public String getReadConsistencyLevel() {
@@ -3780,6 +3812,14 @@ public class IoTDBConfig {
         loadTsFileTabletConversionBatchMemorySizeInBytes;
   }
 
+  public int getLoadTsFileTabletConversionThreadCount() {
+    return loadTsFileTabletConversionThreadCount;
+  }
+
+  public void setLoadTsFileTabletConversionThreadCount(int loadTsFileTabletConversionThreadCount) {
+    this.loadTsFileTabletConversionThreadCount = loadTsFileTabletConversionThreadCount;
+  }
+
   public int getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex() {
     return loadTsFileMaxDeviceCountToUseDeviceTimeIndex;
   }
@@ -4071,5 +4111,31 @@ public class IoTDBConfig {
 
   public void setWALCompressionAlgorithm(CompressionType WALCompressionAlgorithm) {
     this.WALCompressionAlgorithm = WALCompressionAlgorithm;
+  }
+
+  public LastCacheLoadStrategy getLastCacheLoadStrategy() {
+    return lastCacheLoadStrategy;
+  }
+
+  public void setLastCacheLoadStrategy(LastCacheLoadStrategy lastCacheLoadStrategy) {
+    this.lastCacheLoadStrategy = lastCacheLoadStrategy;
+  }
+
+  public boolean isCacheLastValuesForLoad() {
+    return (lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
+            || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
+        && cacheLastValuesForLoad;
+  }
+
+  public void setCacheLastValuesForLoad(boolean cacheLastValuesForLoad) {
+    this.cacheLastValuesForLoad = cacheLastValuesForLoad;
+  }
+
+  public long getCacheLastValuesMemoryBudgetInByte() {
+    return cacheLastValuesMemoryBudgetInByte;
+  }
+
+  public void setCacheLastValuesMemoryBudgetInByte(long cacheLastValuesMemoryBudgetInByte) {
+    this.cacheLastValuesMemoryBudgetInByte = cacheLastValuesMemoryBudgetInByte;
   }
 }
