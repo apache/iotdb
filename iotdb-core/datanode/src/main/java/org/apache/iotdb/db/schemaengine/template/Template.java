@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.schemaengine.template;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -235,9 +234,9 @@ public class Template implements Serializable, Accountable {
   public long ramBytesUsed() {
     return SHALLOW_SIZE
         + RamUsageEstimator.sizeOf(name)
-        + MemoryEstimationHelper.getEstimatedSizeOfMap(
+        + RamUsageEstimator.sizeOfMapWithKnownShallowSize(
             schemaMap,
-            MemoryEstimationHelper.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP,
-            MemoryEstimationHelper.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY);
+            RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP,
+            RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY);
   }
 }

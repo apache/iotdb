@@ -34,7 +34,6 @@ import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeDevic
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeDeviceVisitor;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorFactory;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -505,10 +504,10 @@ public class ClusterSchemaTree implements ISchemaTree {
     ramBytesUsed =
         root.ramBytesUsed()
             + SHALLOW_SIZE
-            + MemoryEstimationHelper.getEstimatedSizeOfMap(
+            + RamUsageEstimator.sizeOfMapWithKnownShallowSize(
                 templateMap,
-                MemoryEstimationHelper.SHALLOW_SIZE_OF_HASHMAP,
-                MemoryEstimationHelper.SHALLOW_SIZE_OF_HASHMAP_ENTRY);
+                RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP,
+                RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY);
     return ramBytesUsed;
   }
 
