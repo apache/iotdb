@@ -141,14 +141,14 @@ public class MemoryEstimationHelper {
   }
 
   public static long getEstimatedSizeOfMap(
-      Map<?, ? extends Accountable> map, long shallowSizeOfMap, long shallowSizeOfMapEntry) {
+      Map<?, ?> map, long shallowSizeOfMap, long shallowSizeOfMapEntry) {
     if (map == null) {
       return 0;
     }
     long result = shallowSizeOfMap;
-    for (Map.Entry<?, ? extends Accountable> entry : map.entrySet()) {
+    for (Map.Entry<?, ?> entry : map.entrySet()) {
       result += RamUsageEstimator.sizeOfObject(entry.getKey());
-      result += entry.getValue() == null ? 0 : entry.getValue().ramBytesUsed();
+      result += entry.getValue() == null ? 0 : RamUsageEstimator.sizeOfObject(entry.getValue());
     }
     result += map.size() * shallowSizeOfMapEntry;
     return RamUsageEstimator.alignObjectSize(result);

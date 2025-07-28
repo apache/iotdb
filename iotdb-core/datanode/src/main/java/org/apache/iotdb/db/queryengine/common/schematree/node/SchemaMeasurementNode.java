@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.common.schematree.node;
 
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -54,8 +55,14 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
         + RamUsageEstimator.sizeOf(name)
         + RamUsageEstimator.sizeOf(alias)
         + schema.ramBytesUsed()
-        + RamUsageEstimator.sizeOfMap(tagMap)
-        + RamUsageEstimator.sizeOfMap(attributeMap);
+        + MemoryEstimationHelper.getEstimatedSizeOfMap(
+            tagMap,
+            MemoryEstimationHelper.SHALLOW_SIZE_OF_HASHMAP,
+            MemoryEstimationHelper.SHALLOW_SIZE_OF_HASHMAP_ENTRY)
+        + MemoryEstimationHelper.getEstimatedSizeOfMap(
+            attributeMap,
+            MemoryEstimationHelper.SHALLOW_SIZE_OF_HASHMAP,
+            MemoryEstimationHelper.SHALLOW_SIZE_OF_HASHMAP_ENTRY);
   }
 
   public String getAlias() {
