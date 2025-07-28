@@ -352,7 +352,10 @@ public class PipeTsFileResourceManager {
       throws IOException {
     increaseFileReference(resource.getTsFile(), true, pipeName);
     if (withMods && resource.getModFile().exists()) {
-      increaseFileReference(new File(resource.getModFile().getFilePath()), false, pipeName);
+      // Avoid mod compaction
+      synchronized (resource.getModFile()) {
+        increaseFileReference(new File(resource.getModFile().getFilePath()), false, null);
+      }
     }
   }
 
