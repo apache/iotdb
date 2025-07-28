@@ -1973,6 +1973,10 @@ public class ConfigManager implements IManager {
               scope,
               req.isSetIsTableModel() && req.isIsTableModel(),
               true);
+      LOGGER.warn(
+          "[DEBUG] showDatabase called, isTableModel: {}",
+          req.isSetIsTableModel() ? req.isIsTableModel() : "not set");
+      LOGGER.warn("[DEBUG] GetDatabasePlan.isTableModel: {}", getDatabasePlan.isTableModel());
       return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);

@@ -500,18 +500,49 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
+      // Check if this is a table model query based on current SQL dialect
+      boolean isTableModel = false;
+      try {
+        IClientSession currentSession = SessionManager.getInstance().getCurrSession();
+        if (currentSession != null) {
+          isTableModel = currentSession.getSqlDialect() == IClientSession.SqlDialect.TABLE;
+          LOGGER.info(
+              "Current SQL dialect: {}, isTableModel: {}",
+              currentSession.getSqlDialect(),
+              isTableModel);
+        } else {
+          LOGGER.warn("No current session available, defaulting to tree model");
+          isTableModel = false;
+        }
+      } catch (Exception e) {
+        LOGGER.warn("Failed to get current session, defaulting to tree model: {}", e.getMessage());
+        isTableModel = false;
+      }
+
       // Handle null security label (drop operation)
       Map<String, String> securityLabels = new java.util.HashMap<>();
       if (alterDatabaseSecurityLabelStatement.getSecurityLabel() != null) {
         securityLabels = alterDatabaseSecurityLabelStatement.getSecurityLabel().getLabels();
       }
 
-      final TAlterDatabaseSecurityLabelReq req =
-          new TAlterDatabaseSecurityLabelReq()
-              .setDatabasePath(alterDatabaseSecurityLabelStatement.getDatabasePath().getFullPath())
-              .setSecurityLabel(securityLabels);
-
-      final TSStatus tsStatus = configNodeClient.alterDatabaseSecurityLabel(req);
+      TSStatus tsStatus;
+      if (isTableModel) {
+        // Use table model API
+        final TAlterDatabaseSecurityLabelReq req =
+            new TAlterDatabaseSecurityLabelReq()
+                .setDatabasePath(
+                    alterDatabaseSecurityLabelStatement.getDatabasePath().getFullPath())
+                .setSecurityLabel(securityLabels);
+        tsStatus = configNodeClient.alterDatabaseSecurityLabel(req);
+      } else {
+        // Use tree model API
+        final TAlterDatabaseSecurityLabelReq req =
+            new TAlterDatabaseSecurityLabelReq()
+                .setDatabasePath(
+                    alterDatabaseSecurityLabelStatement.getDatabasePath().getFullPath())
+                .setSecurityLabel(securityLabels);
+        tsStatus = configNodeClient.alterDatabaseSecurityLabel(req);
+      }
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
@@ -520,6 +551,30 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
+        // Clear cache after successful update
+        try {
+          if (isTableModel) {
+            // Clear table model cache
+            org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelReq clearReq =
+                new org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelReq();
+            clearReq.setDatabaseName(null); // Query all databases to refresh cache
+            configNodeClient.showTableDatabaseSecurityLabel(clearReq);
+            LOGGER.info(
+                "Cleared table model security label cache after updating database: {}",
+                alterDatabaseSecurityLabelStatement.getDatabasePath().getFullPath());
+          } else {
+            // Clear tree model cache
+            org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelReq clearReq =
+                new org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelReq();
+            clearReq.setDatabasePath(null); // Query all databases to refresh cache
+            configNodeClient.getDatabaseSecurityLabel(clearReq);
+            LOGGER.info(
+                "Cleared tree model security label cache after updating database: {}",
+                alterDatabaseSecurityLabelStatement.getDatabasePath().getFullPath());
+          }
+        } catch (Exception e) {
+          LOGGER.warn("Failed to clear security label cache: {}", e.getMessage());
+        }
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final ClientManagerException | TException e) {
@@ -549,30 +604,155 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             showDatabaseStatement.isShowSecurityLabel());
 
         try {
-          org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelReq req =
-              new org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelReq();
-          req.setDatabasePath(dbPath);
-          LOGGER.info("Sending request to ConfigNode: {}", req);
-          org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelResp resp =
-              client.getDatabaseSecurityLabel(req);
-          LOGGER.info("Received response from ConfigNode: {}", resp);
-
-          // Check response status first
-          if (resp.getStatus() != null
-              && resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            // If ConfigNode returned an error, throw exception
-            LOGGER.error("ConfigNode returned error: {}", resp.getStatus());
-            future.setException(
-                new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode()));
-            return future;
+          // Check if this is a table model query based on current SQL dialect
+          boolean isTableModel = false;
+          try {
+            IClientSession currentSession = SessionManager.getInstance().getCurrSession();
+            if (currentSession != null) {
+              isTableModel = currentSession.getSqlDialect() == IClientSession.SqlDialect.TABLE;
+              LOGGER.info(
+                  "Current SQL dialect: {}, isTableModel: {}",
+                  currentSession.getSqlDialect(),
+                  isTableModel);
+            } else {
+              LOGGER.warn("No current session available, defaulting to tree model");
+              isTableModel = false;
+            }
+          } catch (Exception e) {
+            LOGGER.warn(
+                "Failed to get current session, defaulting to tree model: {}", e.getMessage());
+            isTableModel = false;
           }
 
-          // Construct TSBlock, handle null case
-          Map<String, String> securityLabelMap = resp.getSecurityLabel();
+          Map<String, String> securityLabelMap;
+
+          if (isTableModel) {
+            // Use table model API
+            org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelReq req =
+                new org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelReq();
+            req.setDatabaseName(dbPath);
+            LOGGER.info("Sending table model request to ConfigNode: {}", req);
+            org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelResp resp =
+                client.showTableDatabaseSecurityLabel(req);
+            LOGGER.info("Received table model response from ConfigNode: {}", resp);
+
+            // Check response status first
+            if (resp.getStatus() != null
+                && resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              LOGGER.error("ConfigNode returned error: {}", resp.getStatus());
+              future.setException(
+                  new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode()));
+              return future;
+            }
+
+            securityLabelMap = resp.getSecurityLabel();
+          } else {
+            // Use tree model API
+            org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelReq req =
+                new org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelReq();
+            req.setDatabasePath(dbPath);
+            LOGGER.info("Sending tree model request to ConfigNode: {}", req);
+            org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseSecurityLabelResp resp =
+                client.getDatabaseSecurityLabel(req);
+            LOGGER.info("Received tree model response from ConfigNode: {}", resp);
+
+            // Check response status first
+            if (resp.getStatus() != null
+                && resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              LOGGER.error("ConfigNode returned error: {}", resp.getStatus());
+              future.setException(
+                  new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode()));
+              return future;
+            }
+
+            securityLabelMap = resp.getSecurityLabel();
+          }
+
+          // Handle null case
           if (securityLabelMap == null) {
             securityLabelMap = new java.util.HashMap<>();
             LOGGER.warn("Security label map is null, using empty map");
           }
+
+          // If this is a full database query (dbPath is null), we need to get all
+          // databases and merge them with the security labels
+          if (dbPath == null) {
+            // Get all databases first
+            // Use different path patterns based on model type
+            List<String> databasePathPattern;
+            if (isTableModel) {
+              // For table model, use a pattern that matches all databases (excluding root.*)
+              databasePathPattern = java.util.Arrays.asList("**");
+            } else {
+              // For tree model, use the traditional root.** pattern
+              databasePathPattern = java.util.Arrays.asList("root", "**");
+            }
+
+            org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq showDbReq =
+                new org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq(
+                        databasePathPattern,
+                        org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE_BINARY)
+                    .setIsTableModel(isTableModel);
+            org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp showDbResp =
+                client.showDatabase(showDbReq);
+
+            if (showDbResp.getStatus() != null
+                && showDbResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                && showDbResp.getDatabaseInfoMap() != null) {
+
+              // Create a complete map with all databases
+              Map<String, String> completeMap = new HashMap<>();
+
+              // Add all databases with their security labels (or empty if no label)
+              // Filter databases based on model type
+              for (String dbName : showDbResp.getDatabaseInfoMap().keySet()) {
+                // For table model, only show databases that don't start with "root."
+                // For tree model, only show databases that start with "root."
+                boolean isTableModelDatabase = !dbName.startsWith("root.");
+                if (isTableModel == isTableModelDatabase) {
+                  String label = securityLabelMap.getOrDefault(dbName, "");
+                  completeMap.put(dbName, label);
+                  LOGGER.debug(
+                      "Added database {} with label '{}' for {} model",
+                      dbName,
+                      label,
+                      isTableModel ? "table" : "tree");
+                } else {
+                  LOGGER.debug(
+                      "Filtered out database {} for {} model",
+                      dbName,
+                      isTableModel ? "table" : "tree");
+                }
+              }
+
+              securityLabelMap = completeMap;
+              LOGGER.info(
+                  "Complete database list with security labels (filtered by model): {} ({} databases)",
+                  securityLabelMap,
+                  securityLabelMap.size());
+            }
+          } else {
+            // For single database query, check if the database matches the model type
+            boolean isTableModelDatabase = !dbPath.startsWith("root.");
+            if (isTableModel != isTableModelDatabase) {
+              // Database doesn't match the current model type, return empty result
+              securityLabelMap = new HashMap<>();
+              LOGGER.info(
+                  "Database {} doesn't match current model type (table: {}), returning empty result",
+                  dbPath,
+                  isTableModel);
+            } else {
+              // Database matches the model type, ensure it's included in the result
+              if (!securityLabelMap.containsKey(dbPath)) {
+                securityLabelMap.put(dbPath, "");
+                LOGGER.debug(
+                    "Added single database {} with empty label for {} model",
+                    dbPath,
+                    isTableModel ? "table" : "tree");
+              }
+            }
+          }
+
           LOGGER.info("Security label response: {}", securityLabelMap);
           LOGGER.info("Security label map size: {}", securityLabelMap.size());
           showDatabaseStatement.buildTSBlockFromSecurityLabel(securityLabelMap, future);
@@ -609,24 +789,44 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         LOGGER.warn("Database path pattern: {}", databasePathPattern);
         LOGGER.warn("Authority scope: {}", showDatabaseStatement.getAuthorityScope());
 
+        // Check if this is a table model query based on current SQL dialect
+        boolean isTableModel = false;
+        try {
+          IClientSession currentSession = SessionManager.getInstance().getCurrSession();
+          if (currentSession != null) {
+            isTableModel = currentSession.getSqlDialect() == IClientSession.SqlDialect.TABLE;
+            LOGGER.info(
+                "Current SQL dialect: {}, isTableModel: {}",
+                currentSession.getSqlDialect(),
+                isTableModel);
+          } else {
+            LOGGER.warn("No current session available, defaulting to tree model");
+            isTableModel = false;
+          }
+        } catch (Exception e) {
+          LOGGER.warn(
+              "Failed to get current session, defaulting to tree model: {}", e.getMessage());
+          isTableModel = false;
+        }
+
         org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq req =
             new org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq(
                     databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize())
-                .setIsTableModel(false);
+                .setIsTableModel(isTableModel);
 
-        LOGGER.warn("Sending request to ConfigNode - isTableModel: false");
-        LOGGER.warn("Request details: {}", req);
+        LOGGER.warn("[DEBUG] Sending request to ConfigNode - isTableModel: {}", isTableModel);
+        LOGGER.warn("[DEBUG] Request details: {}", req);
 
         org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp resp = client.showDatabase(req);
 
-        LOGGER.warn("Received response from ConfigNode");
-        LOGGER.warn("Response status: {}", resp.getStatus());
+        LOGGER.warn("[DEBUG] Received response from ConfigNode");
+        LOGGER.warn("[DEBUG] Response status: {}", resp.getStatus());
         LOGGER.warn(
-            "Response database count: {}",
+            "[DEBUG] Response database count: {}",
             resp.getDatabaseInfoMap() != null ? resp.getDatabaseInfoMap().size() : "null");
 
         if (resp.getDatabaseInfoMap() != null) {
-          LOGGER.warn("Database names in response: {}", resp.getDatabaseInfoMap().keySet());
+          LOGGER.warn("[DEBUG] Database names in response: {}", resp.getDatabaseInfoMap().keySet());
         }
 
         LOGGER.warn("=== SHOW DATABASES API CALL END ===");
@@ -4746,10 +4946,33 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
+      // Parse security label string into map
+      Map<String, String> securityLabelMap = new HashMap<>();
+      if (securityLabel != null && !securityLabel.trim().isEmpty()) {
+        // Parse security label format like "level=10, area='beijing'"
+        String[] pairs = securityLabel.split(",");
+        for (String pair : pairs) {
+          String[] keyValue = pair.trim().split("=");
+          if (keyValue.length == 2) {
+            String key = keyValue[0].trim();
+            String value = keyValue[1].trim();
+            // Remove quotes if present
+            if (value.startsWith("'") && value.endsWith("'")) {
+              value = value.substring(1, value.length() - 1);
+            }
+            securityLabelMap.put(key, value);
+          }
+        }
+      }
+
       // Build request parameters for table model LBAC
       final TAlterDatabaseSecurityLabelReq req = new TAlterDatabaseSecurityLabelReq();
       req.setDatabasePath(databaseName);
-      req.setSecurityLabel(new java.util.HashMap<>());
+      req.setSecurityLabel(securityLabelMap);
+
+      LOGGER.info(
+          "Setting table model database security label: {} -> {}", databaseName, securityLabelMap);
+
       // Send request to ConfigNode
       final TSStatus resp = configNodeClient.alterDatabaseSecurityLabel(req);
 
@@ -4760,6 +4983,28 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             resp);
         future.setException(new IoTDBException(resp.message, resp.code));
       } else {
+        // Clear cache after successful update
+        try {
+          // Clear ConfigNode cache by sending a dummy request to force cache refresh
+          org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelReq clearReq =
+              new org.apache.iotdb.confignode.rpc.thrift.TShowTableDatabaseSecurityLabelReq();
+          clearReq.setDatabaseName(null); // Query all databases to refresh cache
+          configNodeClient.showTableDatabaseSecurityLabel(clearReq);
+          LOGGER.info(
+              "Cleared table model security label cache after updating database: {}", databaseName);
+
+          // Also clear local cache if available
+          try {
+            org.apache.iotdb.db.auth.TableModelLbacCacheManager cacheManager =
+                org.apache.iotdb.db.auth.TableModelLbacCacheManager.getInstance();
+            cacheManager.invalidateDatabaseLabelCache(databaseName);
+            LOGGER.info("Cleared local table model LBAC cache for database: {}", databaseName);
+          } catch (Exception e) {
+            LOGGER.warn("Failed to clear local table model LBAC cache: {}", e.getMessage());
+          }
+        } catch (Exception e) {
+          LOGGER.warn("Failed to clear table model security label cache: {}", e.getMessage());
+        }
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final ClientManagerException | TException e) {

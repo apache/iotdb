@@ -171,6 +171,8 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   }
 
   /**
+   * Build TSBlock from security label map
+   *
    * @param securityLabelMap
    * @param future
    */
@@ -180,7 +182,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
       // Add detailed logging for debugging
       LOGGER.warn("=== SHOW DATABASES SECURITY LABEL BUILD START ===");
       LOGGER.warn("buildTSBlockFromSecurityLabel called with map: {}", securityLabelMap);
-      LOGGER.warn("Map size: {}", securityLabelMap.size());
+      LOGGER.warn("Map size: {}", securityLabelMap != null ? securityLabelMap.size() : 0);
       LOGGER.warn("showSecurityLabel flag: {}", showSecurityLabel);
       LOGGER.warn("pathPattern: {}", pathPattern);
 
@@ -188,18 +190,76 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
       String currentUser = SessionManager.getInstance().getCurrSession().getUsername();
       LOGGER.warn("Current user for LBAC filtering: {}", currentUser);
 
+      // Determine current SQL dialect (table model vs tree model)
+      boolean isTableModel = false;
+      try {
+        org.apache.iotdb.db.protocol.session.IClientSession currentSession =
+            SessionManager.getInstance().getCurrSession();
+        if (currentSession != null) {
+          isTableModel =
+              currentSession.getSqlDialect()
+                  == org.apache.iotdb.db.protocol.session.IClientSession.SqlDialect.TABLE;
+          LOGGER.warn(
+              "[DEBUG] buildTSBlockFromSecurityLabel: Current SQL dialect: {}, isTableModel: {}",
+              currentSession.getSqlDialect(),
+              isTableModel);
+        } else {
+          LOGGER.warn(
+              "[DEBUG] buildTSBlockFromSecurityLabel: No current session available, defaulting to tree model");
+          isTableModel = false;
+        }
+      } catch (Exception e) {
+        LOGGER.warn(
+            "[DEBUG] buildTSBlockFromSecurityLabel: Failed to get current session, defaulting to tree model: {}",
+            e.getMessage());
+        isTableModel = false;
+      }
+
       // Apply LBAC filtering to security label map
       Map<String, String> filteredSecurityLabelMap =
           LbacPermissionChecker.filterSecurityLabelMapByLbac(securityLabelMap, currentUser);
 
-      LOGGER.warn("Original security label map size: {}", securityLabelMap.size());
+      LOGGER.warn(
+          "Original security label map size: {}",
+          securityLabelMap != null ? securityLabelMap.size() : 0);
       LOGGER.warn("Filtered security label map size: {}", filteredSecurityLabelMap.size());
       LOGGER.warn(
           "Filtered out {} databases due to LBAC restrictions",
-          securityLabelMap.size() - filteredSecurityLabelMap.size());
+          (securityLabelMap != null ? securityLabelMap.size() : 0)
+              - filteredSecurityLabelMap.size());
 
-      // Use filtered map for building result
-      Map<String, String> finalSecurityLabelMap = filteredSecurityLabelMap;
+      // Apply model-specific filtering
+      Map<String, String> modelFilteredMap = new java.util.HashMap<>();
+      if (filteredSecurityLabelMap != null && !filteredSecurityLabelMap.isEmpty()) {
+        for (Map.Entry<String, String> entry : filteredSecurityLabelMap.entrySet()) {
+          String databaseName = entry.getKey();
+          String securityLabel = entry.getValue();
+
+          // Determine if this database matches the current model type
+          boolean isTableModelDatabase = !databaseName.startsWith("root.");
+          LOGGER.warn(
+              "Database: {}, isTableModelDatabase: {}, current isTableModel: {}",
+              databaseName,
+              isTableModelDatabase,
+              isTableModel);
+          if (isTableModel == isTableModelDatabase) {
+            modelFilteredMap.put(databaseName, securityLabel);
+            LOGGER.warn(
+                "Added database {} with label '{}' for {} model",
+                databaseName,
+                securityLabel,
+                isTableModel ? "table" : "tree");
+          } else {
+            LOGGER.warn(
+                "Filtered out database {} for {} model",
+                databaseName,
+                isTableModel ? "table" : "tree");
+          }
+        }
+      }
+
+      LOGGER.warn("[DEBUG] After model filtering, databases: {}", modelFilteredMap.keySet());
+      LOGGER.warn("Model type: {}", isTableModel ? "table" : "tree");
 
       List<TSDataType> outputDataTypes =
           ColumnHeaderConstant.SHOW_DATABASE_SECURITY_LABEL_COLUMN_HEADERS.stream()
@@ -208,10 +268,12 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
       LOGGER.debug("Output data types: {}", outputDataTypes);
       TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
-      if (finalSecurityLabelMap != null && !finalSecurityLabelMap.isEmpty()) {
-        LOGGER.info("Processing {} database security labels", finalSecurityLabelMap.size());
+      // Process all databases from the model-filtered security label map
+      // This will include all databases that match the current model type
+      if (modelFilteredMap != null && !modelFilteredMap.isEmpty()) {
+        LOGGER.info("Processing {} database security labels", modelFilteredMap.size());
 
-        for (Map.Entry<String, String> entry : finalSecurityLabelMap.entrySet()) {
+        for (Map.Entry<String, String> entry : modelFilteredMap.entrySet()) {
           String databaseName = entry.getKey();
           String securityLabel = entry.getValue();
 
@@ -220,6 +282,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
 
           // Skip null or empty database names
           if (databaseName != null && !databaseName.trim().isEmpty()) {
+
             builder.getTimeColumnBuilder().writeLong(0L);
             builder
                 .getColumnBuilder(0)
@@ -228,7 +291,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
                 .getColumnBuilder(1)
                 .writeBinary(
                     new Binary(
-                        securityLabel != null ? securityLabel : "", TSFileConfig.STRING_CHARSET));
+                        (securityLabel == null) ? "" : securityLabel, TSFileConfig.STRING_CHARSET));
             builder.declarePosition();
             LOGGER.debug(
                 "Added database: '{}' with security label: '{}'", databaseName, securityLabel);

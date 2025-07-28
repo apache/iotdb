@@ -1543,7 +1543,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       TShowTableDatabaseSecurityLabelReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showTableDatabaseSecurityLabel(req),
-        resp -> resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        resp ->
+            resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                || resp.getStatus().getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
   }
 
   @Override

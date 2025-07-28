@@ -245,27 +245,41 @@ public class ClusterSchemaManager {
   }
 
   /** Get single database security label from cache */
-  public Map<String, String> getDatabaseSecurityLabel(String databaseName) {
+  public Map<String, String> getDatabaseSecurityLabel(String databaseName)
+      throws DatabaseNotExistsException {
     synchronized (CACHE_LOCK) {
+      // Handle null databaseName case - return all database security labels
+      if (databaseName == null) {
+        LOGGER.debug(
+            "getDatabaseSecurityLabel called with null databaseName, returning all database security labels");
+        return getAllDatabaseSecurityLabelsOptimized();
+      }
+
+      // Check if database exists first
+      if (!isDatabaseExist(databaseName)) {
+        LOGGER.warn("Database does not exist: {}", databaseName);
+        throw new DatabaseNotExistsException(databaseName);
+      }
+
       long currentTime = System.currentTimeMillis();
 
       // Check if cache is valid
       if (lastCacheUpdateTime > 0 && (currentTime - lastCacheUpdateTime) < CACHE_TTL_MS) {
         String label = SECURITY_LABEL_CACHE.getOrDefault(databaseName, "");
         Map<String, String> result = new HashMap<>();
-        if (!label.isEmpty()) {
-          result.put(databaseName, label);
-        }
+        // Always include the database name, even if label is empty
+        result.put(databaseName, label);
         return result;
       }
 
-      // Cache expired, update all and return specific one
+      // Cache expired or not initialized, rebuild cache
       getAllDatabaseSecurityLabelsOptimized();
+
+      // Get from rebuilt cache
       String label = SECURITY_LABEL_CACHE.getOrDefault(databaseName, "");
       Map<String, String> result = new HashMap<>();
-      if (!label.isEmpty()) {
-        result.put(databaseName, label);
-      }
+      // Always include the database name, even if label is empty
+      result.put(databaseName, label);
       return result;
     }
   }
@@ -589,6 +603,10 @@ public class ClusterSchemaManager {
       infoMap.put(database, databaseInfo);
     }
 
+    LOGGER.warn(
+        "[DEBUG] ClusterSchemaManager.showDatabase called, isTableModel: {}",
+        getDatabasePlan.isTableModel());
+    LOGGER.warn("[DEBUG] DatabaseInfoMap keys: {}", infoMap.keySet());
     return new TShowDatabaseResp().setDatabaseInfoMap(infoMap).setStatus(StatusUtils.OK);
   }
 

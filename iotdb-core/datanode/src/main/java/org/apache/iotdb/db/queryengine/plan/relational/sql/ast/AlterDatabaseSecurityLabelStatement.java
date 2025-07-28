@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 
 import javax.annotation.Nullable;
@@ -29,7 +31,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Statement for altering database security labels in table model. */
-public class AlterDatabaseSecurityLabelStatement extends Statement {
+public class AlterDatabaseSecurityLabelStatement extends Statement implements IConfigStatement {
 
   private final String database;
   private final Map<String, String> securityLabels;
@@ -54,8 +56,12 @@ public class AlterDatabaseSecurityLabelStatement extends Statement {
   }
 
   @Override
-  public List<? extends org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node>
-      getChildren() {
+  public QueryType getQueryType() {
+    return QueryType.WRITE;
+  }
+
+  @Override
+  public List<? extends Node> getChildren() {
     return Collections.emptyList();
   }
 

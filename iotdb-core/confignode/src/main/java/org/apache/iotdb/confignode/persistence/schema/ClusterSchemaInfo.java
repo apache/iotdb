@@ -369,10 +369,23 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .setDatabaseSchema(currentSchema);
 
       // Clear ConfigNode cache immediately after successful update
-      // clusterSchemaManager.clearSecurityLabelCache(); // This line was removed as
-      // per the edit hint
-      LOGGER.info(
-          "Cleared ConfigNode security label cache after updating database: {}", databaseName);
+      // Get the ClusterSchemaManager instance and clear the cache
+      try {
+        org.apache.iotdb.confignode.manager.IManager configManager =
+            org.apache.iotdb.confignode.service.ConfigNode.getInstance().getConfigManager();
+        if (configManager != null) {
+          org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager clusterSchemaManager =
+              configManager.getClusterSchemaManager();
+          if (clusterSchemaManager != null) {
+            clusterSchemaManager.clearSecurityLabelCache();
+            LOGGER.info(
+                "Cleared ConfigNode security label cache after updating database: {}",
+                databaseName);
+          }
+        }
+      } catch (Exception e) {
+        LOGGER.warn("Failed to clear security label cache: {}", e.getMessage());
+      }
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 

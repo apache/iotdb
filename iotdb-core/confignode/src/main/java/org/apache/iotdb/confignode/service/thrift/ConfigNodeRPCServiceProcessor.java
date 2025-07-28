@@ -81,6 +81,7 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterR
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
@@ -564,8 +565,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TGetDatabaseSecurityLabelResp getDatabaseSecurityLabel(
       final TGetDatabaseSecurityLabelReq req) {
     TGetDatabaseSecurityLabelResp resp = new TGetDatabaseSecurityLabelResp();
+    String dbPath = null;
     try {
-      String dbPath = req.getDatabasePath();
+      dbPath = req.getDatabasePath();
       LOGGER.info("getDatabaseSecurityLabel called with dbPath: '{}'", dbPath);
 
       // If dbPath is null or empty, return all databases' security labels
@@ -587,6 +589,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       resp.setSecurityLabel(securityLabel);
       resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
+    } catch (DatabaseNotExistsException e) {
+      LOGGER.warn("Database does not exist: {}", dbPath);
+      TSStatus errorStatus = new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+      errorStatus.setMessage("Database does not exist: " + dbPath);
+      resp.setStatus(errorStatus);
     } catch (Exception e) {
       LOGGER.error("Error in getDatabaseSecurityLabel", e);
       TSStatus errorStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -1656,24 +1663,68 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     try {
       TShowTableDatabaseSecurityLabelResp resp = new TShowTableDatabaseSecurityLabelResp();
 
+      // Handle null request case
+      if (req == null) {
+        LOGGER.warn("showTableDatabaseSecurityLabel called with null request");
+        resp.setSecurityLabel(new HashMap<>());
+        resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+        return resp;
+      }
+
+      // Get database name from request, handle null case
+      String databaseName = req.getDatabaseName();
+      LOGGER.debug("showTableDatabaseSecurityLabel called with databaseName: '{}'", databaseName);
+
       // Get security label from ConfigManager
       Map<String, String> securityLabelMap =
-          configManager.getClusterSchemaManager().getDatabaseSecurityLabel(req.getDatabaseName());
+          configManager.getClusterSchemaManager().getDatabaseSecurityLabel(databaseName);
+
+      // Apply model filtering for table model - only show databases that don't start
+      // with "root."
+      Map<String, String> filteredMap = new HashMap<>();
 
       if (securityLabelMap != null && !securityLabelMap.isEmpty()) {
-        resp.setSecurityLabel(securityLabelMap);
-        LOGGER.info(
-            "Successfully retrieved table model security label for database: {}, labels: {}",
-            req.getDatabaseName(),
-            securityLabelMap);
+        for (Map.Entry<String, String> entry : securityLabelMap.entrySet()) {
+          String dbName = entry.getKey();
+          String label = entry.getValue();
+
+          // For table model, only show databases that don't start with "root."
+          if (!dbName.startsWith("root.")) {
+            filteredMap.put(dbName, label);
+            LOGGER.debug("Added table model database {} with label '{}'", dbName, label);
+          } else {
+            LOGGER.debug("Filtered out tree model database {} for table model", dbName);
+          }
+        }
       } else {
-        resp.setSecurityLabel(new HashMap<>());
-        LOGGER.info("No table model security label found for database: {}", req.getDatabaseName());
+        // If securityLabelMap is empty but database exists, we should still include the
+        // database
+        // with empty label for table model databases
+        if (databaseName != null
+            && !databaseName.trim().isEmpty()
+            && !databaseName.startsWith("root.")) {
+          filteredMap.put(databaseName, "");
+          LOGGER.debug("Added table model database {} with empty label", databaseName);
+        }
       }
+
+      resp.setSecurityLabel(filteredMap);
+      LOGGER.info(
+          "Successfully retrieved table model security label (filtered): {} databases, labels: {}",
+          filteredMap.size(),
+          filteredMap);
 
       resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
       return resp;
 
+    } catch (DatabaseNotExistsException e) {
+      String databaseName = (req != null) ? req.getDatabaseName() : "null";
+      LOGGER.warn("Database does not exist: {}", databaseName);
+      TShowTableDatabaseSecurityLabelResp resp = new TShowTableDatabaseSecurityLabelResp();
+      resp.setStatus(
+          new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+              .setMessage("Database does not exist: " + databaseName));
+      return resp;
     } catch (Exception e) {
       LOGGER.error(
           "Failed to show table model database security label for: {}", req.getDatabaseName(), e);
@@ -1761,7 +1812,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         resp.setSecurityLabel(allLabels);
         LOGGER.info("Successfully retrieved all database security labels for tree model");
       } else {
-        // Single database query - use existing fast method
+        // Single database query - check if database exists first
+        if (!configManager.getClusterSchemaManager().isDatabaseExist(dbPath)) {
+          LOGGER.warn("Database does not exist: {}", dbPath);
+          resp.setStatus(
+              new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                  .setMessage("Database does not exist: " + dbPath));
+          return resp;
+        }
+
+        // Database exists, get security label
         Map<String, String> securityLabel =
             configManager.getClusterSchemaManager().getDatabaseSecurityLabel(dbPath);
 
@@ -1772,6 +1832,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
       return resp;
 
+    } catch (DatabaseNotExistsException e) {
+      String databaseName = (req != null) ? req.getDatabaseName() : "null";
+      LOGGER.warn("Database does not exist: {}", databaseName);
+      TShowDatabaseSecurityLabelResp resp = new TShowDatabaseSecurityLabelResp();
+      resp.setStatus(
+          new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+              .setMessage("Database does not exist: " + databaseName));
+      return resp;
     } catch (Exception e) {
       LOGGER.error(
           "Failed to show tree model database security label for: {}", req.getDatabaseName(), e);
