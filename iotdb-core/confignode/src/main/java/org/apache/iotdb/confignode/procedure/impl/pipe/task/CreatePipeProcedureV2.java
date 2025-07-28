@@ -31,8 +31,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -67,11 +67,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_SOURCE_PARALLELISM_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_EXTRACTOR_PARALLELISM_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_SOURCE_PARALLELISM_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
 
 public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -162,8 +162,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final String pluginName =
         extractorParameters
             .getStringOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
             .toLowerCase();
 
@@ -172,29 +171,29 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return;
     }
 
-    if (extractorParameters.hasAttribute(PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY)
-        || extractorParameters.hasAttribute(PipeExtractorConstant.SOURCE_IOTDB_USER_KEY)
-        || extractorParameters.hasAttribute(PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY)
-        || extractorParameters.hasAttribute(PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY)) {
+    if (extractorParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY)
+        || extractorParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_USER_KEY)
+        || extractorParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY)
+        || extractorParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY)) {
       final String hashedPassword =
           env.getConfigManager()
               .getPermissionManager()
               .login4Pipe(
                   extractorParameters.getStringByKeys(
-                      PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY,
-                      PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
-                      PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
-                      PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY),
+                      PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+                      PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+                      PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+                      PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY),
                   extractorParameters.getStringByKeys(
-                      PipeExtractorConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
-                      PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY));
+                      PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+                      PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
       if (Objects.isNull(hashedPassword)) {
         throw new PipeException("Authentication failed.");
       }
       extractorParameters.addOrReplaceEquivalentAttributes(
           new PipeParameters(
               Collections.singletonMap(
-                  PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY, hashedPassword)));
+                  PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY, hashedPassword)));
     }
   }
 
@@ -205,7 +204,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final String pluginName =
         connectorParameters
             .getStringOrDefault(
-                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
                 BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
             .toLowerCase();
 
@@ -214,29 +213,28 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return;
     }
 
-    if (connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY)
-        || connectorParameters.hasAttribute(PipeConnectorConstant.SINK_IOTDB_USER_KEY)
-        || connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY)
-        || connectorParameters.hasAttribute(PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY)) {
+    if (connectorParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY)
+        || connectorParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_USER_KEY)
+        || connectorParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY)
+        || connectorParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY)) {
       final String hashedPassword =
           env.getConfigManager()
               .getPermissionManager()
               .login4Pipe(
                   connectorParameters.getStringByKeys(
-                      PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY,
-                      PipeConnectorConstant.SINK_IOTDB_USER_KEY,
-                      PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
-                      PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY),
+                      PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+                      PipeSinkConstant.SINK_IOTDB_USER_KEY,
+                      PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+                      PipeSinkConstant.SINK_IOTDB_USERNAME_KEY),
                   connectorParameters.getStringByKeys(
-                      PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
-                      PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY));
+                      PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+                      PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY));
       if (Objects.isNull(hashedPassword)) {
         throw new PipeException("Authentication failed.");
       }
       connectorParameters.addOrReplaceEquivalentAttributes(
           new PipeParameters(
-              Collections.singletonMap(
-                  PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY, hashedPassword)));
+              Collections.singletonMap(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY, hashedPassword)));
     }
   }
 
@@ -281,9 +279,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   .getExtractorParameters()
                   .getStringOrDefault(
                       Arrays.asList(
-                          PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
-                          PipeExtractorConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
-                      PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
+                          PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
+                          PipeSourceConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
+                      PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
       final int parallelism =
           pipeStaticMeta
               .getExtractorParameters()

@@ -39,8 +39,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
@@ -50,13 +50,13 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.agent.task.builder.PipeDataNodeTaskBuilder;
-import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -101,32 +101,32 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATH_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_SNAPSHOT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATH_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_QUERY_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_SNAPSHOT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
 
 public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
@@ -361,12 +361,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             pipeMeta
                 .getStaticMeta()
                 .getConnectorParameters()
-                .getString(PipeConnectorConstant.SINK_TOPIC_KEY);
+                .getString(PipeSinkConstant.SINK_TOPIC_KEY);
         final String consumerGroupId =
             pipeMeta
                 .getStaticMeta()
                 .getConnectorParameters()
-                .getString(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY);
+                .getString(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY);
         SubscriptionAgent.broker().updateCompletedTopicNames(consumerGroupId, topicName);
       }
     }
@@ -432,17 +432,16 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 .getExtractorParameters()
                 .getStringOrDefault(
                     Arrays.asList(
-                        PipeExtractorConstant.EXTRACTOR_MODE_KEY,
-                        PipeExtractorConstant.SOURCE_MODE_KEY),
-                    PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE);
+                        PipeSourceConstant.EXTRACTOR_MODE_KEY, PipeSourceConstant.SOURCE_MODE_KEY),
+                    PipeSourceConstant.EXTRACTOR_MODE_DEFAULT_VALUE);
         final boolean includeDataAndNeedDrop =
             DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
                         pipeMeta.getStaticMeta().getExtractorParameters())
                     .getLeft()
                 && (extractorModeValue.equalsIgnoreCase(
-                        PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE)
+                        PipeSourceConstant.EXTRACTOR_MODE_QUERY_VALUE)
                     || extractorModeValue.equalsIgnoreCase(
-                        PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE));
+                        PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE));
 
         final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
         final Pair<Long, Double> remainingEventAndTime =
@@ -743,10 +742,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     // If the realtime mode is batch or file, we do not need to allocate memory
     final String realtimeMode =
         extractorParameters.getStringByKeys(
-            PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_KEY,
-            PipeExtractorConstant.SOURCE_REALTIME_MODE_KEY);
-    if (PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE.equals(realtimeMode)
-        || PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_FILE_VALUE.equals(realtimeMode)) {
+            PipeSourceConstant.EXTRACTOR_REALTIME_MODE_KEY,
+            PipeSourceConstant.SOURCE_REALTIME_MODE_KEY);
+    if (PipeSourceConstant.EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE.equals(realtimeMode)
+        || PipeSourceConstant.EXTRACTOR_REALTIME_MODE_FILE_VALUE.equals(realtimeMode)) {
       return;
     }
 
@@ -810,12 +809,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     // If the extractor is not hybrid, we do need to allocate memory
     isTSFileParser =
         isTSFileParser
-            || !PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE.equals(
+            || !PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE.equals(
                 connectorParameters.getStringOrDefault(
                     Arrays.asList(
-                        PipeConnectorConstant.CONNECTOR_FORMAT_KEY,
-                        PipeConnectorConstant.SINK_FORMAT_KEY),
-                    PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE));
+                        PipeSinkConstant.CONNECTOR_FORMAT_KEY, PipeSinkConstant.SINK_FORMAT_KEY),
+                    PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE));
 
     if (!isTSFileParser) {
       return 0;
@@ -831,12 +829,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     // If the connector format is tsfile , we need to use batch
     boolean needUseBatch =
-        PipeConnectorConstant.CONNECTOR_FORMAT_TS_FILE_VALUE.equals(
+        PipeSinkConstant.CONNECTOR_FORMAT_TS_FILE_VALUE.equals(
             connectorParameters.getStringOrDefault(
                 Arrays.asList(
-                    PipeConnectorConstant.CONNECTOR_FORMAT_KEY,
-                    PipeConnectorConstant.SINK_FORMAT_KEY),
-                PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE));
+                    PipeSinkConstant.CONNECTOR_FORMAT_KEY, PipeSinkConstant.SINK_FORMAT_KEY),
+                PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE));
 
     if (needUseBatch) {
       return PipeConfig.getInstance().getSinkBatchMemoryTsFile();
@@ -846,9 +843,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     needUseBatch =
         connectorParameters.getBooleanOrDefault(
             Arrays.asList(
-                PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY,
-                PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
-            PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
+                PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY,
+                PipeSinkConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
+            PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
 
     if (!needUseBatch) {
       return 0;
@@ -871,15 +868,14 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     String format =
         connectorParameters.getStringOrDefault(
-            Arrays.asList(
-                PipeConnectorConstant.CONNECTOR_FORMAT_KEY, PipeConnectorConstant.SINK_FORMAT_KEY),
-            PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE);
+            Arrays.asList(PipeSinkConstant.CONNECTOR_FORMAT_KEY, PipeSinkConstant.SINK_FORMAT_KEY),
+            PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE);
 
     // If the connector format is tsfile and hybrid, we need to transfer tsfile
     needTransferTsFile =
         needTransferTsFile
-            || PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE.equals(format)
-            || PipeConnectorConstant.CONNECTOR_FORMAT_TS_FILE_VALUE.equals(format);
+            || PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE.equals(format)
+            || PipeSinkConstant.CONNECTOR_FORMAT_TS_FILE_VALUE.equals(format);
 
     if (!needTransferTsFile) {
       return 0;
