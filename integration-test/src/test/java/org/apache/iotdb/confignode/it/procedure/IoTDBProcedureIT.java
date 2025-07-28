@@ -237,15 +237,15 @@ public class IoTDBProcedureIT {
     }
 
     String ttlSql = "set ttl to %s 36%d0000";
-    AtomicBoolean stopInserting = new AtomicBoolean(false);
+    AtomicBoolean stopSettingTTL = new AtomicBoolean(false);
     CountDownLatch procedureDetected = new CountDownLatch(1);
     SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
     AtomicLong atomicLong = new AtomicLong(0);
-    Thread createTimeseriesThread =
+    Thread setTtlThread =
         new Thread(
             () -> {
-              while (!stopInserting.get()) {
+              while (!stopSettingTTL.get()) {
 
                 try {
                   if (!TestUtils.tryExecuteNonQueriesWithRetry(
@@ -258,7 +258,7 @@ public class IoTDBProcedureIT {
                 }
               }
             });
-    createTimeseriesThread.start();
+    setTtlThread.start();
     try {
       Awaitility.await()
           .atMost(1, TimeUnit.MINUTES)
@@ -273,11 +273,11 @@ public class IoTDBProcedureIT {
                 }
               });
 
-      stopInserting.set(true);
+      stopSettingTTL.set(true);
       procedureDetected.countDown();
     } finally {
-      stopInserting.set(true);
-      createTimeseriesThread.join(2000);
+      stopSettingTTL.set(true);
+      setTtlThread.join(2000);
     }
     Assert.assertTrue(
         "Procedure should be detected in SHOW PROCEDURES", procedureDetected.getCount() == 0);
