@@ -136,9 +136,16 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
                 .createClientManager(
                     isTSFileUsed
-                        ? new ClientPoolFactory
-                            .AsyncPipeTsFileDataTransferServiceClientPoolFactory()
-                        : new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
+                        ? new ClientPoolFactory.AsyncPipeTsFileDataTransferServiceClientPoolFactory(
+                            customSendPortStrategy,
+                            minSendPortRange,
+                            maxSendPortRange,
+                            candidatePorts)
+                        : new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory(
+                            customSendPortStrategy,
+                            minSendPortRange,
+                            maxSendPortRange,
+                            candidatePorts)));
       }
       endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
 

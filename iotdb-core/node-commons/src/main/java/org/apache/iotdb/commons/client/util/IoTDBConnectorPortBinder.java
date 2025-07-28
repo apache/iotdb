@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.client.util;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.utils.function.Consumer;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;

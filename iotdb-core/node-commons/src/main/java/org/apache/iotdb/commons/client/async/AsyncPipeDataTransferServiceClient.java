@@ -208,11 +208,24 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   public static class Factory
       extends AsyncThriftClientFactory<TEndPoint, AsyncPipeDataTransferServiceClient> {
 
+    final String customSendPortStrategy;
+    final int minSendPortRange;
+    final int maxSendPortRange;
+    final List<Integer> candidatePorts;
+
     public Factory(
         final ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
         final ThriftClientProperty thriftClientProperty,
-        final String threadName) {
+        final String threadName,
+        final String customSendPortStrategy,
+        final int minSendPortRange,
+        final int maxSendPortRange,
+        List<Integer> candidatePorts) {
       super(clientManager, thriftClientProperty, threadName);
+      this.customSendPortStrategy = customSendPortStrategy;
+      this.minSendPortRange = minSendPortRange;
+      this.maxSendPortRange = maxSendPortRange;
+      this.candidatePorts = candidatePorts;
     }
 
     @Override
@@ -231,10 +244,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
               endPoint,
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
               clientManager,
-              endPoint.getCustomSendPortStrategy(),
-              endPoint.getMinSendPortRange(),
-              endPoint.getMaxSendPortRange(),
-              endPoint.getCandidatePorts()));
+              this.customSendPortStrategy,
+              this.minSendPortRange,
+              this.maxSendPortRange,
+              this.candidatePorts));
     }
 
     @Override

@@ -42,6 +42,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
+import java.util.List;
+
 public class ClientPoolFactory {
 
   private static final CommonConfig conf = CommonDescriptor.getInstance().getConfig();
@@ -273,6 +275,22 @@ public class ClientPoolFactory {
   public static class AsyncPipeDataTransferServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncPipeDataTransferServiceClient> {
 
+    final String customSendPortStrategy;
+    final int minSendPortRange;
+    final int maxSendPortRange;
+    final List<Integer> candidatePorts;
+
+    public AsyncPipeDataTransferServiceClientPoolFactory(
+        final String customSendPortStrategy,
+        final int minSendPortRange,
+        final int maxSendPortRange,
+        List<Integer> candidatePorts) {
+      this.customSendPortStrategy = customSendPortStrategy;
+      this.minSendPortRange = minSendPortRange;
+      this.maxSendPortRange = maxSendPortRange;
+      this.candidatePorts = candidatePorts;
+    }
+
     @Override
     public GenericKeyedObjectPool<TEndPoint, AsyncPipeDataTransferServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> manager) {
@@ -287,7 +305,11 @@ public class ClientPoolFactory {
                       .setSelectorNumOfAsyncClientManager(
                           conf.getPipeAsyncConnectorSelectorNumber())
                       .build(),
-                  ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName()),
+                  ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName(),
+                  this.customSendPortStrategy,
+                  this.minSendPortRange,
+                  this.maxSendPortRange,
+                  this.candidatePorts),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
                   .setMaxClientNumForEachNode(conf.getPipeAsyncConnectorMaxClientNumber())
                   .build()
@@ -300,6 +322,23 @@ public class ClientPoolFactory {
 
   public static class AsyncPipeTsFileDataTransferServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncPipeDataTransferServiceClient> {
+
+    final String customSendPortStrategy;
+    final int minSendPortRange;
+    final int maxSendPortRange;
+    final List<Integer> candidatePorts;
+
+    public AsyncPipeTsFileDataTransferServiceClientPoolFactory(
+        final String customSendPortStrategy,
+        final int minSendPortRange,
+        final int maxSendPortRange,
+        List<Integer> candidatePorts) {
+      this.customSendPortStrategy = customSendPortStrategy;
+      this.minSendPortRange = minSendPortRange;
+      this.maxSendPortRange = maxSendPortRange;
+      this.candidatePorts = candidatePorts;
+    }
+
     @Override
     public GenericKeyedObjectPool<TEndPoint, AsyncPipeDataTransferServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> manager) {
@@ -314,7 +353,11 @@ public class ClientPoolFactory {
                       .setSelectorNumOfAsyncClientManager(
                           conf.getPipeAsyncConnectorSelectorNumber())
                       .build(),
-                  ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName()),
+                  ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName(),
+                  this.customSendPortStrategy,
+                  this.minSendPortRange,
+                  this.maxSendPortRange,
+                  this.candidatePorts),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
                   .setMaxClientNumForEachNode(conf.getPipeAsyncConnectorMaxTsFileClientNumber())
                   .build()
