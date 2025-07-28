@@ -27,11 +27,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpochManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-
-import java.util.stream.Collectors;
 
 public class PipeRealtimeEventFactory {
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
@@ -54,20 +50,7 @@ public class PipeRealtimeEventFactory {
       final TsFileResource resource) {
     final PipeInsertNodeTabletInsertionEvent insertionEvent =
         new PipeInsertNodeTabletInsertionEvent(
-            isTableModel,
-            databaseNameFromDataRegion,
-            insertNode,
-            insertNode.getTargetPath(),
-            (insertNode instanceof InsertRowsNode)
-                ? ((InsertRowsNode) insertNode)
-                    .getInsertRowNodeList().stream()
-                        .map(
-                            node ->
-                                DeviceIDFactory.getInstance()
-                                    .getDeviceID(node.getTargetPath())
-                                    .getTableName())
-                        .collect(Collectors.toSet())
-                : null);
+            isTableModel, databaseNameFromDataRegion, insertNode);
 
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
         insertionEvent, insertNode, resource);
