@@ -63,6 +63,7 @@ import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.session.util.ThreadUtils;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -221,8 +222,9 @@ public class Session implements ISession {
   protected static final String TABLE = "table";
   protected static final String TREE = "tree";
 
-  private CompressionType compressionType;
-  public Map<TSDataType, TSEncoding> columnEncodersMap;
+  private CompressionType compressionType =
+      TSFileDescriptor.getInstance().getConfig().getCompressor();
+  public Map<TSDataType, TSEncoding> columnEncodersMap = Collections.emptyMap();
 
   public Session(String host, int rpcPort) {
     this(
@@ -3012,12 +3014,25 @@ public class Session implements ISession {
     List<Byte> encodingTypes;
     if (trulyEnableRpcCompression) {
       encodingTypes = new ArrayList<>(tablet.getSchemas().size() + 1);
-      encodingTypes.add(this.columnEncodersMap.get(TSDataType.INT64).serialize());
+      encodingTypes.add(
+          this.columnEncodersMap
+              .getOrDefault(
+                  TSDataType.INT64,
+                  TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()))
+              .serialize());
       for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
         if (measurementSchema.getMeasurementName() == null) {
           throw new IllegalArgumentException("measurement should be non null value");
         }
-        encodingTypes.add(this.columnEncodersMap.get(measurementSchema.getType()).serialize());
+        encodingTypes.add(
+            this.columnEncodersMap
+                .getOrDefault(
+                    measurementSchema.getType(),
+                    TSEncoding.valueOf(
+                        TSFileDescriptor.getInstance()
+                            .getConfig()
+                            .getValueEncoder(measurementSchema.getType())))
+                .serialize());
       }
     } else {
       encodingTypes =
