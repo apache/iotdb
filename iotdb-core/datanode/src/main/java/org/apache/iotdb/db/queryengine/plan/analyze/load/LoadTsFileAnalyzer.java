@@ -274,17 +274,17 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private boolean doAsyncLoad(final IAnalysis analysis) {
     final long startTime = System.nanoTime();
     try {
-        final String databaseName ;
-        if(Objects.nonNull(databaseForTableData)
-                || (Objects.nonNull(context) && context.getDatabaseName().isPresent())){
-                databaseName = Objects.nonNull(databaseForTableData)
+      final String databaseName;
+      if (Objects.nonNull(databaseForTableData)
+          || (Objects.nonNull(context) && context.getDatabaseName().isPresent())) {
+        databaseName =
+            Objects.nonNull(databaseForTableData)
                 ? databaseForTableData
                 : context.getDatabaseName().get();
-        }else {
-            databaseName = null;
-        }
-      if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(
-          tsFiles, databaseName, isDeleteAfterLoad)) {
+      } else {
+        databaseName = null;
+      }
+      if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(tsFiles, databaseName, isDeleteAfterLoad)) {
         analysis.setFinishQueryAfterAnalyze(true);
         setRealStatement(analysis);
         return true;
