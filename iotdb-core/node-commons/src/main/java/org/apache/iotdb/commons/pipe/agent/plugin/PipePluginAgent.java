@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeConnectorConstructor;
-import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeExtractorConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeProcessorConstructor;
+import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructor;
+import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSourceConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
@@ -49,24 +49,24 @@ public abstract class PipePluginAgent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginAgent.class);
 
   protected final PipePluginMetaKeeper pipePluginMetaKeeper;
-  private final PipeExtractorConstructor pipeExtractorConstructor;
+  private final PipeSourceConstructor pipeExtractorConstructor;
   private final PipeProcessorConstructor pipeProcessorConstructor;
-  private final PipeConnectorConstructor pipeConnectorConstructor;
+  private final PipeSinkConstructor pipeSinkConstructor;
 
   protected PipePluginAgent(PipePluginMetaKeeper pipePluginMetaKeeper) {
     this.pipePluginMetaKeeper = pipePluginMetaKeeper;
     pipeExtractorConstructor = createPipeExtractorConstructor(pipePluginMetaKeeper);
     pipeProcessorConstructor = createPipeProcessorConstructor(pipePluginMetaKeeper);
-    pipeConnectorConstructor = createPipeConnectorConstructor(pipePluginMetaKeeper);
+    pipeSinkConstructor = createPipeConnectorConstructor(pipePluginMetaKeeper);
   }
 
-  protected abstract PipeExtractorConstructor createPipeExtractorConstructor(
+  protected abstract PipeSourceConstructor createPipeExtractorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
   protected abstract PipeProcessorConstructor createPipeProcessorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
-  protected abstract PipeConnectorConstructor createPipeConnectorConstructor(
+  protected abstract PipeSinkConstructor createPipeConnectorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
   public final PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
@@ -78,7 +78,7 @@ public abstract class PipePluginAgent {
   }
 
   public final PipeConnector reflectConnector(PipeParameters connectorParameters) {
-    return pipeConnectorConstructor.reflectPlugin(connectorParameters);
+    return pipeSinkConstructor.reflectPlugin(connectorParameters);
   }
 
   public void validate(

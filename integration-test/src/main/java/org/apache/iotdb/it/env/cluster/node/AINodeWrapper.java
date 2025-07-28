@@ -99,13 +99,7 @@ public class AINodeWrapper extends AbstractNodeWrapper {
   public void start() {
     try {
       File stdoutFile = new File(getLogPath());
-      String filePrefix =
-          System.getProperty(USER_DIR)
-              + File.separator
-              + TARGET
-              + File.separator
-              + AI_NODE_NAME
-              + getPort();
+      String filePrefix = getNodePath();
       String propertiesFile =
           filePrefix + File.separator + CONFIG_PATH + File.separator + PROPERTIES_FILE;
 
