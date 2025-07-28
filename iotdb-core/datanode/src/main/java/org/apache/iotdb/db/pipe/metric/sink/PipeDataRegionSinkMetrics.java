@@ -222,7 +222,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
   }
 
   private void createHistogram(final String taskID) {
-    final PipeConnectorSubtask connector = connectorMap.get(taskID);
+    final PipeSinkSubtask connector = connectorMap.get(taskID);
 
     final Histogram tabletBatchSizeHistogram =
         metricService.getOrCreateHistogram(
@@ -411,7 +411,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
   }
 
   private void removeHistogram(final String taskID) {
-    final PipeConnectorSubtask connector = connectorMap.get(taskID);
+    final PipeSinkSubtask connector = connectorMap.get(taskID);
     metricService.remove(
         MetricType.HISTOGRAM,
         Metric.PIPE_INSERT_NODE_BATCH_SIZE.toString(),

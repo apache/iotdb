@@ -339,27 +339,27 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
-    if (outputPipeConnector instanceof IoTDBConnector) {
-      ((IoTDBConnector) outputPipeConnector).setTabletBatchSizeHistogram(tabletBatchSizeHistogram);
+    if (outputPipeConnector instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeConnector).setTabletBatchSizeHistogram(tabletBatchSizeHistogram);
     }
   }
 
   public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
-    if (outputPipeConnector instanceof IoTDBConnector) {
-      ((IoTDBConnector) outputPipeConnector).setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
+    if (outputPipeConnector instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeConnector).setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
     }
   }
 
   public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
-    if (outputPipeConnector instanceof IoTDBConnector) {
-      ((IoTDBConnector) outputPipeConnector)
+    if (outputPipeConnector instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeConnector)
           .setTabletBatchTimeIntervalHistogram(tabletBatchTimeIntervalHistogram);
     }
   }
 
   public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
-    if (outputPipeConnector instanceof IoTDBConnector) {
-      ((IoTDBConnector) outputPipeConnector)
+    if (outputPipeConnector instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeConnector)
           .setTsFileBatchTimeIntervalHistogram(tsFileBatchTimeIntervalHistogram);
     }
   }
