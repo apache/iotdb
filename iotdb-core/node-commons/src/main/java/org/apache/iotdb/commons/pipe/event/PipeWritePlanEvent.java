@@ -21,7 +21,8 @@ package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 
 public abstract class PipeWritePlanEvent extends EnrichedEvent implements SerializableEvent {
 
@@ -33,9 +34,21 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final boolean isGeneratedByPipe) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        userName,
+        skipIfNoPrivileges,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
 

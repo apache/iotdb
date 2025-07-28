@@ -28,12 +28,10 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.plugin.PipePluginCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.state.pipe.plugin.CreatePipePluginState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -54,7 +52,7 @@ import java.util.Objects;
 /**
  * This class extends {@link AbstractNodeProcedure} to make sure that when a {@link
  * CreatePipePluginProcedure} is executed, the {@link AddConfigNodeProcedure}, {@link
- * RemoveConfigNodeProcedure} or {@link RemoveDataNodeProcedure} will not be executed at the same
+ * RemoveConfigNodeProcedure} or {@link RemoveDataNodesProcedure} will not be executed at the same
  * time.
  */
 public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipePluginState> {
@@ -85,7 +83,7 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, CreatePipePluginState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     if (pipePluginMeta == null) {
       return Flow.NO_MORE_STATE;
     }

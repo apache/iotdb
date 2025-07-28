@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SinkListener;
@@ -522,10 +523,10 @@ public class SinkChannelTest {
 
     // Construct a mock LocalMemoryManager that returns blocked futures.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    MemoryManager memoryManager =
+        Mockito.spy(new MemoryManager(numOfMockTsBlock * mockTsBlockSize));
     MemoryPool spyMemoryPool =
-        Mockito.spy(
-            new MemoryPool(
-                "test", numOfMockTsBlock * mockTsBlockSize, numOfMockTsBlock * mockTsBlockSize));
+        Mockito.spy(new MemoryPool("test", memoryManager, numOfMockTsBlock * mockTsBlockSize));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
 
     // Construct a mock SinkListener.

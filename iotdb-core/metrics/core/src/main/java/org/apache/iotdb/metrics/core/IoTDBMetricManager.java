@@ -93,7 +93,7 @@ public class IoTDBMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public Histogram createHistogram(MetricInfo metricInfo) {
+  public Histogram createHistogram() {
     // create distributionSummary
     io.micrometer.core.instrument.DistributionSummary distributionSummary =
         new CumulativeDistributionSummary(

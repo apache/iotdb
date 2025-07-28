@@ -50,6 +50,7 @@ public class SnapshotFragment {
     TSendSnapshotFragmentReq req = new TSendSnapshotFragmentReq();
     req.setSnapshotId(snapshotId);
     req.setFilePath(filePath);
+    req.setOffset(startOffset);
     req.setChunkLength(fragmentSize);
     req.setFileChunk(fileChunk);
     return req;

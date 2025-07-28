@@ -45,6 +45,12 @@ public class LimitOperator implements ProcessOperator {
     this.child = requireNonNull(child, "child operator is null");
   }
 
+  public LimitOperator(LimitOperator limitOperator, Operator child) {
+    this.operatorContext = limitOperator.operatorContext;
+    this.remainingLimit = limitOperator.remainingLimit;
+    this.child = child;
+  }
+
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;

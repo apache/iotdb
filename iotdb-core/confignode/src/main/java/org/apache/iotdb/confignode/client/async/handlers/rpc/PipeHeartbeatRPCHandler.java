@@ -20,8 +20,8 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +34,7 @@ public class PipeHeartbeatRPCHandler extends DataNodeAsyncRequestRPCHandler<TPip
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatRPCHandler.class);
 
   public PipeHeartbeatRPCHandler(
-      CnToDnRequestType requestType,
+      CnToDnAsyncRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,

@@ -137,17 +137,26 @@ public class QueryStatement extends AuthorityInformationStatement {
   private boolean isResultSetEmpty = false;
 
   // [IoTDB-AI] used for model inference, which will be removed in the future
-  private String modelName;
+  private String modelId;
   private boolean hasModelInference = false;
+  private boolean generateTime = false;
   private InferenceWindow inferenceWindow = null;
   private Map<String, String> inferenceAttribute = null;
 
-  public void setModelName(String modelName) {
-    this.modelName = modelName;
+  public void setGenerateTime(boolean generateTime) {
+    this.generateTime = generateTime;
   }
 
-  public String getModelName() {
-    return modelName;
+  public boolean isGenerateTime() {
+    return generateTime;
+  }
+
+  public void setModelId(String modelId) {
+    this.modelId = modelId;
+  }
+
+  public String getModelId() {
+    return modelId;
   }
 
   public void setHasModelInference(boolean hasModelInference) {
@@ -213,7 +222,7 @@ public class QueryStatement extends AuthorityInformationStatement {
     try {
       if (!AuthorityChecker.SUPER_USER.equals(userName)) {
         this.authorityScope =
-            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA.ordinal());
+            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA);
       }
     } catch (AuthException e) {
       return new TSStatus(e.getCode().getStatusCode());

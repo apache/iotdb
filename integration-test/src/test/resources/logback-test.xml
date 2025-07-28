@@ -49,7 +49,7 @@
     <logger name="org.apache.iotdb.db.integration.IoTDBCompactionIT" level="INFO"/>
     <logger name="org.apache.iotdb.commons.service.RegisterManager" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.DataNode" level="WARN"/>
-    <logger name="org.apache.iotdb.db.service.RPCService" level="INFO"/>
+    <logger name="org.apache.iotdb.db.service.ExternalRPCService" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.MQTTService" level="INFO"/>
     <logger name="org.apache.iotdb.db.conf.IoTDBDescriptor" level="WARN"/>
     <logger name="org.apache.tsfile.common.conf.TSFileDescriptor" level="WARN"/>

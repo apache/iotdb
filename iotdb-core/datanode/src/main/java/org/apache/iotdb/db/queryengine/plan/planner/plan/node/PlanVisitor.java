@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
@@ -32,10 +33,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SeriesSchemaFetchScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
@@ -100,7 +97,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQ
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
@@ -119,12 +115,41 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 
 @SuppressWarnings("java:S6539") // suppress "Monster class" warning
 public abstract class PlanVisitor<R, C> {
@@ -170,10 +195,6 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitLastQueryScan(LastQueryScanNode node, C context) {
-    return visitSourceNode(node, context);
-  }
-
-  public R visitAlignedLastQueryScan(AlignedLastQueryScanNode node, C context) {
     return visitSourceNode(node, context);
   }
 
@@ -501,7 +522,8 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitCreateTableDevice(final CreateOrUpdateTableDeviceNode node, final C context) {
+  public R visitCreateOrUpdateTableDevice(
+      final CreateOrUpdateTableDeviceNode node, final C context) {
     return visitPlan(node, context);
   }
 
@@ -522,6 +544,38 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
+  public R visitTableDeviceAttributeCommit(
+      final TableDeviceAttributeCommitUpdateNode node, final C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTableNodeLocationAdd(final TableNodeLocationAddNode node, final C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeleteTableDevice(final DeleteTableDeviceNode node, final C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTableAttributeColumnDrop(final TableAttributeColumnDropNode node, final C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitConstructTableDevicesBlackList(
+      final ConstructTableDevicesBlackListNode node, final C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitRollbackTableDevicesBlackList(
+      final RollbackTableDevicesBlackListNode node, final C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeleteTableDevicesInBlackList(
+      final DeleteTableDevicesInBlackListNode node, final C context) {
+    return visitPlan(node, context);
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Data Write Node
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -531,11 +585,11 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitRelationalInsertRow(RelationalInsertRowNode node, C context) {
-    return visitPlan(node, context);
+    return visitInsertRow(node, context);
   }
 
   public R visitRelationalInsertRows(RelationalInsertRowsNode node, C context) {
-    return visitPlan(node, context);
+    return visitInsertRows(node, context);
   }
 
   public R visitInsertTablet(InsertTabletNode node, C context) {
@@ -559,6 +613,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDeleteData(DeleteDataNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeleteData(RelationalDeleteDataNode node, C context) {
     return visitPlan(node, context);
   }
 
@@ -592,8 +650,38 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
+  public R visitApply(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode node, C context) {
+    return visitTwoChildProcess(node, context);
+  }
+
+  public R visitAssignUniqueId(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitEnforceSingleRow(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode node,
+      C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitCorrelatedJoin(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode node,
+      C context) {
+    return visitTwoChildProcess(node, context);
+  }
+
   public R visitTableScan(TableScanNode node, C context) {
     return visitPlan(node, context);
+  }
+
+  public R visitDeviceTableScan(DeviceTableScanNode node, C context) {
+    return visitTableScan(node, context);
+  }
+
+  public R visitInformationSchemaTableScan(InformationSchemaTableScanNode node, C context) {
+    return visitTableScan(node, context);
   }
 
   public R visitProject(
@@ -616,6 +704,12 @@ public abstract class PlanVisitor<R, C> {
     return visitMultiChildProcess(node, context);
   }
 
+  public R visitExplainAnalyze(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode node,
+      C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
   public R visitOutput(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode node, C context) {
     return visitSingleChildProcess(node, context);
@@ -626,6 +720,27 @@ public abstract class PlanVisitor<R, C> {
     return visitMultiChildProcess(node, context);
   }
 
+  public R visitGapFill(GapFillNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitFill(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitPreviousFill(PreviousFillNode node, C context) {
+    return visitFill(node, context);
+  }
+
+  public R visitLinearFill(LinearFillNode node, C context) {
+    return visitFill(node, context);
+  }
+
+  public R visitValueFill(ValueFillNode node, C context) {
+    return visitFill(node, context);
+  }
+
   public R visitSort(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode node, C context) {
     return visitSingleChildProcess(node, context);
@@ -633,6 +748,10 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitStreamSort(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitGroup(GroupNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
@@ -646,6 +765,10 @@ public abstract class PlanVisitor<R, C> {
     return visitTwoChildProcess(node, context);
   }
 
+  public R visitSemiJoin(SemiJoinNode node, C context) {
+    return visitTwoChildProcess(node, context);
+  }
+
   public R visitGroupReference(GroupReference node, C context) {
     return visitPlan(node, context);
   }
@@ -656,9 +779,50 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
+  public R visitTableExchange(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
   public R visitAggregationTableScan(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode node,
       C context) {
-    return visitTableScan(node, context);
+    return visitDeviceTableScan(node, context);
+  }
+
+  public R visitTreeDeviceViewScan(TreeDeviceViewScanNode node, C context) {
+    return visitDeviceTableScan(node, context);
+  }
+
+  public R visitAggregationTreeDeviceViewScan(AggregationTreeDeviceViewScanNode node, C context) {
+    return visitAggregationTableScan(node, context);
+  }
+
+  public R visitTreeAlignedDeviceViewScan(TreeAlignedDeviceViewScanNode node, C context) {
+    return visitTreeDeviceViewScan(node, context);
+  }
+
+  public R visitTreeNonAlignedDeviceViewScan(TreeNonAlignedDeviceViewScanNode node, C context) {
+    return visitTreeDeviceViewScan(node, context);
+  }
+
+  public R visitMarkDistinct(MarkDistinctNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitWindowFunction(WindowNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTableFunction(TableFunctionNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTableFunctionProcessor(TableFunctionProcessorNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitPatternRecognition(PatternRecognitionNode node, C context) {
+    return visitPlan(node, context);
   }
 }

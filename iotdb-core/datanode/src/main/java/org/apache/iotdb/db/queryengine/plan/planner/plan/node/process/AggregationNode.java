@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -96,6 +96,7 @@ public class AggregationNode extends MultiChildProcessNode {
     this.scanOrder = scanOrder;
   }
 
+  // used by clone & deserialize
   public AggregationNode(
       PlanNodeId id,
       List<AggregationDescriptor> aggregationDescriptorList,
@@ -105,7 +106,7 @@ public class AggregationNode extends MultiChildProcessNode {
       boolean outputEndTime,
       Ordering scanOrder) {
     super(id, new ArrayList<>());
-    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
+    this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
     this.scanOrder = scanOrder;
     this.groupByParameter = groupByParameter;

@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -36,6 +38,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -63,7 +66,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   private PipeRuntimeMeta currentPipeRuntimeMeta;
   private PipeRuntimeMeta updatedPipeRuntimeMeta;
 
-  private ProcedureType procedureType;
+  private final ProcedureType procedureType;
 
   public AlterPipeProcedureV2(ProcedureType procedureType) {
     super();
@@ -90,14 +93,36 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
+  public boolean executeFromValidateTask(final ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "AlterPipeProcedureV2: executeFromValidateTask({})", alterPipeRequest.getPipeName());
 
     // We should execute checkBeforeAlterPipe before checking the pipe plugin. This method will
     // update the alterPipeRequest based on the alterPipeRequest and existing pipe metadata.
-    if (!pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest)) {
-      return false;
+    final boolean checkSource =
+        new PipeParameters(alterPipeRequest.getExtractorAttributes())
+            .hasAnyAttributes(
+                PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+                PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+                PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+                PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+    final boolean checkSink =
+        new PipeParameters(alterPipeRequest.getConnectorAttributes())
+            .hasAnyAttributes(
+                PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+                PipeSinkConstant.SINK_IOTDB_USER_KEY,
+                PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+                PipeSinkConstant.SINK_IOTDB_USERNAME_KEY);
+
+    pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
+
+    if (checkSource) {
+      CreatePipeProcedureV2.checkAndEnrichSourceAuthentication(
+          env, alterPipeRequest.getExtractorAttributes());
+    }
+    if (checkSink) {
+      CreatePipeProcedureV2.checkAndEnrichSinkAuthentication(
+          env, alterPipeRequest.getConnectorAttributes());
     }
 
     final PipeManager pipeManager = env.getConfigManager().getPipeManager();
@@ -113,12 +138,12 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void executeFromCalculateInfoForTask(final ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "AlterPipeProcedureV2: executeFromCalculateInfoForTask({})",
         alterPipeRequest.getPipeName());
 
-    PipeMeta currentPipeMeta =
+    final PipeMeta currentPipeMeta =
         pipeTaskInfo.get().getPipeMetaByPipeName(alterPipeRequest.getPipeName());
     currentPipeStaticMeta = currentPipeMeta.getStaticMeta();
     currentPipeRuntimeMeta = currentPipeMeta.getRuntimeMeta();
@@ -137,39 +162,50 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     final ConcurrentMap<Integer, PipeTaskMeta> updatedConsensusGroupIdToTaskMetaMap =
         new ConcurrentHashMap<>();
-    // data regions & schema regions
-    env.getConfigManager()
-        .getLoadManager()
-        .getRegionLeaderMap()
-        .forEach(
-            (regionGroupId, regionLeaderNodeId) -> {
-              final String databaseName =
-                  env.getConfigManager().getPartitionManager().getRegionStorageGroup(regionGroupId);
-              final PipeTaskMeta currentPipeTaskMeta =
-                  currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
-              if (databaseName != null
-                  && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
-                  && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
-                  && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
-                // Pipe only collect user's data, filter metric database here.
-                updatedConsensusGroupIdToTaskMetaMap.put(
-                    regionGroupId.getId(),
-                    new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
-              }
-            });
+    if (currentPipeStaticMeta.isSourceExternal()) {
+      currentConsensusGroupId2PipeTaskMeta.forEach(
+          (taskId, pipeTaskMeta) -> {
+            updatedConsensusGroupIdToTaskMetaMap.put(
+                taskId,
+                new PipeTaskMeta(pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderNodeId()));
+          });
+    } else {
+      // data regions & schema regions
+      env.getConfigManager()
+          .getLoadManager()
+          .getRegionLeaderMap()
+          .forEach(
+              (regionGroupId, regionLeaderNodeId) -> {
+                final String databaseName =
+                    env.getConfigManager().getPartitionManager().getRegionDatabase(regionGroupId);
+                final PipeTaskMeta currentPipeTaskMeta =
+                    currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
+                if (databaseName != null
+                    && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
+                    && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
+                    && currentPipeTaskMeta != null
+                    && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
+                  // Pipe only collect user's data, filter metric database here.
+                  updatedConsensusGroupIdToTaskMetaMap.put(
+                      regionGroupId.getId(),
+                      new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
+                }
+              });
 
-    final PipeTaskMeta configRegionTaskMeta =
-        currentConsensusGroupId2PipeTaskMeta.get(Integer.MIN_VALUE);
-    if (Objects.nonNull(configRegionTaskMeta)) {
-      // config region
-      updatedConsensusGroupIdToTaskMetaMap.put(
-          // 0 is the consensus group id of the config region, but data region id and schema region
-          // id also start from 0, so we use Integer.MIN_VALUE to represent the config region
-          Integer.MIN_VALUE,
-          new PipeTaskMeta(
-              configRegionTaskMeta.getProgressIndex(),
-              // The leader of the config region is the config node itself
-              ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+      final PipeTaskMeta configRegionTaskMeta =
+          currentConsensusGroupId2PipeTaskMeta.get(Integer.MIN_VALUE);
+      if (Objects.nonNull(configRegionTaskMeta)) {
+        // config region
+        updatedConsensusGroupIdToTaskMetaMap.put(
+            // 0 is the consensus group id of the config region, but data region id and schema
+            // region id also start from 0, so we use Integer.MIN_VALUE to represent the config
+            // region
+            Integer.MIN_VALUE,
+            new PipeTaskMeta(
+                configRegionTaskMeta.getProgressIndex(),
+                // The leader of the config region is the config node itself
+                ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+      }
     }
 
     updatedPipeRuntimeMeta = new PipeRuntimeMeta(updatedConsensusGroupIdToTaskMetaMap);
@@ -182,7 +218,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
+  public void executeFromWriteConfigNodeConsensus(final ConfigNodeProcedureEnv env)
+      throws PipeException {
     LOGGER.info(
         "AlterPipeProcedureV2: executeFromWriteConfigNodeConsensus({})",
         alterPipeRequest.getPipeName());
@@ -193,7 +230,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           env.getConfigManager()
               .getConsensusManager()
               .write(new AlterPipePlanV2(updatedPipeStaticMeta, updatedPipeRuntimeMeta));
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
@@ -204,11 +241,11 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void executeFromOperateOnDataNodes(final ConfigNodeProcedureEnv env) throws IOException {
     final String pipeName = alterPipeRequest.getPipeName();
     LOGGER.info("AlterPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    String exceptionMessage =
+    final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
@@ -219,14 +256,14 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromValidateTask(final ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "AlterPipeProcedureV2: rollbackFromValidateTask({})", alterPipeRequest.getPipeName());
     // Do nothing
   }
 
   @Override
-  public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromCalculateInfoForTask(final ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "AlterPipeProcedureV2: rollbackFromCalculateInfoForTask({})",
         alterPipeRequest.getPipeName());
@@ -234,7 +271,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+  public void rollbackFromWriteConfigNodeConsensus(final ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "AlterPipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})",
         alterPipeRequest.getPipeName());
@@ -244,7 +281,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           env.getConfigManager()
               .getConsensusManager()
               .write(new AlterPipePlanV2(currentPipeStaticMeta, currentPipeRuntimeMeta));
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
@@ -255,12 +292,12 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void rollbackFromOperateOnDataNodes(final ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info(
         "AlterPipeProcedureV2: rollbackFromOperateOnDataNodes({})", alterPipeRequest.getPipeName());
 
     // Push all pipe metas to datanode, may be time-consuming
-    String exceptionMessage =
+    final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(
             alterPipeRequest.getPipeName(), pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {
@@ -272,17 +309,19 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(procedureType.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(alterPipeRequest.getPipeName(), stream);
     ReadWriteIOUtils.write(alterPipeRequest.getProcessorAttributesSize(), stream);
-    for (Map.Entry<String, String> entry : alterPipeRequest.getProcessorAttributes().entrySet()) {
+    for (final Map.Entry<String, String> entry :
+        alterPipeRequest.getProcessorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
     ReadWriteIOUtils.write(alterPipeRequest.getConnectorAttributesSize(), stream);
-    for (Map.Entry<String, String> entry : alterPipeRequest.getConnectorAttributes().entrySet()) {
+    for (final Map.Entry<String, String> entry :
+        alterPipeRequest.getConnectorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
@@ -324,7 +363,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     alterPipeRequest =
         new TAlterPipeReq()
@@ -374,7 +413,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }

@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -54,6 +53,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+
 /** This class is used to manage and allocate wal nodes. */
 public class WALManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
@@ -79,13 +80,13 @@ public class WALManager implements IService {
     }
   }
 
-  public static String getApplicantUniqueId(String storageGroupName, boolean sequence) {
+  public static String getApplicantUniqueId(String dataRegionName, boolean sequence) {
     return config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             || config
                 .getDataRegionConsensusProtocolClass()
                 .equals(ConsensusFactory.IOT_CONSENSUS_V2)
-        ? storageGroupName
-        : storageGroupName
+        ? dataRegionName
+        : dataRegionName
             + IoTDBConstant.FILE_NAME_SEPARATOR
             + (sequence ? "sequence" : "unsequence");
   }
@@ -129,6 +130,19 @@ public class WALManager implements IService {
     WritingMetrics.getInstance().removeWALNodeInfoMetrics(applicantUniqueId);
   }
 
+  /** Region information and WAL node will be removed when using ElasticStrategy. */
+  public void deleteRegionAndMayDeleteWALNode(String databaseName, String dataRegionId) {
+    if (config.getWalMode() == WALMode.DISABLE || !(walNodesManager instanceof ElasticStrategy)) {
+      return;
+    }
+
+    String dataRegionName = databaseName + FILE_NAME_SEPARATOR + dataRegionId;
+    ((ElasticStrategy) walNodesManager)
+        .deleteUniqueIdAndMayDeleteWALNode(getApplicantUniqueId(dataRegionName, true));
+    ((ElasticStrategy) walNodesManager)
+        .deleteUniqueIdAndMayDeleteWALNode(getApplicantUniqueId(dataRegionName, false));
+  }
+
   @Override
   public void start() throws StartupException {
     if (config.getWalMode() == WALMode.DISABLE) {
@@ -152,6 +166,7 @@ public class WALManager implements IService {
     logger.info("Start rebooting wal delete thread.");
     if (walDeleteThread != null) {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
+      walDeleteThread = null;
     }
     logger.info("Stop wal delete thread successfully, and now restart it.");
     registerScheduleTask(0, config.getDeleteWalFilesPeriodInMs());
@@ -165,15 +180,19 @@ public class WALManager implements IService {
     // threshold, the system continues to delete expired files until the disk size is smaller than
     // the threshold.
     boolean firstLoop = true;
-    while (firstLoop || shouldThrottle()) {
+    while ((firstLoop || shouldThrottle())) {
       deleteOutdatedFilesInWALNodes();
       if (firstLoop && shouldThrottle()) {
         logger.warn(
-            "WAL disk usage {} is larger than the iot_consensus_throttle_threshold_in_byte * 0.8 {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
+            "WAL disk usage {} is larger than the wal_throttle_threshold_in_byte * 0.8 {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
             getTotalDiskUsage(),
             getThrottleThreshold());
       }
       firstLoop = false;
+      if (Thread.interrupted()) {
+        logger.info("Timed wal delete thread is interrupted.");
+        return;
+      }
     }
   }
 
@@ -252,16 +271,19 @@ public class WALManager implements IService {
     if (config.getWalMode() == WALMode.DISABLE) {
       return;
     }
-
+    logger.info("Stopping WALManager");
     if (walDeleteThread != null) {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
       walDeleteThread = null;
     }
+    logger.info("Deleting outdated files before exiting");
+    deleteOutdatedFilesInWALNodes();
     clear();
+    logger.info("WALManager stopped");
   }
 
   private void shutdownThread(ExecutorService thread, ThreadName threadName) {
-    thread.shutdown();
+    thread.shutdownNow();
     try {
       if (!thread.awaitTermination(30, TimeUnit.SECONDS)) {
         logger.warn("Waiting thread {} to be terminated is timeout", threadName.getName());
@@ -294,7 +316,6 @@ public class WALManager implements IService {
     }
   }
 
-  @TestOnly
   public void clear() {
     totalDiskUsage.set(0);
     walNodesManager.clear();

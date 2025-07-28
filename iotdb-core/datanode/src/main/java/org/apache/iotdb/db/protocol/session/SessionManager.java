@@ -327,9 +327,17 @@ public class SessionManager implements SessionManagerMBean {
    */
   public void removeCurrSession() {
     IClientSession session = currSession.get();
-    sessions.remove(session);
+    if (session != null) {
+      sessions.remove(session);
+    }
     currSession.remove();
     currSessionIdleTime.remove();
+  }
+
+  public void removeCurrSessionForMqtt(MqttClientSession mqttClientSession) {
+    if (mqttClientSession != null) {
+      sessions.remove(mqttClientSession);
+    }
   }
 
   /**
@@ -347,6 +355,14 @@ public class SessionManager implements SessionManagerMBean {
     this.currSessionIdleTime.set(System.nanoTime());
     sessions.put(session, placeHolder);
     return true;
+  }
+
+  /**
+   * this method can be only used in mqtt model. Do not use this method in client-thread model based
+   * service.
+   */
+  public void registerSessionForMqtt(IClientSession session) {
+    sessions.put(session, placeHolder);
   }
 
   /** must be called after registerSession()) will mark the session login. */
@@ -381,6 +397,48 @@ public class SessionManager implements SessionManagerMBean {
         session.getClientVersion(),
         session.getDatabaseName(),
         session.getSqlDialect());
+  }
+
+  // Sometimes we need to switch from table model to tree model,
+  // e.g., when loading a tree model TsFile under table model dialect.
+  public SessionInfo copySessionInfoForTreeModel(final SessionInfo sessionInfo) {
+    return new SessionInfo(
+        sessionInfo.getSessionId(),
+        sessionInfo.getUserName(),
+        ZoneId.systemDefault(),
+        sessionInfo.getVersion(),
+        sessionInfo.getDatabaseName().orElse(null),
+        IClientSession.SqlDialect.TREE);
+  }
+
+  public SessionInfo getSessionInfoOfTreeModel(IClientSession session) {
+    return new SessionInfo(
+        session.getId(),
+        session.getUsername(),
+        ZoneId.systemDefault(),
+        session.getClientVersion(),
+        session.getDatabaseName(),
+        IClientSession.SqlDialect.TREE);
+  }
+
+  public SessionInfo getSessionInfoOfTableModel(IClientSession session) {
+    return new SessionInfo(
+        session.getId(),
+        session.getUsername(),
+        ZoneId.systemDefault(),
+        session.getClientVersion(),
+        session.getDatabaseName(),
+        IClientSession.SqlDialect.TABLE);
+  }
+
+  public SessionInfo getSessionInfoOfPipeReceiver(IClientSession session, String databaseName) {
+    return new SessionInfo(
+        session.getId(),
+        session.getUsername(),
+        ZoneId.systemDefault(),
+        session.getClientVersion(),
+        databaseName,
+        IClientSession.SqlDialect.TABLE);
   }
 
   @Override

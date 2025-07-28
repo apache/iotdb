@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.donothing;
 
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -30,6 +32,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import java.io.IOException;
 
+@TreeModel
+@TableModel
 public class DoNothingProcessor implements PipeProcessor {
 
   @Override

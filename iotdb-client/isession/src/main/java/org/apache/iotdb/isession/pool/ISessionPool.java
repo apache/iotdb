@@ -20,11 +20,11 @@
 package org.apache.iotdb.isession.pool;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.isession.IPooledSession;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
@@ -487,6 +487,9 @@ public interface ISessionPool {
       String db, String device, List<String> sensors, boolean isLegalPathNodes)
       throws StatementExecutionException, IoTDBConnectionException;
 
+  SessionDataSetWrapper executeFastLastDataQueryForOnePrefixPath(final List<String> prefixes)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException;
+
   SessionDataSetWrapper executeAggregationQuery(
       List<String> paths, List<TAggregationType> aggregations)
       throws StatementExecutionException, IoTDBConnectionException;
@@ -558,8 +561,6 @@ public interface ISessionPool {
   void setQueryTimeout(long timeoutInMs);
 
   long getQueryTimeout();
-
-  IPooledSession getPooledSession() throws IoTDBConnectionException;
 
   /**
    * @deprecated

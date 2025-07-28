@@ -102,3 +102,6 @@ pass=root
 
 # Machine Learning
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function ar as 'org.apache.iotdb.library.dlearn.UDTFAR'"
+
+# Match
+../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function pattern_match as 'org.apache.iotdb.library.match.UDAFPatternMatch'"

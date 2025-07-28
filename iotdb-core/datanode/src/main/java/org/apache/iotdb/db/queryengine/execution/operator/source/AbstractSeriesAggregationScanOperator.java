@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.TimeRange;
@@ -36,6 +35,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.appendAggregationResult;
@@ -57,7 +57,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   // We still think aggregator in SeriesAggregateScanOperator is a inputRaw step.
   // But in facing of statistics, it will invoke another method processStatistics()
-  protected final List<Aggregator> aggregators;
+  protected final List<TreeAggregator> aggregators;
 
   protected boolean finished = false;
 
@@ -69,7 +69,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   private long leftRuntimeOfOneNextCall;
 
   /** Some special data types(like BLOB) cannot use statistics. */
-  private final boolean canUseStatistics;
+  protected final boolean canUseStatistics;
 
   @SuppressWarnings("squid:S107")
   protected AbstractSeriesAggregationScanOperator(
@@ -77,12 +77,13 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
       OperatorContext context,
       SeriesScanUtil seriesScanUtil,
       int subSensorSize,
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       boolean ascending,
       boolean outputEndTime,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize,
+      long cachedRawDataSize,
       boolean canUseStatistics) {
     this.sourceId = sourceId;
     this.operatorContext = context;
@@ -93,8 +94,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     this.aggregators = aggregators;
     this.timeRangeIterator = timeRangeIterator;
 
-    this.cachedRawDataSize =
-        (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    this.cachedRawDataSize = cachedRawDataSize;
     this.maxReturnSize = maxReturnSize;
     this.outputEndTime = outputEndTime;
     this.canUseStatistics = canUseStatistics;
@@ -134,14 +134,18 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         // move to the next time window
         curTimeRange = timeRangeIterator.nextTimeRange();
         // clear previous aggregation result
-        for (Aggregator aggregator : aggregators) {
+        for (TreeAggregator aggregator : aggregators) {
           aggregator.reset();
         }
       }
 
       // calculate aggregation result on current time window
       // Keep curTimeRange if the calculation of this timeRange is not done
-      if (calculateAggregationResultForCurrentTimeRange()) {
+      Optional<Boolean> b = calculateAggregationResultForCurrentTimeRange();
+      if (!b.isPresent()) {
+        continue;
+      }
+      if (b.get()) {
         curTimeRange = null;
       }
     }
@@ -165,41 +169,58 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   @SuppressWarnings("squid:S112")
   /** Return true if we have the result of this timeRange. */
-  protected boolean calculateAggregationResultForCurrentTimeRange() {
+  protected Optional<Boolean> calculateAggregationResultForCurrentTimeRange() {
     try {
       if (calcFromCachedData()) {
         updateResultTsBlock();
-        return true;
+        return Optional.of(true);
       }
 
       if (readAndCalcFromPage()) {
         updateResultTsBlock();
-        return true;
+        return Optional.of(true);
       }
 
       // only when all the page data has been consumed, we need to read the chunk data
       if (!seriesScanUtil.hasNextPage() && readAndCalcFromChunk()) {
         updateResultTsBlock();
-        return true;
+        return Optional.of(true);
       }
 
       // only when all the page and chunk data has been consumed, we need to read the file data
-      if (!seriesScanUtil.hasNextPage()
-          && !seriesScanUtil.hasNextChunk()
-          && readAndCalcFromFile()) {
-        updateResultTsBlock();
-        return true;
+      Optional<Boolean> b;
+      if (!seriesScanUtil.hasNextPage()) {
+        b = seriesScanUtil.hasNextChunk();
+        if (!b.isPresent()) {
+          return b;
+        }
+        if (!b.get() && readAndCalcFromFile()) {
+          updateResultTsBlock();
+          return Optional.of(true);
+        }
       }
 
       // If the TimeRange is (Long.MIN_VALUE, Long.MAX_VALUE), for Aggregators like countAggregator,
       // we have to consume all the data before we finish the aggregation calculation.
-      if (seriesScanUtil.hasNextPage()
-          || seriesScanUtil.hasNextChunk()
-          || seriesScanUtil.hasNextFile()) {
-        return false;
+      if (seriesScanUtil.hasNextPage()) {
+        return Optional.of(false);
+      }
+      b = seriesScanUtil.hasNextChunk();
+      if (!b.isPresent()) {
+        return b;
+      }
+      if (b.get()) {
+        return Optional.of(false);
+      }
+      b = seriesScanUtil.hasNextFile();
+      if (!b.isPresent()) {
+        return b;
+      }
+      if (b.get()) {
+        return Optional.of(false);
       }
       updateResultTsBlock();
-      return true;
+      return Optional.of(true);
     } catch (IOException e) {
       throw new RuntimeException("Error while scanning the file", e);
     }
@@ -230,7 +251,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   protected void calcFromStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
-    for (Aggregator aggregator : aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       if (aggregator.hasFinalResult()) {
         continue;
       }
@@ -242,7 +263,14 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   protected boolean readAndCalcFromFile() throws IOException {
     // start stopwatch
     long start = System.nanoTime();
-    while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextFile()) {
+    while (System.nanoTime() - start < leftRuntimeOfOneNextCall) {
+      Optional<Boolean> b = seriesScanUtil.hasNextFile();
+      if (!b.isPresent()) {
+        continue;
+      }
+      if (!b.get()) {
+        break;
+      }
       if (canUseStatistics && seriesScanUtil.canUseCurrentFileStatistics()) {
         Statistics fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
         if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
@@ -283,7 +311,14 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   protected boolean readAndCalcFromChunk() throws IOException {
     // start stopwatch
     long start = System.nanoTime();
-    while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextChunk()) {
+    while (System.nanoTime() - start < leftRuntimeOfOneNextCall) {
+      Optional<Boolean> b = seriesScanUtil.hasNextChunk();
+      if (!b.isPresent()) {
+        continue;
+      }
+      if (!b.get()) {
+        break;
+      }
       if (canUseStatistics && seriesScanUtil.canUseCurrentChunkStatistics()) {
         Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
         if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
@@ -377,7 +412,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     if (outputEndTime) {
       dataTypes.add(TSDataType.INT64);
     }
-    for (Aggregator aggregator : aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     return dataTypes;

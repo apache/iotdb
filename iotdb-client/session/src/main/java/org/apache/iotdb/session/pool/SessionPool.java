@@ -22,8 +22,8 @@ package org.apache.iotdb.session.pool;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
-import org.apache.iotdb.isession.IPooledSession;
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ISessionPool;
@@ -41,6 +41,7 @@ import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
@@ -58,6 +59,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
+import static org.apache.iotdb.rpc.RpcUtils.isSetSqlDialect;
 import static org.apache.iotdb.rpc.RpcUtils.isUseDatabase;
 
 /**
@@ -127,6 +129,7 @@ public class SessionPool implements ISessionPool {
   private boolean enableQueryRedirection = false;
 
   private Map<String, TEndPoint> deviceIdToEndpoint;
+  private Map<IDeviceID, TEndPoint> tableModelDeviceIdToEndpoint;
 
   private int thriftDefaultBufferSize;
   private int thriftMaxFrameSize;
@@ -391,6 +394,7 @@ public class SessionPool implements ISessionPool {
     this.enableRedirection = enableRedirection;
     if (this.enableRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
+      tableModelDeviceIdToEndpoint = new ConcurrentHashMap<>();
     }
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     this.version = version;
@@ -432,6 +436,7 @@ public class SessionPool implements ISessionPool {
     this.enableRedirection = enableRedirection;
     if (this.enableRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
+      tableModelDeviceIdToEndpoint = new ConcurrentHashMap<>();
     }
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     this.version = version;
@@ -476,6 +481,7 @@ public class SessionPool implements ISessionPool {
     this.enableRedirection = enableRedirection;
     if (this.enableRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
+      tableModelDeviceIdToEndpoint = new ConcurrentHashMap<>();
     }
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     this.version = version;
@@ -486,9 +492,9 @@ public class SessionPool implements ISessionPool {
     initAvailableNodes(SessionUtils.parseSeedNodeUrls(nodeUrls));
   }
 
-  public SessionPool(Builder builder) {
+  public SessionPool(AbstractSessionPoolBuilder builder) {
     this.maxSize = builder.maxSize;
-    this.user = builder.user;
+    this.user = builder.username;
     this.password = builder.pw;
     this.fetchSize = builder.fetchSize;
     this.waitToGetSessionTimeoutInMs = builder.waitToGetSessionTimeoutInMs;
@@ -497,6 +503,7 @@ public class SessionPool implements ISessionPool {
     this.enableRedirection = builder.enableRedirection;
     if (this.enableRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
+      tableModelDeviceIdToEndpoint = new ConcurrentHashMap<>();
     }
     this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
     this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
@@ -510,8 +517,8 @@ public class SessionPool implements ISessionPool {
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
-    this.database = builder.defaultDatabase;
-    this.queryTimeoutInMs = builder.queryTimeoutInMs;
+    this.database = builder.database;
+    this.queryTimeoutInMs = builder.timeOut;
 
     if (enableAutoFetch) {
       initThreadPool();
@@ -532,7 +539,7 @@ public class SessionPool implements ISessionPool {
 
     } else {
       this.host = builder.host;
-      this.port = builder.port;
+      this.port = builder.rpcPort;
       this.nodeUrls = null;
       this.formattedNodeUrls = String.format("%s:%s", host, port);
       if (enableAutoFetch) {
@@ -665,11 +672,10 @@ public class SessionPool implements ISessionPool {
           long timeOut = Math.min(waitToGetSessionTimeoutInMs, 60_000);
           if (System.currentTimeMillis() - start > timeOut) {
             LOGGER.warn(
-                "the SessionPool has wait for {} seconds to get a new connection: {} with {}, {}",
+                "the SessionPool has wait for {} seconds to get a new connection: {} with {}",
                 (System.currentTimeMillis() - start) / 1000,
                 formattedNodeUrls,
-                user,
-                password);
+                user);
             LOGGER.warn(
                 "current occupied size {}, queue size {}, considered size {} ",
                 occupied.size(),
@@ -703,7 +709,12 @@ public class SessionPool implements ISessionPool {
       session = constructNewSession();
 
       try {
-        session.open(enableCompression, connectionTimeoutInMs, deviceIdToEndpoint, availableNodes);
+        session.open(
+            enableCompression,
+            connectionTimeoutInMs,
+            deviceIdToEndpoint,
+            tableModelDeviceIdToEndpoint,
+            availableNodes);
         // avoid someone has called close() the session pool
         synchronized (this) {
           if (closed) {
@@ -727,9 +738,8 @@ public class SessionPool implements ISessionPool {
     return session;
   }
 
-  @Override
-  public IPooledSession getPooledSession() throws IoTDBConnectionException {
-    return new SessionWrapper((Session) getSession(), this);
+  protected ITableSession getPooledTableSession() throws IoTDBConnectionException {
+    return new TableSessionWrapper((Session) getSession(), this);
   }
 
   @Override
@@ -813,7 +823,12 @@ public class SessionPool implements ISessionPool {
   private void tryConstructNewSession() {
     Session session = constructNewSession();
     try {
-      session.open(enableCompression, connectionTimeoutInMs, deviceIdToEndpoint, availableNodes);
+      session.open(
+          enableCompression,
+          connectionTimeoutInMs,
+          deviceIdToEndpoint,
+          tableModelDeviceIdToEndpoint,
+          availableNodes);
       // avoid someone has called close() the session pool
       synchronized (this) {
         if (closed) {
@@ -3065,8 +3080,8 @@ public class SessionPool implements ISessionPool {
   public void executeNonQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
 
-    // use XXX is forbidden in SessionPool.executeNonQueryStatement
-    if (isUseDatabase(sql)) {
+    // 'use XXX' and 'set sql_dialect' is forbidden in SessionPool.executeNonQueryStatement
+    if (isUseDatabase(sql) || isSetSqlDialect(sql)) {
       throw new IllegalArgumentException(
           String.format("SessionPool doesn't support executing %s directly", sql));
     }
@@ -3185,6 +3200,33 @@ public class SessionPool implements ISessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         LOGGER.warn(EXECUTE_LASTDATAQUERY_FAIL, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      } catch (Throwable e) {
+        LOGGER.error(EXECUTE_LASTDATAQUERY_ERROR, e);
+        putBack(session);
+        throw new RuntimeException(e);
+      }
+    }
+    // never go here
+    return null;
+  }
+
+  @Override
+  public SessionDataSetWrapper executeFastLastDataQueryForOnePrefixPath(final List<String> prefixes)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      ISession session = getSession();
+      try {
+        SessionDataSet resp = session.executeFastLastDataQueryForOnePrefixPath(prefixes);
+        SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
+        occupy(session);
+        return wrapper;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        LOGGER.warn("executeLastDataQuery failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
@@ -3440,6 +3482,7 @@ public class SessionPool implements ISessionPool {
     this.enableRedirection = enableRedirection;
     if (this.enableRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
+      tableModelDeviceIdToEndpoint = new ConcurrentHashMap<>();
     }
     for (ISession session : queue) {
       session.setEnableRedirection(enableRedirection);
@@ -3548,55 +3591,7 @@ public class SessionPool implements ISessionPool {
     return queryTimeoutInMs;
   }
 
-  public static class Builder {
-
-    private String host = SessionConfig.DEFAULT_HOST;
-    private int port = SessionConfig.DEFAULT_PORT;
-    private List<String> nodeUrls = null;
-    private int maxSize = SessionConfig.DEFAULT_SESSION_POOL_MAX_SIZE;
-    private String user = SessionConfig.DEFAULT_USER;
-    private String pw = SessionConfig.DEFAULT_PASSWORD;
-    private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
-    private long waitToGetSessionTimeoutInMs = 60_000;
-    private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
-    private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
-    private boolean enableCompression = false;
-    private ZoneId zoneId = null;
-
-    // this field only take effect in write request, nothing to do with any other type requests,
-    // like query, load and so on.
-    // if set to true, it means that we may redirect the write request to its corresponding leader
-    // if set to false, it means that we will only send write request to first available DataNode(it
-    // may be changed while current DataNode is not available, for example, we may retry to connect
-    // to another available DataNode)
-    // so even if enableRedirection is set to false, we may also send write request to another
-    // datanode while encountering retriable errors in current DataNode
-    private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
-    private boolean enableRecordsAutoConvertTablet =
-        SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
-    private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
-    private Version version = SessionConfig.DEFAULT_VERSION;
-
-    private boolean useSSL = false;
-    private String trustStore;
-    private String trustStorePwd;
-
-    // set to true, means that we will start a background thread to fetch all available (Status is
-    // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
-    private boolean enableAutoFetch;
-
-    // max retry count, if set to 0, means that we won't do any retry
-    // we can use any available DataNodes(fetched in background thread if enableAutoFetch is true,
-    // or nodeUrls user specified) to retry, even if enableRedirection is false
-    private int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
-
-    // sleep time between each retry
-    private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
-
-    private String sqlDialect = SessionConfig.SQL_DIALECT;
-    private long queryTimeoutInMs = SessionConfig.DEFAULT_QUERY_TIME_OUT;
-
-    private String defaultDatabase;
+  public static class Builder extends AbstractSessionPoolBuilder {
 
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
@@ -3619,7 +3614,7 @@ public class SessionPool implements ISessionPool {
     }
 
     public Builder port(int port) {
-      this.port = port;
+      this.rpcPort = port;
       return this;
     }
 
@@ -3634,7 +3629,7 @@ public class SessionPool implements ISessionPool {
     }
 
     public Builder user(String user) {
-      this.user = user;
+      this.username = user;
       return this;
     }
 
@@ -3708,18 +3703,8 @@ public class SessionPool implements ISessionPool {
       return this;
     }
 
-    public Builder sqlDialect(String sqlDialect) {
-      this.sqlDialect = sqlDialect;
-      return this;
-    }
-
     public Builder queryTimeoutInMs(long queryTimeoutInMs) {
-      this.queryTimeoutInMs = queryTimeoutInMs;
-      return this;
-    }
-
-    public Builder database(String database) {
-      this.defaultDatabase = database;
+      this.timeOut = queryTimeoutInMs;
       return this;
     }
 

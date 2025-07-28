@@ -151,7 +151,10 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
   }
 
   public String getTableName() {
-    return targetPath.getFullPath();
+    if (targetPath != null) {
+      return targetPath.getFullPath();
+    }
+    return getInsertRowNodeList().get(0).getTableName();
   }
 
   @Override

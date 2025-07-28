@@ -48,7 +48,7 @@ public class IoTDBSubStringFunctionTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "use " + DATABASE_NAME,
-        "create table table1(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table table1(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO table1(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', -1, 3, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO table1(Time,device_id,s1) values(2, 'd1', 'test')",
         "INSERT INTO table1(Time,device_id,s1) values(3, 'd1', 'abcdefg')",

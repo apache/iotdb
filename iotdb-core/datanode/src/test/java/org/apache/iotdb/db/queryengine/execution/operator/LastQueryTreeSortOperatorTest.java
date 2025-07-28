@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
@@ -41,7 +41,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -54,7 +53,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -97,10 +98,10 @@ public class LastQueryTreeSortOperatorTest {
   @Test
   public void testLastQuerySortOperatorAsc() {
     try {
-      List<Aggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath1 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      List<Aggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath2 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       Set<String> allSensors = Sets.newHashSet("sensor0", "sensor1");
@@ -146,7 +147,7 @@ public class LastQueryTreeSortOperatorTest {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               aggregators1,
-              initTimeRangeIterator(null, false, true),
+              initTimeRangeIterator(null, false, true, ZoneId.systemDefault()),
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
@@ -171,7 +172,7 @@ public class LastQueryTreeSortOperatorTest {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(2),
               aggregators2,
-              initTimeRangeIterator(null, false, true),
+              initTimeRangeIterator(null, false, true, ZoneId.systemDefault()),
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
@@ -192,7 +193,7 @@ public class LastQueryTreeSortOperatorTest {
           new LastQuerySortOperator(
               driverContext.getOperatorContexts().get(4),
               LastQueryUtil.createTsBlockBuilder().build(),
-              ImmutableList.of(updateLastCacheOperator1, updateLastCacheOperator2),
+              Arrays.asList(updateLastCacheOperator1, updateLastCacheOperator2),
               Comparator.naturalOrder());
 
       int count = 0;
@@ -225,10 +226,10 @@ public class LastQueryTreeSortOperatorTest {
   @Test
   public void testLastQuerySortOperatorDesc() {
     try {
-      List<Aggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath1 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      List<Aggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath2 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       Set<String> allSensors = Sets.newHashSet("sensor0", "sensor1");
@@ -274,7 +275,7 @@ public class LastQueryTreeSortOperatorTest {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               aggregators1,
-              initTimeRangeIterator(null, false, true),
+              initTimeRangeIterator(null, false, true, ZoneId.systemDefault()),
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
@@ -299,7 +300,7 @@ public class LastQueryTreeSortOperatorTest {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(2),
               aggregators2,
-              initTimeRangeIterator(null, false, true),
+              initTimeRangeIterator(null, false, true, ZoneId.systemDefault()),
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
@@ -329,7 +330,7 @@ public class LastQueryTreeSortOperatorTest {
           new LastQuerySortOperator(
               driverContext.getOperatorContexts().get(4),
               builder.build(),
-              ImmutableList.of(updateLastCacheOperator2, updateLastCacheOperator1),
+              Arrays.asList(updateLastCacheOperator2, updateLastCacheOperator1),
               Comparator.reverseOrder());
 
       int count = 0;

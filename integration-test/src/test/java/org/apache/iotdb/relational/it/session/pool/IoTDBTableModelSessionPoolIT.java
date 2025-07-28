@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.relational.it.session.pool;
 
-import org.apache.iotdb.isession.IPooledSession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -36,7 +36,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showTablesColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -63,8 +63,8 @@ public class IoTDBTableModelSessionPoolIT {
     final String[] table2Names = new String[] {"table2"};
     final String[] table2ttls = new String[] {"6600000"};
 
-    ISessionPool sessionPool = EnvFactory.getEnv().getSessionPool(1, "table");
-    try (final IPooledSession session = sessionPool.getPooledSession()) {
+    ITableSessionPool sessionPool = EnvFactory.getEnv().getTableSessionPool(1);
+    try (final ITableSession session = sessionPool.getSession()) {
 
       session.executeNonQueryStatement("CREATE DATABASE test1");
       session.executeNonQueryStatement("CREATE DATABASE test2");
@@ -73,10 +73,10 @@ public class IoTDBTableModelSessionPoolIT {
 
       // or use full qualified table name
       session.executeNonQueryStatement(
-          "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
 
       session.executeNonQueryStatement(
-          "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
+          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD) with (TTL=6600000)");
 
       try (final SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
         int cnt = 0;
@@ -95,10 +95,11 @@ public class IoTDBTableModelSessionPoolIT {
       }
 
     } catch (final IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
-    try (final IPooledSession session = sessionPool.getPooledSession()) {
+    try (final ITableSession session = sessionPool.getSession()) {
       // current session's database is still test2
       try (final SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
         int cnt = 0;
@@ -123,9 +124,9 @@ public class IoTDBTableModelSessionPoolIT {
     }
 
     // specify database in constructor
-    sessionPool = EnvFactory.getEnv().getSessionPool(1, "table", "test1");
+    sessionPool = EnvFactory.getEnv().getTableSessionPool(1, "test1");
 
-    try (final IPooledSession session = sessionPool.getPooledSession()) {
+    try (final ITableSession session = sessionPool.getSession()) {
 
       // current session's database is test1
       try (final SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
@@ -168,7 +169,7 @@ public class IoTDBTableModelSessionPoolIT {
     }
 
     // after putting back, the session's database should be changed back to default test1
-    try (final IPooledSession session = sessionPool.getPooledSession()) {
+    try (final ITableSession session = sessionPool.getSession()) {
 
       try (final SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
         int cnt = 0;

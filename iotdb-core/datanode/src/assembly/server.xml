@@ -36,6 +36,34 @@
             <directory>src/assembly/resources</directory>
             <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../../scripts/conf</directory>
+            <outputDirectory>conf</outputDirectory>
+            <includes>
+                <include>datanode-env.*</include>
+                <include>**/datanode-env.*</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../../scripts/sbin</directory>
+            <outputDirectory>sbin</outputDirectory>
+            <includes>
+                <include>*datanode.*</include>
+                <include>**/*datanode.*</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../../scripts/tools</directory>
+            <outputDirectory>tools</outputDirectory>
+            <excludes>
+                <exclude>**/*confignode.*</exclude>
+                <exclude>**/*all.*</exclude>
+                <exclude>**/*ainode.*</exclude>
+            </excludes>
+            <fileMode>0755</fileMode>
+        </fileSet>
     </fileSets>
     <files>
         <file>
@@ -44,20 +72,8 @@
         </file>
         <!-- copy iotdb-common.sh to different script folders-->
         <file>
-            <source>${project.basedir}/../node-commons/src/assembly/resources/sbin/iotdb-common.sh</source>
-            <destName>sbin/iotdb-common.sh</destName>
-        </file>
-        <file>
-            <source>${project.basedir}/../node-commons/src/assembly/resources/sbin/iotdb-common.sh</source>
-            <destName>tools/iotdb-common.sh</destName>
-        </file>
-        <file>
-            <source>${project.basedir}/../node-commons/src/assembly/resources/sbin/iotdb-common.sh</source>
-            <destName>tools/tsfileToolSet/iotdb-common.sh</destName>
-        </file>
-        <file>
-            <source>${project.basedir}/../node-commons/src/assembly/resources/sbin/iotdb-common.sh</source>
-            <destName>tools/schema/iotdb-common.sh</destName>
+            <source>${project.basedir}/../../scripts/conf/iotdb-common.sh</source>
+            <destName>conf/iotdb-common.sh</destName>
         </file>
     </files>
 </assembly>

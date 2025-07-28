@@ -105,7 +105,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedFullPath(
               IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device0"),
               measurementSchemas.stream()
-                  .map(IMeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementName)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)
@@ -185,7 +185,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedFullPath(
               IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device0"),
               measurementSchemas.stream()
-                  .map(IMeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementName)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)
@@ -237,7 +237,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedFullPath(
               IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device1"),
               measurementSchemas.stream()
-                  .map(IMeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementName)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)
@@ -492,7 +492,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedFullPath(
               IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device0"),
               measurementSchemas.stream()
-                  .map(IMeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementName)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)
@@ -544,7 +544,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedFullPath(
               IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device1"),
               measurementSchemas.stream()
-                  .map(IMeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementName)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
@@ -39,7 +39,7 @@ public class TTLScheduleTask implements Callable<Void> {
   private final int workerNum;
 
   private final long ttlCheckInterval =
-      IoTDBDescriptor.getInstance().getConfig().getTTlCheckInterval();
+      CommonDescriptor.getInstance().getConfig().getTTLCheckInterval();
 
   public TTLScheduleTask(List<DataRegion> dataRegionList, int workerId, int workerNum) {
     this.dataRegionList = dataRegionList;

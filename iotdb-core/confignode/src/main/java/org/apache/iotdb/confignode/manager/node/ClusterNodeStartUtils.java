@@ -104,7 +104,7 @@ public class ClusterNodeStartUtils {
         configManager
             .getClusterManager()
             .getClusterIdWithRetry(
-                CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
+                CommonDescriptor.getInstance().getConfig().getCnConnectionTimeoutInMS() / 2);
     if (clusterId == null) {
       status
           .setCode(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())

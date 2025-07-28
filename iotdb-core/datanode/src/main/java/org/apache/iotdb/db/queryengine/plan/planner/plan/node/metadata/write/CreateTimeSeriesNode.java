@@ -66,15 +66,15 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
   private TRegionReplicaSet regionReplicaSet;
 
   public CreateTimeSeriesNode(
-      PlanNodeId id,
-      MeasurementPath path,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType compressor,
-      Map<String, String> props,
-      Map<String, String> tags,
-      Map<String, String> attributes,
-      String alias) {
+      final PlanNodeId id,
+      final MeasurementPath path,
+      final TSDataType dataType,
+      final TSEncoding encoding,
+      final CompressionType compressor,
+      final Map<String, String> props,
+      final Map<String, String> tags,
+      final Map<String, String> attributes,
+      final String alias) {
     super(id);
     this.path = path;
     this.dataType = dataType;
@@ -93,7 +93,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     return path;
   }
 
-  public void setPath(MeasurementPath path) {
+  public void setPath(final MeasurementPath path) {
     this.path = path;
   }
 
@@ -101,7 +101,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     return dataType;
   }
 
-  public void setDataType(TSDataType dataType) {
+  public void setDataType(final TSDataType dataType) {
     this.dataType = dataType;
   }
 
@@ -109,7 +109,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     return compressor;
   }
 
-  public void setCompressor(CompressionType compressor) {
+  public void setCompressor(final CompressionType compressor) {
     this.compressor = compressor;
   }
 
@@ -117,7 +117,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     return encoding;
   }
 
-  public void setEncoding(TSEncoding encoding) {
+  public void setEncoding(final TSEncoding encoding) {
     this.encoding = encoding;
   }
 
@@ -125,7 +125,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     return attributes;
   }
 
-  public void setAttributes(Map<String, String> attributes) {
+  public void setAttributes(final Map<String, String> attributes) {
     this.attributes = attributes;
   }
 
@@ -133,7 +133,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     return alias;
   }
 
-  public void setAlias(String alias) {
+  public void setAlias(final String alias) {
     this.alias = alias;
   }
 
@@ -141,7 +141,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     return tags;
   }
 
-  public void setTags(Map<String, String> tags) {
+  public void setTags(final Map<String, String> tags) {
     this.tags = tags;
   }
 
@@ -149,7 +149,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     return props;
   }
 
-  public void setProps(Map<String, String> props) {
+  public void setProps(final Map<String, String> props) {
     this.props = props;
   }
 
@@ -159,7 +159,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
   }
 
   @Override
-  public void setTagOffset(long tagOffset) {
+  public void setTagOffset(final long tagOffset) {
     this.tagOffset = tagOffset;
   }
 
@@ -169,7 +169,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(final PlanNode child) {}
 
   @Override
   public PlanNodeType getType() {
@@ -191,19 +191,19 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     return null;
   }
 
-  public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
-    String id;
-    MeasurementPath path;
-    TSDataType dataType;
-    TSEncoding encoding;
-    CompressionType compressor;
+  public static CreateTimeSeriesNode deserialize(final ByteBuffer byteBuffer) {
+    final String id;
+    final MeasurementPath path;
+    final TSDataType dataType;
+    final TSEncoding encoding;
+    final CompressionType compressor;
     String alias = null;
     Map<String, String> props = null;
     Map<String, String> tags = null;
     Map<String, String> attributes = null;
 
-    int length = byteBuffer.getInt();
-    byte[] bytes = new byte[length];
+    final int length = byteBuffer.getInt();
+    final byte[] bytes = new byte[length];
     byteBuffer.get(bytes);
     try {
       path = new MeasurementPath(new String(bytes, TSFileConfig.STRING_CHARSET));
@@ -249,10 +249,10 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
     PlanNodeType.CREATE_TIME_SERIES.serialize(byteBuffer);
 
-    byte[] bytes = path.getFullPath().getBytes();
+    final byte[] bytes = path.getFullPath().getBytes();
     byteBuffer.putInt(bytes.length);
     byteBuffer.put(bytes);
     byteBuffer.put((byte) dataType.ordinal());
@@ -299,10 +299,10 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
   }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.CREATE_TIME_SERIES.serialize(stream);
 
-    byte[] bytes = path.getFullPath().getBytes();
+    final byte[] bytes = path.getFullPath().getBytes();
     stream.writeInt(bytes.length);
     stream.write(bytes);
     stream.write((byte) dataType.ordinal());
@@ -349,12 +349,12 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
+  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C schemaRegion) {
     return visitor.visitCreateTimeSeries(this, schemaRegion);
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
@@ -364,7 +364,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     if (!super.equals(o)) {
       return false;
     }
-    CreateTimeSeriesNode that = (CreateTimeSeriesNode) o;
+    final CreateTimeSeriesNode that = (CreateTimeSeriesNode) o;
     return path.equals(that.path)
         && dataType == that.dataType
         && encoding == that.encoding
@@ -387,14 +387,14 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
-    TRegionReplicaSet regionReplicaSet =
+  public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
+    final TRegionReplicaSet regionReplicaSet =
         analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getIDeviceID());
     setRegionReplicaSet(regionReplicaSet);
     return ImmutableList.of(this);
   }
 
-  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
+  public void setRegionReplicaSet(final TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
   }
 }

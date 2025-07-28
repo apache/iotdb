@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.ConnectException;
 import java.net.SocketException;
+import java.util.Optional;
 
 /**
  * This class defines the failed interfaces that thrift client needs to support so that the Thrift
@@ -107,11 +108,17 @@ public interface ThriftClient {
   static boolean isConnectionBroken(Throwable cause) {
     return (cause instanceof SocketException && cause.getMessage().contains("Broken pipe"))
         || (cause instanceof TTransportException
-            && (cause.getMessage().contains("Socket is closed by peer")
-                || cause.getMessage().contains("Read call frame size failed")))
+            && (hasExpectedMessage(cause, "Socket is closed by peer")
+                || hasExpectedMessage(cause, "Read call frame size failed")))
         || (cause instanceof IOException
-            && (cause.getMessage().contains("Connection reset by peer")
-                || cause.getMessage().contains("Broken pipe")))
-        || (cause instanceof ConnectException && cause.getMessage().contains("Connection refused"));
+            && (hasExpectedMessage(cause, "Connection reset by peer")
+                || hasExpectedMessage(cause, "Broken pipe")))
+        || (cause instanceof ConnectException && hasExpectedMessage(cause, "Connection refused"));
+  }
+
+  static boolean hasExpectedMessage(Throwable cause, String expectedMessage) {
+    return Optional.ofNullable(cause.getMessage())
+        .map(m -> m.contains(expectedMessage))
+        .orElse(false);
   }
 }

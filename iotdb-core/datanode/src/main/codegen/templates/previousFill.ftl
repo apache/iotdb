@@ -25,7 +25,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.${type.column};
 import org.apache.tsfile.read.common.block.column.${type.column}Builder;
@@ -40,6 +39,7 @@ import java.util.Optional;
 * This class is generated using freemarker and the ${.template_name} template.
 */
 @SuppressWarnings("unused")
+// PreviousFill without time duration parameter
 public class ${className} implements IFill {
 
   // previous value
@@ -48,12 +48,6 @@ public class ${className} implements IFill {
   private long previousTime;
   // whether previous value is null
   private boolean previousIsNull = true;
-
-  private final IFillFilter filter;
-
-  public ${className}(IFillFilter filter) {
-    this.filter = filter;
-  }
 
   @Override
   public Column fill(Column timeColumn, Column valueColumn) {
@@ -75,7 +69,7 @@ public class ${className} implements IFill {
     if (valueColumn instanceof RunLengthEncodedColumn) {
       if (previousIsNull) {
         return new RunLengthEncodedColumn(${type.column}Builder.NULL_VALUE_BLOCK, size);
-      } else if (filter.needFill(timeColumn.getLong(size - 1), previousTime)) {
+      } else {
         return new RunLengthEncodedColumn(
             new ${type.column}(1, Optional.empty(), new ${type.dataType}[] {value}), size);
       }
@@ -87,7 +81,7 @@ public class ${className} implements IFill {
     boolean hasNullValue = false;
     for (int i = 0; i < size; i++) {
       if (valueColumn.isNull(i)) {
-        if (previousIsNull || !filter.needFill(timeColumn.getLong(i), previousTime)) {
+        if (previousIsNull) {
           isNull[i] = true;
           hasNullValue = true;
         } else {
@@ -105,6 +99,11 @@ public class ${className} implements IFill {
     } else {
       return new ${type.column}(size, Optional.empty(), array);
     }
+  }
+
+  @Override
+  public void reset() {
+    previousIsNull = true;
   }
 }
 </#list>

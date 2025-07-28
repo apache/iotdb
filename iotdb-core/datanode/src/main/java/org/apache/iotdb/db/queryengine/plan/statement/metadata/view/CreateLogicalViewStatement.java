@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata.view;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -44,6 +45,7 @@ import org.apache.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /** CREATE LOGICAL VIEW statement. */
 public class CreateLogicalViewStatement extends Statement {
@@ -84,8 +86,8 @@ public class CreateLogicalViewStatement extends Statement {
     if (sourcePathList != null) {
       status =
           AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathListPermission(
-                  userName, sourcePathList, PrivilegeType.READ_SCHEMA.ordinal()),
+              AuthorityChecker.checkFullPathOrPatternListPermission(
+                  userName, sourcePathList, PrivilegeType.READ_SCHEMA),
               sourcePathList,
               PrivilegeType.READ_SCHEMA);
     }
@@ -93,17 +95,24 @@ public class CreateLogicalViewStatement extends Statement {
       sourcePathList = queryStatement.getPaths();
       status =
           AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkPatternPermission(
-                  userName, sourcePathList, PrivilegeType.READ_SCHEMA.ordinal()),
+              AuthorityChecker.checkFullPathOrPatternListPermission(
+                  userName, sourcePathList, PrivilegeType.READ_SCHEMA),
               sourcePathList,
               PrivilegeType.READ_SCHEMA);
     }
 
+    final List<PartialPath> paths =
+        Objects.nonNull(getTargetPathList())
+            ? getTargetPathList()
+            : Collections.singletonList(
+                batchGenerationItem
+                    .getIntoDevice()
+                    .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return AuthorityChecker.getTSStatus(
-          AuthorityChecker.checkFullPathListPermission(
-              userName, getTargetPathList(), PrivilegeType.WRITE_SCHEMA.ordinal()),
-          getTargetPathList(),
+          AuthorityChecker.checkFullPathOrPatternListPermission(
+              userName, paths, PrivilegeType.WRITE_SCHEMA),
+          paths,
           PrivilegeType.WRITE_SCHEMA);
     }
     return status;

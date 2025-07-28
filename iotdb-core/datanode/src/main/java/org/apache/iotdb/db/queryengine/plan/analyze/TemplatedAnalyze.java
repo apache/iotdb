@@ -58,7 +58,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.CONFIG;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.END_TIME_EXPRESSION;
@@ -97,7 +96,8 @@ public class TemplatedAnalyze {
       QueryStatement queryStatement,
       IPartitionFetcher partitionFetcher,
       ISchemaTree schemaTree,
-      MPPQueryContext context) {
+      MPPQueryContext context,
+      List<PartialPath> deviceList) {
     if (queryStatement.getGroupByComponent() != null
         || queryStatement.isSelectInto()
         || queryStatement.hasFill()
@@ -114,7 +114,7 @@ public class TemplatedAnalyze {
 
     if (queryStatement.isAggregationQuery()) {
       return canBuildAggregationPlanUseTemplate(
-          analysis, queryStatement, partitionFetcher, schemaTree, context, template);
+          analysis, queryStatement, partitionFetcher, schemaTree, context, template, deviceList);
     }
 
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
@@ -173,8 +173,6 @@ public class TemplatedAnalyze {
     }
 
     analyzeSelect(queryStatement, analysis, outputExpressions, template);
-
-    List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
 
     analyzeDeviceToWhere(analysis, queryStatement);
     if (analysis.getWhereExpression() != null
@@ -419,7 +417,7 @@ public class TemplatedAnalyze {
       }
     } finally {
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TREE_TYPE, PARTITION_FETCHER, System.nanoTime() - startTime);
+          .recordTreePlanCost(PARTITION_FETCHER, System.nanoTime() - startTime);
     }
   }
 }

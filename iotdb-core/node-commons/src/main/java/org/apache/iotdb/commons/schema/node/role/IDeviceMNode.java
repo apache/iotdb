@@ -47,11 +47,11 @@ public interface IDeviceMNode<N extends IMNode<N>> extends IInternalMNode<N> {
    */
   int getSchemaTemplateIdWithState();
 
-  boolean isPreDeactivateTemplate();
+  boolean isPreDeactivateSelfOrTemplate();
 
-  void preDeactivateTemplate();
+  void preDeactivateSelfOrTemplate();
 
-  void rollbackPreDeactivateTemplate();
+  void rollbackPreDeactivateSelfOrTemplate();
 
   void deactivateTemplate();
 

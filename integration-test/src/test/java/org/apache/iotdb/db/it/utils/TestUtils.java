@@ -43,18 +43,23 @@ import java.sql.Statement;
 import java.text.DateFormat;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.env.BaseEnv.TREE_SQL_DIALECT;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -224,7 +229,24 @@ public class TestUtils {
         expectedRetArray,
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
-        database);
+        database,
+        "+00:00");
+  }
+
+  public static void tableResultSetEqualTest(
+      String sql,
+      String timeZone,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String database) {
+    tableResultSetEqualTest(
+        sql,
+        expectedHeader,
+        expectedRetArray,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        database,
+        timeZone);
   }
 
   public static void tableResultSetEqualTest(
@@ -234,11 +256,91 @@ public class TestUtils {
       String userName,
       String password,
       String database) {
+    tableResultSetEqualTest(
+        sql, expectedHeader, expectedRetArray, userName, password, database, "+00:00");
+  }
+
+  public static void tableResultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String userName,
+      String password,
+      String database,
+      String timeZone) {
+    try (Connection connection =
+        EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", timeZone);
+      try (Statement statement = connection.createStatement()) {
+        statement.execute("use " + database);
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+          }
+          assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= expectedHeader.length; i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            assertEquals(expectedRetArray[cnt], builder.toString());
+            cnt++;
+          }
+          assertEquals(expectedRetArray.length, cnt);
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void tableExecuteTest(String sql, String userName, String password) {
     try (Connection connection =
         EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
       connection.setClientInfo("time_zone", "+00:00");
       try (Statement statement = connection.createStatement()) {
-        statement.execute("use " + database);
+        statement.execute(sql);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void tableQueryNoVerifyResultTest(
+      String sql, String[] expectedHeader, String userName, String password) {
+    try (Connection connection =
+        EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+          }
+          assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void tableResultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String userName,
+      String password) {
+    try (Connection connection =
+        EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
         try (ResultSet resultSet = statement.executeQuery(sql)) {
           ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -265,6 +367,49 @@ public class TestUtils {
     }
   }
 
+  public static void tableResultSetFuzzyTest(
+      String sql, String[] expectedHeader, int expectedCount, String database) {
+    tableResultSetFuzzyTest(
+        sql,
+        expectedHeader,
+        expectedCount,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        database);
+  }
+
+  public static void tableResultSetFuzzyTest(
+      String sql,
+      String[] expectedHeader,
+      int expectedCount,
+      String userName,
+      String password,
+      String database) {
+    try (Connection connection =
+        EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
+        statement.execute("use " + database);
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+          }
+          assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            cnt++;
+          }
+          assertEquals(expectedCount, cnt);
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   public static void tableAssertTestFail(String sql, String errMsg, String databaseName) {
     tableAssertTestFail(
         sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, databaseName);
@@ -276,6 +421,18 @@ public class TestUtils {
             EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use " + databaseName);
+      statement.executeQuery(sql);
+      fail("No exception!");
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
+
+  public static void tableAssertTestFail(
+      String sql, String errMsg, String userName, String password) {
+    try (Connection connection =
+            EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
       fail("No exception!");
     } catch (SQLException e) {
@@ -409,6 +566,26 @@ public class TestUtils {
     }
   }
 
+  public static void assertTableTestFail(
+      final BaseEnv env,
+      final String sql,
+      final String errMsg,
+      final String userName,
+      final String password,
+      final String db) {
+    try (final Connection connection =
+            env.getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      if (Objects.nonNull(db)) {
+        statement.execute("use " + "\"" + db + "\"");
+      }
+      statement.executeQuery(sql);
+      fail("No exception!");
+    } catch (final SQLException e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
+
   public static void assertNonQueryTestFail(String sql, String errMsg) {
     assertNonQueryTestFail(sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
@@ -443,11 +620,26 @@ public class TestUtils {
       BaseEnv env, String sql, String errMsg, String userName, String password, String db) {
     try (Connection connection = env.getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("use " + "\"" + db + "\"");
+      if (Objects.nonNull(db)) {
+        statement.execute("use " + "\"" + db + "\"");
+      }
       statement.execute(sql);
       fail("No exception!");
     } catch (SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
+
+  public static void assertResultSetSize(final ResultSet actualResultSet, final int size) {
+    try {
+      int count = 0;
+      while (actualResultSet.next()) {
+        ++count;
+      }
+      Assert.assertEquals(size, count);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      Assert.fail(String.valueOf(e));
     }
   }
 
@@ -458,7 +650,39 @@ public class TestUtils {
   }
 
   public static void assertResultSetEqual(
-      ResultSet actualResultSet, String expectedHeader, Set<String> expectedRetSet) {
+      final ResultSet actualResultSet,
+      final String expectedHeader,
+      final Collection<String> expectedResult) {
+    try {
+      final ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+      final StringBuilder header = new StringBuilder();
+      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+        header.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      assertEquals(expectedHeader, header.toString());
+
+      final Collection<String> actualRetSet =
+          expectedResult instanceof Set ? new HashSet<>() : new ArrayList<>();
+
+      while (actualResultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          builder.append(actualResultSet.getString(i)).append(",");
+        }
+        actualRetSet.add(builder.toString());
+      }
+      assertEquals(expectedResult, actualRetSet);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      Assert.fail(String.valueOf(e));
+    }
+  }
+
+  public static void assertResultSetEqual(
+      ResultSet actualResultSet,
+      String expectedHeader,
+      Set<String> expectedRetSet,
+      Consumer consumer) {
     try {
       ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
       StringBuilder header = new StringBuilder();
@@ -558,13 +782,57 @@ public class TestUtils {
     }
   }
 
-  public static void executeNonQueryWithRetry(BaseEnv env, String sql) {
+  public static void executeNonQueryWithRetry(final BaseEnv env, final String sql) {
+    executeNonQueryWithRetry(env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+  }
+
+  public static void executeNonQueryWithRetry(
+      final BaseEnv env, final String sql, final String userName, final String password) {
+    executeNonQueryWithRetry(env, sql, userName, password, null, TREE_SQL_DIALECT);
+  }
+
+  public static void executeNonQueryWithRetry(
+      final BaseEnv env,
+      final String sql,
+      final String userName,
+      final String password,
+      final String database,
+      final String sqlDialect) {
+    executeNonQueriesWithRetry(
+        env, Collections.singletonList(sql), userName, password, database, sqlDialect);
+  }
+
+  public static void executeNonQueriesWithRetry(
+      final BaseEnv env, final List<String> sqlList, final String userName, final String password) {
+    executeNonQueriesWithRetry(env, sqlList, userName, password, "", TREE_SQL_DIALECT);
+  }
+
+  public static void executeNonQueriesWithRetry(
+      final BaseEnv env,
+      final List<String> sqlList,
+      final String userName,
+      final String password,
+      final String database,
+      final String sqlDialect) {
+    int lastIndex = 0;
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute(sql);
-        break;
-      } catch (SQLException e) {
+      try (final Connection connection =
+              env.getConnection(
+                  userName,
+                  password,
+                  BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
+                      ? BaseEnv.TABLE_SQL_DIALECT
+                      : TREE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && database != null) {
+          statement.execute("use " + database);
+        }
+        for (int i = lastIndex; i < sqlList.size(); ++i) {
+          lastIndex = i;
+          statement.execute(sqlList.get(i));
+        }
+        return;
+      } catch (final SQLException e) {
         if (retryCountLeft > 0) {
           try {
             Thread.sleep(10000);
@@ -584,23 +852,80 @@ public class TestUtils {
   }
 
   public static boolean tryExecuteNonQueryWithRetry(
+      String dataBaseName, String sqlDialect, BaseEnv env, String sql) {
+    return tryExecuteNonQueryWithRetry(
+        env,
+        sql,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        dataBaseName,
+        sqlDialect);
+  }
+
+  public static boolean tryExecuteNonQueryWithRetry(
       BaseEnv env, String sql, String userName, String password) {
     return tryExecuteNonQueriesWithRetry(env, Collections.singletonList(sql), userName, password);
   }
 
+  public static boolean tryExecuteNonQueryWithRetry(
+      BaseEnv env,
+      String sql,
+      String userName,
+      String password,
+      String dataBaseName,
+      String sqlDialect) {
+    return tryExecuteNonQueriesWithRetry(
+        env, Collections.singletonList(sql), userName, password, dataBaseName, sqlDialect);
+  }
+
   public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
     return tryExecuteNonQueriesWithRetry(
-        env, sqlList, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+        env,
+        sqlList,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        null,
+        TREE_SQL_DIALECT);
+  }
+
+  public static boolean tryExecuteNonQueriesWithRetry(
+      String dataBase, String sqlDialect, BaseEnv env, List<String> sqlList) {
+    return tryExecuteNonQueriesWithRetry(
+        env,
+        sqlList,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        dataBase,
+        sqlDialect);
   }
 
   // This method will not throw failure given that a failure is encountered.
   // Instead, it returns a flag to indicate the result of the execution.
   public static boolean tryExecuteNonQueriesWithRetry(
       BaseEnv env, List<String> sqlList, String userName, String password) {
+    return tryExecuteNonQueriesWithRetry(env, sqlList, userName, password, null, TREE_SQL_DIALECT);
+  }
+
+  public static boolean tryExecuteNonQueriesWithRetry(
+      BaseEnv env,
+      List<String> sqlList,
+      String userName,
+      String password,
+      String dataBase,
+      String sqlDialect) {
     int lastIndex = 0;
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnection(userName, password);
+      try (Connection connection =
+              env.getConnection(
+                  userName,
+                  password,
+                  BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
+                      ? BaseEnv.TABLE_SQL_DIALECT
+                      : TREE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
+        if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && dataBase != null) {
+          statement.execute("use " + dataBase);
+        }
         for (int i = lastIndex; i < sqlList.size(); ++i) {
           lastIndex = i;
           statement.execute(sqlList.get(i));
@@ -676,6 +1001,42 @@ public class TestUtils {
     return false;
   }
 
+  public static boolean tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
+      BaseEnv env,
+      DataNodeWrapper wrapper,
+      List<String> sqlList,
+      String dataBase,
+      String sqlDialect) {
+    int lastIndex = 0;
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+      try (Connection connection =
+              env.getWriteOnlyConnectionWithSpecifiedDataNode(wrapper, sqlDialect);
+          Statement statement = connection.createStatement()) {
+
+        if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && dataBase != null) {
+          statement.execute("use " + dataBase);
+        }
+
+        for (int i = lastIndex; i < sqlList.size(); ++i) {
+          statement.execute(sqlList.get(i));
+          lastIndex = i;
+        }
+        return true;
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(10000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          return false;
+        }
+      }
+    }
+    return false;
+  }
+
   public static void executeQuery(String sql) {
     executeQuery(sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
@@ -691,27 +1052,57 @@ public class TestUtils {
   }
 
   public static void executeQueryWithRetry(
-      BaseEnv env, String sql, String userName, String password) {
-    try (Connection connection = env.getConnection(userName, password);
-        Statement statement = connection.createStatement()) {
-      for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-        try {
-          statement.executeQuery(sql);
-        } catch (SQLException e) {
-          if (retryCountLeft > 0) {
-            try {
-              Thread.sleep(10000);
-            } catch (InterruptedException ignored) {
-            }
-          } else {
-            e.printStackTrace();
-            fail(e.getMessage());
+      final BaseEnv env, final String sql, final String userName, final String password) {
+    executeQueryWithRetry(env, sql, userName, password, null, TREE_SQL_DIALECT);
+  }
+
+  public static void executeQueryWithRetry(
+      final BaseEnv env,
+      final String sql,
+      final String userName,
+      final String password,
+      final String database,
+      final String sqlDialect) {
+    executeQueriesWithRetry(
+        env, Collections.singletonList(sql), userName, password, database, sqlDialect);
+  }
+
+  public static void executeQueriesWithRetry(
+      final BaseEnv env,
+      final List<String> sqlList,
+      final String userName,
+      final String password,
+      final String database,
+      final String sqlDialect) {
+    int lastIndex = 0;
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+      try (final Connection connection =
+              env.getConnection(
+                  userName,
+                  password,
+                  BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
+                      ? BaseEnv.TABLE_SQL_DIALECT
+                      : TREE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && database != null) {
+          statement.execute("use " + database);
+        }
+        for (int i = lastIndex; i < sqlList.size(); ++i) {
+          lastIndex = i;
+          statement.executeQuery(sqlList.get(i));
+        }
+        return;
+      } catch (final SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(10000);
+          } catch (InterruptedException ignored) {
           }
+        } else {
+          e.printStackTrace();
+          fail(e.getMessage());
         }
       }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
     }
   }
 
@@ -826,12 +1217,65 @@ public class TestUtils {
   }
 
   public static void assertDataEventuallyOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final Consumer<String> handleFailure) {
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600, handleFailure);
+  }
+
+  public static void assertDataEventuallyOnEnv(
       BaseEnv env,
       String sql,
       String expectedHeader,
       Set<String> expectedResSet,
       long timeoutSeconds) {
+    final long startTime = System.currentTimeMillis();
+    final boolean[] flushed = {false};
     try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+                  // sync requires tsFile to process. We flush in the middle of assertion because we
+                  // don't know when the data reaches the receiver in general cases
+                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                    flushed[0] = true;
+                    statement.execute("flush");
+                  }
+                  TestUtils.assertResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      BaseEnv env,
+      DataNodeWrapper dataNodeWrapper,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
+      long timeoutSeconds) {
+    try (Connection connection =
+            env.getConnection(
+                dataNodeWrapper,
+                SessionConfig.DEFAULT_USER,
+                SessionConfig.DEFAULT_PASSWORD,
+                TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failures
       await()
@@ -854,13 +1298,61 @@ public class TestUtils {
     }
   }
 
-  public static void assertDataEventuallyOnEnv(
-      BaseEnv env, String sql, Map<String, String> expectedHeaderWithResult) {
-    assertDataEventuallyOnEnv(env, sql, expectedHeaderWithResult, 600);
+  public static void assertDataSizeEventuallyOnEnv(
+      final BaseEnv env, final String sql, final int size, final String databaseName) {
+    assertDataSizeEventuallyOnEnv(env, sql, size, 600, databaseName);
+  }
+
+  public static void assertDataSizeEventuallyOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final int size,
+      final long timeoutSeconds,
+      final String dataBaseName) {
+    final long startTime = System.currentTimeMillis();
+    final boolean[] flushed = {false};
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  if (dataBaseName != null) {
+                    statement.execute("use " + dataBaseName);
+                  }
+                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+                  // sync requires tsFile to process. We flush in the middle of assertion because we
+                  // don't know when the data reaches the receiver in general cases
+                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                    flushed[0] = true;
+                    statement.execute("flush");
+                  }
+                  if (sql != null && !sql.isEmpty()) {
+                    TestUtils.assertResultSetSize(executeQueryWithRetry(statement, sql), size);
+                  }
+                } catch (final Exception e) {
+                  Assert.fail(e.getMessage());
+                }
+              });
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
   }
 
   public static void assertDataEventuallyOnEnv(
-      BaseEnv env, String sql, Map<String, String> expectedHeaderWithResult, long timeoutSeconds) {
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final long timeoutSeconds,
+      final Consumer<String> handleFailure) {
+    final long startTime = System.currentTimeMillis();
+    final boolean[] flushed = {false};
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failures
@@ -872,6 +1364,213 @@ public class TestUtils {
           .untilAsserted(
               () -> {
                 try {
+                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+                  // sync requires tsFile to process. We flush in the middle of assertion because we
+                  // don't know when the data reaches the receiver in general cases
+                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                    flushed[0] = true;
+                    statement.execute("flush");
+                  }
+                  TestUtils.assertResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  Assert.fail();
+                } catch (Error e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  throw e;
+                }
+              });
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final String dataBaseName) {
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600, dataBaseName, null);
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final String dataBaseName,
+      final Consumer<String> handleFailure) {
+    assertDataEventuallyOnEnv(
+        env, sql, expectedHeader, expectedResSet, 600, dataBaseName, handleFailure);
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      final BaseEnv env,
+      final DataNodeWrapper dataNodeWrapper,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final String dataBaseName) {
+    assertDataEventuallyOnEnv(
+        env, dataNodeWrapper, sql, expectedHeader, expectedResSet, 600, dataBaseName, null);
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final long timeoutSeconds,
+      final String databaseName,
+      final Consumer<String> handleFailure) {
+    final long startTime = System.currentTimeMillis();
+    final boolean[] flushed = {false};
+    try (Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  if (databaseName != null) {
+                    statement.execute("use " + databaseName);
+                  }
+                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+                  // sync requires tsFile to process. We flush in the middle of assertion because we
+                  // don't know when the data reaches the receiver in general cases
+                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                    flushed[0] = true;
+                    statement.execute("flush");
+                  }
+                  if (sql != null && !sql.isEmpty()) {
+                    TestUtils.assertResultSetEqual(
+                        executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                  }
+                } catch (Exception e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  Assert.fail();
+                } catch (Error e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  throw e;
+                }
+              });
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  // Note that this class will accept any exceptions
+  public static void assertAlwaysFail(final BaseEnv env, final String sql) {
+    assertAlwaysFail(env, sql, 10);
+  }
+
+  public static void assertAlwaysFail(
+      final BaseEnv env, final String sql, final long consistentSeconds) {
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(consistentSeconds, TimeUnit.SECONDS)
+          .failFast(() -> Assert.assertThrows(Exception.class, () -> statement.executeQuery(sql)));
+    } catch (final Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      final BaseEnv env,
+      final DataNodeWrapper dataNodeWrapper,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final long timeoutSeconds,
+      final String databaseName,
+      final Consumer<String> handleFailure) {
+    try (Connection connection =
+            env.getConnection(
+                dataNodeWrapper,
+                SessionConfig.DEFAULT_USER,
+                SessionConfig.DEFAULT_PASSWORD,
+                BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  if (databaseName != null) {
+                    statement.execute("use " + databaseName);
+                  }
+                  if (sql != null && !sql.isEmpty()) {
+                    TestUtils.assertResultSetEqual(
+                        executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                  }
+                } catch (Exception e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  Assert.fail();
+                } catch (Error e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  throw e;
+                }
+              });
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      BaseEnv env, String sql, Map<String, String> expectedHeaderWithResult) {
+    assertDataEventuallyOnEnv(env, sql, expectedHeaderWithResult, 600);
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      BaseEnv env, String sql, Map<String, String> expectedHeaderWithResult, long timeoutSeconds) {
+    final long startTime = System.currentTimeMillis();
+    final boolean[] flushed = {false};
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+                  // sync requires tsFile to process. We flush in the middle of assertion because we
+                  // don't know when the data reaches the receiver in general cases
+                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                    flushed[0] = true;
+                    statement.execute("flush");
+                  }
                   TestUtils.assertSingleResultSetEqual(
                       executeQueryWithRetry(statement, sql), expectedHeaderWithResult);
                 } catch (Exception e) {
@@ -885,8 +1584,20 @@ public class TestUtils {
   }
 
   public static void assertDataAlwaysOnEnv(
-      BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
-    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10);
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet) {
+    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10, (String) null);
+  }
+
+  public static void assertDataAlwaysOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final String database) {
+    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10, database);
   }
 
   public static void assertDataAlwaysOnEnv(
@@ -894,8 +1605,22 @@ public class TestUtils {
       String sql,
       String expectedHeader,
       Set<String> expectedResSet,
-      long consistentSeconds) {
-    try (Connection connection = env.getConnection();
+      Consumer<String> handleFailure) {
+    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10, handleFailure);
+  }
+
+  public static void assertDataAlwaysOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
+      long consistentSeconds,
+      final String database) {
+    final long startTime = System.currentTimeMillis();
+    final boolean[] flushed = {false};
+    try (Connection connection =
+            env.getConnection(
+                Objects.isNull(database) ? TREE_SQL_DIALECT : BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failures
       await()
@@ -906,6 +1631,17 @@ public class TestUtils {
           .failFast(
               () -> {
                 try {
+                  if (Objects.nonNull(database)) {
+                    statement.execute("use " + database);
+                  }
+                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+                  // sync requires tsFile to process. We flush in the middle of assertion because we
+                  // don't know when the data reaches the receiver in general cases
+                  if (!flushed[0]
+                      && System.currentTimeMillis() - startTime > consistentSeconds >> 1) {
+                    flushed[0] = true;
+                    statement.execute("flush");
+                  }
                   TestUtils.assertResultSetEqual(
                       executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
                 } catch (Exception e) {
@@ -918,8 +1654,130 @@ public class TestUtils {
     }
   }
 
+  public static void assertDataAlwaysOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
+      long consistentSeconds,
+      Consumer<String> handleFailure) {
+    final long startTime = System.currentTimeMillis();
+    final boolean[] flushed = {false};
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(consistentSeconds, TimeUnit.SECONDS)
+          .failFast(
+              () -> {
+                try {
+                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+                  // sync requires tsFile to process. We flush in the middle of assertion because we
+                  // don't know when the data reaches the receiver in general cases
+                  if (!flushed[0]
+                      && System.currentTimeMillis() - startTime > consistentSeconds >> 1) {
+                    flushed[0] = true;
+                    statement.execute("flush");
+                  }
+                  TestUtils.assertResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  Assert.fail();
+                } catch (Error e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  throw e;
+                }
+              });
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  public static void assertDataAlwaysOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
+      long consistentSeconds,
+      String database,
+      Consumer<String> handleFailure) {
+    final long startTime = System.currentTimeMillis();
+    final boolean[] flushed = {false};
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(consistentSeconds, TimeUnit.SECONDS)
+          .failFast(
+              () -> {
+                try {
+                  if (database != null) {
+                    statement.execute("use " + database);
+                  }
+                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+                  // sync requires tsFile to process. We flush in the middle of assertion because we
+                  // don't know when the data reaches the receiver in general cases
+                  if (!flushed[0]
+                      && System.currentTimeMillis() - startTime > consistentSeconds >> 1) {
+                    flushed[0] = true;
+                    statement.execute("flush");
+                  }
+                  TestUtils.assertResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  Assert.fail();
+                } catch (Error e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  throw e;
+                }
+              });
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
   public static void restartDataNodes() {
     EnvFactory.getEnv().shutdownAllDataNodes();
+    EnvFactory.getEnv().startAllDataNodes();
+    long waitStartMS = System.currentTimeMillis();
+    long maxWaitMS = 60_000L;
+    long retryIntervalMS = 1000;
+    while (true) {
+      try (Connection connection = EnvFactory.getEnv().getConnection()) {
+        break;
+      } catch (Exception e) {
+        try {
+          Thread.sleep(retryIntervalMS);
+        } catch (InterruptedException ex) {
+          break;
+        }
+      }
+      long waited = System.currentTimeMillis() - waitStartMS;
+      if (waited > maxWaitMS) {
+        fail("Timeout while waiting for datanodes restart");
+      }
+    }
+  }
+
+  public static void stopForciblyAndRestartDataNodes() {
+    EnvFactory.getEnv().shutdownForciblyAllDataNodes();
     EnvFactory.getEnv().startAllDataNodes();
     long waitStartMS = System.currentTimeMillis();
     long maxWaitMS = 60_000L;

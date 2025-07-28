@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -37,6 +38,12 @@ import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class IoTProgressIndex extends ProgressIndex {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(IoTProgressIndex.class) + ProgressIndex.LOCK_SIZE;
+
+  // We assume that the integers are all cached, while the longs are all not
+  private static final long ENTRY_SIZE =
+      RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + Long.BYTES;
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -102,14 +109,18 @@ public class IoTProgressIndex extends ProgressIndex {
         return false;
       }
 
-      final IoTProgressIndex thisIoTProgressIndex = this;
       final IoTProgressIndex thatIoTProgressIndex = (IoTProgressIndex) progressIndex;
-      return thatIoTProgressIndex.peerId2SearchIndex.entrySet().stream()
-          .noneMatch(
-              entry ->
-                  !thisIoTProgressIndex.peerId2SearchIndex.containsKey(entry.getKey())
-                      || thisIoTProgressIndex.peerId2SearchIndex.get(entry.getKey())
-                          <= entry.getValue());
+      boolean isEquals = true;
+      for (final Map.Entry<Integer, Long> entry :
+          thatIoTProgressIndex.peerId2SearchIndex.entrySet()) {
+        if (!peerId2SearchIndex.containsKey(entry.getKey())
+            || peerId2SearchIndex.get(entry.getKey()) < entry.getValue()) {
+          return false;
+        } else if (peerId2SearchIndex.get(entry.getKey()) > entry.getValue()) {
+          isEquals = false;
+        }
+      }
+      return !isEquals;
     } finally {
       lock.readLock().unlock();
     }
@@ -197,15 +208,6 @@ public class IoTProgressIndex extends ProgressIndex {
     }
   }
 
-  public int getPeerId2SearchIndexSize() {
-    lock.readLock().lock();
-    try {
-      return peerId2SearchIndex.size();
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
   public static IoTProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
     final IoTProgressIndex ioTProgressIndex = new IoTProgressIndex();
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
@@ -231,5 +233,10 @@ public class IoTProgressIndex extends ProgressIndex {
   @Override
   public String toString() {
     return "IoTProgressIndex{" + "peerId2SearchIndex=" + peerId2SearchIndex + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + peerId2SearchIndex.size() * ENTRY_SIZE;
   }
 }

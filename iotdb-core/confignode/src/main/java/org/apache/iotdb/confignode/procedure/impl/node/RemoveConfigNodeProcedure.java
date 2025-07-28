@@ -65,12 +65,12 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
           break;
         case DELETE_PEER:
           env.deleteConfigNodePeer(removedConfigNode);
-          setNextState(RemoveConfigNodeState.STOP_CONFIG_NODE);
+          setNextState(RemoveConfigNodeState.STOP_AND_CLEAR_CONFIG_NODE);
           LOG.info("Delete peer for ConfigNode: {}", removedConfigNode);
           break;
-        case STOP_CONFIG_NODE:
-          env.stopConfigNode(removedConfigNode);
-          LOG.info("Stop ConfigNode: {}", removedConfigNode);
+        case STOP_AND_CLEAR_CONFIG_NODE:
+          env.stopAndClearConfigNode(removedConfigNode);
+          LOG.info("Stop and clear ConfigNode: {}", removedConfigNode);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {

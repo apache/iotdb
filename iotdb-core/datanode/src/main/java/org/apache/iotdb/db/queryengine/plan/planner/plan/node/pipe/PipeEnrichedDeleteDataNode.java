@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -28,7 +29,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -37,7 +41,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * This class aims to mark the {@link DeleteDataNode} to enable selectively forwarding pipe
+ * This class aims to mark the {@link AbstractDeleteDataNode} to enable selectively forwarding pipe
  * deletion. The handling logic is defined in:
  *
  * <p>1.{@link RegionWriteExecutor}, to serialize and reach the target data region.
@@ -45,16 +49,12 @@ import java.util.stream.Collectors;
  * <p>2.{@link DataExecutionVisitor}, to actually write data on data region and mark it as received
  * from pipe.
  */
-public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
+public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
 
-  private final DeleteDataNode deleteDataNode;
+  private final AbstractDeleteDataNode deleteDataNode;
 
-  public PipeEnrichedDeleteDataNode(DeleteDataNode deleteDataNode) {
-    super(
-        deleteDataNode.getPlanNodeId(),
-        deleteDataNode.getPathList(),
-        deleteDataNode.getDeleteStartTime(),
-        deleteDataNode.getDeleteEndTime());
+  public PipeEnrichedDeleteDataNode(final AbstractDeleteDataNode deleteDataNode) {
+    super(deleteDataNode.getPlanNodeId());
     this.deleteDataNode = deleteDataNode;
   }
 
@@ -78,8 +78,23 @@ public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
   }
 
   @Override
-  public void setPlanNodeId(PlanNodeId id) {
+  public void setPlanNodeId(final PlanNodeId id) {
     deleteDataNode.setPlanNodeId(id);
+  }
+
+  @Override
+  public ByteBuffer serializeToDAL() {
+    return deleteDataNode.serializeToDAL();
+  }
+
+  @Override
+  public ProgressIndex getProgressIndex() {
+    return deleteDataNode.getProgressIndex();
+  }
+
+  @Override
+  public void setProgressIndex(ProgressIndex progressIndex) {
+    deleteDataNode.setProgressIndex(progressIndex);
   }
 
   @Override
@@ -88,7 +103,7 @@ public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {
+  public void addChild(final PlanNode child) {
     deleteDataNode.addChild(child);
   }
 
@@ -98,18 +113,18 @@ public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
   }
 
   @Override
-  public DeleteDataNode clone() {
+  public PlanNode clone() {
     return new PipeEnrichedDeleteDataNode((DeleteDataNode) deleteDataNode.clone());
   }
 
   @Override
-  public DeleteDataNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+  public PlanNode createSubNode(final int subNodeId, final int startIndex, final int endIndex) {
     return new PipeEnrichedDeleteDataNode(
         (DeleteDataNode) deleteDataNode.createSubNode(subNodeId, startIndex, endIndex));
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
+  public PlanNode cloneWithChildren(final List<PlanNode> children) {
     return new PipeEnrichedDeleteDataNode(
         (DeleteDataNode) deleteDataNode.cloneWithChildren(children));
   }
@@ -125,28 +140,28 @@ public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
     return visitor.visitPipeEnrichedDeleteDataNode(this, context);
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
     PlanNodeType.PIPE_ENRICHED_DELETE_DATA.serialize(byteBuffer);
     deleteDataNode.serialize(byteBuffer);
   }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.PIPE_ENRICHED_DELETE_DATA.serialize(stream);
     deleteDataNode.serialize(stream);
   }
 
-  public static PipeEnrichedDeleteDataNode deserialize(ByteBuffer buffer) {
+  public static PipeEnrichedDeleteDataNode deserialize(final ByteBuffer buffer) {
     return new PipeEnrichedDeleteDataNode((DeleteDataNode) PlanNodeType.deserialize(buffer));
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     return o instanceof PipeEnrichedDeleteDataNode
         && deleteDataNode.equals(((PipeEnrichedDeleteDataNode) o).deleteDataNode);
   }
@@ -162,7 +177,7 @@ public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
     return deleteDataNode.splitByPartition(analysis).stream()
         .map(
             plan ->
@@ -170,5 +185,27 @@ public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
                     ? plan
                     : new PipeEnrichedDeleteDataNode((DeleteDataNode) plan))
         .collect(Collectors.toList());
+  }
+
+  @Override
+  public void serializeToWAL(final IWALByteBufferView buffer) {
+    deleteDataNode.serializeToWAL(buffer);
+  }
+
+  @Override
+  public int serializedSize() {
+    return deleteDataNode.serializedSize();
+  }
+
+  @Override
+  public SearchNode merge(List<SearchNode> searchNodes) {
+    List<SearchNode> unrichedDeleteDataNodes =
+        searchNodes.stream()
+            .map(
+                searchNode ->
+                    (SearchNode) ((PipeEnrichedDeleteDataNode) searchNode).getDeleteDataNode())
+            .collect(Collectors.toList());
+    return new PipeEnrichedDeleteDataNode(
+        (DeleteDataNode) deleteDataNode.merge(unrichedDeleteDataNodes));
   }
 }

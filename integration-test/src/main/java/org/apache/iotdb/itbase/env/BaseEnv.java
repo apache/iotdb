@@ -23,14 +23,18 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+
+import reactor.util.annotation.Nullable;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -40,6 +44,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -76,11 +81,14 @@ public interface BaseEnv {
   /** Return the {@link ClusterConfig} for developers to set values before test. */
   ClusterConfig getConfig();
 
-  default String getUrlContent(String urlStr) {
+  default String getUrlContent(String urlStr, @Nullable String authHeader) {
     StringBuilder sb = new StringBuilder();
     try {
       URL url = new URL(urlStr);
       HttpURLConnection httpConnection = (HttpURLConnection) url.openConnection();
+      if (authHeader != null) {
+        httpConnection.setRequestProperty("Authorization", authHeader);
+      }
       if (httpConnection.getResponseCode() == HttpURLConnection.HTTP_OK) {
         InputStream in = httpConnection.getInputStream();
         InputStreamReader isr = new InputStreamReader(in);
@@ -102,7 +110,7 @@ public interface BaseEnv {
   }
 
   /** Return the content of prometheus */
-  List<String> getMetricPrometheusReporterContents();
+  List<String> getMetricPrometheusReporterContents(String authHeader);
 
   default Connection getConnection() throws SQLException {
     return getConnection(
@@ -138,6 +146,10 @@ public interface BaseEnv {
       Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException;
 
+  Connection getConnection(
+      DataNodeWrapper dataNodeWrapper, String username, String password, String sqlDialect)
+      throws SQLException;
+
   default Connection getConnection(String username, String password) throws SQLException {
     return getConnection(username, password, TREE_SQL_DIALECT);
   }
@@ -147,12 +159,19 @@ public interface BaseEnv {
   default Connection getWriteOnlyConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
       throws SQLException {
     return getWriteOnlyConnectionWithSpecifiedDataNode(
-        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
+  }
+
+  default Connection getWriteOnlyConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, String sqlDialect) throws SQLException {
+    return getWriteOnlyConnectionWithSpecifiedDataNode(
+        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
   }
 
   // This is useful when you shut down a dataNode.
   Connection getWriteOnlyConnectionWithSpecifiedDataNode(
-      DataNodeWrapper dataNode, String username, String password) throws SQLException;
+      DataNodeWrapper dataNode, String username, String password, String sqlDialect)
+      throws SQLException;
 
   default Connection getConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
       throws SQLException {
@@ -176,36 +195,27 @@ public interface BaseEnv {
   IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
       throws ClientManagerException, IOException, InterruptedException;
 
-  default ISessionPool getSessionPool(int maxSize) {
-    return getSessionPool(maxSize, TREE_SQL_DIALECT);
-  }
+  ISessionPool getSessionPool(int maxSize);
 
-  ISessionPool getSessionPool(int maxSize, String sqlDialect);
+  ITableSessionPool getTableSessionPool(int maxSize);
 
-  ISessionPool getSessionPool(int maxSize, String sqlDialect, String database);
+  ITableSessionPool getTableSessionPool(int maxSize, String database);
 
-  default ISession getSessionConnection() throws IoTDBConnectionException {
-    return getSessionConnection(TREE_SQL_DIALECT);
-  }
+  ISession getSessionConnection() throws IoTDBConnectionException;
 
-  ISession getSessionConnection(String sqlDialect) throws IoTDBConnectionException;
+  ISession getSessionConnection(ZoneId zoneId) throws IoTDBConnectionException;
 
-  ISession getSessionConnectionWithDB(String sqlDialect, String database)
-      throws IoTDBConnectionException;
+  ISession getSessionConnection(String userName, String password) throws IoTDBConnectionException;
 
-  default ISession getSessionConnection(String userName, String password)
-      throws IoTDBConnectionException {
-    return getSessionConnection(userName, password, TREE_SQL_DIALECT);
-  }
+  ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
 
-  ISession getSessionConnection(String userName, String password, String sqlDialect)
-      throws IoTDBConnectionException;
+  ITableSession getTableSessionConnection() throws IoTDBConnectionException;
 
-  default ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
-    return getSessionConnection(nodeUrls, TREE_SQL_DIALECT);
-  }
+  ITableSession getTableSessionConnectionWithDB(String database) throws IoTDBConnectionException;
 
-  ISession getSessionConnection(List<String> nodeUrls, String sqlDialect)
+  ITableSession getTableSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
+
+  ITableSession getTableSessionConnection(String userName, String password)
       throws IoTDBConnectionException;
 
   /**
@@ -237,6 +247,8 @@ public interface BaseEnv {
 
   /** Shutdown all existed ConfigNodes. */
   void shutdownAllConfigNodes();
+
+  void shutdownForciblyAllConfigNodes();
 
   /**
    * Ensure all the nodes being in the corresponding status.
@@ -301,6 +313,9 @@ public interface BaseEnv {
 
   /** Shutdown all existed DataNodes. */
   void shutdownAllDataNodes();
+
+  /** Shutdown forcibly all existed DataNodes. */
+  void shutdownForciblyAllDataNodes();
 
   int getMqttPort();
 

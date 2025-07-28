@@ -38,6 +38,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.ReadPointCrossCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.ReadPointInnerCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.RepairUnsortedFileCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -61,6 +63,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -79,7 +82,6 @@ public class ReadPointCompactionPerformer
   private CompactionTaskSummary summary;
 
   protected List<TsFileResource> targetFiles = Collections.emptyList();
-  protected boolean ignoreAllNullRows = true;
 
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles,
@@ -104,7 +106,7 @@ public class ReadPointCompactionPerformer
     long queryId = QueryResourceManager.getInstance().assignCompactionQueryId();
     FragmentInstanceContext fragmentInstanceContext =
         FragmentInstanceContext.createFragmentInstanceContextForCompaction(queryId);
-    QueryDataSource queryDataSource = new QueryDataSource(seqFiles, unseqFiles);
+    QueryDataSource queryDataSource = initQueryDataSource();
     QueryResourceManager.getInstance()
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
@@ -113,7 +115,7 @@ public class ReadPointCompactionPerformer
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
-          new MultiTsFileDeviceIterator(seqFiles, unseqFiles, ignoreAllNullRows);
+          new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(
               seqFiles, unseqFiles, deviceIterator.getReaderMap());
@@ -143,6 +145,10 @@ public class ReadPointCompactionPerformer
     }
   }
 
+  protected QueryDataSource initQueryDataSource() {
+    return new QueryDataSource(seqFiles, unseqFiles);
+  }
+
   @Override
   public void setTargetFiles(List<TsFileResource> targetFiles) {
     this.targetFiles = targetFiles;
@@ -151,11 +157,6 @@ public class ReadPointCompactionPerformer
   @Override
   public void setSummary(CompactionTaskSummary summary) {
     this.summary = summary;
-  }
-
-  @Override
-  public void setIgnoreAllNullRows(boolean ignoreAllNullRows) {
-    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   private void compactAlignedSeries(
@@ -173,10 +174,10 @@ public class ReadPointCompactionPerformer
     }
     List<String> existedMeasurements =
         measurementSchemas.stream()
-            .map(IMeasurementSchema::getMeasurementId)
+            .map(IMeasurementSchema::getMeasurementName)
             .collect(Collectors.toList());
 
-    fragmentInstanceContext.setIgnoreAllNullRows(ignoreAllNullRows);
+    fragmentInstanceContext.setIgnoreAllNullRows(device.getTableName().startsWith("root."));
     IDataBlockReader dataBlockReader =
         constructReader(
             device,
@@ -326,5 +327,10 @@ public class ReadPointCompactionPerformer
   @Override
   public void setSourceFiles(List<TsFileResource> unseqFiles) {
     this.unseqFiles = unseqFiles;
+  }
+
+  @Override
+  public Optional<AbstractInnerSpaceEstimator> getInnerSpaceEstimator() {
+    return Optional.of(new RepairUnsortedFileCompactionEstimator());
   }
 }

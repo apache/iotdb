@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -34,8 +35,8 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
+import org.apache.tsfile.write.writer.tsmiterator.TSMIterator;
 
 import java.io.File;
 import java.io.IOException;
@@ -150,6 +151,14 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
         .recordWriteInfo(type, CompactionIoDataType.METADATA, writtenDataSize);
   }
 
+  @Override
+  protected TSMIterator getTSMIterator() throws IOException {
+    return hasChunkMetadataInDisk
+        ? new CompactionDiskTSMIterator(
+            type, chunkMetadataTempFile, chunkGroupMetadataList, endPosInCMTForDevice)
+        : TSMIterator.getTSMIteratorInMemory(chunkGroupMetadataList);
+  }
+
   public boolean isEmptyTargetFile() {
     return isEmptyTargetFile;
   }
@@ -159,8 +168,8 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     Iterator<Map.Entry<String, TableSchema>> iterator = tableSchemaMap.entrySet().iterator();
     while (iterator.hasNext()) {
       Map.Entry<String, TableSchema> entry = iterator.next();
-      List<ColumnType> columnTypes = entry.getValue().getColumnTypes();
-      if (columnTypes.contains(ColumnType.MEASUREMENT)) {
+      List<ColumnCategory> columnTypes = entry.getValue().getColumnTypes();
+      if (columnTypes.contains(ColumnCategory.FIELD)) {
         continue;
       }
       iterator.remove();

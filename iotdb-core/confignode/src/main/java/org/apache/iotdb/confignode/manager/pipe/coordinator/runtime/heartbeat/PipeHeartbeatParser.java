@@ -20,15 +20,15 @@
 package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -144,7 +144,8 @@ public class PipeHeartbeatParser {
         continue;
       }
 
-      final PipeTemporaryMeta temporaryMeta = pipeMetaFromCoordinator.getTemporaryMeta();
+      final PipeTemporaryMetaInCoordinator temporaryMeta =
+          (PipeTemporaryMetaInCoordinator) pipeMetaFromCoordinator.getTemporaryMeta();
 
       // Remove completed pipes
       final Boolean isPipeCompletedFromAgent = pipeHeartbeat.isCompleted(staticMeta);
@@ -184,9 +185,8 @@ public class PipeHeartbeatParser {
         final PipeTaskMeta runtimeMetaFromAgent =
             pipeTaskMetaMapFromAgent.get(runtimeMetaFromCoordinator.getKey());
         if (runtimeMetaFromAgent == null) {
-          LOGGER.warn(
-              "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "
-                  + "runtimeMetaFromAgent is null, runtimeMetaFromCoordinator: {}",
+          LOGGER.info(
+              "No corresponding Pipe is running in the reported DataRegion. runtimeMetaFromAgent is null, runtimeMetaFromCoordinator: {}",
               runtimeMetaFromCoordinator);
           continue;
         }
@@ -254,7 +254,7 @@ public class PipeHeartbeatParser {
                   pipeName);
             }
 
-            if (exception instanceof PipeRuntimeConnectorCriticalException) {
+            if (exception instanceof PipeRuntimeSinkCriticalException) {
               ((PipeTableResp) pipeTaskInfo.get().showPipes())
                   .filter(true, pipeName).getAllPipeMeta().stream()
                       .filter(pipeMeta -> !pipeMeta.getStaticMeta().getPipeName().equals(pipeName))

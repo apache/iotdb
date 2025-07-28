@@ -32,7 +32,10 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.utils.Binary;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -46,8 +49,6 @@ public class MockTableModelDataPartition {
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
 
-  private static final String DB_NAME = "root.testdb";
-
   static final String DEVICE_1 = "table1.beijing.A1.ZZ";
   static final String DEVICE_2 = "table1.beijing.A2.XX";
   static final String DEVICE_3 = "table1.shanghai.A3.YY";
@@ -55,12 +56,44 @@ public class MockTableModelDataPartition {
   static final String DEVICE_5 = "table1.shenzhen.B2.ZZ";
   static final String DEVICE_6 = "table1.shenzhen.B1.XX";
 
-  static final List<String> DEVICE_1_ATTRIBUTES = Arrays.asList("high", "big");
-  static final List<String> DEVICE_2_ATTRIBUTES = Arrays.asList("high", "small");
-  static final List<String> DEVICE_3_ATTRIBUTES = Arrays.asList("low", "small");
-  static final List<String> DEVICE_4_ATTRIBUTES = Arrays.asList("low", "big");
-  static final List<String> DEVICE_5_ATTRIBUTES = Arrays.asList("mid", "big");
-  static final List<String> DEVICE_6_ATTRIBUTES = Arrays.asList("mid", "small");
+  static final List<List<String>> DEVICES_REGION_GROUP = new ArrayList<>(3);
+
+  static {
+    DEVICES_REGION_GROUP.add(Arrays.asList(DEVICE_5, DEVICE_6));
+    DEVICES_REGION_GROUP.add(Arrays.asList(DEVICE_4, DEVICE_5, DEVICE_6, DEVICE_3));
+    DEVICES_REGION_GROUP.add(Arrays.asList(DEVICE_2, DEVICE_1));
+  }
+
+  static final Binary[] DEVICE_1_ATTRIBUTES =
+      new Binary[] {
+        new Binary("high", TSFileConfig.STRING_CHARSET),
+        new Binary("big", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_2_ATTRIBUTES =
+      new Binary[] {
+        new Binary("high", TSFileConfig.STRING_CHARSET),
+        new Binary("small", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_3_ATTRIBUTES =
+      new Binary[] {
+        new Binary("low", TSFileConfig.STRING_CHARSET),
+        new Binary("small", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_4_ATTRIBUTES =
+      new Binary[] {
+        new Binary("low", TSFileConfig.STRING_CHARSET),
+        new Binary("big", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_5_ATTRIBUTES =
+      new Binary[] {
+        new Binary("mid", TSFileConfig.STRING_CHARSET),
+        new Binary("big", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_6_ATTRIBUTES =
+      new Binary[] {
+        new Binary("mid", TSFileConfig.STRING_CHARSET),
+        new Binary("small", TSFileConfig.STRING_CHARSET)
+      };
 
   private static final TRegionReplicaSet DATA_REGION_GROUP_1 = genDataRegionGroup(10, 1, 2);
   private static final TRegionReplicaSet DATA_REGION_GROUP_2 = genDataRegionGroup(11, 3, 2);
@@ -79,7 +112,7 @@ public class MockTableModelDataPartition {
    * device6(startTime:0): DataRegionGroup_2,
    * device6(startTime:100): DataRegionGroup_3,
    */
-  public static DataPartition constructDataPartition() {
+  public static DataPartition constructDataPartition(String dbName) {
     DataPartition dataPartition =
         new DataPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
@@ -112,43 +145,44 @@ public class MockTableModelDataPartition {
     devicePartitionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_5), dataRegionMap3);
     devicePartitionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_6), dataRegionMap3);
 
-    dbPartitionMap.put(DB_NAME, devicePartitionMap);
+    dbPartitionMap.put(dbName, devicePartitionMap);
     dataPartition.setDataPartitionMap(dbPartitionMap);
 
     return dataPartition;
   }
 
-  public static SchemaPartition constructSchemaPartition() {
-    SchemaPartition schemaPartition =
+  public static SchemaPartition constructSchemaPartition(String dbName) {
+    final SchemaPartition schemaPartition =
         new SchemaPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
+    final Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
+        new HashMap<>();
 
-    TRegionReplicaSet schemaRegion1 =
+    final TRegionReplicaSet schemaRegion1 =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 11),
             Arrays.asList(
                 genDataNodeLocation(11, "192.0.1.1"), genDataNodeLocation(12, "192.0.1.2")));
 
-    TRegionReplicaSet schemaRegion2 =
+    final TRegionReplicaSet schemaRegion2 =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 21),
             Arrays.asList(
                 genDataNodeLocation(21, "192.0.2.1"), genDataNodeLocation(22, "192.0.2.2")));
 
-    Map<TSeriesPartitionSlot, TRegionReplicaSet> schemaRegionMap = new HashMap<>();
+    final Map<TSeriesPartitionSlot, TRegionReplicaSet> schemaRegionMap = new HashMap<>();
     schemaRegionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_1), schemaRegion1);
     schemaRegionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_2), schemaRegion2);
     schemaRegionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_3), schemaRegion2);
-    schemaPartitionMap.put(DB_NAME, schemaRegionMap);
+    schemaPartitionMap.put(dbName, schemaRegionMap);
     schemaPartition.setSchemaPartitionMap(schemaPartitionMap);
 
     return schemaPartition;
   }
 
   private static TRegionReplicaSet genDataRegionGroup(
-      int regionGroupId, int dataNodeId1, int dataNodeId2) {
+      final int regionGroupId, final int dataNodeId1, final int dataNodeId2) {
     return new TRegionReplicaSet(
         new TConsensusGroupId(TConsensusGroupType.DataRegion, regionGroupId),
         Arrays.asList(
@@ -156,7 +190,7 @@ public class MockTableModelDataPartition {
             genDataNodeLocation(dataNodeId2, String.format("192.0.%s.2", regionGroupId))));
   }
 
-  private static TDataNodeLocation genDataNodeLocation(int dataNodeId, String ip) {
+  public static TDataNodeLocation genDataNodeLocation(final int dataNodeId, final String ip) {
     return new TDataNodeLocation()
         .setDataNodeId(dataNodeId)
         .setClientRpcEndPoint(new TEndPoint(ip, 9000))

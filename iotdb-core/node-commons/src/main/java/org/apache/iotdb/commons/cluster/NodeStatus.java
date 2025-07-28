@@ -57,4 +57,17 @@ public enum NodeStatus {
     // Currently, the only normal status is Running
     return status != null && status.equals(NodeStatus.Running);
   }
+
+  public static boolean isReadable(NodeStatus status) {
+    switch (status) {
+      case Running:
+      case Removing:
+      case ReadOnly:
+        return true;
+      case Unknown:
+        return false;
+      default:
+        throw new UnsupportedOperationException(String.format("Unknown NodeStatus %s.", status));
+    }
+  }
 }

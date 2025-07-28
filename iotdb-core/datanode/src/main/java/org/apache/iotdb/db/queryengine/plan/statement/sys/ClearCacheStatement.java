@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -28,12 +29,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public class ClearCacheStatement extends Statement implements IConfigStatement {
 
   private boolean onCluster;
+  private Set<CacheClearOptions> options;
 
-  public ClearCacheStatement(StatementType clearCacheType) {
+  public ClearCacheStatement(final StatementType clearCacheType) {
     this.statementType = clearCacheType;
   }
 
@@ -41,8 +44,16 @@ public class ClearCacheStatement extends Statement implements IConfigStatement {
     return onCluster;
   }
 
-  public void setOnCluster(boolean onCluster) {
+  public void setOnCluster(final boolean onCluster) {
     this.onCluster = onCluster;
+  }
+
+  public Set<CacheClearOptions> getOptions() {
+    return options;
+  }
+
+  public void setOptions(final Set<CacheClearOptions> options) {
+    this.options = options;
   }
 
   @Override
@@ -56,7 +67,7 @@ public class ClearCacheStatement extends Statement implements IConfigStatement {
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitClearCache(this, context);
   }
 }

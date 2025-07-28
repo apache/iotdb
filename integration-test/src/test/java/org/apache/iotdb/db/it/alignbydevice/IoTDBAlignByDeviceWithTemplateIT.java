@@ -59,6 +59,9 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         "INSERT INTO root.sg2.d4(timestamp,s1,s2,s3) values(1,1111.1,true,1111), (5,5555.5,false,5555);",
       };
 
+  String[] expectedHeader;
+  String[] retArray;
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
@@ -71,10 +74,31 @@ public class IoTDBAlignByDeviceWithTemplateIT {
   }
 
   @Test
+  public void singleDeviceTest() {
+    expectedHeader = new String[] {"Time,Device,s3,s1,s2"};
+    retArray =
+        new String[] {
+          "1,root.sg1.d1,1,1.1,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg1.d1 order by time desc offset 1 limit 1 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+    retArray =
+        new String[] {
+          "1,root.sg2.d1,1,1.1,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg2.d1 order by time desc offset 1 limit 1 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
   public void selectWildcardNoFilterTest() {
     // 1. order by device
-    String[] expectedHeader = new String[] {"Time,Device,s3,s1,s2"};
-    String[] retArray =
+    expectedHeader = new String[] {"Time,Device,s3,s1,s2"};
+    retArray =
         new String[] {
           "1,root.sg1.d1,1,1.1,false,",
           "2,root.sg1.d1,2,2.2,false,",

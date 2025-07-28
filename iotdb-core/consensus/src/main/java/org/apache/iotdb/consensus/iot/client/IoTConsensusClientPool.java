@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty.DefaultProp
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 
-import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
 public class IoTConsensusClientPool {
@@ -48,7 +47,7 @@ public class IoTConsensusClientPool {
     }
 
     @Override
-    public KeyedObjectPool<TEndPoint, SyncIoTConsensusServiceClient> createClientPool(
+    public GenericKeyedObjectPool<TEndPoint, SyncIoTConsensusServiceClient> createClientPool(
         ClientManager<TEndPoint, SyncIoTConsensusServiceClient> manager) {
       GenericKeyedObjectPool<TEndPoint, SyncIoTConsensusServiceClient> clientPool =
           new GenericKeyedObjectPool<>(
@@ -84,7 +83,7 @@ public class IoTConsensusClientPool {
     }
 
     @Override
-    public KeyedObjectPool<TEndPoint, AsyncIoTConsensusServiceClient> createClientPool(
+    public GenericKeyedObjectPool<TEndPoint, AsyncIoTConsensusServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> manager) {
       GenericKeyedObjectPool<TEndPoint, AsyncIoTConsensusServiceClient> clientPool =
           new GenericKeyedObjectPool<>(

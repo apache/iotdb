@@ -57,6 +57,18 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMetricPrometheusReporterUsername(String username) {
+    properties.setProperty("metric_prometheus_reporter_username", username);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMetricPrometheusReporterPassword(String password) {
+    properties.setProperty("metric_prometheus_reporter_password", password);
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setEnableRestService(boolean enableRestService) {
     properties.setProperty("enable_rest_service", String.valueOf(enableRestService));
     return this;
@@ -74,6 +86,49 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     properties.setProperty(
         "load_tsfile_analyze_schema_memory_size_in_bytes",
         String.valueOf(loadTsFileAnalyzeSchemaMemorySizeInBytes));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval) {
+    properties.setProperty(
+        "compaction_schedule_interval_in_ms", String.valueOf(compactionScheduleInterval));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setEnableMQTTService(boolean enableMQTTService) {
+    setProperty("enable_mqtt_service", String.valueOf(enableMQTTService));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
+    setProperty("mqtt_payload_formatter", String.valueOf(mqttPayloadFormatter));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setLoadLastCacheStrategy(String strategyName) {
+    setProperty("last_cache_operation_on_load", strategyName);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setCacheLastValuesForLoad(boolean cacheLastValuesForLoad) {
+    setProperty("cache_last_values_for_load", String.valueOf(cacheLastValuesForLoad));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setWalThrottleSize(long walThrottleSize) {
+    setProperty("wal_throttle_threshold_in_byte", String.valueOf(walThrottleSize));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
+    setProperty("delete_wal_files_period_in_ms", String.valueOf(deleteWalFilesPeriodInMs));
     return this;
   }
 }

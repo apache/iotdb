@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
@@ -40,6 +45,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import static java.util.Objects.requireNonNull;
@@ -64,18 +70,22 @@ public final class IrUtils {
 
   // Use for table device fetching
   // Expand the inPredicates to better check the in list and hit device cache
-  public static List<Expression> extractOrPredicatesWithInExpanded(final Expression expression) {
+  public static List<Expression> extractOrPredicatesWithInExpanded(
+      final Expression expression, final AtomicBoolean mayContainDuplicateDevice) {
     ImmutableList.Builder<Expression> resultBuilder = ImmutableList.builder();
-    extractOrPredicatesWithInExpanded(expression, resultBuilder);
+    extractOrPredicatesWithInExpanded(expression, resultBuilder, mayContainDuplicateDevice);
     return resultBuilder.build();
   }
 
   private static void extractOrPredicatesWithInExpanded(
-      final Expression expression, final ImmutableList.Builder<Expression> resultBuilder) {
+      final Expression expression,
+      final ImmutableList.Builder<Expression> resultBuilder,
+      final AtomicBoolean mayContainDuplicateDevice) {
     if (expression instanceof LogicalExpression) {
       if (((LogicalExpression) expression).getOperator() == LogicalExpression.Operator.OR) {
+        mayContainDuplicateDevice.set(true);
         for (final Expression term : ((LogicalExpression) expression).getTerms()) {
-          extractOrPredicatesWithInExpanded(term, resultBuilder);
+          extractOrPredicatesWithInExpanded(term, resultBuilder, mayContainDuplicateDevice);
         }
       }
     } else if (expression instanceof InPredicate) {
@@ -251,6 +261,12 @@ public final class IrUtils {
     return combineConjuncts(conjuncts);
   }
 
+  /**
+   * Returns whether expression is effectively literal. An effectively literal expression is a
+   * simple constant value, or null, in either {@link Literal} form, or other form returned by
+   * LiteralEncoder. In particular, other constant expressions like a deterministic function call
+   * with constant arguments are not considered effectively literal.
+   */
   public static boolean isEffectivelyLiteral(
       Expression expression, PlannerContext plannerContext, SessionInfo session) {
     if (expression instanceof Literal) {
@@ -261,6 +277,7 @@ public final class IrUtils {
           // a Cast(Literal(...)) can fail, so this requires verification
           && constantExpressionEvaluatesSuccessfully(plannerContext, session, expression);
     }
+
     if (expression instanceof FunctionCall) {
       String functionName = ((FunctionCall) expression).getName().getSuffix();
       if (functionName.equals("pi") || functionName.equals("e")) {

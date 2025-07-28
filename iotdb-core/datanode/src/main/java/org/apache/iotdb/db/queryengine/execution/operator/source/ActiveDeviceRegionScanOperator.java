@@ -22,9 +22,9 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -91,7 +91,7 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
         DeviceContext deviceContext = deviceContextMap.get(deviceID);
         int templateId = deviceContext.getTemplateId();
         // TODO: use IDeviceID interface to get ttl
-        long ttl = DataNodeTTLCache.getInstance().getTTL(deviceID);
+        long ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
         // TODO: make it more readable, like "30 days" or "10 hours"
         String ttlStr = ttl == Long.MAX_VALUE ? IoTDBConstant.TTL_INFINITE : String.valueOf(ttl);
 

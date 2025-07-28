@@ -34,22 +34,22 @@ import java.util.List;
 
 public class ShowModelsStatement extends Statement implements IConfigStatement {
 
-  private String modelName;
+  private String modelId;
 
   public ShowModelsStatement() {
     // do nothing
   }
 
-  public void setModelName(String modelName) {
-    this.modelName = modelName;
+  public void setModelId(String modelId) {
+    this.modelId = modelId;
   }
 
   public boolean isSetModelName() {
-    return modelName != null;
+    return modelId != null;
   }
 
-  public String getModelName() {
-    return modelName;
+  public String getModelId() {
+    return modelId;
   }
 
   @Override
@@ -68,7 +68,7 @@ public class ShowModelsStatement extends Statement implements IConfigStatement {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_MODEL.ordinal()),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_MODEL),
         PrivilegeType.USE_MODEL);
   }
 

@@ -58,8 +58,8 @@ public class DeleteTimeSeriesStatement extends Statement implements IConfigState
     }
     List<PartialPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkPatternPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA.ordinal()),
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
         checkedPaths,
         PrivilegeType.WRITE_SCHEMA);
   }

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.subscription;
 
 import org.apache.iotdb.db.subscription.broker.SubscriptionStates;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
@@ -54,28 +53,24 @@ public class SubscriptionStatesTest {
 
     final SubscriptionEvent event1 =
         new SubscriptionEvent(
-            new SubscriptionPipeEmptyEvent(),
             new SubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
                 payload,
                 new SubscriptionCommitContext(-1, -1, "topic1", "cg1", 0)));
     final SubscriptionEvent event2 =
         new SubscriptionEvent(
-            new SubscriptionPipeEmptyEvent(),
             new SubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
                 payload,
                 new SubscriptionCommitContext(-1, -1, "topic2", "cg1", 0)));
     final SubscriptionEvent event3 =
         new SubscriptionEvent(
-            new SubscriptionPipeEmptyEvent(),
             new SubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
                 payload,
                 new SubscriptionCommitContext(-1, -1, "topic3", "cg1", 0)));
     final SubscriptionEvent event4 =
         new SubscriptionEvent(
-            new SubscriptionPipeEmptyEvent(),
             new SubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
                 payload,

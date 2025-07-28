@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipeSchemaRegionPluginAgent;
 import org.apache.iotdb.pipe.api.PipePlugin;
@@ -36,6 +37,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeDataNodePluginAgent {
@@ -151,6 +153,8 @@ public class PipeDataNodePluginAgent {
       final PipePlugin ignored = (PipePlugin) pluginClass.getDeclaredConstructor().newInstance();
 
       pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
+      pipePluginMetaKeeper.addPipePluginVisibility(
+          pluginName, VisibilityUtils.calculateFromPluginClass(pluginClass));
       classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
     } catch (IOException
         | InstantiationException
@@ -183,6 +187,7 @@ public class PipeDataNodePluginAgent {
 
       // remove anyway
       pipePluginMetaKeeper.removePipePluginMeta(pluginName);
+      pipePluginMetaKeeper.removePipePluginVisibility(pluginName);
       PipePluginClassLoaderManager.getInstance().removePluginClassLoader(pluginName);
 
       // if it is needed to delete jar file of the pipe plugin, delete both jar file and md5
@@ -212,19 +217,17 @@ public class PipeDataNodePluginAgent {
         pipeName, extractorAttributes, processorAttributes, connectorAttributes);
   }
 
-  public void validateExtractor(Map<String, String> extractorAttributes) throws Exception {
-    dataRegionAgent.validateExtractor(extractorAttributes);
-    schemaRegionAgent.validateExtractor(extractorAttributes);
-  }
+  public boolean checkIfPluginSameType(final String oldPluginName, final String newPluginName) {
+    PipePluginMeta oldPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(oldPluginName);
+    PipePluginMeta newPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(newPluginName);
 
-  public void validateProcessor(Map<String, String> processorAttributes) throws Exception {
-    dataRegionAgent.validateProcessor(processorAttributes);
-    schemaRegionAgent.validateProcessor(processorAttributes);
-  }
+    if (oldPipePluginMeta == null) {
+      throw new PipeException(String.format("plugin %s is not registered.", oldPluginName));
+    }
+    if (newPipePluginMeta == null) {
+      throw new PipeException(String.format("plugin %s is not registered.", newPluginName));
+    }
 
-  public void validateConnector(String pipeName, Map<String, String> connectorAttributes)
-      throws Exception {
-    dataRegionAgent.validateConnector(pipeName, connectorAttributes);
-    schemaRegionAgent.validateConnector(pipeName, connectorAttributes);
+    return Objects.equals(oldPipePluginMeta.getClassName(), (newPipePluginMeta.getClassName()));
   }
 }

@@ -27,9 +27,13 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class InsertTablet extends WrappedInsertStatement {
+
+  private Map<IDeviceID, Integer> deviceID2LastIdxMap = null;
 
   public InsertTablet(InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
     super(insertTabletStatement, context);
@@ -57,10 +61,9 @@ public class InsertTablet extends WrappedInsertStatement {
 
   @Override
   public List<Object[]> getDeviceIdList() {
+    prepareDeviceID2LastIdxMap();
     List<Object[]> deviceIdList = new ArrayList<>();
-    final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
-    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
-      IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
+    for (IDeviceID deviceID : deviceID2LastIdxMap.keySet()) {
       Object[] segments = deviceID.getSegments();
       deviceIdList.add(Arrays.copyOfRange(segments, 1, segments.length));
     }
@@ -75,17 +78,37 @@ public class InsertTablet extends WrappedInsertStatement {
 
   @Override
   public List<Object[]> getAttributeValueList() {
+    prepareDeviceID2LastIdxMap();
     final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
     List<Object[]> result = new ArrayList<>(insertTabletStatement.getRowCount());
     final List<Integer> attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
-    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+    for (Integer rowIndex : deviceID2LastIdxMap.values()) {
       Object[] attrValues = new Object[attrColumnIndices.size()];
-      for (int j = 0; j < attrColumnIndices.size(); j++) {
-        final int columnIndex = attrColumnIndices.get(j);
-        attrValues[j] = ((Object[]) insertTabletStatement.getColumns()[columnIndex])[i];
+      for (int attrColNum = 0; attrColNum < attrColumnIndices.size(); attrColNum++) {
+        final int columnIndex = attrColumnIndices.get(attrColNum);
+        if (!insertTabletStatement.isNull(rowIndex, columnIndex)) {
+          attrValues[attrColNum] =
+              ((Object[]) insertTabletStatement.getColumns()[columnIndex])[rowIndex];
+        }
       }
       result.add(attrValues);
     }
     return result;
+  }
+
+  // The map cannot be maintained during construction because the IDeviceID may be reset later.
+  private void prepareDeviceID2LastIdxMap() {
+    if (deviceID2LastIdxMap != null) {
+      return;
+    }
+    InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
+    deviceID2LastIdxMap = new LinkedHashMap<>(insertTabletStatement.getRowCount());
+    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+      IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
+      deviceID2LastIdxMap.put(deviceID, i);
+    }
+    if (deviceID2LastIdxMap.size() == 1) {
+      insertTabletStatement.setSingleDevice();
+    }
   }
 }

@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.ServerCommandLine;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
@@ -49,13 +50,10 @@ import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -64,6 +62,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -89,7 +88,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPlanContext;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.SourceRewriter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.GeneralRegionAttributeSecurityService;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
@@ -113,6 +114,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.apache.ratis.util.ExitUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -124,14 +126,16 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
+import static org.apache.iotdb.commons.utils.StatusUtils.retrieveExitStatusCode;
 import static org.apache.iotdb.db.conf.IoTDBStartCheck.PROPERTIES_FILE_NAME;
 
 public class DataNode extends ServerCommandLine implements DataNodeMBean {
@@ -176,7 +180,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     DataNodeHolder.INSTANCE = this;
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     registerManager = new RegisterManager();
     DataNodeSystemPropertiesHandler.getInstance()
@@ -192,6 +195,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   public static void main(String[] args) {
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
+    // let IoTDB handle the exception instead of ratis
+    ExitUtils.disableSystemExit();
     DataNode dataNode = new DataNode();
     int returnCode = dataNode.run(args);
     if (returnCode != 0) {
@@ -201,6 +206,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   @Override
   protected void start() {
+    logger.info("Starting DataNode...");
     boolean isFirstStart;
     try {
       // Check if this DataNode is start for the first time and do other pre-checks
@@ -218,13 +224,21 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
       // Pull and check system configurations from ConfigNode-leader
       pullAndCheckSystemConfigurations();
+
       if (isFirstStart) {
         sendRegisterRequestToConfigNode(true);
         IoTDBStartCheck.getInstance().generateOrOverwriteSystemPropertiesFile();
+        IoTDBStartCheck.getInstance().serializeEncryptMagicString();
         ConfigNodeInfo.getInstance().storeConfigNodeList();
         // Register this DataNode to the cluster when first start
         sendRegisterRequestToConfigNode(false);
       } else {
+        /* Check encrypt magic string */
+        try {
+          IoTDBStartCheck.getInstance().checkEncryptMagicString();
+        } catch (Exception e) {
+          throw new StartupException(e.getMessage());
+        }
         // Send restart request of this DataNode
         sendRestartRequestToConfigNode();
       }
@@ -265,61 +279,20 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         dataRegionConsensusStarted = true;
       }
 
-    } catch (StartupException | IOException e) {
+    } catch (Throwable e) {
+      int exitStatusCode = retrieveExitStatusCode(e);
       logger.error("Fail to start server", e);
       stop();
-      System.exit(-1);
+      System.exit(exitStatusCode);
     }
+    logger.info("DataNode started");
   }
 
   @Override
-  protected void remove(Long nodeId) throws IoTDBException {
-    // If the nodeId was null, this is a shorthand for removing the current dataNode.
-    // In this case we need to find our nodeId.
-    if (nodeId == null) {
-      nodeId = (long) config.getDataNodeId();
-    }
-
-    logger.info("Starting to remove DataNode with node-id {} from cluster", nodeId);
-
-    // Load ConfigNodeList from system.properties file
-    ConfigNodeInfo.getInstance().loadConfigNodeList();
-
-    int removeNodeId = nodeId.intValue();
-    try (ConfigNodeClient configNodeClient =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      // Find a datanode location with the given node id.
-      Optional<TDataNodeLocation> dataNodeLocationOpt =
-          configNodeClient
-              .getDataNodeConfiguration(-1)
-              .getDataNodeConfigurationMap()
-              .values()
-              .stream()
-              .map(TDataNodeConfiguration::getLocation)
-              .filter(location -> location.getDataNodeId() == removeNodeId)
-              .findFirst();
-      if (!dataNodeLocationOpt.isPresent()) {
-        throw new IoTDBException("Invalid node-id", -1);
-      }
-      TDataNodeLocation dataNodeLocation = dataNodeLocationOpt.get();
-
-      logger.info("Start to remove datanode, removed datanode endpoint: {}", dataNodeLocation);
-      TDataNodeRemoveReq removeReq =
-          new TDataNodeRemoveReq(Collections.singletonList(dataNodeLocation));
-      TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
-      logger.info("Remove result {} ", removeResp);
-      if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new IoTDBException(
-            removeResp.getStatus().toString(), removeResp.getStatus().getCode());
-      }
-      logger.info(
-          "Submit remove-datanode request successfully, but the process may fail. "
-              + "more details are shown in the logs of confignode-leader and removed-datanode, "
-              + "and after the process of removing datanode ends successfully, "
-              + "you are supposed to delete directory and data of the removed-datanode manually");
-    } catch (TException | ClientManagerException e) {
-      throw new IoTDBException("Failed removing datanode", e, -1);
-    }
+  protected void remove(Set<Integer> nodeIds) throws IoTDBException {
+    throw new IoTDBException(
+        "The remove-datanode script has been deprecated. Please connect to the CLI and use SQL: remove datanode [datanode_id].",
+        -1);
   }
 
   /** Prepare cluster IoTDB-DataNode */
@@ -545,11 +518,15 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
   }
 
-  private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
-    removeInvalidConsensusDataRegions(dataNodeConsensusGroupIds);
+  private void makeRegionsCorrect(List<TRegionReplicaSet> correctRegions) {
+    List<ConsensusGroupId> dataNodeConsensusGroupIds =
+        correctRegions.stream()
+            .map(TRegionReplicaSet::getRegionId)
+            .map(ConsensusGroupId.Factory::createFromTConsensusGroupId)
+            .collect(Collectors.toList());
     removeInvalidDataRegions(dataNodeConsensusGroupIds);
-    removeInvalidConsensusSchemaRegions(dataNodeConsensusGroupIds);
     removeInvalidSchemaRegions(dataNodeConsensusGroupIds);
+    prepareToResetDataRegionPeerList(correctRegions);
   }
 
   private void removeInvalidDataRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
@@ -564,24 +541,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
             }
           }
         });
-  }
-
-  private void removeInvalidConsensusDataRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
-    List<ConsensusGroupId> invalidDataRegionConsensusGroupIds =
-        DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
-            .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
-            .collect(Collectors.toList());
-    if (invalidDataRegionConsensusGroupIds.isEmpty()) {
-      return;
-    }
-    logger.info("Remove invalid dataRegion directories... {}", invalidDataRegionConsensusGroupIds);
-    for (ConsensusGroupId consensusGroupId : invalidDataRegionConsensusGroupIds) {
-      File oldDir =
-          new File(
-              DataRegionConsensusImpl.getInstance()
-                  .getRegionDirFromConsensusGroupId(consensusGroupId));
-      removeDir(oldDir);
-    }
   }
 
   private void removeInvalidSchemaRegions(List<ConsensusGroupId> schemaConsensusGroupIds) {
@@ -607,26 +566,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         });
   }
 
-  private void removeInvalidConsensusSchemaRegions(
-      List<ConsensusGroupId> dataNodeConsensusGroupIds) {
-    List<ConsensusGroupId> invalidSchemaRegionConsensusGroupIds =
-        SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
-            .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
-            .collect(Collectors.toList());
-    if (invalidSchemaRegionConsensusGroupIds.isEmpty()) {
-      return;
-    }
-    logger.info(
-        "Remove invalid schemaRegion directories... {}", invalidSchemaRegionConsensusGroupIds);
-    for (ConsensusGroupId consensusGroupId : invalidSchemaRegionConsensusGroupIds) {
-      File oldDir =
-          new File(
-              SchemaRegionConsensusImpl.getInstance()
-                  .getRegionDirFromConsensusGroupId(consensusGroupId));
-      removeDir(oldDir);
-    }
-  }
-
   private void removeInvalidSchemaDir(String database, SchemaRegionId schemaRegionId) {
     String systemSchemaDir =
         config.getSystemDir() + File.separator + database + File.separator + schemaRegionId.getId();
@@ -640,6 +579,39 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     } else {
       logger.info("delete {} failed, because it does not exist.", regionDir.getAbsolutePath());
     }
+  }
+
+  private void prepareToResetDataRegionPeerList(List<TRegionReplicaSet> correctedRegions) {
+    Map<ConsensusGroupId, List<Peer>> correctPeerListForDataRegion = new HashMap<>();
+    Map<ConsensusGroupId, List<Peer>> correctPeerListForSchemaRegion = new HashMap<>();
+    for (TRegionReplicaSet regionReplicaSet : correctedRegions) {
+      ConsensusGroupId consensusGroupId =
+          ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.regionId);
+      List<Peer> peerList = new ArrayList<>();
+      if (consensusGroupId.getType() == TConsensusGroupType.DataRegion) {
+        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+          peerList.add(
+              new Peer(
+                  consensusGroupId,
+                  dataNodeLocation.getDataNodeId(),
+                  dataNodeLocation.getDataRegionConsensusEndPoint()));
+        }
+        correctPeerListForDataRegion.put(consensusGroupId, peerList);
+      } else if (consensusGroupId.getType() == TConsensusGroupType.SchemaRegion) {
+        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+          peerList.add(
+              new Peer(
+                  consensusGroupId,
+                  dataNodeLocation.getDataNodeId(),
+                  dataNodeLocation.getSchemaRegionConsensusEndPoint()));
+        }
+        correctPeerListForSchemaRegion.put(consensusGroupId, peerList);
+      }
+    }
+    DataRegionConsensusImpl.getInstance()
+        .recordCorrectPeerListBeforeStarting(correctPeerListForDataRegion);
+    SchemaRegionConsensusImpl.getInstance()
+        .recordCorrectPeerListBeforeStarting(correctPeerListForSchemaRegion);
   }
 
   private void sendRestartRequestToConfigNode() throws StartupException {
@@ -694,11 +666,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
           config.getClusterName(),
           (endTime - startTime));
 
-      List<TConsensusGroupId> consensusGroupIds = dataNodeRestartResp.getConsensusGroupIds();
-      removeInvalidRegions(
-          consensusGroupIds.stream()
-              .map(ConsensusGroupId.Factory::createFromTConsensusGroupId)
-              .collect(Collectors.toList()));
+      makeRegionsCorrect(dataNodeRestartResp.getCorrectConsensusGroups());
     } else {
       /* Throw exception when restart is rejected */
       throw new StartupException(dataNodeRestartResp.getStatus().getMessage());
@@ -722,7 +690,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       setUp();
     } catch (StartupException e) {
       logger.error("Meet error while starting up.", e);
-      throw new StartupException("Error in activating IoTDB DataNode.");
+      throw e;
     }
     logger.info("IoTDB DataNode has started.");
 
@@ -812,12 +780,15 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // Register subscription agent before pipe agent
     registerManager.register(SubscriptionAgent.runtime());
     registerManager.register(PipeDataNodeAgent.runtime());
+
+    // Start GRASS Service
+    registerManager.register(GeneralRegionAttributeSecurityService.getInstance());
   }
 
   /** Set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
-    // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
-    registerManager.register(DataNodeInternalRPCService.getInstance());
+
+    registerInternalRPCService();
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because
@@ -826,12 +797,22 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // Start client RPCService to indicate that the current DataNode provide external services
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
+        .setRpcImplClassName(getClientRPCServiceImplClassName());
     if (config.isEnableRpcService()) {
-      registerManager.register(RPCService.getInstance());
+      registerManager.register(ExternalRPCService.getInstance());
     }
     // init service protocols
     initProtocols();
+  }
+
+  protected void registerInternalRPCService() throws StartupException {
+    // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
+    registerManager.register(DataNodeInternalRPCService.getInstance());
+  }
+
+  // make it easier for users to extend ClientRPCServiceImpl to export more rpc services
+  protected String getClientRPCServiceImplClassName() {
+    return ClientRPCServiceImpl.class.getName();
   }
 
   private void setUpMetricService() throws StartupException {
@@ -926,7 +907,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // Create instances of udf and do registration
     try {
       for (UDFInformation udfInformation : resourcesInformationHolder.getUDFInformationList()) {
-        UDFManagementService.getInstance().doRegister(udfInformation);
+        if (udfInformation.isAvailable()) {
+          Model model = UDFManagementService.getInstance().checkAndGetModel(udfInformation);
+          UDFManagementService.getInstance().doRegister(model, udfInformation);
+        }
       }
     } catch (Exception e) {
       throw new StartupException(e);
@@ -935,8 +919,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     logger.debug("successfully registered all the UDFs, which takes {} ms.", (endTime - startTime));
     if (logger.isDebugEnabled()) {
       for (UDFInformation udfInformation :
-          UDFManagementService.getInstance().getAllUDFInformation()) {
-        logger.debug("get udf: {}", udfInformation.getFunctionName());
+          UDFManagementService.getInstance().getUDFInformation(Model.TREE)) {
+        logger.debug("get tree udf: {}", udfInformation.getFunctionName());
+      }
+      for (UDFInformation udfInformation :
+          UDFManagementService.getInstance().getUDFInformation(Model.TABLE)) {
+        logger.debug("get table udf: {}", udfInformation.getFunctionName());
       }
     }
   }
@@ -973,7 +961,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
           try {
             // Local jar has conflicts with jar on config node, add current triggerInformation to
             // list
-            if (UDFManagementService.getInstance().isLocalJarConflicted(udfInformation)) {
+            if (UDFExecutableManager.getInstance().isLocalJarConflicted(udfInformation)) {
               res.add(udfInformation);
             }
           } catch (UDFManagementException e) {
@@ -1139,7 +1127,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     for (int i = 0; i < mapSize; i++) {
       try {
         DataNodeTTLCache.getInstance()
-            .setTTL(
+            .setTTLForTree(
                 PathUtils.splitPathToDetachedNodes(
                     Objects.requireNonNull(ReadWriteIOUtils.readString(buffer))),
                 ReadWriteIOUtils.readLong(buffer));
@@ -1188,11 +1176,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
   }
 
+  public void deleteDataNodeSystemProperties() {
+    DataNodeSystemPropertiesHandler.getInstance().delete();
+  }
+
   public void stop() {
     stopTriggerRelatedServices();
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
-    SchemaEngine.getInstance().clear();
     MetricService.getInstance().stop();
     if (schemaRegionConsensusStarted) {
       try {
@@ -1201,6 +1192,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         logger.warn("Exception during SchemaRegionConsensusImpl stopping", e);
       }
     }
+    SchemaEngine.getInstance().clear();
     if (dataRegionConsensusStarted) {
       try {
         DataRegionConsensusImpl.getInstance().stop();

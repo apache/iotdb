@@ -77,8 +77,8 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
     }
     List<PartialPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA.ordinal()),
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
         checkedPaths,
         PrivilegeType.WRITE_SCHEMA);
   }

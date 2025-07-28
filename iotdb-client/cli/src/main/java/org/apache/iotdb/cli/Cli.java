@@ -143,7 +143,7 @@ public class Cli extends AbstractCli {
               "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
                   + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
       ctx.getPrinter().println("For more information, please check the following hint.");
-      hf.printHelp(IOTDB_CLI_PREFIX, options, true);
+      hf.printHelp(IOTDB, options, true);
       return false;
     } catch (NumberFormatException e) {
       ctx.getPrinter()
@@ -163,6 +163,7 @@ public class Cli extends AbstractCli {
       password = commandLine.getOptionValue(PW_ARGS);
       constructProperties();
       if (hasExecuteSQL && password != null) {
+        ctx.getLineReader().getVariables().put(LineReader.DISABLE_HISTORY, Boolean.TRUE);
         executeSql(ctx);
       }
       if (password == null) {
@@ -210,9 +211,7 @@ public class Cli extends AbstractCli {
         }
       }
     } catch (SQLException e) {
-      ctx.getErr()
-          .printf(
-              "%s: %s Host is %s, port is %s.%n", IOTDB_ERROR_PREFIX, e.getMessage(), host, port);
+      ctx.getErr().printf("%s: %s%n", IOTDB_ERROR_PREFIX, e.getMessage());
       ctx.exit(CODE_ERROR);
     }
   }
@@ -220,7 +219,7 @@ public class Cli extends AbstractCli {
   private static boolean readerReadLine(CliContext ctx, IoTDBConnection connection) {
     String s;
     try {
-      s = ctx.getLineReader().readLine(IOTDB_CLI_PREFIX + "> ", null);
+      s = ctx.getLineReader().readLine(cliPrefix + "> ", null);
       boolean continues = processCommand(ctx, s, connection);
       if (!continues) {
         return true;

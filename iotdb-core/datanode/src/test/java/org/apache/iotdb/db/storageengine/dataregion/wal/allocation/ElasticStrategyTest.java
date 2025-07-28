@@ -95,6 +95,17 @@ public class ElasticStrategyTest {
           assertNotEquals(0, WALFileUtils.listAllWALFiles(nodeDir).length);
         }
       }
+      int walNodeNum = 3;
+      for (int i = 0; i < 12; i++) {
+        elasticStrategy.deleteUniqueIdAndMayDeleteWALNode(String.valueOf(i));
+        if ((i + 1) % ElasticStrategy.APPLICATION_NODE_RATIO == 0) {
+          assertEquals(--walNodeNum, elasticStrategy.getNodesNum());
+          walNodes[i / ElasticStrategy.APPLICATION_NODE_RATIO] = null;
+        } else {
+          assertEquals(walNodeNum, elasticStrategy.getNodesNum());
+        }
+      }
+      assertEquals(0, elasticStrategy.getNodesNum());
     } finally {
       for (IWALNode walNode : walNodes) {
         if (walNode != null) {

@@ -21,24 +21,16 @@ package org.apache.iotdb.confignode.procedure.entity;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 
 import java.io.IOException;
 
 public class NoopProcedure extends Procedure<TestProcEnv> {
 
   @Override
-  protected Procedure<TestProcEnv>[] execute(TestProcEnv testProcEnv)
-      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
+  protected Procedure<TestProcEnv>[] execute(TestProcEnv testProcEnv) throws InterruptedException {
     return new Procedure[0];
   }
 
   @Override
   protected void rollback(TestProcEnv testProcEnv) throws IOException, InterruptedException {}
-
-  @Override
-  protected boolean abort(TestProcEnv testProcEnv) {
-    return false;
-  }
 }

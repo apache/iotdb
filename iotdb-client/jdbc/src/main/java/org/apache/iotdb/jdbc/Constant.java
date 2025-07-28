@@ -24,8 +24,10 @@ public class Constant {
   private Constant() {}
 
   public static final String GLOBAL_DB_NAME = "IoTDB";
+  public static final String TABLE_DIALECT = "table";
+  public static final String TREE_DIALECT = "tree";
 
-  static final String METHOD_NOT_SUPPORTED = "Method not supported";
+  public static final String METHOD_NOT_SUPPORTED = "Method not supported";
   static final String PARAMETER_NOT_NULL = "The parameter cannot be null";
   static final String PARAMETER_SUPPORTED =
       "Parameter only supports BOOLEAN,INT32,INT64,FLOAT,DOUBLE,TEXT data type";
@@ -41,6 +43,9 @@ public class Constant {
       "* Num of Pages: %d, overlapped pages: %d (%.1f%%)";
   public static final String STATISTICS_RESULT_LINES = "* Lines of result: %d";
   public static final String STATISTICS_PRC_INFO = "* Num of RPC: %d, avg cost: %d ms";
+
+  public static final String TREE = "tree";
+  public static final String TABLE = "table";
 
   // version number
   public enum Version {

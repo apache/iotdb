@@ -21,20 +21,20 @@ package org.apache.iotdb.db.pipe.agent.task.connection;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -54,6 +54,10 @@ public class PipeEventCollector implements EventCollector {
 
   private final boolean forceTabletFormat;
 
+  private final boolean skipParsing;
+
+  private final boolean isUsedForConsensusPipe;
+
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
   private boolean hasNoGeneratedEvent = true;
   private boolean isFailedToIncreaseReferenceCount = false;
@@ -62,11 +66,15 @@ public class PipeEventCollector implements EventCollector {
       final UnboundedBlockingPendingQueue<Event> pendingQueue,
       final long creationTime,
       final int regionId,
-      final boolean forceTabletFormat) {
+      final boolean forceTabletFormat,
+      final boolean skipParsing,
+      final boolean isUsedInConsensusPipe) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
     this.forceTabletFormat = forceTabletFormat;
+    this.skipParsing = skipParsing;
+    this.isUsedForConsensusPipe = isUsedInConsensusPipe;
   }
 
   @Override
@@ -78,12 +86,8 @@ public class PipeEventCollector implements EventCollector {
         parseAndCollectEvent((PipeRawTabletInsertionEvent) event);
       } else if (event instanceof PipeTsFileInsertionEvent) {
         parseAndCollectEvent((PipeTsFileInsertionEvent) event);
-      } else if (event instanceof PipeSchemaRegionWritePlanEvent
-          && ((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType()
-              == PlanNodeType.DELETE_DATA) {
-        // This is only for delete data node in data region since plan nodes in schema regions are
-        // already parsed in schema region extractor
-        parseAndCollectEvent((PipeSchemaRegionWritePlanEvent) event);
+      } else if (event instanceof PipeDeleteDataNodeEvent) {
+        parseAndCollectEvent((PipeDeleteDataNodeEvent) event);
       } else if (!(event instanceof ProgressReportEvent)) {
         collectEvent(event);
       }
@@ -95,6 +99,11 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeInsertNodeTabletInsertionEvent sourceEvent) {
+    if (skipParsing) {
+      collectEvent(sourceEvent);
+      return;
+    }
+
     if (sourceEvent.shouldParseTimeOrPattern()) {
       for (final PipeRawTabletInsertionEvent parsedEvent :
           sourceEvent.toRawTabletInsertionEvents()) {
@@ -106,10 +115,11 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeRawTabletInsertionEvent sourceEvent) {
-    collectParsedRawTableEvent(
-        sourceEvent.shouldParseTimeOrPattern()
-            ? sourceEvent.parseEventWithPatternOrTime()
-            : sourceEvent);
+    if (sourceEvent.shouldParseTimeOrPattern()) {
+      collectParsedRawTableEvent(sourceEvent.parseEventWithPatternOrTime());
+    } else {
+      collectEvent(sourceEvent);
+    }
   }
 
   private void parseAndCollectEvent(final PipeTsFileInsertionEvent sourceEvent) throws Exception {
@@ -120,18 +130,30 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    if (!forceTabletFormat && !sourceEvent.shouldParseTimeOrPattern()) {
+    if (skipParsing) {
+      collectEvent(sourceEvent);
+      return;
+    }
+
+    if (!forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
       collectEvent(sourceEvent);
       return;
     }
 
     try {
-      for (final TabletInsertionEvent parsedEvent : sourceEvent.toTabletInsertionEvents()) {
-        collectParsedRawTableEvent((PipeRawTabletInsertionEvent) parsedEvent);
-      }
+      sourceEvent.consumeTabletInsertionEventsWithRetry(
+          this::collectParsedRawTableEvent, "PipeEventCollector::parseAndCollectEvent");
     } finally {
       sourceEvent.close();
     }
+  }
+
+  public static boolean canSkipParsing4TsFileEvent(final PipeTsFileInsertionEvent sourceEvent) {
+    return !sourceEvent.shouldParseTimeOrPattern()
+        || (sourceEvent.isTableModelEvent()
+            && (sourceEvent.getTablePattern() == null
+                || !sourceEvent.getTablePattern().hasTablePattern())
+            && !sourceEvent.shouldParseTime());
   }
 
   private void collectParsedRawTableEvent(final PipeRawTabletInsertionEvent parsedEvent) {
@@ -141,19 +163,37 @@ public class PipeEventCollector implements EventCollector {
     }
   }
 
-  private void parseAndCollectEvent(final PipeSchemaRegionWritePlanEvent deleteDataEvent) {
+  private void parseAndCollectEvent(final PipeDeleteDataNodeEvent deleteDataEvent) {
+    // For IoTConsensusV2, there is no need to parse. So we can directly transfer deleteDataEvent
+    if (isUsedForConsensusPipe) {
+      hasNoGeneratedEvent = false;
+      collectEvent(deleteDataEvent);
+      return;
+    }
+
     // Only used by events containing delete data node, no need to bind progress index here since
     // delete data event does not have progress index currently
-    IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
-        .process(deleteDataEvent.getPlanNode(), (IoTDBPipePattern) deleteDataEvent.getPipePattern())
+    (deleteDataEvent.getDeleteDataNode() instanceof DeleteDataNode
+            ? IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR.process(
+                deleteDataEvent.getDeleteDataNode(),
+                (IoTDBTreePattern) deleteDataEvent.getTreePattern())
+            : IoTDBSchemaRegionSource.TABLE_PATTERN_PARSE_VISITOR
+                .process(deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTablePattern())
+                .flatMap(
+                    planNode ->
+                        IoTDBSchemaRegionSource.TABLE_PRIVILEGE_PARSE_VISITOR.process(
+                            planNode, deleteDataEvent.getUserName())))
         .map(
             planNode ->
-                new PipeSchemaRegionWritePlanEvent(
-                    planNode,
+                new PipeDeleteDataNodeEvent(
+                    (AbstractDeleteDataNode) planNode,
                     deleteDataEvent.getPipeName(),
                     deleteDataEvent.getCreationTime(),
                     deleteDataEvent.getPipeTaskMeta(),
-                    deleteDataEvent.getPipePattern(),
+                    deleteDataEvent.getTreePattern(),
+                    deleteDataEvent.getTablePattern(),
+                    deleteDataEvent.getUserName(),
+                    deleteDataEvent.isSkipIfNoPrivileges(),
                     deleteDataEvent.isGeneratedByPipe()))
         .ifPresent(
             event -> {

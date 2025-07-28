@@ -22,7 +22,10 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
+import org.apache.tsfile.utils.Preconditions;
+
 import java.util.Objects;
+import java.util.Optional;
 
 /** QueryExecutor indicates this query can execute directly without data from StorageEngine */
 public class QueryExecutor implements ExecutorType {
@@ -33,8 +36,9 @@ public class QueryExecutor implements ExecutorType {
   }
 
   @Override
-  public TDataNodeLocation getDataNodeLocation() {
-    return dataNodeLocation;
+  public Optional<TDataNodeLocation> getDataNodeLocation() {
+    Preconditions.checkArgument(dataNodeLocation != null);
+    return Optional.of(dataNodeLocation);
   }
 
   @Override

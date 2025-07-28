@@ -160,6 +160,49 @@ public class IoTDBThreadPoolFactory {
         poolName);
   }
 
+  public static ExecutorService newSingleThreadExecutor(
+      String poolName, RejectedExecutionHandler handler) {
+    logger.info(NEW_SINGLE_THREAD_POOL_LOGGER_FORMAT, poolName);
+    return new WrappedSingleThreadExecutorService(
+        new ThreadPoolExecutor(
+            1,
+            1,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(),
+            new IoTThreadFactory(poolName),
+            handler),
+        poolName);
+  }
+
+  /**
+   * see {@link Executors#newCachedThreadPool(java.util.concurrent.ThreadFactory)}.
+   *
+   * @param poolName the name of thread pool.
+   * @param corePoolSize the corePoolSize of thread pool
+   * @param maximumPoolSize the maximumPoolSize of thread pool
+   * @param rejectedExecutionHandler the reject handler
+   * @return thread pool.
+   */
+  public static ExecutorService newCachedThreadPool(
+      String poolName,
+      int corePoolSize,
+      int maximumPoolSize,
+      RejectedExecutionHandler rejectedExecutionHandler) {
+    logger.info(NEW_CACHED_THREAD_POOL_LOGGER_FORMAT, poolName);
+    WrappedThreadPoolExecutor executor =
+        new WrappedThreadPoolExecutor(
+            corePoolSize,
+            maximumPoolSize,
+            60L,
+            TimeUnit.SECONDS,
+            new SynchronousQueue<>(),
+            new IoTThreadFactory(poolName),
+            poolName);
+    executor.setRejectedExecutionHandler(rejectedExecutionHandler);
+    return executor;
+  }
+
   /**
    * see {@link Executors#newCachedThreadPool(java.util.concurrent.ThreadFactory)}.
    *

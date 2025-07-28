@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -32,8 +32,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTTLState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -67,7 +65,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, SetTTLState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -110,7 +108,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.SET_TTL,
+            CnToDnAsyncRequestType.SET_TTL,
             new TSetTTLReq(
                 Collections.singletonList(String.join(".", plan.getPathPattern())),
                 plan.getTTL(),

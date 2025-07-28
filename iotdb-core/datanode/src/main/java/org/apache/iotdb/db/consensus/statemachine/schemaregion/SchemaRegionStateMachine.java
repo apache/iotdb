@@ -28,20 +28,21 @@ import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.GeneralRegionAttributeSecurityService;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 
 public class SchemaRegionStateMachine extends BaseStateMachine {
@@ -52,7 +53,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   private static final FragmentInstanceManager QUERY_INSTANCE_MANAGER =
       FragmentInstanceManager.getInstance();
 
-  public SchemaRegionStateMachine(ISchemaRegion schemaRegion) {
+  public SchemaRegionStateMachine(final ISchemaRegion schemaRegion) {
     this.schemaRegion = schemaRegion;
   }
 
@@ -65,10 +66,11 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   public void stop() {
     // Stop leader related service for schema pipe
     PipeDataNodeAgent.runtime().notifySchemaLeaderUnavailable(schemaRegion.getSchemaRegionId());
+    GeneralRegionAttributeSecurityService.getInstance().stopBroadcast(schemaRegion);
   }
 
   @Override
-  public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
+  public void notifyLeaderChanged(final ConsensusGroupId groupId, final int newLeaderId) {
     if (newLeaderId != IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
       logger.info(
           "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
@@ -81,7 +83,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void notifyNotLeader() {
-    int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
     logger.info(
         "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
             + "start cleaning up related services.",
@@ -90,6 +92,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
     // Shutdown leader related service for schema pipe
     PipeDataNodeAgent.runtime().notifySchemaLeaderUnavailable(schemaRegion.getSchemaRegionId());
+    GeneralRegionAttributeSecurityService.getInstance().stopBroadcast(schemaRegion);
 
     logger.info(
         "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
@@ -107,6 +110,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
     // Activate leader related service for schema pipe
     PipeDataNodeAgent.runtime().notifySchemaLeaderReady(schemaRegion.getSchemaRegionId());
+    GeneralRegionAttributeSecurityService.getInstance().startBroadcast(schemaRegion);
 
     logger.info(
         "Current node [nodeId: {}] as schema region leader [regionId: {}] is ready to work",
@@ -120,7 +124,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public boolean takeSnapshot(File snapshotDir) {
+  public boolean takeSnapshot(final File snapshotDir) {
     if (schemaRegion.createSnapshot(snapshotDir)
         && PipeDataNodeAgent.runtime()
             .schemaListener(schemaRegion.getSchemaRegionId())
@@ -132,7 +136,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public void loadSnapshot(final File latestSnapshotRootDir) {
     schemaRegion.loadSnapshot(latestSnapshotRootDir);
     PipeDataNodeAgent.runtime()
         .schemaListener(schemaRegion.getSchemaRegionId())
@@ -142,16 +146,16 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     listen2Snapshot4PipeListener(false);
   }
 
-  public void listen2Snapshot4PipeListener(boolean isTmp) {
-    Pair<Path, Path> snapshotPaths =
+  public void listen2Snapshot4PipeListener(final boolean isTmp) {
+    final List<Path> snapshotPaths =
         SchemaRegionSnapshotParser.getSnapshotPaths(
             Utils.fromConsensusGroupIdToRaftGroupId(schemaRegion.getSchemaRegionId())
                 .getUuid()
                 .toString(),
             isTmp);
-    SchemaRegionListeningQueue listener =
+    final SchemaRegionListeningQueue listener =
         PipeDataNodeAgent.runtime().schemaListener(schemaRegion.getSchemaRegionId());
-    if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.getLeft())) {
+    if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.get(0))) {
       if (listener.isOpened()) {
         logger.warn(
             "Schema Region Listening Queue Listen to snapshot failed, the historical data may not be transferred. snapshotPaths:{}",
@@ -159,37 +163,41 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       }
       return;
     }
+    final Path tLogPath = snapshotPaths.get(1);
+    final Path attributeSnapshotPath = snapshotPaths.get(2);
     listener.tryListenToSnapshot(
-        snapshotPaths.getLeft().toString(),
+        snapshotPaths.get(0).toString(),
         // Transfer tLogSnapshot iff it exists and is non-empty
-        Objects.nonNull(snapshotPaths.getRight()) && snapshotPaths.getRight().toFile().length() > 0
-            ? snapshotPaths.getRight().toString()
+        Objects.nonNull(tLogPath) && tLogPath.toFile().length() > 0 ? tLogPath.toString() : null,
+        Objects.nonNull(attributeSnapshotPath) && attributeSnapshotPath.toFile().length() > 0
+            ? attributeSnapshotPath.toString()
             : null,
         schemaRegion.getDatabaseFullPath());
   }
 
   @Override
-  public TSStatus write(IConsensusRequest request) {
+  public TSStatus write(final IConsensusRequest request) {
     try {
-      TSStatus result = ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
+      final TSStatus result =
+          ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         PipeDataNodeAgent.runtime()
             .schemaListener(schemaRegion.getSchemaRegionId())
             .tryListenToNode((PlanNode) request);
       }
       return result;
-    } catch (IllegalArgumentException e) {
+    } catch (final IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
 
   @Override
-  public DataSet read(IConsensusRequest request) {
-    FragmentInstance fragmentInstance;
+  public DataSet read(final IConsensusRequest request) {
+    final FragmentInstance fragmentInstance;
     try {
       fragmentInstance = getFragmentInstance(request);
-    } catch (IllegalArgumentException e) {
+    } catch (final IllegalArgumentException e) {
       logger.error(e.getMessage());
       return null;
     }

@@ -43,6 +43,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
@@ -55,26 +56,28 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   private IMemMNode root;
 
   public MemMTreeStore(
-      PartialPath rootPath,
-      MemSchemaRegionStatistics regionStatistics,
-      SchemaRegionMemMetric metric) {
+      final PartialPath rootPath,
+      final MemSchemaRegionStatistics regionStatistics,
+      final SchemaRegionMemMetric metric) {
     this.root = nodeFactory.createDatabaseMNode(null, rootPath.getTailNode()).getAsMNode();
     this.regionStatistics = regionStatistics;
     this.metric = metric;
   }
 
   private MemMTreeStore(
-      IMemMNode root, MemSchemaRegionStatistics regionStatistics, SchemaRegionMemMetric metric) {
+      final IMemMNode root,
+      final MemSchemaRegionStatistics regionStatistics,
+      final SchemaRegionMemMetric metric) {
     this.root = root;
     this.regionStatistics = regionStatistics;
     this.metric = metric;
   }
 
   @Override
-  public IMemMNode generatePrefix(PartialPath storageGroupPath) {
-    String[] nodes = storageGroupPath.getNodes();
+  public IMemMNode generatePrefix(final PartialPath storageGroupPath) {
+    final String[] nodes = storageGroupPath.getNodes();
     // nodes[0] must be root
-    IMemMNode res = nodeFactory.createAboveDatabaseMNode(null, nodes[0]);
+    final IMemMNode res = nodeFactory.createAboveDatabaseMNode(null, nodes[0]);
     IMemMNode cur = res;
     IMemMNode child;
     for (int i = 1; i < nodes.length - 1; i++) {
@@ -94,26 +97,28 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public boolean hasChild(IMemMNode parent, String name) {
+  public boolean hasChild(final IMemMNode parent, final String name) {
     return parent.hasChild(name);
   }
 
   @Override
-  public IMemMNode getChild(IMemMNode parent, String name) {
+  public IMemMNode getChild(final IMemMNode parent, final String name) {
     return parent.getChild(name);
   }
 
   @Override
-  public IMNodeIterator<IMemMNode> getChildrenIterator(IMemMNode parent) {
+  public IMNodeIterator<IMemMNode> getChildrenIterator(final IMemMNode parent) {
     return new MNodeIterator<>(parent.getChildren().values().iterator());
   }
 
   @Override
   public IMNodeIterator<IMemMNode> getTraverserIterator(
-      IMemMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
+      final IMemMNode parent,
+      final Map<Integer, Template> templateMap,
+      final boolean skipPreDeletedSchema)
       throws MetadataException {
     if (parent.isDevice()) {
-      AbstractTraverserIterator<IMemMNode> iterator =
+      final AbstractTraverserIterator<IMemMNode> iterator =
           new MemoryTraverserIterator<>(this, parent.getAsDeviceMNode(), templateMap, nodeFactory);
       iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
       return iterator;
@@ -123,8 +128,8 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public IMemMNode addChild(IMemMNode parent, String childName, IMemMNode child) {
-    IMemMNode result = parent.addChild(childName, child);
+  public IMemMNode addChild(final IMemMNode parent, final String childName, final IMemMNode child) {
+    final IMemMNode result = parent.addChild(childName, child);
     if (result == child) {
       requestMemory(child.estimateSize());
     }
@@ -132,15 +137,15 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public void deleteChild(IMemMNode parent, String childName) {
+  public void deleteChild(final IMemMNode parent, final String childName) {
     releaseMemory(parent.deleteChild(childName).estimateSize());
   }
 
   @Override
-  public void updateMNode(IMemMNode node, Consumer<IMemMNode> operation) {}
+  public void updateMNode(final IMemMNode node, final Consumer<IMemMNode> operation) {}
 
   @Override
-  public IDeviceMNode<IMemMNode> setToEntity(IMemMNode node) {
+  public IDeviceMNode<IMemMNode> setToEntity(final IMemMNode node) {
     int rawSize = node.estimateSize();
     if (MNodeUtils.setToEntity(node)) {
       regionStatistics.addDevice();
@@ -151,7 +156,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public IMemMNode setToInternal(IDeviceMNode<IMemMNode> entityMNode) {
+  public IMemMNode setToInternal(final IDeviceMNode<IMemMNode> entityMNode) {
     int rawSize = entityMNode.estimateSize();
     if (MNodeUtils.setToInternal(entityMNode)) {
       regionStatistics.deleteDevice();
@@ -162,8 +167,8 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public void setAlias(IMeasurementMNode<IMemMNode> measurementMNode, String alias) {
-    String existingAlias = measurementMNode.getAlias();
+  public void setAlias(final IMeasurementMNode<IMemMNode> measurementMNode, final String alias) {
+    final String existingAlias = measurementMNode.getAlias();
     if (existingAlias == null && alias == null) {
       return;
     }
@@ -185,13 +190,13 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public void pin(IMemMNode node) {}
+  public void pin(final IMemMNode node) {}
 
   @Override
-  public void unPin(IMemMNode node) {}
+  public void unPin(final IMemMNode node) {}
 
   @Override
-  public void unPinPath(IMemMNode node) {}
+  public void unPinPath(final IMemMNode node) {}
 
   @Override
   public IMTreeStore<IMemMNode> getWithReentrantReadLock() {
@@ -204,20 +209,21 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public boolean createSnapshot(File snapshotDir) {
+  public boolean createSnapshot(final File snapshotDir) {
     return MemMTreeSnapshotUtil.createSnapshot(snapshotDir, this);
   }
 
   public static MemMTreeStore loadFromSnapshot(
-      File snapshotDir,
-      Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
-      Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
-      MemSchemaRegionStatistics regionStatistics,
-      SchemaRegionMemMetric metric)
+      final File snapshotDir,
+      final Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
+      final Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
+      final BiConsumer<IDeviceMNode<IMemMNode>, String> tableDeviceProcess,
+      final MemSchemaRegionStatistics regionStatistics,
+      final SchemaRegionMemMetric metric)
       throws IOException {
     return new MemMTreeStore(
         MemMTreeSnapshotUtil.loadSnapshot(
-            snapshotDir, measurementProcess, deviceProcess, regionStatistics),
+            snapshotDir, measurementProcess, deviceProcess, tableDeviceProcess, regionStatistics),
         regionStatistics,
         metric);
   }
@@ -229,17 +235,17 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public void recordTraverserMetric(long costTime) {
+  public void recordTraverserMetric(final long costTime) {
     metric.recordTraverser(costTime);
   }
 
-  private void requestMemory(int size) {
+  private void requestMemory(final int size) {
     if (regionStatistics != null) {
       regionStatistics.requestMemory(size);
     }
   }
 
-  private void releaseMemory(int size) {
+  public void releaseMemory(final int size) {
     if (regionStatistics != null) {
       regionStatistics.releaseMemory(size);
     }

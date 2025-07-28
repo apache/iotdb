@@ -34,7 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -140,7 +140,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -214,7 +214,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -280,7 +280,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -349,7 +349,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -416,7 +416,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -485,7 +485,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -555,7 +555,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -636,7 +636,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -704,9 +704,9 @@ public class ReadChunkCompactionPerformerAlignedTest {
       writer.endFile();
       TsFileResource resource = new TsFileResource(writer.getFile(), TsFileResourceStatus.NORMAL);
       resource
-          .getModFile()
-          .write(new Deletion(new MeasurementPath("root.sg.d1.*"), i * 100, i * 100 + 20));
-      resource.getModFile().close();
+          .getModFileForWrite()
+          .write(new TreeDeletionEntry(new MeasurementPath("root.sg.d1.*"), i * 100, i * 100 + 20));
+      resource.getModFileForWrite().close();
       int finalI = i;
       originData.forEach(
           (x, y) ->

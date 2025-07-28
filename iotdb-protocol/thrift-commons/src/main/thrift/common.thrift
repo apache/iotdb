@@ -119,6 +119,7 @@ enum TRegionMaintainTaskStatus {
 struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups
+   3: optional list<string> regionIds
 }
 
 struct TSettleReq {
@@ -195,6 +196,13 @@ struct TSetThrottleQuotaReq {
   2: required TThrottleQuota throttleQuota
 }
 
+struct TPipeHeartbeatResp {
+  1: required list<binary> pipeMetaList
+  2: optional list<bool> pipeCompletedList
+  3: optional list<i64> pipeRemainingEventCountList
+  4: optional list<double> pipeRemainingTimeList
+}
+
 struct TLicense {
     1: required i64 licenseIssueTimestamp
     2: required i64 expireTimestamp
@@ -228,6 +236,7 @@ enum TServiceType {
 struct TServiceProvider {
   1: required TEndPoint endPoint
   2: required TServiceType serviceType
+  3: required i32 nodeId
 }
 
 struct TSender {
@@ -275,7 +284,16 @@ enum TAggregationType {
   VAR_SAMP,
   MAX_BY,
   MIN_BY,
-  UDAF
+  UDAF,
+  FIRST,
+  LAST,
+  FIRST_BY,
+  LAST_BY,
+  MIN,
+  MAX,
+  COUNT_ALL,
+  APPROX_COUNT_DISTINCT,
+  APPROX_MOST_FREQUENT
 }
 
 struct TShowConfigurationTemplateResp {
@@ -295,4 +313,16 @@ enum TrainingState {
   FINISHED,
   FAILED,
   DROPPING
+}
+
+enum Model{
+  TREE=0,
+  TABLE=1
+}
+
+enum FunctionType{
+  NONE=0,
+  SCALAR=1,
+  AGGREGATE=2,
+  TABLE=3
 }

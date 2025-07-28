@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.common.header;
 
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+
 public class DatasetHeaderFactory {
 
   private DatasetHeaderFactory() {
@@ -57,10 +59,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showDevicesWithSgColumnHeaders, true);
   }
 
-  public static DatasetHeader getShowStorageGroupHeader(boolean isDetailed) {
+  public static DatasetHeader getShowDatabaseHeader(final boolean isDetailed) {
     return isDetailed
-        ? new DatasetHeader(ColumnHeaderConstant.showStorageGroupsDetailColumnHeaders, true)
-        : new DatasetHeader(ColumnHeaderConstant.showStorageGroupsColumnHeaders, true);
+        ? new DatasetHeader(ColumnHeaderConstant.showDatabasesDetailColumnHeaders, true)
+        : new DatasetHeader(ColumnHeaderConstant.showDatabasesColumnHeaders, true);
   }
 
   public static DatasetHeader getShowTTLHeader() {
@@ -214,18 +216,50 @@ public class DatasetHeaderFactory {
   }
 
   public static DatasetHeader getShowCurrentTimestampHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.showCurrentTimestampColumnHeaders, true);
+    return new DatasetHeader(ColumnHeaderConstant.SHOW_CURRENT_TIMESTAMP_COLUMN_HEADERS, true);
   }
 
   public static DatasetHeader getShowDBHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showDBColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowDBDetailsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showDBDetailsColumnHeaders, true);
+  }
+
   public static DatasetHeader getDescribeTableHeader() {
     return new DatasetHeader(ColumnHeaderConstant.describeTableColumnHeaders, true);
   }
 
+  public static DatasetHeader getDescribeTableDetailsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.describeTableDetailsColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowCreateViewColumnHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showCreateViewColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowCreateTableColumnHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showCreateTableColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowTablesHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showTablesColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowTablesDetailsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showTablesDetailsColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowCurrentUserHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.SHOW_CURRENT_USER_COLUMN_HEADERS, true);
+  }
+
+  public static DatasetHeader getShowCurrentDatabaseHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.SHOW_CURRENT_DATABASE_COLUMN_HEADERS, true);
+  }
+
+  public static DatasetHeader getShowCurrentSqlDialectHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.SHOW_CURRENT_SQL_DIALECT_COLUMN_HEADERS, true);
   }
 }

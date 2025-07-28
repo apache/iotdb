@@ -24,19 +24,20 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.PointPriorityReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.exception.write.PageException;
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
@@ -49,7 +50,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.PriorityQueue;
+import java.util.stream.Collectors;
 
 public abstract class SeriesCompactionExecutor {
 
@@ -76,7 +79,7 @@ public abstract class SeriesCompactionExecutor {
 
   protected Map<TsFileResource, TsFileSequenceReader> readerCacheMap;
 
-  protected final Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+  protected final Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
       modificationCacheMap;
 
   protected final PointPriorityReader pointPriorityReader;
@@ -101,7 +104,7 @@ public abstract class SeriesCompactionExecutor {
   protected SeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+      Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
           modificationCacheMap,
       IDeviceID deviceId,
       boolean isAligned,
@@ -349,14 +352,19 @@ public abstract class SeriesCompactionExecutor {
    * list is ordered according to the startTime of the current device in the file from small to
    * large, so that each file can be compacted in order.
    */
-  protected List<FileElement> findOverlapFiles(FileElement file) {
+  protected List<FileElement> findOverlapFiles(FileElement fileToCheck) {
     List<FileElement> overlappedFiles = new ArrayList<>();
-    long endTime = file.resource.getEndTime(deviceId);
-    for (FileElement fileElement : fileList) {
-      if (fileElement.resource.getStartTime(deviceId) <= endTime) {
-        if (!fileElement.isSelected) {
-          overlappedFiles.add(fileElement);
-          fileElement.isSelected = true;
+    Optional<Long> endTimeInCheckingFile = fileToCheck.resource.getEndTime(deviceId);
+    for (FileElement otherFile : fileList) {
+      if (!endTimeInCheckingFile.isPresent()) {
+        continue;
+      }
+      Optional<Long> startTimeInOtherFile = otherFile.resource.getStartTime(deviceId);
+      if (startTimeInOtherFile.isPresent()
+          && startTimeInOtherFile.get() <= endTimeInCheckingFile.get()) {
+        if (!otherFile.isSelected) {
+          overlappedFiles.add(otherFile);
+          otherFile.isSelected = true;
         }
       } else {
         break;
@@ -468,17 +476,24 @@ public abstract class SeriesCompactionExecutor {
   /**
    * Get the modifications of a timeseries in the ModificationFile of a TsFile. Create ttl
    * modification from ttl cache.
-   *
-   * @param path name of the time series
    */
-  protected List<Modification> getModificationsFromCache(
-      TsFileResource tsFileResource, PartialPath path) {
-    PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> allModifications =
+  protected List<ModEntry> getModificationsFromCache(
+      TsFileResource tsFileResource, IDeviceID deviceId, String measurement)
+      throws IllegalPathException {
+    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> allModifications =
         modificationCacheMap.get(tsFileResource.getTsFile().getName());
     if (allModifications == null) {
       return Collections.emptyList();
     }
-    return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
+    PartialPath path = CompactionPathUtils.getPath(deviceId, measurement);
+    List<ModEntry> modEntries = allModifications.getOverlapped(path);
+    if (path.getIDeviceID().isTableModel()) {
+      modEntries =
+          modEntries.stream()
+              .filter(e -> e.affects(path.getIDeviceID()) && e.affects(path.getMeasurement()))
+              .collect(Collectors.toList());
+    }
+    return ModificationUtils.sortAndMerge(modEntries);
   }
 
   @SuppressWarnings("squid:S3776")
@@ -487,14 +502,14 @@ public abstract class SeriesCompactionExecutor {
       case READ_IN:
         summary.increaseProcessChunkNum(
             isAligned
-                ? ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
+                ? ((AbstractAlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
                         .getValueChunkMetadataList()
                         .size()
                     + 1
                 : 1);
         if (isAligned) {
           for (IChunkMetadata valueChunkMetadata :
-              ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
+              ((AbstractAlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
                   .getValueChunkMetadataList()) {
             if (valueChunkMetadata == null) {
               continue;
@@ -509,7 +524,7 @@ public abstract class SeriesCompactionExecutor {
       case DIRECTORY_FLUSH:
         if (isAligned) {
           summary.increaseDirectlyFlushChunkNum(
-              ((AlignedChunkMetadata) (chunkMetadataElement.chunkMetadata))
+              ((AbstractAlignedChunkMetadata) (chunkMetadataElement.chunkMetadata))
                       .getValueChunkMetadataList()
                       .size()
                   + 1);
@@ -520,7 +535,7 @@ public abstract class SeriesCompactionExecutor {
       case DESERIALIZE_CHUNK:
         if (isAligned) {
           summary.increaseDeserializedChunkNum(
-              ((AlignedChunkMetadata) (chunkMetadataElement.chunkMetadata))
+              ((AbstractAlignedChunkMetadata) (chunkMetadataElement.chunkMetadata))
                       .getValueChunkMetadataList()
                       .size()
                   + 1);

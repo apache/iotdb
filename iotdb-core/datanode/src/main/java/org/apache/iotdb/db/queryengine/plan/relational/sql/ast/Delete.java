@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -32,16 +36,25 @@ import static java.util.Objects.requireNonNull;
 
 public class Delete extends Statement {
 
-  private final Table table;
-  @Nullable private final Expression where;
+  private Table table;
+  @Nullable private Expression where;
 
-  public Delete(NodeLocation location, Table table) {
+  // generated after analysis or pipe transfer
+  private List<TableDeletionEntry> tableDeletionEntries;
+  private String databaseName;
+  private Collection<TRegionReplicaSet> replicaSets;
+
+  public Delete() {
+    super(null);
+  }
+
+  public Delete(final NodeLocation location, final Table table) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
     this.where = null;
   }
 
-  public Delete(NodeLocation location, Table table, Expression where) {
+  public Delete(final NodeLocation location, final Table table, final Expression where) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
     this.where = requireNonNull(where, "where is null");
@@ -56,13 +69,13 @@ public class Delete extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitDelete(this, context);
   }
 
   @Override
   public List<Node> getChildren() {
-    ImmutableList.Builder<Node> nodes = ImmutableList.builder();
+    final ImmutableList.Builder<Node> nodes = ImmutableList.builder();
     nodes.add(table);
     if (where != null) {
       nodes.add(where);
@@ -76,19 +89,43 @@ public class Delete extends Statement {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    Delete o = (Delete) obj;
+    final Delete o = (Delete) obj;
     return Objects.equals(table, o.table) && Objects.equals(where, o.where);
   }
 
   @Override
   public String toString() {
     return toStringHelper(this).add("table", table.getName()).add("where", where).toString();
+  }
+
+  public List<TableDeletionEntry> getTableDeletionEntries() {
+    return tableDeletionEntries;
+  }
+
+  public void setTableDeletionEntries(final List<TableDeletionEntry> tableDeletionEntries) {
+    this.tableDeletionEntries = tableDeletionEntries;
+  }
+
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
+  public void setDatabaseName(final String databaseName) {
+    this.databaseName = databaseName;
+  }
+
+  public Collection<TRegionReplicaSet> getReplicaSets() {
+    return replicaSets;
+  }
+
+  public void setReplicaSets(final Collection<TRegionReplicaSet> replicaSets) {
+    this.replicaSets = replicaSets;
   }
 }

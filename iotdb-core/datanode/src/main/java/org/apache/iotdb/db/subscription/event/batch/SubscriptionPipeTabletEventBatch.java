@@ -23,42 +23,51 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
+import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
-import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
+import com.codahale.metrics.Clock;
+import com.codahale.metrics.Meter;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
-public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch {
+public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
+    implements Iterator<Pair<String, List<Tablet>>> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPipeTabletEventBatch.class);
 
-  private static final long READ_TABLET_BUFFER_SIZE =
-      SubscriptionConfig.getInstance().getSubscriptionReadTabletBufferSize();
-
-  private final List<EnrichedEvent> enrichedEvents = new ArrayList<>();
-  private final List<Tablet> tablets = new ArrayList<>();
-
   private long firstEventProcessingTime = Long.MIN_VALUE;
   private long totalBufferSize = 0;
+
+  private volatile Iterator<EnrichedEvent> currentEnrichedEventsIterator;
+  private volatile Iterator<TabletInsertionEvent> currentTabletInsertionEventsIterator;
+  private volatile TsFileInsertionEvent currentTsFileInsertionEvent;
+
+  private final Meter insertNodeTabletInsertionEventSizeEstimator;
+  private final Meter rawTabletInsertionEventSizeEstimator;
+
+  private volatile SubscriptionPipeTabletIterationSnapshot iterationSnapshot;
+  private final AtomicInteger referenceCount = new AtomicInteger();
+
+  private static final long ITERATED_COUNT_REPORT_FREQ =
+      30000; // based on the full parse of a 128MB tsfile estimate
+  private final AtomicLong iteratedCount = new AtomicLong();
 
   public SubscriptionPipeTabletEventBatch(
       final int regionId,
@@ -66,167 +75,289 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       final int maxDelayInMs,
       final long maxBatchSizeInBytes) {
     super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
+
+    this.insertNodeTabletInsertionEventSizeEstimator =
+        new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
+    this.rawTabletInsertionEventSizeEstimator =
+        new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
+
+    resetForIteration();
   }
 
+  /////////////////////////////// ack & clean ///////////////////////////////
+
   @Override
-  public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) {
-    if (shouldEmit() && !enrichedEvents.isEmpty()) {
-      if (Objects.isNull(events)) {
-        events = generateSubscriptionEvents();
+  public synchronized void ack() {
+    referenceCount.decrementAndGet();
+
+    // we decrease the reference count of events if and only if when the whole batch is consumed
+    if (!hasNext() && referenceCount.get() == 0) {
+      for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+        enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
       }
-      if (Objects.nonNull(events)) {
-        events.forEach(consumer);
-        return true;
-      }
-      return false;
     }
-    return false;
   }
 
   @Override
-  public synchronized boolean onEvent(
-      final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer) {
-    if (event instanceof TabletInsertionEvent) {
-      onEventInternal((TabletInsertionEvent) event); // no exceptions will be thrown
+  public synchronized void cleanUp(final boolean force) {
+    // do nothing if it has next or still referenced by unacked response
+    if (!force && (hasNext() || referenceCount.get() != 0)) {
+      return;
     }
-    return onEvent(consumer);
-  }
 
-  @Override
-  public synchronized void cleanUp() {
     // clear the reference count of events
     for (final EnrichedEvent enrichedEvent : enrichedEvents) {
       enrichedEvent.clearReferenceCount(this.getClass().getName());
     }
     enrichedEvents.clear();
-    tablets.clear();
-  }
 
-  public synchronized void ack() {
-    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
-      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
-    }
+    resetForIteration();
   }
 
   /////////////////////////////// utility ///////////////////////////////
 
-  private List<SubscriptionEvent> generateSubscriptionEvents() {
-    if (tablets.isEmpty()) {
-      return null;
-    }
-
-    final SubscriptionCommitContext commitContext =
-        prefetchingQueue.generateSubscriptionCommitContext();
-    final List<SubscriptionPollResponse> responses = new ArrayList<>();
-    final List<Tablet> currentTablets = new ArrayList<>();
-    long currentTotalBufferSize = 0;
-    for (final Tablet tablet : tablets) {
-      final long bufferSize = PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
-      if (bufferSize > READ_TABLET_BUFFER_SIZE) {
-        LOGGER.warn("Detect large tablet with {} byte(s).", bufferSize);
-        responses.add(
-            new SubscriptionPollResponse(
-                SubscriptionPollResponseType.TABLETS.getType(),
-                new TabletsPayload(Collections.singletonList(tablet), responses.size() + 1),
-                commitContext));
-        continue;
-      }
-      if (currentTotalBufferSize + bufferSize > READ_TABLET_BUFFER_SIZE) {
-        responses.add(
-            new SubscriptionPollResponse(
-                SubscriptionPollResponseType.TABLETS.getType(),
-                new TabletsPayload(new ArrayList<>(currentTablets), responses.size() + 1),
-                commitContext));
-        currentTablets.clear();
-        currentTotalBufferSize = 0;
-      }
-      currentTablets.add(tablet);
-      currentTotalBufferSize += bufferSize;
-    }
-    responses.add(
-        new SubscriptionPollResponse(
-            SubscriptionPollResponseType.TABLETS.getType(),
-            new TabletsPayload(new ArrayList<>(currentTablets), -tablets.size()),
-            commitContext));
-    return Collections.singletonList(
-        new SubscriptionEvent(new SubscriptionPipeTabletBatchEvents(this), responses));
-  }
-
-  private void onEventInternal(final TabletInsertionEvent event) {
-    constructBatch(event);
-    enrichedEvents.add((EnrichedEvent) event);
+  @Override
+  protected void onTabletInsertionEvent(final TabletInsertionEvent event) {
+    // update processing time
     if (firstEventProcessingTime == Long.MIN_VALUE) {
       firstEventProcessingTime = System.currentTimeMillis();
     }
-  }
 
-  private void constructBatch(final TabletInsertionEvent event) {
-    final List<Tablet> currentTablets = convertToTablets(event);
-    if (currentTablets.isEmpty()) {
-      return;
+    // update buffer size
+    // TODO: more precise computation
+    if (event instanceof PipeInsertNodeTabletInsertionEvent) {
+      totalBufferSize += getEstimatedInsertNodeTabletInsertionEventSize();
+    } else if (event instanceof PipeRawTabletInsertionEvent) {
+      totalBufferSize += getEstimatedRawTabletInsertionEventSize();
     }
-    tablets.addAll(currentTablets);
-    totalBufferSize +=
-        currentTablets.stream()
-            .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
-            .reduce(Long::sum)
-            .orElse(0L);
   }
 
-  private boolean shouldEmit() {
+  @Override
+  protected void onTsFileInsertionEvent(final TsFileInsertionEvent event) {
+    // update processing time
+    if (firstEventProcessingTime == Long.MIN_VALUE) {
+      firstEventProcessingTime = System.currentTimeMillis();
+    }
+
+    // update buffer size
+    // TODO: more precise computation
+    // NOTE: Considering the possibility of large tsfile, the final generated response size may be
+    // larger than totalBufferSize, therefore limit control is also required in
+    // SubscriptionEventTabletResponse.
+    totalBufferSize += ((PipeTsFileInsertionEvent) event).getTsFile().length();
+  }
+
+  @Override
+  protected List<SubscriptionEvent> generateSubscriptionEvents() {
+    resetForIteration();
+    return Collections.singletonList(new SubscriptionEvent(this, prefetchingQueue));
+  }
+
+  @Override
+  protected boolean shouldEmit() {
     return totalBufferSize >= maxBatchSizeInBytes
-        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
+        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs
+        // considering the inaccuracy of the estimation, configure a hard limit here to avoid an
+        // excessively large batch
+        || enrichedEvents.size()
+            >= SubscriptionConfig.getInstance().getSubscriptionMaxAllowedEventCountInTabletBatch();
   }
 
-  private List<Tablet> convertToTablets(final TabletInsertionEvent tabletInsertionEvent) {
+  private Pair<String, List<Tablet>> convertToTablets(
+      final TabletInsertionEvent tabletInsertionEvent) {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      return ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablets();
+      final List<Tablet> tablets =
+          ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablets();
+      updateEstimatedInsertNodeTabletInsertionEventSize(
+          tablets.stream()
+              .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
+              .reduce(Long::sum)
+              .orElse(0L));
+      return new Pair<>(
+          ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).isTableModelEvent()
+              ? ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
+                  .getTableModelDatabaseName()
+              : null,
+          tablets);
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      return Collections.singletonList(
-          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
+      final Tablet tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
+      updateEstimatedRawTabletInsertionEventSize(
+          PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
+      return new Pair<>(
+          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).isTableModelEvent()
+              ? ((PipeRawTabletInsertionEvent) tabletInsertionEvent).getTableModelDatabaseName()
+              : null,
+          Collections.singletonList(tablet));
     }
 
     LOGGER.warn(
         "SubscriptionPipeTabletEventBatch {} only support convert PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignore {}.",
         this,
         tabletInsertionEvent);
-    return Collections.emptyList();
+    return null;
   }
 
-  /////////////////////////////// stringify ///////////////////////////////
+  /////////////////////////////// estimator ///////////////////////////////
 
-  @Override
-  public String toString() {
-    return "SubscriptionPipeTabletEventBatch" + this.coreReportMessage();
+  private long getEstimatedInsertNodeTabletInsertionEventSize() {
+    return Math.max(
+        SubscriptionConfig.getInstance()
+            .getSubscriptionEstimatedInsertNodeTabletInsertionEventSize(),
+        (long) insertNodeTabletInsertionEventSizeEstimator.getOneMinuteRate());
   }
 
-  @Override
-  protected Map<String, String> coreReportMessage() {
-    final Map<String, String> coreReportMessage = super.coreReportMessage();
-    coreReportMessage.put("enrichedEvents", formatEnrichedEvents(enrichedEvents, 4));
-    coreReportMessage.put("size of tablets", String.valueOf(tablets.size()));
-    coreReportMessage.put("firstEventProcessingTime", String.valueOf(firstEventProcessingTime));
-    coreReportMessage.put("totalBufferSize", String.valueOf(totalBufferSize));
-    return coreReportMessage;
+  private void updateEstimatedInsertNodeTabletInsertionEventSize(final long size) {
+    insertNodeTabletInsertionEventSizeEstimator.mark(size);
   }
 
-  private static String formatEnrichedEvents(
-      final List<EnrichedEvent> enrichedEvents, final int threshold) {
-    final List<String> eventMessageList =
-        enrichedEvents.stream()
-            .limit(threshold)
-            .map(EnrichedEvent::coreReportMessage)
-            .collect(Collectors.toList());
-    if (eventMessageList.size() > threshold) {
-      eventMessageList.add(
-          String.format("omit the remaining %s event(s)...", eventMessageList.size() - threshold));
+  private long getEstimatedRawTabletInsertionEventSize() {
+    return Math.max(
+        SubscriptionConfig.getInstance().getSubscriptionEstimatedRawTabletInsertionEventSize(),
+        (long) rawTabletInsertionEventSizeEstimator.getOneMinuteRate());
+  }
+
+  private void updateEstimatedRawTabletInsertionEventSize(final long size) {
+    rawTabletInsertionEventSizeEstimator.mark(size);
+  }
+
+  /////////////////////////////// iterator ///////////////////////////////
+
+  public synchronized SubscriptionPipeTabletIterationSnapshot sendIterationSnapshot() {
+    final SubscriptionPipeTabletIterationSnapshot result = iterationSnapshot;
+    iterationSnapshot = new SubscriptionPipeTabletIterationSnapshot();
+    referenceCount.incrementAndGet();
+    return result;
+  }
+
+  public synchronized void resetForIteration() {
+    currentEnrichedEventsIterator = enrichedEvents.iterator();
+    currentTabletInsertionEventsIterator = null;
+    if (Objects.nonNull(currentTsFileInsertionEvent)
+        && currentTsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) currentTsFileInsertionEvent).close();
     }
-    return eventMessageList.toString();
+    currentTsFileInsertionEvent = null;
+
+    if (Objects.nonNull(iterationSnapshot)) {
+      iterationSnapshot.cleanUp();
+    }
+    iterationSnapshot = new SubscriptionPipeTabletIterationSnapshot();
+    referenceCount.set(0);
+
+    iteratedCount.set(0);
   }
 
-  //////////////////////////// APIs provided for metric framework ////////////////////////////
+  @Override
+  public synchronized boolean hasNext() {
+    if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
+      if (currentTabletInsertionEventsIterator.hasNext()) {
+        return true;
+      } else {
+        // reset
+        currentTabletInsertionEventsIterator = null;
+        currentTsFileInsertionEvent = null;
+        return hasNext();
+      }
+    }
 
-  public int getPipeEventCount() {
-    return enrichedEvents.size();
+    if (Objects.isNull(currentEnrichedEventsIterator)) {
+      return false;
+    }
+
+    if (currentEnrichedEventsIterator.hasNext()) {
+      return true;
+    } else {
+      // reset
+      currentEnrichedEventsIterator = null;
+      return false;
+    }
+  }
+
+  @Override
+  public synchronized Pair<String, List<Tablet>> next() {
+    final Pair<String, List<Tablet>> tablets = nextInternal();
+    if (Objects.isNull(tablets)) {
+      return null;
+    }
+    if (iteratedCount.incrementAndGet() % ITERATED_COUNT_REPORT_FREQ == 0) {
+      LOGGER.info(
+          "{} has been iterated {} times, current TsFileInsertionEvent {}",
+          this,
+          iteratedCount,
+          Objects.isNull(currentTsFileInsertionEvent)
+              ? "<unknown>"
+              : ((EnrichedEvent) currentTsFileInsertionEvent).coreReportMessage());
+    }
+    return tablets;
+  }
+
+  private Pair<String, List<Tablet>> nextInternal() {
+    if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
+      if (currentTabletInsertionEventsIterator.hasNext()) {
+        final TabletInsertionEvent tabletInsertionEvent =
+            currentTabletInsertionEventsIterator.next();
+        if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
+          LOGGER.warn(
+              "SubscriptionPipeTabletEventBatch: Unexpected tablet insertion event {}, skipping it.",
+              tabletInsertionEvent);
+        } else {
+          if (!((PipeRawTabletInsertionEvent) tabletInsertionEvent)
+              .increaseReferenceCount(this.getClass().getName())) {
+            LOGGER.warn(
+                "SubscriptionPipeTabletEventBatch: Failed to increase the reference count of event {}, skipping it.",
+                ((PipeRawTabletInsertionEvent) tabletInsertionEvent).coreReportMessage());
+          } else {
+            iterationSnapshot.addParsedEnrichedEvent(
+                (PipeRawTabletInsertionEvent) tabletInsertionEvent);
+          }
+        }
+        if (!currentTabletInsertionEventsIterator.hasNext()) {
+          iterationSnapshot.addIteratedEnrichedEvent((EnrichedEvent) currentTsFileInsertionEvent);
+        }
+        return convertToTablets(tabletInsertionEvent);
+      } else {
+        currentTabletInsertionEventsIterator = null;
+        currentTsFileInsertionEvent = null;
+      }
+    }
+
+    if (Objects.isNull(currentEnrichedEventsIterator)) {
+      return null;
+    }
+
+    if (!currentEnrichedEventsIterator.hasNext()) {
+      return null;
+    }
+
+    final EnrichedEvent enrichedEvent = currentEnrichedEventsIterator.next();
+    if (enrichedEvent instanceof TsFileInsertionEvent) {
+      if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
+        LOGGER.warn(
+            "SubscriptionPipeTabletEventBatch {} override non-null currentTabletInsertionEventsIterator when iterating (broken invariant).",
+            this);
+      }
+      final PipeTsFileInsertionEvent tsFileInsertionEvent =
+          (PipeTsFileInsertionEvent) enrichedEvent;
+      currentTsFileInsertionEvent = tsFileInsertionEvent;
+      currentTabletInsertionEventsIterator =
+          tsFileInsertionEvent
+              .toTabletInsertionEvents(
+                  // disrupt parsing requests through the introduction of randomness
+                  (long) ((1 + Math.random()) * SubscriptionAgent.receiver().remainingMs()))
+              .iterator();
+      return next();
+    } else if (enrichedEvent instanceof TabletInsertionEvent) {
+      // There are two types of TabletInsertionEvent:
+      //   1. PipeInsertNodeTabletInsertionEvent, which binds memory blocks when parsed into tablets
+      //   2. PipeRawTabletInsertionEvent, which is parsed and bound with memory blocks upstream
+      iterationSnapshot.addIteratedEnrichedEvent(enrichedEvent);
+      return convertToTablets((TabletInsertionEvent) enrichedEvent);
+    } else {
+      LOGGER.warn(
+          "SubscriptionPipeTabletEventBatch {} ignore EnrichedEvent {} when iterating (broken invariant).",
+          this,
+          enrichedEvent);
+      return null;
+    }
   }
 }

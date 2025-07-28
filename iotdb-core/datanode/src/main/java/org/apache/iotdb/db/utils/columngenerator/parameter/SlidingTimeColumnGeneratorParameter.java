@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils.columngenerator.parameter;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.utils.columngenerator.ColumnGeneratorType;
 

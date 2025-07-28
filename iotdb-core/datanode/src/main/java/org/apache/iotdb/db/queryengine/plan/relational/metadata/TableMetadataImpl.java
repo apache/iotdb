@@ -19,16 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.ModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.DivisionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.ModulusResolver;
@@ -43,9 +53,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
+import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.relational.AggregateFunction;
+import org.apache.iotdb.udf.api.relational.ScalarFunction;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.BlobType;
@@ -56,11 +73,11 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
@@ -70,6 +87,7 @@ import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
+import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
 
 public class TableMetadataImpl implements Metadata {
 
@@ -79,28 +97,41 @@ public class TableMetadataImpl implements Metadata {
 
   private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
 
+  private final IModelFetcher modelFetcher = ModelFetcher.getInstance();
+
   @Override
-  public boolean tableExists(QualifiedObjectName name) {
+  public boolean tableExists(final QualifiedObjectName name) {
     return tableCache.getTable(name.getDatabaseName(), name.getObjectName()) != null;
   }
 
   @Override
-  public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
-    TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName());
+  public Optional<TableSchema> getTableSchema(
+      final SessionInfo session, final QualifiedObjectName name) {
+    final String databaseName = name.getDatabaseName();
+    final String tableName = name.getObjectName();
+
+    final TsTable table = tableCache.getTable(databaseName, tableName);
     if (table == null) {
       return Optional.empty();
     }
-    List<ColumnSchema> columnSchemaList =
+    final List<ColumnSchema> columnSchemaList =
         table.getColumnList().stream()
             .map(
-                o ->
-                    new ColumnSchema(
-                        o.getColumnName(),
-                        TypeFactory.getType(o.getDataType()),
-                        false,
-                        o.getColumnCategory()))
+                o -> {
+                  final ColumnSchema schema =
+                      new ColumnSchema(
+                          o.getColumnName(),
+                          TypeFactory.getType(o.getDataType()),
+                          false,
+                          o.getColumnCategory());
+                  schema.setProps(o.getProps());
+                  return schema;
+                })
             .collect(Collectors.toList());
-    return Optional.of(new TableSchema(table.getTableName(), columnSchemaList));
+    return Optional.of(
+        TreeViewSchema.isTreeViewTable(table)
+            ? new TreeDeviceViewSchema(table.getTableName(), columnSchemaList, table.getProps())
+            : new TableSchema(table.getTableName(), columnSchemaList));
   }
 
   @Override
@@ -213,7 +244,7 @@ public class TableMetadataImpl implements Metadata {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only supports text or string data type.");
+                + " only accepts two or three arguments and they must be text or string data type.");
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.SUBSTRING
@@ -513,13 +544,32 @@ public class TableMetadataImpl implements Metadata {
     } else if (TableBuiltinScalarFunction.DATE_BIN
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 4 && isTimestampType(argumentTypes.get(2)))) {
+      if (!isTimestampType(argumentTypes.get(2))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only accepts two or three arguments and the second and third must be TimeStamp data type.");
       }
       return TIMESTAMP;
+    } else if (TableBuiltinScalarFunction.FORMAT.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() < 2 || !isCharType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " must have at least two arguments, and first argument pattern must be TEXT or STRING type.");
+      }
+      return STRING;
+    } else if (FAIL_FUNCTION_NAME.equalsIgnoreCase(functionName)) {
+      return UNKNOWN;
+    } else if (TableBuiltinScalarFunction.GREATEST.getFunctionName().equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.LEAST.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() < 2 || !areAllTypesSameAndComparable(argumentTypes)) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " must have at least two arguments, and all type must be the same.");
+      }
+      return argumentTypes.get(0);
     }
 
     // builtin aggregation function
@@ -528,21 +578,27 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.AVG:
       case SqlConstant.SUM:
       case SqlConstant.EXTREME:
-      case SqlConstant.MIN:
-      case SqlConstant.MAX:
       case SqlConstant.STDDEV:
       case SqlConstant.STDDEV_POP:
       case SqlConstant.STDDEV_SAMP:
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
-        if (!isOneSupportedMathNumericType(argumentTypes)) {
+        if (argumentTypes.size() != 1) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] should only have one argument", functionName));
+        }
+
+        if (!isSupportedMathNumericType(argumentTypes.get(0))) {
           throw new SemanticException(
               String.format(
                   "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
                   functionName));
         }
         break;
+      case SqlConstant.MIN:
+      case SqlConstant.MAX:
       case SqlConstant.MODE:
         if (argumentTypes.size() != 1) {
           throw new SemanticException(
@@ -550,19 +606,35 @@ public class TableMetadataImpl implements Metadata {
                   "Aggregate functions [%s] should only have one argument", functionName));
         }
         break;
-      case SqlConstant.FIRST:
-      case SqlConstant.LAST:
+      case SqlConstant.COUNT_IF:
+        if (argumentTypes.size() != 1 || !isBool(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] should only have one boolean expression as argument",
+                  functionName));
+        }
+        break;
+      case SqlConstant.FIRST_AGGREGATION:
+      case SqlConstant.LAST_AGGREGATION:
         if (argumentTypes.size() != 2) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have two arguments", functionName));
+                  "Aggregate functions [%s] should only have one or two arguments", functionName));
         } else if (!isTimestampType(argumentTypes.get(1))) {
           throw new SemanticException(
               String.format(
                   "Second argument of Aggregate functions [%s] should be orderable", functionName));
         }
-      case SqlConstant.FIRST_BY:
-      case SqlConstant.LAST_BY:
+        break;
+      case SqlConstant.FIRST_BY_AGGREGATION:
+      case SqlConstant.LAST_BY_AGGREGATION:
+        if (argumentTypes.size() != 3) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] should only have two or three arguments",
+                  functionName));
+        }
+        break;
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
         if (argumentTypes.size() != 2) {
@@ -576,6 +648,27 @@ public class TableMetadataImpl implements Metadata {
         }
 
         break;
+      case SqlConstant.APPROX_COUNT_DISTINCT:
+        if (argumentTypes.size() != 1 && argumentTypes.size() != 2) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] should only have two arguments", functionName));
+        }
+
+        if (argumentTypes.size() == 2 && !isSupportedMathNumericType(argumentTypes.get(1))) {
+          throw new SemanticException(
+              String.format(
+                  "Second argument of Aggregate functions [%s] should be numberic type and do not use expression",
+                  functionName));
+        }
+        break;
+      case SqlConstant.APPROX_MOST_FREQUENT:
+        if (argumentTypes.size() != 3) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should only have three arguments", functionName));
+        }
+        break;
       case SqlConstant.COUNT:
         break;
       default:
@@ -585,11 +678,14 @@ public class TableMetadataImpl implements Metadata {
     // get return type
     switch (functionName.toLowerCase(Locale.ENGLISH)) {
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_ALL:
+      case SqlConstant.COUNT_IF:
+      case SqlConstant.APPROX_COUNT_DISTINCT:
         return INT64;
-      case SqlConstant.FIRST:
-      case SqlConstant.LAST:
-      case SqlConstant.FIRST_BY:
-      case SqlConstant.LAST_BY:
+      case SqlConstant.FIRST_AGGREGATION:
+      case SqlConstant.LAST_AGGREGATION:
+      case SqlConstant.FIRST_BY_AGGREGATION:
+      case SqlConstant.LAST_BY_AGGREGATION:
       case SqlConstant.EXTREME:
       case SqlConstant.MODE:
       case SqlConstant.MAX:
@@ -606,31 +702,126 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
         return DOUBLE;
+      case SqlConstant.APPROX_MOST_FREQUENT:
+        return STRING;
       default:
         // ignore
     }
 
-    // TODO scalar UDF function
+    // builtin window function
+    // check argument type
+    switch (functionName.toLowerCase(Locale.ENGLISH)) {
+      case SqlConstant.NTILE:
+        if (argumentTypes.size() != 1) {
+          throw new SemanticException(
+              String.format("Window function [%s] should only have one argument", functionName));
+        }
+        break;
+      case SqlConstant.NTH_VALUE:
+        if (argumentTypes.size() != 2 || !isIntegerNumber(argumentTypes.get(1))) {
+          throw new SemanticException(
+              "Window function [nth_value] should only have two argument, and second argument must be integer type");
+        }
+        break;
+      case SqlConstant.TABLE_FIRST_VALUE:
+      case SqlConstant.TABLE_LAST_VALUE:
+        if (argumentTypes.size() != 1) {
+          throw new SemanticException(
+              String.format("Window function [%s] should only have one argument", functionName));
+        }
+      case SqlConstant.LEAD:
+      case SqlConstant.LAG:
+        if (argumentTypes.isEmpty() || argumentTypes.size() > 3) {
+          throw new SemanticException(
+              String.format(
+                  "Window function [%s] should only have one to three argument", functionName));
+        }
+        if (argumentTypes.size() >= 2 && !isIntegerNumber(argumentTypes.get(1))) {
+          throw new SemanticException(
+              String.format(
+                  "Window function [%s]'s second argument must be integer type", functionName));
+        }
+        break;
+      default:
+        // ignore
+    }
 
-    // TODO UDAF
+    // get return type
+    switch (functionName.toLowerCase(Locale.ENGLISH)) {
+      case SqlConstant.RANK:
+      case SqlConstant.DENSE_RANK:
+      case SqlConstant.ROW_NUMBER:
+      case SqlConstant.NTILE:
+        return INT64;
+      case SqlConstant.PERCENT_RANK:
+      case SqlConstant.CUME_DIST:
+        return DOUBLE;
+      case SqlConstant.TABLE_FIRST_VALUE:
+      case SqlConstant.TABLE_LAST_VALUE:
+      case SqlConstant.NTH_VALUE:
+      case SqlConstant.LEAD:
+      case SqlConstant.LAG:
+        return argumentTypes.get(0);
+      default:
+        // ignore
+    }
+
+    // User-defined scalar function
+    if (TableUDFUtils.isScalarFunction(functionName)) {
+      ScalarFunction scalarFunction = TableUDFUtils.getScalarFunction(functionName);
+      FunctionArguments functionArguments =
+          new FunctionArguments(
+              argumentTypes.stream()
+                  .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
+                  .collect(Collectors.toList()),
+              Collections.emptyMap());
+      try {
+        ScalarFunctionAnalysis scalarFunctionAnalysis = scalarFunction.analyze(functionArguments);
+        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+            scalarFunctionAnalysis.getOutputDataType());
+      } catch (Exception e) {
+        throw new SemanticException("Invalid function parameters: " + e.getMessage());
+      } finally {
+        scalarFunction.beforeDestroy();
+      }
+    } else if (TableUDFUtils.isAggregateFunction(functionName)) {
+      AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
+      FunctionArguments functionArguments =
+          new FunctionArguments(
+              argumentTypes.stream()
+                  .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
+                  .collect(Collectors.toList()),
+              Collections.emptyMap());
+      try {
+        AggregateFunctionAnalysis aggregateFunctionAnalysis =
+            aggregateFunction.analyze(functionArguments);
+        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+            aggregateFunctionAnalysis.getOutputDataType());
+      } catch (Exception e) {
+        throw new SemanticException("Invalid function parameters: " + e.getMessage());
+      } finally {
+        aggregateFunction.beforeDestroy();
+      }
+    }
 
     throw new SemanticException("Unknown function: " + functionName);
   }
 
   @Override
   public boolean isAggregationFunction(
-      SessionInfo session, String functionName, AccessControl accessControl) {
-    return TableBuiltinAggregationFunction.getNativeFunctionNames()
-        .contains(functionName.toLowerCase(Locale.ENGLISH));
+      final SessionInfo session, final String functionName, final AccessControl accessControl) {
+    return TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName()
+            .contains(functionName.toLowerCase(Locale.ENGLISH))
+        || TableUDFUtils.isAggregateFunction(functionName);
   }
 
   @Override
-  public Type getType(TypeSignature signature) throws TypeNotFoundException {
+  public Type getType(final TypeSignature signature) throws TypeNotFoundException {
     return typeManager.getType(signature);
   }
 
   @Override
-  public boolean canCoerce(Type from, Type to) {
+  public boolean canCoerce(final Type from, final Type to) {
     return true;
   }
 
@@ -640,7 +831,7 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public List<DeviceEntry> indexScan(
+  public Map<String, List<DeviceEntry>> indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
@@ -656,9 +847,15 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public Optional<TableSchema> validateTableHeaderSchema(
-      String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable) {
+      String database,
+      TableSchema tableSchema,
+      MPPQueryContext context,
+      boolean allowCreateTable,
+      boolean isStrictTagColumn)
+      throws LoadAnalyzeTableColumnDisorderException {
     return TableHeaderSchemaValidator.getInstance()
-        .validateTableHeaderSchema(database, tableSchema, context, allowCreateTable);
+        .validateTableHeaderSchema(
+            database, tableSchema, context, allowCreateTable, isStrictTagColumn);
   }
 
   @Override
@@ -669,25 +866,25 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public DataPartition getOrCreateDataPartition(
-      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
+      final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName) {
     return partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams, userName);
   }
 
   @Override
   public SchemaPartition getOrCreateSchemaPartition(
-      String database, List<IDeviceID> deviceIDList, String userName) {
-    return partitionFetcher.getOrCreateSchemaPartition(
-        PATH_ROOT + PATH_SEPARATOR + database, deviceIDList, userName);
+      final String database, final List<IDeviceID> deviceIDList, final String userName) {
+    return partitionFetcher.getOrCreateSchemaPartition(database, deviceIDList, userName);
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
-    return partitionFetcher.getSchemaPartition(PATH_ROOT + PATH_SEPARATOR + database, deviceIDList);
+  public SchemaPartition getSchemaPartition(
+      final String database, final List<IDeviceID> deviceIDList) {
+    return partitionFetcher.getSchemaPartition(database, deviceIDList);
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(String database) {
-    return partitionFetcher.getSchemaPartition(PATH_ROOT + PATH_SEPARATOR + database);
+  public SchemaPartition getSchemaPartition(final String database) {
+    return partitionFetcher.getSchemaPartition(database, null);
   }
 
   @Override
@@ -705,8 +902,19 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public boolean canUseStatistics(String functionName, boolean withTime) {
-    return TableBuiltinAggregationFunction.canUseStatistics(functionName, withTime);
+  public TableFunction getTableFunction(String functionName) {
+    if (TableBuiltinTableFunction.isBuiltInTableFunction(functionName)) {
+      return TableBuiltinTableFunction.getBuiltinTableFunction(functionName);
+    } else if (TableUDFUtils.isTableFunction(functionName)) {
+      return TableUDFUtils.getTableFunction(functionName);
+    } else {
+      throw new SemanticException("Unknown function: " + functionName);
+    }
+  }
+
+  @Override
+  public IModelFetcher getModelFetcher() {
+    return modelFetcher;
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
@@ -778,6 +986,10 @@ public class TableMetadataImpl implements Metadata {
     return TIMESTAMP.equals(type);
   }
 
+  public static boolean isUnknownType(Type type) {
+    return UNKNOWN.equals(type);
+  }
+
   public static boolean isIntegerNumber(Type type) {
     return INT32.equals(type) || INT64.equals(type);
   }
@@ -793,7 +1005,21 @@ public class TableMetadataImpl implements Metadata {
     }
 
     // Boolean type and Binary Type can not be compared with other types
-    return (isNumericType(left) && isNumericType(right)) || (isCharType(left) && isCharType(right));
+    return (isNumericType(left) && isNumericType(right))
+        || (isCharType(left) && isCharType(right))
+        || (isUnknownType(left) && (isNumericType(right) || isCharType(right)))
+        || ((isNumericType(left) || isCharType(left)) && isUnknownType(right));
+  }
+
+  public static boolean areAllTypesSameAndComparable(List<? extends Type> argumentTypes) {
+    if (argumentTypes == null || argumentTypes.isEmpty()) {
+      return true;
+    }
+    Type firstType = argumentTypes.get(0);
+    if (!firstType.isComparable()) {
+      return false;
+    }
+    return argumentTypes.stream().allMatch(type -> type.equals(firstType));
   }
 
   public static boolean isArithmeticType(Type type) {
@@ -811,6 +1037,21 @@ public class TableMetadataImpl implements Metadata {
     }
     Type left = argumentTypes.get(0);
     Type right = argumentTypes.get(1);
+    if ((isUnknownType(left) && isArithmeticType(right))
+        || (isUnknownType(right) && isArithmeticType(left))) {
+      return true;
+    }
     return isArithmeticType(left) && isArithmeticType(right);
+  }
+
+  public static void throwTableNotExistsException(final String database, final String tableName) {
+    throw new SemanticException(new TableNotExistsException(database, tableName));
+  }
+
+  public static void throwColumnNotExistsException(final Object columnName) {
+    throw new SemanticException(
+        new IoTDBException(
+            String.format("Column '%s' cannot be resolved.", columnName),
+            TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()));
   }
 }

@@ -33,12 +33,8 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionTest;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
-import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinException;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALInsertNodeCache;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
@@ -88,7 +84,6 @@ public class WalDeleteOutdatedNewTest {
     config.setDataRegionConsensusProtocolClass(prevConsensus);
     EnvironmentUtils.cleanDir(logDirectory1);
     StorageEngine.getInstance().reset();
-    WALInsertNodeCache.getInstance(1).clear();
   }
 
   /**
@@ -280,66 +275,6 @@ public class WalDeleteOutdatedNewTest {
     Map<Long, Set<Long>> memTableIdsOfWalAfter = walNode1.getWALBuffer().getMemTableIdsOfWal();
     Assert.assertEquals(0, memTableIdsOfWalAfter.size());
     Assert.assertEquals(1, WALFileUtils.listAllWALFiles(new File(logDirectory1)).length);
-  }
-
-  /**
-   * Ensure that wal pinned to memtable cannot be deleted: <br>
-   * 1. _0-0-1.wal: memTable0 <br>
-   * 2. pin memTable0 <br>
-   * 3. memTable0 flush <br>
-   * 4. roll wal file <br>
-   * 5. _1-1-1.wal: memTable0、memTable1 <br>
-   * 6. roll wal file <br>
-   * 7. _2-1-1.wal: memTable1 <br>
-   * 8. roll wal file <br>
-   * 9. _2-1-1.wal: memTable1 <br>
-   * 10. wait until all walEntry consumed <br>
-   * 11. memTable0 flush, memTable1 flush <br>
-   * 12. delete outdated wal files
-   */
-  @Test
-  public void test05() throws IllegalPathException, MemTablePinException {
-    IMemTable memTable0 = new PrimitiveMemTable(databasePath, dataRegionId);
-    walNode1.onMemTableCreated(memTable0, logDirectory1 + "/" + "fake.tsfile");
-    WALFlushListener listener =
-        walNode1.log(
-            memTable0.getMemTableId(),
-            generateInsertRowNode(devicePath, System.currentTimeMillis(), 1));
-    walNode1.rollWALFile();
-
-    // pin memTable
-    WALEntryHandler handler = listener.getWalEntryHandler();
-    handler.pinMemTable();
-    walNode1.log(
-        memTable0.getMemTableId(),
-        generateInsertRowNode(devicePath, System.currentTimeMillis(), 2));
-    IMemTable memTable1 = new PrimitiveMemTable(databasePath, dataRegionId);
-    walNode1.onMemTableCreated(memTable1, logDirectory1 + "/" + "fake.tsfile");
-    walNode1.log(
-        memTable1.getMemTableId(),
-        generateInsertRowNode(devicePath, System.currentTimeMillis(), 3));
-    walNode1.rollWALFile();
-
-    walNode1.log(
-        memTable1.getMemTableId(),
-        generateInsertRowNode(devicePath, System.currentTimeMillis(), 4));
-    walNode1.rollWALFile();
-
-    walNode1.log(
-        memTable1.getMemTableId(),
-        generateInsertRowNode(devicePath, System.currentTimeMillis(), 5));
-    walNode1.onMemTableFlushed(memTable0);
-    walNode1.onMemTableFlushed(memTable1);
-    Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
-
-    Map<Long, Set<Long>> memTableIdsOfWal = walNode1.getWALBuffer().getMemTableIdsOfWal();
-    Assert.assertEquals(4, memTableIdsOfWal.size());
-    Assert.assertEquals(4, WALFileUtils.listAllWALFiles(new File(logDirectory1)).length);
-
-    walNode1.deleteOutdatedFiles();
-    Map<Long, Set<Long>> memTableIdsOfWalAfter = walNode1.getWALBuffer().getMemTableIdsOfWal();
-    Assert.assertEquals(3, memTableIdsOfWalAfter.size());
-    Assert.assertEquals(3, WALFileUtils.listAllWALFiles(new File(logDirectory1)).length);
   }
 
   /**

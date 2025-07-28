@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.commons.subscription.meta.topic;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -42,7 +45,8 @@ public class TopicMeta {
   private long creationTime; // unit in ms
   private TopicConfig config;
 
-  private Set<String> subscribedConsumerGroupIds;
+  // TODO: remove this variable later
+  private Set<String> subscribedConsumerGroupIds; // unused now
 
   private TopicMeta() {
     this.config = new TopicConfig(new HashMap<>());
@@ -84,22 +88,27 @@ public class TopicMeta {
   /**
    * @return true if the consumer group did not already subscribe this topic
    */
+  @TestOnly
   public boolean addSubscribedConsumerGroup(final String consumerGroupId) {
     return subscribedConsumerGroupIds.add(consumerGroupId);
   }
 
+  @TestOnly
   public void removeSubscribedConsumerGroup(final String consumerGroupId) {
     subscribedConsumerGroupIds.remove(consumerGroupId);
   }
 
+  @TestOnly
   public Set<String> getSubscribedConsumerGroupIds() {
     return subscribedConsumerGroupIds;
   }
 
+  @TestOnly
   public boolean isSubscribedByConsumerGroup(final String consumerGroupId) {
     return subscribedConsumerGroupIds.contains(consumerGroupId);
   }
 
+  @TestOnly
   public boolean hasSubscribedConsumerGroup() {
     return !subscribedConsumerGroupIds.isEmpty();
   }
@@ -173,22 +182,35 @@ public class TopicMeta {
 
   /////////////////////////////// utilities ///////////////////////////////
 
-  public Map<String, String> generateExtractorAttributes() {
+  public Map<String, String> generateExtractorAttributes(final String username) {
     final Map<String, String> extractorAttributes = new HashMap<>();
     // disable meta sync
     extractorAttributes.put("source", "iotdb-source");
     extractorAttributes.put("inclusion", "data.insert");
     extractorAttributes.put("inclusion.exclusion", "data.delete");
-    // path
-    extractorAttributes.putAll(config.getAttributesWithPathOrPattern());
+    // user
+    extractorAttributes.put("username", username);
+    // TODO: currently set skipif to no-privileges
+    extractorAttributes.put("skipif", "no-privileges");
+    // sql dialect
+    extractorAttributes.putAll(config.getAttributeWithSqlDialect());
+    if (config.isTableTopic()) {
+      // table model: database name and table name
+      extractorAttributes.putAll(config.getAttributesWithSourceDatabaseAndTableName());
+    } else {
+      // tree model: path or pattern
+      extractorAttributes.putAll(config.getAttributesWithSourcePathOrPattern());
+    }
     // time
-    extractorAttributes.putAll(config.getAttributesWithTimeRange());
+    extractorAttributes.putAll(config.getAttributesWithSourceTimeRange());
     // realtime mode
-    extractorAttributes.putAll(config.getAttributesWithRealtimeMode());
+    extractorAttributes.putAll(config.getAttributesWithSourceRealtimeMode());
     // source mode
     extractorAttributes.putAll(config.getAttributesWithSourceMode());
-    // loose range
-    extractorAttributes.putAll(config.getAttributesWithSourceLooseRange());
+    // loose range or strict
+    extractorAttributes.putAll(config.getAttributesWithSourceLooseRangeOrStrict());
+    // backdoor configs
+    extractorAttributes.putAll(config.getAttributesWithSourcePrefix());
     return extractorAttributes;
   }
 
@@ -199,10 +221,19 @@ public class TopicMeta {
   public Map<String, String> generateConnectorAttributes(final String consumerGroupId) {
     final Map<String, String> connectorAttributes = new HashMap<>();
     connectorAttributes.put("sink", "subscription-sink");
-    connectorAttributes.put(PipeConnectorConstant.SINK_TOPIC_KEY, topicName);
-    connectorAttributes.put(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
+    connectorAttributes.put(PipeSinkConstant.SINK_TOPIC_KEY, topicName);
+    connectorAttributes.put(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
     connectorAttributes.putAll(config.getAttributesWithSinkFormat());
+    // backdoor configs
+    connectorAttributes.putAll(config.getAttributesWithSinkPrefix());
     return connectorAttributes;
+  }
+
+  /////////////////////////////////  Tree & Table Isolation  /////////////////////////////////
+
+  public boolean visibleUnder(final boolean isTableModel) {
+    final Visibility visibility = VisibilityUtils.calculateFromTopicConfig(config);
+    return VisibilityUtils.isCompatible(visibility, isTableModel);
   }
 
   ////////////////////////////////////// Object ////////////////////////////////
@@ -218,13 +249,12 @@ public class TopicMeta {
     final TopicMeta that = (TopicMeta) obj;
     return creationTime == that.creationTime
         && Objects.equals(topicName, that.topicName)
-        && Objects.equals(config, that.config)
-        && Objects.equals(subscribedConsumerGroupIds, that.subscribedConsumerGroupIds);
+        && Objects.equals(config, that.config);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicName, creationTime, subscribedConsumerGroupIds, config);
+    return Objects.hash(topicName, creationTime, config);
   }
 
   @Override
@@ -232,13 +262,10 @@ public class TopicMeta {
     return "TopicMeta{"
         + "topicName='"
         + topicName
-        + '\''
-        + ", creationTime="
+        + "', creationTime="
         + creationTime
         + ", config="
         + config
-        + ", subscribedConsumerGroupIds="
-        + subscribedConsumerGroupIds
         + '}';
   }
 }

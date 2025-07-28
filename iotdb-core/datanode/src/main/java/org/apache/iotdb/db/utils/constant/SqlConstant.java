@@ -31,12 +31,12 @@ public class SqlConstant {
   private static final String[] SINGLE_ROOT_ARRAY = {"root", "**"};
   private static final String[] SINGLE_TIME_ARRAY = {"time"};
   public static final PartialPath TIME_PATH = new PartialPath(SINGLE_TIME_ARRAY);
-  public static final String RESERVED_TIME = "time";
+  public static final String TABLE_TIME_COLUMN_NAME = "time";
   public static final String NOW_FUNC = "now()";
 
   public static final String ROOT = "root";
 
-  public static final String ROOT_DOT = "root.";
+  public static final String TREE_MODEL_DATABASE_PREFIX = "root.";
 
   public static final String QUOTE = "'";
   public static final String DQUOTE = "\"";
@@ -57,10 +57,12 @@ public class SqlConstant {
   public static final String EXTREME = "extreme";
   public static final String FIRST_VALUE = "first_value";
   public static final String LAST_VALUE = "last_value";
-  public static final String FIRST = "first";
-  public static final String FIRST_BY = "first_by";
-  public static final String LAST_BY = "last_by";
+  public static final String FIRST_BY_AGGREGATION = "first_by";
+  public static final String LAST_BY_AGGREGATION = "last_by";
+  public static final String LAST_AGGREGATION = "last";
+  public static final String FIRST_AGGREGATION = "first";
   public static final String COUNT = "count";
+  public static final String COUNT_ALL = "count_all";
   public static final String AVG = "avg";
   public static final String SUM = "sum";
   public static final String COUNT_IF = "count_if";
@@ -76,10 +78,11 @@ public class SqlConstant {
   public static final String COUNT_TIME = "count_time";
   public static final String COUNT_TIME_HEADER = "count_time(*)";
 
+  public static final String APPROX_COUNT_DISTINCT = "approx_count_distinct";
+  public static final String APPROX_MOST_FREQUENT = "approx_most_frequent";
+
   // names of scalar functions
   public static final String DIFF = "diff";
-
-  public static final String LAST = "last";
 
   public static final String CAST_FUNCTION = "CAST";
   public static final String CAST_TYPE = "type";
@@ -96,6 +99,20 @@ public class SqlConstant {
   public static final String SUBSTRING_FROM = "FROM";
   public static final String SUBSTRING_IS_STANDARD = "isStandard";
   public static final String SUBSTRING_FOR = "FOR";
+
+  // names of window functions
+  public static final String RANK = "rank";
+  public static final String DENSE_RANK = "dense_rank";
+  public static final String ROW_NUMBER = "row_number";
+  public static final String PERCENT_RANK = "percent_rank";
+  public static final String CUME_DIST = "cume_dist";
+  public static final String NTILE = "ntile";
+  // Duplicate with aggregation function
+  public static final String TABLE_FIRST_VALUE = "first_value";
+  public static final String TABLE_LAST_VALUE = "last_value";
+  public static final String NTH_VALUE = "nth_value";
+  public static final String LEAD = "lead";
+  public static final String LAG = "lag";
 
   public static String[] getSingleRootArray() {
     return SINGLE_ROOT_ARRAY;

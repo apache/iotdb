@@ -108,7 +108,6 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
       response =
           new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
-
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
@@ -119,25 +118,18 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws SubscriptionException {
+      throws SubscriptionException, IOException {
     LOGGER.info(
         "AlterTopicProcedure: executeFromOperateOnDataNodes({})", updatedTopicMeta.getTopicName());
 
-    try {
-      final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(updatedTopicMeta.serialize());
-      if (RpcUtils.squashResponseStatusList(statuses).getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new SubscriptionException(
-            String.format(
-                "Failed to alter topic (%s -> %s) on data nodes, because %s",
-                existedTopicMeta, updatedTopicMeta, statuses));
-      }
-    } catch (IOException e) {
-      LOGGER.warn("Failed to serialize the topic meta due to: ", e);
+    final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(updatedTopicMeta.serialize());
+    if (RpcUtils.squashResponseStatusList(statuses).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
               "Failed to alter topic (%s -> %s) on data nodes, because %s",
-              existedTopicMeta, updatedTopicMeta, e.getMessage()));
+              existedTopicMeta, updatedTopicMeta, statuses));
     }
   }
 
@@ -147,7 +139,8 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
+  public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info(
         "AlterTopicProcedure: rollbackFromOperateOnConfigNodes({})",
         updatedTopicMeta.getTopicName());
@@ -161,7 +154,6 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
       response =
           new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
-
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
@@ -171,25 +163,19 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException, IOException {
     LOGGER.info(
         "AlterTopicProcedure: rollbackFromOperateOnDataNodes({})", updatedTopicMeta.getTopicName());
 
-    try {
-      final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(existedTopicMeta.serialize());
-      if (RpcUtils.squashResponseStatusList(statuses).getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new SubscriptionException(
-            String.format(
-                "Failed to rollback from altering topic (%s -> %s) on data nodes, because %s",
-                updatedTopicMeta, existedTopicMeta, statuses));
-      }
-    } catch (IOException e) {
-      LOGGER.warn("Failed to serialize the topic meta due to: ", e);
+    final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(existedTopicMeta.serialize());
+    if (RpcUtils.squashResponseStatusList(statuses).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
               "Failed to rollback from altering topic (%s -> %s) on data nodes, because %s",
-              updatedTopicMeta, existedTopicMeta, e.getMessage()));
+              updatedTopicMeta, existedTopicMeta, statuses));
     }
   }
 

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -31,8 +32,9 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
-import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
+import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
@@ -57,13 +59,14 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   private static final AtomicReference<PipeProcessorSubtaskWorkerManager> subtaskWorkerManager =
       new AtomicReference<>();
 
+  // Record these variables to provide corresponding value to tag key of monitoring metrics
+  private final String pipeName;
+  private final String pipeNameWithCreationTime; // cache for better performance
+  private final int regionId;
+
   private final EventSupplier inputEventSupplier;
   private final PipeProcessor pipeProcessor;
   private final PipeEventCollector outputEventCollector;
-
-  // Record these variables to provide corresponding value to tag key of monitoring metrics
-  private final String pipeName;
-  private final int regionId;
 
   // This variable is used to distinguish between old and new subtasks before and after stuck
   // restart.
@@ -71,24 +74,25 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   public PipeProcessorSubtask(
       final String taskID,
-      final long creationTime,
       final String pipeName,
+      final long creationTime,
       final int regionId,
       final EventSupplier inputEventSupplier,
       final PipeProcessor pipeProcessor,
       final PipeEventCollector outputEventCollector) {
     super(taskID, creationTime);
-    this.subtaskCreationTime = System.currentTimeMillis();
     this.pipeName = pipeName;
+    this.pipeNameWithCreationTime = pipeName + "_" + creationTime;
     this.regionId = regionId;
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
+    this.subtaskCreationTime = System.currentTimeMillis();
 
     // Only register dataRegions
-    if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
+    if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
+        || PipeRuntimeMeta.isSourceExternal(regionId)) {
       PipeProcessorMetrics.getInstance().register(this);
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance().register(this);
     }
   }
 
@@ -131,18 +135,41 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
     outputEventCollector.resetFlags();
     try {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).throwIfNoPrivilege();
+      }
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
         if (event instanceof TabletInsertionEvent) {
           pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
-          PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-              .markCollectInvocationCount(taskID, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof TsFileInsertionEvent) {
-          pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+          // We have to parse the privilege first, to avoid passing no-privilege data to processor
+          if (event instanceof PipeTsFileInsertionEvent
+              && ((PipeTsFileInsertionEvent) event).shouldParse4Privilege()) {
+            try (final PipeTsFileInsertionEvent tsFileInsertionEvent =
+                (PipeTsFileInsertionEvent) event) {
+              final AtomicReference<Exception> ex = new AtomicReference<>();
+              tsFileInsertionEvent.consumeTabletInsertionEventsWithRetry(
+                  event1 -> {
+                    try {
+                      pipeProcessor.process(event1, outputEventCollector);
+                    } catch (Exception e) {
+                      ex.set(e);
+                    }
+                  },
+                  "PipeProcessorSubtask::executeOnce");
+              if (ex.get() != null) {
+                throw ex.get();
+              }
+            }
+          } else {
+            pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+          }
           PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
-          PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-              .markCollectInvocationCount(taskID, outputEventCollector.getCollectInvocationCount());
+          PipeDataNodeSinglePipeMetrics.getInstance()
+              .markTsFileCollectInvocationCount(
+                  pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {
           pipeProcessor.process(event, outputEventCollector);
           ((PipeHeartbeatEvent) event).onProcessed();
@@ -228,10 +255,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     PipeProcessorMetrics.getInstance().deregister(taskID);
     try {
       isClosed.set(true);
-
-      // pipeProcessor closes first, then no more events will be added into outputEventCollector.
-      // only after that, outputEventCollector can be closed.
       pipeProcessor.close();
+      // It is important to note that even if the subtask and its corresponding processor are
+      // closed, the execution thread may still deliver events downstream.
     } catch (final Exception e) {
       LOGGER.info(
           "Exception occurred when closing pipe processor subtask {}, root cause: {}",

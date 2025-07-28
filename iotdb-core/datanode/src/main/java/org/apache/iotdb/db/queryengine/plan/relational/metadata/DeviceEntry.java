@@ -25,15 +25,18 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Objects;
+
+import static org.apache.tsfile.utils.ReadWriteIOUtils.readBytes;
+import static org.apache.tsfile.utils.ReadWriteIOUtils.readInt;
+import static org.apache.tsfile.utils.ReadWriteIOUtils.write;
 
 /**
  * The {@link DeviceEntry} shall have {@code null} suffix in its {@link IDeviceID}, e.g. "a.b.null".
@@ -41,15 +44,15 @@ import java.util.Objects;
  * {@code null}s are trimmed thus will not appear in the {@link IDeviceID}, and it will be like
  * "a.b".
  */
-public class DeviceEntry implements Accountable {
+public abstract class DeviceEntry implements Accountable {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(DeviceEntry.class);
 
-  private final IDeviceID deviceID;
-  private final List<String> attributeColumnValues;
+  protected final IDeviceID deviceID;
+  protected final Binary[] attributeColumnValues;
 
-  public DeviceEntry(final IDeviceID deviceID, final List<String> attributeColumnValues) {
+  public DeviceEntry(final IDeviceID deviceID, final Binary[] attributeColumnValues) {
     this.deviceID = deviceID;
     this.attributeColumnValues = attributeColumnValues;
   }
@@ -64,51 +67,96 @@ public class DeviceEntry implements Accountable {
     return segmentIndex < deviceID.segmentNum() ? deviceID.segment(segmentIndex) : null;
   }
 
-  public List<String> getAttributeColumnValues() {
+  public Binary[] getAttributeColumnValues() {
     return attributeColumnValues;
   }
 
   public void serialize(final ByteBuffer byteBuffer) {
     deviceID.serialize(byteBuffer);
-    ReadWriteIOUtils.write(attributeColumnValues.size(), byteBuffer);
-    for (final String value : attributeColumnValues) {
-      ReadWriteIOUtils.write(value, byteBuffer);
+    write(attributeColumnValues.length, byteBuffer);
+    for (final Binary value : attributeColumnValues) {
+      serializeBinary(byteBuffer, value);
     }
+    write(
+        this instanceof AlignedDeviceEntry
+            ? DeviceEntryType.ALIGNED.ordinal()
+            : DeviceEntryType.NON_ALIGNED.ordinal(),
+        byteBuffer);
   }
 
   public void serialize(final DataOutputStream stream) throws IOException {
     deviceID.serialize(stream);
-    ReadWriteIOUtils.write(attributeColumnValues.size(), stream);
-    for (final String value : attributeColumnValues) {
-      ReadWriteIOUtils.write(value, stream);
+    write(attributeColumnValues.length, stream);
+    for (final Binary value : attributeColumnValues) {
+      serializeBinary(stream, value);
     }
+    write(
+        this instanceof AlignedDeviceEntry
+            ? DeviceEntryType.ALIGNED.ordinal()
+            : DeviceEntryType.NON_ALIGNED.ordinal(),
+        stream);
   }
 
   public static DeviceEntry deserialize(final ByteBuffer byteBuffer) {
     final IDeviceID iDeviceID = StringArrayDeviceID.deserialize(byteBuffer);
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
-    final List<String> attributeColumnValues = new ArrayList<>(size);
+    int size = readInt(byteBuffer);
+    final Binary[] attributeColumnValues = new Binary[size];
     while (size-- > 0) {
-      attributeColumnValues.add(ReadWriteIOUtils.readString(byteBuffer));
+      attributeColumnValues[attributeColumnValues.length - size - 1] =
+          deserializeBinary(byteBuffer);
     }
-    return new DeviceEntry(iDeviceID, attributeColumnValues);
+    return constructDeviceEntry(iDeviceID, attributeColumnValues, readInt(byteBuffer));
   }
 
-  @Override
-  public String toString() {
-    return "DeviceEntry{"
-        + "deviceID="
-        + deviceID
-        + ", attributeColumnValues="
-        + attributeColumnValues
-        + '}';
+  public static void serializeBinary(final ByteBuffer byteBuffer, final Binary binary) {
+    if (binary == null) {
+      write(-1, byteBuffer);
+      return;
+    }
+    write(binary, byteBuffer);
+  }
+
+  public static void serializeBinary(final DataOutputStream outputStream, final Binary binary)
+      throws IOException {
+    if (binary == null) {
+      write(-1, outputStream);
+      return;
+    }
+    write(binary, outputStream);
+  }
+
+  public static Binary deserializeBinary(final ByteBuffer byteBuffer) {
+    int length = readInt(byteBuffer);
+    if (length <= 0) {
+      return null;
+    }
+    byte[] bytes = readBytes(byteBuffer, length);
+    return new Binary(bytes);
+  }
+
+  public enum DeviceEntryType {
+    ALIGNED,
+    NON_ALIGNED
+  }
+
+  private static DeviceEntry constructDeviceEntry(
+      IDeviceID deviceID, Binary[] attributeColumnValues, int ordinal) {
+    switch (DeviceEntryType.values()[ordinal]) {
+      case ALIGNED:
+        return new AlignedDeviceEntry(deviceID, attributeColumnValues);
+      case NON_ALIGNED:
+        return new NonAlignedDeviceEntry(deviceID, attributeColumnValues);
+      default:
+        throw new UnsupportedOperationException(
+            "Unknown AlignedDeviceEntry Type: " + DeviceEntryType.values()[ordinal]);
+    }
   }
 
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + deviceID.ramBytesUsed()
-        + RamUsageEstimator.sizeOfCollection(attributeColumnValues);
+        + RamUsageEstimator.sizeOf(attributeColumnValues);
   }
 
   @Override
@@ -121,11 +169,11 @@ public class DeviceEntry implements Accountable {
     }
     final DeviceEntry that = (DeviceEntry) obj;
     return Objects.equals(deviceID, that.deviceID)
-        && Objects.equals(attributeColumnValues, that.attributeColumnValues);
+        && Arrays.equals(attributeColumnValues, that.attributeColumnValues);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(deviceID, attributeColumnValues);
+    return Objects.hash(deviceID, Arrays.hashCode(attributeColumnValues));
   }
 }

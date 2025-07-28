@@ -24,7 +24,7 @@ import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeDispatcher;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSelector;
-import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ReplicateProgressManager;
 
 import java.util.concurrent.TimeUnit;
 
@@ -81,8 +81,6 @@ public class PipeConsensusConfig {
   }
 
   public static class RPC {
-    private final int rpcSelectorThreadNum;
-    private final int rpcMinConcurrentClientNum;
     private final int rpcMaxConcurrentClientNum;
     private final int thriftServerAwaitTimeForStopService;
     private final boolean isRpcThriftCompressionEnabled;
@@ -90,28 +88,16 @@ public class PipeConsensusConfig {
     private final int thriftMaxFrameSize;
 
     public RPC(
-        int rpcSelectorThreadNum,
-        int rpcMinConcurrentClientNum,
         int rpcMaxConcurrentClientNum,
         int thriftServerAwaitTimeForStopService,
         boolean isRpcThriftCompressionEnabled,
         int connectionTimeoutInMs,
         int thriftMaxFrameSize) {
-      this.rpcSelectorThreadNum = rpcSelectorThreadNum;
-      this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
       this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
       this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
       this.isRpcThriftCompressionEnabled = isRpcThriftCompressionEnabled;
       this.connectionTimeoutInMs = connectionTimeoutInMs;
       this.thriftMaxFrameSize = thriftMaxFrameSize;
-    }
-
-    public int getRpcSelectorThreadNum() {
-      return rpcSelectorThreadNum;
-    }
-
-    public int getRpcMinConcurrentClientNum() {
-      return rpcMinConcurrentClientNum;
     }
 
     public int getRpcMaxConcurrentClientNum() {
@@ -139,23 +125,11 @@ public class PipeConsensusConfig {
     }
 
     public static class Builder {
-      private int rpcSelectorThreadNum = 1;
-      private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
       private int rpcMaxConcurrentClientNum = 65535;
       private int thriftServerAwaitTimeForStopService = 60;
       private boolean isRpcThriftCompressionEnabled = false;
       private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(60);
       private int thriftMaxFrameSize = 536870912;
-
-      public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
-        this.rpcSelectorThreadNum = rpcSelectorThreadNum;
-        return this;
-      }
-
-      public RPC.Builder setRpcMinConcurrentClientNum(int rpcMinConcurrentClientNum) {
-        this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
-        return this;
-      }
 
       public RPC.Builder setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
         this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
@@ -185,8 +159,6 @@ public class PipeConsensusConfig {
 
       public RPC build() {
         return new RPC(
-            rpcSelectorThreadNum,
-            rpcMinConcurrentClientNum,
             rpcMaxConcurrentClientNum,
             thriftServerAwaitTimeForStopService,
             isRpcThriftCompressionEnabled,
@@ -203,7 +175,7 @@ public class PipeConsensusConfig {
     private final ConsensusPipeDispatcher consensusPipeDispatcher;
     private final ConsensusPipeGuardian consensusPipeGuardian;
     private final ConsensusPipeSelector consensusPipeSelector;
-    private final ProgressIndexManager progressIndexManager;
+    private final ReplicateProgressManager replicateProgressManager;
     private final ConsensusPipeReceiver consensusPipeReceiver;
     private final long consensusPipeGuardJobIntervalInSeconds;
 
@@ -214,7 +186,7 @@ public class PipeConsensusConfig {
         ConsensusPipeDispatcher consensusPipeDispatcher,
         ConsensusPipeGuardian consensusPipeGuardian,
         ConsensusPipeSelector consensusPipeSelector,
-        ProgressIndexManager progressIndexManager,
+        ReplicateProgressManager replicateProgressManager,
         ConsensusPipeReceiver consensusPipeReceiver,
         long consensusPipeGuardJobIntervalInSeconds) {
       this.extractorPluginName = extractorPluginName;
@@ -223,7 +195,7 @@ public class PipeConsensusConfig {
       this.consensusPipeDispatcher = consensusPipeDispatcher;
       this.consensusPipeGuardian = consensusPipeGuardian;
       this.consensusPipeSelector = consensusPipeSelector;
-      this.progressIndexManager = progressIndexManager;
+      this.replicateProgressManager = replicateProgressManager;
       this.consensusPipeReceiver = consensusPipeReceiver;
       this.consensusPipeGuardJobIntervalInSeconds = consensusPipeGuardJobIntervalInSeconds;
     }
@@ -256,8 +228,8 @@ public class PipeConsensusConfig {
       return consensusPipeReceiver;
     }
 
-    public ProgressIndexManager getProgressIndexManager() {
-      return progressIndexManager;
+    public ReplicateProgressManager getProgressIndexManager() {
+      return replicateProgressManager;
     }
 
     public long getConsensusPipeGuardJobIntervalInSeconds() {
@@ -277,7 +249,7 @@ public class PipeConsensusConfig {
       private ConsensusPipeDispatcher consensusPipeDispatcher = null;
       private ConsensusPipeGuardian consensusPipeGuardian = null;
       private ConsensusPipeSelector consensusPipeSelector = null;
-      private ProgressIndexManager progressIndexManager = null;
+      private ReplicateProgressManager replicateProgressManager = null;
       private ConsensusPipeReceiver consensusPipeReceiver = null;
       private long consensusPipeGuardJobIntervalInSeconds = 180L;
 
@@ -317,8 +289,9 @@ public class PipeConsensusConfig {
         return this;
       }
 
-      public Pipe.Builder setProgressIndexManager(ProgressIndexManager progressIndexManager) {
-        this.progressIndexManager = progressIndexManager;
+      public Pipe.Builder setProgressIndexManager(
+          ReplicateProgressManager replicateProgressManager) {
+        this.replicateProgressManager = replicateProgressManager;
         return this;
       }
 
@@ -336,7 +309,7 @@ public class PipeConsensusConfig {
             consensusPipeDispatcher,
             consensusPipeGuardian,
             consensusPipeSelector,
-            progressIndexManager,
+            replicateProgressManager,
             consensusPipeReceiver,
             consensusPipeGuardJobIntervalInSeconds);
       }

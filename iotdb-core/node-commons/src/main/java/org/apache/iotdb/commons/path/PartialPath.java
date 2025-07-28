@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -65,14 +66,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   public PartialPath() {}
 
-  public PartialPath(IDeviceID device) throws IllegalPathException {
+  public PartialPath(final IDeviceID device) throws IllegalPathException {
     // the first segment is the table name, which may contain multiple levels
     String[] tableNameSegments = PathUtils.splitPathToDetachedNodes(device.getTableName());
     nodes = new String[device.segmentNum() - 1 + tableNameSegments.length];
     System.arraycopy(tableNameSegments, 0, nodes, 0, tableNameSegments.length);
     // copy non-table-name segments
     for (int i = 0; i < device.segmentNum() - 1; i++) {
-      nodes[i + tableNameSegments.length] = device.segment(i + 1).toString();
+      nodes[i + tableNameSegments.length] =
+          device.segment(i + 1) != null ? device.segment(i + 1).toString() : null;
     }
     this.fullPath = getFullPath();
   }
@@ -118,8 +120,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   /**
    * @param partialNodes nodes of a time series path
    */
-  public PartialPath(String[] partialNodes) {
+  public PartialPath(final String[] partialNodes) {
     nodes = partialNodes;
+  }
+
+  public static PartialPath getQualifiedDatabasePartialPath(final String database)
+      throws IllegalPathException {
+    return PartialPath.getDatabasePath(PathUtils.qualifyDatabaseName(database));
   }
 
   /**
@@ -147,7 +154,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * @param path path
    * @param needSplit whether to split path to nodes, needSplit can only be false.
    */
-  public PartialPath(String path, boolean needSplit) {
+  public PartialPath(final String path, final boolean needSplit) {
     Validate.isTrue(!needSplit);
     fullPath = path;
     if ("".equals(path)) {
@@ -155,6 +162,18 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     } else {
       this.nodes = new String[] {path};
     }
+  }
+
+  /**
+   * only use this method in following situations: 1. you are sure you do not want to split the
+   * path. 2. you are sure path is correct.
+   *
+   * @param needSplit whether to split path to nodes, needSplit can only be false.
+   */
+  public PartialPath(String device, String measurement, boolean needSplit) {
+    Validate.isTrue(!needSplit);
+    String path = device + TsFileConstant.PATH_SEPARATOR + measurement;
+    this.nodes = new String[] {path};
   }
 
   public boolean hasWildcard() {
@@ -234,7 +253,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     int len = nodes.length;
     String[] newNodes = Arrays.copyOf(nodes, nodes.length + 1);
     newNodes[len] = measurement;
-    return new MeasurementPath(newNodes);
+    MeasurementPath measurementPath = new MeasurementPath(newNodes);
+    measurementPath.device = this.device;
+    return measurementPath;
   }
 
   /**
@@ -389,8 +410,12 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * "root.sg.device.*" matches path "root.sg.device.s1" whereas it does not match "root.sg.device"
    * and "root.sg.vehicle.s1"
    *
+   * <p>Note: If the current path is a path ending with "**", and does not have any * before it,
+   * like "root.a.b.c.**", then the rPath can be a path with *, and this method returns {@code true}
+   * iff the current path covers rPath.
+   *
    * @param rPath a plain full path of a timeseries
-   * @return true if a successful match, otherwise return false
+   * @return {@code true} if a successful match, otherwise return {@code false}
    */
   public boolean matchFullPath(PartialPath rPath) {
     return matchPath(rPath.getNodes(), 0, 0, false, false);
@@ -436,7 +461,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * <p>1) Pattern "root.sg1.d1.*" does not match prefix path "root.sg2", "root.sg1.d2".
    *
    * @param prefixPath
-   * @return true if a successful match, otherwise return false
+   * @return {@code true} if a successful match, otherwise return {@code false}
    */
   public boolean matchPrefixPath(PartialPath prefixPath) {
     return matchPath(prefixPath.getNodes(), 0, 0, false, true);
@@ -831,6 +856,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return nodes[0];
   }
 
+  public void setIDeviceID(IDeviceID deviceID) {
+    this.device = deviceID;
+  }
+
   @Override
   public IDeviceID getIDeviceID() {
     if (device != null) {
@@ -1059,6 +1088,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   protected IDeviceID toDeviceID(String[] nodes) {
     String tableName;
     int segmentCnt = nodes.length;
+    // not a tree id, no need to generate dummy table
+    if (nodes.length > 0 && !Objects.equals(nodes[0], PATH_ROOT)) {
+      return Factory.DEFAULT_FACTORY.create(nodes);
+    }
     // assuming DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME = 3
     String[] segments;
     if (segmentCnt <= 1) {

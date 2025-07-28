@@ -47,7 +47,7 @@ public class IoTDBFilterNullTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE testNullFilter(device STRING ID, s1 INT32 MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 DOUBLE MEASUREMENT)",
+        "CREATE TABLE testNullFilter(device STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD, s3 DOUBLE FIELD)",
         "INSERT INTO testNullFilter(time,device,s2,s3) " + "values(1, 'd1', false, 11.1)",
         "INSERT INTO testNullFilter(time,device,s1,s2) " + "values(2, 'd1', 22, true)",
         "INSERT INTO testNullFilter(time,device,s1,s3) " + "values(3, 'd1', 23, 33.3)",

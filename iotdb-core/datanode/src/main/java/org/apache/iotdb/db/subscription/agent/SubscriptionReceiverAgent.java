@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiverV1;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -41,10 +42,18 @@ public class SubscriptionReceiverAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionReceiverAgent.class);
 
-  private final ThreadLocal<SubscriptionReceiver> receiverThreadLocal = new ThreadLocal<>();
-
   private static final Map<Byte, Supplier<SubscriptionReceiver>> RECEIVER_CONSTRUCTORS =
       new HashMap<>();
+
+  private static final TPipeSubscribeResp SUBSCRIPTION_NOT_ENABLED_ERROR_RESP =
+      new TPipeSubscribeResp(
+          RpcUtils.getStatus(
+              TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR,
+              "Subscription not enabled, please set config `subscription_enabled` to true."),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
+  private final ThreadLocal<SubscriptionReceiver> receiverThreadLocal = new ThreadLocal<>();
 
   SubscriptionReceiverAgent() {
     RECEIVER_CONSTRUCTORS.put(
@@ -52,6 +61,10 @@ public class SubscriptionReceiverAgent {
   }
 
   public TPipeSubscribeResp handle(final TPipeSubscribeReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return SUBSCRIPTION_NOT_ENABLED_ERROR_RESP;
+    }
+
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       return getReceiver(reqVersion).handle(req);
@@ -66,6 +79,18 @@ public class SubscriptionReceiverAgent {
           status,
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
+    }
+  }
+
+  public long remainingMs() {
+    return remainingMs(PipeSubscribeRequestVersion.VERSION_1.getVersion()); // default to VERSION_1
+  }
+
+  public long remainingMs(final byte reqVersion) {
+    if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
+      return getReceiver(reqVersion).remainingMs();
+    } else {
+      return SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs();
     }
   }
 

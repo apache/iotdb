@@ -66,11 +66,13 @@ public interface IAnalysis {
 
   DataPartition getDataPartitionInfo();
 
+  List<TEndPoint> getRedirectNodeList();
+
   void setRedirectNodeList(List<TEndPoint> redirectNodeList);
 
   void addEndPointToRedirectNodeList(TEndPoint endPoint);
 
-  TimePredicate getCovertedTimePredicate();
+  TimePredicate getConvertedTimePredicate();
 
   void setDatabaseName(String databaseName);
 

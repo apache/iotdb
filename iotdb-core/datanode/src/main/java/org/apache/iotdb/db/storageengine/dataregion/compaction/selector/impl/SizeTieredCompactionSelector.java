@@ -225,8 +225,7 @@ public class SizeTieredCompactionSelector
                 tsFileManager,
                 resource,
                 sequence,
-                tsFileManager.getNextCompactionTaskId(),
-                context.isIgnoreAllNullRows()));
+                tsFileManager.getNextCompactionTaskId()));
       }
     }
     return taskList;

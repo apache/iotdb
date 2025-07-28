@@ -104,7 +104,7 @@ public class IoTDBOrderByWithAlignByDeviceTableIT {
       statement.execute("use " + DATABASE_NAME);
 
       statement.execute(
-          "create table weather(city STRING ID, precipitation INT64 MEASUREMENT, temperature DOUBLE MEASUREMENT)");
+          "create table weather(city STRING TAG, precipitation INT64 FIELD, temperature DOUBLE FIELD)");
 
       // insert data
       long start = startTime;
@@ -186,7 +186,7 @@ public class IoTDBOrderByWithAlignByDeviceTableIT {
     try (Connection iotDBConnection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = iotDBConnection.createStatement()) {
       statement.execute("use " + DATABASE_NAME);
-      statement.execute("create table overflow(device_id STRING ID, value INT32 MEASUREMENT)");
+      statement.execute("create table overflow(device_id STRING TAG, value INT32 FIELD)");
       long startTime = 1;
       for (int i = 0; i < 20; i++) {
         String insertTime =
@@ -1535,7 +1535,7 @@ public class IoTDBOrderByWithAlignByDeviceTableIT {
   // test the optimized plan
   public static String[] optimizedSQL =
       new String[] {
-        "create table optimize(plant_id STRING ID, device_id STRING ID, temperature DOUBLE MEASUREMENT, status BOOLEAN MEASUREMENT, hardware STRING MEASUREMENT)",
+        "create table optimize(plant_id STRING TAG, device_id STRING TAG, temperature DOUBLE FIELD, status BOOLEAN FIELD, hardware STRING FIELD)",
         "insert into optimize(Time, plant_id, device_id, temperature, status) values(2017-11-01T00:00:00.000+08:00, 'wf01', 'wt01', 25.96, true)",
         "insert into optimize(Time, plant_id, device_id, temperature, status) values(2017-11-01T00:01:00.000+08:00, 'wf01', 'wt01', 24.36, true)",
         "insert into optimize(Time, plant_id, device_id, status, hardware) values(1970-01-01T08:00:00.001+08:00, 'wf02', 'wt02', true, 'v1')",

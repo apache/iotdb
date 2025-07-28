@@ -30,7 +30,7 @@ import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Accumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
@@ -69,6 +69,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -980,7 +981,7 @@ public class RawDataAggregationOperatorTest {
                 new SingleColumnMerger(new InputLocation(1, 0), new AscTimeComparator())),
             new AscTimeComparator());
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     List<Accumulator> accumulators =
         AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
@@ -990,12 +991,12 @@ public class RawDataAggregationOperatorTest {
             true);
     for (int i = 0; i < accumulators.size(); i++) {
       aggregators.add(
-          new Aggregator(accumulators.get(i), AggregationStep.SINGLE, inputLocations.get(i)));
+          new TreeAggregator(accumulators.get(i), AggregationStep.SINGLE, inputLocations.get(i)));
     }
     return new RawDataAggregationOperator(
         driverContext.getOperatorContexts().get(3),
         aggregators,
-        initTimeRangeIterator(groupByTimeParameter, true, true),
+        initTimeRangeIterator(groupByTimeParameter, true, true, ZoneId.systemDefault()),
         timeJoinOperator,
         true,
         DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,

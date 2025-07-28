@@ -85,7 +85,7 @@ public class MetadataWriteNodeSerDeTest {
     AlterTimeSeriesNode alterTimeSeriesNode =
         new AlterTimeSeriesNode(
             planNodeId,
-            new PartialPath("root.sg.d1.s1"),
+            new MeasurementPath("root.sg.d1.s1"),
             AlterTimeSeriesStatement.AlterType.RENAME,
             map,
             "alias",

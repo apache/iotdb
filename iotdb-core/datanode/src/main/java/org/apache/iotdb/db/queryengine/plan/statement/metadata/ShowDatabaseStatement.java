@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -55,7 +54,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   private final PartialPath pathPattern;
   private boolean isDetailed;
 
-  public ShowDatabaseStatement(PartialPath pathPattern) {
+  public ShowDatabaseStatement(final PartialPath pathPattern) {
     super();
     this.pathPattern = pathPattern;
     this.isDetailed = false;
@@ -69,53 +68,54 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
     return isDetailed;
   }
 
-  public void setDetailed(boolean detailed) {
+  public void setDetailed(final boolean detailed) {
     isDetailed = detailed;
   }
 
   public void buildTSBlock(
-      Map<String, TDatabaseInfo> storageGroupInfoMap, SettableFuture<ConfigTaskResult> future)
-      throws IllegalPathException {
+      final Map<String, TDatabaseInfo> databaseInfoMap,
+      final SettableFuture<ConfigTaskResult> future) {
 
-    List<TSDataType> outputDataTypes =
+    final List<TSDataType> outputDataTypes =
         isDetailed
-            ? ColumnHeaderConstant.showStorageGroupsDetailColumnHeaders.stream()
+            ? ColumnHeaderConstant.showDatabasesDetailColumnHeaders.stream()
                 .map(ColumnHeader::getColumnType)
                 .collect(Collectors.toList())
-            : ColumnHeaderConstant.showStorageGroupsColumnHeaders.stream()
+            : ColumnHeaderConstant.showDatabasesColumnHeaders.stream()
                 .map(ColumnHeader::getColumnType)
                 .collect(Collectors.toList());
 
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
-      String storageGroup = entry.getKey();
-      TDatabaseInfo storageGroupInfo = entry.getValue();
+    final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    for (final Map.Entry<String, TDatabaseInfo> entry :
+        databaseInfoMap.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .collect(Collectors.toList())) {
+      final String database = entry.getKey();
+      final TDatabaseInfo databaseInfo = entry.getValue();
 
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder
-          .getColumnBuilder(0)
-          .writeBinary(new Binary(storageGroup, TSFileConfig.STRING_CHARSET));
-      builder.getColumnBuilder(1).writeInt(storageGroupInfo.getSchemaReplicationFactor());
-      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getDataReplicationFactor());
-      builder.getColumnBuilder(3).writeLong(storageGroupInfo.getTimePartitionOrigin());
-      builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
+      builder.getColumnBuilder(0).writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(1).writeInt(databaseInfo.getSchemaReplicationFactor());
+      builder.getColumnBuilder(2).writeInt(databaseInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(3).writeLong(databaseInfo.getTimePartitionOrigin());
+      builder.getColumnBuilder(4).writeLong(databaseInfo.getTimePartitionInterval());
       if (isDetailed) {
-        builder.getColumnBuilder(5).writeInt(storageGroupInfo.getSchemaRegionNum());
-        builder.getColumnBuilder(6).writeInt(storageGroupInfo.getMinSchemaRegionNum());
-        builder.getColumnBuilder(7).writeInt(storageGroupInfo.getMaxSchemaRegionNum());
-        builder.getColumnBuilder(8).writeInt(storageGroupInfo.getDataRegionNum());
-        builder.getColumnBuilder(9).writeInt(storageGroupInfo.getMinDataRegionNum());
-        builder.getColumnBuilder(10).writeInt(storageGroupInfo.getMaxDataRegionNum());
+        builder.getColumnBuilder(5).writeInt(databaseInfo.getSchemaRegionNum());
+        builder.getColumnBuilder(6).writeInt(databaseInfo.getMinSchemaRegionNum());
+        builder.getColumnBuilder(7).writeInt(databaseInfo.getMaxSchemaRegionNum());
+        builder.getColumnBuilder(8).writeInt(databaseInfo.getDataRegionNum());
+        builder.getColumnBuilder(9).writeInt(databaseInfo.getMinDataRegionNum());
+        builder.getColumnBuilder(10).writeInt(databaseInfo.getMaxDataRegionNum());
       }
       builder.declarePosition();
     }
 
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowStorageGroupHeader(isDetailed);
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowDatabaseHeader(isDetailed);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, C context) {
     return visitor.visitShowStorageGroup(this, context);
   }
 

@@ -141,7 +141,7 @@ public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNod
               IMeasurementSchema measurementSchema = templateChildrenIterator.next();
               next =
                   new SchemaMeasurementNode(
-                      measurementSchema.getMeasurementId(), measurementSchema);
+                      measurementSchema.getMeasurementName(), measurementSchema);
             } else {
               return false;
             }

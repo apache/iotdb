@@ -20,19 +20,20 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
@@ -42,10 +43,10 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public abstract class DataNodeAsyncRequestRPCHandler<Response>
-    extends AsyncRequestRPCHandler<Response, CnToDnRequestType, TDataNodeLocation> {
+    extends AsyncRequestRPCHandler<Response, CnToDnAsyncRequestType, TDataNodeLocation> {
 
   protected DataNodeAsyncRequestRPCHandler(
-      CnToDnRequestType requestType,
+      CnToDnAsyncRequestType requestType,
       int requestId,
       TDataNodeLocation targetNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
@@ -70,10 +71,10 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
   }
 
   public static DataNodeAsyncRequestRPCHandler<?> buildHandler(
-      AsyncRequestContext<?, ?, CnToDnRequestType, TDataNodeLocation> context,
+      AsyncRequestContext<?, ?, CnToDnAsyncRequestType, TDataNodeLocation> context,
       int requestId,
       TDataNodeLocation targetDataNode) {
-    CnToDnRequestType requestType = context.getRequestType();
+    CnToDnAsyncRequestType requestType = context.getRequestType();
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = context.getNodeLocationMap();
     Map<Integer, ?> responseMap = context.getResponseMap();
     CountDownLatch countDownLatch = context.getCountDownLatch();
@@ -174,12 +175,21 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
             (Map<Integer, TRegionLeaderChangeResp>) responseMap,
             countDownLatch);
       case SUBMIT_TEST_CONNECTION_TASK:
+      case SUBMIT_TEST_DN_INTERNAL_CONNECTION_TASK:
         return new SubmitTestConnectionTaskRPCHandler(
             requestType,
             requestId,
             targetDataNode,
             dataNodeLocationMap,
             (Map<Integer, TTestConnectionResp>) responseMap,
+            countDownLatch);
+      case DETECT_TREE_DEVICE_VIEW_FIELD_TYPE:
+        return new TreeDeviceViewFieldDetectionHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TDeviceViewResp>) responseMap,
             countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:
@@ -195,17 +205,32 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case FULL_MERGE:
       case FLUSH:
       case CLEAR_CACHE:
+      case INVALIDATE_LAST_CACHE:
+      case CLEAN_DATA_NODE_CACHE:
+      case STOP_AND_CLEAR_DATA_NODE:
       case START_REPAIR_DATA:
       case STOP_REPAIR_DATA:
       case LOAD_CONFIGURATION:
       case SET_SYSTEM_STATUS:
+      case NOTIFY_REGION_MIGRATION:
       case UPDATE_REGION_ROUTE_MAP:
+      case INVALIDATE_SCHEMA_CACHE:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
       case UPDATE_TEMPLATE:
       case UPDATE_TABLE:
       case KILL_QUERY_INSTANCE:
       case RESET_PEER_LIST:
       case TEST_CONNECTION:
+      case INVALIDATE_TABLE_CACHE:
+      case DELETE_DATA_FOR_DROP_TABLE:
+      case DELETE_DEVICES_FOR_DROP_TABLE:
+      case INVALIDATE_COLUMN_CACHE:
+      case DELETE_COLUMN_DATA:
+      case CONSTRUCT_TABLE_DEVICE_BLACK_LIST:
+      case ROLLBACK_TABLE_DEVICE_BLACK_LIST:
+      case INVALIDATE_MATCHED_TABLE_DEVICE_CACHE:
+      case DELETE_DATA_FOR_TABLE_DEVICE:
+      case DELETE_TABLE_DEVICE_IN_BLACK_LIST:
       default:
         return new DataNodeTSStatusRPCHandler(
             requestType,

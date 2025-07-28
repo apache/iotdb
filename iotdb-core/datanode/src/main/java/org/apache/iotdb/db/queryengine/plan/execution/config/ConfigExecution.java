@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -47,7 +49,12 @@ import javax.validation.constraints.NotNull;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
@@ -56,6 +63,40 @@ public class ConfigExecution implements IQueryExecution {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigExecution.class);
 
   private static final TsBlockSerde serde = new TsBlockSerde();
+  private static final Set<Integer> userExceptionCodes =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(),
+                  TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode(),
+                  TSStatusCode.DATABASE_CONFLICT.getStatusCode(),
+                  TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode(),
+                  TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
+                  TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE.getStatusCode(),
+                  TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode(),
+                  TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode(),
+                  TSStatusCode.TABLE_NOT_EXISTS.getStatusCode(),
+                  TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode(),
+                  TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode(),
+                  TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode(),
+                  TSStatusCode.DATABASE_MODEL.getStatusCode(),
+                  TSStatusCode.DATABASE_CONFLICT.getStatusCode(),
+                  TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode(),
+                  TSStatusCode.TEMPLATE_NOT_SET.getStatusCode(),
+                  TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode(),
+                  TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+                  TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode(),
+                  TSStatusCode.USER_ALREADY_EXIST.getStatusCode(),
+                  TSStatusCode.USER_NOT_EXIST.getStatusCode(),
+                  TSStatusCode.NO_PERMISSION.getStatusCode(),
+                  TSStatusCode.NOT_HAS_PRIVILEGE.getStatusCode(),
+                  TSStatusCode.ROLE_ALREADY_EXIST.getStatusCode(),
+                  TSStatusCode.ROLE_NOT_EXIST.getStatusCode(),
+                  TSStatusCode.USER_ALREADY_HAS_ROLE.getStatusCode(),
+                  TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode(),
+                  TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode(),
+                  TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
+                  TSStatusCode.NO_SUCH_QUERY.getStatusCode())));
 
   private final MPPQueryContext context;
   private final ExecutorService executor;
@@ -118,20 +159,32 @@ public class ConfigExecution implements IQueryExecution {
     }
   }
 
-  private void fail(Throwable cause) {
-    LOGGER.warn("Failures happened during running ConfigExecution.", cause);
-    stateMachine.transitionToFailed(cause);
-    ConfigTaskResult result;
+  private void fail(final Throwable cause) {
+    int errorCode = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
     if (cause instanceof IoTDBException) {
-      result =
-          new ConfigTaskResult(TSStatusCode.representOf(((IoTDBException) cause).getErrorCode()));
-    } else if (cause instanceof StatementExecutionException) {
-      result =
-          new ConfigTaskResult(
-              TSStatusCode.representOf(((StatementExecutionException) cause).getStatusCode()));
-    } else {
-      result = new ConfigTaskResult(TSStatusCode.INTERNAL_SERVER_ERROR);
+      errorCode = ((IoTDBException) cause).getErrorCode();
+    } else if (cause instanceof IoTDBRuntimeException) {
+      errorCode = ((IoTDBRuntimeException) cause).getErrorCode();
     }
+    if (!userExceptionCodes.contains(errorCode)) {
+      LOGGER.warn(
+          "Failures happened during running ConfigExecution when executing {}.",
+          Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
+          cause);
+    } else {
+      LOGGER.info(
+          "Failures happened during running ConfigExecution when executing {}, message: {}, status: {}",
+          Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
+          cause.getMessage(),
+          errorCode);
+    }
+    stateMachine.transitionToFailed(cause);
+    final ConfigTaskResult result =
+        cause instanceof StatementExecutionException
+            ? new ConfigTaskResult(
+                TSStatusCode.representOf(((StatementExecutionException) cause).getStatusCode()))
+            : new ConfigTaskResult(TSStatusCode.representOf(errorCode));
+
     taskFuture.set(result);
   }
 
@@ -220,6 +273,11 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
+  public boolean isUserQuery() {
+    return context.isUserQuery();
+  }
+
+  @Override
   public String getQueryId() {
     return context.getQueryId().getId();
   }
@@ -246,6 +304,16 @@ public class ConfigExecution implements IQueryExecution {
 
   @Override
   public String getStatementType() {
-    return statementType.name();
+    return statementType == null ? null : statementType.name();
+  }
+
+  @Override
+  public IClientSession.SqlDialect getSQLDialect() {
+    return context.getSession().getSqlDialect();
+  }
+
+  @Override
+  public String getUser() {
+    return context.getSession().getUserName();
   }
 }

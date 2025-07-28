@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -38,8 +39,16 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
@@ -93,8 +102,10 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,6 +120,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -173,7 +185,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegionPBTreeImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
 
-    storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
+    storageGroupFullPath = schemaRegionParams.getDatabase();
     this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
     storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
@@ -181,9 +193,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     this.regionStatistics =
         new CachedSchemaRegionStatistics(
             schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
-    this.metric =
-        new SchemaRegionCachedMetric(
-            regionStatistics, schemaRegionParams.getDatabase().getFullPath());
+    this.metric = new SchemaRegionCachedMetric(regionStatistics, schemaRegionParams.getDatabase());
     init();
   }
 
@@ -849,13 +859,18 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
+  public void checkSchemaQuota(final PartialPath devicePath, final int timeSeriesNum)
       throws SchemaQuotaExceededException {
     if (!mtree.checkDeviceNodeExists(devicePath)) {
       schemaQuotaManager.check(timeSeriesNum, 1);
     } else {
       schemaQuotaManager.check(timeSeriesNum, 0);
     }
+  }
+
+  @Override
+  public void checkSchemaQuota(final String tableName, final List<Object[]> deviceIdList) {
+    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
   }
 
   @Override
@@ -1441,8 +1456,38 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public void deleteTableDevice(String table) {
+  public void deleteTableDevice(final DeleteTableDeviceNode deleteTableDeviceNode) {
     throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+  }
+
+  @Override
+  public void dropTableAttribute(final TableAttributeColumnDropNode dropTableAttributeNode) {
+    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+  }
+
+  @Override
+  public long constructTableDevicesBlackList(
+      final ConstructTableDevicesBlackListNode constructTableDevicesBlackListNode) {
+    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+  }
+
+  @Override
+  public void rollbackTableDevicesBlackList(
+      final RollbackTableDevicesBlackListNode rollbackTableDevicesBlackListNode) {
+    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+  }
+
+  @Override
+  public void deleteTableDevicesInBlackList(
+      final DeleteTableDevicesInBlackListNode rollbackTableDevicesBlackListNode) {
+    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+  }
+
+  @Override
+  public int fillLastQueryMap(
+      PartialPath pattern,
+      Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill) {
+    throw new UnsupportedOperationException("Not implemented");
   }
 
   @Override
@@ -1487,6 +1532,22 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
       String table, List<Object[]> devicePathList) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
+      final AtomicInteger limit, final AtomicBoolean hasRemaining) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void commitUpdateAttribute(final TableDeviceAttributeCommitUpdateNode node) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void addNodeLocation(final TableNodeLocationAddNode node) {
     throw new UnsupportedOperationException();
   }
 

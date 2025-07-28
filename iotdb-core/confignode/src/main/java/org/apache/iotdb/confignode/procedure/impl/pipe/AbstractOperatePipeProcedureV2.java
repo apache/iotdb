@@ -19,17 +19,20 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
-import org.apache.iotdb.confignode.manager.pipe.metric.PipeProcedureMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeProcedureMetrics;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.service.ConfigNode;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -82,6 +85,11 @@ public abstract class AbstractOperatePipeProcedureV2
 
   // Only used in rollback to reduce the number of network calls
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
+
+  // Only used in rollback to avoid executing rollbackFromValidateTask multiple times
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
+  // TODO: consider serializing this variable later
+  protected boolean isRollbackFromValidateTaskSuccessful = false;
 
   // This variable should not be serialized into procedure store,
   // putting it here is just for convenience
@@ -213,7 +221,7 @@ public abstract class AbstractOperatePipeProcedureV2
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     if (pipeTaskInfo == null) {
       LOGGER.warn(
           "ProcedureId {}: Pipe lock is not acquired, executeFromState's execution will be skipped.",
@@ -260,6 +268,7 @@ public abstract class AbstractOperatePipeProcedureV2
             getCycles() + 1,
             RETRY_THRESHOLD,
             e);
+        setNextState(getCurrentState());
         // Wait 3s for next retry
         TimeUnit.MILLISECONDS.sleep(3000L);
       } else {
@@ -275,6 +284,7 @@ public abstract class AbstractOperatePipeProcedureV2
                 String.format(
                     "ProcedureId %s: Fail to %s because %s",
                     getProcId(), getOperation().name(), e.getMessage())));
+        return Flow.NO_MORE_STATE;
       }
     }
     return Flow.HAS_MORE_STATE;
@@ -298,10 +308,13 @@ public abstract class AbstractOperatePipeProcedureV2
 
     switch (state) {
       case VALIDATE_TASK:
-        try {
-          rollbackFromValidateTask(env);
-        } catch (Exception e) {
-          LOGGER.warn("ProcedureId {}: Failed to rollback from validate task.", getProcId(), e);
+        if (!isRollbackFromValidateTaskSuccessful) {
+          try {
+            rollbackFromValidateTask(env);
+            isRollbackFromValidateTaskSuccessful = true;
+          } catch (Exception e) {
+            LOGGER.warn("ProcedureId {}: Failed to rollback from validate task.", getProcId(), e);
+          }
         }
         break;
       case CALCULATE_INFO_FOR_TASK:
@@ -330,7 +343,7 @@ public abstract class AbstractOperatePipeProcedureV2
         break;
       case OPERATE_ON_DATA_NODES:
         try {
-          // We have to make sure that rollbackFromOperateOnDataNodes is executed before
+          // We have to make sure that rollbackFromOperateOnDataNodes is executed after
           // rollbackFromWriteConfigNodeConsensus, because rollbackFromOperateOnDataNodes is
           // executed based on the consensus of config nodes that is written by
           // rollbackFromWriteConfigNodeConsensus
@@ -378,13 +391,12 @@ public abstract class AbstractOperatePipeProcedureV2
    * @return The responseMap after pushing pipe meta
    * @throws IOException Exception when Serializing to byte buffer
    */
-  protected Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(ConfigNodeProcedureEnv env)
-      throws IOException {
+  protected Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(
+      final ConfigNodeProcedureEnv env) throws IOException {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
-    for (PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
-      pipeMetaBinaryList.add(pipeMeta.serialize());
+    for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
+      pipeMetaBinaryList.add(copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
     }
-
     return env.pushAllPipeMetaToDataNodes(pipeMetaBinaryList);
   }
 
@@ -397,12 +409,12 @@ public abstract class AbstractOperatePipeProcedureV2
    * @throws IOException Exception when Serializing to byte buffer
    */
   public static Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(
-      ConfigNodeProcedureEnv env, AtomicReference<PipeTaskInfo> pipeTaskInfo) throws IOException {
+      final ConfigNodeProcedureEnv env, final AtomicReference<PipeTaskInfo> pipeTaskInfo)
+      throws IOException {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
-    for (PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
-      pipeMetaBinaryList.add(pipeMeta.serialize());
+    for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
+      pipeMetaBinaryList.add(copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
     }
-
     return env.pushAllPipeMetaToDataNodes(pipeMetaBinaryList);
   }
 
@@ -414,12 +426,20 @@ public abstract class AbstractOperatePipeProcedureV2
    * @return Error messages for the given pipe after pushing pipe meta
    */
   public static String parsePushPipeMetaExceptionForPipe(
-      String pipeName, Map<Integer, TPushPipeMetaResp> respMap) {
+      final String pipeName, final Map<Integer, TPushPipeMetaResp> respMap) {
     final StringBuilder exceptionMessageBuilder = new StringBuilder();
 
-    for (Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
-      int dataNodeId = respEntry.getKey();
-      TPushPipeMetaResp resp = respEntry.getValue();
+    for (final Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
+      final int dataNodeId = respEntry.getKey();
+      final TPushPipeMetaResp resp = respEntry.getValue();
+
+      if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_TIMEOUT.getStatusCode()) {
+        exceptionMessageBuilder.append(
+            String.format(
+                "DataNodeId: %s, Message: Timeout to wait for lock while processing pushPipeMeta on dataNodes.",
+                dataNodeId));
+        continue;
+      }
 
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
         if (!resp.isSetExceptionMessages()) {
@@ -430,7 +450,7 @@ public abstract class AbstractOperatePipeProcedureV2
           continue;
         }
 
-        AtomicBoolean hasException = new AtomicBoolean(false);
+        final AtomicBoolean hasException = new AtomicBoolean(false);
 
         resp.getExceptionMessages()
             .forEach(
@@ -479,7 +499,9 @@ public abstract class AbstractOperatePipeProcedureV2
   protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes(
       String pipeName, ConfigNodeProcedureEnv env) throws IOException {
     return env.pushSinglePipeMetaToDataNodes(
-        pipeTaskInfo.get().getPipeMetaByPipeName(pipeName).serialize());
+        copyAndFilterOutNonWorkingDataRegionPipeTasks(
+                pipeTaskInfo.get().getPipeMetaByPipeName(pipeName))
+            .serialize());
   }
 
   /**
@@ -492,6 +514,72 @@ public abstract class AbstractOperatePipeProcedureV2
   protected Map<Integer, TPushPipeMetaResp> dropSinglePipeOnDataNodes(
       String pipeName, ConfigNodeProcedureEnv env) {
     return env.dropSinglePipeOnDataNodes(pipeName);
+  }
+
+  public static PipeMeta copyAndFilterOutNonWorkingDataRegionPipeTasks(PipeMeta originalPipeMeta)
+      throws IOException {
+    final PipeMeta copiedPipeMeta = originalPipeMeta.deepCopy4TaskAgent();
+
+    copiedPipeMeta
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .entrySet()
+        .removeIf(
+            consensusGroupId2TaskMeta -> {
+              if (originalPipeMeta.getStaticMeta().isSourceExternal()) {
+                // should keep the external source tasks
+                return false;
+              }
+              final String database;
+              try {
+                database =
+                    ConfigNode.getInstance()
+                        .getConfigManager()
+                        .getPartitionManager()
+                        .getRegionDatabase(
+                            new TConsensusGroupId(
+                                // We assume that the consensus group id is a data region id.
+                                TConsensusGroupType.DataRegion,
+                                consensusGroupId2TaskMeta.getKey()));
+                if (database == null) {
+                  // If the consensus group id is not a data region id, we keep it.
+                  // If the consensus group id is a data region id, but the database is not found,
+                  // we keep it.
+                  return false;
+                }
+              } catch (final Exception ignore) {
+                // In case of any exception, we keep the consensus group id.
+                return false;
+              }
+
+              final boolean isTableModel;
+              try {
+                final TDatabaseSchema schema =
+                    ConfigNode.getInstance()
+                        .getConfigManager()
+                        .getClusterSchemaManager()
+                        .getDatabaseSchemaByName(database);
+                if (schema == null) {
+                  // If the database is not found, we keep it.
+                  return false;
+                }
+                isTableModel = schema.isIsTableModel();
+              } catch (final Exception ignore) {
+                // If the database is not found, we keep it.
+                return false;
+              }
+
+              try {
+                return !DataRegionListeningFilter.shouldDatabaseBeListened(
+                    copiedPipeMeta.getStaticMeta().getExtractorParameters(),
+                    isTableModel,
+                    database);
+              } catch (final Exception e) {
+                return false;
+              }
+            });
+
+    return copiedPipeMeta;
   }
 
   @Override

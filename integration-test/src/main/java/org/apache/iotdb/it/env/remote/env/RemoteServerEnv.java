@@ -27,8 +27,10 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
@@ -41,12 +43,15 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -107,14 +112,16 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public List<String> getMetricPrometheusReporterContents() {
+  public List<String> getMetricPrometheusReporterContents(String authHeader) {
     List<String> result = new ArrayList<>();
     result.add(
         getUrlContent(
-            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + configNodeMetricPort + "/metrics"));
+            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + configNodeMetricPort + "/metrics",
+            authHeader));
     result.add(
         getUrlContent(
-            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + dataNodeMetricPort + "/metrics"));
+            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + dataNodeMetricPort + "/metrics",
+            authHeader));
     return result;
   }
 
@@ -137,7 +144,7 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public Connection getWriteOnlyConnectionWithSpecifiedDataNode(
-      DataNodeWrapper dataNode, String username, String password) {
+      DataNodeWrapper dataNode, String username, String password, String sqlDialect) {
     throw new UnsupportedOperationException();
   }
 
@@ -172,6 +179,13 @@ public class RemoteServerEnv implements BaseEnv {
     return connection;
   }
 
+  @Override
+  public Connection getConnection(
+      DataNodeWrapper dataNodeWrapper, String username, String password, String sqlDialect)
+      throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
   public void setTestMethodName(String testCaseName) {
     // Do nothing
   }
@@ -202,7 +216,7 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public ISessionPool getSessionPool(int maxSize, String sqlDialect) {
+  public ISessionPool getSessionPool(int maxSize) {
     return new SessionPool.Builder()
         .host(SessionConfig.DEFAULT_HOST)
         .port(SessionConfig.DEFAULT_PORT)
@@ -218,15 +232,15 @@ public class RemoteServerEnv implements BaseEnv {
         .version(SessionConfig.DEFAULT_VERSION)
         .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
         .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
-        .sqlDialect(sqlDialect)
         .build();
   }
 
   @Override
-  public ISessionPool getSessionPool(int maxSize, String sqlDialect, String database) {
-    return new SessionPool.Builder()
-        .host(SessionConfig.DEFAULT_HOST)
-        .port(SessionConfig.DEFAULT_PORT)
+  public ITableSessionPool getTableSessionPool(int maxSize) {
+    return new TableSessionPoolBuilder()
+        .nodeUrls(
+            Collections.singletonList(
+                SessionConfig.DEFAULT_HOST + ":" + SessionConfig.DEFAULT_PORT))
         .user(SessionConfig.DEFAULT_USER)
         .password(SessionConfig.DEFAULT_PASSWORD)
         .maxSize(maxSize)
@@ -236,42 +250,90 @@ public class RemoteServerEnv implements BaseEnv {
         .zoneId(null)
         .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
         .connectionTimeoutInMs(SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS)
-        .version(SessionConfig.DEFAULT_VERSION)
         .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
         .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
-        .sqlDialect(sqlDialect)
+        .build();
+  }
+
+  @Override
+  public ITableSessionPool getTableSessionPool(int maxSize, String database) {
+    return new TableSessionPoolBuilder()
+        .nodeUrls(
+            Collections.singletonList(
+                SessionConfig.DEFAULT_HOST + ":" + SessionConfig.DEFAULT_PORT))
+        .user(SessionConfig.DEFAULT_USER)
+        .password(SessionConfig.DEFAULT_PASSWORD)
+        .database(database)
+        .maxSize(maxSize)
+        .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
+        .waitToGetSessionTimeoutInMs(60_000)
+        .enableCompression(false)
+        .zoneId(null)
+        .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
+        .connectionTimeoutInMs(SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS)
+        .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
+        .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+        .build();
+  }
+
+  @Override
+  public ISession getSessionConnection() throws IoTDBConnectionException {
+    Session session = new Session.Builder().host(ip_addr).port(Integer.parseInt(port)).build();
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISession getSessionConnection(ZoneId zoneId) throws IoTDBConnectionException {
+    Session session =
+        new Session.Builder().host(ip_addr).port(Integer.parseInt(port)).zoneId(zoneId).build();
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ITableSession getTableSessionConnection() throws IoTDBConnectionException {
+    return new TableSessionBuilder()
+        .nodeUrls(Collections.singletonList(ip_addr + ":" + port))
+        .build();
+  }
+
+  @Override
+  public ITableSession getTableSessionConnectionWithDB(String database)
+      throws IoTDBConnectionException {
+    return new TableSessionBuilder()
+        .nodeUrls(Collections.singletonList(ip_addr + ":" + port))
         .database(database)
         .build();
   }
 
   @Override
-  public ISession getSessionConnection(String sqlDialect) throws IoTDBConnectionException {
-    Session session =
-        new Session.Builder()
-            .host(ip_addr)
-            .port(Integer.parseInt(port))
-            .sqlDialect(sqlDialect)
-            .build();
-    session.open();
-    return session;
-  }
-
-  @Override
-  public ISession getSessionConnectionWithDB(String sqlDialect, String database)
+  public ITableSession getTableSessionConnection(List<String> nodeUrls)
       throws IoTDBConnectionException {
-    Session session =
-        new Session.Builder()
-            .host(ip_addr)
-            .port(Integer.parseInt(port))
-            .sqlDialect(sqlDialect)
-            .database(database)
-            .build();
-    session.open();
-    return session;
+    return new TableSessionBuilder()
+        .nodeUrls(nodeUrls)
+        .username(SessionConfig.DEFAULT_USER)
+        .password(SessionConfig.DEFAULT_PASSWORD)
+        .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
+        .zoneId(null)
+        .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
+        .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+        .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
+        .build();
   }
 
   @Override
-  public ISession getSessionConnection(String userName, String password, String sqlDialect)
+  public ITableSession getTableSessionConnection(String userName, String password)
+      throws IoTDBConnectionException {
+    return new TableSessionBuilder()
+        .nodeUrls(Collections.singletonList(ip_addr + ":" + port))
+        .username(userName)
+        .password(password)
+        .build();
+  }
+
+  @Override
+  public ISession getSessionConnection(String userName, String password)
       throws IoTDBConnectionException {
     Session session =
         new Session.Builder()
@@ -279,15 +341,13 @@ public class RemoteServerEnv implements BaseEnv {
             .port(Integer.parseInt(port))
             .username(userName)
             .password(password)
-            .sqlDialect(sqlDialect)
             .build();
     session.open();
     return session;
   }
 
   @Override
-  public ISession getSessionConnection(List<String> nodeUrls, String sqlDialect)
-      throws IoTDBConnectionException {
+  public ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
     Session session =
         new Session.Builder()
             .nodeUrls(Collections.singletonList(ip_addr + ":" + port))
@@ -299,7 +359,6 @@ public class RemoteServerEnv implements BaseEnv {
             .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
             .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
             .version(SessionConfig.DEFAULT_VERSION)
-            .sqlDialect(sqlDialect)
             .build();
     session.open();
     return session;
@@ -332,6 +391,11 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public void shutdownAllConfigNodes() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void shutdownForciblyAllConfigNodes() {
     throw new UnsupportedOperationException();
   }
 
@@ -397,6 +461,11 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public void shutdownAllDataNodes() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void shutdownForciblyAllDataNodes() {
     throw new UnsupportedOperationException();
   }
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.agent.task;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -115,9 +116,9 @@ public class PipeTaskManager {
    *     otherwise
    */
   public synchronized boolean hasPipeTaskInConsensusGroup(final int consensusGroupId) {
-    return pipeMap.values().stream()
-        .anyMatch(
-            consensusGroupId2PipeTask -> consensusGroupId2PipeTask.containsKey(consensusGroupId));
+    return pipeMap.entrySet().stream()
+        .filter(entry -> entry.getKey().getPipeType() != PipeType.CONSENSUS)
+        .anyMatch(entry -> entry.getValue().containsKey(consensusGroupId));
   }
 
   /**

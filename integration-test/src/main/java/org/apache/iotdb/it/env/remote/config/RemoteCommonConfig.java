@@ -55,6 +55,16 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEncryptType(String encryptType) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     return this;
   }
@@ -105,7 +115,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
     return this;
   }
 
@@ -127,6 +137,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
     return this;
   }
 
@@ -166,6 +181,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTTLCheckInterval(long ttlCheckInterval) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setTimePartitionOrigin(long timePartitionOrigin) {
     return this;
   }
@@ -198,6 +218,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setEnableMQTTService(boolean enableMQTTService) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
     return this;
   }
 
@@ -246,6 +271,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     return this;
   }
 
@@ -299,6 +329,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     return this;
   }
@@ -319,7 +354,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
+  public CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs) {
     return this;
   }
 
@@ -343,6 +378,27 @@ public class RemoteCommonConfig implements CommonConfig {
   @Override
   public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
       int pipeConnectorRequestSliceThresholdBytes) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      int subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    return this;
+  }
+
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
     return this;
   }
 }

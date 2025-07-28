@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
@@ -87,7 +88,8 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
           StorageEngineException,
           InterruptedException,
           MetadataException,
-          PageException {
+          PageException,
+          LoadFileException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -121,7 +123,8 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
           StorageEngineException,
           InterruptedException,
           MetadataException,
-          PageException {
+          PageException,
+          LoadFileException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -155,7 +158,8 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
           StorageEngineException,
           InterruptedException,
           MetadataException,
-          PageException {
+          PageException,
+          LoadFileException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -193,7 +197,8 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
           StorageEngineException,
           InterruptedException,
           MetadataException,
-          PageException {
+          PageException,
+          LoadFileException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -217,7 +222,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
             },
             TSEncoding.PLAIN,
             CompressionType.LZ4,
-            Arrays.asList(false, false, false, false, false),
+            Arrays.asList(false, false, false, true, false),
             true);
     seqResources.add(seqResource2);
 
@@ -259,7 +264,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
   }
 
   private void consumeChunkDataAndValidate(TsFileResource resource)
-      throws IOException, IllegalPathException {
+      throws IOException, IllegalPathException, LoadFileException {
     Map<TTimePartitionSlot, TestLoadTsFileIOWriter> writerMap = new HashMap<>();
 
     TsFileSplitter splitter =
@@ -278,8 +283,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
                         }
                       });
               try {
-                IDeviceID deviceID =
-                    IDeviceID.Factory.DEFAULT_FACTORY.create(alignedChunkData.getDevice());
+                final IDeviceID deviceID = alignedChunkData.getDevice();
                 if (!deviceID.equals(writer.currentDevice)) {
                   if (writer.currentDevice != null) {
                     writer.endChunkGroup();

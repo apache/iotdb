@@ -149,6 +149,21 @@ public abstract class Expression extends Node {
       case 25:
         expression = new CoalesceExpression(byteBuffer);
         break;
+      case 26:
+        expression = new SimpleCaseExpression(byteBuffer);
+        break;
+      case 27:
+        expression = new SearchedCaseExpression(byteBuffer);
+        break;
+      case 28:
+        expression = new WhenClause(byteBuffer);
+        break;
+      case 31:
+        expression = new Row(byteBuffer);
+        break;
+      case 32:
+        expression = new Extract(byteBuffer);
+        break;
       default:
         throw new IllegalArgumentException("Invalid expression type: " + type);
     }

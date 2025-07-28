@@ -28,14 +28,14 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
-import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -47,12 +47,10 @@ import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
-import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -61,6 +59,7 @@ import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
@@ -70,6 +69,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
@@ -92,11 +92,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -110,11 +108,15 @@ public class ConfigNodeProcedureEnv {
 
   private final ReentrantLock schedulerLock = new ReentrantLock(true);
 
+  private final ReentrantLock submitRegionMigrateLock = new ReentrantLock(true);
+
   private final ConfigManager configManager;
 
   private final ProcedureScheduler scheduler;
 
   private final RegionMaintainHandler regionMaintainHandler;
+
+  private final RemoveDataNodeHandler removeDataNodeHandler;
 
   private final ReentrantLock removeConfigNodeLock;
 
@@ -122,6 +124,7 @@ public class ConfigNodeProcedureEnv {
     this.configManager = configManager;
     this.scheduler = scheduler;
     this.regionMaintainHandler = new RegionMaintainHandler(configManager);
+    this.removeDataNodeHandler = new RemoveDataNodeHandler(configManager);
     this.removeConfigNodeLock = new ReentrantLock();
   }
 
@@ -136,9 +139,9 @@ public class ConfigNodeProcedureEnv {
    * @param isGeneratedByPipe whether the deletion is triggered by pipe request
    * @return tsStatus
    */
-  public TSStatus deleteDatabaseConfig(String name, boolean isGeneratedByPipe) {
-    DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
-    return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan, isGeneratedByPipe);
+  public TSStatus deleteDatabaseConfig(final String name, final boolean isGeneratedByPipe) {
+    return getClusterSchemaManager()
+        .deleteDatabase(new DeleteDatabasePlan(name), isGeneratedByPipe);
   }
 
   /**
@@ -148,65 +151,70 @@ public class ConfigNodeProcedureEnv {
    * @param deleteSgName database name
    */
   public void preDeleteDatabase(
-      PreDeleteDatabasePlan.PreDeleteType preDeleteType, String deleteSgName) {
+      final PreDeleteDatabasePlan.PreDeleteType preDeleteType, final String deleteSgName) {
     getPartitionManager().preDeleteDatabase(deleteSgName, preDeleteType);
   }
 
   /**
-   * @param storageGroupName database name
+   * @param databaseName database name
    * @return ALL SUCCESS OR NOT
    * @throws IOException IOE
    * @throws TException Thrift IOE
    */
-  public boolean invalidateCache(String storageGroupName) throws IOException, TException {
-    List<TDataNodeConfiguration> allDataNodes = getNodeManager().getRegisteredDataNodes();
-    TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
+  public boolean invalidateCache(final String databaseName) throws IOException, TException {
+    final List<TDataNodeConfiguration> allDataNodes = getNodeManager().getRegisteredDataNodes();
+    final TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
-    invalidateCacheReq.setFullPath(storageGroupName);
-    for (TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
-      int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
+    invalidateCacheReq.setFullPath(databaseName);
+    for (final TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
+      final int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
 
-      // If the node is not alive, sleep 1 second and try again
+      // If the node is not alive, retry for up to 10 times
       NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
+      int retryNum = 10;
       if (nodeStatus == NodeStatus.Unknown) {
-        try {
-          TimeUnit.MILLISECONDS.sleep(1000);
-        } catch (InterruptedException e) {
-          LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
-          Thread.currentThread().interrupt();
+        for (int i = 0; i < retryNum && nodeStatus == NodeStatus.Unknown; i++) {
+          try {
+            TimeUnit.MILLISECONDS.sleep(500);
+          } catch (final InterruptedException e) {
+            LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
+            Thread.currentThread().interrupt();
+            break;
+          }
+          nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
         }
-        nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
       }
 
-      if (nodeStatus == NodeStatus.Running) {
-        // Always invalidate PartitionCache first
-        final TSStatus invalidatePartitionStatus =
-            (TSStatus)
-                SyncDataNodeClientPool.getInstance()
-                    .sendSyncRequestToDataNodeWithRetry(
-                        dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                        invalidateCacheReq,
-                        CnToDnRequestType.INVALIDATE_PARTITION_CACHE);
-
-        final TSStatus invalidateSchemaStatus =
-            (TSStatus)
-                SyncDataNodeClientPool.getInstance()
-                    .sendSyncRequestToDataNodeWithRetry(
-                        dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                        invalidateCacheReq,
-                        CnToDnRequestType.INVALIDATE_SCHEMA_CACHE);
-
-        if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
-          LOG.error(
-              "Invalidate cache failed, invalidate partition cache status is {}, invalidate schemaengine cache status is {}",
-              invalidatePartitionStatus,
-              invalidateSchemaStatus);
-          return false;
-        }
-      } else if (nodeStatus == NodeStatus.Unknown) {
+      if (nodeStatus == NodeStatus.Unknown) {
         LOG.warn(
             "Invalidate cache failed, because DataNode {} is Unknown",
             dataNodeConfiguration.getLocation().getInternalEndPoint());
+        return false;
+      }
+
+      // Always invalidate PartitionCache first
+      final TSStatus invalidatePartitionStatus =
+          (TSStatus)
+              SyncDataNodeClientPool.getInstance()
+                  .sendSyncRequestToDataNodeWithRetry(
+                      dataNodeConfiguration.getLocation().getInternalEndPoint(),
+                      invalidateCacheReq,
+                      CnToDnSyncRequestType.INVALIDATE_PARTITION_CACHE);
+
+      final TSStatus invalidateSchemaStatus =
+          (TSStatus)
+              SyncDataNodeClientPool.getInstance()
+                  .sendSyncRequestToDataNodeWithRetry(
+                      dataNodeConfiguration.getLocation().getInternalEndPoint(),
+                      invalidateCacheReq,
+                      CnToDnSyncRequestType.INVALIDATE_SCHEMA_CACHE);
+
+      if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
+        LOG.error(
+            "Invalidate cache failed, invalidate partition cache status is {}, invalidate schemaengine cache status is {}",
+            invalidatePartitionStatus,
+            invalidateSchemaStatus);
+        return false;
       }
     }
     return true;
@@ -215,21 +223,6 @@ public class ConfigNodeProcedureEnv {
   public boolean verifySucceed(TSStatus... status) {
     return Arrays.stream(status)
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  public boolean checkEnoughDataNodeAfterRemoving(TDataNodeLocation removedDatanode) {
-    final int existedDataNodeNum =
-        getNodeManager()
-            .filterDataNodeThroughStatus(
-                NodeStatus.Running, NodeStatus.ReadOnly, NodeStatus.Removing)
-            .size();
-    int dataNodeNumAfterRemoving;
-    if (getLoadManager().getNodeStatus(removedDatanode.getDataNodeId()) != NodeStatus.Unknown) {
-      dataNodeNumAfterRemoving = existedDataNodeNum - 1;
-    } else {
-      dataNodeNumAfterRemoving = existedDataNodeNum;
-    }
-    return dataNodeNumAfterRemoving >= NodeInfo.getMinimumDataNode();
   }
 
   /**
@@ -327,14 +320,15 @@ public class ConfigNodeProcedureEnv {
    * @param tConfigNodeLocation config node location
    * @throws ProcedureException if failed status
    */
-  public void stopConfigNode(TConfigNodeLocation tConfigNodeLocation) throws ProcedureException {
+  public void stopAndClearConfigNode(TConfigNodeLocation tConfigNodeLocation)
+      throws ProcedureException {
     TSStatus tsStatus =
         (TSStatus)
             SyncConfigNodeClientPool.getInstance()
                 .sendSyncRequestToConfigNodeWithRetry(
                     tConfigNodeLocation.getInternalEndPoint(),
                     tConfigNodeLocation,
-                    CnToCnNodeRequestType.STOP_CONFIG_NODE);
+                    CnToCnNodeRequestType.STOP_AND_CLEAR_CONFIG_NODE);
 
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ProcedureException(tsStatus.getMessage());
@@ -378,56 +372,13 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Mark the given datanode as removing status to avoid read or write request routing to this node.
-   *
-   * @param dataNodeLocation the datanode to be marked as removing status
-   */
-  public void markDataNodeAsRemovingAndBroadcast(TDataNodeLocation dataNodeLocation) {
-    // Send request to update NodeStatus on the DataNode to be removed
-    if (getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId()) == NodeStatus.Unknown) {
-      SyncDataNodeClientPool.getInstance()
-          .sendSyncRequestToDataNodeWithGivenRetry(
-              dataNodeLocation.getInternalEndPoint(),
-              NodeStatus.Removing.getStatus(),
-              CnToDnRequestType.SET_SYSTEM_STATUS,
-              1);
-    } else {
-      SyncDataNodeClientPool.getInstance()
-          .sendSyncRequestToDataNodeWithRetry(
-              dataNodeLocation.getInternalEndPoint(),
-              NodeStatus.Removing.getStatus(),
-              CnToDnRequestType.SET_SYSTEM_STATUS);
-    }
-
-    long currentTime = System.nanoTime();
-    // Force updating NodeStatus to Removing
-    getLoadManager()
-        .forceUpdateNodeCache(
-            NodeType.DataNode,
-            dataNodeLocation.getDataNodeId(),
-            new NodeHeartbeatSample(currentTime, NodeStatus.Removing));
-    Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> removingHeartbeatSampleMap =
-        new TreeMap<>();
-    // Force update RegionStatus to Removing
-    getPartitionManager()
-        .getAllReplicaSets(dataNodeLocation.getDataNodeId())
-        .forEach(
-            replicaSet ->
-                removingHeartbeatSampleMap.put(
-                    replicaSet.getRegionId(),
-                    Collections.singletonMap(
-                        dataNodeLocation.getDataNodeId(),
-                        new RegionHeartbeatSample(currentTime, RegionStatus.Removing))));
-    getLoadManager().forceUpdateRegionGroupCache(removingHeartbeatSampleMap);
-  }
-
-  /**
    * Do region creations and broadcast the {@link CreateRegionGroupsPlan}.
    *
    * @return Those RegionReplicas that failed to create
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> doRegionCreation(
-      TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
+      final TConsensusGroupType consensusGroupType,
+      final CreateRegionGroupsPlan createRegionGroupsPlan) {
 
     // Prepare clientHandler
     DataNodeAsyncRequestContext<?, TSStatus> clientHandler;
@@ -453,8 +404,8 @@ public class ConfigNodeProcedureEnv {
     Map<TConsensusGroupId, TRegionReplicaSet> failedRegions = new HashMap<>();
     for (List<TRegionReplicaSet> regionReplicaSets :
         createRegionGroupsPlan.getRegionGroupMap().values()) {
-      for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
-        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+      for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+        for (final TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           if (responseMap.get(requestId).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             failedRegions
                 .computeIfAbsent(
@@ -472,7 +423,7 @@ public class ConfigNodeProcedureEnv {
   private DataNodeAsyncRequestContext<TCreateSchemaRegionReq, TSStatus>
       getCreateSchemaRegionClientHandler(CreateRegionGroupsPlan createRegionGroupsPlan) {
     DataNodeAsyncRequestContext<TCreateSchemaRegionReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.CREATE_SCHEMA_REGION);
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.CREATE_SCHEMA_REGION);
 
     int requestId = 0;
     for (Map.Entry<String, List<TRegionReplicaSet>> sgRegionsEntry :
@@ -495,7 +446,7 @@ public class ConfigNodeProcedureEnv {
   private DataNodeAsyncRequestContext<TCreateDataRegionReq, TSStatus>
       getCreateDataRegionClientHandler(CreateRegionGroupsPlan createRegionGroupsPlan) {
     DataNodeAsyncRequestContext<TCreateDataRegionReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.CREATE_DATA_REGION);
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.CREATE_DATA_REGION);
 
     int requestId = 0;
     for (Map.Entry<String, List<TRegionReplicaSet>> sgRegionsEntry :
@@ -529,6 +480,28 @@ public class ConfigNodeProcedureEnv {
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet);
     return req;
+  }
+
+  public List<TSStatus> notifyRegionMigrationToAllDataNodes(
+      TConsensusGroupId consensusGroupId, boolean isStart) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TNotifyRegionMigrationReq request =
+        new TNotifyRegionMigrationReq(
+            configManager
+                .getConsensusManager()
+                .getConsensusImpl()
+                .getLogicalClock(ConfigNodeInfo.CONFIG_REGION_ID),
+            System.nanoTime(),
+            configManager.getProcedureManager().getRegionOperationConsensusIds());
+    request.setRegionId(consensusGroupId);
+    request.setIsStart(isStart);
+
+    final DataNodeAsyncRequestContext<TNotifyRegionMigrationReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.NOTIFY_REGION_MIGRATION, request, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    return clientHandler.getResponseList();
   }
 
   public void persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
@@ -590,7 +563,7 @@ public class ConfigNodeProcedureEnv {
 
     DataNodeAsyncRequestContext<TCreateTriggerInstanceReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.CREATE_TRIGGER_INSTANCE, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.CREATE_TRIGGER_INSTANCE, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -604,7 +577,7 @@ public class ConfigNodeProcedureEnv {
 
     DataNodeAsyncRequestContext<TDropTriggerInstanceReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.DROP_TRIGGER_INSTANCE, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.DROP_TRIGGER_INSTANCE, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -617,7 +590,7 @@ public class ConfigNodeProcedureEnv {
 
     DataNodeAsyncRequestContext<TActiveTriggerInstanceReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.ACTIVE_TRIGGER_INSTANCE, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.ACTIVE_TRIGGER_INSTANCE, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -630,7 +603,7 @@ public class ConfigNodeProcedureEnv {
 
     DataNodeAsyncRequestContext<TInactiveTriggerInstanceReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.INACTIVE_TRIGGER_INSTANCE, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.INACTIVE_TRIGGER_INSTANCE, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -644,7 +617,7 @@ public class ConfigNodeProcedureEnv {
 
     final DataNodeAsyncRequestContext<TCreatePipePluginInstanceReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.CREATE_PIPE_PLUGIN, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.CREATE_PIPE_PLUGIN, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -658,7 +631,7 @@ public class ConfigNodeProcedureEnv {
 
     DataNodeAsyncRequestContext<TDropPipePluginInstanceReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.DROP_PIPE_PLUGIN, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.DROP_PIPE_PLUGIN, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -671,7 +644,7 @@ public class ConfigNodeProcedureEnv {
 
     final DataNodeAsyncRequestContext<TPushPipeMetaReq, TPushPipeMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.PIPE_PUSH_ALL_META, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.PIPE_PUSH_ALL_META, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
             clientHandler,
@@ -686,7 +659,7 @@ public class ConfigNodeProcedureEnv {
 
     final DataNodeAsyncRequestContext<TPushSinglePipeMetaReq, TPushPipeMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.PIPE_PUSH_SINGLE_META, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.PIPE_PUSH_SINGLE_META, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
             clientHandler,
@@ -702,7 +675,7 @@ public class ConfigNodeProcedureEnv {
 
     final DataNodeAsyncRequestContext<TPushSinglePipeMetaReq, TPushPipeMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.PIPE_PUSH_SINGLE_META, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.PIPE_PUSH_SINGLE_META, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
             clientHandler,
@@ -719,7 +692,7 @@ public class ConfigNodeProcedureEnv {
 
     final DataNodeAsyncRequestContext<TPushMultiPipeMetaReq, TPushPipeMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.PIPE_PUSH_MULTI_META, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.PIPE_PUSH_MULTI_META, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
             clientHandler,
@@ -735,7 +708,7 @@ public class ConfigNodeProcedureEnv {
 
     final DataNodeAsyncRequestContext<TPushMultiPipeMetaReq, TPushPipeMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.PIPE_PUSH_MULTI_META, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.PIPE_PUSH_MULTI_META, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
             clientHandler,
@@ -751,7 +724,7 @@ public class ConfigNodeProcedureEnv {
 
     final DataNodeAsyncRequestContext<TPushTopicMetaReq, TPushTopicMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.TOPIC_PUSH_ALL_META, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.TOPIC_PUSH_ALL_META, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
             clientHandler,
@@ -766,7 +739,7 @@ public class ConfigNodeProcedureEnv {
 
     final DataNodeAsyncRequestContext<TPushSingleTopicMetaReq, TPushTopicMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList().stream()
         .map(TPushTopicMetaResp::getStatus)
@@ -781,7 +754,7 @@ public class ConfigNodeProcedureEnv {
 
     final DataNodeAsyncRequestContext<TPushSingleTopicMetaReq, TPushTopicMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList().stream()
         .map(TPushTopicMetaResp::getStatus)
@@ -797,7 +770,7 @@ public class ConfigNodeProcedureEnv {
 
     final DataNodeAsyncRequestContext<TPushMultiTopicMetaReq, TPushTopicMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.TOPIC_PUSH_MULTI_META, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.TOPIC_PUSH_MULTI_META, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
             clientHandler,
@@ -813,7 +786,7 @@ public class ConfigNodeProcedureEnv {
 
     final DataNodeAsyncRequestContext<TPushMultiTopicMetaReq, TPushTopicMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.TOPIC_PUSH_MULTI_META, request, dataNodeLocationMap);
+            CnToDnAsyncRequestType.TOPIC_PUSH_MULTI_META, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
             clientHandler,
@@ -831,7 +804,7 @@ public class ConfigNodeProcedureEnv {
     final DataNodeAsyncRequestContext<TPushConsumerGroupMetaReq, TPushConsumerGroupMetaResp>
         clientHandler =
             new DataNodeAsyncRequestContext<>(
-                CnToDnRequestType.CONSUMER_GROUP_PUSH_ALL_META, request, dataNodeLocationMap);
+                CnToDnAsyncRequestType.CONSUMER_GROUP_PUSH_ALL_META, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
             clientHandler,
@@ -848,7 +821,9 @@ public class ConfigNodeProcedureEnv {
     final DataNodeAsyncRequestContext<TPushSingleConsumerGroupMetaReq, TPushConsumerGroupMetaResp>
         clientHandler =
             new DataNodeAsyncRequestContext<>(
-                CnToDnRequestType.CONSUMER_GROUP_PUSH_SINGLE_META, request, dataNodeLocationMap);
+                CnToDnAsyncRequestType.CONSUMER_GROUP_PUSH_SINGLE_META,
+                request,
+                dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList().stream()
         .map(TPushConsumerGroupMetaResp::getStatus)
@@ -864,7 +839,9 @@ public class ConfigNodeProcedureEnv {
     final DataNodeAsyncRequestContext<TPushSingleConsumerGroupMetaReq, TPushConsumerGroupMetaResp>
         clientHandler =
             new DataNodeAsyncRequestContext<>(
-                CnToDnRequestType.CONSUMER_GROUP_PUSH_SINGLE_META, request, dataNodeLocationMap);
+                CnToDnAsyncRequestType.CONSUMER_GROUP_PUSH_SINGLE_META,
+                request,
+                dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList().stream()
         .map(TPushConsumerGroupMetaResp::getStatus)
@@ -879,16 +856,20 @@ public class ConfigNodeProcedureEnv {
     return scheduler;
   }
 
-  public LockQueue getRegionMigrateLock() {
-    return regionMaintainHandler.getRegionMigrateLock();
-  }
-
   public ReentrantLock getSchedulerLock() {
     return schedulerLock;
   }
 
+  public ReentrantLock getSubmitRegionMigrateLock() {
+    return submitRegionMigrateLock;
+  }
+
   public RegionMaintainHandler getRegionMaintainHandler() {
     return regionMaintainHandler;
+  }
+
+  public RemoveDataNodeHandler getRemoveDataNodeHandler() {
+    return removeDataNodeHandler;
   }
 
   private ConsensusManager getConsensusManager() {

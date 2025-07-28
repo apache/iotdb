@@ -31,18 +31,19 @@ public class DropPipePluginTask implements IConfigTask {
 
   private final DropPipePluginStatement dropPipePluginStatement;
 
-  public DropPipePluginTask(DropPipePluginStatement dropPipePluginStatement) {
+  public DropPipePluginTask(final DropPipePluginStatement dropPipePluginStatement) {
     this.dropPipePluginStatement = dropPipePluginStatement;
   }
 
-  public DropPipePluginTask(DropPipePlugin node) {
-    dropPipePluginStatement = new DropPipePluginStatement();
-    dropPipePluginStatement.setPluginName(node.getPluginName());
-    dropPipePluginStatement.setIfExists(node.hasIfExistsCondition());
+  public DropPipePluginTask(final DropPipePlugin node) {
+    this.dropPipePluginStatement = new DropPipePluginStatement();
+    this.dropPipePluginStatement.setPluginName(node.getPluginName());
+    this.dropPipePluginStatement.setIfExists(node.hasIfExistsCondition());
+    this.dropPipePluginStatement.setTableModel(true);
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.dropPipePlugin(dropPipePluginStatement);
   }

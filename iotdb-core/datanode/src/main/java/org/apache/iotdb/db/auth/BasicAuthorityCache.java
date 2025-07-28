@@ -28,7 +28,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class BasicAuthorityCache implements IAuthorCache {
@@ -76,12 +76,12 @@ public class BasicAuthorityCache implements IAuthorCache {
    * initialized.
    */
   @Override
-  public boolean invalidateCache(String userName, String roleName) {
+  public boolean invalidateCache(final String userName, final String roleName) {
     if (userName != null) {
       if (userCache.getIfPresent(userName) != null) {
-        List<String> roleList = userCache.getIfPresent(userName).getRoleList();
-        if (!roleList.isEmpty()) {
-          roleCache.invalidateAll(roleList);
+        Set<String> roleSet = userCache.getIfPresent(userName).getRoleSet();
+        if (!roleSet.isEmpty()) {
+          roleCache.invalidateAll(roleSet);
         }
         userCache.invalidate(userName);
       }

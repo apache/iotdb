@@ -21,9 +21,10 @@ package org.apache.iotdb.commons.client;
 
 import org.apache.iotdb.commons.client.exception.BorrowNullClientManagerException;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
 
-import org.apache.commons.pool2.KeyedObjectPool;
+import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,14 +34,14 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClientManager.class);
 
-  private final KeyedObjectPool<K, V> pool;
+  private final GenericKeyedObjectPool<K, V> pool;
 
   ClientManager(IClientPoolFactory<K, V> factory) {
     pool = factory.createClientPool(this);
   }
 
   @TestOnly
-  public KeyedObjectPool<K, V> getPool() {
+  public GenericKeyedObjectPool<K, V> getPool() {
     return pool;
   }
 
@@ -63,15 +64,19 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
    * return of a client is automatic whenever a particular client is used.
    */
   public void returnClient(K node, V client) {
-    Optional.ofNullable(node)
-        .ifPresent(
-            x -> {
-              try {
-                pool.returnObject(node, client);
-              } catch (Exception e) {
-                LOGGER.warn("Return client {} for node {} to pool failed.", client, node, e);
-              }
-            });
+    if (node != null) {
+      try {
+        pool.returnObject(node, client);
+      } catch (Exception e) {
+        LOGGER.warn("Return client {} for node {} to pool failed.", client, node, e);
+      }
+    } else if (client instanceof ThriftClient) {
+      ((ThriftClient) client).invalidateAll();
+      LOGGER.warn(
+          "Return client {} to pool failed because the node is null. "
+              + "This may cause resource leak, please check your code.",
+          client);
+    }
   }
 
   @Override
@@ -88,7 +93,16 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
   }
 
   @Override
+  public void clearAll() {
+    pool.clear();
+  }
+
+  @Override
   public void close() {
     pool.close();
+    // we need to release tManagers for AsyncThriftClientFactory
+    if (pool.getFactory() instanceof AsyncThriftClientFactory) {
+      ((AsyncThriftClientFactory<K, V>) pool.getFactory()).close();
+    }
   }
 }

@@ -44,6 +44,9 @@ public abstract class TsFileSequenceScan {
   protected String currMeasurementID;
   protected Pair<IDeviceID, String> currTimeseriesID;
   protected boolean currChunkOnePage;
+  protected ChunkHeader currChunkHeader;
+  protected boolean currDeviceAligned;
+  protected boolean isTimeChunk;
 
   public TsFileSequenceScan() {}
 
@@ -60,23 +63,26 @@ public abstract class TsFileSequenceScan {
   protected void onFileEnd() throws IOException {}
 
   protected void onChunk(PageVisitor pageVisitor) throws IOException {
-    ChunkHeader chunkHeader = reader.readChunkHeader(marker);
-    if (chunkHeader.getDataSize() == 0) {
+    currChunkHeader = reader.readChunkHeader(marker);
+    if (currChunkHeader.getDataSize() == 0) {
       // empty value chunk
       return;
     }
-    currMeasurementID = chunkHeader.getMeasurementID();
+    currMeasurementID = currChunkHeader.getMeasurementID();
     currTimeseriesID = new Pair<>(currDeviceID, currMeasurementID);
 
-    int dataSize = chunkHeader.getDataSize();
+    int dataSize = currChunkHeader.getDataSize();
+    onChunkData(pageVisitor, dataSize);
+  }
 
+  protected void onChunkData(PageVisitor pageVisitor, int dataSize) throws IOException {
     while (dataSize > 0) {
       PageHeader pageHeader =
           reader.readPageHeader(
-              chunkHeader.getDataType(),
-              (chunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
-      ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
-      pageVisitor.onPage(pageHeader, pageData, chunkHeader);
+              currChunkHeader.getDataType(),
+              (currChunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
+      ByteBuffer pageData = reader.readPage(pageHeader, currChunkHeader.getCompressionType());
+      pageVisitor.onPage(pageHeader, pageData, currChunkHeader);
       dataSize -= pageHeader.getSerializedPageSize();
     }
   }
@@ -123,26 +129,38 @@ public abstract class TsFileSequenceScan {
         switch (marker) {
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
             currChunkOnePage = true;
+            currDeviceAligned = false;
+            isTimeChunk = false;
             onChunk(this::onNonAlignedPage);
             break;
           case MetaMarker.CHUNK_HEADER:
             currChunkOnePage = false;
+            currDeviceAligned = false;
+            isTimeChunk = false;
             onChunk(this::onNonAlignedPage);
             break;
           case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
             currChunkOnePage = true;
+            currDeviceAligned = true;
+            isTimeChunk = true;
             onChunk(this::onTimePage);
             break;
           case MetaMarker.TIME_CHUNK_HEADER:
             currChunkOnePage = false;
+            currDeviceAligned = true;
+            isTimeChunk = true;
             onChunk(this::onTimePage);
             break;
           case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
             currChunkOnePage = true;
+            currDeviceAligned = true;
+            isTimeChunk = false;
             onChunk(this::onValuePage);
             break;
           case MetaMarker.VALUE_CHUNK_HEADER:
             currChunkOnePage = false;
+            currDeviceAligned = true;
+            isTimeChunk = false;
             onChunk(this::onValuePage);
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:

@@ -24,13 +24,16 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -53,14 +56,20 @@ public abstract class EnrichedEvent implements Event {
 
   protected final String pipeName;
   protected final long creationTime;
+
   protected final PipeTaskMeta pipeTaskMeta;
 
   protected CommitterKey committerKey;
   public static final long NO_COMMIT_ID = -1;
   protected long commitId = NO_COMMIT_ID;
+  // Used in IoTConsensusV2
+  protected long replicateIndexForIoTV2 = NO_COMMIT_ID;
   protected int rebootTimes = 0;
+  public static final long INITIAL_RETRY_INTERVAL_FOR_IOTV2 = 500L;
+  protected long retryInterval = INITIAL_RETRY_INTERVAL_FOR_IOTV2;
 
-  protected final PipePattern pipePattern;
+  protected final TreePattern treePattern;
+  protected final TablePattern tablePattern;
 
   protected final long startTime;
   protected final long endTime;
@@ -70,24 +79,38 @@ public abstract class EnrichedEvent implements Event {
 
   protected volatile boolean shouldReportOnCommit = true;
   protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
+  protected String userName;
+  protected boolean skipIfNoPrivileges;
 
   protected EnrichedEvent(
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pipePattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     referenceCount = new AtomicInteger(0);
     isReleased = new AtomicBoolean(false);
+
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.pipePattern = pipePattern;
+    this.treePattern = treePattern;
+    this.tablePattern = tablePattern;
+    this.userName = userName;
+    this.skipIfNoPrivileges = skipIfNoPrivileges;
     this.startTime = startTime;
     this.endTime = endTime;
-    isPatternParsed = this.pipePattern == null || this.pipePattern.isRoot();
+
+    isPatternParsed =
+        (treePattern == null || treePattern.isRoot())
+            && (tablePattern == null
+                || !tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern());
     isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
+
     addOnCommittedHook(
         () -> {
           if (shouldReportOnCommit) {
@@ -95,6 +118,10 @@ public abstract class EnrichedEvent implements Event {
           }
           return null;
         });
+  }
+
+  protected void trackResource() {
+    // do nothing by default
   }
 
   /**
@@ -124,7 +151,10 @@ public abstract class EnrichedEvent implements Event {
     }
 
     if (isSuccessful) {
-      referenceCount.incrementAndGet();
+      if (referenceCount.incrementAndGet() == 1
+          && PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
+        trackResource();
+      }
     } else {
       LOGGER.warn(
           "increase reference count failed, EnrichedEvent: {}, stack trace: {}",
@@ -172,15 +202,15 @@ public abstract class EnrichedEvent implements Event {
     }
 
     if (referenceCount.get() == 1) {
+      if (!shouldReport) {
+        shouldReportOnCommit = false;
+      }
       // We assume that this function will not throw any exceptions.
       if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
         LOGGER.warn(
             "resource reference count is decreased to 0, but failed to release the resource, EnrichedEvent: {}, stack trace: {}",
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
-      }
-      if (!shouldReport) {
-        shouldReportOnCommit = false;
       }
       PipeEventCommitManager.getInstance().commit(this, committerKey);
     }
@@ -306,12 +336,25 @@ public abstract class EnrichedEvent implements Event {
    *
    * @return the pattern string
    */
-  public final String getPatternString() {
-    return pipePattern != null ? pipePattern.getPattern() : null;
+  // TODO: consider tablePattern
+  public final String getTreePatternString() {
+    return treePattern != null ? treePattern.getPattern() : null;
   }
 
-  public final PipePattern getPipePattern() {
-    return pipePattern;
+  public final TreePattern getTreePattern() {
+    return treePattern;
+  }
+
+  public final TablePattern getTablePattern() {
+    return tablePattern;
+  }
+
+  public String getUserName() {
+    return userName;
+  }
+
+  public boolean isSkipIfNoPrivileges() {
+    return skipIfNoPrivileges;
   }
 
   public final long getStartTime() {
@@ -350,7 +393,10 @@ public abstract class EnrichedEvent implements Event {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime);
 
@@ -363,6 +409,10 @@ public abstract class EnrichedEvent implements Event {
   /** Whether the {@link EnrichedEvent} need to be committed in order. */
   public boolean needToCommit() {
     return true;
+  }
+
+  public void throwIfNoPrivilege() throws Exception {
+    // Do nothing by default
   }
 
   public abstract boolean mayEventTimeOverlappedWithTimeRange();
@@ -382,12 +432,40 @@ public abstract class EnrichedEvent implements Event {
     return rebootTimes;
   }
 
+  public long getRetryInterval() {
+    return this.retryInterval;
+  }
+
+  public void setRetryInterval(final long retryInterval) {
+    this.retryInterval = retryInterval;
+  }
+
   public CommitterKey getCommitterKey() {
     return committerKey;
   }
 
+  public boolean hasMultipleCommitIds() {
+    return false;
+  }
+
   public long getCommitId() {
     return commitId;
+  }
+
+  public List<EnrichedEvent> getDummyEventsForCommitIds() {
+    return Collections.emptyList();
+  }
+
+  public List<Long> getCommitIds() {
+    return Collections.singletonList(commitId);
+  }
+
+  public long getReplicateIndexForIoTV2() {
+    return replicateIndexForIoTV2;
+  }
+
+  public void setReplicateIndexForIoTV2(long replicateIndexForIoTV2) {
+    this.replicateIndexForIoTV2 = replicateIndexForIoTV2;
   }
 
   public void onCommitted() {
@@ -416,7 +494,8 @@ public abstract class EnrichedEvent implements Event {
     final EnrichedEvent otherEvent = (EnrichedEvent) o;
     return Objects.equals(committerKey, otherEvent.committerKey)
         && commitId == otherEvent.commitId
-        && rebootTimes == otherEvent.rebootTimes;
+        && rebootTimes == otherEvent.rebootTimes
+        && replicateIndexForIoTV2 == otherEvent.replicateIndexForIoTV2;
   }
 
   @Override
@@ -434,8 +513,12 @@ public abstract class EnrichedEvent implements Event {
         + committerKey
         + "', commitId="
         + commitId
-        + ", pattern='"
-        + pipePattern
+        + "', replicateIndexForIoTV2="
+        + replicateIndexForIoTV2
+        + ", treePattern='"
+        + treePattern
+        + "', tablePattern='"
+        + tablePattern
         + "', startTime="
         + startTime
         + ", endTime="
@@ -446,6 +529,10 @@ public abstract class EnrichedEvent implements Event {
         + isTimeParsed
         + ", shouldReportOnCommit="
         + shouldReportOnCommit
+        + ", userName="
+        + userName
+        + ", skipIfNoPrivileges="
+        + skipIfNoPrivileges
         + '}';
   }
 
@@ -461,8 +548,12 @@ public abstract class EnrichedEvent implements Event {
         + committerKey
         + "', commitId="
         + commitId
-        + ", pattern='"
-        + pipePattern
+        + "', replicateIndexForIoTV2="
+        + replicateIndexForIoTV2
+        + ", treePattern='"
+        + treePattern
+        + "', tablePattern='"
+        + tablePattern
         + "', startTime="
         + startTime
         + ", endTime="
@@ -473,6 +564,10 @@ public abstract class EnrichedEvent implements Event {
         + isTimeParsed
         + ", shouldReportOnCommit="
         + shouldReportOnCommit
+        + ", userName="
+        + userName
+        + ", skipIfNoPrivileges="
+        + skipIfNoPrivileges
         + '}';
   }
 }

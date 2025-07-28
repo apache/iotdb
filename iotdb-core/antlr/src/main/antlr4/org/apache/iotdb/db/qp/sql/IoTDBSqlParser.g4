@@ -56,21 +56,23 @@ ddlStatement
     | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
-    // TOPIC
-    | createTopic | dropTopic | showTopics
     // Subscription
-    | showSubscriptions
+    | createTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
-    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | verifyConnection
+    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
+    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode | removeAINode
+    | verifyConnection
     // AINode
     | showAINodes | createModel | dropModel | showModels | callInference
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
     | createLogicalView | dropLogicalView | showLogicalView | renameLogicalView | alterLogicalView
+    // Table View
+    | createTableView
     ;
 
 dmlStatement
@@ -88,7 +90,7 @@ utilityStatement
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
-    | removeFile | unloadFile
+    | removeFile | unloadFile | setSqlDialect | showCurrentSqlDialect | showCurrentUser
     ;
 
 /**
@@ -112,8 +114,6 @@ databaseAttributeClause
 
 databaseAttributeKey
     : TTL
-    | SCHEMA_REPLICATION_FACTOR
-    | DATA_REPLICATION_FACTOR
     | TIME_PARTITION_INTERVAL
     | SCHEMA_REGION_GROUP_NUM
     | DATA_REGION_GROUP_NUM
@@ -536,8 +536,35 @@ migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
     ;
 
+reconstructRegion
+    : RECONSTRUCT REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* ON targetDataNodeId=INTEGER_LITERAL
+    ;
+
+extendRegion
+    : EXTEND REGION regionId=INTEGER_LITERAL TO targetDataNodeId=INTEGER_LITERAL
+    ;
+
+removeRegion
+    : REMOVE REGION regionId=INTEGER_LITERAL FROM targetDataNodeId=INTEGER_LITERAL
+    ;
+
 verifyConnection
     : VERIFY CONNECTION (DETAILS)?
+    ;
+
+// ---- Remove DataNode
+removeDataNode
+    : REMOVE DATANODE dataNodeId=INTEGER_LITERAL
+    ;
+
+// ---- Remove ConfigNode
+removeConfigNode
+    : REMOVE CONFIGNODE configNodeId=INTEGER_LITERAL
+    ;
+
+// ---- Remove AINode
+removeAINode
+    : REMOVE AINODE (aiNodeId=INTEGER_LITERAL)?
     ;
 
 // Pipe Task =========================================================================================
@@ -643,7 +670,8 @@ showPipePlugins
     : SHOW PIPEPLUGINS
     ;
 
-// Topic =========================================================================================
+
+// Subscription =========================================================================================
 createTopic
     : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
     ;
@@ -664,15 +692,31 @@ showTopics
     : SHOW ((TOPIC topicName=identifier) | TOPICS )
     ;
 
-// Subscriptions =========================================================================================
 showSubscriptions
     : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    ;
+
+dropSubscription
+    : DROP SUBSCRIPTION (IF EXISTS)? subscriptionId=identifier
     ;
 
 // AI Model =========================================================================================
 // ---- Create Model
 createModel
-    : CREATE MODEL modelName=identifier USING URI modelUri=STRING_LITERAL
+    : CREATE MODEL modelId=identifier uriClause
+    | CREATE MODEL modelId=identifier (WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET)? FROM MODEL existingModelId=identifier ON DATASET LR_BRACKET trainingData RR_BRACKET
+    ;
+
+trainingData
+    : dataElement(COMMA dataElement)*
+    ;
+
+dataElement
+    : pathPatternElement (LR_BRACKET timeRange RR_BRACKET)?
+    ;
+
+pathPatternElement
+    : PATH path=prefixPath
     ;
 
 windowFunction
@@ -740,6 +784,61 @@ viewSourcePaths
     : fullPath (COMMA fullPath)*
     | prefixPath LR_BRACKET viewSuffixPaths (COMMA viewSuffixPaths)* RR_BRACKET
     | selectClause fromClause
+    ;
+
+// Table view
+createTableView
+    : CREATE (OR REPLACE)? VIEW qualifiedName
+        LR_BRACKET (viewColumnDefinition (COMMA viewColumnDefinition)*)? RR_BRACKET
+        comment?
+        (RESTRICT)?
+        (WITH properties)?
+        AS prefixPath
+    ;
+
+viewColumnDefinition
+    : identifier columnCategory=(TAG | TIME | FIELD) comment?
+    | identifier type (columnCategory=(TAG | TIME | FIELD))? comment?
+    | identifier (type)? (columnCategory=FIELD)? FROM original_measurement=identifier comment?
+    ;
+
+type
+    : identifier (LR_BRACKET typeParameter (COMMA typeParameter)* RR_BRACKET)?                     #genericType
+    ;
+
+typeParameter
+    : INTEGER_LITERAL | type
+    ;
+
+qualifiedName
+    : identifier (DOT identifier)*
+    ;
+
+properties
+    : LR_BRACKET propertyAssignments RR_BRACKET
+    ;
+
+propertyAssignments
+    : property (COMMA property)*
+    ;
+
+property
+    : identifier OPERATOR_SEQ propertyValue
+    ;
+
+comment
+    : COMMENT STRING_LITERAL
+    ;
+
+propertyValue
+    : DEFAULT       #defaultPropertyValue
+    | literalExpression    #nonDefaultPropertyValue
+    ;
+
+// Currently only support this in table property values
+literalExpression
+    : INTEGER_LITERAL
+    | STRING_LITERAL
     ;
 
 /**
@@ -1035,7 +1134,7 @@ flush
 
 // Clear Cache
 clearCache
-    : CLEAR CACHE (ON (LOCAL | CLUSTER))?
+    : CLEAR (SCHEMA | QUERY | ALL)? CACHE (ON (LOCAL | CLUSTER))?
     ;
 
 // Set Configuration
@@ -1167,6 +1266,18 @@ unloadFile
     : UNLOAD srcFileName=STRING_LITERAL dstFileDir=STRING_LITERAL
     ;
 
+setSqlDialect
+    : SET SQL_DIALECT OPERATOR_SEQ (TABLE | TREE)
+    ;
+
+showCurrentSqlDialect
+    : SHOW CURRENT_SQL_DIALECT
+    ;
+
+showCurrentUser
+    : SHOW CURRENT_USER
+    ;
+
 // attribute clauses
 syncAttributeClauses
     : attributePair (COMMA? attributePair)*
@@ -1274,7 +1385,8 @@ expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_SEQ | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
-    | unaryBeforeRegularOrLikeExpression=expression operator_not? (REGEXP | LIKE) STRING_LITERAL
+    | unaryBeforeRegularOrLikeExpression=expression operator_not? REGEXP pattern=STRING_LITERAL
+    | unaryBeforeRegularOrLikeExpression=expression operator_not? LIKE pattern=STRING_LITERAL (ESCAPE escapeSet=STRING_LITERAL)?
     | firstExpression=expression operator_not? operator_between secondExpression=expression operator_and thirdExpression=expression
     | unaryBeforeIsNullExpression=expression operator_is operator_not? null_literal
     | unaryBeforeInExpression=expression operator_not? (operator_in | operator_contains) LR_BRACKET constant (COMMA constant)* RR_BRACKET

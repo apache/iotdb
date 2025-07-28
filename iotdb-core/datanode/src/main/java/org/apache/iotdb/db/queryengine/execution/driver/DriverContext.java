@@ -50,6 +50,12 @@ public class DriverContext {
     this.fragmentInstanceContext = null;
   }
 
+  @TestOnly
+  // should only be used by executeGroupByQueryInternal
+  public DriverContext(FragmentInstanceContext fragmentInstanceContext) {
+    this.fragmentInstanceContext = fragmentInstanceContext;
+  }
+
   public DriverContext(FragmentInstanceContext fragmentInstanceContext, int pipelineId) {
     this.fragmentInstanceContext = fragmentInstanceContext;
     this.driverTaskID = new DriverTaskId(fragmentInstanceContext.getId(), pipelineId);
@@ -121,8 +127,10 @@ public class DriverContext {
   }
 
   public void failed(Throwable cause) {
-    fragmentInstanceContext.failed(cause);
-    finished.set(true);
+    if (finished.compareAndSet(false, true)) {
+      fragmentInstanceContext.failed(cause);
+      finished.set(true);
+    }
   }
 
   public void finished() {

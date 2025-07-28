@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -64,7 +65,9 @@ public class FileReaderManagerTest {
 
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {
       File file = SystemFileFactory.INSTANCE.getFile(filePath + i);
-      file.createNewFile();
+      TsFileIOWriter writer = new TsFileIOWriter(file);
+      writer.endFile();
+      writer.close();
       tsFileResources[i] = new TsFileResource(file);
     }
 

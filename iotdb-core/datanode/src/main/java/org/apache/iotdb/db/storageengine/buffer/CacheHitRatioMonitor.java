@@ -151,12 +151,12 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
 
   @Override
   public double getFlushThershold() {
-    return SystemInfo.getInstance().getFlushThershold();
+    return SystemInfo.getInstance().getFlushThreshold();
   }
 
   @Override
   public double getRejectThershold() {
-    return SystemInfo.getInstance().getRejectThershold();
+    return SystemInfo.getInstance().getRejectThreshold();
   }
 
   @Override

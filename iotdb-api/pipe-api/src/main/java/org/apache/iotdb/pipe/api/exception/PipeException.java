@@ -23,17 +23,17 @@ public class PipeException extends RuntimeException {
 
   private final long timeStamp;
 
-  public PipeException(String message) {
+  public PipeException(final String message) {
     super(message);
     this.timeStamp = System.currentTimeMillis();
   }
 
-  public PipeException(String message, long timeStamp) {
+  public PipeException(final String message, final long timeStamp) {
     super(message);
     this.timeStamp = timeStamp;
   }
 
-  public PipeException(String message, Throwable cause) {
+  public PipeException(final String message, final Throwable cause) {
     super(message, cause);
     this.timeStamp = System.currentTimeMillis();
   }

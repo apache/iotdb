@@ -262,7 +262,8 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
       delayedLogicalViewList
           .get(i)
           .getSchema()
-          .setType(viewIsBroken ? TSDataType.UNKNOWN : expressionTypes.get(NodeRef.of(expression)));
+          .setDataType(
+              viewIsBroken ? TSDataType.UNKNOWN : expressionTypes.get(NodeRef.of(expression)));
       if (FILTER_VISITOR.process(schemaFilter, delayedLogicalViewList.get(i))) {
         cachedViewList.add(delayedLogicalViewList.get(i));
       }

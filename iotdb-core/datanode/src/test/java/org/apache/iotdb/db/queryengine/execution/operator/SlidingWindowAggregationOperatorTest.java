@@ -28,7 +28,7 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.slidingwindow.SlidingWindowAggregatorFactory;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
@@ -60,6 +60,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -241,7 +242,7 @@ public class SlidingWindowAggregationOperatorTest {
             IDeviceID.Factory.DEFAULT_FACTORY.create(AGGREGATION_OPERATOR_TEST_SG + ".device0"),
             new MeasurementSchema("sensor0", TSDataType.INT32));
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createBuiltinAccumulators(
             leafAggregationTypes,
             TSDataType.INT32,
@@ -249,7 +250,8 @@ public class SlidingWindowAggregationOperatorTest {
             Collections.emptyMap(),
             ascending)
         .forEach(
-            accumulator -> aggregators.add(new Aggregator(accumulator, AggregationStep.PARTIAL)));
+            accumulator ->
+                aggregators.add(new TreeAggregator(accumulator, AggregationStep.PARTIAL)));
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(Collections.singleton("sensor0"));
@@ -261,14 +263,14 @@ public class SlidingWindowAggregationOperatorTest {
             scanOptionsBuilder.build(),
             driverContext.getOperatorContexts().get(0),
             aggregators,
-            initTimeRangeIterator(groupByTimeParameter, ascending, true),
+            initTimeRangeIterator(groupByTimeParameter, ascending, true, ZoneId.systemDefault()),
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
             true);
     seriesAggregationScanOperator.initQueryDataSource(
         new QueryDataSource(seqResources, unSeqResources));
 
-    List<Aggregator> finalAggregators = new ArrayList<>();
+    List<TreeAggregator> finalAggregators = new ArrayList<>();
     for (int i = 0; i < rootAggregationTypes.size(); i++) {
       finalAggregators.add(
           SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
@@ -287,11 +289,12 @@ public class SlidingWindowAggregationOperatorTest {
     return new SlidingWindowAggregationOperator(
         driverContext.getOperatorContexts().get(1),
         finalAggregators,
-        initTimeRangeIterator(groupByTimeParameter, ascending, false),
+        initTimeRangeIterator(groupByTimeParameter, ascending, false, ZoneId.systemDefault()),
         seriesAggregationScanOperator,
         ascending,
         false,
         groupByTimeParameter,
-        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        ZoneId.systemDefault());
   }
 }

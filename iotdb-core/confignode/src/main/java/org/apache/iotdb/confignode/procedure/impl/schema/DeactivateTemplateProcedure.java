@@ -28,15 +28,13 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeactivateTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -97,7 +95,7 @@ public class DeactivateTemplateProcedure
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, DeactivateTemplateState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -152,7 +150,7 @@ public class DeactivateTemplateProcedure
                 "construct schema black list",
                 env,
                 targetSchemaRegionGroup,
-                CnToDnRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
+                CnToDnAsyncRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
                 ((dataNodeLocation, consensusGroupIdList) ->
                     new TConstructSchemaBlackListWithTemplateReq(
                         consensusGroupIdList, dataNodeRequest))) {
@@ -193,14 +191,14 @@ public class DeactivateTemplateProcedure
     return preDeletedNum;
   }
 
-  private void invalidateCache(ConfigNodeProcedureEnv env) {
-    // if no target timeseres, return directly
+  private void invalidateCache(final ConfigNodeProcedureEnv env) {
+    // if no target timeseries, return directly
     if (!timeSeriesPatternTree.isEmpty()) {
       Map<Integer, TDataNodeLocation> dataNodeLocationMap =
           env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
       DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
           new DataNodeAsyncRequestContext<>(
-              CnToDnRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+              CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
               new TInvalidateMatchedSchemaCacheReq(timeSeriesPatternTreeBytes),
               dataNodeLocationMap);
       CnToDnInternalServiceAsyncRequestManager.getInstance()
@@ -221,19 +219,19 @@ public class DeactivateTemplateProcedure
     setNextState(DeactivateTemplateState.DELETE_DATA);
   }
 
-  private void deleteData(ConfigNodeProcedureEnv env) {
-    Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
+  private void deleteData(final ConfigNodeProcedureEnv env) {
+    final Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
         env.getConfigManager().getRelatedDataRegionGroup(timeSeriesPatternTree);
 
     // target timeSeries has no data or no target timeSeries, return directly
     if (!relatedDataRegionGroup.isEmpty() && !timeSeriesPatternTree.isEmpty()) {
-      DeactivateTemplateRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
+      final DeactivateTemplateRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
           new DeactivateTemplateRegionTaskExecutor<>(
               "delete data",
               env,
               relatedDataRegionGroup,
-              true,
-              CnToDnRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
+              false,
+              CnToDnAsyncRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
               ((dataNodeLocation, consensusGroupIdList) ->
                   new TDeleteDataForDeleteSchemaReq(
                       new ArrayList<>(consensusGroupIdList), timeSeriesPatternTreeBytes)));
@@ -248,7 +246,7 @@ public class DeactivateTemplateProcedure
             "deactivate template schema",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
-            CnToDnRequestType.DEACTIVATE_TEMPLATE,
+            CnToDnAsyncRequestType.DEACTIVATE_TEMPLATE,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeactivateTemplateReq(consensusGroupIdList, dataNodeRequest)
                     .setIsGeneratedByPipe(isGeneratedByPipe)));
@@ -286,7 +284,7 @@ public class DeactivateTemplateProcedure
                   "roll back schema black list",
                   env,
                   env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
-                  CnToDnRequestType.ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
+                  CnToDnAsyncRequestType.ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
                   ((dataNodeLocation, consensusGroupIdList) ->
                       new TRollbackSchemaBlackListWithTemplateReq(
                           consensusGroupIdList, dataNodeRequest)));
@@ -439,7 +437,7 @@ public class DeactivateTemplateProcedure
         String taskName,
         ConfigNodeProcedureEnv env,
         Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
-        CnToDnRequestType dataNodeRequestType,
+        CnToDnAsyncRequestType dataNodeRequestType,
         BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
       this.taskName = taskName;
@@ -450,7 +448,7 @@ public class DeactivateTemplateProcedure
         ConfigNodeProcedureEnv env,
         Map<TConsensusGroupId, TRegionReplicaSet> targetDataRegionGroup,
         boolean executeOnAllReplicaset,
-        CnToDnRequestType dataNodeRequestType,
+        CnToDnAsyncRequestType dataNodeRequestType,
         BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(
           env,

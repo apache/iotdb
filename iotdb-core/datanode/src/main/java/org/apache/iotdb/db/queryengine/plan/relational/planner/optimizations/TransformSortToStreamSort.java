@@ -29,13 +29,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 import java.util.Map;
 
-import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode.isTimeColumn;
 
 /**
  * <b>Optimization phase:</b> Logical plan planning.
@@ -87,16 +89,15 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       }
       context.setCanTransform(false);
 
-      TableScanNode tableScanNode = context.getTableScanNode();
+      DeviceTableScanNode deviceTableScanNode = context.getTableScanNode();
       Map<Symbol, ColumnSchema> tableColumnSchema =
-          analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName());
+          analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName());
 
       OrderingScheme orderingScheme = node.getOrderingScheme();
       int streamSortIndex = -1;
       for (Symbol orderBy : orderingScheme.getOrderBy()) {
         if (!tableColumnSchema.containsKey(orderBy)
-            || tableColumnSchema.get(orderBy).getColumnCategory()
-                == TsTableColumnCategory.MEASUREMENT
+            || tableColumnSchema.get(orderBy).getColumnCategory() == TsTableColumnCategory.FIELD
             || tableColumnSchema.get(orderBy).getColumnCategory() == TsTableColumnCategory.TIME) {
           break;
         } else {
@@ -106,7 +107,11 @@ public class TransformSortToStreamSort implements PlanOptimizer {
 
       if (streamSortIndex >= 0) {
         boolean orderByAllIdsAndTime =
-            isOrderByAllIdsAndTime(tableColumnSchema, orderingScheme, streamSortIndex);
+            isOrderByAllIdsAndTime(
+                tableColumnSchema,
+                deviceTableScanNode.getAssignments(),
+                orderingScheme,
+                streamSortIndex);
 
         return new StreamSortNode(
             queryContext.getQueryId().genPlanNodeId(),
@@ -120,47 +125,76 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       return node;
     }
 
-    private boolean isOrderByAllIdsAndTime(
-        Map<Symbol, ColumnSchema> tableColumnSchema,
-        OrderingScheme orderingScheme,
-        int streamSortIndex) {
-      for (Map.Entry<Symbol, ColumnSchema> entry : tableColumnSchema.entrySet()) {
-        if (entry.getValue().getColumnCategory() == TsTableColumnCategory.ID
-            && !orderingScheme.getOrderings().containsKey(entry.getKey())) {
-          return false;
-        }
-      }
-      return orderingScheme.getOrderings().size() == streamSortIndex + 1
-          || TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(
-              orderingScheme.getOrderBy().get(streamSortIndex + 1).getName());
+    @Override
+    public PlanNode visitGroup(GroupNode node, Context context) {
+      return visitSingleChildProcess(node, context);
     }
 
     @Override
-    public PlanNode visitTableScan(TableScanNode node, Context context) {
+    public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
       context.setTableScanNode(node);
       return node;
     }
 
+    @Override
+    public PlanNode visitInformationSchemaTableScan(
+        InformationSchemaTableScanNode node, Context context) {
+      context.setCanTransform(false);
+      return node;
+    }
+
+    @Override
     public PlanNode visitAggregation(AggregationNode node, Context context) {
       context.setCanTransform(false);
       return visitSingleChildProcess(node, context);
     }
 
+    @Override
     public PlanNode visitAggregationTableScan(AggregationTableScanNode node, Context context) {
       context.setCanTransform(false);
       return visitTableScan(node, context);
     }
   }
 
+  /**
+   * @param tableColumnSchema The ColumnSchema of original Table, but the symbol name maybe rewrite
+   *     by Join
+   * @param nodeColumnSchema The ColumnSchema of current node, which has been column pruned
+   */
+  public static boolean isOrderByAllIdsAndTime(
+      Map<Symbol, ColumnSchema> tableColumnSchema,
+      Map<Symbol, ColumnSchema> nodeColumnSchema,
+      OrderingScheme orderingScheme,
+      int streamSortIndex) {
+    int tagCount = 0;
+    for (ColumnSchema columnSchema : tableColumnSchema.values()) {
+      if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG) {
+        tagCount++;
+      }
+    }
+
+    for (Symbol orderBy : orderingScheme.getOrderBy()) {
+      ColumnSchema columnSchema = nodeColumnSchema.get(orderBy);
+      if (columnSchema != null && columnSchema.getColumnCategory() == TsTableColumnCategory.TAG) {
+        tagCount--;
+      }
+    }
+    return tagCount == 0
+        && (orderingScheme.getOrderings().size() == streamSortIndex + 1
+            || isTimeColumn(
+                orderingScheme.getOrderBy().get(streamSortIndex + 1), tableColumnSchema));
+  }
+
   private static class Context {
-    private TableScanNode tableScanNode;
+    private DeviceTableScanNode tableScanNode;
+
     private boolean canTransform = true;
 
-    public TableScanNode getTableScanNode() {
+    public DeviceTableScanNode getTableScanNode() {
       return tableScanNode;
     }
 
-    public void setTableScanNode(TableScanNode tableScanNode) {
+    public void setTableScanNode(DeviceTableScanNode tableScanNode) {
       this.tableScanNode = tableScanNode;
     }
 

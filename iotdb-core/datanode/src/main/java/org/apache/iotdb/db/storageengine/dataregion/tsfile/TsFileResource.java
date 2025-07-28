@@ -24,18 +24,24 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
+import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
@@ -49,6 +55,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.apache.tsfile.utils.Pair;
@@ -63,13 +70,25 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -77,7 +96,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
-public class TsFileResource {
+public class TsFileResource implements PersistentResource {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TsFileResource.class)
@@ -108,8 +127,19 @@ public class TsFileResource {
   /** time index */
   private ITimeIndex timeIndex;
 
+  private Future<ModificationFile> exclusiveModFileFuture;
+  // this future suggest when the async recovery ends
+  private CompletableFuture<String> sharedModFilePathFuture;
+
+  private ModFileManagement modFileManagement;
+
   @SuppressWarnings("squid:S3077")
-  private volatile ModificationFile modFile;
+  private volatile ModificationFile exclusiveModFile;
+
+  private volatile ModificationFile sharedModFile;
+  private long sharedModFileOffset;
+
+  public static final boolean useSharedModFile = false;
 
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFile compactionModFile;
@@ -136,7 +166,7 @@ public class TsFileResource {
 
   private TsFileID tsFileID;
 
-  private long ramSize;
+  private long deviceTimeIndexRamSize;
 
   private AtomicInteger tierLevel;
 
@@ -154,7 +184,8 @@ public class TsFileResource {
   private Map<IFullPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
 
   /** used for unsealed file to get TimeseriesMetadata */
-  private Map<IFullPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap = new HashMap<>();
+  private Map<IFullPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap =
+      new ConcurrentHashMap<>();
 
   /**
    * If it is not null, it indicates that the current tsfile resource is a snapshot of the
@@ -163,13 +194,18 @@ public class TsFileResource {
    */
   private TsFileResource originTsFileResource;
 
-  private ProgressIndex maxProgressIndex;
+  private final AtomicReference<ProgressIndex> maxProgressIndex = new AtomicReference<>();
 
   /** used to prevent circular replication in PipeConsensus */
-  private boolean isGeneratedByPipeConsensus = false;
+  private volatile boolean isGeneratedByPipeConsensus = false;
+
+  /** used to prevent circular replication in Pipe */
+  private volatile boolean isGeneratedByPipe = false;
 
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
+
+  private Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues;
 
   @TestOnly
   public TsFileResource() {
@@ -215,15 +251,14 @@ public class TsFileResource {
     this.timeIndex = originTsFileResource.timeIndex;
     this.pathToReadOnlyMemChunkMap = pathToReadOnlyMemChunkMap;
     this.pathToChunkMetadataListMap = pathToChunkMetadataListMap;
-    generatePathToTimeSeriesMetadataMap();
     this.originTsFileResource = originTsFileResource;
     this.tsFileID = originTsFileResource.tsFileID;
     this.isSeq = originTsFileResource.isSeq;
     this.tierLevel = originTsFileResource.tierLevel;
   }
 
-  public synchronized void serialize() throws IOException {
-    FileOutputStream fileOutputStream = new FileOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
+  public synchronized void serialize(String targetFilePath) throws IOException {
+    FileOutputStream fileOutputStream = new FileOutputStream(targetFilePath + TEMP_SUFFIX);
     BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
     try {
       serializeTo(outputStream);
@@ -232,10 +267,14 @@ public class TsFileResource {
       fileOutputStream.getFD().sync();
       outputStream.close();
     }
-    File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
-    File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
+    File src = fsFactory.getFile(targetFilePath + TEMP_SUFFIX);
+    File dest = fsFactory.getFile(targetFilePath);
     fsFactory.deleteIfExists(dest);
     fsFactory.moveFile(src, dest);
+  }
+
+  public synchronized void serialize() throws IOException {
+    serialize(file + RESOURCE_SUFFIX);
   }
 
   private void serializeTo(BufferedOutputStream outputStream) throws IOException {
@@ -245,9 +284,10 @@ public class TsFileResource {
     ReadWriteIOUtils.write(maxPlanIndex, outputStream);
     ReadWriteIOUtils.write(minPlanIndex, outputStream);
 
-    if (modFile != null && modFile.exists()) {
-      String modFileName = new File(modFile.getFilePath()).getName();
-      ReadWriteIOUtils.write(modFileName, outputStream);
+    if (sharedModFile != null && sharedModFile.exists()) {
+      String modFilePath = sharedModFile.getFile().getAbsolutePath();
+      ReadWriteIOUtils.write(modFilePath, outputStream);
+      ReadWriteIOUtils.write(sharedModFileOffset, outputStream);
     } else {
       // make the first "inputStream.available() > 0" in deserialize() happy.
       //
@@ -261,12 +301,16 @@ public class TsFileResource {
       ReadWriteIOUtils.write((String) null, outputStream);
     }
 
-    if (maxProgressIndex != null) {
+    if (maxProgressIndex.get() != null) {
       TsFileResourceBlockType.PROGRESS_INDEX.serialize(outputStream);
-      maxProgressIndex.serialize(outputStream);
+      maxProgressIndex.get().serialize(outputStream);
     } else {
       TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
     }
+
+    TsFileResourceBlockType.PIPE_MARK.serialize(outputStream);
+    ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
+    ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
   }
 
   /** deserialize from disk */
@@ -279,18 +323,31 @@ public class TsFileResource {
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
       if (inputStream.available() > 0) {
-        String modFileName = ReadWriteIOUtils.readString(inputStream);
-        if (modFileName != null) {
-          File modF = new File(file.getParentFile(), modFileName);
-          modFile = new ModificationFile(modF.getPath());
+        String modFilePath = ReadWriteIOUtils.readString(inputStream);
+        // ends with ".mods2" means it is a new version resource file
+        if (modFilePath != null && modFilePath.endsWith(ModificationFile.FILE_SUFFIX)) {
+          sharedModFileOffset = ReadWriteIOUtils.readLong(inputStream);
+          if (sharedModFilePathFuture != null) {
+            sharedModFilePathFuture.complete(modFilePath);
+          } else {
+            sharedModFilePathFuture = CompletableFuture.completedFuture(modFilePath);
+          }
         }
       }
 
       while (inputStream.available() > 0) {
         final TsFileResourceBlockType blockType =
             TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
-        if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
-          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+        switch (blockType) {
+          case PROGRESS_INDEX:
+            maxProgressIndex.set(ProgressIndexType.deserializeFrom(inputStream));
+            break;
+          case PIPE_MARK:
+            isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
+            isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
+            break;
+          default:
+            break;
         }
       }
     }
@@ -332,8 +389,48 @@ public class TsFileResource {
     return file != null && file.exists();
   }
 
-  public boolean modFileExists() {
-    return getModFile().exists();
+  public boolean exclusiveModFileExists() {
+    return getExclusiveModFile().exists();
+  }
+
+  public boolean sharedModFileExists() {
+    return getSharedModFile() != null && sharedModFile.exists();
+  }
+
+  public boolean anyModFileExists() {
+    return exclusiveModFileExists() || sharedModFileExists();
+  }
+
+  public void link(TsFileResource target) throws IOException {
+    Files.createLink(target.getTsFile().toPath(), this.getTsFile().toPath());
+    Files.createLink(
+        new File(target.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
+        new File(this.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+    linkModFile(target);
+  }
+
+  public void linkModFile(TsFileResource target) throws IOException {
+    File targetModsFile = ModificationFile.getExclusiveMods(target.getTsFile());
+    ModificationFile sourceModFile = this.getExclusiveModFile();
+    ModificationFile targetModsFileObject;
+    sourceModFile.writeLock();
+    try {
+      if (sourceModFile.exists()) {
+        // inherit modifications from the source file
+        Files.createLink(
+            targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath());
+      }
+      // ensure that new modifications will be written into the target file
+      targetModsFileObject = new ModificationFile(targetModsFile, true);
+      sourceModFile.setCascadeFile(Collections.singleton(targetModsFileObject));
+    } finally {
+      sourceModFile.writeUnlock();
+    }
+    target.setExclusiveModFile(targetModsFileObject);
+    if (sharedModFileExists()) {
+      modFileManagement.addReference(target, sharedModFile);
+      target.setSharedModFile(this.getSharedModFile(), false);
+    }
   }
 
   public boolean compactionModFileExists() {
@@ -348,16 +445,102 @@ public class TsFileResource {
     return pathToReadOnlyMemChunkMap.get(seriesPath);
   }
 
-  @SuppressWarnings("squid:S2886")
-  public ModificationFile getModFile() {
+  public long getTotalModSizeInByte() {
+    return getExclusiveModFile().getFileLength()
+        + (getSharedModFile() != null ? sharedModFile.getFileLength() : 0);
+  }
+
+  private void serializedSharedModFile() throws IOException {
+    serialize();
+  }
+
+  public void setSharedModFile(ModificationFile modFile, boolean serializeNow) {
     if (modFile == null) {
-      synchronized (this) {
-        if (modFile == null) {
-          modFile = ModificationFile.getNormalMods(this);
+      return;
+    }
+
+    sharedModFile = modFile;
+    try {
+      sharedModFileOffset = sharedModFile.getFileLength();
+      if (serializeNow) {
+        serializedSharedModFile();
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Failed to serialize shared mod file", e);
+    }
+  }
+
+  private synchronized ModificationFile prepareModFileForWrite() throws IOException {
+    if (getSharedModFile() != null) {
+      return getSharedModFile();
+    }
+
+    if (useSharedModFile) {
+      ModificationFile modificationFile = modFileManagement.allocateFor(this);
+      setSharedModFile(modificationFile, true);
+      return sharedModFile;
+    }
+
+    return getExclusiveModFile();
+  }
+
+  public ModificationFile getModFileForWrite() throws IOException {
+    if (getSharedModFile() != null) {
+      return getSharedModFile();
+    }
+    if (exclusiveModFile != null && !useSharedModFile) {
+      return exclusiveModFile;
+    }
+
+    return prepareModFileForWrite();
+  }
+
+  public ModificationFile getSharedModFile() {
+    if (!useSharedModFile) {
+      return null;
+    }
+    if (sharedModFile != null) {
+      return sharedModFile;
+    }
+    if (sharedModFilePathFuture != null) {
+      try {
+        if (modFileManagement != null) {
+          sharedModFile = modFileManagement.recover(sharedModFilePathFuture.get(), this);
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      } catch (ExecutionException | IOException e) {
+        LOGGER.error("Failed to get shared mod file", e);
+      }
+    }
+    return sharedModFile;
+  }
+
+  @SuppressWarnings("java:S2886")
+  public ModificationFile getExclusiveModFile() {
+    if (exclusiveModFile != null) {
+      return exclusiveModFile;
+    }
+
+    synchronized (this) {
+      if (exclusiveModFile == null) {
+        if (exclusiveModFileFuture != null) {
+          try {
+            exclusiveModFile = exclusiveModFileFuture.get();
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn("Upgrading mod file interrupted", e);
+            exclusiveModFile = ModificationFile.getExclusiveMods(this);
+          } catch (ExecutionException e) {
+            LOGGER.warn("Cannot upgrade mod file", e);
+            exclusiveModFile = ModificationFile.getExclusiveMods(this);
+          }
+        } else {
+          exclusiveModFile = ModificationFile.getExclusiveMods(this);
         }
       }
     }
-    return modFile;
+    return exclusiveModFile;
   }
 
   public ModificationFile getCompactionModFile() {
@@ -371,11 +554,19 @@ public class TsFileResource {
     return compactionModFile;
   }
 
+  public void removeCompactionModFile() throws IOException {
+    if (compactionModFileExists() && !useSharedModFile) {
+      getCompactionModFile().remove();
+    }
+    compactionModFile = null;
+  }
+
+  @TestOnly
   public void resetModFile() throws IOException {
-    if (modFile != null) {
+    if (exclusiveModFile != null) {
       synchronized (this) {
-        modFile.close();
-        modFile = null;
+        exclusiveModFile.close();
+        exclusiveModFile = null;
       }
     }
   }
@@ -416,9 +607,9 @@ public class TsFileResource {
     }
   }
 
-  public long getStartTime(IDeviceID deviceId) {
+  public Optional<Long> getStartTime(IDeviceID deviceId) {
     try {
-      return deviceId == null ? getFileStartTime() : timeIndex.getStartTime(deviceId);
+      return deviceId == null ? Optional.of(getFileStartTime()) : timeIndex.getStartTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
           "meet error when getStartTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
@@ -430,9 +621,9 @@ public class TsFileResource {
   }
 
   /** open file's end time is Long.MIN_VALUE */
-  public long getEndTime(IDeviceID deviceId) {
+  public Optional<Long> getEndTime(IDeviceID deviceId) {
     try {
-      return deviceId == null ? getFileEndTime() : timeIndex.getEndTime(deviceId);
+      return deviceId == null ? Optional.of(getFileEndTime()) : timeIndex.getEndTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
           "meet error when getEndTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
@@ -443,15 +634,38 @@ public class TsFileResource {
     }
   }
 
-  public long getOrderTime(IDeviceID deviceId, boolean ascending) {
-    return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+  // cannot use FileTimeIndex
+  public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending) {
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      return ascending
+          ? timeIndex.getStartTime(deviceId).orElse(Long.MIN_VALUE)
+          : timeIndex.getEndTime(deviceId).orElse(Long.MAX_VALUE);
+    } else {
+      return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
+    }
   }
 
+  // can use FileTimeIndex
+  public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending) {
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      if (ascending) {
+        return timeIndex.getStartTime(deviceId).orElse(Long.MIN_VALUE);
+      } else {
+        return timeIndex.getEndTime(deviceId).orElse(Long.MAX_VALUE);
+      }
+    } else {
+      // FileTimeIndex
+      return ascending ? getFileStartTime() : getFileEndTime();
+    }
+  }
+
+  @Override
   public long getFileStartTime() {
     return timeIndex.getMinStartTime();
   }
 
   /** Open file's end time is Long.MIN_VALUE */
+  @Override
   public long getFileEndTime() {
     return timeIndex.getMaxEndTime();
   }
@@ -484,7 +698,9 @@ public class TsFileResource {
     }
   }
 
-  /** Only used for compaction to validate tsfile. */
+  /**
+   * Used for compaction to verify tsfile, also used to verify TimeIndex version when loading tsfile
+   */
   public ITimeIndex getTimeIndex() {
     return timeIndex;
   }
@@ -518,9 +734,8 @@ public class TsFileResource {
 
   /** Used for compaction. */
   public void closeWithoutSettingStatus() throws IOException {
-    if (modFile != null) {
-      modFile.close();
-      modFile = null;
+    if (exclusiveModFile != null) {
+      exclusiveModFile.close();
     }
     if (compactionModFile != null) {
       compactionModFile.close();
@@ -543,6 +758,14 @@ public class TsFileResource {
 
   public void setGeneratedByPipeConsensus(boolean generatedByPipeConsensus) {
     isGeneratedByPipeConsensus = generatedByPipeConsensus;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
+  }
+
+  public void setGeneratedByPipe(boolean generatedByPipe) {
+    isGeneratedByPipe = generatedByPipe;
   }
 
   public void writeLock() {
@@ -590,8 +813,19 @@ public class TsFileResource {
   }
 
   public void removeModFile() throws IOException {
-    getModFile().remove();
-    modFile = null;
+
+    if (getExclusiveModFile().exists()) {
+      getExclusiveModFile().remove();
+    }
+
+    if (getSharedModFile() != null && modFileManagement != null) {
+      modFileManagement.releaseFor(this, sharedModFile);
+    }
+
+    // we either remove all mod files after successful compactions,
+    // or remove compaction mod file only after failed compactions,
+    // so the previous two do not need to be encapsulated
+    removeCompactionModFile();
   }
 
   /**
@@ -612,9 +846,7 @@ public class TsFileResource {
       return false;
     }
     try {
-      fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX));
-      fsFactory.deleteIfExists(
-          fsFactory.getFile(file.getPath() + ModificationFile.COMPACTION_FILE_SUFFIX));
+      removeModFile();
     } catch (IOException e) {
       LOGGER.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
       return false;
@@ -638,11 +870,11 @@ public class TsFileResource {
     fsFactory.moveFile(
         fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
         fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX));
-    File originModFile = fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX);
-    if (originModFile.exists()) {
+
+    if (exclusiveModFileExists()) {
       fsFactory.moveFile(
-          originModFile,
-          fsFactory.getFile(targetDir, file.getName() + ModificationFile.FILE_SUFFIX));
+          getExclusiveModFile().getFile(),
+          fsFactory.getFile(targetDir, ModificationFile.getExclusiveMods(file).getName()));
     }
   }
 
@@ -762,6 +994,7 @@ public class TsFileResource {
   /**
    * @return true if the device is contained in the TsFile
    */
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   public boolean isSatisfied(IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     if (deviceId != null && definitelyNotContains(deviceId)) {
       if (debug) {
@@ -771,20 +1004,22 @@ public class TsFileResource {
       return false;
     }
 
-    long startTime = getStartTime(deviceId);
-    long endTime = isClosed() || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
-    if (startTime > endTime) {
-      // startTime > endTime indicates that there is something wrong with this TsFile. Return false
-      // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
-      LOGGER.warn(
-          "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
-          startTime,
-          this,
-          endTime);
-      return false;
-    }
-
     if (timeFilter != null) {
+      // check above
+      long startTime = getStartTime(deviceId).get();
+      long endTime = isClosed() || !isSeq ? getEndTime(deviceId).get() : Long.MAX_VALUE;
+      if (startTime > endTime) {
+        // startTime > endTime indicates that there is something wrong with this TsFile. Return
+        // false
+        // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
+        LOGGER.warn(
+            "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
+            startTime,
+            this,
+            endTime);
+        return false;
+      }
+
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(
@@ -824,8 +1059,27 @@ public class TsFileResource {
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath) {
-    return pathToTimeSeriesMetadataMap.get(seriesPath);
+  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath) throws IOException {
+    try {
+      return pathToTimeSeriesMetadataMap.computeIfAbsent(
+          seriesPath,
+          k -> {
+            if (pathToChunkMetadataListMap.containsKey(k)) {
+              try {
+                return ResourceByPathUtils.getResourceInstance(seriesPath)
+                    .generateTimeSeriesMetadata(
+                        pathToReadOnlyMemChunkMap.get(seriesPath),
+                        pathToChunkMetadataListMap.get(seriesPath));
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            } else {
+              return null;
+            }
+          });
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
+    }
   }
 
   public DataRegion.SettleTsFileCallBack getSettleTsFileCallBack() {
@@ -855,9 +1109,9 @@ public class TsFileResource {
     return timeIndex.isSpanMultiTimePartitions();
   }
 
-  public void setModFile(ModificationFile modFile) {
+  public void setExclusiveModFile(ModificationFile exclusiveModFile) {
     synchronized (this) {
-      this.modFile = modFile;
+      this.exclusiveModFile = exclusiveModFile;
     }
   }
 
@@ -865,12 +1119,21 @@ public class TsFileResource {
    * @return resource map size
    */
   public long calculateRamSize() {
-    if (ramSize == 0) {
-      ramSize = INSTANCE_SIZE + timeIndex.calculateRamSize();
-      return ramSize;
-    } else {
-      return ramSize;
+    if (timeIndex.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
+      return INSTANCE_SIZE + timeIndex.calculateRamSize();
     }
+    if (deviceTimeIndexRamSize == 0) {
+      deviceTimeIndexRamSize = timeIndex.calculateRamSize();
+    }
+    return INSTANCE_SIZE + deviceTimeIndexRamSize;
+  }
+
+  // used for compaction
+  public Optional<Long> getDeviceTimeIndexRamSize() {
+    if (!this.isClosed()) {
+      return Optional.empty();
+    }
+    return Optional.of(deviceTimeIndexRamSize);
   }
 
   public long getMaxPlanIndex() {
@@ -1074,10 +1337,6 @@ public class TsFileResource {
     }
   }
 
-  public long getRamSize() {
-    return ramSize;
-  }
-
   /** the DeviceTimeIndex degrade to FileTimeIndex and release memory */
   public long degradeTimeIndex() {
     TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(getTimeIndexType());
@@ -1091,29 +1350,20 @@ public class TsFileResource {
     long endTime = timeIndex.getMaxEndTime();
     // replace the DeviceTimeIndex with FileTimeIndex
     timeIndex = new FileTimeIndex(startTime, endTime);
-
-    long beforeRamSize = ramSize;
-
-    ramSize = INSTANCE_SIZE + timeIndex.calculateRamSize();
-
-    return beforeRamSize - ramSize;
-  }
-
-  private void generatePathToTimeSeriesMetadataMap() throws IOException {
-    for (IFullPath path : pathToChunkMetadataListMap.keySet()) {
-      pathToTimeSeriesMetadataMap.put(
-          path,
-          ResourceByPathUtils.getResourceInstance(path)
-              .generateTimeSeriesMetadata(
-                  pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
-    }
+    // deviceTimeIndexRamSize has already been calculated before
+    return deviceTimeIndexRamSize - timeIndex.calculateRamSize();
   }
 
   public void deleteRemovedDeviceAndUpdateEndTime(Map<IDeviceID, Long> lastTimeForEachDevice) {
     ITimeIndex newTimeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
     for (Map.Entry<IDeviceID, Long> entry : lastTimeForEachDevice.entrySet()) {
-      newTimeIndex.updateStartTime(entry.getKey(), timeIndex.getStartTime(entry.getKey()));
-      newTimeIndex.updateEndTime(entry.getKey(), entry.getValue());
+      timeIndex
+          .getStartTime(entry.getKey())
+          .ifPresent(
+              startTime -> {
+                newTimeIndex.updateStartTime(entry.getKey(), startTime);
+                newTimeIndex.updateEndTime(entry.getKey(), entry.getValue());
+              });
     }
     timeIndex = newTimeIndex;
   }
@@ -1136,13 +1386,9 @@ public class TsFileResource {
       return;
     }
 
-    maxProgressIndex =
-        (maxProgressIndex == null
-            ? progressIndex
-            : maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
-
-    PipeTimePartitionProgressIndexKeeper.getInstance()
-        .updateProgressIndex(getDataRegionId(), getTimePartition(), maxProgressIndex);
+    if (!maxProgressIndex.compareAndSet(null, progressIndex)) {
+      maxProgressIndex.get().updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
+    }
   }
 
   public void setProgressIndex(ProgressIndex progressIndex) {
@@ -1150,10 +1396,12 @@ public class TsFileResource {
       return;
     }
 
-    maxProgressIndex = progressIndex;
+    maxProgressIndex.set(progressIndex);
+  }
 
-    PipeTimePartitionProgressIndexKeeper.getInstance()
-        .updateProgressIndex(getDataRegionId(), getTimePartition(), maxProgressIndex);
+  @Override
+  public ProgressIndex getProgressIndex() {
+    return getMaxProgressIndex();
   }
 
   public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {
@@ -1165,7 +1413,8 @@ public class TsFileResource {
   }
 
   public ProgressIndex getMaxProgressIndex() {
-    return maxProgressIndex == null ? MinimumProgressIndex.INSTANCE : maxProgressIndex;
+    final ProgressIndex index = maxProgressIndex.get();
+    return index == null ? MinimumProgressIndex.INSTANCE : index;
   }
 
   public boolean isEmpty() {
@@ -1191,5 +1440,133 @@ public class TsFileResource {
 
   public void setInsertionCompactionTaskCandidate(InsertionCompactionCandidateStatus status) {
     insertionCompactionCandidateStatus = status;
+  }
+
+  public ModIterator getModEntryIterator() {
+    return new ModIterator();
+  }
+
+  public Collection<ModEntry> getAllModEntries() {
+    long estimatedModEntrySizeByte = 50;
+    long modFileTotalSize = getTotalModSizeInByte();
+    if (modFileTotalSize == 0) {
+      return Collections.emptyList();
+    }
+
+    // estimate the initial size to avoid resizing
+    List<ModEntry> entries =
+        new ArrayList<>((int) (modFileTotalSize / estimatedModEntrySizeByte + 1));
+    ModIterator modEntryIterator = getModEntryIterator();
+    modEntryIterator.forEachRemaining(entries::add);
+    return entries;
+  }
+
+  public class ModIterator implements Iterator<ModEntry> {
+
+    private final Iterator<ModEntry> sharedModIterator;
+    private final Iterator<ModEntry> exclusiveModIterator;
+
+    public ModIterator() {
+      Iterator<ModEntry> exclusiveIterator = null;
+      try {
+        ModificationFile newMFile = getExclusiveModFile();
+        exclusiveIterator = newMFile != null ? newMFile.getModIterator(0) : null;
+      } catch (IOException e) {
+        LOGGER.warn("Failed to read mods from {} for {}", exclusiveModFile, this, e);
+      }
+
+      this.exclusiveModIterator = exclusiveIterator;
+
+      Iterator<ModEntry> sharedIterator = null;
+      try {
+        sharedIterator =
+            getSharedModFile() != null ? sharedModFile.getModIterator(sharedModFileOffset) : null;
+      } catch (IOException e) {
+        LOGGER.warn("Failed to read mods from {} for {}", exclusiveModFile, this, e);
+      }
+
+      this.sharedModIterator = sharedIterator;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return (exclusiveModIterator != null && exclusiveModIterator.hasNext())
+          || (sharedModIterator != null && sharedModIterator.hasNext());
+    }
+
+    @Override
+    public ModEntry next() {
+      if (exclusiveModIterator != null && exclusiveModIterator.hasNext()) {
+        return exclusiveModIterator.next();
+      }
+      if (sharedModIterator != null && sharedModIterator.hasNext()) {
+        return sharedModIterator.next();
+      }
+      throw new NoSuchElementException();
+    }
+  }
+
+  public void upgradeModFile(ExecutorService upgradeModFileThreadPool) throws IOException {
+    ModificationFileV1 oldModFile = ModificationFileV1.getNormalMods(this);
+    if (!oldModFile.exists()) {
+      return;
+    }
+
+    if (upgradeModFileThreadPool != null) {
+      exclusiveModFileFuture = upgradeModFileThreadPool.submit(() -> doUpgradeModFile(oldModFile));
+    } else {
+      exclusiveModFileFuture = CompletableFuture.completedFuture(doUpgradeModFile(oldModFile));
+    }
+  }
+
+  @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
+  private ModificationFile doUpgradeModFile(ModificationFileV1 oldModFile) throws IOException {
+    ModificationFile newMFile = ModificationFile.getExclusiveMods(this);
+    newMFile.getFile().delete();
+    try {
+      for (Modification oldMod : oldModFile.getModifications()) {
+        newMFile.write(new TreeDeletionEntry((Deletion) oldMod));
+      }
+    } finally {
+      newMFile.close();
+    }
+    oldModFile.remove();
+    return newMFile;
+  }
+
+  public TsFileResource getPrev() {
+    return prev;
+  }
+
+  public TsFileResource getNext() {
+    return next;
+  }
+
+  public void setSharedModFilePathFuture(CompletableFuture<String> sharedModFilePathFuture) {
+    this.sharedModFilePathFuture = sharedModFilePathFuture;
+  }
+
+  public boolean isUseSharedModFile() {
+    return useSharedModFile;
+  }
+
+  public void setModFileManagement(ModFileManagement modFileManagement) {
+    this.modFileManagement = modFileManagement;
+  }
+
+  public ModFileManagement getModFileManagement() {
+    return modFileManagement;
+  }
+
+  public void setCompactionModFile(ModificationFile compactionModFile) {
+    this.compactionModFile = compactionModFile;
+  }
+
+  public Map<IDeviceID, List<Pair<String, TimeValuePair>>> getLastValues() {
+    return lastValues;
+  }
+
+  public void setLastValues(Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues) {
+    this.lastValues = lastValues;
   }
 }

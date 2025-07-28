@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.consensus.request;
 
+import org.apache.iotdb.common.rpc.thrift.FunctionType;
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -46,10 +48,11 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
@@ -59,7 +62,10 @@ import org.apache.iotdb.commons.sync.PipeStatus;
 import org.apache.iotdb.commons.sync.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.UDFType;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -78,12 +84,17 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterData
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
@@ -120,9 +131,27 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessag
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -167,6 +196,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -435,6 +465,22 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void AutoCleanPartitionTablePlan() throws IOException {
+    Map<String, Long> databaseTTLMap = new TreeMap<>();
+    databaseTTLMap.put("root.db1", -1L); // NULL_TTL
+    databaseTTLMap.put("root.db2", 3600L * 1000 * 24); // 1d_TTL
+    databaseTTLMap.put("root.db3", 3600L * 1000 * 24 * 30); // 1m_TTL
+    TTimePartitionSlot currentTimeSlot =
+        new TTimePartitionSlot(TimePartitionUtils.getTimePartitionSlot(System.currentTimeMillis()));
+    AutoCleanPartitionTablePlan req0 =
+        new AutoCleanPartitionTablePlan(databaseTTLMap, currentTimeSlot);
+    AutoCleanPartitionTablePlan req1 =
+        (AutoCleanPartitionTablePlan)
+            ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
   public void AuthorPlanTest() throws IOException, IllegalPathException {
     AuthorPlan req0;
     AuthorPlan req1;
@@ -444,7 +490,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
     // create user
     req0 =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.CreateUser,
             "thulab",
             "",
@@ -453,12 +499,12 @@ public class ConfigPhysicalPlanSerDeTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // create role
     req0 =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.CreateRole,
             "",
             "admin",
@@ -467,12 +513,12 @@ public class ConfigPhysicalPlanSerDeTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // alter user
     req0 =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.UpdateUser,
             "tempuser",
             "",
@@ -481,7 +527,7 @@ public class ConfigPhysicalPlanSerDeTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // grant user
@@ -489,7 +535,7 @@ public class ConfigPhysicalPlanSerDeTest {
     nodeNameList.add(new PartialPath("root.ln.**"));
     nodeNameList.add(new PartialPath("root.abc.**"));
     req0 =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantUser,
             "tempuser",
             "",
@@ -498,12 +544,12 @@ public class ConfigPhysicalPlanSerDeTest {
             permissions,
             false,
             nodeNameList);
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // grant role
     req0 =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantRoleToUser,
             "tempuser",
             "temprole",
@@ -512,12 +558,12 @@ public class ConfigPhysicalPlanSerDeTest {
             permissions,
             false,
             nodeNameList);
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // grant role to user
     req0 =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantRole,
             "",
             "temprole",
@@ -526,12 +572,12 @@ public class ConfigPhysicalPlanSerDeTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // revoke user
     req0 =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.RevokeUser,
             "tempuser",
             "",
@@ -540,12 +586,12 @@ public class ConfigPhysicalPlanSerDeTest {
             permissions,
             false,
             nodeNameList);
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // revoke role
     req0 =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.RevokeRole,
             "",
             "temprole",
@@ -554,12 +600,12 @@ public class ConfigPhysicalPlanSerDeTest {
             permissions,
             false,
             nodeNameList);
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // revoke role from user
     req0 =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.RevokeRoleFromUser,
             "tempuser",
             "temprole",
@@ -568,12 +614,12 @@ public class ConfigPhysicalPlanSerDeTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // drop user
     req0 =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.DropUser,
             "xiaoming",
             "",
@@ -582,12 +628,12 @@ public class ConfigPhysicalPlanSerDeTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // drop role
     req0 =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.DropRole,
             "",
             "admin",
@@ -596,7 +642,7 @@ public class ConfigPhysicalPlanSerDeTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -1133,9 +1179,9 @@ public class ConfigPhysicalPlanSerDeTest {
   public void AddTableColumnPlanTest() throws IOException {
     final AddTableColumnPlan addTableColumnPlan0 =
         new AddTableColumnPlan(
-            "root.database1",
+            "database1",
             "table1",
-            Collections.singletonList(new IdColumnSchema("Id", TSDataType.STRING)),
+            Collections.singletonList(new TagColumnSchema("Id", TSDataType.STRING)),
             false);
     final AddTableColumnPlan addTableColumnPlan1 =
         (AddTableColumnPlan)
@@ -1149,9 +1195,30 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void AddTableViewColumnPlanTest() throws IOException {
+    final AddTableViewColumnPlan addTableViewColumnPlan0 =
+        new AddTableViewColumnPlan(
+            "database1",
+            "table1",
+            Collections.singletonList(new TagColumnSchema("Id", TSDataType.STRING)),
+            false);
+    final AddTableViewColumnPlan addTableViewColumnPlan1 =
+        (AddTableViewColumnPlan)
+            ConfigPhysicalPlan.Factory.create(addTableViewColumnPlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        addTableViewColumnPlan0.getDatabase(), addTableViewColumnPlan1.getDatabase());
+    Assert.assertEquals(
+        addTableViewColumnPlan0.getTableName(), addTableViewColumnPlan1.getTableName());
+    Assert.assertEquals(
+        addTableViewColumnPlan0.getColumnSchemaList().size(),
+        addTableViewColumnPlan1.getColumnSchemaList().size());
+    Assert.assertEquals(addTableViewColumnPlan0.isRollback(), addTableViewColumnPlan1.isRollback());
+  }
+
+  @Test
   public void CommitCreateTablePlanTest() throws IOException {
     final CommitCreateTablePlan commitCreateTablePlan0 =
-        new CommitCreateTablePlan("root.database1", "table1");
+        new CommitCreateTablePlan("database1", "table1");
     final CommitCreateTablePlan commitCreateTablePlan1 =
         (CommitCreateTablePlan)
             ConfigPhysicalPlan.Factory.create(commitCreateTablePlan0.serializeToByteBuffer());
@@ -1163,12 +1230,12 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void preCreateTablePlanTest() throws IOException {
     final TsTable table = new TsTable("table1");
-    table.addColumnSchema(new IdColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
     table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
     table.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
-    final PreCreateTablePlan preCreateTablePlan0 = new PreCreateTablePlan("root.database1", table);
+    final PreCreateTablePlan preCreateTablePlan0 = new PreCreateTablePlan("database1", table);
     final PreCreateTablePlan preCreateTablePlan1 =
         (PreCreateTablePlan)
             ConfigPhysicalPlan.Factory.create(preCreateTablePlan0.serializeToByteBuffer());
@@ -1181,13 +1248,38 @@ public class ConfigPhysicalPlanSerDeTest {
         preCreateTablePlan0.getTable().getColumnNum(),
         preCreateTablePlan1.getTable().getColumnNum());
     Assert.assertEquals(
-        preCreateTablePlan0.getTable().getIdNums(), preCreateTablePlan1.getTable().getIdNums());
+        preCreateTablePlan0.getTable().getTagNum(), preCreateTablePlan1.getTable().getTagNum());
+  }
+
+  @Test
+  public void preCreateTableViewPlanTest() throws IOException {
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    final PreCreateTableViewPlan preCreateTableViewPlan0 =
+        new PreCreateTableViewPlan("database1", table, TableNodeStatus.PRE_CREATE);
+    final PreCreateTableViewPlan preCreateTablePlan1 =
+        (PreCreateTableViewPlan)
+            ConfigPhysicalPlan.Factory.create(preCreateTableViewPlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(preCreateTableViewPlan0.getDatabase(), preCreateTablePlan1.getDatabase());
+    Assert.assertEquals(
+        preCreateTableViewPlan0.getTable().getTableName(),
+        preCreateTablePlan1.getTable().getTableName());
+    Assert.assertEquals(
+        preCreateTableViewPlan0.getTable().getColumnNum(),
+        preCreateTablePlan1.getTable().getColumnNum());
+    Assert.assertEquals(
+        preCreateTableViewPlan0.getTable().getTagNum(), preCreateTablePlan1.getTable().getTagNum());
+    Assert.assertEquals(preCreateTableViewPlan0.getStatus(), preCreateTablePlan1.getStatus());
   }
 
   @Test
   public void RollbackCreateTablePlanTest() throws IOException {
     final RollbackCreateTablePlan rollbackCreateTablePlan0 =
-        new RollbackCreateTablePlan("root.database1", "table1");
+        new RollbackCreateTablePlan("database1", "table1");
     final RollbackCreateTablePlan rollbackCreateTablePlan1 =
         (RollbackCreateTablePlan)
             ConfigPhysicalPlan.Factory.create(rollbackCreateTablePlan0.serializeToByteBuffer());
@@ -1198,9 +1290,43 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void RenameTableColumnPlanTest() throws IOException {
+    final RenameTableColumnPlan renameTablePropertiesPlan0 =
+        new RenameTableColumnPlan("database1", "table1", "attr1", "att2");
+    final RenameTableColumnPlan renameTablePropertiesPlan1 =
+        (RenameTableColumnPlan)
+            ConfigPhysicalPlan.Factory.create(renameTablePropertiesPlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        renameTablePropertiesPlan0.getDatabase(), renameTablePropertiesPlan1.getDatabase());
+    Assert.assertEquals(
+        renameTablePropertiesPlan0.getTableName(), renameTablePropertiesPlan1.getTableName());
+    Assert.assertEquals(
+        renameTablePropertiesPlan0.getOldName(), renameTablePropertiesPlan1.getOldName());
+    Assert.assertEquals(
+        renameTablePropertiesPlan0.getNewName(), renameTablePropertiesPlan1.getNewName());
+  }
+
+  @Test
+  public void RenameViewColumnPlanTest() throws IOException {
+    final RenameViewColumnPlan renameViewPropertiesPlan0 =
+        new RenameViewColumnPlan("database1", "table1", "attr1", "att2");
+    final RenameViewColumnPlan renameViewPropertiesPlan1 =
+        (RenameViewColumnPlan)
+            ConfigPhysicalPlan.Factory.create(renameViewPropertiesPlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        renameViewPropertiesPlan0.getDatabase(), renameViewPropertiesPlan1.getDatabase());
+    Assert.assertEquals(
+        renameViewPropertiesPlan0.getTableName(), renameViewPropertiesPlan1.getTableName());
+    Assert.assertEquals(
+        renameViewPropertiesPlan0.getOldName(), renameViewPropertiesPlan1.getOldName());
+    Assert.assertEquals(
+        renameViewPropertiesPlan0.getNewName(), renameViewPropertiesPlan1.getNewName());
+  }
+
+  @Test
   public void SetTablePropertiesPlanTest() throws IOException {
     final SetTablePropertiesPlan setTablePropertiesPlan0 =
-        new SetTablePropertiesPlan("root.database1", "table1", Collections.singletonMap("a", null));
+        new SetTablePropertiesPlan("database1", "table1", Collections.singletonMap("a", null));
     final SetTablePropertiesPlan setTablePropertiesPlan1 =
         (SetTablePropertiesPlan)
             ConfigPhysicalPlan.Factory.create(setTablePropertiesPlan0.serializeToByteBuffer());
@@ -1210,6 +1336,181 @@ public class ConfigPhysicalPlanSerDeTest {
         setTablePropertiesPlan0.getTableName(), setTablePropertiesPlan1.getTableName());
     Assert.assertEquals(
         setTablePropertiesPlan0.getProperties(), setTablePropertiesPlan1.getProperties());
+  }
+
+  @Test
+  public void SetViewPropertiesPlanTest() throws IOException {
+    final SetViewPropertiesPlan setViewPropertiesPlan0 =
+        new SetViewPropertiesPlan("database1", "table1", Collections.singletonMap("a", null));
+    final SetViewPropertiesPlan setViewPropertiesPlan1 =
+        (SetViewPropertiesPlan)
+            ConfigPhysicalPlan.Factory.create(setViewPropertiesPlan0.serializeToByteBuffer());
+    Assert.assertEquals(setViewPropertiesPlan0.getDatabase(), setViewPropertiesPlan1.getDatabase());
+    Assert.assertEquals(
+        setViewPropertiesPlan0.getTableName(), setViewPropertiesPlan1.getTableName());
+    Assert.assertEquals(
+        setViewPropertiesPlan0.getProperties(), setViewPropertiesPlan1.getProperties());
+  }
+
+  @Test
+  public void PreDeleteTablePlanTest() throws IOException {
+    final PreDeleteTablePlan preDeleteTablePlan = new PreDeleteTablePlan("database1", "table1");
+    final PreDeleteTablePlan preDeleteTablePlan1 =
+        (PreDeleteTablePlan)
+            ConfigPhysicalPlan.Factory.create(preDeleteTablePlan.serializeToByteBuffer());
+    Assert.assertEquals(preDeleteTablePlan.getDatabase(), preDeleteTablePlan1.getDatabase());
+    Assert.assertEquals(preDeleteTablePlan.getTableName(), preDeleteTablePlan1.getTableName());
+  }
+
+  @Test
+  public void PreDeleteViewPlanTest() throws IOException {
+    final PreDeleteViewPlan preDeleteViewPlan = new PreDeleteViewPlan("database1", "table1");
+    final PreDeleteViewPlan preDeleteViewPlan1 =
+        (PreDeleteViewPlan)
+            ConfigPhysicalPlan.Factory.create(preDeleteViewPlan.serializeToByteBuffer());
+    Assert.assertEquals(preDeleteViewPlan.getDatabase(), preDeleteViewPlan1.getDatabase());
+    Assert.assertEquals(preDeleteViewPlan.getTableName(), preDeleteViewPlan1.getTableName());
+  }
+
+  @Test
+  public void CommitDeleteTablePlanTest() throws IOException {
+    final CommitDeleteTablePlan commitDeleteTablePlan =
+        new CommitDeleteTablePlan("database1", "table1");
+    final CommitDeleteTablePlan commitDeleteTablePlan1 =
+        (CommitDeleteTablePlan)
+            ConfigPhysicalPlan.Factory.create(commitDeleteTablePlan.serializeToByteBuffer());
+    Assert.assertEquals(commitDeleteTablePlan.getDatabase(), commitDeleteTablePlan1.getDatabase());
+    Assert.assertEquals(
+        commitDeleteTablePlan.getTableName(), commitDeleteTablePlan1.getTableName());
+  }
+
+  @Test
+  public void CommitDeleteViewPlanTest() throws IOException {
+    final CommitDeleteViewPlan commitDeleteViewPlan =
+        new CommitDeleteViewPlan("database1", "table1");
+    final CommitDeleteViewPlan commitDeleteViewPlan1 =
+        (CommitDeleteViewPlan)
+            ConfigPhysicalPlan.Factory.create(commitDeleteViewPlan.serializeToByteBuffer());
+    Assert.assertEquals(commitDeleteViewPlan.getDatabase(), commitDeleteViewPlan1.getDatabase());
+    Assert.assertEquals(commitDeleteViewPlan.getTableName(), commitDeleteViewPlan1.getTableName());
+  }
+
+  @Test
+  public void PreDeleteColumnPlanTest() throws IOException {
+    final PreDeleteColumnPlan preDeleteColumnPlan =
+        new PreDeleteColumnPlan("database1", "table1", "field");
+    final PreDeleteColumnPlan preDeleteColumnPlan1 =
+        (PreDeleteColumnPlan)
+            ConfigPhysicalPlan.Factory.create(preDeleteColumnPlan.serializeToByteBuffer());
+    Assert.assertEquals(preDeleteColumnPlan.getDatabase(), preDeleteColumnPlan1.getDatabase());
+    Assert.assertEquals(preDeleteColumnPlan.getTableName(), preDeleteColumnPlan1.getTableName());
+    Assert.assertEquals(preDeleteColumnPlan.getColumnName(), preDeleteColumnPlan1.getColumnName());
+  }
+
+  @Test
+  public void PreDeleteViewColumnPlanTest() throws IOException {
+    final PreDeleteViewColumnPlan preDeleteViewColumnPlan =
+        new PreDeleteViewColumnPlan("database1", "table1", "field");
+    final PreDeleteViewColumnPlan preDeleteViewColumnPlan1 =
+        (PreDeleteViewColumnPlan)
+            ConfigPhysicalPlan.Factory.create(preDeleteViewColumnPlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        preDeleteViewColumnPlan.getDatabase(), preDeleteViewColumnPlan1.getDatabase());
+    Assert.assertEquals(
+        preDeleteViewColumnPlan.getTableName(), preDeleteViewColumnPlan1.getTableName());
+    Assert.assertEquals(
+        preDeleteViewColumnPlan.getColumnName(), preDeleteViewColumnPlan1.getColumnName());
+  }
+
+  @Test
+  public void CommitDeleteColumnPlanTest() throws IOException {
+    final CommitDeleteColumnPlan commitDeleteColumnPlan =
+        new CommitDeleteColumnPlan("database1", "table1", "field");
+    final CommitDeleteColumnPlan commitDeleteColumnPlan1 =
+        (CommitDeleteColumnPlan)
+            ConfigPhysicalPlan.Factory.create(commitDeleteColumnPlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        commitDeleteColumnPlan.getDatabase(), commitDeleteColumnPlan1.getDatabase());
+    Assert.assertEquals(
+        commitDeleteColumnPlan.getTableName(), commitDeleteColumnPlan1.getTableName());
+    Assert.assertEquals(
+        commitDeleteColumnPlan.getColumnName(), commitDeleteColumnPlan1.getColumnName());
+  }
+
+  @Test
+  public void CommitDeleteViewColumnPlanTest() throws IOException {
+    final CommitDeleteViewColumnPlan commitDeleteViewColumnPlan =
+        new CommitDeleteViewColumnPlan("database1", "table1", "field");
+    final CommitDeleteViewColumnPlan commitDeleteViewColumnPlan1 =
+        (CommitDeleteViewColumnPlan)
+            ConfigPhysicalPlan.Factory.create(commitDeleteViewColumnPlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        commitDeleteViewColumnPlan.getDatabase(), commitDeleteViewColumnPlan1.getDatabase());
+    Assert.assertEquals(
+        commitDeleteViewColumnPlan.getTableName(), commitDeleteViewColumnPlan1.getTableName());
+    Assert.assertEquals(
+        commitDeleteViewColumnPlan.getColumnName(), commitDeleteViewColumnPlan1.getColumnName());
+  }
+
+  @Test
+  public void SetTableCommentPlanTest() throws IOException {
+    final SetTableCommentPlan setTableCommentPlan =
+        new SetTableCommentPlan("database1", "table1", "comment");
+    final SetTableCommentPlan setTableCommentPlan1 =
+        (SetTableCommentPlan)
+            ConfigPhysicalPlan.Factory.create(setTableCommentPlan.serializeToByteBuffer());
+    Assert.assertEquals(setTableCommentPlan.getDatabase(), setTableCommentPlan1.getDatabase());
+    Assert.assertEquals(setTableCommentPlan.getTableName(), setTableCommentPlan1.getTableName());
+    Assert.assertEquals(setTableCommentPlan.getComment(), setTableCommentPlan1.getComment());
+  }
+
+  @Test
+  public void SetViewCommentPlanTest() throws IOException {
+    final SetViewCommentPlan setViewCommentPlan =
+        new SetViewCommentPlan("database1", "table1", "comment");
+    final SetViewCommentPlan setViewCommentPlan1 =
+        (SetViewCommentPlan)
+            ConfigPhysicalPlan.Factory.create(setViewCommentPlan.serializeToByteBuffer());
+    Assert.assertEquals(setViewCommentPlan.getDatabase(), setViewCommentPlan1.getDatabase());
+    Assert.assertEquals(setViewCommentPlan.getTableName(), setViewCommentPlan1.getTableName());
+    Assert.assertEquals(setViewCommentPlan.getComment(), setViewCommentPlan1.getComment());
+  }
+
+  @Test
+  public void SetTableColumnCommentPlanTest() throws IOException {
+    final SetTableColumnCommentPlan setTableColumnCommentPlan =
+        new SetTableColumnCommentPlan("database1", "table1", "field", "comment");
+    final SetTableColumnCommentPlan setTableColumnCommentPlan1 =
+        (SetTableColumnCommentPlan)
+            ConfigPhysicalPlan.Factory.create(setTableColumnCommentPlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        setTableColumnCommentPlan.getDatabase(), setTableColumnCommentPlan1.getDatabase());
+    Assert.assertEquals(
+        setTableColumnCommentPlan.getTableName(), setTableColumnCommentPlan1.getTableName());
+    Assert.assertEquals(
+        setTableColumnCommentPlan.getColumnName(), setTableColumnCommentPlan1.getColumnName());
+  }
+
+  @Test
+  public void RenameTablePlanTest() throws IOException {
+    final RenameTablePlan renameTablePlan =
+        new RenameTablePlan("database1", "table1", "measurement");
+    final RenameTablePlan renameTablePlan1 =
+        (RenameTablePlan)
+            ConfigPhysicalPlan.Factory.create(renameTablePlan.serializeToByteBuffer());
+    Assert.assertEquals(renameTablePlan.getDatabase(), renameTablePlan1.getDatabase());
+    Assert.assertEquals(renameTablePlan.getTableName(), renameTablePlan1.getTableName());
+    Assert.assertEquals(renameTablePlan.getNewName(), renameTablePlan1.getNewName());
+  }
+
+  @Test
+  public void RenameViewPlanTest() throws IOException {
+    final RenameViewPlan renameViewPlan = new RenameViewPlan("database1", "table1", "measurement");
+    final RenameViewPlan renameViewPlan1 =
+        (RenameViewPlan) ConfigPhysicalPlan.Factory.create(renameViewPlan.serializeToByteBuffer());
+    Assert.assertEquals(renameViewPlan.getDatabase(), renameViewPlan1.getDatabase());
+    Assert.assertEquals(renameViewPlan.getTableName(), renameViewPlan1.getTableName());
+    Assert.assertEquals(renameViewPlan.getNewName(), renameViewPlan1.getNewName());
   }
 
   @Test
@@ -1402,7 +1703,13 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void CreateFunctionPlanTest() throws IOException {
     UDFInformation udfInformation =
-        new UDFInformation("test1", "test1", false, true, "test1.jar", "12345");
+        new UDFInformation(
+            "test1",
+            "test1",
+            UDFType.of(Model.TREE, FunctionType.NONE, true),
+            true,
+            "test1.jar",
+            "12345");
     CreateFunctionPlan createFunctionPlan0 =
         new CreateFunctionPlan(udfInformation, new Binary(new byte[] {1, 2, 3}));
     CreateFunctionPlan createFunctionPlan1 =
@@ -1412,12 +1719,35 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void UpdateFunctionPlanTest() throws IOException {
+    UDFInformation udfInformation =
+        new UDFInformation(
+            "test1",
+            "test1",
+            UDFType.of(Model.TREE, FunctionType.NONE, true),
+            true,
+            "test1.jar",
+            "12345");
+    UpdateFunctionPlan updateFunctionPlan = new UpdateFunctionPlan(udfInformation);
+    UpdateFunctionPlan updateFunctionPlan1 =
+        (UpdateFunctionPlan)
+            ConfigPhysicalPlan.Factory.create(updateFunctionPlan.serializeToByteBuffer());
+    Assert.assertEquals(updateFunctionPlan, updateFunctionPlan1);
+  }
+
+  @Test
   public void DropFunctionPlanTest() throws IOException {
-    DropFunctionPlan dropFunctionPlan0 = new DropFunctionPlan("test");
-    DropFunctionPlan dropFunctionPlan1 =
-        (DropFunctionPlan)
-            ConfigPhysicalPlan.Factory.create(dropFunctionPlan0.serializeToByteBuffer());
-    Assert.assertEquals(dropFunctionPlan0, dropFunctionPlan1);
+    DropTreeModelFunctionPlan dropTreeModelFunctionPlan0 = new DropTreeModelFunctionPlan("test");
+    DropTreeModelFunctionPlan dropTreeModelFunctionPlan1 =
+        (DropTreeModelFunctionPlan)
+            ConfigPhysicalPlan.Factory.create(dropTreeModelFunctionPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropTreeModelFunctionPlan0, dropTreeModelFunctionPlan1);
+
+    DropTableModelFunctionPlan dropTableModelFunctionPlan0 = new DropTableModelFunctionPlan("test");
+    DropTableModelFunctionPlan dropTableModelFunctionPlan1 =
+        (DropTableModelFunctionPlan)
+            ConfigPhysicalPlan.Factory.create(dropTableModelFunctionPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropTableModelFunctionPlan0, dropTableModelFunctionPlan1);
   }
 
   @Test
@@ -1574,6 +1904,46 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         pipeDeactivateTemplatePlan,
         ConfigPhysicalPlan.Factory.create(pipeDeactivateTemplatePlan.serializeToByteBuffer()));
+  }
+
+  @Test
+  public void pipeCreateTablePlanTest() throws IOException {
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan0 =
+        new PipeCreateTableOrViewPlan("root.database1", table);
+    final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan1 =
+        (PipeCreateTableOrViewPlan)
+            ConfigPhysicalPlan.Factory.create(pipeCreateTableOrViewPlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(
+        pipeCreateTableOrViewPlan0.getDatabase(), pipeCreateTableOrViewPlan1.getDatabase());
+    Assert.assertEquals(
+        pipeCreateTableOrViewPlan0.getTable().getTableName(),
+        pipeCreateTableOrViewPlan1.getTable().getTableName());
+    Assert.assertEquals(
+        pipeCreateTableOrViewPlan0.getTable().getColumnNum(),
+        pipeCreateTableOrViewPlan1.getTable().getColumnNum());
+    Assert.assertEquals(
+        pipeCreateTableOrViewPlan0.getTable().getTagNum(),
+        pipeCreateTableOrViewPlan1.getTable().getTagNum());
+  }
+
+  @Test
+  public void pipeDeleteDevicesPlanTest() throws IOException {
+    final PipeDeleteDevicesPlan originalPlan =
+        new PipeDeleteDevicesPlan(
+            "root.database1",
+            "table1",
+            new byte[] {0, 1, 2},
+            new byte[] {0, 1, 2},
+            new byte[] {0, 1, 2});
+    Assert.assertEquals(
+        originalPlan, ConfigPhysicalPlan.Factory.create(originalPlan.serializeToByteBuffer()));
   }
 
   @Test

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.commons.schema.table.column;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,14 +28,14 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public enum TsTableColumnCategory {
-  ID((byte) 0),
+  TAG((byte) 0),
   ATTRIBUTE((byte) 1),
   TIME((byte) 2),
-  MEASUREMENT((byte) 3);
+  FIELD((byte) 3);
 
   private final byte category;
 
-  TsTableColumnCategory(byte category) {
+  TsTableColumnCategory(final byte category) {
     this.category = category;
   }
 
@@ -43,58 +43,56 @@ public enum TsTableColumnCategory {
     return category;
   }
 
-  public void serialize(OutputStream stream) throws IOException {
+  public void serialize(final OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(category, stream);
   }
 
-  public void serialize(ByteBuffer byteBuffer) {
+  public void serialize(final ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(category, byteBuffer);
   }
 
-  public static TsTableColumnCategory deserialize(InputStream stream) throws IOException {
-    byte category = (byte) stream.read();
-    return deserialize(category);
+  public static TsTableColumnCategory deserialize(final InputStream stream) throws IOException {
+    return deserialize((byte) stream.read());
   }
 
-  public static TsTableColumnCategory deserialize(ByteBuffer stream) {
-    byte category = stream.get();
-    return deserialize(category);
+  public static TsTableColumnCategory deserialize(final ByteBuffer stream) {
+    return deserialize(stream.get());
   }
 
-  public static TsTableColumnCategory deserialize(byte category) {
+  public static TsTableColumnCategory deserialize(final byte category) {
     switch (category) {
       case 0:
-        return ID;
+        return TAG;
       case 1:
         return ATTRIBUTE;
       case 2:
         return TIME;
       case 3:
-        return MEASUREMENT;
+        return FIELD;
       default:
         throw new IllegalArgumentException();
     }
   }
 
-  public ColumnType toTsFileColumnType() {
+  public ColumnCategory toTsFileColumnType() {
     switch (this) {
-      case ID:
-        return ColumnType.ID;
+      case TAG:
+        return ColumnCategory.TAG;
       case ATTRIBUTE:
-        return ColumnType.ATTRIBUTE;
-      case MEASUREMENT:
-        return ColumnType.MEASUREMENT;
+        return ColumnCategory.ATTRIBUTE;
+      case FIELD:
+        return ColumnCategory.FIELD;
       default:
         throw new IllegalArgumentException("Unsupported column type in TsFile: " + this);
     }
   }
 
-  public static TsTableColumnCategory fromTsFileColumnType(ColumnType columnType) {
+  public static TsTableColumnCategory fromTsFileColumnCategory(ColumnCategory columnType) {
     switch (columnType) {
-      case MEASUREMENT:
-        return MEASUREMENT;
-      case ID:
-        return ID;
+      case FIELD:
+        return FIELD;
+      case TAG:
+        return TAG;
       case ATTRIBUTE:
         return ATTRIBUTE;
       default:

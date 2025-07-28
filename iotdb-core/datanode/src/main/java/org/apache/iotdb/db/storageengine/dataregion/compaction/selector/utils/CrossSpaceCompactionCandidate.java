@@ -28,6 +28,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -97,7 +98,8 @@ public class CrossSpaceCompactionCandidate {
       // unseq file resource has been deleted due to TTL and cannot upgrade to DEVICE_TIME_INDEX
       return false;
     }
-    for (DeviceInfo unseqDeviceInfo : unseqFile.getDeviceInfoList()) {
+    for (Iterator<DeviceInfo> it = unseqFile.getDeviceInfoIterator(); it.hasNext(); ) {
+      DeviceInfo unseqDeviceInfo = it.next();
       IDeviceID deviceId = unseqDeviceInfo.deviceId;
       boolean atLeastOneSeqFileSelected = false;
       // The `previousSeqFile` means the seqFile which contains the device and its endTime is just

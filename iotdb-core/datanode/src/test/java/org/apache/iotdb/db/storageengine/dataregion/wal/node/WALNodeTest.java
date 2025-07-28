@@ -66,7 +66,6 @@ import java.util.concurrent.Future;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -149,14 +148,6 @@ public class WALNodeTest {
       }
     }
     assertEquals(expectedInsertTabletNodes, actualInsertTabletNodes);
-    // check flush listeners
-    try {
-      for (WALFlushListener walFlushListener : walFlushListeners) {
-        assertNotEquals(WALFlushListener.Status.FAILURE, walFlushListener.waitForResult());
-      }
-    } catch (NullPointerException e) {
-      // ignore
-    }
   }
 
   private void writeInsertTabletNode(
@@ -169,7 +160,10 @@ public class WALNodeTest {
           getInsertTabletNode(devicePath + memTableId, new long[] {i});
       expectedInsertTabletNodes.add(insertTabletNode);
       WALFlushListener walFlushListener =
-          walNode.log(memTableId, insertTabletNode, 0, insertTabletNode.getRowCount());
+          walNode.log(
+              memTableId,
+              insertTabletNode,
+              Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()}));
       walFlushListeners.add(walFlushListener);
     }
   }
@@ -297,7 +291,10 @@ public class WALNodeTest {
       InsertTabletNode insertTabletNode =
           getInsertTabletNode(devicePath + memTableId, new long[] {time});
       WALFlushListener walFlushListener =
-          walNode.log(memTableId, insertTabletNode, 0, insertTabletNode.getRowCount());
+          walNode.log(
+              memTableId,
+              insertTabletNode,
+              Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()}));
       walFlushListeners.add(walFlushListener);
     }
     walNode.onMemTableFlushed(memTable);
@@ -329,13 +326,5 @@ public class WALNodeTest {
                     + File.separator
                     + WALFileUtils.getLogFileName(1, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
             .exists());
-    // check flush listeners
-    try {
-      for (WALFlushListener walFlushListener : walFlushListeners) {
-        assertNotEquals(WALFlushListener.Status.FAILURE, walFlushListener.waitForResult());
-      }
-    } catch (NullPointerException e) {
-      // ignore
-    }
   }
 }

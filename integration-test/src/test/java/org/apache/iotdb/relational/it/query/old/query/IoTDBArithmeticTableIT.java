@@ -1,19 +1,25 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.relational.it.query.old.query;
 
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -50,6 +56,8 @@ public class IoTDBArithmeticTableIT {
 
   private static final String DATABASE_NAME = "test";
 
+  private static final long MILLISECONDS_IN_DAY = 24 * 60 * 60 * 1000;
+
   private static final double[][] BASE_ANS = {{1, 1, 1.0, 1.0}, {2, 2, 2.0, 2.0}, {3, 3, 3.0, 3.0}};
 
   private static final Map<String, BiFunction<Double, Double, Double>> OPERATIONS = new HashMap<>();
@@ -65,10 +73,13 @@ public class IoTDBArithmeticTableIT {
   private static final String[] INSERTION_SQLS = {
     "CREATE DATABASE " + DATABASE_NAME,
     "USE " + DATABASE_NAME,
-    "CREATE TABLE table1 (device STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 DATE MEASUREMENT, s6 TIMESTAMP MEASUREMENT, s7 BOOLEAN MEASUREMENT, s8 TEXT MEASUREMENT)",
+    "CREATE TABLE table1 (device STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 DATE FIELD, s6 TIMESTAMP FIELD, s7 BOOLEAN FIELD, s8 TEXT FIELD)",
     "insert into table1(device, time, s1, s2, s3, s4, s5, s6, s7, s8) values ('d1', 1, 1, 1, 1.0, 1.0, '2024-01-01', 10, true, 'test')",
     "insert into table1(device, time, s1, s2, s3, s4, s5, s6, s7, s8) values ('d1', 2, 2, 2, 2.0, 2.0, '2024-02-01', 20, true, 'test')",
     "insert into table1(device, time, s1, s2, s3, s4, s5, s6, s7, s8) values ('d1', 3, 3, 3, 3.0, 3.0, '2024-03-01', 30, true, 'test')",
+    "CREATE TABLE table2 (device STRING TAG, date DATE FIELD)",
+    "insert into table2(device, time, date) values ('d1', 1, '9999-12-31')",
+    "insert into table2(device, time, date) values ('d1', 2, '1000-01-01')",
   };
 
   @BeforeClass
@@ -332,6 +343,35 @@ public class IoTDBArithmeticTableIT {
 
     tableAssertTestFail("select s1%0 from table1", "751: Division by zero", "test");
     tableAssertTestFail("select s2%0 from table1", "751: Division by zero", "test");
+  }
+
+  @Test
+  public void testDateOutOfRange() {
+    tableAssertTestFail(
+        String.format(
+            "select date + %s from table2 where time = 1",
+            DateTimeUtils.correctPrecision(MILLISECONDS_IN_DAY)),
+        "752: Year must be between 1000 and 9999.",
+        "test");
+
+    tableAssertTestFail(
+        String.format(
+            "select %s + date from table2 where time = 1",
+            DateTimeUtils.correctPrecision(MILLISECONDS_IN_DAY)),
+        "752: Year must be between 1000 and 9999.",
+        "test");
+
+    tableAssertTestFail(
+        String.format("select %s + date from table2 where time = 1", 86400000),
+        "752: Year must be between 1000 and 9999.",
+        "test");
+
+    tableAssertTestFail(
+        String.format(
+            "select date - %s from table2 where time = 2",
+            DateTimeUtils.correctPrecision(MILLISECONDS_IN_DAY)),
+        "752: Year must be between 1000 and 9999.",
+        "test");
   }
 
   private void testBinaryDifferentCombinationsFail(

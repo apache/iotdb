@@ -31,6 +31,7 @@ github:
   features:
     wiki: true
     issues: true
+    discussions: true
   enabled_merge_buttons:
     # enable squash button:
     squash:  true
@@ -48,3 +49,5 @@ github:
     - Wei-hao-Li
     - Colinleeo
     - Caideyipi
+notifications:
+  discussions: dev@iotdb.apache.org

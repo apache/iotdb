@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
@@ -39,7 +39,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
   protected TsBlock inputTsBlock;
   protected boolean canCallNext;
 
-  protected final List<Aggregator> aggregators;
+  protected final List<TreeAggregator> aggregators;
 
   // using for building result tsBlock
   protected TsBlockBuilder resultTsBlockBuilder;
@@ -49,7 +49,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   protected SingleInputAggregationOperator(
       OperatorContext operatorContext,
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       Operator child,
       boolean ascending,
       long maxReturnSize) {

@@ -29,4 +29,6 @@ public interface ISinkChannel extends ISink {
 
   /** Return the number of TsBlocks the channel has in buffer. */
   int getNumOfBufferedTsBlocks();
+
+  void checkState();
 }

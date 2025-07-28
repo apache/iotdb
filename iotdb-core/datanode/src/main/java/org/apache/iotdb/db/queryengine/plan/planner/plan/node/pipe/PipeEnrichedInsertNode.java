@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -58,7 +59,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
 
   private final InsertNode insertNode;
 
-  public PipeEnrichedInsertNode(InsertNode insertNode) {
+  public PipeEnrichedInsertNode(final InsertNode insertNode) {
     super(insertNode.getPlanNodeId());
     this.insertNode = insertNode;
   }
@@ -83,7 +84,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public void setPlanNodeId(PlanNodeId id) {
+  public void setPlanNodeId(final PlanNodeId id) {
     insertNode.setPlanNodeId(id);
   }
 
@@ -93,7 +94,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {
+  public void addChild(final PlanNode child) {
     insertNode.addChild(child);
   }
 
@@ -108,13 +109,13 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+  public PlanNode createSubNode(final int subNodeId, final int startIndex, final int endIndex) {
     return new PipeEnrichedInsertNode(
         (InsertNode) insertNode.createSubNode(subNodeId, startIndex, endIndex));
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
+  public PlanNode cloneWithChildren(final List<PlanNode> children) {
     return new PipeEnrichedInsertNode((InsertNode) insertNode.cloneWithChildren(children));
   }
 
@@ -129,12 +130,12 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
     return visitor.visitPipeEnrichedInsertNode(this, context);
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
     return insertNode.splitByPartition(analysis).stream()
         .map(
             plan ->
@@ -145,12 +146,17 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
+  public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
+    return insertNode.mergeInsertNode(insertNodes);
+  }
+
+  @Override
   public TRegionReplicaSet getDataRegionReplicaSet() {
     return insertNode.getDataRegionReplicaSet();
   }
 
   @Override
-  public void setDataRegionReplicaSet(TRegionReplicaSet dataRegionReplicaSet) {
+  public void setDataRegionReplicaSet(final TRegionReplicaSet dataRegionReplicaSet) {
     insertNode.setDataRegionReplicaSet(dataRegionReplicaSet);
   }
 
@@ -160,7 +166,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public void setTargetPath(PartialPath targetPath) {
+  public void setTargetPath(final PartialPath targetPath) {
     insertNode.setTargetPath(targetPath);
   }
 
@@ -170,7 +176,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public void setAligned(boolean aligned) {
+  public void setAligned(final boolean aligned) {
     insertNode.setAligned(aligned);
   }
 
@@ -180,7 +186,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public void setMeasurementSchemas(MeasurementSchema[] measurementSchemas) {
+  public void setMeasurementSchemas(final MeasurementSchema[] measurementSchemas) {
     insertNode.setMeasurementSchemas(measurementSchemas);
   }
 
@@ -195,12 +201,12 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public TSDataType getDataType(int index) {
+  public TSDataType getDataType(final int index) {
     return insertNode.getDataType(index);
   }
 
   @Override
-  public void setDataTypes(TSDataType[] dataTypes) {
+  public void setDataTypes(final TSDataType[] dataTypes) {
     insertNode.setDataTypes(dataTypes);
   }
 
@@ -210,7 +216,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public void setDeviceID(IDeviceID deviceID) {
+  public void setDeviceID(final IDeviceID deviceID) {
     insertNode.setDeviceID(deviceID);
   }
 
@@ -220,23 +226,24 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public void setSearchIndex(long searchIndex) {
+  public SearchNode setSearchIndex(final long searchIndex) {
     insertNode.setSearchIndex(searchIndex);
+    return this;
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
     PlanNodeType.PIPE_ENRICHED_INSERT_DATA.serialize(byteBuffer);
     insertNode.serialize(byteBuffer);
   }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.PIPE_ENRICHED_INSERT_DATA.serialize(stream);
     insertNode.serialize(stream);
   }
 
-  public static PipeEnrichedInsertNode deserialize(ByteBuffer buffer) {
+  public static PipeEnrichedInsertNode deserialize(final ByteBuffer buffer) {
     return new PipeEnrichedInsertNode((InsertNode) PlanNodeType.deserialize(buffer));
   }
 
@@ -251,7 +258,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public void markFailedMeasurement(int index) {
+  public void markFailedMeasurement(final int index) {
     insertNode.markFailedMeasurement(index);
   }
 
@@ -261,7 +268,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public void setFailedMeasurementNumber(int failedMeasurementNumber) {
+  public void setFailedMeasurementNumber(final int failedMeasurementNumber) {
     insertNode.setFailedMeasurementNumber(failedMeasurementNumber);
   }
 
@@ -271,7 +278,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public void setProgressIndex(ProgressIndex progressIndex) {
+  public void setProgressIndex(final ProgressIndex progressIndex) {
     insertNode.setProgressIndex(progressIndex);
   }
 
@@ -281,7 +288,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     return o instanceof PipeEnrichedInsertNode
         && insertNode.equals(((PipeEnrichedInsertNode) o).insertNode);
   }

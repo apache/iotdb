@@ -20,9 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.statement.pipe;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+
+import org.apache.tsfile.annotations.TableModel;
 
 import java.util.Collections;
 import java.util.List;
@@ -32,7 +37,7 @@ public class PipeEnrichedStatement extends Statement {
 
   private Statement innerStatement;
 
-  public PipeEnrichedStatement(Statement innerStatement) {
+  public PipeEnrichedStatement(final Statement innerStatement) {
     statementType = StatementType.PIPE_ENRICHED;
     this.innerStatement = innerStatement;
   }
@@ -41,12 +46,12 @@ public class PipeEnrichedStatement extends Statement {
     return innerStatement;
   }
 
-  public void setInnerStatement(Statement innerStatement) {
+  public void setInnerStatement(final Statement innerStatement) {
     this.innerStatement = innerStatement;
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitPipeEnrichedStatement(this, context);
   }
 
@@ -56,7 +61,7 @@ public class PipeEnrichedStatement extends Statement {
   }
 
   @Override
-  public void setDebug(boolean debug) {
+  public void setDebug(final boolean debug) {
     innerStatement.setDebug(debug);
   }
 
@@ -68,5 +73,17 @@ public class PipeEnrichedStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
+  }
+
+  @TableModel
+  @Override
+  public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
+      final MPPQueryContext context) {
+    final PipeEnriched pipeEnriched =
+        new PipeEnriched(innerStatement.toRelationalStatement(context));
+    if (pipeEnriched.getInnerStatement() instanceof InsertRows) {
+      ((InsertRows) pipeEnriched.getInnerStatement()).setAllowCreateTable(true);
+    }
+    return pipeEnriched;
   }
 }

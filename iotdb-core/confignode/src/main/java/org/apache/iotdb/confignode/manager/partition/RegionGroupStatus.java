@@ -24,26 +24,19 @@ public enum RegionGroupStatus {
   Running("Running", 1),
 
   /**
-   * All Regions in RegionGroup are in the Running or Unknown status, and the number of Regions in
-   * the Unknown status is less than half
+   * For strong consistency algorithms, the RegionGroup is considered as Available when the number
+   * of Regions in the Running status is greater than half. For weak consistency algorithms, the
+   * RegionGroup is considered as Available when the number of Regions in the Running status is
+   * greater than or equal to 1. To avoid the impact of Removing and Adding region status on region
+   * group status evaluation, this status, which only occurs during region migration and
+   * reconstruction, can be excluded. The denominator uses the number of regions excluding Removing
+   * and Adding status, while the numerator uses regions in the Running status, ensuring high
+   * availability evaluation remains unaffected.
    */
   Available("Available", 2),
 
-  /**
-   * All Regions in RegionGroup are in the Running, Unknown or ReadOnly status, and at least 1 node
-   * is in ReadOnly status, the number of Regions in the Unknown or ReadOnly status is less than
-   * half
-   */
-  Discouraged("Discouraged", 3),
-
-  /**
-   * The following cases will lead to Disabled RegionGroup:
-   *
-   * <p>1. There is a Region in Removing status
-   *
-   * <p>2. More than half of the Regions are in Unknown or ReadOnly status
-   */
-  Disabled("Disabled", 4);
+  /** In scenarios other than the two mentioned above. */
+  Disabled("Disabled", 3);
 
   private final String status;
   private final int weight;

@@ -1,34 +1,45 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -39,6 +50,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Aggre
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 
 public class Util {
+  private Util() {}
+
   /**
    * Split AggregationNode into two-stage.
    *
@@ -46,23 +59,17 @@ public class Util {
    */
   public static Pair<AggregationNode, AggregationNode> split(
       AggregationNode node, SymbolAllocator symbolAllocator, QueryId queryId) {
-    Map<Symbol, AggregationNode.Aggregation> intermediateAggregation = new HashMap<>();
-    Map<Symbol, AggregationNode.Aggregation> finalAggregation = new HashMap<>();
+    Map<Symbol, AggregationNode.Aggregation> intermediateAggregation = new LinkedHashMap<>();
+    Map<Symbol, AggregationNode.Aggregation> finalAggregation = new LinkedHashMap<>();
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       AggregationNode.Aggregation originalAggregation = entry.getValue();
       ResolvedFunction resolvedFunction = originalAggregation.getResolvedFunction();
-      List<Type> intermediateTypes =
-          TableBuiltinAggregationFunction.getIntermediateTypes(
+      Type intermediateType =
+          TableBuiltinAggregationFunction.getIntermediateType(
               resolvedFunction.getSignature().getName(),
               resolvedFunction.getSignature().getArgumentTypes());
-      Type intermediateType =
-          intermediateTypes.size() == 1
-              ? intermediateTypes.get(0)
-              : RowType.anonymous(intermediateTypes);
       Symbol intermediateSymbol =
           symbolAllocator.newSymbol(resolvedFunction.getSignature().getName(), intermediateType);
-      // TODO put symbol and its type to TypeProvide or later process: add all map contents of
-      // SymbolAllocator to the TypeProvider
       checkState(
           !originalAggregation.getOrderingScheme().isPresent(),
           "Aggregate with ORDER BY does not support partial aggregation");
@@ -116,19 +123,22 @@ public class Util {
    */
   public static Pair<AggregationNode, AggregationTableScanNode> split(
       AggregationTableScanNode node, SymbolAllocator symbolAllocator, QueryId queryId) {
-    Map<Symbol, AggregationNode.Aggregation> intermediateAggregation = new HashMap<>();
-    Map<Symbol, AggregationNode.Aggregation> finalAggregation = new HashMap<>();
+    AggregationTreeDeviceViewScanNode aggregationTreeDeviceViewScanNode;
+    if (node instanceof AggregationTreeDeviceViewScanNode) {
+      aggregationTreeDeviceViewScanNode = (AggregationTreeDeviceViewScanNode) node;
+    } else {
+      aggregationTreeDeviceViewScanNode = null;
+    }
+
+    Map<Symbol, AggregationNode.Aggregation> intermediateAggregation = new LinkedHashMap<>();
+    Map<Symbol, AggregationNode.Aggregation> finalAggregation = new LinkedHashMap<>();
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       AggregationNode.Aggregation originalAggregation = entry.getValue();
       ResolvedFunction resolvedFunction = originalAggregation.getResolvedFunction();
-      List<Type> intermediateTypes =
-          TableBuiltinAggregationFunction.getIntermediateTypes(
+      Type intermediateType =
+          TableBuiltinAggregationFunction.getIntermediateType(
               resolvedFunction.getSignature().getName(),
               resolvedFunction.getSignature().getArgumentTypes());
-      Type intermediateType =
-          intermediateTypes.size() == 1
-              ? intermediateTypes.get(0)
-              : RowType.anonymous(intermediateTypes);
       Symbol intermediateSymbol =
           symbolAllocator.newSymbol(resolvedFunction.getSignature().getName(), intermediateType);
 
@@ -157,6 +167,51 @@ public class Util {
               Optional.empty()));
     }
 
+    AggregationTableScanNode rightResult =
+        aggregationTreeDeviceViewScanNode == null
+            ? new AggregationTableScanNode(
+                queryId.genPlanNodeId(),
+                node.getQualifiedObjectName(),
+                node.getOutputSymbols(),
+                node.getAssignments(),
+                ImmutableList.of(),
+                node.getTagAndAttributeIndexMap(),
+                node.getScanOrder(),
+                node.getTimePredicate().orElse(null),
+                node.getPushDownPredicate(),
+                node.getPushDownLimit(),
+                node.getPushDownOffset(),
+                node.isPushLimitToEachDevice(),
+                node.containsNonAlignedDevice(),
+                node.getProjection(),
+                intermediateAggregation,
+                node.getGroupingSets(),
+                node.getPreGroupedSymbols(),
+                PARTIAL,
+                node.getGroupIdSymbol())
+            : new AggregationTreeDeviceViewScanNode(
+                queryId.genPlanNodeId(),
+                node.getQualifiedObjectName(),
+                node.getOutputSymbols(),
+                node.getAssignments(),
+                ImmutableList.of(),
+                node.getTagAndAttributeIndexMap(),
+                node.getScanOrder(),
+                node.getTimePredicate().orElse(null),
+                node.getPushDownPredicate(),
+                node.getPushDownLimit(),
+                node.getPushDownOffset(),
+                node.isPushLimitToEachDevice(),
+                node.containsNonAlignedDevice(),
+                node.getProjection(),
+                intermediateAggregation,
+                node.getGroupingSets(),
+                node.getPreGroupedSymbols(),
+                PARTIAL,
+                node.getGroupIdSymbol(),
+                aggregationTreeDeviceViewScanNode.getTreeDBName(),
+                aggregationTreeDeviceViewScanNode.getMeasurementColumnNameMap());
+
     return new Pair<>(
         new AggregationNode(
             node.getPlanNodeId(),
@@ -167,24 +222,18 @@ public class Util {
             FINAL,
             Optional.empty(),
             node.getGroupIdSymbol()),
-        new AggregationTableScanNode(
-            queryId.genPlanNodeId(),
-            node.getQualifiedObjectName(),
-            node.getOutputSymbols(),
-            node.getAssignments(),
-            ImmutableList.of(),
-            node.getIdAndAttributeIndexMap(),
-            node.getScanOrder(),
-            node.getTimePredicate().orElse(null),
-            node.getPushDownPredicate(),
-            node.getPushDownLimit(),
-            node.getPushDownOffset(),
-            node.isPushLimitToEachDevice(),
-            node.getProjection(),
-            intermediateAggregation,
-            node.getGroupingSets(),
-            node.getPreGroupedSymbols(),
-            PARTIAL,
-            node.getGroupIdSymbol()));
+        rightResult);
+  }
+
+  public static ResolvedFunction getResolvedBuiltInAggregateFunction(
+      Metadata metadata, String functionName, List<Type> argumentTypes) {
+    // The same as the code in ExpressionAnalyzer
+    Type type = metadata.getFunctionReturnType(functionName, argumentTypes);
+    return new ResolvedFunction(
+        new BoundSignature(functionName.toLowerCase(Locale.ENGLISH), type, argumentTypes),
+        FunctionId.NOOP_FUNCTION_ID,
+        FunctionKind.AGGREGATE,
+        true,
+        FunctionNullability.getAggregationFunctionNullability(argumentTypes.size()));
   }
 }

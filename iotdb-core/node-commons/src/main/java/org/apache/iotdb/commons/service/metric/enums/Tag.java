@@ -30,7 +30,9 @@ public enum Tag {
   OPERATION("operation"),
   INTERFACE("interface"),
   CREATION_TIME("creation_time"),
-  INDEX("index");
+  INDEX("index"),
+  MODULE("module"),
+  LEVEL("level");
 
   final String value;
 

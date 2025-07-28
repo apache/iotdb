@@ -46,12 +46,12 @@ public class SnapshotFragmentReader {
 
   public boolean hasNext() throws IOException {
     buf.clear();
-    int actualReadSize = fileChannel.read(buf);
+    int readSize = fileChannel.read(buf);
     buf.flip();
-    if (actualReadSize > 0) {
+    if (readSize > 0) {
       cachedSnapshotFragment =
-          new SnapshotFragment(snapshotId, filePath, fileSize, totalReadSize, actualReadSize, buf);
-      totalReadSize += actualReadSize;
+          new SnapshotFragment(snapshotId, filePath, fileSize, totalReadSize, readSize, buf);
+      totalReadSize += readSize;
       return true;
     }
     return false;

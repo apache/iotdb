@@ -65,13 +65,24 @@ public class ${className} extends LinearFill {
   }
 
   @Override
-  Column createFilledValueColumn(double[] factors) {
+  Column createFilledValueColumn(double[] factors, Optional<boolean[]> valueIsNull) {
     int size = factors.length;
     ${type.dataType}[] filledValue = new ${type.dataType}[size];
-    for (int i = 0; i < size; i++) {
-      filledValue[i] = getFilledValue(factors[i]);
+
+    if (valueIsNull.isPresent()) {
+      // has null value
+      boolean[] isNull = valueIsNull.get();
+      for (int i = 0; i < size; i++) {
+        if (!isNull[i]) {
+          filledValue[i] = getFilledValue(factors[i]);
+        }
+      }
+    } else {
+      for (int i = 0; i < size; i++) {
+        filledValue[i] = getFilledValue(factors[i]);
+      }
     }
-    return new ${type.column}(size, Optional.empty(), filledValue);
+    return new ${type.column}(size, valueIsNull, filledValue);
   }
 
   @Override

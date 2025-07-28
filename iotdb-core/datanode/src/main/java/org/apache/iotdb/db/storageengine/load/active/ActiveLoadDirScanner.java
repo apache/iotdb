@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
 
@@ -37,9 +38,12 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
@@ -52,6 +56,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
   private final Set<String> listeningDirs = new CopyOnWriteArraySet<>();
 
   private final Set<String> noPermissionDirs = new CopyOnWriteArraySet<>();
+
+  private final AtomicBoolean isReadOnlyLogPrinted = new AtomicBoolean(false);
 
   private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
 
@@ -72,6 +78,15 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
   }
 
   private void scan() throws IOException {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      if (!isReadOnlyLogPrinted.get()) {
+        LOGGER.warn("Current system is read-only mode. Skip active load dir scanning.");
+        isReadOnlyLogPrinted.set(true);
+      }
+      return;
+    }
+    isReadOnlyLogPrinted.set(false);
+
     hotReloadActiveLoadDirs();
 
     for (final String listeningDir : listeningDirs) {
@@ -86,16 +101,34 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
       final boolean isGeneratedByPipe =
           listeningDir.equals(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
-      FileUtils.streamFiles(new File(listeningDir), true, (String[]) null)
-          .map(
-              file ->
-                  (file.getName().endsWith(RESOURCE) || file.getName().endsWith(MODS))
-                      ? getTsFilePath(file.getAbsolutePath())
-                      : file.getAbsolutePath())
-          .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
-          .filter(this::isTsFileCompleted)
-          .limit(currentAllowedPendingSize)
-          .forEach(file -> activeLoadTsFileLoader.tryTriggerTsFileLoad(file, isGeneratedByPipe));
+      final File listeningDirFile = new File(listeningDir);
+      try (final Stream<File> fileStream =
+          FileUtils.streamFiles(listeningDirFile, true, (String[]) null)) {
+        try {
+          fileStream
+              .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
+              .filter(File::exists)
+              .map(
+                  file ->
+                      (file.getName().endsWith(RESOURCE) || file.getName().endsWith(MODS))
+                          ? getTsFilePath(file.getAbsolutePath())
+                          : file.getAbsolutePath())
+              .filter(this::isTsFileCompleted)
+              .limit(currentAllowedPendingSize)
+              .forEach(
+                  file -> {
+                    final File parentFile = new File(file).getParentFile();
+                    activeLoadTsFileLoader.tryTriggerTsFileLoad(
+                        file,
+                        parentFile != null
+                            && !Objects.equals(
+                                parentFile.getAbsoluteFile(), listeningDirFile.getAbsoluteFile()),
+                        isGeneratedByPipe);
+                  });
+        } catch (final Exception e) {
+          LOGGER.warn("Exception occurred during scanning dir: {}", listeningDir, e);
+        }
+      }
     }
   }
 

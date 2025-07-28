@@ -153,6 +153,10 @@ CLUSTERID
     : C L U S T E R I D
     ;
 
+COMMENT
+    : C O M M E N T
+    ;
+
 CONCAT
     : C O N C A T
     ;
@@ -163,6 +167,10 @@ CONDITION
 
 CONFIGNODES
     : C O N F I G N O D E S
+    ;
+
+CONFIGNODE
+    : C O N F I G N O D E
     ;
 
 CONFIGURATION
@@ -205,6 +213,14 @@ CREATE
     : C R E A T E
     ;
 
+CURRENT_SQL_DIALECT
+    : C U R R E N T '_' S Q L '_' D I A L E C T
+    ;
+
+CURRENT_USER
+    : C U R R E N T '_' U S E R
+    ;
+
 DATA
     : D A T A
     ;
@@ -215,6 +231,10 @@ DATABASE
 
 DATABASES
     : D A T A B A S E S
+    ;
+
+DATANODE
+    : D A T A N O D E
     ;
 
 DATANODEID
@@ -240,6 +260,10 @@ DEBUG
 
 DELETE
     : D E L E T E
+    ;
+
+DEFAULT
+    : D E F A U L T
     ;
 
 DESC
@@ -286,6 +310,10 @@ ENDTIME
     : E N D T I M E
     ;
 
+ESCAPE
+    : E S C A P E
+    ;
+
 EVERY
     : E V E R Y
     ;
@@ -298,12 +326,20 @@ EXPLAIN
     : E X P L A I N
     ;
 
+EXTEND
+    : E X T E N D
+    ;
+
 EXTRACTOR
     : E X T R A C T O R
     ;
 
 FALSE
     : F A L S E
+    ;
+
+FIELD
+    : F I E L D
     ;
 
 FILL
@@ -462,6 +498,10 @@ MIGRATE
     : M I G R A T E
     ;
 
+AINODE
+    : A I N O D E
+    ;
+
 AINODES
     : A I N O D E S
     ;
@@ -548,6 +588,10 @@ PARTITION
 
 PASSWORD
     : P A S S W O R D
+    ;
+
+PATH
+    : P A T H
     ;
 
 PATHS
@@ -638,6 +682,10 @@ READONLY
     : R E A D O N L Y
     ;
 
+RECONSTRUCT
+    : R E C O N S T R U C T
+    ;
+
 REGEXP
     : R E G E X P
     ;
@@ -672,6 +720,10 @@ RESOURCE
 
 REPLACE
     : R E P L A C E
+    ;
+
+RESTRICT
+    : R E S T R I C T
     ;
 
 REVOKE
@@ -746,6 +798,10 @@ SPACE
     : S P A C E
     ;
 
+SQL_DIALECT
+    : S Q L '_' D I A L E C T
+    ;
+
 STORAGE
     : S T O R A G E
     ;
@@ -774,6 +830,10 @@ STOP
     : S T O P
     ;
 
+SUBSCRIPTION
+    : S U B S C R I P T I O N
+    ;
+
 SUBSCRIPTIONS
     : S U B S C R I P T I O N S
     ;
@@ -784,6 +844,14 @@ SUBSTRING
 
 SYSTEM
     : S Y S T E M
+    ;
+
+TABLE
+    : T A B L E
+    ;
+
+TAG
+    : T A G
     ;
 
 TAGS
@@ -856,6 +924,10 @@ TOPICS
 
 TRACING
     : T R A C I N G
+    ;
+
+TREE
+    : T R E E
     ;
 
 TRIGGER

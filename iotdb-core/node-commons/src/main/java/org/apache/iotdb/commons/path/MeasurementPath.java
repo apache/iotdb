@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -206,6 +207,10 @@ public class MeasurementPath extends PartialPath {
       return false;
     }
     return isUnderAlignedEntity;
+  }
+
+  public void setDevice(IDeviceID device) {
+    this.device = device;
   }
 
   public void setUnderAlignedEntity(Boolean underAlignedEntity) {

@@ -22,7 +22,7 @@ import numpy as np
 from numpy import ndarray
 from typing import List
 
-from iotdb.tsfile.utils.DateUtils import parse_date_to_int
+from iotdb.tsfile.utils.date_utils import parse_date_to_int
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.BitMap import BitMap
 from iotdb.utils.Tablet import ColumnType
@@ -91,7 +91,7 @@ class NumpyTablet(object):
         self.bitmaps = bitmaps
         if column_types is None:
             self.__column_types = ColumnType.n_copy(
-                ColumnType.MEASUREMENT, self.__column_number
+                ColumnType.FIELD, self.__column_number
             )
         else:
             self.__column_types = column_types

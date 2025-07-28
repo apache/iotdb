@@ -25,9 +25,11 @@ import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+
+import org.apache.tsfile.common.conf.TSFileConfig;
 
 public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> {
 
@@ -66,7 +68,7 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
   }
 
   @Override
-  public Boolean visitIdFilter(final IdFilter filter, final IDeviceSchemaInfo info) {
+  public Boolean visitTagFilter(final TagFilter filter, final IDeviceSchemaInfo info) {
     final String[] nodes = info.getPartialPath().getNodes();
     return filter
         .getChild()
@@ -79,6 +81,8 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
   public Boolean visitAttributeFilter(final AttributeFilter filter, final IDeviceSchemaInfo info) {
     return filter
         .getChild()
-        .accept(StringValueFilterVisitor.getInstance(), info.getAttributeValue(filter.getKey()));
+        .accept(
+            StringValueFilterVisitor.getInstance(),
+            info.getAttributeValue(filter.getKey()).getStringValue(TSFileConfig.STRING_CHARSET));
   }
 }

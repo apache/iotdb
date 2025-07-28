@@ -54,6 +54,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class PredicateUtils {
@@ -282,13 +283,15 @@ public class PredicateUtils {
   }
 
   public static Filter convertPredicateToTimeFilter(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate) {
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate,
+      ZoneId zoneId,
+      TimeUnit currPrecision) {
     if (predicate == null) {
       return null;
     }
     return predicate.accept(
         new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
-            .ConvertPredicateToTimeFilterVisitor(),
+            .ConvertPredicateToTimeFilterVisitor(zoneId, currPrecision),
         null);
   }
 
@@ -309,16 +312,19 @@ public class PredicateUtils {
 
   public static Filter convertPredicateToFilter(
       org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate,
-      List<String> allMeasurements,
-      Map<Symbol, ColumnSchema> schemaMap) {
+      Map<String, Integer> measurementColumnsIndexMap,
+      Map<Symbol, ColumnSchema> schemaMap,
+      String timeColumnName,
+      ZoneId zoneId,
+      TimeUnit currPrecision) {
     if (predicate == null) {
       return null;
     }
     return predicate.accept(
         new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
-            .ConvertPredicateToFilterVisitor(),
+            .ConvertPredicateToFilterVisitor(timeColumnName, zoneId, currPrecision),
         new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
-            .ConvertPredicateToFilterVisitor.Context(allMeasurements, schemaMap));
+            .ConvertPredicateToFilterVisitor.Context(measurementColumnsIndexMap, schemaMap));
   }
 
   /**

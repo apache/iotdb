@@ -57,36 +57,73 @@ public class SubString3ColumnTransformer extends TernaryColumnTransformer {
     Type thirdType = thirdColumnTransformer.getType();
     for (int i = 0; i < positionCount; i++) {
       if (!firstColumn.isNull(i) && !secondColumn.isNull(i) && !thirdColumn.isNull(i)) {
-        String currentValue =
-            firstType.getBinary(firstColumn, i).getStringValue(TSFileConfig.STRING_CHARSET);
-        int beginPosition = secondType.getInt(secondColumn, i);
-        int length = thirdType.getInt(thirdColumn, i);
-        int endPosition;
-        if (length < 0) {
-          throw new SemanticException(
-              "Argument exception,the scalar function substring length must not be less than 0");
-        }
-        if (beginPosition > Integer.MAX_VALUE - length) {
-          endPosition = Integer.MAX_VALUE;
-        } else {
-          endPosition = beginPosition + length - 1;
-        }
-        if (beginPosition > currentValue.length()) {
-          throw new SemanticException(
-              "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
-        } else {
-          int maxMin = Math.max(1, beginPosition);
-          int minMax = Math.min(currentValue.length(), endPosition);
-          if (maxMin > minMax) {
-            currentValue = EMPTY_STRING;
-          } else {
-            currentValue = currentValue.substring(maxMin - 1, minMax);
-          }
-        }
-        builder.writeBinary(BytesUtils.valueOf(currentValue));
+        transform(
+            firstColumn, secondColumn, thirdColumn, builder, firstType, secondType, thirdType, i);
       } else {
         builder.appendNull();
       }
     }
+  }
+
+  @Override
+  protected void doTransform(
+      Column firstColumn,
+      Column secondColumn,
+      Column thirdColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection) {
+    Type firstType = firstColumnTransformer.getType();
+    Type secondType = secondColumnTransformer.getType();
+    Type thirdType = thirdColumnTransformer.getType();
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i]
+          && !firstColumn.isNull(i)
+          && !secondColumn.isNull(i)
+          && !thirdColumn.isNull(i)) {
+        transform(
+            firstColumn, secondColumn, thirdColumn, builder, firstType, secondType, thirdType, i);
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  private void transform(
+      Column firstColumn,
+      Column secondColumn,
+      Column thirdColumn,
+      ColumnBuilder builder,
+      Type firstType,
+      Type secondType,
+      Type thirdType,
+      int i) {
+    String currentValue =
+        firstType.getBinary(firstColumn, i).getStringValue(TSFileConfig.STRING_CHARSET);
+    int beginPosition = secondType.getInt(secondColumn, i);
+    int length = thirdType.getInt(thirdColumn, i);
+    int endPosition;
+    if (length < 0) {
+      throw new SemanticException(
+          "Argument exception,the scalar function substring length must not be less than 0");
+    }
+    if (beginPosition > Integer.MAX_VALUE - length) {
+      endPosition = Integer.MAX_VALUE;
+    } else {
+      endPosition = beginPosition + length - 1;
+    }
+    if (beginPosition > currentValue.length()) {
+      throw new SemanticException(
+          "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
+    } else {
+      int maxMin = Math.max(1, beginPosition);
+      int minMax = Math.min(currentValue.length(), endPosition);
+      if (maxMin > minMax) {
+        currentValue = EMPTY_STRING;
+      } else {
+        currentValue = currentValue.substring(maxMin - 1, minMax);
+      }
+    }
+    builder.writeBinary(BytesUtils.valueOf(currentValue));
   }
 }

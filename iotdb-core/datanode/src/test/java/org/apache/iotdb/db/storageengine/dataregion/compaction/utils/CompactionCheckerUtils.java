@@ -33,9 +33,9 @@ import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -88,6 +88,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class CompactionCheckerUtils {
 
   public static void putOnePageChunks(
@@ -132,11 +133,11 @@ public class CompactionCheckerUtils {
           Map<Long, TimeValuePair> timeValuePairMap =
               mapResult.computeIfAbsent(path.getFullPath(), k -> new TreeMap<>());
           List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(path);
-          List<Modification> seriesModifications = new LinkedList<>();
+          List<ModEntry> seriesModifications = new LinkedList<>();
 
           if (!"".equals(path.getMeasurement())) {
-            for (Modification modification : tsFileResource.getModFile().getModifications()) {
-              if (modification.getPath().matchFullPath(new PartialPath(path.getFullPath()))) {
+            for (ModEntry modification : tsFileResource.getAllModEntries()) {
+              if (modification.matches(new PartialPath(path.getFullPath()))) {
                 seriesModifications.add(modification);
               }
             }
@@ -300,14 +301,14 @@ public class CompactionCheckerUtils {
         }
       }
 
-      Collection<Modification> modifications =
-          ModificationFile.getNormalMods(mergedFile).getModifications();
-      for (Modification modification : modifications) {
-        Deletion deletion = (Deletion) modification;
-        if (mergedData.containsKey(deletion.getPath().getFullPath())) {
+      Collection<ModEntry> modifications =
+          ModificationFile.getExclusiveMods(mergedFile).getAllMods();
+      for (ModEntry modification : modifications) {
+        TreeDeletionEntry deletion = (TreeDeletionEntry) modification;
+        if (mergedData.containsKey(deletion.getPathPattern().getFullPath())) {
           long deletedCount = 0L;
           Iterator<TimeValuePair> timeValuePairIterator =
-              mergedData.get(deletion.getPath().getFullPath()).iterator();
+              mergedData.get(deletion.getPathPattern().getFullPath()).iterator();
           while (timeValuePairIterator.hasNext()) {
             TimeValuePair timeValuePair = timeValuePairIterator.next();
             if (timeValuePair.getTimestamp() >= deletion.getStartTime()
@@ -316,9 +317,9 @@ public class CompactionCheckerUtils {
               deletedCount++;
             }
           }
-          long count = fullPathPointNum.get(deletion.getPath().getFullPath());
+          long count = fullPathPointNum.get(deletion.getPathPattern().getFullPath());
           count = count - deletedCount;
-          fullPathPointNum.put(deletion.getPath().getFullPath(), count);
+          fullPathPointNum.put(deletion.getPathPattern().getFullPath(), count);
         }
       }
     }
@@ -353,11 +354,17 @@ public class CompactionCheckerUtils {
       long[] statistics = deviceCountEntry.getValue();
       long startTime = Long.MAX_VALUE;
       for (TsFileResource mergedFile : mergedFiles) {
-        startTime = Math.min(startTime, mergedFile.getStartTime(device));
+        if (mergedFile.definitelyNotContains(device)) {
+          continue;
+        }
+        startTime = Math.min(startTime, mergedFile.getStartTime(device).get());
       }
       long endTime = Long.MIN_VALUE;
       for (TsFileResource mergedFile : mergedFiles) {
-        endTime = Math.max(endTime, mergedFile.getEndTime(device));
+        if (mergedFile.definitelyNotContains(device)) {
+          continue;
+        }
+        endTime = Math.max(endTime, mergedFile.getEndTime(device).get());
       }
       assertEquals(statistics[0], startTime);
       assertEquals(statistics[1], endTime);
@@ -526,8 +533,7 @@ public class CompactionCheckerUtils {
   public static List<IFullPath> getAllPathsOfResources(List<TsFileResource> resources)
       throws IOException, IllegalPathException {
     Set<IFullPath> paths = new HashSet<>();
-    try (MultiTsFileDeviceIterator deviceIterator =
-        new MultiTsFileDeviceIterator(resources, false)) {
+    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
       while (deviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
         IDeviceID deviceID = iDeviceIDBooleanPair.getLeft();
@@ -540,7 +546,7 @@ public class CompactionCheckerUtils {
         }
         List<String> existedMeasurements =
             measurementSchemas.stream()
-                .map(IMeasurementSchema::getMeasurementId)
+                .map(IMeasurementSchema::getMeasurementName)
                 .collect(Collectors.toList());
         IFullPath seriesPath;
         if (isAlign) {
@@ -601,6 +607,14 @@ public class CompactionCheckerUtils {
     return true;
   }
 
+  public static Map<IFullPath, List<TimeValuePair>> getDataByQuery(
+      List<IFullPath> fullPaths,
+      List<TsFileResource> sequenceResources,
+      List<TsFileResource> unsequenceResources)
+      throws IllegalPathException, IOException {
+    return getDataByQuery(fullPaths, sequenceResources, unsequenceResources, false);
+  }
+
   /**
    * Using SeriesRawDataBatchReader to read raw data from files, and return it as a map.
    *
@@ -613,15 +627,13 @@ public class CompactionCheckerUtils {
   public static Map<IFullPath, List<TimeValuePair>> getDataByQuery(
       List<IFullPath> fullPaths,
       List<TsFileResource> sequenceResources,
-      List<TsFileResource> unsequenceResources)
+      List<TsFileResource> unsequenceResources,
+      boolean clearCacheDuringQuery)
       throws IllegalPathException, IOException {
     Map<IFullPath, List<TimeValuePair>> pathDataMap = new HashMap<>();
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    clearCache();
     for (int i = 0; i < fullPaths.size(); ++i) {
-      FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
-      TimeSeriesMetadataCache.getInstance().clear();
-      ChunkCache.getInstance().clear();
-      BloomFilterCache.getInstance().clear();
-
       IFullPath path = fullPaths.get(i);
       List<TimeValuePair> dataList = new ArrayList<>();
 
@@ -646,12 +658,18 @@ public class CompactionCheckerUtils {
       }
       pathDataMap.put(fullPaths.get(i), dataList);
 
-      TimeSeriesMetadataCache.getInstance().clear();
-      ChunkCache.getInstance().clear();
+      if (clearCacheDuringQuery) {
+        clearCache();
+      }
     }
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    return pathDataMap;
+  }
+
+  private static void clearCache() {
+    BloomFilterCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     ChunkCache.getInstance().clear();
-    return pathDataMap;
   }
 
   public static void validDataByValueList(

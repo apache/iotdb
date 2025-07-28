@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
@@ -26,36 +27,37 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class FlushStatement extends Statement implements IConfigStatement {
 
   /** list of database */
-  private List<PartialPath> storageGroups;
+  private List<String> databases;
 
   // being null indicates flushing both seq and unseq data
   private Boolean isSeq;
 
   private boolean onCluster;
 
-  public FlushStatement(StatementType flushType) {
+  public FlushStatement(final StatementType flushType) {
     this.statementType = flushType;
   }
 
-  public List<PartialPath> getStorageGroups() {
-    return storageGroups;
+  public List<String> getDatabases() {
+    return databases;
   }
 
-  public void setStorageGroups(List<PartialPath> storageGroups) {
-    this.storageGroups = storageGroups;
+  public void setDatabases(final List<String> databases) {
+    this.databases = databases;
   }
 
   public Boolean isSeq() {
     return isSeq;
   }
 
-  public void setSeq(Boolean seq) {
+  public void setSeq(final Boolean seq) {
     isSeq = seq;
   }
 
@@ -63,7 +65,7 @@ public class FlushStatement extends Statement implements IConfigStatement {
     return onCluster;
   }
 
-  public void setOnCluster(boolean onCluster) {
+  public void setOnCluster(final boolean onCluster) {
     this.onCluster = onCluster;
   }
 
@@ -74,14 +76,23 @@ public class FlushStatement extends Statement implements IConfigStatement {
 
   @Override
   public List<PartialPath> getPaths() {
-    if (storageGroups == null) {
+    if (databases == null) {
       return Collections.emptyList();
     }
-    return storageGroups;
+
+    final List<PartialPath> paths = new ArrayList<>(databases.size());
+    try {
+      for (final String database : databases) {
+        paths.add(new PartialPath(database));
+      }
+    } catch (final IllegalPathException e) {
+      // ignore
+    }
+    return paths;
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitFlush(this, context);
   }
 }

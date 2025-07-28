@@ -259,29 +259,45 @@ public abstract class AbstractMetricService {
   /** Count with internal report. */
   public void countWithInternalReportAsync(
       long delta, String metric, MetricLevel metricLevel, long time, String... tags) {
-    internalReporter.writeMetricToIoTDB(
-        metricManager.count(delta, metric, metricLevel, tags), metric, time, tags);
+    if (metricManager.invalid(metricLevel, metric, tags)) {
+      return;
+    }
+    Counter counter = metricManager.createCounter();
+    counter.inc(delta);
+    internalReporter.writeMetricToIoTDB(counter, metric, time, tags);
   }
 
   /** Gauge value with internal report. */
   public void gaugeWithInternalReportAsync(
       long value, String metric, MetricLevel metricLevel, long time, String... tags) {
-    internalReporter.writeMetricToIoTDB(
-        metricManager.gauge(value, metric, metricLevel, tags), metric, time, tags);
+    if (metricManager.invalid(metricLevel, metric, tags)) {
+      return;
+    }
+    Gauge gauge = metricManager.createGauge();
+    gauge.set(value);
+    internalReporter.writeMetricToIoTDB(gauge, metric, time, tags);
   }
 
   /** Rate with internal report. */
   public void rateWithInternalReportAsync(
       long value, String metric, MetricLevel metricLevel, long time, String... tags) {
-    internalReporter.writeMetricToIoTDB(
-        metricManager.rate(value, metric, metricLevel, tags), metric, time, tags);
+    if (metricManager.invalid(metricLevel, metric, tags)) {
+      return;
+    }
+    Rate rate = metricManager.createRate();
+    rate.mark(value);
+    internalReporter.writeMetricToIoTDB(rate, metric, time, tags);
   }
 
   /** Histogram with internal report. */
   public void histogramWithInternalReportAsync(
       long value, String metric, MetricLevel metricLevel, long time, String... tags) {
-    internalReporter.writeMetricToIoTDB(
-        metricManager.histogram(value, metric, metricLevel, tags), metric, time, tags);
+    if (metricManager.invalid(metricLevel, metric, tags)) {
+      return;
+    }
+    Histogram histogram = metricManager.createHistogram();
+    histogram.update(value);
+    internalReporter.writeMetricToIoTDB(histogram, metric, time, tags);
   }
 
   /** Timer with internal report. */
@@ -292,8 +308,12 @@ public abstract class AbstractMetricService {
       MetricLevel metricLevel,
       long time,
       String... tags) {
-    internalReporter.writeMetricToIoTDB(
-        metricManager.timer(delta, timeUnit, metric, metricLevel, tags), metric, time, tags);
+    if (metricManager.invalid(metricLevel, metric, tags)) {
+      return;
+    }
+    Timer timer = metricManager.createTimer();
+    timer.update(delta, timeUnit);
+    internalReporter.writeMetricToIoTDB(timer, metric, time, tags);
   }
 
   public List<Pair<String, String[]>> getAllMetricKeys() {

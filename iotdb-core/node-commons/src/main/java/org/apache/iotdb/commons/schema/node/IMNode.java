@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.node;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -32,31 +33,31 @@ public interface IMNode<N extends IMNode<N>> extends ITreeNode {
 
   String getName();
 
-  void setName(String name);
+  void setName(final String name);
 
   N getParent();
 
-  void setParent(N parent);
+  void setParent(final N parent);
 
   String getFullPath();
 
-  void setFullPath(String fullPath);
+  void setFullPath(final String fullPath);
 
   PartialPath getPartialPath();
 
-  boolean hasChild(String name);
+  boolean hasChild(final String name);
 
-  N getChild(String name);
+  N getChild(final String name);
 
-  N addChild(String name, N child);
+  N addChild(final String name, final N child);
 
-  N addChild(N child);
+  N addChild(final N child);
 
-  N deleteChild(String name);
+  N deleteChild(final String name);
 
   IMNodeContainer<N> getChildren();
 
-  void setChildren(IMNodeContainer<N> children);
+  void setChildren(final IMNodeContainer<N> children);
 
   boolean isAboveDatabase();
 
@@ -76,7 +77,7 @@ public interface IMNode<N extends IMNode<N>> extends ITreeNode {
 
   IMeasurementMNode<N> getAsMeasurementMNode();
 
-  <R, C> R accept(MNodeVisitor<R, C> visitor, C context);
+  <R, C> R accept(final MNodeVisitor<R, C> visitor, final C context);
 
   int estimateSize();
 

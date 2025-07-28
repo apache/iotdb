@@ -72,7 +72,7 @@ public class DataNodeSchemaQuotaManager {
     }
   }
 
-  public void check(long acquireMeasurementNumber, int acquireDeviceNumber)
+  public void check(final long acquireMeasurementNumber, final int acquireDeviceNumber)
       throws SchemaQuotaExceededException {
     if (acquireDeviceNumber > 0) {
       checkDeviceLevel();
@@ -80,7 +80,7 @@ public class DataNodeSchemaQuotaManager {
     // if pass device check, check measurement level
     try {
       checkMeasurementLevel(acquireMeasurementNumber);
-    } catch (SchemaQuotaExceededException e) {
+    } catch (final SchemaQuotaExceededException e) {
       // if measurement level check failed, roll back device remain
       if (acquireDeviceNumber > 0) {
         deviceRemain.addAndGet(1L);

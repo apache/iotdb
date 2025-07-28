@@ -43,6 +43,10 @@ public class ColumnCache {
     return res;
   }
 
+  public void clear() {
+    this.column = null;
+  }
+
   public int getPositionCount() {
     return column != null ? column.getPositionCount() : 0;
   }

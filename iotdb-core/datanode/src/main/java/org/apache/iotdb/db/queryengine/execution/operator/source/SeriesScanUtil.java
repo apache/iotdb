@@ -40,6 +40,7 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IMetadata;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -49,6 +50,7 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.page.AlignedPageReader;
+import org.apache.tsfile.read.reader.page.TablePageReader;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -62,6 +64,7 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.function.ToLongFunction;
 
@@ -71,6 +74,7 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUI
 
 public class SeriesScanUtil implements Accountable {
 
+  public static final StringArrayDeviceID EMPTY_DEVICE_ID = new StringArrayDeviceID("");
   protected final FragmentInstanceContext context;
 
   // The path of the target series which will be scanned.
@@ -177,7 +181,26 @@ public class SeriesScanUtil implements Accountable {
     this.dataSource = dataSource;
 
     // updated filter concerning TTL
-    scanOptions.setTTL(DataNodeTTLCache.getInstance().getTTL(seriesPath.getDeviceId()));
+    // IgnoreAllNullRows is false indicating that the current query is a table model query.
+    // In most cases, We can use this condition to determine from which model to obtain the ttl
+    // of the current device. However, it should be noted that for tree model data queried using
+    // table view, ttl also needs to be obtained from the tree model.
+    if (context.isIgnoreAllNullRows() || scanOptions.isTableViewForTreeModel()) {
+      if (deviceID != EMPTY_DEVICE_ID) {
+        long ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+        scanOptions.setTTLForTreeDevice(ttl);
+      }
+    } else {
+      if (scanOptions.timeFilterNeedUpdatedByTtl()) {
+        String databaseName = dataSource.getDatabaseName();
+        long ttl =
+            databaseName == null
+                ? Long.MAX_VALUE
+                : DataNodeTTLCache.getInstance()
+                    .getTTLForTable(databaseName, deviceID.getTableName());
+        scanOptions.setTTLForTableDevice(ttl);
+      }
+    }
 
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);
@@ -196,9 +219,14 @@ public class SeriesScanUtil implements Accountable {
   // file level methods
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public boolean hasNextFile() throws IOException {
+  // When Optional.empty() is returned, it means that the current hasNextFile has not been fully
+  // executed. In order to avoid the execution time of this method exceeding the allocated time
+  // slice, it is return early in this way. For the upper-level method, when encountering
+  // Optional.empty(), it needs to return directly to the checkpoint method that checks the operator
+  // execution time slice.
+  public Optional<Boolean> hasNextFile() throws IOException {
     if (!paginationController.hasCurLimit()) {
-      return false;
+      return Optional.of(false);
     }
 
     if (!unSeqPageReaders.isEmpty()
@@ -218,21 +246,25 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (firstTimeSeriesMetadata != null) {
-      return true;
+      return Optional.of(true);
     }
 
-    while (firstTimeSeriesMetadata == null
-        && (orderUtils.hasNextSeqResource()
-            || orderUtils.hasNextUnseqResource()
-            || !seqTimeSeriesMetadata.isEmpty()
-            || !unSeqTimeSeriesMetadata.isEmpty())) {
+    boolean checked = false;
+    if (orderUtils.hasNextSeqResource()
+        || orderUtils.hasNextUnseqResource()
+        || !seqTimeSeriesMetadata.isEmpty()
+        || !unSeqTimeSeriesMetadata.isEmpty()) {
       // init first time series metadata whose startTime is minimum
       tryToUnpackAllOverlappedFilesToTimeSeriesMetadata();
       // filter file based on push-down conditions
       filterFirstTimeSeriesMetadata();
+      checked = true;
     }
 
-    return firstTimeSeriesMetadata != null;
+    if (checked && firstTimeSeriesMetadata == null) {
+      return Optional.empty();
+    }
+    return Optional.of(firstTimeSeriesMetadata != null);
   }
 
   private boolean currentFileOverlapped() {
@@ -276,11 +308,16 @@ public class SeriesScanUtil implements Accountable {
    * This method should be called after hasNextFile() until no next chunk, make sure that all
    * overlapped chunks are consumed.
    *
+   * @return Optional<Boolean> When Optional.empty() is returned, it means that the current
+   *     hasNextFile has not been fully executed. In order to avoid the execution time of this
+   *     method exceeding the allocated time slice, it is return early in this way. For the
+   *     upper-level method, when encountering Optional.empty(), it needs to return directly to the
+   *     checkpoint method who checks the operator execution time slice.
    * @throws IllegalStateException illegal state
    */
-  public boolean hasNextChunk() throws IOException {
+  public Optional<Boolean> hasNextChunk() throws IOException {
     if (!paginationController.hasCurLimit()) {
-      return false;
+      return Optional.of(false);
     }
 
     if (!unSeqPageReaders.isEmpty()
@@ -296,18 +333,28 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (firstChunkMetadata != null) {
-      return true;
+      return Optional.of(true);
       // hasNextFile() has not been invoked
     } else if (firstTimeSeriesMetadata == null && cachedChunkMetadata.isEmpty()) {
-      return false;
+      return Optional.of(false);
     }
 
-    while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
+    Optional<Boolean> hasNextFileReturnValue = null;
+    while (firstChunkMetadata == null) {
+      if (cachedChunkMetadata.isEmpty()) {
+        if (hasNextFileReturnValue != null) {
+          return Optional.empty();
+        }
+        hasNextFileReturnValue = hasNextFile();
+        if (!hasNextFileReturnValue.isPresent() || !hasNextFileReturnValue.get()) {
+          return hasNextFileReturnValue;
+        }
+      }
       initFirstChunkMetadata();
       // filter chunk based on push-down conditions
       filterFirstChunkMetadata();
     }
-    return firstChunkMetadata != null;
+    return Optional.of(firstChunkMetadata != null);
   }
 
   private void filterFirstChunkMetadata() {
@@ -1049,15 +1096,21 @@ public class SeriesScanUtil implements Accountable {
     /*
      * Fill sequence TimeSeriesMetadata List until it is not empty
      */
-    while (seqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextSeqResource()) {
-      unpackSeqTsFileResource();
+    if (seqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextSeqResource()) {
+      // Avoid exceeding the time slice when a series cannot be found
+      if (!unpackSeqTsFileResource().isPresent()) {
+        return;
+      }
     }
 
     /*
      * Fill unSequence TimeSeriesMetadata Priority Queue until it is not empty
      */
-    while (unSeqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextUnseqResource()) {
-      unpackUnseqTsFileResource();
+    if (unSeqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextUnseqResource()) {
+      // Avoid exceeding the time slice when a series cannot be found
+      if (!unpackUnseqTsFileResource().isPresent()) {
+        return;
+      }
     }
 
     /*
@@ -1140,27 +1193,40 @@ public class SeriesScanUtil implements Accountable {
       unpackUnseqTsFileResource();
     }
     while (orderUtils.hasNextSeqResource() && orderUtils.isCurSeqOverlappedWith(endpointTime)) {
-      unpackSeqTsFileResource();
+      Optional<ITimeSeriesMetadata> timeSeriesMetadata = unpackSeqTsFileResource();
+      // asc: if current seq tsfile's endTime >= endpointTime, we don't need to continue
+      // desc: if current seq tsfile's startTime <= endpointTime, we don't need to continue
+      if (timeSeriesMetadata.isPresent()
+          && orderUtils.overlappedSeqResourceSearchingNeedStop(
+              endpointTime, timeSeriesMetadata.get().getStatistics())) {
+        break;
+      }
     }
   }
 
-  private void unpackSeqTsFileResource() throws IOException {
+  private Optional<ITimeSeriesMetadata> unpackSeqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true), true);
     // skip if data type is mismatched which may be caused by delete
     if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(true);
       seqTimeSeriesMetadata.add(timeseriesMetadata);
+      return Optional.of(timeseriesMetadata);
+    } else {
+      return Optional.empty();
     }
   }
 
-  private void unpackUnseqTsFileResource() throws IOException {
+  private Optional<ITimeSeriesMetadata> unpackUnseqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true), false);
     // skip if data type is mismatched which may be caused by delete
     if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
+      return Optional.of(timeseriesMetadata);
+    } else {
+      return Optional.empty();
     }
   }
 
@@ -1211,7 +1277,10 @@ public class SeriesScanUtil implements Accountable {
       this.version = new MergeReaderPriority(fileTimestamp, version, offset, isSeq);
       this.data = data;
       this.isSeq = isSeq;
-      this.isAligned = data instanceof AlignedPageReader || data instanceof MemAlignedPageReader;
+      this.isAligned =
+          data instanceof AlignedPageReader
+              || data instanceof MemAlignedPageReader
+              || data instanceof TablePageReader;
       this.isMem = data instanceof MemPageReader || data instanceof MemAlignedPageReader;
     }
 
@@ -1315,6 +1384,9 @@ public class SeriesScanUtil implements Accountable {
     TsFileResource getNextUnseqFileResource(boolean isDelete);
 
     void setCurSeqFileIndex(QueryDataSource dataSource);
+
+    boolean overlappedSeqResourceSearchingNeedStop(
+        long endPointTime, Statistics<? extends Object> currentStatistics);
   }
 
   class DescTimeOrderUtils implements TimeOrderUtils {
@@ -1433,6 +1505,12 @@ public class SeriesScanUtil implements Accountable {
     public void setCurSeqFileIndex(QueryDataSource dataSource) {
       curSeqFileIndex = dataSource.getSeqResourcesSize() - 1;
     }
+
+    @Override
+    public boolean overlappedSeqResourceSearchingNeedStop(
+        long endPointTime, Statistics<?> currentStatistics) {
+      return currentStatistics.getStartTime() <= endPointTime;
+    }
   }
 
   class AscTimeOrderUtils implements TimeOrderUtils {
@@ -1550,6 +1628,12 @@ public class SeriesScanUtil implements Accountable {
     @Override
     public void setCurSeqFileIndex(QueryDataSource dataSource) {
       curSeqFileIndex = 0;
+    }
+
+    @Override
+    public boolean overlappedSeqResourceSearchingNeedStop(
+        long endPointTime, Statistics<?> currentStatistics) {
+      return currentStatistics.getEndTime() >= endPointTime;
     }
   }
 

@@ -31,7 +31,11 @@ public class ReleaseFlushStrategySizeBasedImpl implements IReleaseFlushStrategy 
 
   public ReleaseFlushStrategySizeBasedImpl(CachedSchemaEngineStatistics engineStatistics) {
     this.engineStatistics = engineStatistics;
-    long capacity = IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
+    long capacity =
+        IoTDBDescriptor.getInstance()
+            .getMemoryConfig()
+            .getSchemaRegionMemoryManager()
+            .getTotalMemorySizeInBytes();
     this.releaseThreshold = (long) (capacity * RELEASE_THRESHOLD_RATIO);
   }
 

@@ -109,19 +109,24 @@ public class AsyncPlanNodeSender {
     }
   }
 
-  public List<TSStatus> getFailureStatusList() {
-    List<TSStatus> failureStatusList = new ArrayList<>();
+  public List<FailedFragmentInstanceWithStatus> getFailedInstancesWithStatuses() {
+    List<FailedFragmentInstanceWithStatus> failureFragmentInstanceWithStatusList =
+        new ArrayList<>();
     TSStatus status;
     for (Map.Entry<Integer, TSendSinglePlanNodeResp> entry : instanceId2RespMap.entrySet()) {
       status = entry.getValue().getStatus();
+      final FragmentInstance instance = instances.get(entry.getKey());
       if (!entry.getValue().accepted) {
         if (status == null) {
           LOGGER.warn(
               "dispatch write failed. message: {}, node {}",
               entry.getValue().message,
               instances.get(entry.getKey()).getHostDataNode().getInternalEndPoint());
-          failureStatusList.add(
-              RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, entry.getValue().getMessage()));
+          failureFragmentInstanceWithStatusList.add(
+              new FailedFragmentInstanceWithStatus(
+                  instance,
+                  RpcUtils.getStatus(
+                      TSStatusCode.WRITE_PROCESS_ERROR, entry.getValue().getMessage())));
         } else {
           LOGGER.warn(
               "dispatch write failed. status: {}, code: {}, message: {}, node {}",
@@ -129,16 +134,18 @@ public class AsyncPlanNodeSender {
               TSStatusCode.representOf(status.code),
               entry.getValue().message,
               instances.get(entry.getKey()).getHostDataNode().getInternalEndPoint());
-          failureStatusList.add(status);
+          failureFragmentInstanceWithStatusList.add(
+              new FailedFragmentInstanceWithStatus(instance, status));
         }
       } else {
         // some expected and accepted status except SUCCESS_STATUS need to be returned
         if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          failureStatusList.add(status);
+          failureFragmentInstanceWithStatusList.add(
+              new FailedFragmentInstanceWithStatus(instance, status));
         }
       }
     }
-    return failureStatusList;
+    return failureFragmentInstanceWithStatusList;
   }
 
   public boolean needRetry() {

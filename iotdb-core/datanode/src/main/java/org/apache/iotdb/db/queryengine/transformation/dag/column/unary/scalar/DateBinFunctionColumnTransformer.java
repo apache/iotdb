@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
@@ -34,10 +39,10 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
   private static final long NANOSECONDS_IN_MILLISECOND = 1_000_000;
   private static final long NANOSECONDS_IN_MICROSECOND = 1_000;
 
-  private static long monthDuration;
-  private static long nonMonthDuration;
-  private static long origin;
-  private static ZoneId zoneId;
+  private final int monthDuration;
+  private final long nonMonthDuration;
+  private final long origin;
+  private final ZoneId zoneId;
 
   public DateBinFunctionColumnTransformer(
       Type returnType,
@@ -47,14 +52,14 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
       long origin,
       ZoneId zoneId) {
     super(returnType, childColumnTransformer);
-    this.monthDuration = monthDuration;
+    this.monthDuration = (int) monthDuration;
     this.nonMonthDuration = nonMonthDuration;
     this.origin = origin;
     this.zoneId = zoneId;
   }
 
   // Harmonized to nanosecond timestamp accuracy
-  public LocalDateTime convertToLocalDateTime(long timestamp) {
+  private static LocalDateTime convertToLocalDateTime(long timestamp, ZoneId zoneId) {
     Instant instant;
 
     switch (TIMESTAMP_PRECISION) {
@@ -78,7 +83,7 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
     return LocalDateTime.ofInstant(instant, zoneId);
   }
 
-  public long convertToTimestamp(LocalDateTime dateTime) {
+  private static long convertToTimestamp(LocalDateTime dateTime, ZoneId zoneId) {
     // Converting LocalDateTime to Seconds since epoch
     long epochMilliSecond = dateTime.atZone(zoneId).toInstant().toEpochMilli();
     // Get the nanoseconds section
@@ -97,7 +102,7 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
     }
   }
 
-  public long getNanoTimeStamp(long timestamp) {
+  private static long getNanoTimeStamp(long timestamp) {
     switch (TIMESTAMP_PRECISION) {
       case "ms":
         return TimeUnit.MILLISECONDS.toNanos(timestamp);
@@ -110,15 +115,16 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
     }
   }
 
-  public long dateBin(long source) {
+  public static long dateBin(
+      long source, long origin, int monthDuration, long nonMonthDuration, ZoneId zoneId) {
     // return source if interval is 0
     if (monthDuration == 0 && nonMonthDuration == 0) {
       return source;
     }
     if (monthDuration != 0) {
       // convert to LocalDateTime
-      LocalDateTime sourceDate = convertToLocalDateTime(source);
-      LocalDateTime originDate = convertToLocalDateTime(origin);
+      LocalDateTime sourceDate = convertToLocalDateTime(source, zoneId);
+      LocalDateTime originDate = convertToLocalDateTime(origin, zoneId);
 
       // calculate the number of months between the origin and source
       long monthsDiff = ChronoUnit.MONTHS.between(originDate, sourceDate);
@@ -135,7 +141,7 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
             binStart.minusMonths(monthDuration).minusNanos(getNanoTimeStamp(nonMonthDuration));
       }
 
-      return convertToTimestamp(binStart);
+      return convertToTimestamp(binStart, zoneId);
     }
 
     long diff = source - origin;
@@ -143,11 +149,73 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
     return origin + (n * nonMonthDuration);
   }
 
+  public long[] dateBinStartEnd(long source) {
+    // return source if interval is 0
+    if (monthDuration == 0 && nonMonthDuration == 0) {
+      return new long[] {source, source};
+    }
+
+    if (monthDuration != 0) {
+      // convert to LocalDateTime
+      LocalDateTime sourceDate = convertToLocalDateTime(source, zoneId);
+      LocalDateTime originDate = convertToLocalDateTime(origin, zoneId);
+
+      // calculate the number of months between the origin and source
+      long monthsDiff = ChronoUnit.MONTHS.between(originDate, sourceDate);
+      // calculate the number of month cycles completed
+      long completedMonthCycles = monthsDiff / monthDuration;
+
+      LocalDateTime binStart =
+          originDate
+              .plusNanos(getNanoTimeStamp(nonMonthDuration) * completedMonthCycles)
+              .plusMonths(completedMonthCycles * monthDuration);
+
+      if (binStart.isAfter(sourceDate)) {
+        binStart =
+            binStart.minusMonths(monthDuration).minusNanos(getNanoTimeStamp(nonMonthDuration));
+      }
+
+      return new long[] {
+        convertToTimestamp(binStart, zoneId),
+        convertToTimestamp(binStart.plusMonths(monthDuration), zoneId)
+      };
+    }
+
+    long diff = source - origin;
+    long n = diff >= 0 ? diff / nonMonthDuration : (diff - nonMonthDuration + 1) / nonMonthDuration;
+    return new long[] {
+      origin + (n * nonMonthDuration), origin + (n * nonMonthDuration) + nonMonthDuration
+    };
+  }
+
+  public static long nextDateBin(int monthDuration, ZoneId zoneId, long currentTime) {
+    LocalDateTime currentDateTime = convertToLocalDateTime(currentTime, zoneId);
+    LocalDateTime nextDateTime = currentDateTime.plusMonths(monthDuration);
+    return convertToTimestamp(nextDateTime, zoneId);
+  }
+
+  public static long nextDateBin(long nonMonthDuration, long currentTime) {
+    return currentTime + nonMonthDuration;
+  }
+
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        long result = dateBin(column.getLong(i));
+        long result = dateBin(column.getLong(i), origin, monthDuration, nonMonthDuration, zoneId);
+        columnBuilder.writeLong(result);
+      } else {
+        // If source is null, return null
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        long result = dateBin(column.getLong(i), origin, monthDuration, nonMonthDuration, zoneId);
         columnBuilder.writeLong(result);
       } else {
         // If source is null, return null

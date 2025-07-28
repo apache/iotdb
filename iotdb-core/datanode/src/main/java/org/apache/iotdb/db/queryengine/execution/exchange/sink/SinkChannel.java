@@ -117,7 +117,7 @@ public class SinkChannel implements ISinkChannel {
 
   /** max bytes this SinkChannel can reserve. */
   private long maxBytesCanReserve =
-      IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
 
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
@@ -201,7 +201,7 @@ public class SinkChannel implements ISinkChannel {
       if (noMoreTsBlocks) {
         return;
       }
-      long retainedSizeInBytes = tsBlock.getRetainedSizeInBytes();
+      long sizeInBytes = tsBlock.getSizeInBytes();
       int startSequenceId;
       startSequenceId = nextSequenceId;
       blocked =
@@ -211,17 +211,16 @@ public class SinkChannel implements ISinkChannel {
                   localFragmentInstanceId.getQueryId(),
                   fullFragmentInstanceId,
                   localPlanNodeId,
-                  retainedSizeInBytes,
+                  sizeInBytes,
                   maxBytesCanReserve)
               .left;
-      bufferRetainedSizeInBytes += retainedSizeInBytes;
+      bufferRetainedSizeInBytes += sizeInBytes;
 
       sequenceIdToTsBlock.put(nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
       nextSequenceId += 1;
-      currentTsBlockSize = retainedSizeInBytes;
+      currentTsBlockSize = sizeInBytes;
 
-      // TODO: consider merge multiple NewDataBlockEvent for less network traffic.
-      submitSendNewDataBlockEventTask(startSequenceId, ImmutableList.of(retainedSizeInBytes));
+      submitSendNewDataBlockEventTask(startSequenceId, ImmutableList.of(sizeInBytes));
     } finally {
       DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
           SINK_HANDLE_SEND_TSBLOCK_REMOTE, System.nanoTime() - startTime);
@@ -240,12 +239,12 @@ public class SinkChannel implements ISinkChannel {
   }
 
   @Override
-  public synchronized void abort() {
+  public synchronized boolean abort() {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[StartAbortSinkChannel]");
     }
     if (aborted || closed) {
-      return;
+      return false;
     }
     sequenceIdToTsBlock.clear();
     if (blocked != null) {
@@ -266,15 +265,16 @@ public class SinkChannel implements ISinkChannel {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[EndAbortSinkChannel]");
     }
+    return true;
   }
 
   @Override
-  public synchronized void close() {
+  public synchronized boolean close() {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[StartCloseSinkChannel]");
     }
     if (closed || aborted) {
-      return;
+      return false;
     }
     sequenceIdToTsBlock.clear();
     if (blocked != null) {
@@ -295,6 +295,7 @@ public class SinkChannel implements ISinkChannel {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[EndCloseSinkChannel]");
     }
+    return true;
   }
 
   private void invokeOnFinished() {
@@ -418,7 +419,8 @@ public class SinkChannel implements ISinkChannel {
         localFragmentInstanceId.instanceId);
   }
 
-  private void checkState() {
+  @Override
+  public void checkState() {
     if (aborted) {
       throw new IllegalStateException("SinkChannel is aborted.");
     }

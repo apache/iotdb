@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -41,13 +40,13 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.cpu.CpuUsageMetrics;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -69,6 +68,7 @@ import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
 import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.util.ExitUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +78,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
@@ -90,7 +91,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   private static final int STARTUP_RETRY_NUM = 10;
   private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(3);
   private static final int SCHEDULE_WAITING_RETRY_NUM =
-      (int) (COMMON_CONFIG.getConnectionTimeoutInMS() / STARTUP_RETRY_INTERVAL_IN_MS);
+      (int) (COMMON_CONFIG.getCnConnectionTimeoutInMS() / STARTUP_RETRY_INTERVAL_IN_MS);
   private static final int SEED_CONFIG_NODE_ID = 0;
 
   private static final int INIT_NON_SEED_CONFIG_NODE_ID = -1;
@@ -107,6 +108,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   protected ConfigManager configManager;
 
+  private int exitStatusCode = 0;
+
   public ConfigNode() {
     super("ConfigNode");
     // We do not init anything here, so that we can re-initialize the instance in IT.
@@ -122,6 +125,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         "{} default charset is: {}",
         ConfigNodeConstant.GLOBAL_NAME,
         Charset.defaultCharset().displayName());
+    // let IoTDB handle the exception instead of ratis
+    ExitUtils.disableSystemExit();
     ConfigNode configNode = new ConfigNode();
     int returnCode = configNode.run(args);
     if (returnCode != 0) {
@@ -141,41 +146,14 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       throw new IoTDBException("Error starting", -1);
     }
     active();
+    LOGGER.info("IoTDB started");
   }
 
   @Override
-  protected void remove(Long nodeId) throws IoTDBException {
-    // If the nodeId was null, this is a shorthand for removing the current dataNode.
-    // In this case we need to find our nodeId.
-    if (nodeId == null) {
-      nodeId = (long) CONF.getConfigNodeId();
-    }
-
-    try {
-      LOGGER.info("Starting to remove ConfigNode with node-id {}", nodeId);
-
-      try {
-        TConfigNodeLocation removeConfigNodeLocation =
-            ConfigNodeRemoveCheck.getInstance().removeCheck(Long.toString(nodeId));
-        if (removeConfigNodeLocation == null) {
-          LOGGER.error(
-              "The ConfigNode to be removed is not in the cluster, or the input format is incorrect.");
-          return;
-        }
-
-        ConfigNodeRemoveCheck.getInstance().removeConfigNode(removeConfigNodeLocation);
-      } catch (BadNodeUrlException e) {
-        LOGGER.warn("No ConfigNodes need to be removed.", e);
-        return;
-      }
-
-      LOGGER.info(
-          "ConfigNode: {} is removed. If the confignode data directory is no longer needed, you can delete it manually.",
-          nodeId);
-    } catch (IOException e) {
-      LOGGER.error("Meet error when doing remove ConfigNode", e);
-      throw new IoTDBException("Error removing", -1);
-    }
+  protected void remove(Set<Integer> nodeIds) throws IoTDBException {
+    throw new IoTDBException(
+        "The remove-confignode script has been deprecated. Please connect to the CLI and use SQL: remove confignode [confignode_id].",
+        -1);
   }
 
   public void active() {
@@ -295,8 +273,9 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             "The current ConfigNode can't joined the cluster because leader's scheduling failed. The possible cause is that the ip:port configuration is incorrect.");
         stop();
       }
-    } catch (StartupException | IOException | IllegalPathException e) {
+    } catch (Throwable e) {
       LOGGER.error("Meet error while starting up.", e);
+      exitStatusCode = StatusUtils.retrieveExitStatusCode(e);
       stop();
     }
   }
@@ -496,7 +475,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     } catch (IOException e) {
       LOGGER.error("Meet error when deactivate ConfigNode", e);
     }
-    System.exit(-1);
+    System.exit(exitStatusCode);
   }
 
   /**

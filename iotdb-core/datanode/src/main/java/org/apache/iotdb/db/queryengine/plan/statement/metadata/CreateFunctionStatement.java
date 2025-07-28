@@ -32,31 +32,19 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 public class CreateFunctionStatement extends Statement implements IConfigStatement {
 
   private final String udfName;
   private final String className;
+  private final Optional<String> uriString;
 
-  private String uriString;
-
-  private final boolean usingURI;
-
-  public CreateFunctionStatement(String udfName, String className, boolean usingURI) {
+  public CreateFunctionStatement(String udfName, String className, Optional<String> uriString) {
     super();
     statementType = StatementType.CREATE_FUNCTION;
     this.udfName = udfName;
     this.className = className;
-    this.usingURI = usingURI;
-  }
-
-  public CreateFunctionStatement(
-      String udfName, String className, boolean usingURI, String uriString) {
-    super();
-    statementType = StatementType.CREATE_FUNCTION;
-    this.udfName = udfName;
-    this.className = className;
-    this.usingURI = usingURI;
     this.uriString = uriString;
   }
 
@@ -68,12 +56,8 @@ public class CreateFunctionStatement extends Statement implements IConfigStateme
     return className;
   }
 
-  public String getUriString() {
+  public Optional<String> getUriString() {
     return uriString;
-  }
-
-  public boolean isUsingURI() {
-    return usingURI;
   }
 
   @Override
@@ -97,7 +81,7 @@ public class CreateFunctionStatement extends Statement implements IConfigStateme
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_UDF.ordinal()),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_UDF),
         PrivilegeType.USE_UDF);
   }
 }

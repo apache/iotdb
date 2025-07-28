@@ -59,6 +59,25 @@ public class RegularColumnTransformer extends UnaryColumnTransformer {
   }
 
   @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        returnType.writeBoolean(
+            columnBuilder,
+            pattern
+                .matcher(
+                    childColumnTransformer
+                        .getType()
+                        .getBinary(column, i)
+                        .getStringValue(TSFileConfig.STRING_CHARSET))
+                .find());
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
+  @Override
   protected void checkType() {
     if (!isCharType(childColumnTransformer.getType())) {
       throw new UnsupportedOperationException(

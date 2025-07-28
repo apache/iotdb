@@ -26,6 +26,7 @@ struct TLogEntry {
   1: required list<binary> data
   2: required i64 searchIndex
   3: required bool fromWAL
+  4: required i64 memorySize
 }
 
 struct TSyncLogEntriesReq {
@@ -80,8 +81,9 @@ struct TSendSnapshotFragmentReq {
   1: required common.TConsensusGroupId consensusGroupId
   2: required string snapshotId
   3: required string filePath
-  4: required i64 chunkLength
-  5: required binary fileChunk
+  4: required i64 offset
+  5: required i64 chunkLength
+  6: required binary fileChunk
 }
 
 struct TWaitSyncLogCompleteReq {

@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -50,10 +50,36 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
       Operator child,
       MeasurementPath fullPath,
       TSDataType dataType,
-      DataNodeSchemaCache dataNodeSchemaCache,
+      TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       boolean needUpdateCache,
       boolean isNeedUpdateNullEntry) {
-    super(operatorContext, child, dataNodeSchemaCache, needUpdateCache, isNeedUpdateNullEntry);
+    this(
+        operatorContext,
+        child,
+        fullPath,
+        dataType,
+        treeDeviceSchemaCacheManager,
+        needUpdateCache,
+        isNeedUpdateNullEntry,
+        true);
+  }
+
+  public UpdateLastCacheOperator(
+      OperatorContext operatorContext,
+      Operator child,
+      MeasurementPath fullPath,
+      TSDataType dataType,
+      TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
+      boolean needUpdateCache,
+      boolean isNeedUpdateNullEntry,
+      boolean deviceInMultiRegion) {
+    super(
+        operatorContext,
+        child,
+        treeDeviceSchemaCacheManager,
+        needUpdateCache,
+        isNeedUpdateNullEntry,
+        deviceInMultiRegion);
     this.fullPath = fullPath;
     this.dataType = dataType.name();
   }
@@ -74,9 +100,7 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
     if (res.getColumn(0).isNull(0)) {
       // we still need to update last cache if there is no data for this time series to avoid
       // scanning all files each time
-      if (needUpdateNullEntry) {
-        mayUpdateLastCache(Long.MIN_VALUE, null, fullPath);
-      }
+      mayUpdateLastCache(Long.MIN_VALUE, null, fullPath);
       return LAST_QUERY_EMPTY_TSBLOCK;
     }
 
@@ -91,8 +115,8 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
   }
 
   protected void appendLastValueToTsBlockBuilder(long lastTime, TsPrimitiveType lastValue) {
-    LastQueryUtil.appendLastValue(
-        tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue.getStringValue(), dataType);
+    LastQueryUtil.appendLastValueRespectBlob(
+        tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue, dataType);
   }
 
   @Override

@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -54,6 +55,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
+import org.apache.iotdb.isession.SessionConfig;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -1839,6 +1841,16 @@ public class MergeTreeSortOperatorTest {
     }
 
     @Override
+    public IClientSession.SqlDialect getSQLDialect() {
+      return IClientSession.SqlDialect.TREE;
+    }
+
+    @Override
+    public String getUser() {
+      return SessionConfig.DEFAULT_USER;
+    }
+
+    @Override
     public void start() {}
 
     @Override
@@ -1885,6 +1897,11 @@ public class MergeTreeSortOperatorTest {
 
     @Override
     public boolean isQuery() {
+      return false;
+    }
+
+    @Override
+    public boolean isUserQuery() {
       return false;
     }
   }

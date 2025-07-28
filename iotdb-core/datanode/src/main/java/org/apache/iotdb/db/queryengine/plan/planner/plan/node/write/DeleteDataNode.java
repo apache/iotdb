@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -35,11 +38,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -54,15 +59,15 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
-public class DeleteDataNode extends SearchNode implements WALEntryValue {
+public class DeleteDataNode extends AbstractDeleteDataNode {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DeleteDataNode.class);
+
   /** byte: type, integer: pathList.size(), long: deleteStartTime, deleteEndTime, searchIndex */
   private static final int FIXED_SERIALIZED_SIZE = Short.BYTES + Integer.BYTES + Long.BYTES * 3;
 
   private final List<MeasurementPath> pathList;
   private final long deleteStartTime;
   private final long deleteEndTime;
-
-  private TRegionReplicaSet regionReplicaSet;
 
   public DeleteDataNode(
       PlanNodeId id, List<MeasurementPath> pathList, long deleteStartTime, long deleteEndTime) {
@@ -77,73 +82,25 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
       List<MeasurementPath> pathList,
       long deleteStartTime,
       long deleteEndTime,
+      ProgressIndex progressIndex) {
+    super(id);
+    this.pathList = pathList;
+    this.deleteStartTime = deleteStartTime;
+    this.deleteEndTime = deleteEndTime;
+    this.progressIndex = progressIndex;
+  }
+
+  public DeleteDataNode(
+      PlanNodeId id,
+      List<MeasurementPath> pathList,
+      long deleteStartTime,
+      long deleteEndTime,
       TRegionReplicaSet regionReplicaSet) {
     super(id);
     this.pathList = pathList;
     this.deleteStartTime = deleteStartTime;
     this.deleteEndTime = deleteEndTime;
     this.regionReplicaSet = regionReplicaSet;
-  }
-
-  public List<MeasurementPath> getPathList() {
-    return pathList;
-  }
-
-  public long getDeleteStartTime() {
-    return deleteStartTime;
-  }
-
-  public long getDeleteEndTime() {
-    return deleteEndTime;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return new ArrayList<>();
-  }
-
-  @Override
-  public void addChild(PlanNode child) {}
-
-  @Override
-  public PlanNodeType getType() {
-    return PlanNodeType.DELETE_DATA;
-  }
-
-  @Override
-  public PlanNode clone() {
-    return new DeleteDataNode(getPlanNodeId(), pathList, deleteStartTime, deleteEndTime);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return NO_CHILD_ALLOWED;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
-  public int serializedSize() {
-    int size = FIXED_SERIALIZED_SIZE;
-    for (PartialPath path : pathList) {
-      size += ReadWriteIOUtils.sizeToWrite(path.getFullPath());
-    }
-    return size;
-  }
-
-  @Override
-  public void serializeToWAL(IWALByteBufferView buffer) {
-    buffer.putShort(PlanNodeType.DELETE_DATA.getNodeType());
-    buffer.putLong(searchIndex);
-    buffer.putInt(pathList.size());
-    for (PartialPath path : pathList) {
-      WALWriteUtils.write(path.getFullPath(), buffer);
-    }
-    buffer.putLong(deleteStartTime);
-    buffer.putLong(deleteEndTime);
   }
 
   public static DeleteDataNode deserializeFromWAL(DataInputStream stream) throws IOException {
@@ -186,6 +143,101 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
     return deleteDataNode;
   }
 
+  public static DeleteDataNode deserialize(ByteBuffer byteBuffer) {
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<MeasurementPath> pathList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      pathList.add((MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer));
+    }
+    long deleteStartTime = ReadWriteIOUtils.readLong(byteBuffer);
+    long deleteEndTime = ReadWriteIOUtils.readLong(byteBuffer);
+
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+
+    // DeleteDataNode has no child
+    int ignoredChildrenSize = ReadWriteIOUtils.readInt(byteBuffer);
+    return new DeleteDataNode(planNodeId, pathList, deleteStartTime, deleteEndTime);
+  }
+
+  public static DeleteDataNode deserializeFromDAL(ByteBuffer byteBuffer) {
+    short nodeType = byteBuffer.getShort();
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<MeasurementPath> pathList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      pathList.add((MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer));
+    }
+    long deleteStartTime = ReadWriteIOUtils.readLong(byteBuffer);
+    long deleteEndTime = ReadWriteIOUtils.readLong(byteBuffer);
+    ProgressIndex deserializedIndex = ProgressIndexType.deserializeFrom(byteBuffer);
+
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+
+    // DeleteDataNode has no child
+    int ignoredChildrenSize = ReadWriteIOUtils.readInt(byteBuffer);
+    return new DeleteDataNode(
+        planNodeId, pathList, deleteStartTime, deleteEndTime, deserializedIndex);
+  }
+
+  @Override
+  public ByteBuffer serializeToDAL() {
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      DeleteNodeType.TREE_DELETE_NODE.serialize(outputStream);
+      serializeAttributes(outputStream);
+      progressIndex.serialize(outputStream);
+      id.serialize(outputStream);
+      // write children nodes size
+      ReadWriteIOUtils.write(0, outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      LOGGER.error("Unexpected error occurs when serializing deleteDataNode.", e);
+      throw new SerializationRunTimeException(e);
+    }
+  }
+
+  public List<MeasurementPath> getPathList() {
+    return pathList;
+  }
+
+  public long getDeleteStartTime() {
+    return deleteStartTime;
+  }
+
+  public long getDeleteEndTime() {
+    return deleteEndTime;
+  }
+
+  @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.DELETE_DATA;
+  }
+
+  @Override
+  public PlanNode clone() {
+    return new DeleteDataNode(getPlanNodeId(), pathList, deleteStartTime, deleteEndTime);
+  }
+
+  @Override
+  public int serializedSize() {
+    int size = FIXED_SERIALIZED_SIZE;
+    for (PartialPath path : pathList) {
+      size += ReadWriteIOUtils.sizeToWrite(path.getFullPath());
+    }
+    return size;
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    buffer.putShort(PlanNodeType.DELETE_DATA.getNodeType());
+    buffer.putLong(searchIndex);
+    buffer.putInt(pathList.size());
+    for (PartialPath path : pathList) {
+      WALWriteUtils.write(path.getFullPath(), buffer);
+    }
+    buffer.putLong(deleteStartTime);
+    buffer.putLong(deleteEndTime);
+  }
+
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.DELETE_DATA.serialize(byteBuffer);
@@ -206,22 +258,6 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
     }
     ReadWriteIOUtils.write(deleteStartTime, stream);
     ReadWriteIOUtils.write(deleteEndTime, stream);
-  }
-
-  public static DeleteDataNode deserialize(ByteBuffer byteBuffer) {
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<MeasurementPath> pathList = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) {
-      pathList.add((MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer));
-    }
-    long deleteStartTime = ReadWriteIOUtils.readLong(byteBuffer);
-    long deleteEndTime = ReadWriteIOUtils.readLong(byteBuffer);
-
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-
-    // DeleteDataNode has no child
-    int ignoredChildrenSize = ReadWriteIOUtils.readInt(byteBuffer);
-    return new DeleteDataNode(planNodeId, pathList, deleteStartTime, deleteEndTime);
   }
 
   @Override
@@ -250,20 +286,22 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
     return this.getPlanNodeId().equals(that.getPlanNodeId())
         && Objects.equals(this.pathList, that.pathList)
         && Objects.equals(this.deleteStartTime, that.deleteStartTime)
-        && Objects.equals(this.deleteEndTime, that.deleteEndTime);
+        && Objects.equals(this.deleteEndTime, that.deleteEndTime)
+        && Objects.equals(this.progressIndex, that.progressIndex);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getPlanNodeId(), pathList, deleteStartTime, deleteEndTime);
+    return Objects.hash(getPlanNodeId(), pathList, deleteStartTime, deleteEndTime, progressIndex);
   }
 
   public String toString() {
     return String.format(
-        "DeleteDataNode-%s[ Paths: %s, Region: %s ]",
+        "DeleteDataNode-%s[ Paths: %s, Region: %s, ProgressIndex: %s]",
         getPlanNodeId(),
         pathList,
-        regionReplicaSet == null ? "Not Assigned" : regionReplicaSet.getRegionId());
+        regionReplicaSet == null ? "Not Assigned" : regionReplicaSet.getRegionId(),
+        progressIndex == null ? "Not Assigned" : progressIndex);
   }
 
   @Override
@@ -324,5 +362,42 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
                               .map(d -> (MeasurementPath) d)
                               .collect(Collectors.toList())));
     }
+  }
+
+  @Override
+  public SearchNode merge(List<SearchNode> searchNodes) {
+    List<DeleteDataNode> deleteDataNodes =
+        searchNodes.stream()
+            .map(searchNode -> (DeleteDataNode) searchNode)
+            .collect(Collectors.toList());
+    int size = deleteDataNodes.size();
+    if (size == 0) {
+      throw new IllegalArgumentException("deleteDataNodes is empty");
+    }
+    DeleteDataNode firstOne = deleteDataNodes.get(0);
+    if (size == 1) {
+      return firstOne;
+    }
+    if (!deleteDataNodes.stream()
+        .allMatch(
+            deleteDataNode ->
+                firstOne.getDeleteStartTime() == deleteDataNode.getDeleteStartTime()
+                    && firstOne.getDeleteEndTime() == deleteDataNode.getDeleteEndTime())) {
+      throw new IllegalArgumentException(
+          "DeleteDataNodes which start time or end time are not same cannot be merged");
+    }
+    List<MeasurementPath> pathList =
+        deleteDataNodes.stream()
+            .flatMap(deleteDataNode -> deleteDataNode.getPathList().stream())
+            // Some time the deleteDataNode list contains a path for multiple times, so use
+            // distinct() to clear them
+            .distinct()
+            .collect(Collectors.toList());
+    return new DeleteDataNode(
+            firstOne.getPlanNodeId(),
+            pathList,
+            firstOne.getDeleteStartTime(),
+            firstOne.getDeleteEndTime())
+        .setSearchIndex(firstOne.searchIndex);
   }
 }

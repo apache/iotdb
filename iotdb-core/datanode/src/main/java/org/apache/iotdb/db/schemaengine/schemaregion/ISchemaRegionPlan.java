@@ -23,5 +23,5 @@ public interface ISchemaRegionPlan {
 
   SchemaRegionPlanType getPlanType();
 
-  <R, C> R accept(SchemaRegionPlanVisitor<R, C> visitor, C context);
+  <R, C> R accept(final SchemaRegionPlanVisitor<R, C> visitor, final C context);
 }

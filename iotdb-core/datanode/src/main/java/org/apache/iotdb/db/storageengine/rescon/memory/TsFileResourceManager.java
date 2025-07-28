@@ -16,10 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.rescon.memory;
 
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
@@ -32,24 +35,29 @@ import java.util.TreeSet;
 public class TsFileResourceManager {
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceManager.class);
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final DataNodeMemoryConfig MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
 
-  /** threshold total memory for all TimeIndex */
-  private long timeIndexMemoryThreshold = CONFIG.getAllocateMemoryForTimeIndex();
+  /** The memory block of time index */
+  private final IMemoryBlock memoryBlock;
 
   /** store the sealed TsFileResource, sorted by priority of TimeIndex */
   private final TreeSet<TsFileResource> sealedTsFileResources =
       new TreeSet<>(TsFileResource::compareIndexDegradePriority);
 
-  /** total used memory for TimeIndex */
-  private long totalTimeIndexMemCost;
-
   // degraded time index number
   private long degradedTimeIndexNum = 0;
 
+  private TsFileResourceManager() {
+    memoryBlock =
+        MEMORY_CONFIG
+            .getTimeIndexMemoryManager()
+            .exactAllocate("TimeIndex", MemoryBlockType.DYNAMIC);
+  }
+
   @TestOnly
   public void setTimeIndexMemoryThreshold(long timeIndexMemoryThreshold) {
-    this.timeIndexMemoryThreshold = timeIndexMemoryThreshold;
+    this.memoryBlock.setTotalMemorySizeInBytes(timeIndexMemoryThreshold);
   }
 
   public long getPriorityQueueSize() {
@@ -63,7 +71,7 @@ public class TsFileResourceManager {
   public synchronized void registerSealedTsFileResource(TsFileResource tsFileResource) {
     if (!sealedTsFileResources.contains(tsFileResource)) {
       sealedTsFileResources.add(tsFileResource);
-      totalTimeIndexMemCost += tsFileResource.calculateRamSize();
+      memoryBlock.forceAllocateWithoutLimitation(tsFileResource.calculateRamSize());
       chooseTsFileResourceToDegrade();
     }
   }
@@ -74,17 +82,34 @@ public class TsFileResourceManager {
       sealedTsFileResources.remove(tsFileResource);
       if (TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
           == TimeIndexLevel.FILE_TIME_INDEX) {
-        totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
+        memoryBlock.release(tsFileResource.calculateRamSize());
         degradedTimeIndexNum--;
       } else {
-        totalTimeIndexMemCost -= tsFileResource.getRamSize();
+        memoryBlock.release(tsFileResource.calculateRamSize());
       }
+    }
+  }
+
+  public void forceDegradeTsFileResource(TsFileResource resource) {
+    if (TimeIndexLevel.valueOf(resource.getTimeIndexType()) == TimeIndexLevel.FILE_TIME_INDEX) {
+      return;
+    }
+    logger.debug("Force degrade tsfile resource {}", resource.getTsFilePath());
+    synchronized (this) {
+      if (!sealedTsFileResources.remove(resource)) {
+        resource.degradeTimeIndex();
+        return;
+      }
+      long memoryReduce = resource.degradeTimeIndex();
+      degradedTimeIndexNum++;
+      releaseTimeIndexMemCost(memoryReduce);
+      sealedTsFileResources.add(resource);
     }
   }
 
   /** once degradation is triggered, the total memory for timeIndex should reduce */
   private void releaseTimeIndexMemCost(long memCost) {
-    totalTimeIndexMemCost -= memCost;
+    memoryBlock.release(memCost);
   }
 
   /**
@@ -92,7 +117,7 @@ public class TsFileResourceManager {
    * threshold.
    */
   private void chooseTsFileResourceToDegrade() {
-    while (totalTimeIndexMemCost > timeIndexMemoryThreshold) {
+    while (memoryBlock.getUsedMemoryInBytes() > memoryBlock.getTotalMemorySizeInBytes()) {
       TsFileResource tsFileResource = sealedTsFileResources.pollFirst();
       if (tsFileResource == null
           || TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
@@ -115,17 +140,18 @@ public class TsFileResourceManager {
   }
 
   public long getTimeIndexMemoryThreshold() {
-    return timeIndexMemoryThreshold;
+    return memoryBlock.getTotalMemorySizeInBytes();
   }
 
   public long getTotalTimeIndexMemCost() {
-    return totalTimeIndexMemCost;
+    return memoryBlock.getUsedMemoryInBytes();
   }
 
   /** function for clearing TsFileManager */
+  @TestOnly
   public synchronized void clear() {
     this.sealedTsFileResources.clear();
-    this.totalTimeIndexMemCost = 0;
+    this.memoryBlock.setUsedMemoryInBytes(0);
     this.degradedTimeIndexNum = 0;
   }
 

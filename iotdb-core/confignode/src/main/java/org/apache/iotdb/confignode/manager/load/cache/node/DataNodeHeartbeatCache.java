@@ -21,11 +21,19 @@ package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.common.rpc.thrift.TLoadSample;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Heartbeat cache for cluster DataNodes. */
 public class DataNodeHeartbeatCache extends BaseNodeCache {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeHeartbeatCache.class);
 
   // TODO: The load sample may be moved into NodeStatistics in the future
   private final AtomicReference<TLoadSample> latestLoadSample;
@@ -37,35 +45,36 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
   }
 
   @Override
-  public synchronized void updateCurrentStatistics() {
+  public synchronized void updateCurrentStatistics(boolean forceUpdate) {
     // The Removing status can not be updated
-    if (NodeStatus.Removing.equals(getNodeStatus())) {
+    if (!forceUpdate && NodeStatus.Removing.equals(getNodeStatus())) {
       return;
     }
 
     NodeHeartbeatSample lastSample;
-    synchronized (slidingWindow) {
-      lastSample = (NodeHeartbeatSample) getLastSample();
-    }
-    long lastSendTime = lastSample == null ? 0 : lastSample.getSampleLogicalTimestamp();
-
-    /* Update load sample */
-    if (lastSample != null && lastSample.isSetLoadSample()) {
-      latestLoadSample.set(lastSample.getLoadSample());
-    }
-
+    final List<AbstractHeartbeatSample> heartbeatHistory;
     /* Update Node status */
     NodeStatus status;
     String statusReason = null;
     long currentNanoTime = System.nanoTime();
-    if (lastSample == null) {
-      status = NodeStatus.Unknown;
-    } else if (currentNanoTime - lastSendTime > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
-      // TODO: Optimize Unknown judge logic
-      status = NodeStatus.Unknown;
-    } else {
-      status = lastSample.getStatus();
-      statusReason = lastSample.getStatusReason();
+    synchronized (slidingWindow) {
+      lastSample = (NodeHeartbeatSample) getLastSample();
+      heartbeatHistory = Collections.unmodifiableList(slidingWindow);
+      /* Update load sample */
+      if (lastSample != null && lastSample.isSetLoadSample()) {
+        latestLoadSample.set(lastSample.getLoadSample());
+      }
+
+      if (lastSample == null) {
+        /* First heartbeat not received from this DataNode, status is UNKNOWN */
+        status = NodeStatus.Unknown;
+      } else if (!failureDetector.isAvailable(nodeId, heartbeatHistory)) {
+        /* Failure detector decides that this DataNode is UNKNOWN */
+        status = NodeStatus.Unknown;
+      } else {
+        status = lastSample.getStatus();
+        statusReason = lastSample.getStatusReason();
+      }
     }
 
     /* Update loadScore */
@@ -74,6 +83,11 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
 
     currentStatistics.set(new NodeStatistics(currentNanoTime, status, statusReason, loadScore));
+
+    if (forceUpdate) {
+      LOGGER.debug(
+          "Force update NodeCache: status={}, currentNanoTime={}", status, currentNanoTime);
+    }
   }
 
   public double getFreeDiskSpace() {

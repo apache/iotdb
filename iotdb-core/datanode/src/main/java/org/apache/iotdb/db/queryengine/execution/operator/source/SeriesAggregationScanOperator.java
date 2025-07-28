@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
@@ -54,7 +55,7 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       OperatorContext context,
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize,
@@ -70,6 +71,7 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
         false,
         groupByTimeParameter,
         maxReturnSize,
+        TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
         canUseStatistics);
   }
 
@@ -80,7 +82,7 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
       boolean outputEndTime,
       SeriesScanOptions scanOptions,
       OperatorContext context,
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize,
@@ -96,6 +98,7 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
         outputEndTime,
         groupByTimeParameter,
         maxReturnSize,
+        TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
         canUseStatistics);
   }
 

@@ -22,40 +22,20 @@ import org.apache.tsfile.enums.TSDataType;
 
 import java.util.List;
 
-public class QuickAlignedTVList extends AlignedTVList implements QuickSort {
+public class QuickAlignedTVList extends AlignedTVList {
+  private final QuickSort policy;
+
   QuickAlignedTVList(List<TSDataType> types) {
     super(types);
+    policy = new QuickSort(this);
   }
 
   @Override
-  public void sort() {
+  public synchronized void sort() {
     if (!sorted) {
-      qsort(0, rowCount - 1);
+      policy.qsort(0, rowCount - 1);
     }
     sorted = true;
-  }
-
-  @Override
-  protected void set(int src, int dest) {
-    long srcT = getTime(src);
-    int srcV = getValueIndex(src);
-    set(dest, srcT, srcV);
-  }
-
-  @Override
-  public int compare(int idx1, int idx2) {
-    long t1 = getTime(idx1);
-    long t2 = getTime(idx2);
-    return Long.compare(t1, t2);
-  }
-
-  @Override
-  public void swap(int p, int q) {
-    int valueP = getValueIndex(p);
-    long timeP = getTime(p);
-    int valueQ = getValueIndex(q);
-    long timeQ = getTime(q);
-    set(p, timeQ, valueQ);
-    set(q, timeP, valueP);
+    seqRowCount = rowCount;
   }
 }

@@ -31,16 +31,24 @@ public class RenameTable extends Statement {
   private final QualifiedName source;
   private final Identifier target;
 
-  public RenameTable(QualifiedName source, Identifier target) {
-    super(null);
-    this.source = requireNonNull(source, "source name is null");
-    this.target = requireNonNull(target, "target name is null");
-  }
+  private final boolean tableIfExists;
+  private final boolean view;
 
-  public RenameTable(NodeLocation location, QualifiedName source, Identifier target) {
+  public RenameTable(
+      final NodeLocation location,
+      final QualifiedName source,
+      final Identifier target,
+      final boolean tableIfExists,
+      final boolean view) {
     super(requireNonNull(location, "location is null"));
     this.source = requireNonNull(source, "source name is null");
     this.target = requireNonNull(target, "target name is null");
+    this.tableIfExists = tableIfExists;
+    this.view = view;
+    if (!view) {
+      throw new UnsupportedOperationException(
+          "The renaming for base table is currently unsupported");
+    }
   }
 
   public QualifiedName getSource() {
@@ -51,8 +59,16 @@ public class RenameTable extends Statement {
     return target;
   }
 
+  public boolean tableIfExists() {
+    return tableIfExists;
+  }
+
+  public boolean isView() {
+    return view;
+  }
+
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitRenameTable(this, context);
   }
 
@@ -63,23 +79,31 @@ public class RenameTable extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(source, target);
+    return Objects.hash(source, target, tableIfExists, view);
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
+  public boolean equals(final Object o) {
+    if (this == o) {
       return true;
     }
-    if ((obj == null) || (getClass() != obj.getClass())) {
+    if ((o == null) || (getClass() != o.getClass())) {
       return false;
     }
-    RenameTable o = (RenameTable) obj;
-    return Objects.equals(source, o.source) && Objects.equals(target, o.target);
+    final RenameTable that = (RenameTable) o;
+    return tableIfExists == that.tableIfExists
+        && Objects.equals(source, that.source)
+        && Objects.equals(target, that.target)
+        && view == that.view;
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("source", source).add("target", target).toString();
+    return toStringHelper(this)
+        .add("source", source)
+        .add("target", target)
+        .add("tableIfExists", tableIfExists)
+        .add("view", view)
+        .toString();
   }
 }

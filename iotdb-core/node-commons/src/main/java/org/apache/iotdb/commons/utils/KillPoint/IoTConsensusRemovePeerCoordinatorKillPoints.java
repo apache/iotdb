@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.utils.KillPoint;
 
 public enum IoTConsensusRemovePeerCoordinatorKillPoints {
   INIT,
-  AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL,
+  AFTER_NOTIFY_PEERS_TO_REMOVE_REPLICATE_CHANNEL,
   AFTER_INACTIVE_PEER,
   FINISH,
 }

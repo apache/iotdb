@@ -54,6 +54,13 @@ public enum SchemaRegionPlanType {
   // Table
   CREATE_TABLE_DEVICE((byte) 100),
   UPDATE_TABLE_DEVICE_ATTRIBUTE((byte) 101),
+  COMMIT_UPDATE_TABLE_DEVICE_ATTRIBUTE((byte) 102),
+  ADD_NODE_LOCATION((byte) 103),
+  DELETE_TABLE_DEVICE((byte) 104),
+  CONSTRUCT_TABLE_DEVICES_BLACK_LIST((byte) 105),
+  ROLLBACK_TABLE_DEVICES_BLACK_LIST((byte) 106),
+  DELETE_TABLE_DEVICES_IN_BLACK_LIST((byte) 107),
+  DROP_TABLE_ATTRIBUTE((byte) 108),
 
   // query plan doesn't need any ser/deSer, thus use one type to represent all
   READ_SCHEMA(Byte.MAX_VALUE);
@@ -62,14 +69,14 @@ public enum SchemaRegionPlanType {
   private static final SchemaRegionPlanType[] PLAN_TYPE_TABLE = new SchemaRegionPlanType[MAX_NUM];
 
   static {
-    for (SchemaRegionPlanType type : SchemaRegionPlanType.values()) {
+    for (final SchemaRegionPlanType type : SchemaRegionPlanType.values()) {
       PLAN_TYPE_TABLE[type.planType] = type;
     }
   }
 
   private final byte planType;
 
-  SchemaRegionPlanType(byte planType) {
+  SchemaRegionPlanType(final byte planType) {
     this.planType = planType;
   }
 
@@ -77,13 +84,13 @@ public enum SchemaRegionPlanType {
     return planType;
   }
 
-  public void serialize(DataOutputStream dataOutputStream) throws IOException {
+  public void serialize(final DataOutputStream dataOutputStream) throws IOException {
     dataOutputStream.writeByte(planType);
   }
 
-  public static SchemaRegionPlanType deserialize(ByteBuffer buffer) {
-    byte code = buffer.get();
-    SchemaRegionPlanType type = PLAN_TYPE_TABLE[code];
+  public static SchemaRegionPlanType deserialize(final ByteBuffer buffer) {
+    final byte code = buffer.get();
+    final SchemaRegionPlanType type = PLAN_TYPE_TABLE[code];
     if (type == null) {
       throw new IllegalArgumentException("Unrecognized SchemaRegionPlanType of " + code);
     }

@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
@@ -23,8 +28,10 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -32,7 +39,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSche
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -41,14 +47,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -140,13 +150,13 @@ public class TSBSMetadata implements Metadata {
     columnSchemas.add(
         ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build());
     columnSchemas.add(
-        ColumnSchema.builder(NAME_CM).setColumnCategory(TsTableColumnCategory.ID).build());
+        ColumnSchema.builder(NAME_CM).setColumnCategory(TsTableColumnCategory.TAG).build());
     columnSchemas.add(
-        ColumnSchema.builder(FLEET_CM).setColumnCategory(TsTableColumnCategory.ID).build());
+        ColumnSchema.builder(FLEET_CM).setColumnCategory(TsTableColumnCategory.TAG).build());
     columnSchemas.add(
-        ColumnSchema.builder(DRIVER_CM).setColumnCategory(TsTableColumnCategory.ID).build());
+        ColumnSchema.builder(DRIVER_CM).setColumnCategory(TsTableColumnCategory.TAG).build());
     columnSchemas.add(
-        ColumnSchema.builder(MODEL_CM).setColumnCategory(TsTableColumnCategory.ID).build());
+        ColumnSchema.builder(MODEL_CM).setColumnCategory(TsTableColumnCategory.TAG).build());
     columnSchemas.add(
         ColumnSchema.builder(DEVICE_VERSION_CM)
             .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
@@ -167,45 +177,35 @@ public class TSBSMetadata implements Metadata {
     if (name.getObjectName().equalsIgnoreCase(TABLE_DIAGNOSTICS)) {
       columnSchemas.add(
           ColumnSchema.builder(FUEL_STATE_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .setColumnCategory(TsTableColumnCategory.FIELD)
               .build());
       columnSchemas.add(
           ColumnSchema.builder(CURRENT_LOAD_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .setColumnCategory(TsTableColumnCategory.FIELD)
               .build());
       columnSchemas.add(
-          ColumnSchema.builder(STATUS_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-              .build());
+          ColumnSchema.builder(STATUS_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
       return Optional.of(new TableSchema(TABLE_DIAGNOSTICS, columnSchemas));
     } else if (name.getObjectName().equalsIgnoreCase(TABLE_READINGS)) {
       columnSchemas.add(
-          ColumnSchema.builder(LATITUDE_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-              .build());
+          ColumnSchema.builder(LATITUDE_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
       columnSchemas.add(
           ColumnSchema.builder(LONGITUDE_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .setColumnCategory(TsTableColumnCategory.FIELD)
               .build());
       columnSchemas.add(
           ColumnSchema.builder(ELEVATION_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .setColumnCategory(TsTableColumnCategory.FIELD)
               .build());
       columnSchemas.add(
-          ColumnSchema.builder(VELOCITY_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-              .build());
+          ColumnSchema.builder(VELOCITY_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
       columnSchemas.add(
-          ColumnSchema.builder(HEADING_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-              .build());
+          ColumnSchema.builder(HEADING_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
       columnSchemas.add(
-          ColumnSchema.builder(GRADE_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-              .build());
+          ColumnSchema.builder(GRADE_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
       columnSchemas.add(
           ColumnSchema.builder(FUEL_CONSUMPTION_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .setColumnCategory(TsTableColumnCategory.FIELD)
               .build());
       return Optional.of(new TableSchema(TABLE_READINGS, columnSchemas));
     } else {
@@ -282,7 +282,7 @@ public class TSBSMetadata implements Metadata {
   }
 
   @Override
-  public List<DeviceEntry> indexScan(
+  public Map<String, List<DeviceEntry>> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns,
@@ -292,41 +292,61 @@ public class TSBSMetadata implements Metadata {
         && expressionList.get(1).toString().equals("(NOT (\"name\" IS NULL))")
         && attributeColumns.isEmpty()) {
       // r01, r02
-      return ImmutableList.of(
-          new DeviceEntry(new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), ImmutableList.of()),
-          new DeviceEntry(new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of()));
+      return Collections.singletonMap(
+          DB1,
+          ImmutableList.of(
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), new Binary[0]),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), new Binary[0])));
     } else if (expressionList.size() == 1
         && expressionList.get(0).toString().equals("(\"fleet\" = 'South')")
         && attributeColumns.size() == 1
         && attributeColumns.get(0).equals("load_capacity")) {
       // r03
-      return ImmutableList.of(
-          new DeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), ImmutableList.of("2000")),
-          new DeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of("1000")));
+      return Collections.singletonMap(
+          DB1,
+          ImmutableList.of(
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
+                  new Binary[] {new Binary("2000", TSFileConfig.STRING_CHARSET)}),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
+                  new Binary[] {new Binary("1000", TSFileConfig.STRING_CHARSET)})));
     } else {
       // others (The return result maybe not correct in actual, but it is convenient for test of
       // DistributionPlan)
-      return Arrays.asList(
-          new DeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), ImmutableList.of("", "")),
-          new DeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of("", "")),
-          new DeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_3.split("\\.")), ImmutableList.of("", "")),
-          new DeviceEntry(
-              new StringArrayDeviceID(T2_DEVICE_1.split("\\.")), ImmutableList.of("", "")),
-          new DeviceEntry(
-              new StringArrayDeviceID(T2_DEVICE_2.split("\\.")), ImmutableList.of("", "")),
-          new DeviceEntry(
-              new StringArrayDeviceID(T2_DEVICE_3.split("\\.")), ImmutableList.of("", "")));
+      return Collections.singletonMap(
+          DB1,
+          Arrays.asList(
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
+                  new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
+                  new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_3.split("\\.")),
+                  new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T2_DEVICE_1.split("\\.")),
+                  new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T2_DEVICE_2.split("\\.")),
+                  new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T2_DEVICE_3.split("\\.")),
+                  new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE})));
     }
   }
 
   @Override
   public Optional<TableSchema> validateTableHeaderSchema(
-      String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable) {
+      String database,
+      TableSchema tableSchema,
+      MPPQueryContext context,
+      boolean allowCreateTable,
+      boolean isStrictIdColumn) {
     throw new UnsupportedOperationException();
   }
 
@@ -365,8 +385,13 @@ public class TSBSMetadata implements Metadata {
   }
 
   @Override
-  public boolean canUseStatistics(String name, boolean withTime) {
-    return TableBuiltinAggregationFunction.canUseStatistics(name, withTime);
+  public TableFunction getTableFunction(String functionName) {
+    return null;
+  }
+
+  @Override
+  public IModelFetcher getModelFetcher() {
+    return null;
   }
 
   private static final DataPartition DATA_PARTITION =
@@ -436,11 +461,6 @@ public class TSBSMetadata implements Metadata {
 
       @Override
       public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
-        return SCHEMA_PARTITION;
-      }
-
-      @Override
-      public SchemaPartition getSchemaPartition(String database) {
         return SCHEMA_PARTITION;
       }
     };

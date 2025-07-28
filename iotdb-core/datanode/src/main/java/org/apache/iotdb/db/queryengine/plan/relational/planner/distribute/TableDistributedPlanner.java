@@ -1,41 +1,49 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
-import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.WriteFragmentParallelPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import java.util.Collections;
@@ -46,8 +54,6 @@ import java.util.Map;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 
 public class TableDistributedPlanner {
 
@@ -56,49 +62,56 @@ public class TableDistributedPlanner {
   private final LogicalQueryPlan logicalQueryPlan;
   private final MPPQueryContext mppQueryContext;
   private final List<PlanOptimizer> optimizers;
+  private final Metadata metadata;
+  private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
+
+  @TestOnly
+  public TableDistributedPlanner(
+      Analysis analysis,
+      SymbolAllocator symbolAllocator,
+      LogicalQueryPlan logicalQueryPlan,
+      Metadata metadata,
+      DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
+    this(
+        analysis,
+        symbolAllocator,
+        logicalQueryPlan,
+        metadata,
+        new DistributedOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
+            .getPlanOptimizers(),
+        dataNodeLocationSupplier);
+  }
 
   public TableDistributedPlanner(
-      Analysis analysis, SymbolAllocator symbolAllocator, LogicalQueryPlan logicalQueryPlan) {
+      Analysis analysis,
+      SymbolAllocator symbolAllocator,
+      LogicalQueryPlan logicalQueryPlan,
+      Metadata metadata,
+      List<PlanOptimizer> distributedOptimizers,
+      DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
     this.analysis = analysis;
     this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
     this.logicalQueryPlan = logicalQueryPlan;
     this.mppQueryContext = logicalQueryPlan.getContext();
-    this.optimizers =
-        new DistributedOptimizeFactory(new PlannerContext(null, new InternalTypeManager()))
-            .getPlanOptimizers();
-  }
-
-  @TestOnly
-  public TableDistributedPlanner(Analysis analysis, LogicalQueryPlan logicalQueryPlan) {
-    this.analysis = analysis;
-    this.symbolAllocator = new SymbolAllocator();
-    this.logicalQueryPlan = logicalQueryPlan;
-    this.mppQueryContext = logicalQueryPlan.getContext();
-    this.optimizers =
-        new DistributedOptimizeFactory(new PlannerContext(null, new InternalTypeManager()))
-            .getPlanOptimizers();
+    this.optimizers = distributedOptimizers;
+    this.metadata = metadata;
+    this.dataNodeLocationSupplier = dataNodeLocationSupplier;
   }
 
   public DistributedQueryPlan plan() {
-    long startTime = System.nanoTime();
     TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
 
-    if (analysis.getStatement() instanceof Query) {
+    if (analysis.isQuery()) {
       analysis
           .getRespDatasetHeader()
           .setTableColumnToTsBlockIndexMap((OutputNode) outputNodeWithExchange);
     }
 
     adjustUpStream(outputNodeWithExchange, planContext);
-    DistributedQueryPlan resultDistributedPlan = generateDistributedPlan(outputNodeWithExchange);
 
-    if (analysis.getStatement() instanceof Query) {
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
-    }
-    return resultDistributedPlan;
+    return generateDistributedPlan(outputNodeWithExchange, planContext.nodeDistributionMap);
   }
 
   public PlanNode generateDistributedPlanWithOptimize(
@@ -106,24 +119,24 @@ public class TableDistributedPlanner {
     // generate table model distributed plan
 
     List<PlanNode> distributedPlanResult =
-        new TableDistributedPlanGenerator(mppQueryContext, analysis, symbolAllocator)
+        new TableDistributedPlanGenerator(
+                mppQueryContext, analysis, symbolAllocator, dataNodeLocationSupplier)
             .genResult(logicalQueryPlan.getRootNode(), planContext);
     checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
 
     // distribute plan optimize rule
     PlanNode distributedPlan = distributedPlanResult.get(0);
 
-    if (analysis.getStatement() instanceof Query) {
+    if (analysis.isQuery()) {
       for (PlanOptimizer optimizer : optimizers) {
         distributedPlan =
             optimizer.optimize(
                 distributedPlan,
                 new PlanOptimizer.Context(
-                    null,
+                    mppQueryContext.getSession(),
                     analysis,
-                    null,
+                    metadata,
                     mppQueryContext,
-                    mppQueryContext.getTypeProvider(),
                     new SymbolAllocator(),
                     mppQueryContext.getQueryId(),
                     NOOP,
@@ -132,7 +145,6 @@ public class TableDistributedPlanner {
     }
 
     // Add all Symbol Types in SymbolAllocator into TypeProvider
-    // TODO Remove redundant logic in LogicalPlan generation or Optimizer
     symbolAllocator
         .getTypes()
         .allTableModelTypes()
@@ -142,7 +154,9 @@ public class TableDistributedPlanner {
     return new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
   }
 
-  private DistributedQueryPlan generateDistributedPlan(PlanNode outputNodeWithExchange) {
+  private DistributedQueryPlan generateDistributedPlan(
+      PlanNode outputNodeWithExchange,
+      final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
     // generate subPlan
     SubPlan subPlan =
         new SubPlanGenerator()
@@ -152,7 +166,9 @@ public class TableDistributedPlanner {
     // generate fragment instances
     List<FragmentInstance> fragmentInstances =
         mppQueryContext.getQueryType() == QueryType.READ
-            ? new TableModelQueryFragmentPlanner(subPlan, analysis, mppQueryContext).plan()
+            ? new TableModelQueryFragmentPlanner(
+                    subPlan, analysis, mppQueryContext, nodeDistributionMap)
+                .parallelPlan()
             : new WriteFragmentParallelPlanner(
                     subPlan, analysis, mppQueryContext, WritePlanNode::splitByPartition)
                 .parallelPlan();

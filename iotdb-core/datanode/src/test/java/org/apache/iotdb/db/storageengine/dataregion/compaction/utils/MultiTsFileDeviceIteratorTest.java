@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -126,7 +127,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     List<String> measurementSet = new ArrayList<>(4000);
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(seqResources, false)) {
+        new MultiTsFileDeviceIterator(seqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceIsAlignedPair = multiTsFileDeviceIterator.nextDevice();
         IDeviceID device = deviceIsAlignedPair.getLeft();
@@ -172,7 +173,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(seqResources, unseqResources, false)) {
+        new MultiTsFileDeviceIterator(seqResources, unseqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -203,7 +204,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(seqResources, unseqResources, false)) {
+        new MultiTsFileDeviceIterator(seqResources, unseqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -241,7 +242,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(seqResources, unseqResources, false)) {
+        new MultiTsFileDeviceIterator(seqResources, unseqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -280,7 +281,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(seqResources, unseqResources, false)) {
+        new MultiTsFileDeviceIterator(seqResources, unseqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -332,7 +333,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(seqResources, unseqResources, false)) {
+        new MultiTsFileDeviceIterator(seqResources, unseqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -384,7 +385,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(seqResources, false)) {
+        new MultiTsFileDeviceIterator(seqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -447,7 +448,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true), false)) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -526,7 +527,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true), false)) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -601,7 +602,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true), false)) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -681,7 +682,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true), false)) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -751,7 +752,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true), false)) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -830,7 +831,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true), false)) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -901,7 +902,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true), false)) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -990,7 +991,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true), false)) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -1061,7 +1062,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true), false)) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -1140,7 +1141,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true), false)) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -1211,7 +1212,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true), false)) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -1300,7 +1301,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true), false)) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);

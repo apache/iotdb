@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode.NO_CONSENSUS_INDEX;
+import java.util.List;
 
-public abstract class SearchNode extends WritePlanNode {
+public abstract class SearchNode extends WritePlanNode implements ComparableConsensusRequest {
 
   /** this insert node doesn't need to participate in iot consensus */
   public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
@@ -45,7 +46,10 @@ public abstract class SearchNode extends WritePlanNode {
   }
 
   /** Search index should start from 1 */
-  public void setSearchIndex(long searchIndex) {
+  public SearchNode setSearchIndex(long searchIndex) {
     this.searchIndex = searchIndex;
+    return this;
   }
+
+  public abstract SearchNode merge(List<SearchNode> searchNodes);
 }

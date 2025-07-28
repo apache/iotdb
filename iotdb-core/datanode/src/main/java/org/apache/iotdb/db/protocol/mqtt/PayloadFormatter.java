@@ -30,13 +30,29 @@ import java.util.List;
  * @see JSONPayloadFormatter
  */
 public interface PayloadFormatter {
+
+  public static final String TREE_TYPE = "tree";
+  public static final String TABLE_TYPE = "table";
+
   /**
    * format a payload to a list of messages
    *
    * @param payload
    * @return
    */
+  @Deprecated
   List<Message> format(ByteBuf payload);
+
+  /**
+   * format a payload of a topic to a list of messages
+   *
+   * @param topic
+   * @param payload
+   * @return
+   */
+  default List<Message> format(String topic, ByteBuf payload) {
+    return format(payload);
+  }
 
   /**
    * get the formatter name
@@ -44,4 +60,6 @@ public interface PayloadFormatter {
    * @return
    */
   String getName();
+
+  String getType();
 }

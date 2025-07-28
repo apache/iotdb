@@ -24,29 +24,25 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
 /** This class represents a privilege on a specific seriesPath. */
 public class PathPrivilege {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PathPrivilege.class);
 
-  private static final int PATH_PRI_SIZE = PrivilegeType.getPathPriCount();
-  private Set<Integer> privileges;
-
-  // grantopt show whether the privileges can be grant to / revoke from others.
-  // The privilege that can be grant to others must exist in privileges.
-  // The set of grantopt must be a subset of privileges.
-  private Set<Integer> grantOpts;
   private PartialPath path;
+  private Set<PrivilegeType> privileges;
+  private Set<PrivilegeType> grantOpts;
+
+  private static final int PRI_SIZE = PrivilegeType.getPrivilegeCount(PrivilegeModelType.TREE);
 
   public PathPrivilege() {
     // Empty constructor
@@ -58,90 +54,121 @@ public class PathPrivilege {
     this.grantOpts = new HashSet<>();
   }
 
-  public Set<Integer> getPrivileges() {
-    return privileges;
+  /** -------- set -------- * */
+  public void setPrivileges(Set<PrivilegeType> privs) {
+    this.privileges = privs;
   }
 
-  public void setPrivileges(Set<Integer> privileges) {
-    this.privileges = privileges;
+  public void setPrivilegesInt(Set<Integer> privs) {
+    this.privileges = new HashSet<>();
+    for (Integer priv : privs) {
+      this.privileges.add(PrivilegeType.values()[priv]);
+    }
   }
 
-  public Set<Integer> getGrantOpt() {
-    return grantOpts;
-  }
-
-  public void setGrantOpt(Set<Integer> grantOpts) {
+  public void setGrantOpt(Set<PrivilegeType> grantOpts) {
     this.grantOpts = grantOpts;
   }
 
-  public void grantPrivilege(int privilege, boolean grantOpt) {
+  public void setGrantOptInt(Set<Integer> grantOpts) {
+    this.grantOpts = new HashSet<>();
+    for (Integer priv : grantOpts) {
+      this.grantOpts.add(PrivilegeType.values()[priv]);
+    }
+  }
+
+  public void setPath(PartialPath path) {
+    this.path = path;
+  }
+
+  public void setAllPrivileges(int privs) {
+    for (int i = 0; i < PRI_SIZE; i++) {
+      if (((1 << i) & privs) != 0) {
+        privileges.add(PrivilegeType.values()[AuthUtils.pathPosToPri(i)]);
+      }
+      if ((1 << (i + 16) & privs) != 0) {
+        grantOpts.add(PrivilegeType.values()[AuthUtils.pathPosToPri(i)]);
+      }
+    }
+  }
+
+  public void grantPrivilege(PrivilegeType privilege, boolean grantOpt) {
     privileges.add(privilege);
     if (grantOpt) {
       grantOpts.add(privilege);
     }
   }
 
-  public boolean revokePrivilege(int privilege) {
+  public boolean revokePrivilege(PrivilegeType privilege) {
     if (!privileges.contains(privilege)) {
-      LOGGER.warn("not find privilege{} on path {}", PrivilegeType.values()[privilege], path);
       return false;
     }
     privileges.remove(privilege);
-    // when we revoke privilege from path, remove its grant option
     grantOpts.remove(privilege);
     return true;
   }
 
-  public boolean revokeGrantOpt(int privilege) {
+  public boolean revokeGrantOpt(PrivilegeType privilege) {
     if (!privileges.contains(privilege)) {
-      LOGGER.warn("path {} dont have privilege {}", path, PrivilegeType.values()[privilege]);
       return false;
     }
     grantOpts.remove(privilege);
     return true;
   }
 
-  public boolean checkPrivilege(int privilege) {
+  /** -------- get -------- * */
+  public Set<PrivilegeType> getGrantOpt() {
+    return grantOpts;
+  }
+
+  public Set<Integer> getGrantOptIntSet() {
+    Set<Integer> res = new HashSet<>();
+    for (PrivilegeType item : grantOpts) {
+      res.add(item.ordinal());
+    }
+    return res;
+  }
+
+  public Set<Integer> getPrivilegeIntSet() {
+    Set<Integer> res = new HashSet<>();
+    for (PrivilegeType item : privileges) {
+      res.add(item.ordinal());
+    }
+    return res;
+  }
+
+  public Set<PrivilegeType> getPrivileges() {
+    return privileges;
+  }
+
+  public boolean checkPrivilege(PrivilegeType privilege) {
     if (privileges.contains(privilege)) {
       return true;
     }
-    if (privilege == PrivilegeType.READ_DATA.ordinal()) {
-      return privileges.contains(PrivilegeType.WRITE_DATA.ordinal());
+
+    if (privilege == PrivilegeType.READ_DATA) {
+      return privileges.contains(PrivilegeType.WRITE_DATA);
     }
-    if (privilege == PrivilegeType.READ_SCHEMA.ordinal()) {
-      return privileges.contains(PrivilegeType.WRITE_SCHEMA.ordinal());
+
+    if (privilege == PrivilegeType.READ_SCHEMA) {
+      return privileges.contains(PrivilegeType.WRITE_SCHEMA);
     }
     return false;
   }
 
-  public void setAllPrivileges(int privs) {
-    for (int i = 0; i < PATH_PRI_SIZE; i++) {
-      if (((1 << i) & privs) != 0) {
-        privileges.add(AuthUtils.pathPosToPri(i));
-      }
-      if ((1 << (i + 16) & privs) != 0) {
-        grantOpts.add(AuthUtils.pathPosToPri(i));
-      }
-    }
-  }
-
   public int getAllPrivileges() {
     int privilege = 0;
-    for (Integer pri : privileges) {
-      privilege |= 1 << AuthUtils.pathPriToPos(PrivilegeType.values()[pri]);
+    for (PrivilegeType pri : privileges) {
+      privilege |= 1 << AuthUtils.pathPriToPos(pri);
     }
-    for (Integer grantOpt : grantOpts) {
-      privilege |= 1 << (AuthUtils.pathPriToPos(PrivilegeType.values()[grantOpt]) + 16);
+    for (PrivilegeType grantOpt : grantOpts) {
+      privilege |= 1 << (AuthUtils.pathPriToPos(grantOpt) + 16);
     }
     return privilege;
   }
 
   public PartialPath getPath() {
     return path;
-  }
-
-  public void setPath(PartialPath path) {
-    this.path = path;
   }
 
   @Override
@@ -155,7 +182,7 @@ public class PathPrivilege {
     PathPrivilege that = (PathPrivilege) o;
     return Objects.equals(privileges, that.privileges)
         && Objects.equals(path, that.path)
-        && Objects.equals(grantOpts, this.grantOpts);
+        && Objects.equals(grantOpts, that.grantOpts);
   }
 
   @Override
@@ -167,34 +194,32 @@ public class PathPrivilege {
   public String toString() {
     StringBuilder builder = new StringBuilder(path.getFullPath());
     builder.append(" :");
-    for (Integer privilegeId : privileges) {
-      builder.append(" ").append(PrivilegeType.values()[privilegeId]);
-      if (grantOpts.contains(privilegeId)) {
+    List<PrivilegeType> sortedPrivileges = new ArrayList<>(privileges);
+    Collections.sort(sortedPrivileges);
+    for (PrivilegeType privilege : sortedPrivileges) {
+      builder.append(" ").append(privilege);
+      if (grantOpts.contains(privilege)) {
         builder.append("_").append("with_grant_option");
       }
     }
     return builder.toString();
   }
 
-  public ByteBuffer serialize() {
+  public ByteBuffer serialize() throws IOException {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
-    SerializeUtils.serializeIntSet(privileges, dataOutputStream);
-    SerializeUtils.serializeIntSet(grantOpts, dataOutputStream);
-    try {
-      path.serialize(dataOutputStream);
-    } catch (IOException exception) {
-      LOGGER.error("Unexpected exception when serialize path", exception);
-    }
+    SerializeUtils.serializePrivilegeTypeSet(privileges, dataOutputStream);
+    SerializeUtils.serializePrivilegeTypeSet(grantOpts, dataOutputStream);
+    path.serialize(dataOutputStream);
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
   public void deserialize(ByteBuffer buffer) {
     privileges = new HashSet<>();
-    SerializeUtils.deserializeIntSet(privileges, buffer);
+    SerializeUtils.deserializePrivilegeTypeSet(privileges, buffer);
     grantOpts = new HashSet<>();
-    SerializeUtils.deserializeIntSet(grantOpts, buffer);
+    SerializeUtils.deserializePrivilegeTypeSet(grantOpts, buffer);
     path = (PartialPath) PathDeserializeUtil.deserialize(buffer);
   }
 }

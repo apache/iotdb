@@ -19,24 +19,46 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateFunctionStatement;
+import org.apache.iotdb.udf.api.UDF;
+import org.apache.iotdb.udf.api.relational.SQLFunction;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.Optional;
+
 public class CreateFunctionTask implements IConfigTask {
 
-  private final CreateFunctionStatement createFunctionStatement;
+  private final Model model;
+  private final String udfName;
+  private final String className;
+  private final Optional<String> uriString;
+  private final Class<?> baseClazz;
 
   public CreateFunctionTask(CreateFunctionStatement createFunctionStatement) {
-    this.createFunctionStatement = createFunctionStatement;
+    this.udfName = createFunctionStatement.getUdfName();
+    this.className = createFunctionStatement.getClassName();
+    this.uriString = createFunctionStatement.getUriString();
+    this.baseClazz = UDF.class; // Tree Model
+    this.model = Model.TREE;
+  }
+
+  public CreateFunctionTask(CreateFunction createFunctionStatement) {
+    this.udfName = createFunctionStatement.getUdfName();
+    this.className = createFunctionStatement.getClassName();
+    this.uriString = createFunctionStatement.getUriString();
+    this.baseClazz = SQLFunction.class; // Table Model
+    this.model = Model.TABLE;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createFunction(createFunctionStatement);
+    return configTaskExecutor.createFunction(model, udfName, className, uriString, baseClazz);
   }
 }

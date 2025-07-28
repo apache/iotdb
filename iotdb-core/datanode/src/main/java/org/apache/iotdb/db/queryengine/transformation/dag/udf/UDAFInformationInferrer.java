@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.udf;
 
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
@@ -65,7 +65,7 @@ public class UDAFInformationInferrer {
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes)
       throws Exception {
-    UDAF udaf = (UDAF) UDFManagementService.getInstance().reflect(functionName);
+    UDAF udaf = UDFManagementService.getInstance().reflect(functionName, UDAF.class);
 
     UDFParameters parameters =
         UDFParametersFactory.buildUdfParameters(

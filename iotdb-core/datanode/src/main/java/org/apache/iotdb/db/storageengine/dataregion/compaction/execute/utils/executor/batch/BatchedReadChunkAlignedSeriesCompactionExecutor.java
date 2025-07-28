@@ -32,16 +32,18 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.ReadChunkAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.ChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.InstantChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.PageLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.PageException;
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
@@ -65,13 +67,14 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
   private final int batchSize =
       IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
   private final AlignedSeriesBatchCompactionUtils.BatchColumnSelection batchColumnSelection;
-  private final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+  private final LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
       originReaderAndChunkMetadataList;
 
   public BatchedReadChunkAlignedSeriesCompactionExecutor(
       IDeviceID device,
       TsFileResource targetResource,
-      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
+      LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
+          readerAndChunkMetadataList,
       CompactionTsFileWriter writer,
       CompactionTaskSummary summary,
       boolean ignoreAllNullRows)
@@ -111,7 +114,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       selectedColumnSchemaList = batchColumnSelection.getCurrentSelectedColumnSchemaList();
     }
 
-    LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+    LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
         batchedReaderAndChunkMetadataList =
             filterAlignedChunkMetadataList(readerAndChunkMetadataList, selectedColumnIndexList);
 
@@ -135,7 +138,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
   private void compactLeftBatches() throws PageException, IOException {
     while (batchColumnSelection.hasNext()) {
       batchColumnSelection.next();
-      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+      LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
           groupReaderAndChunkMetadataList =
               filterAlignedChunkMetadataList(
                   readerAndChunkMetadataList, batchColumnSelection.getSelectedColumnIndexList());
@@ -153,16 +156,19 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     }
   }
 
-  private LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+  private LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
       filterAlignedChunkMetadataList(
-          List<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
+          List<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
+              readerAndChunkMetadataList,
           List<Integer> selectedMeasurementIndexs) {
-    LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+    LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
         groupReaderAndChunkMetadataList = new LinkedList<>();
-    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair : readerAndChunkMetadataList) {
-      List<AlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
-      List<AlignedChunkMetadata> selectedColumnAlignedChunkMetadataList = new LinkedList<>();
-      for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
+    for (Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>> pair :
+        readerAndChunkMetadataList) {
+      List<AbstractAlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
+      List<AbstractAlignedChunkMetadata> selectedColumnAlignedChunkMetadataList =
+          new LinkedList<>();
+      for (AbstractAlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
         selectedColumnAlignedChunkMetadataList.add(
             AlignedSeriesBatchCompactionUtils.filterAlignedChunkMetadataByIndex(
                 alignedChunkMetadata, selectedMeasurementIndexs));
@@ -179,7 +185,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     public FirstBatchedReadChunkAlignedSeriesCompactionExecutor(
         IDeviceID device,
         TsFileResource targetResource,
-        LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+        LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
             readerAndChunkMetadataList,
         CompactionTsFileWriter writer,
         CompactionTaskSummary summary,
@@ -222,8 +228,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       String file = timePage.getFile();
       ChunkMetadata timeChunkMetadata = timePage.getChunkMetadata();
 
-      List<AlignedChunkMetadata> alignedChunkMetadataList = Collections.emptyList();
-      for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair :
+      List<AbstractAlignedChunkMetadata> alignedChunkMetadataList = Collections.emptyList();
+      for (Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>> pair :
           originReaderAndChunkMetadataList) {
         TsFileSequenceReader reader = pair.getLeft();
         if (reader.getFileName().equals(file)) {
@@ -232,8 +238,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
         }
       }
 
-      AlignedChunkMetadata originAlignedChunkMetadata = null;
-      for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
+      AbstractAlignedChunkMetadata originAlignedChunkMetadata = null;
+      for (AbstractAlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
         if (alignedChunkMetadata.getOffsetOfChunkHeader()
             == timeChunkMetadata.getOffsetOfChunkHeader()) {
           originAlignedChunkMetadata = alignedChunkMetadata;
@@ -247,6 +253,17 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       batchCompactionPlan.recordPageModifiedStatus(
           file, new TimeRange(startTime, endTime), modifiedStatus);
       return modifiedStatus == ModifiedStatus.ALL_DELETED;
+    }
+
+    @Override
+    protected ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
+        throws IOException {
+      ChunkLoader chunkLoader = super.getChunkLoader(reader, chunkMetadata);
+      if (!chunkLoader.isEmpty() && AlignedSeriesBatchCompactionUtils.isTimeChunk(chunkMetadata)) {
+        batchCompactionPlan.addTimeChunkToCache(
+            reader.getFileName(), chunkMetadata.getOffsetOfChunkHeader(), chunkLoader.getChunk());
+      }
+      return chunkLoader;
     }
 
     @Override
@@ -290,7 +307,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     public FollowingBatchedReadChunkAlignedSeriesGroupCompactionExecutor(
         IDeviceID device,
         TsFileResource targetResource,
-        LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+        LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
             readerAndChunkMetadataList,
         CompactionTsFileWriter writer,
         CompactionTaskSummary summary,
@@ -310,6 +327,16 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       this.chunkWriter =
           new FollowingBatchCompactionAlignedChunkWriter(
               timeSchema, schemaList, batchCompactionPlan.getCompactChunkPlan(0));
+    }
+
+    @Override
+    protected ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
+        throws IOException {
+      if (chunkMetadata != null && AlignedSeriesBatchCompactionUtils.isTimeChunk(chunkMetadata)) {
+        Chunk timeChunk = batchCompactionPlan.getTimeChunkFromCache(reader, chunkMetadata);
+        return new InstantChunkLoader(reader.getFileName(), chunkMetadata, timeChunk);
+      }
+      return super.getChunkLoader(reader, chunkMetadata);
     }
 
     @Override
@@ -354,7 +381,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
         if (valueChunk.isEmpty()) {
           IMeasurementSchema schema = schemaList.get(i);
           writer.writeEmptyValueChunk(
-              schema.getMeasurementId(),
+              schema.getMeasurementName(),
               schema.getCompressor(),
               schema.getType(),
               schema.getEncodingType(),

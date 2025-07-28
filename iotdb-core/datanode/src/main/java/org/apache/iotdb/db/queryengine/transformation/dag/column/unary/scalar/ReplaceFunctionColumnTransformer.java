@@ -56,4 +56,22 @@ public class ReplaceFunctionColumnTransformer extends UnaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        returnType.writeBinary(
+            columnBuilder,
+            BytesUtils.valueOf(
+                childColumnTransformer
+                    .getType()
+                    .getBinary(column, i)
+                    .getStringValue(TSFileConfig.STRING_CHARSET)
+                    .replace(from, to)));
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
 }

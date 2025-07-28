@@ -274,7 +274,7 @@ public class DatabasePartitionTable {
    * @return True if all the SeriesPartitionSlots are matched, false otherwise
    */
   public boolean getSchemaPartition(
-      List<TSeriesPartitionSlot> partitionSlots, SchemaPartitionTable schemaPartition) {
+      final List<TSeriesPartitionSlot> partitionSlots, final SchemaPartitionTable schemaPartition) {
     return schemaPartitionTable.getSchemaPartition(partitionSlots, schemaPartition);
   }
 
@@ -286,7 +286,8 @@ public class DatabasePartitionTable {
    * @return True if all the PartitionSlots are matched, false otherwise
    */
   public boolean getDataPartition(
-      Map<TSeriesPartitionSlot, TTimeSlotList> partitionSlots, DataPartitionTable dataPartition) {
+      final Map<TSeriesPartitionSlot, TTimeSlotList> partitionSlots,
+      final DataPartitionTable dataPartition) {
     return dataPartitionTable.getDataPartition(partitionSlots, dataPartition);
   }
 
@@ -538,7 +539,7 @@ public class DatabasePartitionTable {
     regionGroup.addRegionLocation(node);
   }
 
-  void removeRegionLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
+  void removeRegionLocation(TConsensusGroupId regionId, int nodeId) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
       LOGGER.warn(
@@ -547,16 +548,18 @@ public class DatabasePartitionTable {
           databaseName);
       return;
     }
-    if (!regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
+    if (regionGroup.getReplicaSet().getDataNodeLocations().stream()
+        .map(TDataNodeLocation::getDataNodeId)
+        .noneMatch(id -> id == nodeId)) {
       LOGGER.info(
           "Node is not in region locations when removeRegionOldLocation in {}, "
               + "no need to remove it, node: {}, region: {}",
           databaseName,
-          node,
+          nodeId,
           regionId);
       return;
     }
-    regionGroup.removeRegionLocation(node);
+    regionGroup.removeRegionLocation(nodeId);
   }
 
   /**
@@ -607,6 +610,28 @@ public class DatabasePartitionTable {
    */
   public Map<TSeriesPartitionSlot, TConsensusGroupId> getLastDataAllotTable() {
     return dataPartitionTable.getLastDataAllotTable();
+  }
+
+  /**
+   * Remove PartitionTable where the TimeSlot is expired.
+   *
+   * @param TTL The Time To Live
+   * @param currentTimeSlot The current TimeSlot
+   */
+  public void autoCleanPartitionTable(long TTL, TTimePartitionSlot currentTimeSlot) {
+    long[] removedTimePartitionSlots =
+        dataPartitionTable.autoCleanPartitionTable(TTL, currentTimeSlot).stream()
+            .map(TTimePartitionSlot::getStartTime)
+            .collect(Collectors.toList())
+            .stream()
+            .mapToLong(Long::longValue)
+            .toArray();
+    if (removedTimePartitionSlots.length > 0) {
+      LOGGER.info(
+          "[PartitionTableCleaner] The TimePartitions: {} are removed from Database: {}",
+          removedTimePartitionSlots,
+          databaseName);
+    }
   }
 
   @Override

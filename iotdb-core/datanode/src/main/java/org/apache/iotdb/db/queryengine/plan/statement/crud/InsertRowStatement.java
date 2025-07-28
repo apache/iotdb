@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
@@ -39,9 +40,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.db.utils.annotations.TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -49,6 +50,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -62,10 +64,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InsertRowStatement extends InsertBaseStatement implements ISchemaValidation {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(InsertRowStatement.class);
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(InsertRowStatement.class);
 
   protected static final byte TYPE_RAW_STRING = -1;
   protected static final byte TYPE_NULL = -2;
@@ -80,7 +86,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
    */
   protected boolean[] measurementIsAligned;
 
-  private IDeviceID deviceID;
+  protected IDeviceID deviceID;
 
   public InsertRowStatement() {
     super();
@@ -190,9 +196,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
+    if (dataType.isCompatible(dataTypes[columnIndex])) {
       values[columnIndex] =
-          CommonUtils.castValue(dataTypes[columnIndex], dataType, values[columnIndex]);
+          dataType.castFromSingleValue(dataTypes[columnIndex], values[columnIndex]);
       dataTypes[columnIndex] = dataType;
       return true;
     }
@@ -226,8 +232,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       dataTypes[i] = measurementSchemas[i].getType();
       try {
         // if the type is binary and the value is already binary, do not convert
-        if (values[i] instanceof String
-            || values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
+        if (values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
         }
       } catch (Exception e) {
@@ -277,11 +282,23 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     }
     failedMeasurementIndex2Info.forEach(
         (index, info) -> {
-          measurements[index] = info.getMeasurement();
-          dataTypes[index] = info.getDataType();
-          values[index] = info.getValue();
+          if (measurements != null) {
+            measurements[index] = info.getMeasurement();
+          }
+
+          if (dataTypes != null) {
+            dataTypes[index] = info.getDataType();
+          }
+
+          if (values != null) {
+            values[index] = info.getValue();
+          }
         });
     failedMeasurementIndex2Info.clear();
+  }
+
+  public Map<Integer, FailedMeasurementInfo> getFailedMeasurementInfoMap() {
+    return failedMeasurementIndex2Info;
   }
 
   @Override
@@ -322,7 +339,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       for (int i = 0; i < pairList.size(); i++) {
         int realIndex = pairList.get(i).right;
         copiedValues[i] = this.values[realIndex];
-        measurements[i] = pairList.get(i).left;
+        measurements[i] =
+            Objects.nonNull(this.measurements[realIndex]) ? pairList.get(i).left : null;
         measurementSchemas[i] = this.measurementSchemas[realIndex];
         dataTypes[i] = this.dataTypes[realIndex];
         if (this.measurementIsAligned != null) {
@@ -489,6 +507,11 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   }
 
   @TableModel
+  public IDeviceID getRawTableDeviceID() {
+    return deviceID;
+  }
+
+  @TableModel
   @Override
   public Statement toRelationalStatement(MPPQueryContext context) {
     return new InsertRow(this, context);
@@ -509,5 +532,20 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   public void swapColumn(int src, int target) {
     super.swapColumn(src, target);
     CommonUtils.swapArray(values, src, target);
+  }
+
+  @Override
+  protected long calculateBytesUsed() {
+    return INSTANCE_SIZE
+        + InsertNodeMemoryEstimator.sizeOfValues(values, measurementSchemas)
+        + RamUsageEstimator.sizeOf(measurementIsAligned)
+        + InsertNodeMemoryEstimator.sizeOfIDeviceID(deviceID);
+  }
+
+  @Override
+  protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
+    if (values != null) {
+      values = columnsToKeep.stream().map(i -> values[i]).toArray();
+    }
   }
 }

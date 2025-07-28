@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -45,7 +46,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
-// @Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBRestartIT {
@@ -308,8 +308,6 @@ public class IoTDBRestartIT {
   @Test
   public void testRecoverWALDeleteSchemaCheckResourceTime() throws Exception {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    int avgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
-    config.setAvgSeriesPointNumberThreshold(2);
     long tsFileSize = config.getSeqTsFileSize();
     long unFsFileSize = config.getSeqTsFileSize();
     config.setSeqTsFileSize(10000000);
@@ -320,6 +318,7 @@ public class IoTDBRestartIT {
       statement.execute("create timeseries root.turbine1.d1.s1 with datatype=INT64");
       statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1)");
       statement.execute("insert into root.turbine1.d1(timestamp,s1) values(2,1)");
+      statement.execute("flush");
       statement.execute("create timeseries root.turbine1.d1.s2 with datatype=BOOLEAN");
       statement.execute("insert into root.turbine1.d1(timestamp,s2) values(3,true)");
       statement.execute("insert into root.turbine1.d1(timestamp,s2) values(4,true)");
@@ -342,7 +341,6 @@ public class IoTDBRestartIT {
       assertEquals(2, cnt);
     }
 
-    config.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
     config.setSeqTsFileSize(tsFileSize);
     config.setUnSeqTsFileSize(unFsFileSize);
   }

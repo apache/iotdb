@@ -37,6 +37,7 @@ import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
+import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
 
 public class InternalTypeManager implements TypeManager {
 
@@ -53,6 +54,7 @@ public class InternalTypeManager implements TypeManager {
     types.put(new TypeSignature(TypeEnum.BLOB.name().toLowerCase(Locale.ENGLISH)), BLOB);
     types.put(new TypeSignature(TypeEnum.DATE.name().toLowerCase(Locale.ENGLISH)), DATE);
     types.put(new TypeSignature(TypeEnum.TIMESTAMP.name().toLowerCase(Locale.ENGLISH)), TIMESTAMP);
+    types.put(new TypeSignature(TypeEnum.UNKNOWN.name().toLowerCase(Locale.ENGLISH)), UNKNOWN);
   }
 
   @Override
@@ -103,6 +105,35 @@ public class InternalTypeManager implements TypeManager {
         return TSDataType.BLOB;
       case STRING:
         return TSDataType.STRING;
+      default:
+        throw new IllegalArgumentException();
+    }
+  }
+
+  public static Type fromTSDataType(TSDataType dataType) {
+    switch (dataType) {
+      case TEXT:
+        return TEXT;
+      case FLOAT:
+        return FLOAT;
+      case DOUBLE:
+        return DOUBLE;
+      case INT32:
+        return INT32;
+      case INT64:
+        return INT64;
+      case BOOLEAN:
+        return BOOLEAN;
+      case UNKNOWN:
+        return UNKNOWN;
+      case DATE:
+        return DATE;
+      case TIMESTAMP:
+        return TIMESTAMP;
+      case BLOB:
+        return BLOB;
+      case STRING:
+        return STRING;
       default:
         throw new IllegalArgumentException();
     }

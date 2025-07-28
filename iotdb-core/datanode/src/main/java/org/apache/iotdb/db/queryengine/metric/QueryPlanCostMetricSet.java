@@ -49,6 +49,7 @@ public class QueryPlanCostMetricSet implements IMetricSet {
 
   private Timer treeAnalyzerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer treeLogicalPlannerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer treeLogicalPlanOptimizerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer treeDistributionPlannerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer treePartitionFetcherTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer treeSchemaFetcherTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -60,48 +61,53 @@ public class QueryPlanCostMetricSet implements IMetricSet {
   private Timer tablePartitionFetcherTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer tableSchemaFetcherTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
-  public void recordPlanCost(String type, String stage, long costTimeInNanos) {
+  public void recordTreePlanCost(String stage, long costTimeInNanos) {
     switch (stage) {
       case ANALYZER:
-        if (TREE_TYPE.equals(type)) {
-          treeAnalyzerTimer.updateNanos(costTimeInNanos);
-        } else {
-          tableAnalyzerTimer.updateNanos(costTimeInNanos);
-        }
+        treeAnalyzerTimer.updateNanos(costTimeInNanos);
         break;
       case LOGICAL_PLANNER:
-        if (TREE_TYPE.equals(type)) {
-          treeLogicalPlannerTimer.updateNanos(costTimeInNanos);
-        } else {
-          tableLogicalPlannerTimer.updateNanos(costTimeInNanos);
-        }
+        treeLogicalPlannerTimer.updateNanos(costTimeInNanos);
+        break;
+      case LOGICAL_PLAN_OPTIMIZE:
+        treeLogicalPlanOptimizerTimer.updateNanos(costTimeInNanos);
+        break;
+      case DISTRIBUTION_PLANNER:
+        treeDistributionPlannerTimer.updateNanos(costTimeInNanos);
+        break;
+      case PARTITION_FETCHER:
+        treePartitionFetcherTimer.updateNanos(costTimeInNanos);
+        break;
+      case SCHEMA_FETCHER:
+        treeSchemaFetcherTimer.updateNanos(costTimeInNanos);
+        break;
+      default:
+        throw new UnsupportedOperationException("Unsupported stage in tree model: " + stage);
+    }
+  }
+
+  public void recordTablePlanCost(String stage, long costTimeInNanos) {
+    switch (stage) {
+      case ANALYZER:
+        tableAnalyzerTimer.updateNanos(costTimeInNanos);
+        break;
+      case LOGICAL_PLANNER:
+        tableLogicalPlannerTimer.updateNanos(costTimeInNanos);
         break;
       case LOGICAL_PLAN_OPTIMIZE:
         tableLogicalPlanOptimizerTimer.updateNanos(costTimeInNanos);
         break;
       case DISTRIBUTION_PLANNER:
-        if (TREE_TYPE.equals(type)) {
-          treeDistributionPlannerTimer.updateNanos(costTimeInNanos);
-        } else {
-          tableDistributionPlannerTimer.updateNanos(costTimeInNanos);
-        }
+        tableDistributionPlannerTimer.updateNanos(costTimeInNanos);
         break;
       case PARTITION_FETCHER:
-        if (TREE_TYPE.equals(type)) {
-          treePartitionFetcherTimer.updateNanos(costTimeInNanos);
-        } else {
-          tablePartitionFetcherTimer.updateNanos(costTimeInNanos);
-        }
+        tablePartitionFetcherTimer.updateNanos(costTimeInNanos);
         break;
       case SCHEMA_FETCHER:
-        if (TREE_TYPE.equals(type)) {
-          treeSchemaFetcherTimer.updateNanos(costTimeInNanos);
-        } else {
-          tableSchemaFetcherTimer.updateNanos(costTimeInNanos);
-        }
+        tableSchemaFetcherTimer.updateNanos(costTimeInNanos);
         break;
       default:
-        throw new UnsupportedOperationException("Unsupported stage: " + stage);
+        throw new UnsupportedOperationException("Unsupported stage in table model: " + stage);
     }
   }
 
@@ -123,6 +129,14 @@ public class QueryPlanCostMetricSet implements IMetricSet {
             TREE_TYPE,
             Tag.STAGE.toString(),
             LOGICAL_PLANNER);
+    treeLogicalPlanOptimizerTimer =
+        metricService.getOrCreateTimer(
+            Metric.QUERY_PLAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            TREE_TYPE,
+            Tag.STAGE.toString(),
+            LOGICAL_PLAN_OPTIMIZE);
     treeDistributionPlannerTimer =
         metricService.getOrCreateTimer(
             Metric.QUERY_PLAN_COST.toString(),

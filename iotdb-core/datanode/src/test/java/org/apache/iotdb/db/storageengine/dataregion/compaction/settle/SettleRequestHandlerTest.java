@@ -31,6 +31,8 @@ import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionTest;
@@ -52,6 +54,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class SettleRequestHandlerTest {
@@ -137,7 +140,7 @@ public class SettleRequestHandlerTest {
     for (int i = 0; i < 3; i++) {
       for (int j = 1; j <= 3; j++) {
         long timestamp = 3L * i + j;
-        record = new TSRecord(timestamp, deviceId);
+        record = new TSRecord(deviceId, timestamp);
         record.addTuple(
             DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(timestamp)));
         dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
@@ -147,8 +150,11 @@ public class SettleRequestHandlerTest {
       }
       dataRegion.syncCloseAllWorkingTsFileProcessors();
       if (i != 2) {
-        dataRegion.deleteByDevice(
-            new MeasurementPath(deviceId, measurementId), 3L * i + 1, 3L * i + 1, -1);
+        MeasurementPath path = new MeasurementPath(deviceId, measurementId);
+        DeleteDataNode deleteDataNode =
+            new DeleteDataNode(
+                new PlanNodeId("1"), Collections.singletonList(path), 3L * i + 1, 3L * i + 1);
+        dataRegion.deleteByDevice(new MeasurementPath(deviceId, measurementId), deleteDataNode);
       }
     }
   }

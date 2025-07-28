@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -39,6 +40,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 public class RecoverProgressIndex extends ProgressIndex {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RecoverProgressIndex.class)
+          + +ProgressIndex.LOCK_SIZE;
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -238,5 +242,14 @@ public class RecoverProgressIndex extends ProgressIndex {
   @Override
   public String toString() {
     return "RecoverProgressIndex{" + "dataNodeId2LocalIndex=" + dataNodeId2LocalIndex + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + dataNodeId2LocalIndex.size() * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+        + dataNodeId2LocalIndex.values().stream()
+            .map(SimpleProgressIndex::ramBytesUsed)
+            .reduce(0L, Long::sum);
   }
 }

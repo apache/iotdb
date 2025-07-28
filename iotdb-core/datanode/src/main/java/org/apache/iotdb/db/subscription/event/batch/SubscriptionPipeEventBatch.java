@@ -22,16 +22,21 @@ package org.apache.iotdb.db.subscription.event.batch;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
 public abstract class SubscriptionPipeEventBatch {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPipeEventBatch.class);
 
   private final int regionId;
 
@@ -40,6 +45,7 @@ public abstract class SubscriptionPipeEventBatch {
   protected final long maxBatchSizeInBytes;
 
   protected volatile List<SubscriptionEvent> events = null;
+  protected final List<EnrichedEvent> enrichedEvents = new ArrayList<>();
 
   protected SubscriptionPipeEventBatch(
       final int regionId,
@@ -52,36 +58,64 @@ public abstract class SubscriptionPipeEventBatch {
     this.maxBatchSizeInBytes = maxBatchSizeInBytes;
   }
 
-  /**
-   * @return {@code true} if there are subscription events consumed.
-   */
-  public abstract boolean onEvent(final Consumer<SubscriptionEvent> consumer) throws Exception;
+  /////////////////////////////// ack & clean ///////////////////////////////
+
+  public abstract void ack();
+
+  public abstract void cleanUp(final boolean force);
+
+  /////////////////////////////// APIs ///////////////////////////////
 
   /**
    * @return {@code true} if there are subscription events consumed.
    */
-  public abstract boolean onEvent(
+  protected synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer)
+      throws Exception {
+    if (shouldEmit() && !enrichedEvents.isEmpty()) {
+      if (Objects.isNull(events)) {
+        events = generateSubscriptionEvents();
+      }
+      if (Objects.nonNull(events)) {
+        events.forEach(consumer);
+        return true;
+      }
+      return false;
+    }
+    return false;
+  }
+
+  /**
+   * @return {@code true} if there are subscription events consumed.
+   */
+  protected synchronized boolean onEvent(
       final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer)
-      throws Exception;
-
-  public abstract void cleanUp();
-
-  public int getRegionId() {
-    return regionId;
+      throws Exception {
+    if (event instanceof TabletInsertionEvent) {
+      onTabletInsertionEvent((TabletInsertionEvent) event);
+      enrichedEvents.add(event);
+    } else if (event instanceof TsFileInsertionEvent) {
+      onTsFileInsertionEvent((TsFileInsertionEvent) event);
+      enrichedEvents.add(event);
+    } else {
+      LOGGER.warn(
+          "SubscriptionPipeEventBatch {} ignore EnrichedEvent {} when batching.", this, event);
+    }
+    return onEvent(consumer);
   }
 
-  public boolean isSealed() {
-    return Objects.nonNull(events);
-  }
+  /////////////////////////////// utility ///////////////////////////////
 
-  /////////////////////////////// stringify ///////////////////////////////
+  protected abstract void onTabletInsertionEvent(final TabletInsertionEvent event);
 
-  protected Map<String, String> coreReportMessage() {
-    final Map<String, String> result = new HashMap<>();
-    result.put("regionId", String.valueOf(regionId));
-    result.put("prefetchingQueue", prefetchingQueue.coreReportMessage().toString());
-    result.put("maxDelayInMs", String.valueOf(maxDelayInMs));
-    result.put("maxBatchSizeInBytes", String.valueOf(maxBatchSizeInBytes));
-    return result;
+  protected abstract void onTsFileInsertionEvent(final TsFileInsertionEvent event);
+
+  protected abstract boolean shouldEmit();
+
+  protected abstract List<SubscriptionEvent> generateSubscriptionEvents() throws Exception;
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public int getPipeEventCount() {
+    return enrichedEvents.size();
   }
 }

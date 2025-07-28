@@ -61,6 +61,7 @@ import org.apache.iotdb.consensus.iot.snapshot.IoTConsensusRateLimiter;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,11 +75,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 public class IoTConsensus implements IConsensus {
 
@@ -98,6 +102,7 @@ public class IoTConsensus implements IConsensus {
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
   private Future<?> updateReaderFuture;
+  private Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = null;
 
   public IoTConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNodeEndPoint();
@@ -120,8 +125,8 @@ public class IoTConsensus implements IConsensus {
     // init IoTConsensus memory manager
     IoTConsensusMemoryManager.getInstance()
         .init(
-            config.getIotConsensusConfig().getReplication().getAllocateMemoryForConsensus(),
-            config.getIotConsensusConfig().getReplication().getAllocateMemoryForQueue());
+            config.getIotConsensusConfig().getReplication().getConsensusMemoryBlock(),
+            config.getIotConsensusConfig().getReplication().getMaxMemoryRatioForQueue());
     // init IoTConsensus Rate Limiter
     IoTConsensusRateLimiter.getInstance()
         .init(
@@ -170,17 +175,39 @@ public class IoTConsensus implements IConsensus {
               new IoTConsensusServerImpl(
                   path.toString(),
                   new Peer(consensusGroupId, thisNodeId, thisNode),
-                  new ArrayList<>(),
+                  new TreeSet<>(),
                   registry.apply(consensusGroupId),
                   backgroundTaskService,
                   clientManager,
                   syncClientManager,
                   config);
           stateMachineMap.put(consensusGroupId, consensus);
-          consensus.start();
         }
       }
     }
+    if (correctPeerListBeforeStart != null) {
+      BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow =
+          (consensusGroupId, peers) -> {
+            try {
+              resetPeerListImpl(consensusGroupId, peers, false);
+            } catch (ConsensusGroupNotExistException ignore) {
+
+            } catch (Exception e) {
+              logger.warn("Failed to reset peer list while start", e);
+            }
+          };
+      // make peers which are in list correct
+      correctPeerListBeforeStart.forEach(resetPeerListWithoutThrow);
+      // clear peers which are not in the list
+      stateMachineMap.keySet().stream()
+          .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
+          // copy to a new list to avoid concurrent modification
+          .collect(Collectors.toList())
+          .forEach(
+              consensusGroupId ->
+                  resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
+    }
+    stateMachineMap.values().forEach(IoTConsensusServerImpl::start);
   }
 
   @Override
@@ -208,9 +235,11 @@ public class IoTConsensus implements IConsensus {
     if (impl.isReadOnly()) {
       return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
     } else if (!impl.isActive()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.WRITE_PROCESS_REJECT,
-          "peer is inactive and not ready to receive sync log request.");
+      String message =
+          String.format(
+              "Peer is inactive and not ready to write request, %s, DataNode Id: %s",
+              groupId.toString(), impl.getThisNode().getNodeId());
+      return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, message);
     } else {
       return impl.write(request);
     }
@@ -253,7 +282,7 @@ public class IoTConsensus implements IConsensus {
                       new IoTConsensusServerImpl(
                           path,
                           new Peer(groupId, thisNodeId, thisNode),
-                          peers,
+                          new TreeSet<>(peers),
                           registry.apply(groupId),
                           backgroundTaskService,
                           clientManager,
@@ -295,54 +324,55 @@ public class IoTConsensus implements IConsensus {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
-    if (impl.getConfiguration().contains(peer)) {
-      throw new PeerAlreadyInConsensusGroupException(groupId, peer);
-    }
-    try {
-      // step 1: inactive new Peer to prepare for following steps
-      logger.info("[IoTConsensus] inactivate new peer: {}", peer);
-      impl.inactivePeer(peer, false);
-
-      // step 2: take snapshot
-      logger.info("[IoTConsensus] start to take snapshot...");
-      impl.checkAndLockSafeDeletedSearchIndex();
-      impl.takeSnapshot();
-
-      // step 3: transit snapshot
-      logger.info("[IoTConsensus] start to transmit snapshot...");
-      impl.transmitSnapshot(peer);
-
-      // step 4: let the new peer load snapshot
-      logger.info("[IoTConsensus] trigger new peer to load snapshot...");
-      impl.triggerSnapshotLoad(peer);
-      KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
-
-      // step 5: notify all the other Peers to build the sync connection to newPeer
-      logger.info("[IoTConsensus] notify current peers to build sync log...");
-      impl.notifyPeersToBuildSyncLogChannel(peer);
-
-      // step 6: active new Peer
-      logger.info("[IoTConsensus] activate new peer...");
-      impl.activePeer(peer);
-
-      // step 7: notify remote peer to clean up transferred snapshot
-      logger.info("[IoTConsensus] clean up remote snapshot...");
-      try {
-        impl.cleanupRemoteSnapshot(peer);
-      } catch (ConsensusGroupModifyPeerException e) {
-        logger.warn("[IoTConsensus] failed to cleanup remote snapshot", e);
+    synchronized (impl) {
+      if (impl.getConfiguration().contains(peer)) {
+        throw new PeerAlreadyInConsensusGroupException(groupId, peer);
       }
-      KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
+      try {
+        // step 1: inactive new Peer to prepare for following steps
+        logger.info("[IoTConsensus] inactivate new peer: {}", peer);
+        impl.inactivatePeer(peer, false);
 
-    } catch (ConsensusGroupModifyPeerException e) {
-      logger.info("[IoTConsensus] add remote peer failed, automatic cleanup side effects...");
-      // try to clean up the sync log channel
-      impl.notifyPeersToRemoveSyncLogChannel(peer);
-      throw new ConsensusException(e);
-    } finally {
-      impl.checkAndUnlockSafeDeletedSearchIndex();
-      logger.info("[IoTConsensus] clean up local snapshot...");
-      impl.cleanupLocalSnapshot();
+        // step 2: notify all the other Peers to build the sync connection to newPeer
+        logger.info("[IoTConsensus] notify current peers to build sync log...");
+        impl.notifyPeersToBuildSyncLogChannel(peer);
+
+        // step 3: take snapshot
+        logger.info("[IoTConsensus] start to take snapshot...");
+
+        impl.takeSnapshot();
+
+        // step 4: transit snapshot
+        logger.info("[IoTConsensus] start to transmit snapshot...");
+        impl.transmitSnapshot(peer);
+
+        // step 5: let the new peer load snapshot
+        logger.info("[IoTConsensus] trigger new peer to load snapshot...");
+        impl.triggerSnapshotLoad(peer);
+        KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
+
+        // step 6: active new Peer
+        logger.info("[IoTConsensus] activate new peer...");
+        impl.activePeer(peer);
+
+        // step 7: notify remote peer to clean up transferred snapshot
+        logger.info("[IoTConsensus] clean up remote snapshot...");
+        try {
+          impl.cleanupRemoteSnapshot(peer);
+        } catch (ConsensusGroupModifyPeerException e) {
+          logger.warn("[IoTConsensus] failed to cleanup remote snapshot", e);
+        }
+        KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
+
+      } catch (ConsensusGroupModifyPeerException e) {
+        logger.info("[IoTConsensus] add remote peer failed, automatic cleanup side effects...");
+        // try to clean up the sync log channel
+        impl.notifyPeersToRemoveSyncLogChannel(peer);
+        throw new ConsensusException(e);
+      } finally {
+        logger.info("[IoTConsensus] clean up local snapshot...");
+        impl.cleanupLocalSnapshot();
+      }
     }
   }
 
@@ -352,29 +382,32 @@ public class IoTConsensus implements IConsensus {
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
 
-    if (!impl.getConfiguration().contains(peer)) {
-      throw new PeerNotInConsensusGroupException(groupId, peer.toString());
+    synchronized (impl) {
+      if (!impl.getConfiguration().contains(peer)) {
+        throw new PeerNotInConsensusGroupException(groupId, peer.toString());
+      }
+
+      KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.INIT);
+
+      // let other peers remove the sync channel with target peer
+      impl.notifyPeersToRemoveSyncLogChannel(peer);
+      KillPoint.setKillPoint(
+          IoTConsensusRemovePeerCoordinatorKillPoints
+              .AFTER_NOTIFY_PEERS_TO_REMOVE_REPLICATE_CHANNEL);
+
+      try {
+        // let target peer reject new write
+        impl.inactivatePeer(peer, true);
+        KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_INACTIVE_PEER);
+        // wait its SyncLog to complete
+        impl.waitTargetPeerUntilSyncLogCompleted(peer);
+        // wait its region related resource to release
+        impl.waitReleaseAllRegionRelatedResource(peer);
+      } catch (ConsensusGroupModifyPeerException e) {
+        throw new ConsensusException(e.getMessage());
+      }
+      KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.FINISH);
     }
-
-    KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.INIT);
-
-    // let other peers remove the sync channel with target peer
-    impl.notifyPeersToRemoveSyncLogChannel(peer);
-    KillPoint.setKillPoint(
-        IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL);
-
-    try {
-      // let target peer reject new write
-      impl.inactivePeer(peer, true);
-      KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_INACTIVE_PEER);
-      // wait its SyncLog to complete
-      impl.waitTargetPeerUntilSyncLogCompleted(peer);
-      // wait its region related resource to release
-      impl.waitReleaseAllRegionRelatedResource(peer);
-    } catch (ConsensusGroupModifyPeerException e) {
-      throw new ConsensusException(e.getMessage());
-    }
-    KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.FINISH);
   }
 
   @Override
@@ -431,36 +464,6 @@ public class IoTConsensus implements IConsensus {
   }
 
   @Override
-  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
-    return getConsensusGroupIdsFromDir(storageDir, logger);
-  }
-
-  public static List<ConsensusGroupId> getConsensusGroupIdsFromDir(File storageDir, Logger logger) {
-    if (!storageDir.exists()) {
-      return Collections.emptyList();
-    }
-    List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
-    try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
-      for (Path path : stream) {
-        try {
-          String[] items = path.getFileName().toString().split("_");
-          ConsensusGroupId consensusGroupId =
-              ConsensusGroupId.Factory.create(
-                  Integer.parseInt(items[0]), Integer.parseInt(items[1]));
-          consensusGroupIds.add(consensusGroupId);
-        } catch (Exception e) {
-          logger.info(
-              "The directory {} is not a group directory;" + " ignoring it. ",
-              path.getFileName().toString());
-        }
-      }
-    } catch (IOException e) {
-      logger.error("Failed to get all consensus group ids from disk", e);
-    }
-    return consensusGroupIds;
-  }
-
-  @Override
   public String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId) {
     return buildPeerDir(storageDir, groupId);
   }
@@ -479,38 +482,68 @@ public class IoTConsensus implements IConsensus {
   }
 
   @Override
+  public void recordCorrectPeerListBeforeStarting(
+      Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+    logger.info("Record correct peer list: {}", correctPeerList);
+    this.correctPeerListBeforeStart = correctPeerList;
+  }
+
+  @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
-    logger.info("[RESET PEER LIST] Start to reset peer list to {}", correctPeers);
+    resetPeerListImpl(groupId, correctPeers, true);
+  }
+
+  private void resetPeerListImpl(
+      ConsensusGroupId groupId, List<Peer> correctPeers, boolean startNow)
+      throws ConsensusException {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
+
     Peer localPeer = new Peer(groupId, thisNodeId, thisNode);
     if (!correctPeers.contains(localPeer)) {
       logger.info(
-          "[RESET PEER LIST] Local peer is not in the correct configuration, delete local peer {}",
+          "[RESET PEER LIST] {} Local peer is not in the correct configuration, delete it.",
           groupId);
       deleteLocalPeer(groupId);
       return;
     }
-    String previousPeerListStr = impl.getConfiguration().toString();
-    for (Peer peer : impl.getConfiguration()) {
-      if (!correctPeers.contains(peer)) {
-        if (!impl.removeSyncLogChannel(peer)) {
-          logger.error(
-              "[RESET PEER LIST] Failed to remove peer {}'s sync log channel from group {}",
-              peer,
-              groupId);
+
+    synchronized (impl) {
+      // remove invalid peer
+      ImmutableList<Peer> currentMembers = ImmutableList.copyOf(impl.getConfiguration());
+      String previousPeerListStr = currentMembers.toString();
+      for (Peer peer : currentMembers) {
+        if (!correctPeers.contains(peer)) {
+          if (!impl.removeSyncLogChannel(peer)) {
+            logger.error(
+                "[RESET PEER LIST] {} Failed to remove sync channel with: {}", groupId, peer);
+          } else {
+            logger.info("[RESET PEER LIST] {} Remove sync channel with: {}", groupId, peer);
+          }
         }
       }
-    }
-    logger.info(
-        "[RESET PEER LIST] Local peer list has been reset: {} -> {}",
-        previousPeerListStr,
-        impl.getConfiguration());
-    for (Peer peer : correctPeers) {
-      if (!impl.getConfiguration().contains(peer)) {
-        logger.warn("[RESET PEER LIST] \"Correct peer\" {} is not in local peer list", peer);
+      // add correct peer
+      for (Peer peer : correctPeers) {
+        if (!impl.getConfiguration().contains(peer)) {
+          impl.buildSyncLogChannel(peer, startNow);
+          logger.info("[RESET PEER LIST] {} Build sync channel with: {}", groupId, peer);
+        }
+      }
+      // show result
+      String newPeerListStr = impl.getConfiguration().toString();
+      if (!previousPeerListStr.equals(newPeerListStr)) {
+        logger.info(
+            "[RESET PEER LIST] {} Local peer list has been reset: {} -> {}",
+            groupId,
+            previousPeerListStr,
+            newPeerListStr);
+      } else {
+        logger.info(
+            "[RESET PEER LIST] {} The current peer list is correct, nothing need to be reset: {}",
+            groupId,
+            previousPeerListStr);
       }
     }
   }

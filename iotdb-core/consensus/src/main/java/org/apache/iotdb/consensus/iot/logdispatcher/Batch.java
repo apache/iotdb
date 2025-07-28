@@ -22,7 +22,6 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
 
-import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,7 +36,7 @@ public class Batch {
 
   private long logEntriesNumFromWAL = 0L;
 
-  private long serializedSize;
+  private long memorySize;
   // indicates whether this batch has been successfully synchronized to another node
   private boolean synced;
 
@@ -60,14 +59,12 @@ public class Batch {
     if (entry.fromWAL) {
       logEntriesNumFromWAL++;
     }
-    // TODO Maybe we need to add in additional fields for more accurate calculations
-    serializedSize +=
-        entry.getData() == null ? 0 : entry.getData().stream().mapToInt(Buffer::capacity).sum();
+    memorySize += entry.getMemorySize();
   }
 
   public boolean canAccumulate() {
     return logEntries.size() < config.getReplication().getMaxLogEntriesNumPerBatch()
-        && serializedSize < config.getReplication().getMaxSizePerBatch();
+        && memorySize < config.getReplication().getMaxSizePerBatch();
   }
 
   public long getStartIndex() {
@@ -94,8 +91,8 @@ public class Batch {
     return logEntries.isEmpty();
   }
 
-  public long getSerializedSize() {
-    return serializedSize;
+  public long getMemorySize() {
+    return memorySize;
   }
 
   public long getLogEntriesNumFromWAL() {
@@ -111,8 +108,8 @@ public class Batch {
         + endIndex
         + ", size="
         + logEntries.size()
-        + ", serializedSize="
-        + serializedSize
+        + ", memorySize="
+        + memorySize
         + '}';
   }
 }

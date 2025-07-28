@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -49,7 +50,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
-import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
@@ -57,7 +57,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractR
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener.Status;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.utils.TsFileUtils;
 import org.slf4j.Logger;
@@ -111,6 +110,8 @@ public class WALNode implements IWALNode {
   // insert nodes whose search index are before this value can be deleted safely
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
+  private volatile boolean deleted = false;
+
   public WALNode(String identifier, String logDirectory) throws IOException {
     this(identifier, logDirectory, 0, 0L);
   }
@@ -151,12 +152,12 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(
-      long memTableId, InsertTabletNode insertTabletNode, int start, int end) {
+      long memTableId, InsertTabletNode insertTabletNode, List<int[]> rangeList) {
     logger.debug(
         "WAL node-{} logs insertTabletNode, the search index is {}.",
         identifier,
         insertTabletNode.getSearchIndex());
-    WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletNode, start, end);
+    WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletNode, rangeList);
     return log(walEntry);
   }
 
@@ -166,6 +167,18 @@ public class WALNode implements IWALNode {
         "WAL node-{} logs deleteDataNode, the search index is {}.",
         identifier,
         deleteDataNode.getSearchIndex());
+    WALEntry walEntry = new WALInfoEntry(memTableId, deleteDataNode);
+    return log(walEntry);
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, RelationalDeleteDataNode deleteDataNode) {
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "WAL node-{} logs relationalDeleteDataNode, the search index is {}.",
+          identifier,
+          deleteDataNode.getSearchIndex());
+    }
     WALEntry walEntry = new WALInfoEntry(memTableId, deleteDataNode);
     return log(walEntry);
   }
@@ -181,7 +194,6 @@ public class WALNode implements IWALNode {
 
     buffer.write(walEntry);
     // set handler for pipe
-    walEntry.getWalFlushListener().getWalEntryHandler().setWalNode(this, walEntry.getMemTableId());
     return walEntry.getWalFlushListener();
   }
 
@@ -220,26 +232,11 @@ public class WALNode implements IWALNode {
     buffer.write(new WALInfoEntry(memTable.getMemTableId(), checkpoint));
   }
 
+  public void setDeleted(boolean deleted) {
+    this.deleted = deleted;
+  }
+
   // region methods for pipe
-
-  /**
-   * Pin the wal files of the given memory table. Notice: cannot pin one memTable too long,
-   * otherwise the wal disk usage may too large.
-   *
-   * @throws MemTablePinException If the memTable has been flushed
-   */
-  public void pinMemTable(long memTableId) throws MemTablePinException {
-    checkpointManager.pinMemTable(memTableId);
-  }
-
-  /**
-   * Unpin the wal files of the given memory table.
-   *
-   * @throws MemTablePinException If there aren't corresponding pin operations
-   */
-  public void unpinMemTable(long memTableId) throws MemTablePinException {
-    checkpointManager.unpinMemTable(memTableId);
-  }
 
   // endregion
 
@@ -263,8 +260,6 @@ public class WALNode implements IWALNode {
 
     // the effective information ratio
     private double effectiveInfoRatio = 1.0d;
-
-    private List<Long> pinnedMemTableIds;
 
     private int fileIndexAfterFilterSafelyDeleteIndex = Integer.MAX_VALUE;
     private List<Long> successfullyDeleted;
@@ -291,7 +286,6 @@ public class WALNode implements IWALNode {
       this.sortedWalFilesExcludingLast =
           Arrays.copyOfRange(allWalFilesOfOneNode, 0, allWalFilesOfOneNode.length - 1);
       this.activeOrPinnedMemTables = checkpointManager.activeOrPinnedMemTables();
-      this.pinnedMemTableIds = initPinnedMemTableIds();
       this.fileIndexAfterFilterSafelyDeleteIndex = initFileIndexAfterFilterSafelyDeleteIndex();
       this.successfullyDeleted = new ArrayList<>();
       this.deleteFileSize = 0;
@@ -310,20 +304,6 @@ public class WALNode implements IWALNode {
           rollWALFile();
         }
       }
-    }
-
-    private List<Long> initPinnedMemTableIds() {
-      List<MemTableInfo> memTableInfos = checkpointManager.activeOrPinnedMemTables();
-      if (memTableInfos.isEmpty()) {
-        return new ArrayList<>();
-      }
-      List<Long> pinnedIds = new ArrayList<>();
-      for (MemTableInfo memTableInfo : memTableInfos) {
-        if (memTableInfo.isFlushed() && memTableInfo.isPinned()) {
-          pinnedIds.add(memTableInfo.getMemTableId());
-        }
-      }
-      return pinnedIds;
     }
 
     @Override
@@ -359,7 +339,7 @@ public class WALNode implements IWALNode {
     private void updateEffectiveInfoRationAndUpdateMetric() {
       // calculate effective information ratio
       long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
-      MemTableInfo oldestUnpinnedMemTableInfo = checkpointManager.getOldestUnpinnedMemTableInfo();
+      MemTableInfo oldestUnpinnedMemTableInfo = checkpointManager.getOldestMemTableInfo();
       long avgFileSize =
           getFileNum() != 0
               ? getDiskUsage() / getFileNum()
@@ -383,45 +363,10 @@ public class WALNode implements IWALNode {
     }
 
     private void summarizeExecuteResult() {
-      if (!pinnedMemTableIds.isEmpty()
-          || fileIndexAfterFilterSafelyDeleteIndex < sortedWalFilesExcludingLast.length) {
-        if (logger.isDebugEnabled()) {
-          StringBuilder summary =
-              new StringBuilder(
-                  String.format(
-                      "wal node-%s delete outdated files summary:the range is: [%d,%d], delete successful is [%s], safely delete file index is: [%s].The following reasons influenced the result: %s",
-                      identifier,
-                      WALFileUtils.parseVersionId(sortedWalFilesExcludingLast[0].getName()),
-                      WALFileUtils.parseVersionId(
-                          sortedWalFilesExcludingLast[sortedWalFilesExcludingLast.length - 1]
-                              .getName()),
-                      StringUtils.join(successfullyDeleted, ","),
-                      fileIndexAfterFilterSafelyDeleteIndex,
-                      System.getProperty("line.separator")));
-
-          if (!pinnedMemTableIds.isEmpty()) {
-            summary
-                .append("- MemTable has been flushed but pinned by PIPE, the MemTableId list is : ")
-                .append(StringUtils.join(pinnedMemTableIds, ","))
-                .append(".")
-                .append(System.getProperty("line.separator"));
-          }
-          if (fileIndexAfterFilterSafelyDeleteIndex < sortedWalFilesExcludingLast.length) {
-            summary.append(
-                String.format(
-                    "- The data in the wal file was not consumed by the consensus group,current search index is %d, safely delete index is %d",
-                    getCurrentSearchIndex(), safelyDeletedSearchIndex));
-          }
-          String summaryLog = summary.toString();
-          logger.debug(summaryLog);
-        }
-
-      } else {
-        logger.debug(
-            "Successfully delete {} outdated wal files for wal node-{}",
-            successfullyDeleted.size(),
-            identifier);
-      }
+      logger.debug(
+          "Successfully delete {} outdated wal files for wal node-{}",
+          successfullyDeleted.size(),
+          identifier);
     }
 
     /** Delete obsolete wal files while recording which succeeded or failed */
@@ -469,18 +414,8 @@ public class WALNode implements IWALNode {
         return false;
       }
       // find oldest memTable
-      MemTableInfo oldestMemTableInfo = checkpointManager.getOldestUnpinnedMemTableInfo();
+      MemTableInfo oldestMemTableInfo = checkpointManager.getOldestMemTableInfo();
       if (oldestMemTableInfo == null) {
-        return false;
-      }
-      if (oldestMemTableInfo.isPinned()) {
-        logger.warn(
-            "Pipe: Effective information ratio {} of wal node-{} is below wal min effective info ratio {}. But fail to delete memTable-{}'s wal files because they are pinned by the Pipe module. Pin count: {}.",
-            effectiveInfoRatio,
-            identifier,
-            config.getWalMinEffectiveInfoRatio(),
-            oldestMemTableInfo.getMemTableId(),
-            oldestMemTableInfo.getPinCount());
         return false;
       }
       IMemTable oldestMemTable = oldestMemTableInfo.getMemTable();
@@ -807,20 +742,24 @@ public class WALNode implements IWALNode {
     @Override
     public void waitForNextReady() throws InterruptedException {
       boolean walFileRolled = false;
+      long bufferLastSearchIndex = 0;
       while (!hasNext()) {
         if (!walFileRolled) {
           boolean timeout =
               !buffer.waitForFlush(WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
           if (timeout) {
+            bufferLastSearchIndex = buffer.getCurrentSearchIndex();
             logger.info(
                 "timeout when waiting for next WAL entry ready, execute rollWALFile. Current search index in wal buffer is {}, and next target index is {}",
-                buffer.getCurrentSearchIndex(),
+                bufferLastSearchIndex,
                 nextSearchIndex);
             rollWALFile();
             walFileRolled = true;
           }
         } else {
-          buffer.waitForFlush();
+          // only wait when the search index of the buffer remains the same as the previous check
+          long finalBufferLastSearchIndex = bufferLastSearchIndex;
+          buffer.waitForFlush(buf -> buf.getCurrentSearchIndex() == finalBufferLastSearchIndex);
         }
       }
     }
@@ -947,7 +886,7 @@ public class WALNode implements IWALNode {
   public void rollWALFile() {
     WALEntry rollWALFileSignal = new WALSignalEntry(WALEntryType.ROLL_WAL_LOG_WRITER_SIGNAL, true);
     WALFlushListener walFlushListener = log(rollWALFileSignal);
-    if (walFlushListener.waitForResult() == AbstractResultListener.Status.FAILURE) {
+    if (!deleted && walFlushListener.waitForResult() == AbstractResultListener.Status.FAILURE) {
       logger.error(
           "Fail to trigger rolling wal node-{}'s wal file log writer.",
           identifier,

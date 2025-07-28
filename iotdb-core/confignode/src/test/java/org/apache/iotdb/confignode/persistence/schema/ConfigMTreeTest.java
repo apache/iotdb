@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -24,8 +25,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
@@ -56,7 +58,7 @@ public class ConfigMTreeTest {
 
   @Before
   public void setUp() throws Exception {
-    root = new ConfigMTree();
+    root = new ConfigMTree(false);
   }
 
   @After
@@ -71,7 +73,7 @@ public class ConfigMTreeTest {
       root.setStorageGroup(new PartialPath("root.edge1.access"));
       root.setStorageGroup(new PartialPath("root.edge1"));
       fail("Expected exception");
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       assertEquals(
           "some children of root.edge1 have already been created as database", e.getMessage());
     }
@@ -79,20 +81,20 @@ public class ConfigMTreeTest {
       root.setStorageGroup(new PartialPath("root.edge2"));
       root.setStorageGroup(new PartialPath("root.edge2.access"));
       fail("Expected exception");
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       assertEquals("root.edge2 has already been created as database", e.getMessage());
     }
     try {
       root.setStorageGroup(new PartialPath("root.edge1.access"));
       fail("Expected exception");
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       assertEquals("root.edge1.access has already been created as database", e.getMessage());
     }
   }
 
   @Test
   public void testAddAndPathExist() throws MetadataException {
-    String path1 = "root";
+    final String path1 = "root";
     root.setStorageGroup(new PartialPath("root.laptop"));
     assertTrue(root.isDatabaseAlreadySet(new PartialPath(path1)));
     assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop")));
@@ -105,25 +107,25 @@ public class ConfigMTreeTest {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1")));
       assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1.s1")));
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d2"));
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       fail(e.getMessage());
     }
     try {
       root.setStorageGroup(new PartialPath("root.laptop"));
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       Assert.assertEquals(
           "some children of root.laptop have already been created as database", e.getMessage());
     }
 
     try {
       root.deleteDatabase(new PartialPath("root.laptop.d1"));
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -138,7 +140,7 @@ public class ConfigMTreeTest {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       root.setStorageGroup(new PartialPath("root.laptop.d2"));
 
-      List<PartialPath> list = new ArrayList<>();
+      final List<PartialPath> list = new ArrayList<>();
 
       list.add(new PartialPath("root.laptop.d1"));
       assertEquals(list, root.getBelongedDatabases(new PartialPath("root.laptop.d1.s1")));
@@ -147,7 +149,7 @@ public class ConfigMTreeTest {
       list.add(new PartialPath("root.laptop.d2"));
       assertEquals(list, root.getBelongedDatabases(new PartialPath("root.laptop.**")));
       assertEquals(list, root.getBelongedDatabases(new PartialPath("root.**")));
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -175,7 +177,7 @@ public class ConfigMTreeTest {
       assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle1.device2")).isEmpty());
       assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle1.device3")).isEmpty());
       assertFalse(root.getBelongedDatabases(new PartialPath("root.vehicle1.device0")).isEmpty());
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -185,7 +187,7 @@ public class ConfigMTreeTest {
   public void testIllegalStorageGroup() {
     try {
       root.setStorageGroup(new PartialPath("root.\"sg.ln\""));
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       Assert.assertEquals("root.\"sg.ln\" is not a legal path", e.getMessage());
     }
   }
@@ -251,7 +253,7 @@ public class ConfigMTreeTest {
 
   @Test
   public void testSerialization() throws Exception {
-    PartialPath[] pathList =
+    final PartialPath[] pathList =
         new PartialPath[] {
           new PartialPath("root.sg"),
           new PartialPath("root.a.sg"),
@@ -260,7 +262,7 @@ public class ConfigMTreeTest {
         };
     for (int i = 0; i < pathList.length; i++) {
       root.setStorageGroup(pathList[i]);
-      IDatabaseMNode<IConfigMNode> storageGroupMNode =
+      final IDatabaseMNode<IConfigMNode> storageGroupMNode =
           root.getDatabaseNodeByDatabasePath(pathList[i]);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setSchemaReplicationFactor(i);
@@ -268,15 +270,15 @@ public class ConfigMTreeTest {
       root.getNodeWithAutoCreate(pathList[i].concatNode("a")).setSchemaTemplateId(i);
     }
 
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     root.serialize(outputStream);
 
-    ConfigMTree newTree = new ConfigMTree();
-    ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+    final ConfigMTree newTree = new ConfigMTree(false);
+    final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
     newTree.deserialize(inputStream);
 
     for (int i = 0; i < pathList.length; i++) {
-      TDatabaseSchema storageGroupSchema =
+      final TDatabaseSchema storageGroupSchema =
           newTree.getDatabaseNodeByDatabasePath(pathList[i]).getAsMNode().getDatabaseSchema();
       Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());
       Assert.assertEquals(i, storageGroupSchema.getDataReplicationFactor());
@@ -307,6 +309,8 @@ public class ConfigMTreeTest {
 
   @Test
   public void testTableSerialization() throws Exception {
+    root = new ConfigMTree(true);
+
     final PartialPath[] pathList =
         new PartialPath[] {
           new PartialPath("root.sg"),
@@ -319,16 +323,23 @@ public class ConfigMTreeTest {
       root.setStorageGroup(pathList[i]);
       final IDatabaseMNode<IConfigMNode> storageGroupMNode =
           root.getDatabaseNodeByDatabasePath(pathList[i]);
+      storageGroupMNode
+          .getAsMNode()
+          .getDatabaseSchema()
+          .setName(
+              PathUtils.unQualifyDatabaseName(
+                  storageGroupMNode.getAsMNode().getDatabaseSchema().getName()));
       storageGroupMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setSchemaReplicationFactor(i);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setTimePartitionInterval(i);
+      storageGroupMNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
 
       final String tableName = "table" + i;
       final TsTable table = new TsTable(tableName);
-      table.addColumnSchema(new IdColumnSchema("Id", TSDataType.STRING));
+      table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
       table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
       table.addColumnSchema(
-          new MeasurementColumnSchema(
+          new FieldColumnSchema(
               "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
 
       root.preCreateTable(pathList[i], table);
@@ -338,7 +349,7 @@ public class ConfigMTreeTest {
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     root.serialize(outputStream);
 
-    final ConfigMTree newTree = new ConfigMTree();
+    final ConfigMTree newTree = new ConfigMTree(true);
     final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
     newTree.deserialize(inputStream);
 
@@ -374,7 +385,7 @@ public class ConfigMTreeTest {
       assertEquals(1, tables.size());
       final TsTable table = tables.get(0);
       assertEquals("table" + i, table.getTableName());
-      assertEquals(1, table.getIdNums());
+      assertEquals(1, table.getTagNum());
       assertEquals(4, table.getColumnNum());
     }
   }

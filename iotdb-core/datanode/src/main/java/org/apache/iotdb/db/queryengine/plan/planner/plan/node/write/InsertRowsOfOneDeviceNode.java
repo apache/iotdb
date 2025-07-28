@@ -77,6 +77,11 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     insertRowNodeList = new ArrayList<>();
   }
 
+  @Override
+  public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
+    throw new UnsupportedOperationException("InsertRowsOfOneDeviceNode not support merge");
+  }
+
   public InsertRowsOfOneDeviceNode(
       PlanNodeId id, List<Integer> insertRowNodeIndexList, List<InsertRowNode> insertRowNodeList) {
     super(id);
@@ -93,9 +98,10 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   @Override
-  public void setSearchIndex(long index) {
+  public SearchNode setSearchIndex(long index) {
     searchIndex = index;
     insertRowNodeList.forEach(plan -> plan.setSearchIndex(index));
+    return this;
   }
 
   public TSStatus[] getFailingStatus() {

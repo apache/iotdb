@@ -32,7 +32,7 @@ import java.nio.file.Paths;
 public class FileStoreUtils {
   private static final Logger logger = LoggerFactory.getLogger(FileStoreUtils.class);
 
-  // get the FileStore of dir .if current dir is not exists, check parent dir.
+  // get the FileStore of dir. if current dir is not exists, check parent dir.
   // for example, the dn_wal_dirs default value is data/datanode/wal and system will save the
   // data in the relative path directory it indicates under the IoTDB folder.
   // it will check the parent dir until find the existing dir.

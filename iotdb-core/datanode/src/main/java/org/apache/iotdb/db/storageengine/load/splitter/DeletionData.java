@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -31,36 +31,34 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class DeletionData implements TsFileData {
-  private final Deletion deletion;
+  private final ModEntry deletion;
 
-  public DeletionData(Deletion deletion) {
+  public DeletionData(ModEntry deletion) {
     this.deletion = deletion;
   }
 
   @Override
   public long getDataSize() {
-    return deletion.getSerializedSize();
+    return deletion.serializedSize();
   }
 
-  public void writeToModificationFile(ModificationFile modificationFile, long fileOffset)
-      throws IOException {
-    deletion.setFileOffset(fileOffset);
-    modificationFile.writeWithoutSync(deletion);
+  public void writeToModificationFile(ModificationFile modificationFile) throws IOException {
+    modificationFile.write(deletion);
   }
 
   @Override
-  public boolean isModification() {
-    return true;
+  public TsFileDataType getType() {
+    return TsFileDataType.DELETION;
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(isModification(), stream);
-    deletion.serializeWithoutFileOffset(stream);
+    ReadWriteIOUtils.write(getType().ordinal(), stream);
+    deletion.serialize(stream);
   }
 
   public static DeletionData deserialize(InputStream stream)
       throws IllegalPathException, IOException {
-    return new DeletionData(Deletion.deserializeWithoutFileOffset(new DataInputStream(stream)));
+    return new DeletionData(ModEntry.createFrom(new DataInputStream(stream)));
   }
 }

@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -35,20 +35,22 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache.getDeviceColumnHeaderList;
 
 // TODO table metadata: reuse query distinct logic
+// Show, Count, Update, Delete Devices
 public abstract class AbstractTraverseDevice extends Statement {
 
   protected String database;
 
   protected String tableName;
-
   // Temporary
-  private Table table;
+  protected Table table;
 
   protected Expression where;
 
@@ -60,16 +62,19 @@ public abstract class AbstractTraverseDevice extends Statement {
    * <p>Each inner list represents a device pattern and each expression of it represents one
    * condition on some id column.
    */
-  private List<List<SchemaFilter>> idDeterminedFilterList;
+  protected List<List<SchemaFilter>> tagDeterminedFilterList;
 
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
-  private Expression idFuzzyPredicate;
+  protected Expression tagFuzzyPredicate;
 
   private List<IDeviceID> partitionKeyList;
 
   // The "CountDevice"'s column header list is the same as the device's header
   // to help reuse filter operator
   protected List<ColumnHeader> columnHeaderList;
+
+  // If there are no attribute columns, we can skip returning it to save time
+  private List<String> attributeColumns;
 
   // For sql-input show device usage
   protected AbstractTraverseDevice(
@@ -99,8 +104,16 @@ public abstract class AbstractTraverseDevice extends Statement {
     return database;
   }
 
+  public void setDatabase(final String database) {
+    this.database = database;
+  }
+
   public String getTableName() {
     return tableName;
+  }
+
+  public void setTableName(final String tableName) {
+    this.tableName = tableName;
   }
 
   public Table getTable() {
@@ -116,7 +129,7 @@ public abstract class AbstractTraverseDevice extends Statement {
   }
 
   public boolean parseRawExpression(
-      final List<DeviceEntry> entries,
+      final Map<String, List<DeviceEntry>> entries,
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
@@ -126,7 +139,6 @@ public abstract class AbstractTraverseDevice extends Statement {
     where = ExtractCommonPredicatesExpressionRewriter.extractCommonPredicates(where);
     return TableDeviceSchemaFetcher.getInstance()
         .parseFilter4TraverseDevice(
-            database,
             tableInstance,
             (where instanceof LogicalExpression
                     && ((LogicalExpression) where).getOperator() == LogicalExpression.Operator.AND)
@@ -136,26 +148,27 @@ public abstract class AbstractTraverseDevice extends Statement {
             entries,
             attributeColumns,
             context,
+            new AtomicBoolean(false),
             true);
   }
 
-  public List<List<SchemaFilter>> getIdDeterminedFilterList() {
-    if (idDeterminedFilterList == null) {
-      idDeterminedFilterList = Collections.singletonList(Collections.emptyList());
+  public List<List<SchemaFilter>> getTagDeterminedFilterList() {
+    if (tagDeterminedFilterList == null) {
+      tagDeterminedFilterList = Collections.singletonList(Collections.emptyList());
     }
-    return idDeterminedFilterList;
+    return tagDeterminedFilterList;
   }
 
-  public void setIdDeterminedFilterList(final List<List<SchemaFilter>> idDeterminedFilterList) {
-    this.idDeterminedFilterList = idDeterminedFilterList;
+  public void setTagDeterminedFilterList(final List<List<SchemaFilter>> tagDeterminedFilterList) {
+    this.tagDeterminedFilterList = tagDeterminedFilterList;
   }
 
-  public Expression getIdFuzzyPredicate() {
-    return idFuzzyPredicate;
+  public Expression getTagFuzzyPredicate() {
+    return tagFuzzyPredicate;
   }
 
-  public void setIdFuzzyPredicate(final Expression idFuzzyPredicate) {
-    this.idFuzzyPredicate = idFuzzyPredicate;
+  public void setTagFuzzyPredicate(final Expression tagFuzzyPredicate) {
+    this.tagFuzzyPredicate = tagFuzzyPredicate;
   }
 
   public boolean isIdDetermined() {
@@ -170,12 +183,16 @@ public abstract class AbstractTraverseDevice extends Statement {
     this.partitionKeyList = partitionKeyList;
   }
 
+  public void setAttributeColumns(final List<String> attributeColumns) {
+    this.attributeColumns = attributeColumns;
+  }
+
   public List<ColumnHeader> getColumnHeaderList() {
     return columnHeaderList;
   }
 
   public void setColumnHeaderList() {
-    this.columnHeaderList = getDeviceColumnHeaderList(database, tableName);
+    this.columnHeaderList = getDeviceColumnHeaderList(database, tableName, attributeColumns);
   }
 
   @Override
@@ -199,13 +216,13 @@ public abstract class AbstractTraverseDevice extends Statement {
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(where, that.where)
-        && Objects.equals(idDeterminedFilterList, that.idDeterminedFilterList)
-        && Objects.equals(idFuzzyPredicate, that.idFuzzyPredicate);
+        && Objects.equals(tagDeterminedFilterList, that.tagDeterminedFilterList)
+        && Objects.equals(tagFuzzyPredicate, that.tagFuzzyPredicate);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, tableName, where, idDeterminedFilterList, idFuzzyPredicate);
+    return Objects.hash(database, tableName, where, tagDeterminedFilterList, tagFuzzyPredicate);
   }
 
   protected String toStringContent() {
@@ -219,9 +236,9 @@ public abstract class AbstractTraverseDevice extends Statement {
         + ", rawExpression="
         + where
         + ", idDeterminedFilterList="
-        + idDeterminedFilterList
+        + tagDeterminedFilterList
         + ", idFuzzyFilter="
-        + idFuzzyPredicate
+        + tagFuzzyPredicate
         + '}';
   }
 }

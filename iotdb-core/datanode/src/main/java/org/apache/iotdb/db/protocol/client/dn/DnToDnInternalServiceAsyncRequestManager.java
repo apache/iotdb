@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 import org.apache.iotdb.commons.client.request.DataNodeInternalServiceRequestManager;
+import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,13 +38,17 @@ public class DnToDnInternalServiceAsyncRequestManager
     actionMapBuilder.put(
         DnToDnRequestType.TEST_CONNECTION,
         (req, client, handler) -> client.testConnectionEmptyRPC((AsyncTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        DnToDnRequestType.UPDATE_ATTRIBUTE,
+        (req, client, handler) ->
+            client.updateAttribute((TAttributeUpdateReq) req, (AsyncTSStatusRPCHandler) handler));
   }
 
   @Override
   protected AsyncRequestRPCHandler<?, DnToDnRequestType, TDataNodeLocation> buildHandler(
-      AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation> requestContext,
-      int requestId,
-      TDataNodeLocation targetNode) {
+      final AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation> requestContext,
+      final int requestId,
+      final TDataNodeLocation targetNode) {
     return DataNodeAsyncRequestRPCHandler.createAsyncRPCHandler(
         requestContext, requestId, targetNode);
   }

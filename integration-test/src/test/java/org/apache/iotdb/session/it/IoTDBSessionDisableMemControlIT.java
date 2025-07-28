@@ -96,12 +96,12 @@ public class IoTDBSessionDisableMemControlIT {
       long timestamp = System.currentTimeMillis();
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue("s1", rowIndex, 1L);
         tablet.addValue("s2", rowIndex, 1D);
         tablet.addValue("s3", rowIndex, new Binary("1", TSFileConfig.STRING_CHARSET));
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           try {
             session.insertTablet(tablet, true);
           } catch (StatementExecutionException e) {
@@ -114,7 +114,7 @@ public class IoTDBSessionDisableMemControlIT {
         timestamp++;
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         try {
           session.insertTablet(tablet);
         } catch (StatementExecutionException e) {
@@ -175,12 +175,12 @@ public class IoTDBSessionDisableMemControlIT {
       long timestamp = System.currentTimeMillis();
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue("s1", rowIndex, 1L);
         tablet.addValue("s2", rowIndex, 1D);
         tablet.addValue("s3", rowIndex, new Binary("1", TSFileConfig.STRING_CHARSET));
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           try {
             session.insertAlignedTablet(tablet, true);
           } catch (StatementExecutionException e) {
@@ -193,7 +193,7 @@ public class IoTDBSessionDisableMemControlIT {
         timestamp++;
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         try {
           session.insertAlignedTablet(tablet);
         } catch (StatementExecutionException e) {

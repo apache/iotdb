@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.DeviceInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TreeDeviceInfo;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -41,7 +41,7 @@ public class MNodeUtils {
   public static <N extends IMNode<N>> boolean setToEntity(IMNode<N> node) {
     IInternalMNode<N> internalMNode = node.getAsInternalMNode();
     if (!internalMNode.isDevice()) {
-      internalMNode.setDeviceInfo(new DeviceInfo<>());
+      internalMNode.setDeviceInfo(new TreeDeviceInfo<>());
       return true;
     } else {
       return false;
@@ -90,7 +90,7 @@ public class MNodeUtils {
       public N next() {
         IMeasurementSchema schema = schemas.next();
         return nodeFactor
-            .createMeasurementMNode(null, schema.getMeasurementId(), schema, null)
+            .createMeasurementMNode(null, schema.getMeasurementName(), schema, null)
             .getAsMNode();
       }
     };

@@ -26,10 +26,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class ConsumerGroupMetaKeeper {
 
@@ -89,6 +92,12 @@ public class ConsumerGroupMetaKeeper {
         : Collections.emptySet();
   }
 
+  public Optional<Long> getSubscriptionCreationTime(String consumerGroupId, String topic) {
+    return consumerGroupIdToConsumerGroupMetaMap.containsKey(consumerGroupId)
+        ? consumerGroupIdToConsumerGroupMetaMap.get(consumerGroupId).getSubscriptionTime(topic)
+        : Optional.empty();
+  }
+
   public Set<String> getTopicsSubscribedByConsumer(String consumerGroupId, String consumerId) {
     return consumerGroupIdToConsumerGroupMetaMap.containsKey(consumerGroupId)
         ? consumerGroupIdToConsumerGroupMetaMap
@@ -111,6 +120,28 @@ public class ConsumerGroupMetaKeeper {
 
   public boolean isEmpty() {
     return consumerGroupIdToConsumerGroupMetaMap.isEmpty();
+  }
+
+  /////////////////////////////////  TopicMeta  /////////////////////////////////
+
+  public Set<String> getSubscribedConsumerGroupIds(final String topicName) {
+    return consumerGroupIdToConsumerGroupMetaMap.entrySet().stream()
+        .filter(entry -> entry.getValue().isTopicSubscribedByConsumerGroup(topicName))
+        .map(Entry::getKey)
+        .collect(Collectors.toSet());
+  }
+
+  public boolean isTopicSubscribedByConsumerGroup(
+      final String topicName, final String consumerGroupId) {
+    return consumerGroupIdToConsumerGroupMetaMap.containsKey(consumerGroupId)
+        && consumerGroupIdToConsumerGroupMetaMap
+            .get(consumerGroupId)
+            .isTopicSubscribedByConsumerGroup(topicName);
+  }
+
+  public boolean isTopicSubscribedByConsumerGroup(final String topicName) {
+    return consumerGroupIdToConsumerGroupMetaMap.values().stream()
+        .anyMatch(meta -> meta.isTopicSubscribedByConsumerGroup(topicName));
   }
 
   /////////////////////////////////  Snapshot  /////////////////////////////////

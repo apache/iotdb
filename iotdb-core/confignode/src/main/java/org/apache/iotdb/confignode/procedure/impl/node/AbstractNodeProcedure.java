@@ -47,8 +47,9 @@ public abstract class AbstractNodeProcedure<TState>
         LOG.info("procedureId {} acquire lock.", getProcId());
         return ProcedureLockState.LOCK_ACQUIRED;
       }
-      configNodeProcedureEnv.getNodeLock().waitProcedure(this);
-      LOG.info("procedureId {} wait for lock.", getProcId());
+      LOG.info(
+          "procedureId {} acquire lock failed, will wait for lock after finishing execution.",
+          getProcId());
       return ProcedureLockState.LOCK_EVENT_WAIT;
     } finally {
       configNodeProcedureEnv.getSchedulerLock().unlock();

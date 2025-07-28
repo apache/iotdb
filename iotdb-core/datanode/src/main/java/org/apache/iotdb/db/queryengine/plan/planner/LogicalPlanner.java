@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -31,7 +32,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLAN_OPTIMIZE;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -53,15 +54,17 @@ public class LogicalPlanner {
     if (analysis.isQuery()) {
 
       long planFinishTime = System.nanoTime();
-      context.setLogicalPlanCost(planFinishTime - startTime);
+      long logicalPlanCost = planFinishTime - startTime;
+      context.setLogicalPlanCost(logicalPlanCost);
+      QueryPlanCostMetricSet.getInstance().recordTreePlanCost(LOGICAL_PLANNER, logicalPlanCost);
 
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, analysis, context);
       }
-      context.setLogicalOptimizationCost(System.nanoTime() - planFinishTime);
-
+      long logicalOptimizationCost = System.nanoTime() - planFinishTime;
+      context.setLogicalOptimizationCost(logicalOptimizationCost);
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TREE_TYPE, LOGICAL_PLANNER, System.nanoTime() - planFinishTime);
+          .recordTreePlanCost(LOGICAL_PLAN_OPTIMIZE, logicalOptimizationCost);
     }
 
     return new LogicalQueryPlan(context, rootNode);

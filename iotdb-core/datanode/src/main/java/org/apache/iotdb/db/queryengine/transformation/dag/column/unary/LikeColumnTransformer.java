@@ -52,6 +52,19 @@ public class LikeColumnTransformer extends UnaryColumnTransformer {
   }
 
   @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        Binary value = childColumnTransformer.getType().getBinary(column, i);
+        returnType.writeBoolean(
+            columnBuilder, pattern.getMatcher().match(value.getValues(), 0, value.getLength()));
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
+  @Override
   protected void checkType() {
     if (!isCharType(childColumnTransformer.getType())) {
       throw new UnsupportedOperationException(

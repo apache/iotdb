@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -29,11 +30,22 @@ import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentsAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -45,8 +57,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Columns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -55,7 +75,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDev
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
@@ -64,41 +87,63 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingElement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MeasureDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetOperation;
@@ -109,27 +154,60 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgument;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.VariableDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Window;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowSpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
+import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.relational.TableFunction;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.argument.Argument;
+import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
+import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
+import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
+import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -139,21 +217,32 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.RowType;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -161,6 +250,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Iterables.getLast;
 import static com.google.common.collect.Iterables.getOnlyElement;
@@ -168,20 +258,26 @@ import static java.lang.Math.toIntExact;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP;
-import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
+import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifySourceAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.CanonicalizationAware.canonicalizationAwareKey;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.asQualifiedName;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractAggregateFunctions;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowExpressions;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowFunctions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.BasisType.TABLE;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.TIMECOL_PARAMETER_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTimestampType;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression.getQualifiedName;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.INNER;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.LEFT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
@@ -190,7 +286,9 @@ public class StatementAnalyzer {
 
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
-  private Analysis analysis;
+  private final Analysis analysis;
+
+  private boolean hasFillInParentScope = false;
   private final MPPQueryContext queryContext;
 
   private final AccessControl accessControl;
@@ -199,15 +297,11 @@ public class StatementAnalyzer {
 
   private final SessionInfo sessionContext;
 
+  private final TypeManager typeManager = new InternalTypeManager();
+
   private final Metadata metadata;
 
   private final CorrelationSupport correlationSupport;
-
-  public static final String ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN =
-      "Only support time column equi-join in current version";
-
-  public static final String ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE =
-      "Only support time column as the parameter in JOIN USING";
 
   public StatementAnalyzer(
       StatementAnalyzerFactory statementAnalyzerFactory,
@@ -265,10 +359,10 @@ public class StatementAnalyzer {
     private final Optional<UpdateKind> updateKind;
 
     private Visitor(
-        Optional<Scope> outerQueryScope,
-        WarningCollector warningCollector,
-        Optional<UpdateKind> updateKind,
-        boolean isTopLevel) {
+        final Optional<Scope> outerQueryScope,
+        final WarningCollector warningCollector,
+        final Optional<UpdateKind> updateKind,
+        final boolean isTopLevel) {
       this.outerQueryScope = requireNonNull(outerQueryScope, "outerQueryScope is null");
       this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
       this.updateKind = requireNonNull(updateKind, "updateKind is null");
@@ -276,13 +370,17 @@ public class StatementAnalyzer {
     }
 
     @Override
-    public Scope process(final Node node, final Optional<Scope> scope) {
+    public Scope process(Node node, final Optional<Scope> scope) {
       final Scope returnScope = super.process(node, scope);
+      if (node instanceof PipeEnriched) {
+        node = ((PipeEnriched) node).getInnerStatement();
+      }
       if (node instanceof CreateOrUpdateDevice
           || node instanceof FetchDevice
           || node instanceof ShowDevice
           || node instanceof CountDevice
-          || node instanceof Update) {
+          || node instanceof Update
+          || node instanceof DeleteDevice) {
         return returnScope;
       }
       checkState(
@@ -311,6 +409,11 @@ public class StatementAnalyzer {
     }
 
     @Override
+    protected Scope visitAlterDB(AlterDB node, Optional<Scope> context) {
+      throw new SemanticException("Alter Database statement is not supported yet.");
+    }
+
+    @Override
     protected Scope visitDropDB(DropDB node, Optional<Scope> context) {
       throw new SemanticException("Drop Database statement is not supported yet.");
     }
@@ -322,6 +425,12 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitCreateTable(final CreateTable node, final Optional<Scope> context) {
+      validateProperties(node.getProperties(), context);
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitCreateView(final CreateView node, final Optional<Scope> context) {
       validateProperties(node.getProperties(), context);
       return createAndAssignScope(node, context);
     }
@@ -385,9 +494,78 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitUpdate(final Update node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
+      node.parseTable(sessionContext);
+      accessControl.checkCanInsertIntoTable(
+          sessionContext.getUserName(),
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
+      DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
+      if (!node.parseRawExpression(
+          null,
+          table,
+          table.getColumnList().stream()
+              .filter(
+                  columnSchema ->
+                      columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+              .map(TsTableColumnSchema::getColumnName)
+              .collect(Collectors.toList()),
+          queryContext)) {
+        analysis.setFinishQueryAfterAnalyze();
+        return null;
+      }
+
+      // If node.location is absent, this is a pipe-transferred update, namely the assignments are
+      // already parsed at the sender
+      if (node.getLocation().isPresent()) {
+        final Set<SymbolReference> attributeNames = new HashSet<>();
+        node.setAssignments(
+            node.getAssignments().stream()
+                .map(
+                    assignment -> {
+                      final Expression parsedColumn =
+                          analyzeAndRewriteExpression(
+                              translationMap, translationMap.getScope(), assignment.getName());
+                      if (!(parsedColumn instanceof SymbolReference)
+                          || table
+                                  .getColumnSchema(((SymbolReference) parsedColumn).getName())
+                                  .getColumnCategory()
+                              != TsTableColumnCategory.ATTRIBUTE) {
+                        throw new SemanticException("Update can only specify attribute columns.");
+                      }
+                      if (attributeNames.contains(parsedColumn)) {
+                        throw new SemanticException(
+                            "Update attribute shall specify a attribute only once.");
+                      }
+                      attributeNames.add((SymbolReference) parsedColumn);
+
+                      return new UpdateAssignment(
+                          parsedColumn,
+                          analyzeAndRewriteExpression(
+                              translationMap, translationMap.getScope(), assignment.getValue()));
+                    })
+                .collect(Collectors.toList()));
+      }
+      return null;
+    }
+
+    @Override
+    protected Scope visitDeleteDevice(final DeleteDevice node, final Optional<Scope> context) {
+      // Actually write, but will return the result
+      queryContext.setQueryType(QueryType.READ);
+      node.parseTable(sessionContext);
+      accessControl.checkCanDeleteFromTable(
+          sessionContext.getUserName(),
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
+      final TsTable table =
+          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
+      if (Objects.isNull(table)) {
+        TableMetadataImpl.throwTableNotExistsException(node.getDatabase(), node.getTableName());
+      }
+      DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
+      node.parseModEntries(table);
+      analyzeTraverseDevice(node, context, node.getWhere().isPresent());
       node.parseRawExpression(
           null,
           table,
@@ -398,34 +576,6 @@ public class StatementAnalyzer {
               .map(TsTableColumnSchema::getColumnName)
               .collect(Collectors.toList()),
           queryContext);
-
-      final Set<SymbolReference> attributeNames = new HashSet<>();
-      node.setAssignments(
-          node.getAssignments().stream()
-              .map(
-                  assignment -> {
-                    final Expression parsedColumn =
-                        analyzeAndRewriteExpression(
-                            translationMap, translationMap.getScope(), assignment.getName());
-                    if (!(parsedColumn instanceof SymbolReference)
-                        || table
-                                .getColumnSchema(((SymbolReference) parsedColumn).getName())
-                                .getColumnCategory()
-                            != TsTableColumnCategory.ATTRIBUTE) {
-                      throw new SemanticException("Update can only specify attribute columns.");
-                    }
-                    if (attributeNames.contains(parsedColumn)) {
-                      throw new SemanticException(
-                          "Update attribute shall specify a attribute only once.");
-                    }
-                    attributeNames.add((SymbolReference) parsedColumn);
-
-                    return new UpdateAssignment(
-                        parsedColumn,
-                        analyzeAndRewriteExpression(
-                            translationMap, translationMap.getScope(), assignment.getValue()));
-                  })
-              .collect(Collectors.toList()));
       return null;
     }
 
@@ -446,7 +596,8 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitInsert(Insert insert, Optional<Scope> scope) {
-      throw new SemanticException("Insert statement is not supported yet.");
+      throw new SemanticException(
+          "This kind of insert statement is not supported yet, please check your grammar.");
     }
 
     @Override
@@ -470,15 +621,18 @@ public class StatementAnalyzer {
       InsertBaseStatement innerInsert = insert.getInnerTreeStatement();
 
       innerInsert.semanticCheck();
+      innerInsert.toLowerCase();
+
       innerInsert =
           AnalyzeUtils.analyzeInsert(
               context,
               innerInsert,
-              () -> SchemaValidator.validate(metadata, insert, context),
+              () -> SchemaValidator.validate(metadata, insert, context, accessControl),
               metadata::getOrCreateDataPartition,
               AnalyzeUtils::computeTableDataPartitionParams,
               analysis,
               false);
+
       insert.setInnerTreeStatement(innerInsert);
       analysis.setScope(insert, ret);
 
@@ -487,7 +641,49 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitDelete(Delete node, Optional<Scope> scope) {
-      throw new SemanticException("Delete statement is not supported yet.");
+      final Scope ret = Scope.create();
+      accessControl.checkCanDeleteFromTable(
+          sessionContext.getUserName(),
+          new QualifiedObjectName(
+              AnalyzeUtils.getDatabaseName(node, queryContext),
+              node.getTable().getName().getSuffix()));
+      AnalyzeUtils.analyzeDelete(node, queryContext);
+
+      analysis.setScope(node, ret);
+      return ret;
+    }
+
+    @Override
+    protected Scope visitPipeEnriched(PipeEnriched node, Optional<Scope> scope) {
+      // The LoadTsFile statement is a special case, it needs isGeneratedByPipe information
+      // in the analyzer to execute the tsfile-tablet conversion in some cases.
+      if (node.getInnerStatement() instanceof LoadTsFile) {
+        ((LoadTsFile) node.getInnerStatement()).markIsGeneratedByPipe();
+      }
+
+      final Scope ret = node.getInnerStatement().accept(this, scope);
+      createAndAssignScope(node, scope);
+      analysis.setScope(node, ret);
+      return ret;
+    }
+
+    @Override
+    protected Scope visitLoadTsFile(final LoadTsFile node, final Optional<Scope> scope) {
+      queryContext.setQueryType(QueryType.WRITE);
+
+      try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
+          new LoadTsFileAnalyzer(node, node.isGeneratedByPipe(), queryContext)) {
+        loadTsFileAnalyzer.analyzeFileByFile(analysis);
+      } catch (final Exception e) {
+        final String exceptionMessage =
+            String.format(
+                "Failed to execute load tsfile statement %s. Detail: %s",
+                node, e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
+      }
+
+      return createAndAssignScope(node, scope);
     }
 
     @Override
@@ -498,13 +694,20 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitExplainAnalyze(ExplainAnalyze node, Optional<Scope> context) {
-      throw new SemanticException("Explain Analyze statement is not supported yet.");
+      queryContext.setExplainAnalyze(true);
+      return visitQuery((Query) node.getStatement(), context);
     }
 
     @Override
     protected Scope visitQuery(Query node, Optional<Scope> context) {
+      analysis.setQuery(true);
       Scope withScope = analyzeWith(node, context);
+      hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
       Scope queryBodyScope = process(node.getQueryBody(), withScope);
+
+      if (node.getFill().isPresent()) {
+        analyzeFill(node.getFill().get(), queryBodyScope);
+      }
 
       List<Expression> orderByExpressions = emptyList();
       if (node.getOrderBy().isPresent()) {
@@ -513,7 +716,8 @@ public class StatementAnalyzer {
 
         if ((queryBodyScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
-            && !node.getOffset().isPresent()) {
+            && !node.getOffset().isPresent()
+            && !hasFillInParentScope) {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(node.getOrderBy().get());
           warningCollector.add(
@@ -690,6 +894,14 @@ public class StatementAnalyzer {
               });
       withQuery
           .getQuery()
+          .getFill()
+          .ifPresent(
+              orderBy -> {
+                throw new SemanticException(
+                    "immediate FILL clause in recursive query is not supported");
+              });
+      withQuery
+          .getQuery()
           .getOrderBy()
           .ifPresent(
               orderBy -> {
@@ -771,6 +983,7 @@ public class StatementAnalyzer {
       StatementAnalyzer analyzer =
           statementAnalyzerFactory.createStatementAnalyzer(
               analysis, queryContext, sessionContext, warningCollector, CorrelationSupport.ALLOWED);
+      analyzer.hasFillInParentScope = hasFillInParentScope;
       Scope queryScope =
           analyzer.analyze(
               node.getQuery(),
@@ -782,8 +995,11 @@ public class StatementAnalyzer {
     protected Scope visitQuerySpecification(QuerySpecification node, Optional<Scope> scope) {
       // TODO: extract candidate names from SELECT, WHERE, HAVING, GROUP BY and ORDER BY expressions
       // to pass down to analyzeFrom
+      hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
 
       Scope sourceScope = analyzeFrom(node, scope);
+      analyzeWindowDefinitions(node, sourceScope);
+      resolveFunctionCallAndMeasureWindows(node);
 
       node.getWhere().ifPresent(where -> analyzeWhere(node, sourceScope, where));
 
@@ -793,6 +1009,13 @@ public class StatementAnalyzer {
       analyzeHaving(node, sourceScope);
 
       Scope outputScope = computeAndAssignOutputScope(node, scope, sourceScope);
+
+      node.getFill()
+          .ifPresent(
+              fill -> {
+                Scope fillScope = computeAndAssignFillScope(fill, sourceScope, outputScope);
+                analyzeFill(fill, fillScope);
+              });
 
       List<Expression> orderByExpressions = emptyList();
       Optional<Scope> orderByScope = Optional.empty();
@@ -804,7 +1027,8 @@ public class StatementAnalyzer {
 
         if ((sourceScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
-            && !node.getOffset().isPresent()) {
+            && !node.getOffset().isPresent()
+            && !hasFillInParentScope) {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(orderBy);
           warningCollector.add(
@@ -830,8 +1054,22 @@ public class StatementAnalyzer {
           .forEach(sourceExpressions::add);
       node.getHaving().ifPresent(sourceExpressions::add);
 
+      for (WindowDefinition windowDefinition : node.getWindows()) {
+        WindowSpecification window = windowDefinition.getWindow();
+        sourceExpressions.addAll(window.getPartitionBy());
+        getSortItemsFromOrderBy(window.getOrderBy()).stream()
+            .map(SortItem::getSortKey)
+            .forEach(sourceExpressions::add);
+        if (window.getFrame().isPresent()) {
+          WindowFrame frame = window.getFrame().get();
+          frame.getStart().getValue().ifPresent(sourceExpressions::add);
+          frame.getEnd().flatMap(FrameBound::getValue).ifPresent(sourceExpressions::add);
+        }
+      }
+
       analyzeAggregations(
           node, sourceScope, orderByScope, groupByAnalysis, sourceExpressions, orderByExpressions);
+      analyzeWindowFunctionsAndMeasures(node, outputExpressions, orderByExpressions);
 
       if (analysis.isAggregation(node) && node.getOrderBy().isPresent()) {
         ImmutableList.Builder<Expression> aggregates =
@@ -854,6 +1092,212 @@ public class StatementAnalyzer {
       return outputScope;
     }
 
+    private void analyzeWindowFunctionsAndMeasures(
+        QuerySpecification node,
+        List<Expression> outputExpressions,
+        List<Expression> orderByExpressions) {
+      analysis.setWindowFunctions(node, analyzeWindowFunctions(node, outputExpressions));
+      if (node.getOrderBy().isPresent()) {
+        OrderBy orderBy = node.getOrderBy().get();
+        analysis.setOrderByWindowFunctions(
+            orderBy, analyzeWindowFunctions(node, orderByExpressions));
+      }
+    }
+
+    private List<FunctionCall> analyzeWindowFunctions(
+        QuerySpecification node, List<Expression> expressions) {
+      List<FunctionCall> windowFunctions = extractWindowFunctions(expressions);
+
+      for (FunctionCall windowFunction : windowFunctions) {
+        List<Expression> nestedWindowExpressions =
+            extractWindowExpressions(windowFunction.getArguments());
+        if (!nestedWindowExpressions.isEmpty()) {
+          throw new SemanticException(
+              "Cannot nest window functions or row pattern measures inside window function arguments");
+        }
+
+        if (windowFunction.isDistinct()) {
+          throw new SemanticException(
+              String.format(
+                  "DISTINCT in window function parameters not yet supported: %s", windowFunction));
+        }
+
+        Analysis.ResolvedWindow window = analysis.getWindow(windowFunction);
+        String name = windowFunction.getName().toString().toLowerCase(ENGLISH);
+        if (name.equals("lag") || name.equals("lead")) {
+          if (!window.getOrderBy().isPresent()) {
+            throw new SemanticException(
+                String.format(
+                    "%s function requires an ORDER BY window clause", windowFunction.getName()));
+          }
+          if (window.getFrame().isPresent()) {
+            throw new SemanticException(
+                String.format(
+                    "Cannot specify window frame for %s function", windowFunction.getName()));
+          }
+        }
+      }
+
+      return windowFunctions;
+    }
+
+    private void resolveFunctionCallAndMeasureWindows(QuerySpecification querySpecification) {
+      ImmutableList.Builder<Expression> expressions = ImmutableList.builder();
+
+      // SELECT expressions and ORDER BY expressions can contain window functions
+      for (SelectItem item : querySpecification.getSelect().getSelectItems()) {
+        if (item instanceof AllColumns) {
+          ((AllColumns) item).getTarget().ifPresent(expressions::add);
+        } else if (item instanceof SingleColumn) {
+          expressions.add(((SingleColumn) item).getExpression());
+        }
+      }
+      for (SortItem sortItem : getSortItemsFromOrderBy(querySpecification.getOrderBy())) {
+        expressions.add(sortItem.getSortKey());
+      }
+
+      for (FunctionCall windowFunction : extractWindowFunctions(expressions.build())) {
+        Analysis.ResolvedWindow resolvedWindow =
+            resolveWindowSpecification(querySpecification, windowFunction.getWindow().get());
+        analysis.setWindow(windowFunction, resolvedWindow);
+      }
+    }
+
+    private void analyzeWindowDefinitions(QuerySpecification node, Scope scope) {
+      for (WindowDefinition windowDefinition : node.getWindows()) {
+        CanonicalizationAware<Identifier> canonicalName =
+            canonicalizationAwareKey(windowDefinition.getName());
+
+        if (analysis.getWindowDefinition(node, canonicalName) != null) {
+          throw new SemanticException(
+              String.format(
+                  "WINDOW name '%s' specified more than once", windowDefinition.getName()));
+        }
+
+        Analysis.ResolvedWindow resolvedWindow =
+            resolveWindowSpecification(node, windowDefinition.getWindow());
+
+        // Analyze window after it is resolved, because resolving might provide necessary
+        // information, e.g. ORDER BY necessary for frame analysis.
+        // Analyze only newly introduced window properties. Properties of the referenced window have
+        // been already analyzed.
+        analyzeWindow(node, resolvedWindow, scope, windowDefinition.getWindow());
+
+        analysis.addWindowDefinition(node, canonicalName, resolvedWindow);
+      }
+    }
+
+    private void analyzeWindow(
+        QuerySpecification querySpecification,
+        Analysis.ResolvedWindow window,
+        Scope scope,
+        Node originalNode) {
+      ExpressionAnalysis expressionAnalysis =
+          ExpressionAnalyzer.analyzeWindow(
+              metadata,
+              sessionContext,
+              queryContext,
+              statementAnalyzerFactory,
+              accessControl,
+              scope,
+              analysis,
+              WarningCollector.NOOP,
+              correlationSupport,
+              window,
+              originalNode);
+      analysis.recordSubqueries(querySpecification, expressionAnalysis);
+    }
+
+    private Analysis.ResolvedWindow resolveWindowSpecification(
+        QuerySpecification querySpecification, Window window) {
+      if (window instanceof WindowReference) {
+        WindowReference windowReference = (WindowReference) window;
+        CanonicalizationAware<Identifier> canonicalName =
+            canonicalizationAwareKey(windowReference.getName());
+        Analysis.ResolvedWindow referencedWindow =
+            analysis.getWindowDefinition(querySpecification, canonicalName);
+        if (referencedWindow == null) {
+          throw new SemanticException(
+              String.format("Cannot resolve WINDOW name %s", windowReference.getName()));
+        }
+
+        return new Analysis.ResolvedWindow(
+            referencedWindow.getPartitionBy(),
+            referencedWindow.getOrderBy(),
+            referencedWindow.getFrame(),
+            !referencedWindow.getPartitionBy().isEmpty(),
+            referencedWindow.getOrderBy().isPresent(),
+            referencedWindow.getFrame().isPresent());
+      }
+
+      WindowSpecification windowSpecification = (WindowSpecification) window;
+
+      if (windowSpecification.getExistingWindowName().isPresent()) {
+        Identifier referencedName = windowSpecification.getExistingWindowName().get();
+        CanonicalizationAware<Identifier> canonicalName = canonicalizationAwareKey(referencedName);
+        Analysis.ResolvedWindow referencedWindow =
+            analysis.getWindowDefinition(querySpecification, canonicalName);
+        if (referencedWindow == null) {
+          throw new SemanticException(
+              String.format("Cannot resolve WINDOW name %s", referencedName));
+        }
+
+        // analyze dependencies between this window specification and referenced window
+        // specification
+        if (!windowSpecification.getPartitionBy().isEmpty()) {
+          throw new SemanticException(
+              "WINDOW specification with named WINDOW reference cannot specify PARTITION BY");
+        }
+        if (windowSpecification.getOrderBy().isPresent()
+            && referencedWindow.getOrderBy().isPresent()) {
+          throw new SemanticException(
+              "Cannot specify ORDER BY if referenced named WINDOW specifies ORDER BY");
+        }
+        if (referencedWindow.getFrame().isPresent()) {
+          throw new SemanticException(
+              "Cannot reference named WINDOW containing frame specification");
+        }
+
+        // resolve window
+        Optional<OrderBy> orderBy = windowSpecification.getOrderBy();
+        boolean orderByInherited = false;
+        if (!orderBy.isPresent() && referencedWindow.getOrderBy().isPresent()) {
+          orderBy = referencedWindow.getOrderBy();
+          orderByInherited = true;
+        }
+
+        List<Expression> partitionBy = windowSpecification.getPartitionBy();
+        boolean partitionByInherited = false;
+        if (!referencedWindow.getPartitionBy().isEmpty()) {
+          partitionBy = referencedWindow.getPartitionBy();
+          partitionByInherited = true;
+        }
+
+        Optional<WindowFrame> windowFrame = windowSpecification.getFrame();
+        boolean frameInherited = false;
+        if (!windowFrame.isPresent() && referencedWindow.getFrame().isPresent()) {
+          windowFrame = referencedWindow.getFrame();
+          frameInherited = true;
+        }
+
+        return new Analysis.ResolvedWindow(
+            partitionBy,
+            orderBy,
+            windowFrame,
+            partitionByInherited,
+            orderByInherited,
+            frameInherited);
+      }
+
+      return new Analysis.ResolvedWindow(
+          windowSpecification.getPartitionBy(),
+          windowSpecification.getOrderBy(),
+          windowSpecification.getFrame(),
+          false,
+          false,
+          false);
+    }
+
     private Scope analyzeFrom(QuerySpecification node, Optional<Scope> scope) {
       if (node.getFrom().isPresent()) {
         return process(node.getFrom().get(), scope);
@@ -866,6 +1310,20 @@ public class StatementAnalyzer {
 
     private void analyzeWhere(Node node, Scope scope, Expression predicate) {
       verifyNoAggregateWindowOrGroupingFunctions(predicate, "WHERE clause");
+
+      // contains Columns, expand them and concat them
+      if (containsColumns(predicate)) {
+        ExpandColumnsVisitor visitor = new ExpandColumnsVisitor(null);
+        List<Expression> expandedExpressions = visitor.process(predicate, scope);
+        if (expandedExpressions.isEmpty()) {
+          throw new IllegalStateException("There is at least one result of expanded");
+        }
+        if (expandedExpressions.size() >= 2) {
+          predicate = new LogicalExpression(LogicalExpression.Operator.AND, expandedExpressions);
+        } else {
+          predicate = expandedExpressions.get(0);
+        }
+      }
 
       ExpressionAnalysis expressionAnalysis = analyzeExpression(predicate, scope);
       analysis.recordSubqueries(node, expressionAnalysis);
@@ -894,8 +1352,25 @@ public class StatementAnalyzer {
           analyzeSelectAllColumns(
               (AllColumns) item, node, scope, outputExpressionBuilder, selectExpressionBuilder);
         } else if (item instanceof SingleColumn) {
-          analyzeSelectSingleColumn(
-              (SingleColumn) item, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+          SingleColumn singleColumn = (SingleColumn) item;
+          Expression selectExpression = singleColumn.getExpression();
+          if (containsColumns(selectExpression)) {
+            ExpandColumnsVisitor visitor =
+                new ExpandColumnsVisitor(singleColumn.getAlias().orElse(null));
+            List<Expression> expandedExpressions = visitor.process(selectExpression, scope);
+            if (expandedExpressions.isEmpty()) {
+              throw new IllegalStateException("There is at least one result of expanded");
+            }
+            singleColumn.setExpandedExpressions(expandedExpressions);
+            singleColumn.setAccordingColumnName(visitor.getAccordingColumnNames());
+            for (Expression expression : expandedExpressions) {
+              analyzeSelectSingleColumn(
+                  expression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+            }
+          } else {
+            analyzeSelectSingleColumn(
+                selectExpression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+          }
         } else {
           throw new IllegalArgumentException(
               "Unsupported SelectItem type: " + item.getClass().getName());
@@ -903,7 +1378,809 @@ public class StatementAnalyzer {
       }
       analysis.setSelectExpressions(node, selectExpressionBuilder.build());
 
+      if (node.getSelect().isDistinct()) {
+        analysis.setContainsSelectDistinct();
+      }
+
       return outputExpressionBuilder.build();
+    }
+
+    /**
+     * Check if there is Columns function in expression, and verify they are same if there are multi
+     * Column functions.
+     *
+     * @param expression input expression
+     * @return if there is Columns function in expression
+     * @throws SemanticException if there are multi Columns functions but different
+     */
+    private boolean containsColumns(Expression expression) {
+      return containsColumnsHelper(expression) != null;
+    }
+
+    private Node containsColumnsHelper(Node node) {
+      if (node instanceof Columns) {
+        return node;
+      }
+
+      Node target = null;
+      for (Node child : node.getChildren()) {
+        Node childResult = containsColumnsHelper(child);
+
+        if (childResult == null) {
+          continue;
+        }
+
+        // initialize target
+        if (target == null) {
+          target = childResult;
+          continue;
+        }
+
+        if (!childResult.equals(target)) {
+          throw new SemanticException(
+              "Multiple different COLUMNS in the same expression are not supported");
+        }
+      }
+      return target;
+    }
+
+    private class ExpandColumnsVisitor extends AstVisitor<List<Expression>, Scope> {
+      private final Identifier alias;
+      // Record Columns expanded result in process, not always equals with final result
+      private List<Expression> expandedExpressions;
+      // Records the actual output column name of each Expression, used to compute output Scope.
+      private List<String> accordingColumnNames;
+
+      private ExpandColumnsVisitor(Identifier alias) {
+        this.alias = alias;
+      }
+
+      public List<String> getAccordingColumnNames() {
+        return accordingColumnNames;
+      }
+
+      protected List<Expression> visitNode(Node node, Scope scope) {
+        throw new UnsupportedOperationException(
+            "This Visitor only supported process of Expression");
+      }
+
+      protected List<Expression> visitExpression(Expression node, Scope scope) {
+        if (node.getChildren().isEmpty()) {
+          return Collections.singletonList(node);
+        }
+        throw new UnsupportedOperationException("UnSupported Expression: " + node);
+      }
+
+      @Override
+      public List<Expression> visitColumns(Columns node, Scope context) {
+        // avoid redundant process
+        if (expandedExpressions != null) {
+          return expandedExpressions;
+        }
+
+        List<Field> requestedFields = (List<Field>) context.getRelationType().getVisibleFields();
+        List<Field> fields = filterInaccessibleFields(requestedFields);
+        if (fields.isEmpty()) {
+          if (!requestedFields.isEmpty()) {
+            throw new SemanticException("Relation not found or not allowed");
+          }
+          throw new SemanticException("COLUMNS not allowed for relation that has no columns");
+        }
+
+        ImmutableList.Builder<Expression> matchedColumns = ImmutableList.builder();
+        ImmutableList.Builder<String> outputColumnNames = ImmutableList.builder();
+        if (node.isColumnsAsterisk()) {
+          for (Field field : fields) {
+            String columnName = field.getName().orElse(null);
+            if (columnName == null) {
+              throw new SemanticException("Unknown ColumnName: " + field);
+            }
+            matchedColumns.add(new Identifier(columnName));
+            outputColumnNames.add(alias == null ? columnName : alias.getValue());
+          }
+        } else {
+          Pattern pattern;
+          try {
+            pattern = Pattern.compile(node.getPattern());
+          } catch (PatternSyntaxException e) {
+            throw new SemanticException(String.format("Invalid regex '%s'", node.getPattern()));
+          }
+          Matcher matcher = pattern.matcher("");
+
+          for (Field field : fields) {
+            String columnName = field.getName().orElse(null);
+            if (columnName == null) {
+              throw new SemanticException("Unknown ColumnName: " + field);
+            }
+            matcher.reset(columnName);
+            if (matcher.matches()) {
+              matchedColumns.add(new Identifier(columnName));
+
+              // process alias
+              if (alias != null) {
+                try {
+                  outputColumnNames.add(matcher.replaceAll(alias.getValue()));
+                } catch (Exception e) {
+                  throw new SemanticException(e.getMessage());
+                }
+              } else {
+                outputColumnNames.add(columnName);
+              }
+            }
+          }
+        }
+        List<Expression> result = matchedColumns.build();
+        if (result.isEmpty()) {
+          throw new SemanticException(
+              String.format("No matching columns found that match regex '%s'", node.getPattern()));
+        }
+        expandedExpressions = result;
+        accordingColumnNames = outputColumnNames.build();
+
+        return result;
+      }
+
+      @Override
+      protected List<Expression> visitArithmeticBinary(
+          ArithmeticBinaryExpression node, Scope context) {
+        List<Expression> leftResult = process(node.getLeft(), context);
+        List<Expression> rightResult = process(node.getRight(), context);
+
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int leftSize = leftResult.size();
+        int rightSize = rightResult.size();
+        int maxSize = Math.max(leftSize, rightSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger leftIndex = (leftSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger rightIndex = (rightSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new ArithmeticBinaryExpression(
+                  node.getOperator(),
+                  leftResult.get(leftIndex.get()),
+                  rightResult.get(rightIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitArithmeticUnary(
+          ArithmeticUnaryExpression node, Scope context) {
+        List<Expression> childResult = process(node.getValue(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new ArithmeticUnaryExpression(node.getSign(), expression));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitBetweenPredicate(BetweenPredicate node, Scope context) {
+        List<Expression> valueResult = process(node.getValue(), context);
+        List<Expression> minResult = process(node.getMin(), context);
+        List<Expression> maxResult = process(node.getMax(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int valueResultSize = valueResult.size();
+        int minResultSize = minResult.size();
+        int maxResultSize = maxResult.size();
+        int maxSize = Math.max(valueResultSize, Math.max(minResultSize, maxResultSize));
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger valueIndex = (valueResultSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger minIndex = (minResultSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger maxIndex = (maxResultSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new BetweenPredicate(
+                  valueResult.get(valueIndex.get()),
+                  minResult.get(minIndex.get()),
+                  maxResult.get(maxIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitCast(Cast node, Scope context) {
+        List<Expression> childResult = process(node.getExpression(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new Cast(expression, node.getType()));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitCoalesceExpression(CoalesceExpression node, Scope context) {
+        ImmutableList.Builder<List<Expression>> childrenResultListBuilder =
+            new ImmutableList.Builder<>();
+        node.getOperands()
+            .forEach(operand -> childrenResultListBuilder.add(process(operand, context)));
+        List<List<Expression>> childrenResultList = childrenResultListBuilder.build();
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int maxSize = childrenResultList.stream().mapToInt(List::size).max().orElse(0);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger[] childrenIndexes = new AtomicInteger[childrenResultList.size()];
+        for (int i = 0; i < childrenIndexes.length; i++) {
+          childrenIndexes[i] =
+              (childrenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
+        }
+        for (int i = 0; i < maxSize; i++) {
+          ImmutableList.Builder<Expression> operandListBuilder = new ImmutableList.Builder<>();
+          for (int j = 0; j < childrenIndexes.length; j++) {
+            int operandIndexInResult = childrenIndexes[j].get();
+            operandListBuilder.add(childrenResultList.get(j).get(operandIndexInResult));
+          }
+          resultBuilder.add(new CoalesceExpression(operandListBuilder.build()));
+          baseIndex.getAndIncrement();
+        }
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitComparisonExpression(
+          ComparisonExpression node, Scope context) {
+        List<Expression> leftResult = process(node.getLeft(), context);
+        List<Expression> rightResult = process(node.getRight(), context);
+
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int leftSize = leftResult.size();
+        int rightSize = rightResult.size();
+        int maxSize = Math.max(leftSize, rightSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger leftIndex = (leftSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger rightIndex = (rightSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new ComparisonExpression(
+                  node.getOperator(),
+                  leftResult.get(leftIndex.get()),
+                  rightResult.get(rightIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitDereferenceExpression(
+          DereferenceExpression node, Scope context) {
+        process(node.getBase(), context);
+        if (expandedExpressions == null) {
+          return Collections.singletonList(node);
+        }
+        throw new SemanticException("Columns are not supported in DereferenceExpression");
+      }
+
+      @Override
+      protected List<Expression> visitExists(ExistsPredicate node, Scope context) {
+        // We don't need to process Query here
+        return Collections.singletonList(node);
+      }
+
+      @Override
+      protected List<Expression> visitFunctionCall(FunctionCall node, Scope context) {
+        ImmutableList.Builder<List<Expression>> childrenResultListBuilder =
+            new ImmutableList.Builder<>();
+        node.getArguments()
+            .forEach(operand -> childrenResultListBuilder.add(process(operand, context)));
+        List<List<Expression>> childrenResultList = childrenResultListBuilder.build();
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int maxSize = childrenResultList.stream().mapToInt(List::size).max().orElse(0);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger[] childrenIndexes = new AtomicInteger[childrenResultList.size()];
+        for (int i = 0; i < childrenIndexes.length; i++) {
+          childrenIndexes[i] =
+              (childrenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
+        }
+        for (int i = 0; i < maxSize; i++) {
+          ImmutableList.Builder<Expression> operandListBuilder = new ImmutableList.Builder<>();
+          for (int j = 0; j < childrenIndexes.length; j++) {
+            int operandIndexInResult = childrenIndexes[j].get();
+            operandListBuilder.add(childrenResultList.get(j).get(operandIndexInResult));
+          }
+          resultBuilder.add(new FunctionCall(node.getName(), operandListBuilder.build()));
+          baseIndex.getAndIncrement();
+        }
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitIdentifier(Identifier node, Scope context) {
+        return Collections.singletonList(node);
+      }
+
+      @Override
+      protected List<Expression> visitIfExpression(IfExpression node, Scope context) {
+        List<Expression> firstResult = process(node.getCondition(), context);
+        List<Expression> secondResult = process(node.getTrueValue(), context);
+        List<Expression> thirdResult =
+            node.getFalseValue().isPresent() ? process(node.getFalseValue().get(), context) : null;
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int firstSize = firstResult.size();
+        int secondSize = secondResult.size();
+        int thirdSize = thirdResult == null ? 0 : thirdResult.size();
+        int maxSize = Math.max(thirdSize, Math.max(firstSize, secondSize));
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger firstIndex = (firstSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger thirdIndex = (thirdSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new IfExpression(
+                  firstResult.get(firstIndex.get()),
+                  secondResult.get(secondIndex.get()),
+                  thirdResult == null ? null : thirdResult.get(thirdIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitInListExpression(InListExpression node, Scope context) {
+        ImmutableList.Builder<List<Expression>> childrenResultListBuilder =
+            new ImmutableList.Builder<>();
+        node.getValues()
+            .forEach(operand -> childrenResultListBuilder.add(process(operand, context)));
+        List<List<Expression>> childrenResultList = childrenResultListBuilder.build();
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int maxSize = childrenResultList.stream().mapToInt(List::size).max().orElse(0);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger[] childrenIndexes = new AtomicInteger[childrenResultList.size()];
+        for (int i = 0; i < childrenIndexes.length; i++) {
+          childrenIndexes[i] =
+              (childrenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
+        }
+        for (int i = 0; i < maxSize; i++) {
+          ImmutableList.Builder<Expression> operandListBuilder = new ImmutableList.Builder<>();
+          for (int j = 0; j < childrenIndexes.length; j++) {
+            int operandIndexInResult = childrenIndexes[j].get();
+            operandListBuilder.add(childrenResultList.get(j).get(operandIndexInResult));
+          }
+          resultBuilder.add(new InListExpression(operandListBuilder.build()));
+          baseIndex.getAndIncrement();
+        }
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitInPredicate(InPredicate node, Scope context) {
+        List<Expression> leftResult = process(node.getValue(), context);
+        List<Expression> rightResult = process(node.getValueList(), context);
+
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int leftSize = leftResult.size();
+        int rightSize = rightResult.size();
+        int maxSize = Math.max(leftSize, rightSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger leftIndex = (leftSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger rightIndex = (rightSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new InPredicate(leftResult.get(leftIndex.get()), rightResult.get(rightIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitIsNotNullPredicate(IsNotNullPredicate node, Scope context) {
+        List<Expression> childResult = process(node.getValue(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new IsNotNullPredicate(expression));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitIsNullPredicate(IsNullPredicate node, Scope context) {
+        List<Expression> childResult = process(node.getValue(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new IsNullPredicate(expression));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitLikePredicate(LikePredicate node, Scope context) {
+        List<Expression> firstResult = process(node.getValue(), context);
+        List<Expression> secondResult = process(node.getPattern(), context);
+        List<Expression> thirdResult =
+            node.getEscape().isPresent() ? process(node.getEscape().get(), context) : null;
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int firstSize = firstResult.size();
+        int secondSize = secondResult.size();
+        int thirdSize = thirdResult == null ? 0 : thirdResult.size();
+        int maxSize = Math.max(thirdSize, Math.max(firstSize, secondSize));
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger firstIndex = (firstSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger thirdIndex = (thirdSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new LikePredicate(
+                  firstResult.get(firstIndex.get()),
+                  secondResult.get(secondIndex.get()),
+                  thirdResult == null ? null : thirdResult.get(thirdIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitLiteral(Literal node, Scope context) {
+        return Collections.singletonList(node);
+      }
+
+      @Override
+      protected List<Expression> visitLogicalExpression(LogicalExpression node, Scope context) {
+        ImmutableList.Builder<List<Expression>> childrenResultListBuilder =
+            new ImmutableList.Builder<>();
+        node.getTerms()
+            .forEach(operand -> childrenResultListBuilder.add(process(operand, context)));
+        List<List<Expression>> childrenResultList = childrenResultListBuilder.build();
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int maxSize = childrenResultList.stream().mapToInt(List::size).max().orElse(0);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger[] childrenIndexes = new AtomicInteger[childrenResultList.size()];
+        for (int i = 0; i < childrenIndexes.length; i++) {
+          childrenIndexes[i] =
+              (childrenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
+        }
+        for (int i = 0; i < maxSize; i++) {
+          ImmutableList.Builder<Expression> operandListBuilder = new ImmutableList.Builder<>();
+          for (int j = 0; j < childrenIndexes.length; j++) {
+            int operandIndexInResult = childrenIndexes[j].get();
+            operandListBuilder.add(childrenResultList.get(j).get(operandIndexInResult));
+          }
+          resultBuilder.add(new LogicalExpression(node.getOperator(), operandListBuilder.build()));
+          baseIndex.getAndIncrement();
+        }
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitNotExpression(NotExpression node, Scope context) {
+        List<Expression> childResult = process(node.getValue(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new NotExpression(expression));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitNullIfExpression(NullIfExpression node, Scope context) {
+        throw new SemanticException(
+            String.format("%s are not supported now", node.getClass().getSimpleName()));
+      }
+
+      @Override
+      protected List<Expression> visitQuantifiedComparisonExpression(
+          QuantifiedComparisonExpression node, Scope context) {
+        List<Expression> childResult = process(node.getValue(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(
+              new QuantifiedComparisonExpression(
+                  node.getOperator(), node.getQuantifier(), expression, node.getSubquery()));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitRow(Row node, Scope context) {
+        throw new SemanticException(
+            String.format("%s are not supported now", node.getClass().getSimpleName()));
+      }
+
+      @Override
+      protected List<Expression> visitExtract(Extract node, Scope context) {
+        List<Expression> childResult = process(node.getExpression(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new Extract(expression, node.getField()));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitSearchedCaseExpression(
+          SearchedCaseExpression node, Scope context) {
+        ImmutableList.Builder<List<Expression>> firstChildResultListBuilder =
+            new ImmutableList.Builder<>();
+        node.getWhenClauses()
+            .forEach(when -> firstChildResultListBuilder.add(process(when, context)));
+        List<List<Expression>> firstChildResultList = firstChildResultListBuilder.build();
+        List<Expression> secondResult =
+            node.getDefaultValue().isPresent()
+                ? process(node.getDefaultValue().get(), context)
+                : null;
+
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int secondSize = secondResult == null ? 0 : secondResult.size();
+        int maxSize = firstChildResultList.stream().mapToInt(List::size).max().orElse(0);
+        maxSize = Math.max(maxSize, secondSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger[] childrenIndexes = new AtomicInteger[firstChildResultList.size()];
+        for (int i = 0; i < childrenIndexes.length; i++) {
+          childrenIndexes[i] =
+              (firstChildResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
+        }
+        AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          ImmutableList.Builder<WhenClause> operandListBuilder = new ImmutableList.Builder<>();
+          for (int j = 0; j < childrenIndexes.length; j++) {
+            int operandIndexInResult = childrenIndexes[j].get();
+            operandListBuilder.add(
+                (WhenClause) firstChildResultList.get(j).get(operandIndexInResult));
+          }
+
+          resultBuilder.add(
+              new SearchedCaseExpression(
+                  operandListBuilder.build(),
+                  (secondResult == null ? null : secondResult.get(secondIndex.get()))));
+          baseIndex.getAndIncrement();
+        }
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitSimpleCaseExpression(
+          SimpleCaseExpression node, Scope context) {
+        List<Expression> firstResult = process(node.getOperand(), context);
+        ImmutableList.Builder<List<Expression>> whenResultListBuilder =
+            new ImmutableList.Builder<>();
+        node.getWhenClauses().forEach(when -> whenResultListBuilder.add(process(when, context)));
+        List<List<Expression>> whenResultList = whenResultListBuilder.build();
+        List<Expression> secondResult =
+            node.getDefaultValue().isPresent()
+                ? process(node.getDefaultValue().get(), context)
+                : null;
+
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int firstSize = firstResult.size();
+        int secondSize = secondResult == null ? 0 : secondResult.size();
+        int maxSize = whenResultList.stream().mapToInt(List::size).max().orElse(0);
+        maxSize = Math.max(Math.max(firstSize, maxSize), secondSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger[] childrenIndexes = new AtomicInteger[whenResultList.size()];
+        AtomicInteger firstIndex = (firstSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < childrenIndexes.length; i++) {
+          childrenIndexes[i] =
+              (whenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
+        }
+        AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          ImmutableList.Builder<WhenClause> operandListBuilder = new ImmutableList.Builder<>();
+          for (int j = 0; j < childrenIndexes.length; j++) {
+            int operandIndexInResult = childrenIndexes[j].get();
+            operandListBuilder.add((WhenClause) whenResultList.get(j).get(operandIndexInResult));
+          }
+
+          resultBuilder.add(
+              new SimpleCaseExpression(
+                  firstResult.get(firstIndex.get()),
+                  operandListBuilder.build(),
+                  (secondResult == null ? null : secondResult.get(secondIndex.get()))));
+          baseIndex.getAndIncrement();
+        }
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitSubqueryExpression(SubqueryExpression node, Scope context) {
+        // We don't need to process Query here
+        return Collections.singletonList(node);
+      }
+
+      @Override
+      protected List<Expression> visitTrim(Trim node, Scope context) {
+        List<Expression> firstResult = process(node.getTrimSource(), context);
+        List<Expression> secondResult =
+            node.getTrimCharacter().isPresent()
+                ? process(node.getTrimCharacter().get(), context)
+                : null;
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int firstSize = firstResult.size();
+        int secondSize = secondResult == null ? 0 : secondResult.size();
+        int maxSize = Math.max(secondSize, firstSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger firstIndex = (firstSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new Trim(
+                  node.getSpecification(),
+                  firstResult.get(firstIndex.get()),
+                  secondResult == null ? null : secondResult.get(secondIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitWhenClause(WhenClause node, Scope context) {
+        List<Expression> leftResult = process(node.getOperand(), context);
+        List<Expression> rightResult = process(node.getResult(), context);
+
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int leftSize = leftResult.size();
+        int rightSize = rightResult.size();
+        int maxSize = Math.max(leftSize, rightSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger leftIndex = (leftSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger rightIndex = (rightSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new WhenClause(leftResult.get(leftIndex.get()), rightResult.get(rightIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
     }
 
     private void analyzeSelectAllColumns(
@@ -1147,12 +2424,11 @@ public class StatementAnalyzer {
     //    }
 
     private void analyzeSelectSingleColumn(
-        SingleColumn singleColumn,
+        Expression expression,
         QuerySpecification node,
         Scope scope,
         ImmutableList.Builder<Expression> outputExpressionBuilder,
         ImmutableList.Builder<Analysis.SelectExpression> selectExpressionBuilder) {
-      Expression expression = singleColumn.getExpression();
       ExpressionAnalysis expressionAnalysis = analyzeExpression(expression, scope);
       analysis.recordSubqueries(node, expressionAnalysis);
       outputExpressionBuilder.add(expression);
@@ -1175,6 +2451,8 @@ public class StatementAnalyzer {
         ImmutableList.Builder<List<Set<FieldId>>> sets = ImmutableList.builder();
         ImmutableList.Builder<Expression> complexExpressions = ImmutableList.builder();
         ImmutableList.Builder<Expression> groupingExpressions = ImmutableList.builder();
+        FunctionCall gapFillColumn = null;
+        ImmutableList.Builder<Expression> gapFillGroupingExpressions = ImmutableList.builder();
 
         checkGroupingSetsCount(node.getGroupBy().get());
         for (GroupingElement groupingElement : node.getGroupBy().get().getGroupingElements()) {
@@ -1201,6 +2479,15 @@ public class StatementAnalyzer {
               } else {
                 analysis.recordSubqueries(node, analyzeExpression(column, scope));
                 complexExpressions.add(column);
+              }
+
+              if (isDateBinGapFill(column)) {
+                if (gapFillColumn != null) {
+                  throw new SemanticException("multiple date_bin_gapfill calls not allowed");
+                }
+                gapFillColumn = (FunctionCall) column;
+              } else {
+                gapFillGroupingExpressions.add(column);
               }
 
               groupingExpressions.add(column);
@@ -1260,7 +2547,10 @@ public class StatementAnalyzer {
                 sets.build(),
                 complexExpressions.build());
         analysis.setGroupingSets(node, groupingSets);
-
+        if (gapFillColumn != null) {
+          analysis.setGapFill(node, gapFillColumn);
+          analysis.setGapFillGroupingKeys(node, gapFillGroupingExpressions.build());
+        }
         return groupingSets;
       }
 
@@ -1277,6 +2567,14 @@ public class StatementAnalyzer {
       }
 
       return result;
+    }
+
+    private boolean isDateBinGapFill(Expression column) {
+      return column instanceof FunctionCall
+          && DATE_BIN
+              .getFunctionName()
+              .equalsIgnoreCase(((FunctionCall) column).getName().getSuffix())
+          && ((FunctionCall) column).getArguments().size() == 5;
     }
 
     private boolean hasAggregates(QuerySpecification node) {
@@ -1385,6 +2683,70 @@ public class StatementAnalyzer {
         } else if (item instanceof SingleColumn) {
           SingleColumn column = (SingleColumn) item;
           Expression expression = column.getExpression();
+
+          // process Columns
+          List<Expression> expandedExpressions = column.getExpandedExpressions();
+          if (expandedExpressions != null) {
+            for (int i = 0; i < expandedExpressions.size(); i++) {
+              expression = expandedExpressions.get(i);
+
+              // Different from process of normal SingleColumn, alias has been processed when
+              // expanded Columns in analyzeSelect, so we needn't process alias here.
+              Optional<String> field = Optional.empty();
+              Optional<QualifiedObjectName> originTable = Optional.empty();
+              // Put accordingColumnName into originColumn to rename expr in OutputNode if necessary
+              Optional<String> originColumn = Optional.of(column.getAccordingColumnNames().get(i));
+              QualifiedName name = null;
+
+              if (expression instanceof Identifier) {
+                name = QualifiedName.of(((Identifier) expression).getValue());
+              }
+
+              if (name != null) {
+                Field matchingField = null;
+                try {
+                  matchingField = analysis.getResolvedField(expression).getField();
+                } catch (IllegalArgumentException e) {
+                  List<Field> matchingFields = sourceScope.getRelationType().resolveFields(name);
+                  if (!matchingFields.isEmpty()) {
+                    matchingField = matchingFields.get(0);
+                  }
+                }
+                if (matchingField != null) {
+                  originTable = matchingField.getOriginTable();
+                }
+
+                // expression is Identifier, the name of field is original column name
+                field = originColumn;
+              }
+
+              boolean aliased = column.getAlias().isPresent();
+              Field newField =
+                  Field.newUnqualified(
+                      aliased ? originColumn : field,
+                      analysis.getType(expression),
+                      TsTableColumnCategory.FIELD,
+                      originTable,
+                      originColumn,
+                      aliased);
+              // outputExpressions to look up the type
+              if (originTable.isPresent()) {
+                analysis.addSourceColumns(
+                    newField,
+                    ImmutableSet.of(
+                        new Analysis.SourceColumn(
+                            originTable.get(),
+                            originColumn.orElseThrow(
+                                () -> new NoSuchElementException("No value present")))));
+              } else {
+                analysis.addSourceColumns(
+                    newField, analysis.getExpressionSourceColumns(expression));
+              }
+              outputFields.add(newField);
+            }
+            continue;
+          }
+
           Optional<Identifier> field = column.getAlias();
 
           Optional<QualifiedObjectName> originTable = Optional.empty();
@@ -1394,7 +2756,7 @@ public class StatementAnalyzer {
           if (expression instanceof Identifier) {
             name = QualifiedName.of(((Identifier) expression).getValue());
           } else if (expression instanceof DereferenceExpression) {
-            name = DereferenceExpression.getQualifiedName((DereferenceExpression) expression);
+            name = getQualifiedName((DereferenceExpression) expression);
           }
 
           if (name != null) {
@@ -1421,7 +2783,7 @@ public class StatementAnalyzer {
               Field.newUnqualified(
                   field.map(Identifier::getValue),
                   analysis.getType(expression),
-                  TsTableColumnCategory.MEASUREMENT,
+                  TsTableColumnCategory.FIELD,
                   originTable,
                   originColumn,
                   column.getAlias().isPresent()); // TODO don't use analysis as a side-channel. Use
@@ -1457,6 +2819,18 @@ public class StatementAnalyzer {
               .build();
       analysis.setScope(node, orderByScope);
       return orderByScope;
+    }
+
+    private Scope computeAndAssignFillScope(Fill node, Scope sourceScope, Scope outputScope) {
+      // Fill should "see" both output and FROM fields during initial analysis and
+      // non-aggregation query planning
+      Scope fillScope =
+          Scope.builder()
+              .withParent(sourceScope)
+              .withRelationType(outputScope.getRelationId(), outputScope.getRelationType())
+              .build();
+      analysis.setScope(node, fillScope);
+      return fillScope;
     }
 
     @Override
@@ -1579,50 +2953,30 @@ public class StatementAnalyzer {
       }
 
       QualifiedObjectName name = createQualifiedObjectName(sessionContext, table.getName());
+
+      // access control
+      accessControl.checkCanSelectFromTable(sessionContext.getUserName(), name);
+
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
       Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
       // This can only be a table
       if (!tableSchema.isPresent()) {
-        throw new SemanticException(String.format("Table '%s' does not exist", name));
+        TableMetadataImpl.throwTableNotExistsException(
+            name.getDatabaseName(), name.getObjectName());
       }
       analysis.addEmptyColumnReferencesForTable(accessControl, sessionContext.getIdentity(), name);
 
       ImmutableList.Builder<Field> fields = ImmutableList.builder();
       fields.addAll(analyzeTableOutputFields(table, name, tableSchema.get()));
 
-      //      boolean addRowIdColumn = updateKind.isPresent();
-      //
-      //      if (addRowIdColumn) {
-      //        // Add the row id field
-      //        ColumnHandle rowIdColumnHandle = metadata.getMergeRowIdColumnHandle(session,
-      // tableHandle.get());
-      //        Type type = metadata.getColumnMetadata(session, tableHandle.get(),
-      // rowIdColumnHandle).getType();
-      //        Field field = Field.newUnqualified(Optional.empty(), type);
-      //        fields.add(field);
-      //        analysis.setColumn(field, rowIdColumnHandle);
-      //      }
-
       List<Field> outputFields = fields.build();
 
       RelationType relationType = new RelationType(outputFields);
-      Scope accessControlScope =
-          Scope.builder().withRelationType(RelationId.anonymous(), relationType).build();
-      //      analyzeFiltersAndMasks(table, name, new RelationType(outputFields),
-      // accessControlScope);
       analysis.registerTable(table, tableSchema, name);
 
-      Scope tableScope = createAndAssignScope(table, scope, relationType);
-
-      //      if (addRowIdColumn) {
-      //        FieldReference reference = new FieldReference(outputFields.size() - 1);
-      //        analyzeExpression(reference, tableScope);
-      //        analysis.setRowIdField(table, reference);
-      //      }
-
-      return tableScope;
+      return createAndAssignScope(table, scope, relationType);
     }
 
     private Scope createScopeForCommonTableExpression(
@@ -1732,6 +3086,217 @@ public class StatementAnalyzer {
     // accessControlScope, filter));
     //    }
 
+    protected Scope visitPatternRecognitionRelation(
+        PatternRecognitionRelation relation, Optional<Scope> scope) {
+      Scope inputScope = process(relation.getInput(), scope);
+
+      // check that input table column names are not ambiguous
+      // Note: This check is not compliant with SQL identifier semantics. Quoted identifiers should
+      // have different comparison rules than unquoted identifiers.
+      // However, field names do not contain the information about quotation, and so every
+      // comparison is case-insensitive. For example, if there are fields named
+      // 'a' and 'A' (quoted), they should be considered non-ambiguous. However, their names will be
+      // compared case-insensitive and will cause failure as ambiguous.
+      Set<String> inputNames = new HashSet<>();
+      for (Field field : inputScope.getRelationType().getAllFields()) {
+        field
+            .getName()
+            .ifPresent(
+                name -> {
+                  if (!inputNames.add(name.toUpperCase(ENGLISH))) {
+                    throw new SemanticException(
+                        String.format("ambiguous column: %s in row pattern input relation", name));
+                  }
+                });
+      }
+
+      // analyze PARTITION BY
+      for (Expression expression : relation.getPartitionBy()) {
+        // The PARTITION BY clause is a list of columns of the row pattern input table.
+        validateAndGetInputField(expression, inputScope);
+        Type type = analyzeExpression(expression, inputScope).getType(expression);
+        if (!type.isComparable()) {
+          throw new SemanticException(
+              String.format(
+                  "%s is not comparable, and therefore cannot be used in PARTITION BY", type));
+        }
+      }
+
+      // analyze ORDER BY
+      for (SortItem sortItem : getSortItemsFromOrderBy(relation.getOrderBy())) {
+        // The ORDER BY clause is a list of columns of the row pattern input table.
+        Expression expression = sortItem.getSortKey();
+        validateAndGetInputField(expression, inputScope);
+        Type type = analyzeExpression(expression, inputScope).getType(sortItem.getSortKey());
+        if (!type.isOrderable()) {
+          throw new SemanticException(
+              String.format("%s is not orderable, and therefore cannot be used in ORDER BY", type));
+        }
+      }
+
+      // analyze pattern recognition clauses
+      PatternRecognitionAnalysis patternRecognitionAnalysis =
+          PatternRecognitionAnalyzer.analyze(
+              relation.getSubsets(),
+              relation.getVariableDefinitions(),
+              relation.getMeasures(),
+              relation.getPattern(),
+              relation.getAfterMatchSkipTo());
+
+      relation
+          .getAfterMatchSkipTo()
+          .flatMap(SkipTo::getIdentifier)
+          .ifPresent(label -> analysis.addResolvedLabel(label, label.getCanonicalValue()));
+
+      for (SubsetDefinition subset : relation.getSubsets()) {
+        analysis.addResolvedLabel(subset.getName(), subset.getName().getCanonicalValue());
+        analysis.addSubsetLabels(
+            subset,
+            subset.getIdentifiers().stream()
+                .map(Identifier::getCanonicalValue)
+                .collect(Collectors.toSet()));
+      }
+
+      analysis.setUndefinedLabels(
+          relation.getPattern(), patternRecognitionAnalysis.getUndefinedLabels());
+      analysis.setRanges(patternRecognitionAnalysis.getRanges());
+
+      PatternRecognitionAnalyzer.validatePatternExclusions(
+          relation.getRowsPerMatch(), relation.getPattern());
+
+      // Notes on potential name ambiguity between pattern labels and other identifiers:
+      // Labels are allowed in expressions of MEASURES and DEFINE clauses. In those expressions,
+      // qualifying column names with table name is not allowed.
+      // Theoretically, user might define pattern label "T" where input table name was "T". Then a
+      // dereference "T.column" would refer to:
+      // - input table's column, if it was in PARTITION BY or ORDER BY clause,
+      // - subset of rows matched with label "T", if it was in MEASURES or DEFINE clause.
+      // There could be a check to catch such non-intuitive situation and produce a warning.
+      // Similarly, it is possible to define pattern label with the same name as some input column.
+      // However, this causes no ambiguity, as labels can only
+      // appear as column name's prefix, and column names in pattern recognition context cannot be
+      // dereferenced.
+
+      // analyze expressions in MEASURES and DEFINE (with set of all labels passed as context)
+      for (VariableDefinition variableDefinition : relation.getVariableDefinitions()) {
+        Expression expression = variableDefinition.getExpression();
+        ExpressionAnalysis expressionAnalysis =
+            analyzePatternRecognitionExpression(
+                expression, inputScope, patternRecognitionAnalysis.getAllLabels());
+        analysis.recordSubqueries(relation, expressionAnalysis);
+        analysis.addResolvedLabel(
+            variableDefinition.getName(), variableDefinition.getName().getCanonicalValue());
+        Type type = expressionAnalysis.getType(expression);
+        if (!type.equals(BOOLEAN)) {
+          throw new SemanticException(
+              String.format("Expression defining a label must be boolean (actual type: %s)", type));
+        }
+      }
+      ImmutableMap.Builder<NodeRef<Node>, Type> measureTypesBuilder = ImmutableMap.builder();
+      for (MeasureDefinition measureDefinition : relation.getMeasures()) {
+        Expression expression = measureDefinition.getExpression();
+        ExpressionAnalysis expressionAnalysis =
+            analyzePatternRecognitionExpression(
+                expression, inputScope, patternRecognitionAnalysis.getAllLabels());
+        analysis.recordSubqueries(relation, expressionAnalysis);
+        analysis.addResolvedLabel(
+            measureDefinition.getName(), measureDefinition.getName().getCanonicalValue());
+        measureTypesBuilder.put(NodeRef.of(expression), expressionAnalysis.getType(expression));
+      }
+      Map<NodeRef<Node>, Type> measureTypes = measureTypesBuilder.buildOrThrow();
+
+      // create output scope
+      // ONE ROW PER MATCH: PARTITION BY columns, then MEASURES columns in order of declaration
+      // ALL ROWS PER MATCH: PARTITION BY columns, ORDER BY columns, MEASURES columns, then any
+      // remaining input table columns in order of declaration
+      // Note: row pattern input table name should not be exposed on output
+      PatternRecognitionRelation.RowsPerMatch rowsPerMatch = relation.getRowsPerMatch().orElse(ONE);
+      boolean oneRowPerMatch = rowsPerMatch == ONE;
+
+      ImmutableSet.Builder<Field> inputFieldsOnOutputBuilder = ImmutableSet.builder();
+      ImmutableList.Builder<Field> outputFieldsBuilder = ImmutableList.builder();
+
+      for (Expression expression : relation.getPartitionBy()) {
+        Field inputField = validateAndGetInputField(expression, inputScope);
+        outputFieldsBuilder.add(unqualifiedVisible(inputField));
+        inputFieldsOnOutputBuilder.add(inputField);
+      }
+
+      if (!oneRowPerMatch) {
+        for (SortItem sortItem : getSortItemsFromOrderBy(relation.getOrderBy())) {
+          Field inputField = validateAndGetInputField(sortItem.getSortKey(), inputScope);
+          outputFieldsBuilder.add(unqualifiedVisible(inputField));
+          inputFieldsOnOutputBuilder.add(
+              inputField); // might have duplicates (ORDER BY a ASC, a DESC)
+        }
+      }
+
+      for (MeasureDefinition measureDefinition : relation.getMeasures()) {
+        outputFieldsBuilder.add(
+            Field.newUnqualified(
+                measureDefinition.getName().getValue(),
+                measureTypes.get(NodeRef.of(measureDefinition.getExpression())),
+                TsTableColumnCategory.FIELD));
+      }
+
+      if (!oneRowPerMatch) {
+        Set<Field> inputFieldsOnOutput = inputFieldsOnOutputBuilder.build();
+        for (Field inputField : inputScope.getRelationType().getAllFields()) {
+          if (!inputFieldsOnOutput.contains(inputField)) {
+            outputFieldsBuilder.add(unqualified(inputField));
+          }
+        }
+      }
+
+      // pattern recognition output must have at least 1 column
+      List<Field> outputFields = outputFieldsBuilder.build();
+      if (outputFields.isEmpty()) {
+        throw new SemanticException("pattern recognition output table has no columns");
+      }
+
+      return createAndAssignScope(relation, scope, outputFields);
+    }
+
+    private Field unqualifiedVisible(Field field) {
+      return new Field(
+          Optional.empty(),
+          field.getName(),
+          field.getType(),
+          field.getColumnCategory(),
+          false,
+          field.getOriginTable(),
+          field.getOriginColumnName(),
+          field.isAliased());
+    }
+
+    private Field unqualified(Field field) {
+      return new Field(
+          Optional.empty(),
+          field.getName(),
+          field.getType(),
+          field.getColumnCategory(),
+          field.isHidden(),
+          field.getOriginTable(),
+          field.getOriginColumnName(),
+          field.isAliased());
+    }
+
+    private ExpressionAnalysis analyzePatternRecognitionExpression(
+        Expression expression, Scope scope, Set<String> labels) {
+
+      return ExpressionAnalyzer.analyzePatternRecognitionExpression(
+          metadata,
+          queryContext,
+          sessionContext,
+          statementAnalyzerFactory,
+          accessControl,
+          scope,
+          analysis,
+          expression,
+          warningCollector,
+          labels);
+    }
+
     @Override
     protected Scope visitValues(Values node, Optional<Scope> scope) {
       checkState(!node.getRows().isEmpty());
@@ -1825,7 +3390,7 @@ public class StatementAnalyzer {
               .map(
                   valueType ->
                       Field.newUnqualified(
-                          Optional.empty(), valueType, TsTableColumnCategory.MEASUREMENT))
+                          Optional.empty(), valueType, TsTableColumnCategory.FIELD))
               .collect(toImmutableList());
 
       return createAndAssignScope(node, scope, fields);
@@ -1895,48 +3460,81 @@ public class StatementAnalyzer {
           createAndAssignScope(
               node, scope, left.getRelationType().joinWith(right.getRelationType()));
 
-      if (node.getType() == Join.Type.CROSS
-          || node.getType() == LEFT
-          || node.getType() == RIGHT
-          || node.getType() == FULL) {
-        throw new SemanticException(
-            String.format(
-                "%s JOIN is not supported, only support INNER JOIN in current version.",
-                node.getType()));
-      } else if (node.getType() == Join.Type.IMPLICIT) {
+      if (node.getType() == Join.Type.CROSS || node.getType() == Join.Type.IMPLICIT) {
         return output;
       }
       if (criteria instanceof JoinOn) {
-        Expression expression = ((JoinOn) criteria).getExpression();
-        verifyNoAggregateWindowOrGroupingFunctions(expression, "JOIN clause");
+        boolean isAsofJoin = criteria instanceof AsofJoinOn;
 
-        // Need to register coercions in case when join criteria requires coercion (e.g. join on
-        // char(1) = char(2))
-        // Correlations are only currently support in the join criteria for INNER joins
-        ExpressionAnalysis expressionAnalysis =
-            analyzeExpression(
-                expression,
-                output,
-                node.getType() == INNER
-                    ? CorrelationSupport.ALLOWED
-                    : CorrelationSupport.DISALLOWED);
-        Type clauseType = expressionAnalysis.getType(expression);
-        if (!clauseType.equals(BOOLEAN)) {
-          //          if (!clauseType.equals(UNKNOWN)) {
-          //            throw semanticException(
-          //                TYPE_MISMATCH,
-          //                expression,
-          //                "JOIN ON clause must evaluate to a boolean: actual type %s",
-          //                clauseType);
-          //          }
-          throw new SemanticException(
-              String.format(
-                  "JOIN ON clause must evaluate to a boolean: actual type %s", clauseType));
-          // coerce expression to boolean
-          //          analysis.addCoercion(expression, BOOLEAN, false);
+        Expression expression = ((JoinOn) criteria).getExpression();
+        if (expression != null) {
+          verifyNoAggregateWindowOrGroupingFunctions(expression, "JOIN clause");
+
+          // Need to register coercions in case when join criteria requires coercion (e.g. join on
+          // char(1) = char(2))
+          // Correlations are only currently support in the join criteria for INNER joins
+          ExpressionAnalysis expressionAnalysis =
+              analyzeExpression(
+                  expression,
+                  output,
+                  node.getType() == INNER && !isAsofJoin
+                      ? CorrelationSupport.ALLOWED
+                      : CorrelationSupport.DISALLOWED);
+          Type clauseType = expressionAnalysis.getType(expression);
+          if (!clauseType.equals(BOOLEAN)) {
+            //          if (!clauseType.equals(UNKNOWN)) {
+            //            throw semanticException(
+            //                TYPE_MISMATCH,
+            //                expression,
+            //                "JOIN ON clause must evaluate to a boolean: actual type %s",
+            //                clauseType);
+            //          }
+            throw new SemanticException(
+                String.format(
+                    "JOIN ON clause must evaluate to a boolean: actual type %s", clauseType));
+            // coerce expression to boolean
+            //          analysis.addCoercion(expression, BOOLEAN, false);
+          }
+
+          if (!isAsofJoin) {
+            analysis.recordSubqueries(node, expressionAnalysis);
+          }
         }
 
-        analysis.recordSubqueries(node, expressionAnalysis);
+        if (isAsofJoin) {
+          // The asofExpression must be ComparisonExpression, it has been checked in AstBuilder
+          ComparisonExpression asofExpression =
+              (ComparisonExpression) ((AsofJoinOn) criteria).getAsofExpression();
+
+          verifyNoAggregateWindowOrGroupingFunctions(asofExpression, "JOIN clause");
+
+          // ASOF Join does not support Correlation
+          ExpressionAnalysis expressionAnalysis =
+              analyzeExpression(asofExpression, output, CorrelationSupport.DISALLOWED);
+          Type clauseType = expressionAnalysis.getType(asofExpression);
+          if (!clauseType.equals(BOOLEAN)) {
+            throw new SemanticException(
+                String.format(
+                    "ASOF main JOIN expression must evaluate to a boolean: actual type %s",
+                    clauseType));
+          }
+
+          clauseType = expressionAnalysis.getType(asofExpression.getLeft());
+          if (!clauseType.equals(TimestampType.TIMESTAMP)) {
+            throw new SemanticException(
+                String.format(
+                    "left child type of ASOF main JOIN expression must be TIMESTAMP: actual type %s",
+                    clauseType));
+          }
+
+          clauseType = expressionAnalysis.getType(asofExpression.getRight());
+          if (!clauseType.equals(TimestampType.TIMESTAMP)) {
+            throw new SemanticException(
+                String.format(
+                    "right child type of ASOF main JOIN expression must be TIMESTAMP: actual type %s",
+                    clauseType));
+          }
+        }
         analysis.setJoinCriteria(node, expression);
       } else {
         throw new UnsupportedOperationException(
@@ -1949,40 +3547,6 @@ public class StatementAnalyzer {
     private void joinConditionCheck(JoinCriteria criteria) {
       if (criteria instanceof NaturalJoin) {
         throw new SemanticException("Natural join not supported");
-      }
-
-      if (criteria instanceof JoinOn) {
-        JoinOn joinOn = (JoinOn) criteria;
-        Expression expression = joinOn.getExpression();
-        if (!(expression instanceof ComparisonExpression)) {
-          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-        }
-        ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
-        if (comparisonExpression.getOperator() != ComparisonExpression.Operator.EQUAL) {
-          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-        }
-        checkArgument(
-            comparisonExpression.getLeft() instanceof DereferenceExpression,
-            ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-        checkArgument(
-            comparisonExpression.getRight() instanceof DereferenceExpression,
-            ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-        DereferenceExpression left = (DereferenceExpression) comparisonExpression.getLeft();
-        if (!left.getField().isPresent()
-            || !left.getField().get().equals(new Identifier(TIME_COLUMN_NAME))) {
-          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-        }
-        DereferenceExpression right = (DereferenceExpression) comparisonExpression.getLeft();
-        if (!right.getField().isPresent()
-            || !right.getField().get().equals(new Identifier(TIME_COLUMN_NAME))) {
-          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-        }
-      } else if (criteria instanceof JoinUsing) {
-        List<Identifier> identifiers = ((JoinUsing) criteria).getColumns();
-        if (identifiers.size() != 1
-            || !identifiers.get(0).equals(new Identifier(TIME_COLUMN_NAME))) {
-          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE);
-        }
       }
     }
 
@@ -2079,6 +3643,158 @@ public class StatementAnalyzer {
             accessControl,
             sessionContext.getIdentity(),
             ImmutableMultimap.of(field.getOriginTable().get(), field.getOriginColumnName().get()));
+      }
+    }
+
+    private void analyzeFill(Fill node, Scope scope) {
+      Analysis.FillAnalysis fillAnalysis;
+      if (node.getFillMethod() == FillPolicy.PREVIOUS) {
+        FieldReference timeColumn = null;
+        List<FieldReference> groupingKeys = null;
+        if (node.getTimeBound().isPresent() || node.getFillGroupingElements().isPresent()) {
+          timeColumn = getHelperColumn(node, scope, FillPolicy.PREVIOUS);
+          ExpressionAnalyzer.analyzeExpression(
+              metadata,
+              queryContext,
+              sessionContext,
+              statementAnalyzerFactory,
+              accessControl,
+              scope,
+              analysis,
+              timeColumn,
+              WarningCollector.NOOP,
+              correlationSupport);
+
+          groupingKeys = analyzeFillGroup(node, scope, FillPolicy.PREVIOUS);
+        }
+        fillAnalysis =
+            new Analysis.PreviousFillAnalysis(
+                node.getTimeBound().orElse(null), timeColumn, groupingKeys);
+      } else if (node.getFillMethod() == FillPolicy.CONSTANT) {
+        Literal literal = node.getFillValue().get();
+        ExpressionAnalyzer.analyzeExpression(
+            metadata,
+            queryContext,
+            sessionContext,
+            statementAnalyzerFactory,
+            accessControl,
+            scope,
+            analysis,
+            literal,
+            WarningCollector.NOOP,
+            correlationSupport);
+        fillAnalysis = new Analysis.ValueFillAnalysis(literal);
+      } else if (node.getFillMethod() == FillPolicy.LINEAR) {
+        FieldReference helperColumn = getHelperColumn(node, scope, FillPolicy.LINEAR);
+        ExpressionAnalyzer.analyzeExpression(
+            metadata,
+            queryContext,
+            sessionContext,
+            statementAnalyzerFactory,
+            accessControl,
+            scope,
+            analysis,
+            helperColumn,
+            WarningCollector.NOOP,
+            correlationSupport);
+        List<FieldReference> groupingKeys = analyzeFillGroup(node, scope, FillPolicy.LINEAR);
+        fillAnalysis = new Analysis.LinearFillAnalysis(helperColumn, groupingKeys);
+      } else {
+        throw new IllegalArgumentException("Unknown fill method: " + node.getFillMethod());
+      }
+
+      analysis.setFill(node, fillAnalysis);
+    }
+
+    private FieldReference getHelperColumn(Fill node, Scope scope, FillPolicy fillMethod) {
+      FieldReference helperColumn;
+      if (node.getTimeColumnIndex().isPresent()) {
+        helperColumn =
+            getFieldReferenceForTimeColumn(node.getTimeColumnIndex().get(), scope, fillMethod);
+      } else {
+        // if user doesn't specify the index of helper column, we use first column whose data type
+        // is TIMESTAMP instead.
+        int index = -1;
+        for (Field field : scope.getRelationType().getVisibleFields()) {
+          if (isTimestampType(field.getType())) {
+            index = scope.getRelationType().indexOf(field);
+            break;
+          }
+        }
+        if (index == -1) {
+          throw new SemanticException(
+              String.format(
+                  "Cannot infer TIME_COLUMN for %s FILL, there exists no column whose type is TIMESTAMP",
+                  fillMethod.name()));
+        }
+        helperColumn = new FieldReference(index);
+      }
+      return helperColumn;
+    }
+
+    private List<FieldReference> analyzeFillGroup(Fill node, Scope scope, FillPolicy fillMethod) {
+      if (node.getFillGroupingElements().isPresent()) {
+        ImmutableList.Builder<FieldReference> groupingFieldsBuilder = ImmutableList.builder();
+        for (LongLiteral index : node.getFillGroupingElements().get()) {
+          FieldReference element = getFieldReferenceForFillGroup(index, scope, fillMethod);
+          groupingFieldsBuilder.add(element);
+          ExpressionAnalyzer.analyzeExpression(
+              metadata,
+              queryContext,
+              sessionContext,
+              statementAnalyzerFactory,
+              accessControl,
+              scope,
+              analysis,
+              element,
+              WarningCollector.NOOP,
+              correlationSupport);
+        }
+        return groupingFieldsBuilder.build();
+      } else {
+        return null;
+      }
+    }
+
+    private FieldReference getFieldReferenceForTimeColumn(
+        LongLiteral index, Scope scope, FillPolicy fillMethod) {
+      long ordinal = index.getParsedValue();
+      if (ordinal < 1 || ordinal > scope.getRelationType().getVisibleFieldCount()) {
+        throw new SemanticException(
+            String.format(
+                "%s FILL TIME_COLUMN position %s is not in select list",
+                fillMethod.name(), ordinal));
+      } else if (!isTimestampType(
+          scope.getRelationType().getFieldByIndex((int) ordinal - 1).getType())) {
+        throw new SemanticException(
+            String.format(
+                "Type of TIME_COLUMN for %s FILL should only be TIMESTAMP, but type of the column you specify is %s",
+                fillMethod.name(),
+                scope.getRelationType().getFieldByIndex((int) ordinal - 1).getType()));
+      } else {
+        return new FieldReference(toIntExact(ordinal - 1));
+      }
+    }
+
+    private FieldReference getFieldReferenceForFillGroup(
+        LongLiteral index, Scope scope, FillPolicy fillMethod) {
+      long ordinal = index.getParsedValue();
+      if (ordinal < 1 || ordinal > scope.getRelationType().getVisibleFieldCount()) {
+        throw new SemanticException(
+            String.format(
+                "%s FILL FILL_GROUP position %s is not in select list",
+                fillMethod.name(), ordinal));
+      } else if (!scope
+          .getRelationType()
+          .getFieldByIndex((int) ordinal - 1)
+          .getType()
+          .isOrderable()) {
+        throw new SemanticException(
+            String.format(
+                "Type %s is not orderable, and therefore cannot be used in FILL_GROUP: %s",
+                scope.getRelationType().getFieldByIndex((int) ordinal - 1).getType(), index));
+      } else {
+        return new FieldReference(toIntExact(ordinal - 1));
       }
     }
 
@@ -2521,7 +4237,7 @@ public class StatementAnalyzer {
       final Set<String> propertyNames = new HashSet<>();
       for (final Property property : properties) {
         final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
-        if (!TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.containsKey(key)) {
+        if (!TABLE_ALLOWED_PROPERTIES.contains(key)) {
           throw new SemanticException("Table property " + key + " is currently not allowed.");
         }
         if (!propertyNames.add(key)) {
@@ -2532,7 +4248,7 @@ public class StatementAnalyzer {
           final Expression value = property.getNonDefaultValue();
           if (!(value instanceof LongLiteral)) {
             throw new SemanticException(
-                "TTL' value must be a LongLiteral, but now is: " + value.toString());
+                "TTL' value must be a 'INF' or a LongLiteral, but now is: " + value.toString());
           }
         }
       }
@@ -2623,9 +4339,15 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateDevice(
+    protected Scope visitCreateOrUpdateDevice(
         final CreateOrUpdateDevice node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(queryContext, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+      if (Objects.isNull(
+          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTable()))) {
+        TableMetadataImpl.throwTableNotExistsException(node.getDatabase(), node.getTable());
+      }
       return null;
     }
 
@@ -2655,7 +4377,12 @@ public class StatementAnalyzer {
 
     private void analyzeQueryDevice(
         final AbstractQueryDeviceWithCache node, final Optional<Scope> context) {
+      node.parseTable(sessionContext);
+      accessControl.checkCanSelectFromTable(
+          sessionContext.getUserName(),
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
+
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       if (!node.parseRawExpression(
@@ -2681,8 +4408,6 @@ public class StatementAnalyzer {
         final AbstractTraverseDevice node,
         final Optional<Scope> context,
         final boolean shallCreateTranslationMap) {
-      node.parseTable(sessionContext);
-
       final String database = node.getDatabase();
       final String tableName = node.getTableName();
 
@@ -2691,8 +4416,7 @@ public class StatementAnalyzer {
       }
 
       if (!metadata.tableExists(new QualifiedObjectName(database, tableName))) {
-        throw new SemanticException(
-            String.format("Table '%s.%s' does not exist.", database, tableName));
+        TableMetadataImpl.throwTableNotExistsException(database, tableName);
       }
       node.setColumnHeaderList();
 
@@ -2702,7 +4426,7 @@ public class StatementAnalyzer {
         final Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
         // This can only be a table
         if (!tableSchema.isPresent()) {
-          throw new SemanticException(String.format("Table '%s' does not exist", name));
+          TableMetadataImpl.throwTableNotExistsException(database, tableName);
         }
 
         final TableSchema originalSchema = tableSchema.get();
@@ -2711,15 +4435,7 @@ public class StatementAnalyzer {
             analyzeTableOutputFields(
                 node.getTable(),
                 name,
-                new TableSchema(
-                    originalSchema.getTableName(),
-                    originalSchema.getColumns().stream()
-                        .filter(
-                            columnSchema ->
-                                columnSchema.getColumnCategory() == TsTableColumnCategory.ID
-                                    || columnSchema.getColumnCategory()
-                                        == TsTableColumnCategory.ATTRIBUTE)
-                        .collect(Collectors.toList()))));
+                new TableSchema(originalSchema.getTableName(), originalSchema.getColumns())));
         final List<Field> fieldList = fields.build();
         final Scope scope = createAndAssignScope(node, context, fieldList);
         translationMap =
@@ -2791,6 +4507,602 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitShowPipePlugins(ShowPipePlugins node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitCreateTopic(CreateTopic node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitDropTopic(DropTopic node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitShowTopics(ShowTopics node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitShowSubscriptions(ShowSubscriptions node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitDropSubscription(DropSubscription node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    public Scope visitTableFunctionInvocation(TableFunctionInvocation node, Optional<Scope> scope) {
+      String functionName = node.getName().toString();
+      TableFunction function = metadata.getTableFunction(functionName);
+
+      // set model fetcher for ForecastTableFunction
+      if (function instanceof ForecastTableFunction) {
+        ((ForecastTableFunction) function).setModelFetcher(metadata.getModelFetcher());
+      }
+
+      Node errorLocation = node;
+      if (!node.getArguments().isEmpty()) {
+        errorLocation = node.getArguments().get(0);
+      }
+
+      ArgumentsAnalysis argumentsAnalysis =
+          analyzeArguments(
+              function.getArgumentsSpecifications(),
+              node.getArguments(),
+              scope,
+              errorLocation,
+              functionName);
+
+      TableFunctionAnalysis functionAnalysis;
+      try {
+        functionAnalysis = function.analyze(argumentsAnalysis.getPassedArguments());
+      } catch (UDFException e) {
+        throw new SemanticException(e.getMessage());
+      }
+
+      // At most one table argument can be passed to a table function now
+      if (argumentsAnalysis.getTableArgumentAnalyses().size() > 1) {
+        throw new SemanticException("At most one table argument can be passed to a table function");
+      }
+
+      // validate the required input columns
+      // <TableArgumentName, TableColumnIndexes>
+      Map<String, List<Integer>> requiredColumns = functionAnalysis.getRequiredColumns();
+      Map<String, TableArgumentAnalysis> tableArgumentsByName =
+          argumentsAnalysis.getTableArgumentAnalyses().stream()
+              .collect(toImmutableMap(TableArgumentAnalysis::getArgumentName, Function.identity()));
+      Set<String> tableArgumentNameSet = ImmutableSet.copyOf(tableArgumentsByName.keySet());
+      requiredColumns.forEach(
+          (name, columns) -> {
+            if (!tableArgumentNameSet.contains(name)) {
+              throw new SemanticException(
+                  String.format(
+                      "Table function %s specifies required columns from table argument %s which cannot be found",
+                      node.getName(), name));
+            }
+            // make sure the required columns are not empty and positive
+            if (columns.isEmpty()) {
+              throw new SemanticException(
+                  String.format(
+                      "Table function %s specifies empty list of required columns from table argument %s",
+                      node.getName(), name));
+            }
+            if (columns.stream().anyMatch(column -> column < 0)) {
+              throw new SemanticException(
+                  String.format(
+                      "Table function %s specifies negative index of required column from table argument %s",
+                      node.getName(), name));
+            }
+            // the scope is recorded, because table arguments are already analyzed
+            Scope inputScope = analysis.getScope(tableArgumentsByName.get(name).getRelation());
+            columns.stream()
+                .filter(column -> column >= inputScope.getRelationType().getVisibleFieldCount())
+                .findFirst()
+                .ifPresent(
+                    column -> {
+                      throw new SemanticException(
+                          String.format(
+                              "Index %s of required column from table argument %s is out of bounds for table with %s columns",
+                              column, name, inputScope.getRelationType().getAllFieldCount()));
+                    });
+            // record the required columns for access control
+            columns.stream()
+                .map(inputScope.getRelationType()::getFieldByIndex)
+                .forEach(this::recordColumnAccess);
+          });
+      // check that all required inputs are specified
+      Set<String> requiredInputs = ImmutableSet.copyOf(requiredColumns.keySet());
+      tableArgumentNameSet.stream()
+          .filter(input -> !requiredInputs.contains(input))
+          .findFirst()
+          .ifPresent(
+              input -> {
+                throw new SemanticException(
+                    String.format(
+                        "Table function %s does not specify required input columns from table argument %s",
+                        node.getName(), input));
+              });
+
+      // The result relation type of a table function consists of:
+      // 1. columns created by the table function, called the proper columns.
+      // 2. passed columns from input tables:
+      // - for tables with the "pass through columns" option, these are all columns of the table,
+      // - for tables without the "pass through columns" option, these are the partitioning columns
+      // of the table, if any.
+      ImmutableList.Builder<Field> fields = ImmutableList.builder();
+      Optional<DescribedSchema> properSchema = functionAnalysis.getProperColumnSchema();
+      properSchema.ifPresent(
+          i ->
+              i.getFields().stream()
+                  .map(
+                      f ->
+                          Field.newUnqualified(
+                              f.getName(),
+                              UDFDataTypeTransformer.transformUDFDataTypeToReadType(f.getType()),
+                              TsTableColumnCategory.FIELD))
+                  .forEach(fields::add));
+
+      // next, columns derived from table arguments, in order of argument declarations
+      List<String> tableArgumentNames =
+          function.getArgumentsSpecifications().stream()
+              .filter(TableParameterSpecification.class::isInstance)
+              .map(ParameterSpecification::getName)
+              .collect(toImmutableList());
+
+      // table arguments in order of argument declarations
+      ImmutableList.Builder<TableArgumentAnalysis> orderedTableArguments = ImmutableList.builder();
+
+      for (String name : tableArgumentNames) {
+        TableArgumentAnalysis argument = tableArgumentsByName.get(name);
+        // analyze arguments will make sure that all table arguments are present
+        checkArgument(argument != null, "Missing table argument: %s", name);
+        orderedTableArguments.add(argument);
+        Scope argumentScope = analysis.getScope(argument.getRelation());
+        if (argument.isPassThroughColumns()) {
+          argumentScope.getRelationType().getAllFields().forEach(fields::add);
+        } else if (argument.getPartitionBy().isPresent()) {
+          argument.getPartitionBy().get().stream()
+              .map(expression -> validateAndGetInputField(expression, argumentScope))
+              .forEach(fields::add);
+        }
+      }
+
+      analysis.setTableFunctionAnalysis(
+          node,
+          new TableFunctionInvocationAnalysis(
+              node.getName().toString(),
+              argumentsAnalysis.getPassedArguments(),
+              functionAnalysis.getTableFunctionHandle(),
+              orderedTableArguments.build(),
+              requiredColumns,
+              properSchema.map(describedSchema -> describedSchema.getFields().size()).orElse(0),
+              functionAnalysis.isRequireRecordSnapshot()));
+
+      return createAndAssignScope(node, scope, fields.build());
+    }
+
+    private String castNameAsSpecification(Set<String> specifiedNames, String passedName) {
+      if (specifiedNames.contains(passedName)) {
+        return passedName;
+      }
+      for (String name : specifiedNames) {
+        if (name.equalsIgnoreCase(passedName)) {
+          return name;
+        }
+      }
+      return null;
+    }
+
+    private ArgumentsAnalysis analyzeArguments(
+        List<ParameterSpecification> parameterSpecifications,
+        List<TableFunctionArgument> arguments,
+        Optional<Scope> scope,
+        Node errorLocation,
+        String functionName) {
+      if (parameterSpecifications.size() < arguments.size()) {
+        throw new SemanticException(
+            String.format(
+                "Too many arguments. Expected at most %s arguments, got %s arguments",
+                parameterSpecifications.size(), arguments.size()));
+      }
+
+      if (parameterSpecifications.isEmpty()) {
+        return new ArgumentsAnalysis(ImmutableMap.of(), ImmutableList.of());
+      }
+
+      boolean argumentsPassedByName =
+          !arguments.isEmpty()
+              && arguments.stream().allMatch(argument -> argument.getName().isPresent());
+      boolean argumentsPassedByPosition =
+          arguments.stream().noneMatch(argument -> argument.getName().isPresent());
+      if (!argumentsPassedByName && !argumentsPassedByPosition) {
+        throw new SemanticException(
+            "All arguments must be passed by name or all must be passed positionally");
+      }
+
+      ImmutableMap.Builder<String, Argument> passedArguments = ImmutableMap.builder();
+      ImmutableList.Builder<TableArgumentAnalysis> tableArgumentAnalyses = ImmutableList.builder();
+      if (argumentsPassedByName) {
+        Map<String, ParameterSpecification> argumentSpecificationsByName = new HashMap<>();
+        for (ParameterSpecification parameterSpecification : parameterSpecifications) {
+          if (argumentSpecificationsByName.put(
+                  parameterSpecification.getName(), parameterSpecification)
+              != null) {
+            // this should never happen, because the argument names are validated at function
+            // registration time
+            throw new IllegalStateException(
+                "Duplicate argument specification for name: " + parameterSpecification.getName());
+          }
+        }
+
+        // append order by time asc for built-in forecast tvf if user doesn't specify order by
+        // clause
+        tryUpdateOrderByForForecastByName(functionName, arguments, argumentSpecificationsByName);
+
+        Set<String> uniqueArgumentNames = new HashSet<>();
+        Set<String> specifiedArgumentNames =
+            ImmutableSet.copyOf(argumentSpecificationsByName.keySet());
+        for (TableFunctionArgument argument : arguments) {
+          // it has been checked that all arguments have different names
+          String argumentName =
+              castNameAsSpecification(
+                  specifiedArgumentNames, argument.getName().get().getCanonicalValue());
+          if (argumentName == null) {
+            throw new SemanticException(
+                String.format("Unexpected argument name: %s", argument.getName().get().getValue()));
+          }
+          if (!uniqueArgumentNames.add(argumentName)) {
+            throw new SemanticException(String.format("Duplicate argument name: %s", argumentName));
+          }
+          ParameterSpecification parameterSpecification =
+              argumentSpecificationsByName.remove(argumentName);
+          ArgumentAnalysis argumentAnalysis =
+              analyzeArgument(parameterSpecification, argument, scope);
+          passedArguments.put(argumentName, argumentAnalysis.getArgument());
+          argumentAnalysis.getTableArgumentAnalysis().ifPresent(tableArgumentAnalyses::add);
+        }
+        // apply defaults for not specified arguments
+        for (Map.Entry<String, ParameterSpecification> entry :
+            argumentSpecificationsByName.entrySet()) {
+          ParameterSpecification parameterSpecification = entry.getValue();
+          passedArguments.put(
+              parameterSpecification.getName(),
+              analyzeDefault(parameterSpecification, errorLocation));
+        }
+      } else {
+        // append order by time asc for built-in forecast tvf if user doesn't specify order by
+        // clause
+        tryUpdateOrderByForForecastByPosition(functionName, arguments, parameterSpecifications);
+        for (int i = 0; i < arguments.size(); i++) {
+          TableFunctionArgument argument = arguments.get(i);
+          ParameterSpecification parameterSpecification = parameterSpecifications.get(i);
+          ArgumentAnalysis argumentAnalysis =
+              analyzeArgument(parameterSpecification, argument, scope);
+          passedArguments.put(parameterSpecification.getName(), argumentAnalysis.getArgument());
+          argumentAnalysis.getTableArgumentAnalysis().ifPresent(tableArgumentAnalyses::add);
+        }
+        // apply defaults for not specified arguments
+        for (int i = arguments.size(); i < parameterSpecifications.size(); i++) {
+          ParameterSpecification parameterSpecification = parameterSpecifications.get(i);
+          passedArguments.put(
+              parameterSpecification.getName(),
+              analyzeDefault(parameterSpecification, errorLocation));
+        }
+      }
+      return new ArgumentsAnalysis(passedArguments.buildOrThrow(), tableArgumentAnalyses.build());
+    }
+
+    // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
+    private void tryUpdateOrderByForForecastByName(
+        String functionName,
+        List<TableFunctionArgument> arguments,
+        Map<String, ParameterSpecification> argumentSpecificationsByName) {
+      if (TableBuiltinTableFunction.FORECAST.getFunctionName().equalsIgnoreCase(functionName)) {
+        String timeColumn =
+            (String)
+                argumentSpecificationsByName.get(TIMECOL_PARAMETER_NAME).getDefaultValue().get();
+        for (TableFunctionArgument argument : arguments) {
+          if (TIMECOL_PARAMETER_NAME.equalsIgnoreCase(argument.getName().get().getValue())) {
+            if (argument.getValue() instanceof StringLiteral) {
+              timeColumn = ((StringLiteral) argument.getValue()).getValue();
+            }
+          }
+        }
+        tryUpdateOrderByForForecast(arguments, timeColumn);
+      }
+    }
+
+    // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
+    private void tryUpdateOrderByForForecastByPosition(
+        String functionName,
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications) {
+      if (TableBuiltinTableFunction.FORECAST.getFunctionName().equalsIgnoreCase(functionName)) {
+        int position = -1;
+        String timeColumn = null;
+        for (int i = 0, size = parameterSpecifications.size(); i < size; i++) {
+          if (TIMECOL_PARAMETER_NAME.equalsIgnoreCase(parameterSpecifications.get(i).getName())) {
+            position = i;
+            timeColumn = (String) parameterSpecifications.get(i).getDefaultValue().get();
+            break;
+          }
+        }
+        if (position == -1) {
+          throw new IllegalStateException(
+              "ForecastTableFunction must contain ForecastTableFunction.TIMECOL_PARAMETER_NAME");
+        }
+        if (position < arguments.size()
+            && arguments.get(position).getValue() instanceof StringLiteral) {
+          timeColumn = ((StringLiteral) arguments.get(position).getValue()).getValue();
+        }
+        tryUpdateOrderByForForecast(arguments, timeColumn);
+      }
+    }
+
+    // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
+    private void tryUpdateOrderByForForecast(
+        List<TableFunctionArgument> arguments, String timeColumn) {
+      if (timeColumn == null || timeColumn.isEmpty()) {
+        throw new SemanticException(
+            String.format("%s should never be null or empty.", TIMECOL_PARAMETER_NAME));
+      }
+      for (TableFunctionArgument argument : arguments) {
+        if (argument.getValue() instanceof TableFunctionTableArgument) {
+          TableFunctionTableArgument input = (TableFunctionTableArgument) argument.getValue();
+          if (!input.getOrderBy().isPresent()) {
+            input.updateOrderBy(
+                new OrderBy(
+                    Collections.singletonList(
+                        new SortItem(
+                            new Identifier(timeColumn.toLowerCase(ENGLISH)),
+                            SortItem.Ordering.ASCENDING,
+                            SortItem.NullOrdering.FIRST))));
+          }
+        }
+      }
+    }
+
+    private ArgumentAnalysis analyzeArgument(
+        ParameterSpecification parameterSpecification,
+        TableFunctionArgument argument,
+        Optional<Scope> scope) {
+      String actualType;
+      if (argument.getValue() instanceof TableFunctionTableArgument) {
+        actualType = "table";
+      } else if (argument.getValue() instanceof Expression) {
+        actualType = "expression";
+      } else {
+        throw new SemanticException(
+            String.format(
+                "Unexpected table function argument type: %s",
+                argument.getClass().getSimpleName()));
+      }
+
+      if (parameterSpecification instanceof TableParameterSpecification) {
+        if (!(argument.getValue() instanceof TableFunctionTableArgument)) {
+          throw new SemanticException(
+              String.format(
+                  "Invalid argument %s. Expected table argument, got %s",
+                  parameterSpecification.getName(), actualType));
+        }
+        return analyzeTableArgument(
+            (TableFunctionTableArgument) argument.getValue(),
+            (TableParameterSpecification) parameterSpecification,
+            scope);
+      } else if (parameterSpecification instanceof ScalarParameterSpecification) {
+        if (!(argument.getValue() instanceof Expression)) {
+          throw new SemanticException(
+              String.format(
+                  "Invalid argument %s. Expected scalar argument, got %s",
+                  parameterSpecification.getName(), actualType));
+        }
+        return analyzeScalarArgument(
+            (Expression) argument.getValue(),
+            (ScalarParameterSpecification) parameterSpecification);
+      } else {
+        throw new IllegalStateException(
+            "Unexpected argument specification: "
+                + parameterSpecification.getClass().getSimpleName());
+      }
+    }
+
+    private ArgumentAnalysis analyzeTableArgument(
+        TableFunctionTableArgument tableArgument,
+        TableParameterSpecification argumentSpecification,
+        Optional<Scope> scope) {
+      List<Optional<String>> fieldNames;
+      List<org.apache.iotdb.udf.api.type.Type> fieldTypes;
+      List<String> partitionBy = Collections.emptyList();
+      List<String> orderBy = Collections.emptyList();
+
+      TableArgumentAnalysis.Builder analysisBuilder = TableArgumentAnalysis.builder();
+      analysisBuilder.withArgumentName(argumentSpecification.getName());
+
+      // process the relation
+      Relation relation = tableArgument.getTable();
+      analysisBuilder.withRelation(relation);
+      Scope argumentScope = process(relation, scope);
+      QualifiedName relationName = analysis.getRelationName(relation);
+      if (relationName != null) {
+        analysisBuilder.withName(relationName);
+      }
+
+      // analyze field
+      Collection<Field> fields = argumentScope.getRelationType().getVisibleFields();
+      fieldNames = fields.stream().map(Field::getName).collect(toImmutableList());
+      fieldTypes =
+          fields.stream()
+              .map(Field::getType)
+              .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
+              .collect(toImmutableList());
+
+      // analyze PARTITION BY
+      if (tableArgument.getPartitionBy().isPresent()) {
+        if (argumentSpecification.isRowSemantics()) {
+          throw new SemanticException(
+              String.format(
+                  "Invalid argument %s. Partitioning can not be specified for table argument with row semantics",
+                  argumentSpecification.getName()));
+        }
+        List<Expression> partitionByExpression = tableArgument.getPartitionBy().get();
+        analysisBuilder.withPartitionBy(partitionByExpression);
+        partitionByExpression.forEach(
+            partitioningColumn -> {
+              validateAndGetInputField(partitioningColumn, argumentScope);
+              Type type =
+                  analyzeExpression(partitioningColumn, argumentScope).getType(partitioningColumn);
+              if (!type.isComparable()) {
+                throw new SemanticException(
+                    String.format(
+                        "%s is not comparable, and therefore cannot be used in PARTITION BY",
+                        type));
+              }
+            });
+        partitionBy =
+            partitionByExpression.stream()
+                .map(
+                    expression -> {
+                      if (expression instanceof Identifier) {
+                        return ((Identifier) expression).getValue();
+                      } else if (expression instanceof DereferenceExpression) {
+                        return expression.toString();
+                      } else {
+                        throw new IllegalStateException(
+                            "Unexpected partitionBy expression: " + expression);
+                      }
+                    })
+                .collect(toImmutableList());
+      }
+
+      // analyze ORDER BY
+      if (tableArgument.getOrderBy().isPresent()) {
+        if (argumentSpecification.isRowSemantics()) {
+          throw new SemanticException(
+              String.format(
+                  "Invalid argument %s. Ordering can not be specified for table argument with row semantics",
+                  argumentSpecification.getName()));
+        }
+        OrderBy orderByExpression = tableArgument.getOrderBy().get();
+        analysisBuilder.withOrderBy(orderByExpression);
+        orderByExpression.getSortItems().stream()
+            .map(SortItem::getSortKey)
+            .forEach(
+                orderingColumn -> {
+                  validateAndGetInputField(orderingColumn, argumentScope);
+                  Type type =
+                      analyzeExpression(orderingColumn, argumentScope).getType(orderingColumn);
+                  if (!type.isOrderable()) {
+                    throw new SemanticException(
+                        String.format(
+                            "%s is not orderable, and therefore cannot be used in ORDER BY", type));
+                  }
+                });
+        orderBy =
+            orderByExpression.getSortItems().stream()
+                .map(SortItem::getSortKey)
+                .map(
+                    expression -> {
+                      if (expression instanceof Identifier) {
+                        return ((Identifier) expression).getValue();
+                      } else if (expression instanceof DereferenceExpression) {
+                        return expression.toString();
+                      } else {
+                        throw new IllegalStateException(
+                            "Unexpected orderBy expression: " + expression);
+                      }
+                    })
+                .collect(toImmutableList());
+      }
+
+      // record remaining properties
+      analysisBuilder.withRowSemantics(argumentSpecification.isRowSemantics());
+      analysisBuilder.withPassThroughColumns(argumentSpecification.isPassThroughColumns());
+
+      return new ArgumentAnalysis(
+          new TableArgument(
+              fieldNames, fieldTypes, partitionBy, orderBy, argumentSpecification.isRowSemantics()),
+          Optional.of(analysisBuilder.build()));
+    }
+
+    private ArgumentAnalysis analyzeScalarArgument(
+        Expression expression, ScalarParameterSpecification argumentSpecification) {
+      // currently, only constant arguments are supported
+      Object constantValue =
+          IrExpressionInterpreter.evaluateConstantExpression(
+              expression, new PlannerContext(metadata, typeManager), sessionContext);
+      if (!argumentSpecification.getType().checkObjectType(constantValue)) {
+        if ((argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.STRING)
+                || argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.TEXT))
+            && constantValue instanceof Binary) {
+          constantValue = ((Binary) constantValue).getStringValue(TSFileConfig.STRING_CHARSET);
+        } else if (argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.INT32)
+            && constantValue instanceof Long) {
+          constantValue = ((Long) constantValue).intValue();
+        } else {
+          throw new SemanticException(
+              String.format(
+                  "Invalid scalar argument value. Expected type %s, got %s",
+                  argumentSpecification.getType(), constantValue.getClass().getSimpleName()));
+        }
+      }
+      for (Function<Object, String> checker : argumentSpecification.getCheckers()) {
+        String errMsg = checker.apply(constantValue);
+        if (errMsg != null) {
+          throw new SemanticException(
+              String.format(
+                  "Invalid scalar argument %s, %s", argumentSpecification.getName(), errMsg));
+        }
+      }
+      return new ArgumentAnalysis(
+          new ScalarArgument(argumentSpecification.getType(), constantValue), Optional.empty());
+    }
+
+    private Argument analyzeDefault(
+        ParameterSpecification parameterSpecification, Node errorLocation) {
+      if (parameterSpecification.isRequired()) {
+        throw new SemanticException(
+            String.format("Missing required argument: %s", parameterSpecification.getName()));
+      }
+      checkArgument(
+          !(parameterSpecification instanceof TableParameterSpecification),
+          "Table argument specification cannot have a default value.");
+
+      if (parameterSpecification instanceof ScalarParameterSpecification) {
+        checkArgument(
+            parameterSpecification.getDefaultValue().isPresent(),
+            String.format(
+                "Missing default value for scalar argument: %s", parameterSpecification.getName()));
+        return new ScalarArgument(
+            ((ScalarParameterSpecification) parameterSpecification).getType(),
+            parameterSpecification.getDefaultValue().get());
+      } else {
+        throw new IllegalStateException(
+            "Unexpected argument specification: "
+                + parameterSpecification.getClass().getSimpleName());
+      }
+    }
+
+    private Field validateAndGetInputField(Expression expression, Scope inputScope) {
+      QualifiedName qualifiedName;
+      if (expression instanceof Identifier) {
+        qualifiedName = QualifiedName.of(ImmutableList.of((Identifier) expression));
+      } else if (expression instanceof DereferenceExpression) {
+        qualifiedName = getQualifiedName((DereferenceExpression) expression);
+      } else {
+        throw new SemanticException(
+            String.format("Expected column reference. Actual: %s", expression));
+      }
+      Optional<ResolvedField> field = inputScope.tryResolveField(expression, qualifiedName);
+      if (!field.isPresent() || !field.get().isLocal()) {
+        throw new SemanticException(
+            String.format("Column %s is not present in the input relation", expression));
+      }
+
+      return field.get().getField();
     }
   }
 

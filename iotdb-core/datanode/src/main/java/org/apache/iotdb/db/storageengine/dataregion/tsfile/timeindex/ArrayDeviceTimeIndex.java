@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -43,6 +43,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -86,6 +87,10 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     this.startTimes = startTimes;
     this.endTimes = endTimes;
     this.deviceToIndex = deviceToIndex;
+
+    // The TSFileResource file is judged to be empty based on MaxEndTime and MinStartTime, so the
+    // construction of TimeIndex needs to update MaxEndTime and MinStartTime.
+    updateMinStartTimeAndMaxEndTime();
   }
 
   @Override
@@ -165,6 +170,18 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     return deviceToIndex.keySet();
   }
 
+  public Map<IDeviceID, Integer> getDeviceToIndex() {
+    return deviceToIndex;
+  }
+
+  public long[] getEndTimes() {
+    return endTimes;
+  }
+
+  public long[] getStartTimes() {
+    return startTimes;
+  }
+
   /**
    * Deserialize TimeIndex and get devices only.
    *
@@ -222,11 +239,11 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
       index = deviceToIndex.get(deviceId);
     } else {
       index = deviceToIndex.size();
-      deviceToIndex.put(deviceId, index);
       if (startTimes.length <= index) {
         startTimes = enLargeArray(startTimes, Long.MAX_VALUE);
         endTimes = enLargeArray(endTimes, Long.MIN_VALUE);
       }
+      deviceToIndex.put(deviceId, index);
     }
     return index;
   }
@@ -306,9 +323,10 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
 
   @Override
   public void updateStartTime(IDeviceID deviceId, long time) {
-    long startTime = getStartTime(deviceId);
+    int index = getDeviceIndex(deviceId);
+    @SuppressWarnings("OptionalGetWithoutIsPresent") // must present after getDeviceIndex
+    long startTime = getStartTime(deviceId).get();
     if (time < startTime) {
-      int index = getDeviceIndex(deviceId);
       startTimes[index] = time;
     }
     minStartTime = Math.min(minStartTime, time);
@@ -316,12 +334,29 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
 
   @Override
   public void updateEndTime(IDeviceID deviceId, long time) {
-    long endTime = getEndTime(deviceId);
+    int index = getDeviceIndex(deviceId);
+    @SuppressWarnings("OptionalGetWithoutIsPresent") // must present after getDeviceIndex
+    long endTime = getEndTime(deviceId).get();
     if (time > endTime) {
-      int index = getDeviceIndex(deviceId);
       endTimes[index] = time;
     }
     maxEndTime = Math.max(maxEndTime, time);
+  }
+
+  private void updateMinStartTimeAndMaxEndTime() {
+    for (Map.Entry<IDeviceID, Integer> entry : deviceToIndex.entrySet()) {
+      if (entry.getValue() == null) {
+        continue;
+      }
+
+      if (endTimes != null) {
+        maxEndTime = Math.max(maxEndTime, endTimes[entry.getValue()]);
+      }
+
+      if (startTimes != null) {
+        minStartTime = Math.min(minStartTime, startTimes[entry.getValue()]);
+      }
+    }
   }
 
   @Override
@@ -339,19 +374,23 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getStartTime(IDeviceID deviceId) {
-    if (!deviceToIndex.containsKey(deviceId)) {
-      return Long.MAX_VALUE;
+  public Optional<Long> getStartTime(IDeviceID deviceId) {
+    Integer index = deviceToIndex.get(deviceId);
+    if (index == null) {
+      return Optional.empty();
+    } else {
+      return Optional.of(startTimes[index]);
     }
-    return startTimes[deviceToIndex.get(deviceId)];
   }
 
   @Override
-  public long getEndTime(IDeviceID deviceId) {
-    if (!deviceToIndex.containsKey(deviceId)) {
-      return Long.MIN_VALUE;
+  public Optional<Long> getEndTime(IDeviceID deviceId) {
+    Integer index = deviceToIndex.get(deviceId);
+    if (index == null) {
+      return Optional.empty();
+    } else {
+      return Optional.of(endTimes[index]);
     }
-    return endTimes[deviceToIndex.get(deviceId)];
   }
 
   @Override
@@ -388,7 +427,8 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
 
   @Override
   public boolean isDeviceAlive(IDeviceID device, long ttl) {
-    return endTimes[deviceToIndex.get(device)] >= CommonDateTimeUtils.currentTime() - ttl;
+    return ttl == Long.MAX_VALUE
+        || endTimes[deviceToIndex.get(device)] >= CommonDateTimeUtils.currentTime() - ttl;
   }
 
   @Override

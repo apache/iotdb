@@ -26,16 +26,16 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 
 import java.util.List;
 import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.ANALYZER;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 
 public class Analyzer {
 
@@ -47,6 +47,8 @@ public class Analyzer {
 
   private final Map<NodeRef<Parameter>, Expression> parameterLookup;
 
+  private final StatementRewrite statementRewrite;
+
   private final WarningCollector warningCollector;
 
   public Analyzer(
@@ -55,6 +57,7 @@ public class Analyzer {
       final StatementAnalyzerFactory statementAnalyzerFactory,
       final List<Expression> parameters,
       final Map<NodeRef<Parameter>, Expression> parameterLookup,
+      final StatementRewrite statementRewrite,
       final WarningCollector warningCollector) {
     this.context = context;
     this.session = requireNonNull(session, "session is null");
@@ -62,13 +65,27 @@ public class Analyzer {
         requireNonNull(statementAnalyzerFactory, "statementAnalyzerFactory is null");
     this.parameters = parameters;
     this.parameterLookup = parameterLookup;
+    this.statementRewrite = statementRewrite;
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
   }
 
   public Analysis analyze(Statement statement) {
-    Analysis analysis = new Analysis(statement, parameterLookup);
-    if (statement instanceof WrappedInsertStatement) {
-      WrappedInsertStatement insertStatement = (WrappedInsertStatement) statement;
+    Statement rewrittenStatement =
+        statementRewrite.rewrite(
+            statementAnalyzerFactory,
+            session,
+            statement,
+            parameters,
+            parameterLookup,
+            warningCollector);
+
+    Analysis analysis = new Analysis(rewrittenStatement, parameterLookup);
+    Statement innerStatement =
+        rewrittenStatement instanceof PipeEnriched
+            ? ((PipeEnriched) rewrittenStatement).getInnerStatement()
+            : rewrittenStatement;
+    if (innerStatement instanceof WrappedInsertStatement) {
+      WrappedInsertStatement insertStatement = (WrappedInsertStatement) innerStatement;
       if (insertStatement.getDatabase() != null) {
         analysis.setDatabaseName(insertStatement.getDatabase());
       } else if (session.getDatabaseName().isPresent()) {
@@ -85,22 +102,12 @@ public class Analyzer {
         statementAnalyzerFactory.createStatementAnalyzer(
             analysis, context, session, warningCollector, CorrelationSupport.ALLOWED);
 
-    analyzer.analyze(statement);
-    if (statement instanceof Query) {
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, ANALYZER, System.nanoTime() - startTime);
+    analyzer.analyze(rewrittenStatement);
+    if (analysis.isQuery()) {
+      long analyzeCost = System.nanoTime() - startTime;
+      QueryPlanCostMetricSet.getInstance().recordTreePlanCost(ANALYZER, analyzeCost);
+      context.setAnalyzeCost(analyzeCost);
     }
-
-    // TODO access control
-    // check column access permissions for each table
-    //    analysis.getTableColumnReferences().forEach((accessControlInfo, tableColumnReferences) ->
-    //        tableColumnReferences.forEach((tableName, columns) ->
-    //            accessControlInfo.getAccessControl().checkCanSelectFromColumns(
-    //                accessControlInfo.getSecurityContext(session.getRequiredTransactionId(),
-    // session.getQueryId(),
-    //                    session.getStart()),
-    //                tableName,
-    //                columns)));
 
     return analysis;
   }

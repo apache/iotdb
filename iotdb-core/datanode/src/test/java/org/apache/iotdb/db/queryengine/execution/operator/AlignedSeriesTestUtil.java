@@ -146,35 +146,35 @@ public class AlignedSeriesTestUtil {
     fileWriter.registerTimeseries(new Path(device2), measurementSchemas);
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
 
-      TSRecord record = new TSRecord(i, device0);
+      TSRecord record = new TSRecord(device0, i);
       int index = 0;
       for (IMeasurementSchema measurementSchema : measurementSchemas) {
         record.addTuple(
             DataPoint.getDataPoint(
                 measurementSchema.getType(),
-                measurementSchema.getMeasurementId(),
+                measurementSchema.getMeasurementName(),
                 index == 0
                     ? String.valueOf((i + valueOffset) % 2 == 0)
                     : String.valueOf((i + valueOffset))));
         index++;
       }
-      fileWriter.writeAligned(record);
+      fileWriter.writeRecord(record);
       tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device0), i);
       tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device0), i);
 
       record.deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device1);
-      fileWriter.writeAligned(record);
+      fileWriter.writeRecord(record);
       tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device1), i);
       tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device1), i);
 
       record.deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device2);
-      fileWriter.write(record);
+      fileWriter.writeRecord(record);
       tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device2), i);
       tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device2), i);
 
       long flushInterval = 20;
       if ((i + 1) % flushInterval == 0) {
-        fileWriter.flushAllChunkGroups();
+        fileWriter.flush();
       }
     }
     fileWriter.close();

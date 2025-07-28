@@ -49,4 +49,17 @@ public class EndsWithColumnTransformer extends UnaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        byte[] currentValue = column.getBinary(i).getValues();
+        columnBuilder.writeBoolean(
+            equalCompare(currentValue, suffix, currentValue.length - suffix.length));
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
 }

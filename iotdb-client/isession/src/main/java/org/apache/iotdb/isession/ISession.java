@@ -25,16 +25,17 @@ import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -65,13 +66,21 @@ public interface ISession extends AutoCloseable {
       INodeSupplier nodeSupplier)
       throws IoTDBConnectionException;
 
+  void open(
+      boolean enableRPCCompression,
+      int connectionTimeoutInMs,
+      Map<String, TEndPoint> deviceIdToEndpoint,
+      Map<IDeviceID, TEndPoint> tabletModelDeviceIdToEndpoint,
+      INodeSupplier nodeSupplier)
+      throws IoTDBConnectionException;
+
   void close() throws IoTDBConnectionException;
 
-  String getTimeZone();
+  String getTimeZone() throws IoTDBConnectionException;
 
   void setTimeZone(String zoneId) throws StatementExecutionException, IoTDBConnectionException;
 
-  void setTimeZoneOfSession(String zoneId);
+  void setTimeZoneOfSession(String zoneId) throws IoTDBConnectionException;
 
   /**
    * @deprecated Use {@link #createDatabase(String)} instead.
@@ -177,6 +186,9 @@ public interface ISession extends AutoCloseable {
   SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException;
 
+  SessionDataSet executeFastLastDataQueryForOnePrefixPath(final List<String> prefixes)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException;
+
   SessionDataSet executeLastDataQueryForOneDevice(
       String db, String device, List<String> sensors, boolean isLegalPathNodes)
       throws StatementExecutionException, IoTDBConnectionException;
@@ -213,15 +225,6 @@ public interface ISession extends AutoCloseable {
       Object... values)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  void insertRelationalRecord(
-      String tableName,
-      long time,
-      List<String> measurements,
-      List<TSDataType> types,
-      List<ColumnType> columnCategories,
-      Object... values)
-      throws IoTDBConnectionException, StatementExecutionException;
-
   void insertRecord(
       String deviceId,
       long time,
@@ -241,7 +244,7 @@ public interface ISession extends AutoCloseable {
   void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  String getTimestampPrecision() throws TException;
+  String getTimestampPrecision() throws TException, IoTDBConnectionException;
 
   void insertAlignedRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
@@ -344,12 +347,6 @@ public interface ISession extends AutoCloseable {
   void insertTablet(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException;
 
   void insertTablet(Tablet tablet, boolean sorted)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertRelationalTablet(Tablet tablet, boolean sorted)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertRelationalTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException;
 
   void insertAlignedTablet(Tablet tablet)

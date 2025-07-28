@@ -19,8 +19,8 @@
 package org.apache.iotdb.confignode.consensus.response.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.iotdb.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.donothing.DoNothingProcessor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.iotdb.IoTDBSource;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.confignode.consensus.response.pipe.plugin.PipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
@@ -32,6 +32,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class PipePluginTableRespTest {
@@ -40,10 +41,11 @@ public class PipePluginTableRespTest {
   public void testConvertToThriftResponse() throws IOException {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<PipePluginMeta> pipePluginMetaList = new ArrayList<>();
-    pipePluginMetaList.add(new PipePluginMeta("iotdb-extractor", IoTDBExtractor.class.getName()));
+    pipePluginMetaList.add(new PipePluginMeta("iotdb-extractor", IoTDBSource.class.getName()));
     pipePluginMetaList.add(
         new PipePluginMeta("do-nothing-processor", DoNothingProcessor.class.getName()));
-    PipePluginTableResp pipePluginTableResp = new PipePluginTableResp(status, pipePluginMetaList);
+    PipePluginTableResp pipePluginTableResp =
+        new PipePluginTableResp(status, pipePluginMetaList, Collections.emptyMap());
 
     final List<ByteBuffer> pipePluginByteBuffers = new ArrayList<>();
     for (PipePluginMeta pipePluginMeta : pipePluginMetaList) {

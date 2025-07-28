@@ -31,7 +31,7 @@ public class ConsensusGroupCacheTest {
     ConsensusGroupCache consensusGroupCache = new ConsensusGroupCache();
     ConsensusGroupHeartbeatSample sample = new ConsensusGroupHeartbeatSample(1L, 1);
     consensusGroupCache.cacheHeartbeatSample(sample);
-    consensusGroupCache.updateCurrentStatistics();
+    consensusGroupCache.updateCurrentStatistics(false);
     Assert.assertEquals(1, consensusGroupCache.getLeaderId());
   }
 }

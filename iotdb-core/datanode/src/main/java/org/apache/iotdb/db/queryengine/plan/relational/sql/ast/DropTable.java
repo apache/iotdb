@@ -31,17 +31,17 @@ public class DropTable extends Statement {
 
   private final QualifiedName tableName;
   private final boolean exists;
+  private final boolean isView;
 
-  public DropTable(QualifiedName tableName, boolean exists) {
-    super(null);
-    this.tableName = requireNonNull(tableName, "tableName is null");
-    this.exists = exists;
-  }
-
-  public DropTable(NodeLocation location, QualifiedName tableName, boolean exists) {
+  public DropTable(
+      final NodeLocation location,
+      final QualifiedName tableName,
+      final boolean exists,
+      final boolean isView) {
     super(requireNonNull(location, "location is null"));
     this.tableName = requireNonNull(tableName, "tableName is null");
     this.exists = exists;
+    this.isView = isView;
   }
 
   public QualifiedName getTableName() {
@@ -52,8 +52,12 @@ public class DropTable extends Statement {
     return exists;
   }
 
+  public boolean isView() {
+    return isView;
+  }
+
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitDropTable(this, context);
   }
 
@@ -68,14 +72,14 @@ public class DropTable extends Statement {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    DropTable o = (DropTable) obj;
+    final DropTable o = (DropTable) obj;
     return Objects.equals(tableName, o.tableName) && (exists == o.exists);
   }
 

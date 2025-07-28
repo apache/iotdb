@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
@@ -17,24 +22,30 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ID;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 
 /**
  * <b>Optimization phase:</b> Logical plan planning.
@@ -49,8 +60,7 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
 
   @Override
   public PlanNode optimize(PlanNode plan, PlanOptimizer.Context context) {
-    if (!(context.getAnalysis().getStatement() instanceof Query)
-        || !context.getAnalysis().hasAggregates()) {
+    if (!context.getAnalysis().isQuery() || !context.getAnalysis().containsAggregationQuery()) {
       return plan;
     }
 
@@ -103,13 +113,13 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
 
     @Override
     public List<Symbol> visitMergeSort(MergeSortNode node, GroupContext context) {
-      return node.getChildren().get(0).accept(this, context);
+      return getMatchedPrefixSymbols(context, node.getOrderingScheme());
     }
 
-    @Override
-    public List<Symbol> visitSort(SortNode node, GroupContext context) {
+    private List<Symbol> getMatchedPrefixSymbols(
+        GroupContext context, OrderingScheme orderingScheme) {
       Set<Symbol> expectedGroupingKeys = context.groupingKeys;
-      List<Symbol> orderKeys = node.getOrderingScheme().getOrderBy();
+      List<Symbol> orderKeys = orderingScheme.getOrderBy();
       for (int i = 0; i < orderKeys.size(); i++) {
         if (!expectedGroupingKeys.contains(orderKeys.get(i))) {
           return orderKeys.subList(0, i);
@@ -119,7 +129,47 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
     }
 
     @Override
-    public List<Symbol> visitTableScan(TableScanNode node, GroupContext context) {
+    public List<Symbol> visitProject(ProjectNode node, GroupContext context) {
+      if (ImmutableSet.copyOf(node.getOutputSymbols()).containsAll(context.groupingKeys)) {
+        return node.getChild().accept(this, context);
+      }
+      return ImmutableList.of();
+    }
+
+    @Override
+    public List<Symbol> visitFill(FillNode node, GroupContext context) {
+      if (node instanceof ValueFillNode) {
+        return ImmutableList.of();
+      }
+      return node.getChild().accept(this, context);
+    }
+
+    @Override
+    public List<Symbol> visitSort(SortNode node, GroupContext context) {
+      return getMatchedPrefixSymbols(context, node.getOrderingScheme());
+    }
+
+    @Override
+    public List<Symbol> visitTableFunctionProcessor(
+        TableFunctionProcessorNode node, GroupContext context) {
+      if (node.getChildren().isEmpty()) {
+        return ImmutableList.of();
+      } else if (node.isRowSemantic()) {
+        return visitPlan(node, context);
+      }
+      Optional<DataOrganizationSpecification> dataOrganizationSpecification =
+          node.getDataOrganizationSpecification();
+      return dataOrganizationSpecification
+          .<List<Symbol>>map(
+              organizationSpecification ->
+                  organizationSpecification.getPartitionBy().stream()
+                      .filter(context.groupingKeys::contains)
+                      .collect(Collectors.toList()))
+          .orElseGet(ImmutableList::of);
+    }
+
+    @Override
+    public List<Symbol> visitDeviceTableScan(DeviceTableScanNode node, GroupContext context) {
       Set<Symbol> expectedGroupingKeys = context.groupingKeys;
       Map<Symbol, ColumnSchema> assignments = node.getAssignments();
       return expectedGroupingKeys.stream()
@@ -127,7 +177,7 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
               k -> {
                 ColumnSchema columnSchema = assignments.get(k);
                 if (columnSchema != null) {
-                  return columnSchema.getColumnCategory() == ID
+                  return columnSchema.getColumnCategory() == TAG
                       || columnSchema.getColumnCategory() == ATTRIBUTE;
                 }
                 return false;

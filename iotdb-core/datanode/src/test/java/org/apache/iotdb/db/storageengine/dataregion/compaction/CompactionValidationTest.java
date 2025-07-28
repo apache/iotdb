@@ -26,14 +26,12 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -100,26 +98,23 @@ public class CompactionValidationTest {
       long startValue)
       throws IOException, WriteProcessException {
     Tablet tablet = new Tablet(deviceId, schemas);
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
     long sensorNum = schemas.size();
 
     for (long r = 0; r < rowNum; r++, startValue++) {
-      int row = tablet.rowSize++;
-      timestamps[row] = startTime++;
+      int row = tablet.getRowSize();
+      tablet.addTimestamp(row, startTime++);
       for (int i = 0; i < sensorNum; i++) {
-        Binary[] textSensor = (Binary[]) values[i];
-        textSensor[row] = new Binary("testString.........", TSFileConfig.STRING_CHARSET);
+        tablet.addValue(row, i, "testString.........");
       }
       // write
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        tsFileWriter.write(tablet);
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+        tsFileWriter.writeTree(tablet);
         tablet.reset();
       }
     }
     // write
-    if (tablet.rowSize != 0) {
-      tsFileWriter.write(tablet);
+    if (tablet.getRowSize() != 0) {
+      tsFileWriter.writeTree(tablet);
       tablet.reset();
     }
   }
@@ -203,7 +198,7 @@ public class CompactionValidationTest {
       writeOneFile(path);
       if (i == 5) {
         RandomAccessFile randomAccessFile = new RandomAccessFile(path, "rw");
-        randomAccessFile.seek(randomAccessFile.length() - 100);
+        randomAccessFile.seek(randomAccessFile.length() - 130);
         randomAccessFile.write(new byte[] {1, 2, 3, 4, 5, 6, 7, 8});
         randomAccessFile.close();
       }

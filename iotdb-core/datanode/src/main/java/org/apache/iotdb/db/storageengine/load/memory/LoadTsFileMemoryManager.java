@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.load.memory;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
 import org.slf4j.Logger;
@@ -82,22 +82,36 @@ public class LoadTsFileMemoryManager {
   }
 
   public synchronized void releaseToQuery(long sizeInBytes) {
-    usedMemorySizeInBytes.addAndGet(-sizeInBytes);
-    QUERY_ENGINE_MEMORY_MANAGER.releaseToFreeMemoryForOperators(sizeInBytes);
+    if (usedMemorySizeInBytes.get() < sizeInBytes) {
+      LOGGER.error(
+          "Load: Attempting to release more memory ({}) than allocated ({})",
+          sizeInBytes,
+          usedMemorySizeInBytes.get());
+    }
+    final long sizeToRelease = Math.min(sizeInBytes, usedMemorySizeInBytes.get());
+    usedMemorySizeInBytes.addAndGet(-sizeToRelease);
+    QUERY_ENGINE_MEMORY_MANAGER.releaseToFreeMemoryForOperators(sizeToRelease);
     this.notifyAll();
   }
 
-  public synchronized LoadTsFileAnalyzeSchemaMemoryBlock allocateAnalyzeSchemaMemoryBlock(
-      long sizeInBytes) throws LoadRuntimeOutOfMemoryException {
+  public synchronized LoadTsFileMemoryBlock allocateMemoryBlock(long sizeInBytes)
+      throws LoadRuntimeOutOfMemoryException {
     try {
       forceAllocateFromQuery(sizeInBytes);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Load: Allocated MemoryBlock from query engine, size: {}", sizeInBytes);
+      }
     } catch (LoadRuntimeOutOfMemoryException e) {
       if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(sizeInBytes)) {
-        return new LoadTsFileAnalyzeSchemaMemoryBlock(sizeInBytes);
+        LOGGER.info(
+            "Load: Query engine's memory is not sufficient, allocated MemoryBlock from DataCacheMemoryBlock, size: {}",
+            sizeInBytes);
+        usedMemorySizeInBytes.addAndGet(sizeInBytes);
+        return new LoadTsFileMemoryBlock(sizeInBytes);
       }
       throw e;
     }
-    return new LoadTsFileAnalyzeSchemaMemoryBlock(sizeInBytes);
+    return new LoadTsFileMemoryBlock(sizeInBytes);
   }
 
   /**
@@ -105,9 +119,18 @@ public class LoadTsFileMemoryManager {
    *
    * @throws LoadRuntimeOutOfMemoryException if failed to allocate enough memory
    */
-  synchronized void forceResize(LoadTsFileAnalyzeSchemaMemoryBlock memoryBlock, long newSizeInBytes)
+  synchronized void forceResize(LoadTsFileMemoryBlock memoryBlock, long newSizeInBytes)
       throws LoadRuntimeOutOfMemoryException {
     if (memoryBlock.getTotalMemorySizeInBytes() >= newSizeInBytes) {
+
+      if (memoryBlock.getMemoryUsageInBytes() > newSizeInBytes) {
+        LOGGER.error(
+            "Load: Failed to setTotalMemorySizeInBytes memory block {} to {} bytes, current memory usage {} bytes",
+            memoryBlock,
+            newSizeInBytes,
+            memoryBlock.getMemoryUsageInBytes());
+      }
+
       releaseToQuery(memoryBlock.getTotalMemorySizeInBytes() - newSizeInBytes);
       memoryBlock.setTotalMemorySizeInBytes(newSizeInBytes);
       return;
@@ -116,8 +139,20 @@ public class LoadTsFileMemoryManager {
     long bytesNeeded = newSizeInBytes - memoryBlock.getTotalMemorySizeInBytes();
     try {
       forceAllocateFromQuery(bytesNeeded);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.info(
+            "Load: Force resized LoadTsFileMemoryBlock with memory from query engine, size added: {}, new size: {}",
+            bytesNeeded,
+            newSizeInBytes);
+      }
     } catch (LoadRuntimeOutOfMemoryException e) {
-      if (dataCacheMemoryBlock == null || !dataCacheMemoryBlock.doShrink(bytesNeeded)) {
+      if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(bytesNeeded)) {
+        LOGGER.info(
+            "Load: Query engine's memory is not sufficient, force resized LoadTsFileMemoryBlock with memory from DataCacheMemoryBlock, size added: {}, new size: {}",
+            bytesNeeded,
+            newSizeInBytes);
+        usedMemorySizeInBytes.addAndGet(bytesNeeded);
+      } else {
         throw e;
       }
     }

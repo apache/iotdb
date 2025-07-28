@@ -19,8 +19,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -30,15 +28,14 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Sett
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ISettleSelector;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
@@ -100,24 +97,38 @@ public class SettleSelectorImpl implements ISettleSelector {
     }
   }
 
-  static class PartiallyDirtyResource {
-    List<TsFileResource> resources = new ArrayList<>();
-    long totalFileSize = 0;
+  static class SettleTaskResource {
 
-    public boolean add(TsFileResource resource, long dirtyDataSize) {
-      resources.add(resource);
-      totalFileSize += resource.getTsFileSize();
-      totalFileSize -= dirtyDataSize;
+    List<TsFileResource> fullyDirtyResources = new ArrayList<>();
+    List<TsFileResource> partiallyDirtyResources = new ArrayList<>();
+    long totalPartiallyDirtyFileSize = 0;
+
+    public void addFullyDirtyResource(TsFileResource resource) {
+      fullyDirtyResources.add(resource);
+    }
+
+    public boolean addPartiallyDirtyResource(TsFileResource resource, long dirtyDataSize) {
+      partiallyDirtyResources.add(resource);
+      totalPartiallyDirtyFileSize += resource.getTsFileSize();
+      totalPartiallyDirtyFileSize -= dirtyDataSize;
       return checkHasReachedThreshold();
     }
 
-    public List<TsFileResource> getResources() {
-      return resources;
+    public List<TsFileResource> getFullyDirtyResources() {
+      return fullyDirtyResources;
+    }
+
+    public List<TsFileResource> getPartiallyDirtyResources() {
+      return partiallyDirtyResources;
     }
 
     public boolean checkHasReachedThreshold() {
-      return resources.size() >= config.getInnerCompactionCandidateFileNum()
-          || totalFileSize >= config.getTargetCompactionFileSize();
+      return partiallyDirtyResources.size() >= config.getInnerCompactionCandidateFileNum()
+          || totalPartiallyDirtyFileSize >= config.getTargetCompactionFileSize();
+    }
+
+    public boolean isEmpty() {
+      return fullyDirtyResources.isEmpty() && partiallyDirtyResources.isEmpty();
     }
   }
 
@@ -131,14 +142,14 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   private List<SettleCompactionTask> selectTasks(List<TsFileResource> resources) {
-    List<TsFileResource> fullyDirtyResource = new ArrayList<>();
-    List<PartiallyDirtyResource> partiallyDirtyResourceList = new ArrayList<>();
-    PartiallyDirtyResource partiallyDirtyResource = new PartiallyDirtyResource();
+    List<SettleTaskResource> partiallyDirtyResourceList = new ArrayList<>();
+    SettleTaskResource settleTaskResource = new SettleTaskResource();
     try {
       for (TsFileResource resource : resources) {
         boolean shouldStop = false;
         FileDirtyInfo fileDirtyInfo;
-        if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+        if (resource.getStatus() != TsFileResourceStatus.NORMAL
+            || !resource.getTsFileRepairStatus().isNormalCompactionCandidate()) {
           fileDirtyInfo = new FileDirtyInfo(NOT_SATISFIED);
         } else {
           if (!heavySelect) {
@@ -150,21 +161,22 @@ public class SettleSelectorImpl implements ISettleSelector {
 
         switch (fileDirtyInfo.status) {
           case FULLY_DIRTY:
-            fullyDirtyResource.add(resource);
+            settleTaskResource.addFullyDirtyResource(resource);
             break;
           case PARTIALLY_DIRTY:
-            shouldStop = partiallyDirtyResource.add(resource, fileDirtyInfo.dirtyDataSize);
+            shouldStop =
+                settleTaskResource.addPartiallyDirtyResource(resource, fileDirtyInfo.dirtyDataSize);
             break;
           case NOT_SATISFIED:
-            shouldStop = !partiallyDirtyResource.getResources().isEmpty();
+            shouldStop = !settleTaskResource.getPartiallyDirtyResources().isEmpty();
             break;
           default:
             // do nothing
         }
 
         if (shouldStop) {
-          partiallyDirtyResourceList.add(partiallyDirtyResource);
-          partiallyDirtyResource = new PartiallyDirtyResource();
+          partiallyDirtyResourceList.add(settleTaskResource);
+          settleTaskResource = new SettleTaskResource();
           if (!heavySelect) {
             // Non-heavy selection is triggered more frequently. In order to avoid selecting too
             // many files containing mods for compaction when the disk is insufficient, the number
@@ -173,8 +185,8 @@ public class SettleSelectorImpl implements ISettleSelector {
           }
         }
       }
-      partiallyDirtyResourceList.add(partiallyDirtyResource);
-      return createTask(fullyDirtyResource, partiallyDirtyResourceList);
+      partiallyDirtyResourceList.add(settleTaskResource);
+      return createTask(partiallyDirtyResourceList);
     } catch (Exception e) {
       LOGGER.error(
           "{}-{} cannot select file for settle compaction", storageGroupName, dataRegionId, e);
@@ -183,11 +195,11 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   private FileDirtyInfo selectFileBaseOnModSize(TsFileResource resource) {
-    ModificationFile modFile = resource.getModFile();
-    if (modFile == null || !modFile.exists()) {
+    long totalModSize = resource.getTotalModSizeInByte();
+    if (totalModSize <= 0) {
       return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
     }
-    return modFile.getSize() > config.getInnerCompactionTaskSelectionModsFileThreshold()
+    return totalModSize > config.getInnerCompactionTaskSelectionModsFileThreshold()
             || !CompactionUtils.isDiskHasSpace(
                 config.getInnerCompactionTaskSelectionDiskRedundancy())
         ? new FileDirtyInfo(PARTIALLY_DIRTY)
@@ -201,9 +213,10 @@ public class SettleSelectorImpl implements ISettleSelector {
    *
    * @return dirty status means the status of current resource.
    */
-  private FileDirtyInfo selectFileBaseOnDirtyData(TsFileResource resource)
-      throws IOException, IllegalPathException {
-    ModificationFile modFile = resource.getModFile();
+  @SuppressWarnings("OptionalGetWithoutIsPresent") // iterating the index, must present
+  private FileDirtyInfo selectFileBaseOnDirtyData(TsFileResource resource) throws IOException {
+
+    Collection<ModEntry> modifications = resource.getAllModEntries();
     ITimeIndex timeIndex = resource.getTimeIndex();
     if (timeIndex instanceof FileTimeIndex) {
       timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
@@ -212,30 +225,42 @@ public class SettleSelectorImpl implements ISettleSelector {
     boolean hasExpiredTooLong = false;
     long currentTime = CommonDateTimeUtils.currentTime();
 
-    Collection<Modification> modifications = modFile.getModifications();
     for (IDeviceID device : ((ArrayDeviceTimeIndex) timeIndex).getDevices()) {
       // check expired device by ttl
       // TODO: remove deviceId conversion
-      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device);
-      boolean hasSetTTL = deviceTTL != Long.MAX_VALUE;
-      boolean isDeleted =
-          !timeIndex.isDeviceAlive(device, deviceTTL)
-              || isDeviceDeletedByMods(
-                  modifications,
-                  device,
-                  timeIndex.getStartTime(device),
-                  timeIndex.getEndTime(device));
 
+      long ttl;
+      String tableName = device.getTableName();
+      if (tableName.startsWith("root.")) {
+        ttl = DataNodeTTLCache.getInstance().getTTLForTree(device);
+      } else {
+        ttl = DataNodeTTLCache.getInstance().getTTLForTable(storageGroupName, tableName);
+      }
+      boolean hasSetTTL = ttl != Long.MAX_VALUE;
+
+      long endTime = timeIndex.getEndTime(device).get();
+      boolean isDeleted =
+          !timeIndex.isDeviceAlive(device, ttl)
+              || isDeviceDeletedByMods(
+                  modifications, device, timeIndex.getStartTime(device).get(), endTime);
       if (hasSetTTL) {
         if (!isDeleted) {
           // For devices with TTL set, all data must expire in order to meet the conditions for
           // being selected.
           return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
         }
-        long outdatedTimeDiff = currentTime - timeIndex.getEndTime(device);
-        hasExpiredTooLong =
-            hasExpiredTooLong
-                || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), 3 * deviceTTL);
+
+        if (currentTime > endTime) {
+          long outdatedTimeDiff = currentTime - endTime;
+          if (endTime < 0 && outdatedTimeDiff < currentTime) {
+            // overflow, like 100 - Long.MIN
+            outdatedTimeDiff = Long.MAX_VALUE;
+          }
+          long ttlThreshold = 3 * ttl > ttl ? ttl : Long.MAX_VALUE;
+          hasExpiredTooLong =
+              hasExpiredTooLong
+                  || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), ttlThreshold);
+        } // else hasExpiredTooLong unchanged
       }
 
       if (isDeleted) {
@@ -260,52 +285,26 @@ public class SettleSelectorImpl implements ISettleSelector {
 
   /** Check whether the device is completely deleted by mods or not. */
   private boolean isDeviceDeletedByMods(
-      Collection<Modification> modifications, IDeviceID device, long startTime, long endTime)
-      throws IllegalPathException {
-    for (Modification modification : modifications) {
-      PartialPath path = modification.getPath();
-      if (path.endWithMultiLevelWildcard()
-          && path.getDevicePath().matchFullPath(new PartialPath(device))
-          && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
-        return true;
-      }
-    }
-    return false;
+      Collection<ModEntry> modifications, IDeviceID device, long startTime, long endTime) {
+    return ModificationUtils.isAllDeletedByMods(modifications, device, startTime, endTime);
   }
 
-  private List<SettleCompactionTask> createTask(
-      List<TsFileResource> fullyDirtyResources,
-      List<PartiallyDirtyResource> partiallyDirtyResourceList) {
+  private List<SettleCompactionTask> createTask(List<SettleTaskResource> settleTaskResourceList) {
     List<SettleCompactionTask> tasks = new ArrayList<>();
-    for (int i = 0; i < partiallyDirtyResourceList.size(); i++) {
-      if (i == 0) {
-        if (fullyDirtyResources.isEmpty()
-            && partiallyDirtyResourceList.get(i).getResources().isEmpty()) {
-          continue;
-        }
-        tasks.add(
-            new SettleCompactionTask(
-                timePartition,
-                tsFileManager,
-                fullyDirtyResources,
-                partiallyDirtyResourceList.get(i).getResources(),
-                isSeq,
-                createCompactionPerformer(),
-                tsFileManager.getNextCompactionTaskId()));
-      } else {
-        if (partiallyDirtyResourceList.get(i).getResources().isEmpty()) {
-          continue;
-        }
-        tasks.add(
-            new SettleCompactionTask(
-                timePartition,
-                tsFileManager,
-                Collections.emptyList(),
-                partiallyDirtyResourceList.get(i).getResources(),
-                isSeq,
-                createCompactionPerformer(),
-                tsFileManager.getNextCompactionTaskId()));
+    for (SettleTaskResource settleTaskResource : settleTaskResourceList) {
+      if (settleTaskResource.isEmpty()) {
+        continue;
       }
+      SettleCompactionTask task =
+          new SettleCompactionTask(
+              timePartition,
+              tsFileManager,
+              settleTaskResource.getFullyDirtyResources(),
+              settleTaskResource.getPartiallyDirtyResources(),
+              isSeq,
+              createCompactionPerformer(),
+              tsFileManager.getNextCompactionTaskId());
+      tasks.add(task);
     }
     return tasks;
   }

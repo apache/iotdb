@@ -37,7 +37,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
-import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
+import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -125,7 +125,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     try {
       result = executor.executeNonQueryPlan(plan);
     } catch (UnknownPhysicalPlanTypeException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("Execute non-query plan failed", e);
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
 
@@ -184,7 +184,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     try {
       result = executor.executeQueryPlan(plan);
     } catch (final UnknownPhysicalPlanTypeException | AuthException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("Execute query plan failed", e);
       result = null;
     }
     return result;
@@ -196,7 +196,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       try {
         PipeConfigNodeAgent.runtime()
             .listener()
-            .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
+            .tryListenToSnapshots(ConfigNodeSnapshotParser.getSnapshots());
         return true;
       } catch (IOException e) {
         if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
@@ -210,15 +210,15 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public void loadSnapshot(final File latestSnapshotRootDir) {
     try {
       executor.loadSnapshot(latestSnapshotRootDir);
       // We recompute the snapshot for pipe listener when loading snapshot
       // to recover the newest snapshot in cache
       PipeConfigNodeAgent.runtime()
           .listener()
-          .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
-    } catch (IOException e) {
+          .tryListenToSnapshots(ConfigNodeSnapshotParser.getSnapshots());
+    } catch (final IOException e) {
       if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
         LOGGER.warn(
             "Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes",
@@ -294,7 +294,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         () -> configManager.getProcedureManager().getStore().getProcedureInfo().upgrade());
     configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
     configManager.getPartitionManager().startRegionCleaner();
-    configManager.checkUserPathPrivilege();
     // Add Metric after leader ready
     configManager.addMetrics();
 
@@ -432,7 +431,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
               PipeConfigNodeAgent.runtime().listener().tryListenToPlan(nextPlan, false);
             }
           } catch (UnknownPhysicalPlanTypeException e) {
-            LOGGER.error(e.getMessage());
+            LOGGER.error("Try listen to plan failed", e);
           }
         }
         logReader.close();

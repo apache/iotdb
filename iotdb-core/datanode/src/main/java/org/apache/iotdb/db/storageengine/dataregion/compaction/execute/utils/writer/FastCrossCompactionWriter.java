@@ -26,7 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -85,6 +85,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = chunkMetadata.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -97,8 +98,8 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   @Override
   public boolean flushAlignedChunk(ChunkMetadataElement chunkMetadataElement, int subTaskId)
       throws IOException {
-    AlignedChunkMetadata alignedChunkMetadata =
-        (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+    AbstractAlignedChunkMetadata alignedChunkMetadata =
+        (AbstractAlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
     IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
     List<IChunkMetadata> valueChunkMetadatas = alignedChunkMetadata.getValueChunkMetadataList();
     Chunk timeChunk = chunkMetadataElement.chunk;
@@ -123,6 +124,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = timeChunkMetadata.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -132,8 +134,8 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       int subTaskId,
       AbstractCompactionFlushController flushController)
       throws IOException {
-    AlignedChunkMetadata alignedChunkMetadata =
-        (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+    AbstractAlignedChunkMetadata alignedChunkMetadata =
+        (AbstractAlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
     IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
     List<IChunkMetadata> valueChunkMetadatas = alignedChunkMetadata.getValueChunkMetadataList();
     List<Chunk> valueChunks = chunkMetadataElement.valueChunks;
@@ -159,6 +161,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = timeChunkMetadata.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -200,6 +203,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = timePageHeader.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -239,6 +243,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = timePageHeader.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -270,6 +275,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = pageHeader.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -279,6 +285,12 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
         chunkWriters[subTaskId].checkIsChunkSizeOverThreshold(
             chunkSizeLowerBoundInCompaction, chunkPointNumLowerBoundInCompaction, true);
     // if unsealed chunk is not large enough or chunk.endTime > file.endTime, then return false
+    // isCurrentDeviceExistedInSourceSeqFiles[fileIndex] should be true when fileIndex !=
+    // targetFileWriters.size() - 1
+    if (!isCurrentDeviceExistedInSourceSeqFiles[fileIndex]
+        && fileIndex != targetFileWriters.size() - 1) {
+      throw new IllegalArgumentException("The device should exist in current seq file");
+    }
     return isUnsealedChunkLargeEnough
         && (chunkMetadata.getEndTime() <= currentDeviceEndTime[fileIndex]
             || fileIndex == targetFileWriters.size() - 1);
@@ -289,6 +301,12 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
             pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);
     // unsealed page is too small or page.endTime > file.endTime, then return false
+    // isCurrentDeviceExistedInSourceSeqFiles[fileIndex] should be true when fileIndex !=
+    // targetFileWriters.size() - 1
+    if (!isCurrentDeviceExistedInSourceSeqFiles[fileIndex]
+        && fileIndex != targetFileWriters.size() - 1) {
+      throw new IllegalArgumentException("The device should exist in current seq file");
+    }
     return isUnsealedPageLargeEnough
         && (pageHeader.getEndTime() <= currentDeviceEndTime[fileIndex]
             || fileIndex == targetFileWriters.size() - 1);

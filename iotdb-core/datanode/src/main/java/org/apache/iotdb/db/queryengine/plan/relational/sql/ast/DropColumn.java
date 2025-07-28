@@ -32,16 +32,23 @@ public class DropColumn extends Statement {
   private final QualifiedName table;
   private final Identifier field;
 
-  public DropColumn(QualifiedName table, Identifier field) {
-    super(null);
-    this.table = requireNonNull(table, "table is null");
-    this.field = requireNonNull(field, "field is null");
-  }
+  private final boolean tableIfExists;
+  private final boolean columnIfExists;
+  private final boolean view;
 
-  public DropColumn(NodeLocation location, QualifiedName table, Identifier field) {
+  public DropColumn(
+      final NodeLocation location,
+      final QualifiedName table,
+      final Identifier field,
+      final boolean tableIfExists,
+      final boolean columnIfExists,
+      final boolean view) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
     this.field = requireNonNull(field, "field is null");
+    this.tableIfExists = tableIfExists;
+    this.columnIfExists = columnIfExists;
+    this.view = view;
   }
 
   public QualifiedName getTable() {
@@ -52,8 +59,20 @@ public class DropColumn extends Statement {
     return field;
   }
 
+  public boolean tableIfExists() {
+    return tableIfExists;
+  }
+
+  public boolean columnIfExists() {
+    return columnIfExists;
+  }
+
+  public boolean isView() {
+    return view;
+  }
+
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitDropColumn(this, context);
   }
 
@@ -63,24 +82,34 @@ public class DropColumn extends Statement {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DropColumn that = (DropColumn) o;
-    return Objects.equals(table, that.table) && Objects.equals(field, that.field);
+    final DropColumn that = (DropColumn) o;
+    return tableIfExists == that.tableIfExists
+        && columnIfExists == that.columnIfExists
+        && Objects.equals(table, that.table)
+        && Objects.equals(field, that.field)
+        && view == that.view;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(table, field);
+    return Objects.hash(table, field, tableIfExists, columnIfExists, view);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("table", table).add("field", field).toString();
+    return toStringHelper(this)
+        .add("table", table)
+        .add("field", field)
+        .add("tableIfExists", tableIfExists)
+        .add("columnIfExists", columnIfExists)
+        .add("view", view)
+        .toString();
   }
 }

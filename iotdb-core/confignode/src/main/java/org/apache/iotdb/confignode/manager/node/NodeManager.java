@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -37,9 +36,10 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -62,7 +62,6 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigura
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ClusterManager;
-import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.TTLManager;
 import org.apache.iotdb.confignode.manager.TriggerManager;
@@ -75,16 +74,18 @@ import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
-import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
+import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo4InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo4InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
@@ -111,8 +112,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /** {@link NodeManager} manages cluster node addition and removal requests. */
@@ -248,26 +251,35 @@ public class NodeManager {
 
   private TRuntimeConfiguration getRuntimeConfiguration() {
     getPipeManager().getPipePluginCoordinator().lock();
-    getTriggerManager().getTriggerInfo().acquireTriggerTableLock();
-    getUDFManager().getUdfInfo().acquireUDFTableLock();
     try {
-      final TRuntimeConfiguration runtimeConfiguration = new TRuntimeConfiguration();
-      runtimeConfiguration.setTemplateInfo(getClusterSchemaManager().getAllTemplateSetInfo());
-      runtimeConfiguration.setAllTriggerInformation(
-          getTriggerManager().getTriggerTable(false).getAllTriggerInformation());
-      runtimeConfiguration.setAllUDFInformation(
-          getUDFManager().getUDFTable().getAllUDFInformation());
-      runtimeConfiguration.setAllPipeInformation(
-          getPipeManager().getPipePluginCoordinator().getPipePluginTable().getAllPipePluginMeta());
-      runtimeConfiguration.setAllTTLInformation(
-          DataNodeRegisterResp.convertAllTTLInformation(getTTLManager().getAllTTL()));
-      runtimeConfiguration.setTableInfo(
-          getClusterSchemaManager().getAllTableInfoForDataNodeActivation());
-      runtimeConfiguration.setClusterId(getClusterManager().getClusterId());
-      return runtimeConfiguration;
+      getTriggerManager().getTriggerInfo().acquireTriggerTableLock();
+      try {
+        getUDFManager().getUdfInfo().acquireUDFTableLock();
+        try {
+          final TRuntimeConfiguration runtimeConfiguration = new TRuntimeConfiguration();
+          runtimeConfiguration.setTemplateInfo(getClusterSchemaManager().getAllTemplateSetInfo());
+          runtimeConfiguration.setAllTriggerInformation(
+              getTriggerManager().getTriggerTable(false).getAllTriggerInformation());
+          runtimeConfiguration.setAllUDFInformation(
+              getUDFManager().getAllUDFTable().getAllUDFInformation());
+          runtimeConfiguration.setAllPipeInformation(
+              getPipeManager()
+                  .getPipePluginCoordinator()
+                  .getPipePluginTable()
+                  .getAllPipePluginMeta());
+          runtimeConfiguration.setAllTTLInformation(
+              DataNodeRegisterResp.convertAllTTLInformation(getTTLManager().getAllTTL()));
+          runtimeConfiguration.setTableInfo(
+              getClusterSchemaManager().getAllTableInfoForDataNodeActivation());
+          runtimeConfiguration.setClusterId(getClusterManager().getClusterId());
+          return runtimeConfiguration;
+        } finally {
+          getUDFManager().getUdfInfo().releaseUDFTableLock();
+        }
+      } finally {
+        getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
+      }
     } finally {
-      getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
-      getUDFManager().getUdfInfo().releaseUDFTableLock();
       getPipeManager().getPipePluginCoordinator().unlock();
     }
   }
@@ -326,7 +338,7 @@ public class NodeManager {
         configManager
             .getClusterManager()
             .getClusterIdWithRetry(
-                CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
+                CommonDescriptor.getInstance().getConfig().getCnConnectionTimeoutInMS() / 2);
     TDataNodeRestartResp resp = new TDataNodeRestartResp();
     resp.setConfigNodeList(getRegisteredConfigNodes());
     if (clusterId == null) {
@@ -362,60 +374,65 @@ public class NodeManager {
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
     resp.setRuntimeConfiguration(getRuntimeConfiguration());
-    List<TConsensusGroupId> consensusGroupIds =
-        getPartitionManager().getAllReplicaSets(nodeId).stream()
-            .map(TRegionReplicaSet::getRegionId)
-            .collect(Collectors.toList());
-    resp.setConsensusGroupIds(consensusGroupIds);
+
+    resp.setCorrectConsensusGroups(getPartitionManager().getAllReplicaSets(nodeId));
     return resp;
   }
 
   /**
-   * Remove DataNodes.
+   * Removes the specified DataNodes.
    *
-   * @param removeDataNodePlan removeDataNodePlan
-   * @return DataNodeToStatusResp, The TSStatus will be SUCCEED_STATUS if the request is accepted,
-   *     DATANODE_NOT_EXIST when some datanode does not exist.
+   * @param removeDataNodePlan the plan detailing which DataNodes to remove
+   * @return DataNodeToStatusResp, where the TSStatus will be SUCCEED_STATUS if the request is
+   *     accepted, or DATANODE_NOT_EXIST if any DataNode does not exist.
    */
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
+    configManager.getProcedureManager().getEnv().getSubmitRegionMigrateLock().lock();
     LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
+    try {
+      // Checks if the RemoveDataNode request is valid
+      RemoveDataNodeHandler removeDataNodeHandler =
+          configManager.getProcedureManager().getEnv().getRemoveDataNodeHandler();
+      DataNodeToStatusResp preCheckStatus =
+          removeDataNodeHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
+      if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.error(
+            "The remove DataNode request check failed. req: {}, check result: {}",
+            removeDataNodePlan,
+            preCheckStatus.getStatus());
+        return preCheckStatus;
+      }
 
-    RegionMaintainHandler handler = new RegionMaintainHandler((ConfigManager) configManager);
-    DataNodeToStatusResp preCheckStatus = handler.checkRemoveDataNodeRequest(removeDataNodePlan);
-    if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.error(
-          "The remove DataNode request check failed. req: {}, check result: {}",
-          removeDataNodePlan,
-          preCheckStatus.getStatus());
-      return preCheckStatus;
-    }
+      // Do transfer of the DataNodes before remove
+      DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
+      if (configManager.transfer(removeDataNodePlan.getDataNodeLocations()).getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        dataSet.setStatus(
+            new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode())
+                .setMessage("Migrate the service on the removed DataNodes failed"));
+        return dataSet;
+      }
 
-    // Do transfer of the DataNodes before remove
-    DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
-    if (configManager.transfer(removeDataNodePlan.getDataNodeLocations()).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataSet.setStatus(
-          new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode())
-              .setMessage("Fail to do transfer of the DataNodes"));
+      // Add request to queue, then return to client
+      boolean removeSucceed =
+          configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
+      TSStatus status;
+      if (removeSucceed) {
+        status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        status.setMessage("Server accepted the request");
+      } else {
+        status = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
+        status.setMessage("Server rejected the request, maybe requests are too many");
+      }
+      dataSet.setStatus(status);
+
+      LOGGER.info(
+          "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",
+          removeDataNodePlan);
       return dataSet;
+    } finally {
+      configManager.getProcedureManager().getEnv().getSubmitRegionMigrateLock().unlock();
     }
-
-    // Add request to queue, then return to client
-    boolean removeSucceed = configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
-    TSStatus status;
-    if (removeSucceed) {
-      status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("Server accepted the request");
-    } else {
-      status = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
-      status.setMessage("Server rejected the request, maybe requests are too many");
-    }
-    dataSet.setStatus(status);
-
-    LOGGER.info(
-        "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",
-        removeDataNodePlan);
-    return dataSet;
   }
 
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
@@ -511,20 +528,17 @@ public class NodeManager {
     return resp;
   }
 
-  /**
-   * Remove AINodes.
-   *
-   * @param removeAINodePlan removeDataNodePlan
-   */
-  public TSStatus removeAINode(RemoveAINodePlan removeAINodePlan) {
-    LOGGER.info("NodeManager start to remove AINode {}", removeAINodePlan);
-
+  /** Remove AINodes. */
+  public TSStatus removeAINode() {
     // check if the node exists
-    if (!nodeInfo.containsAINode(removeAINodePlan.getAINodeLocation().getAiNodeId())) {
+    if (nodeInfo.getRegisteredAINodes().isEmpty()) {
       return new TSStatus(TSStatusCode.REMOVE_AI_NODE_ERROR.getStatusCode())
-          .setMessage("AINode doesn't exist.");
+          .setMessage("Remove AINode failed because there is no AINode in the cluster.");
     }
 
+    // We remove the only AINode by default
+    RemoveAINodePlan removeAINodePlan =
+        new RemoveAINodePlan(nodeInfo.getRegisteredAINodes().get(0).getLocation());
     // Add request to queue, then return to client
     boolean removeSucceed = configManager.getProcedureManager().removeAINode(removeAINodePlan);
     TSStatus status;
@@ -536,8 +550,7 @@ public class NodeManager {
       status.setMessage("Server rejected the request, maybe requests are too many");
     }
 
-    LOGGER.info(
-        "NodeManager submit RemoveAINodePlan finished, removeAINodePlan: {}", removeAINodePlan);
+    LOGGER.info("NodeManager submit RemoveAINodePlan finished, {}", removeAINodePlan);
     return status;
   }
 
@@ -721,6 +734,70 @@ public class NodeManager {
     return dataNodeInfoList;
   }
 
+  public List<TDataNodeInfo4InformationSchema> getRegisteredDataNodeInfoList4InformationSchema() {
+    final List<TDataNodeInfo4InformationSchema> dataNodeInfoList = new ArrayList<>();
+    final List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes();
+    if (registeredDataNodes != null) {
+      registeredDataNodes.forEach(
+          registeredDataNode -> {
+            TDataNodeInfo4InformationSchema dataNodeInfo = new TDataNodeInfo4InformationSchema();
+            int dataNodeId = registeredDataNode.getLocation().getDataNodeId();
+            dataNodeInfo.setDataNodeId(dataNodeId);
+            dataNodeInfo.setRpcAddress(
+                registeredDataNode.getLocation().getClientRpcEndPoint().getIp());
+            dataNodeInfo.setRpcPort(
+                registeredDataNode.getLocation().getClientRpcEndPoint().getPort());
+            dataNodeInfo.setDataRegionNum(0);
+            dataNodeInfo.setSchemaRegionNum(0);
+            dataNodeInfo.setMppPort(
+                registeredDataNode.getLocation().getMPPDataExchangeEndPoint().getPort());
+            dataNodeInfo.setDataConsensusPort(
+                registeredDataNode.getLocation().getDataRegionConsensusEndPoint().getPort());
+            dataNodeInfo.setSchemaConsensusPort(
+                registeredDataNode.getLocation().getSchemaRegionConsensusEndPoint().getPort());
+            dataNodeInfoList.add(dataNodeInfo);
+          });
+    }
+
+    // Map<DataNodeId, DataRegionNum>
+    final Map<Integer, AtomicInteger> dataRegionNumMap = new HashMap<>();
+    // Map<DataNodeId, SchemaRegionNum>
+    final Map<Integer, AtomicInteger> schemaRegionNumMap = new HashMap<>();
+    final List<TRegionReplicaSet> regionReplicaSets = getPartitionManager().getAllReplicaSets();
+    regionReplicaSets.forEach(
+        regionReplicaSet ->
+            regionReplicaSet
+                .getDataNodeLocations()
+                .forEach(
+                    dataNodeLocation -> {
+                      switch (regionReplicaSet.getRegionId().getType()) {
+                        case SchemaRegion:
+                          schemaRegionNumMap
+                              .computeIfAbsent(
+                                  dataNodeLocation.getDataNodeId(), key -> new AtomicInteger())
+                              .getAndIncrement();
+                          break;
+                        case DataRegion:
+                        default:
+                          dataRegionNumMap
+                              .computeIfAbsent(
+                                  dataNodeLocation.getDataNodeId(), key -> new AtomicInteger())
+                              .getAndIncrement();
+                      }
+                    }));
+    final AtomicInteger zero = new AtomicInteger(0);
+    dataNodeInfoList.forEach(
+        (dataNodesInfo -> {
+          dataNodesInfo.setSchemaRegionNum(
+              schemaRegionNumMap.getOrDefault(dataNodesInfo.getDataNodeId(), zero).get());
+          dataNodesInfo.setDataRegionNum(
+              dataRegionNumMap.getOrDefault(dataNodesInfo.getDataNodeId(), zero).get());
+        }));
+
+    dataNodeInfoList.sort(Comparator.comparingInt(TDataNodeInfo4InformationSchema::getDataNodeId));
+    return dataNodeInfoList;
+  }
+
   public int getDataNodeCpuCoreCount() {
     return nodeInfo.getDataNodeTotalCpuCoreCount();
   }
@@ -756,6 +833,28 @@ public class NodeManager {
     return configNodeInfoList;
   }
 
+  public List<TConfigNodeInfo4InformationSchema> getRegisteredConfigNodeInfo4InformationSchema() {
+    final List<TConfigNodeInfo4InformationSchema> configNodeInfoList = new ArrayList<>();
+    final List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();
+    if (registeredConfigNodes != null) {
+      registeredConfigNodes.forEach(
+          configNodeLocation -> {
+            final TConfigNodeInfo4InformationSchema info = new TConfigNodeInfo4InformationSchema();
+            final int configNodeId = configNodeLocation.getConfigNodeId();
+            info.setConfigNodeId(configNodeId);
+            info.setConsensusPort(configNodeLocation.getConsensusEndPoint().getPort());
+            info.setRoleType(
+                configNodeLocation.getConfigNodeId() == ConfigNodeHeartbeatCache.CURRENT_NODE_ID
+                    ? RegionRoleType.Leader.name()
+                    : RegionRoleType.Follower.name());
+            configNodeInfoList.add(info);
+          });
+    }
+    configNodeInfoList.sort(
+        Comparator.comparingInt(TConfigNodeInfo4InformationSchema::getConfigNodeId));
+    return configNodeInfoList;
+  }
+
   /**
    * Only leader use this interface, record the new ConfigNode's information.
    *
@@ -787,11 +886,31 @@ public class NodeManager {
   public TSStatus checkConfigNodeBeforeRemove(RemoveConfigNodePlan removeConfigNodePlan) {
     removeConfigNodeLock.lock();
     try {
-      // Check OnlineConfigNodes number
-      if (filterConfigNodeThroughStatus(NodeStatus.Running).size() <= 1) {
+      // Check ConfigNodes number
+      if (getRegisteredConfigNodes().size() <= 1) {
         return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(
                 "Remove ConfigNode failed because there is only one ConfigNode in current Cluster.");
+      }
+
+      // Check OnlineConfigNodes number
+      final long deadline =
+          System.nanoTime()
+              + TimeUnit.MILLISECONDS.toNanos(
+                  CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() / 2);
+      while (filterConfigNodeThroughStatus(NodeStatus.Running).size() <= 1) {
+        if (System.nanoTime() > deadline) {
+          return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+              .setMessage(
+                  "Remove ConfigNode failed because there is no other ConfigNode in Running status in current Cluster.");
+        }
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+              .setMessage("Remove ConfigNode failed due to thread interruption.");
+        }
       }
 
       // Check whether the registeredConfigNodes contain the ConfigNode to be removed.
@@ -859,7 +978,7 @@ public class NodeManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.MERGE, dataNodeLocationMap);
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.MERGE, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -868,16 +987,25 @@ public class NodeManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     DataNodeAsyncRequestContext<TFlushReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.FLUSH, req, dataNodeLocationMap);
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.FLUSH, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> clearCache() {
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+  public List<TSStatus> flushOnSpecificDN(
+      TFlushReq req, Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+    DataNodeAsyncRequestContext<TFlushReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.FLUSH, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    return clientHandler.getResponseList();
+  }
+
+  public List<TSStatus> clearCache(final Set<Integer> clearCacheOptions) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.CLEAR_CACHE, dataNodeLocationMap);
+    final DataNodeAsyncRequestContext<Set<Integer>, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.CLEAR_CACHE, clearCacheOptions, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -898,7 +1026,7 @@ public class NodeManager {
     if (!targetDataNodes.isEmpty()) {
       DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
           new DataNodeAsyncRequestContext<>(
-              CnToDnRequestType.SET_CONFIGURATION, req, dataNodeLocationMap);
+              CnToDnAsyncRequestType.SET_CONFIGURATION, req, dataNodeLocationMap);
       CnToDnInternalServiceAsyncRequestManager.getInstance()
           .sendAsyncRequestWithRetry(clientHandler);
       responseList.addAll(clientHandler.getResponseList());
@@ -936,7 +1064,8 @@ public class NodeManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.START_REPAIR_DATA, dataNodeLocationMap);
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.START_REPAIR_DATA, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -945,7 +1074,8 @@ public class NodeManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.STOP_REPAIR_DATA, dataNodeLocationMap);
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.STOP_REPAIR_DATA, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -955,7 +1085,7 @@ public class NodeManager {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     DataNodeAsyncRequestContext<Object, TSStatus> dataNodeRequestContext =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.LOAD_CONFIGURATION, dataNodeLocationMap);
+            CnToDnAsyncRequestType.LOAD_CONFIGURATION, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(dataNodeRequestContext);
     return dataNodeRequestContext.getResponseList();
@@ -974,7 +1104,7 @@ public class NodeManager {
               .sendSyncRequestToDataNodeWithRetry(
                   dataNodeLocation.getInternalEndPoint(),
                   null,
-                  CnToDnRequestType.SHOW_CONFIGURATION);
+                  CnToDnSyncRequestType.SHOW_CONFIGURATION);
     }
 
     // other config node
@@ -999,7 +1129,7 @@ public class NodeManager {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     DataNodeAsyncRequestContext<String, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.SET_SYSTEM_STATUS, status, dataNodeLocationMap);
+            CnToDnAsyncRequestType.SET_SYSTEM_STATUS, status, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -1010,7 +1140,7 @@ public class NodeManager {
             .sendSyncRequestToDataNodeWithRetry(
                 setDataNodeStatusReq.getTargetDataNode().getInternalEndPoint(),
                 setDataNodeStatusReq.getStatus(),
-                CnToDnRequestType.SET_SYSTEM_STATUS);
+                CnToDnSyncRequestType.SET_SYSTEM_STATUS);
   }
 
   /**
@@ -1033,7 +1163,7 @@ public class NodeManager {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     DataNodeAsyncRequestContext<String, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.KILL_QUERY_INSTANCE, dataNodeLocationMap);
+            CnToDnAsyncRequestType.KILL_QUERY_INSTANCE, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
   }
@@ -1049,7 +1179,7 @@ public class NodeManager {
               .sendSyncRequestToDataNodeWithRetry(
                   dataNodeLocation.getInternalEndPoint(),
                   queryId,
-                  CnToDnRequestType.KILL_QUERY_INSTANCE);
+                  CnToDnSyncRequestType.KILL_QUERY_INSTANCE);
     }
   }
 
@@ -1072,6 +1202,18 @@ public class NodeManager {
    */
   public List<TDataNodeConfiguration> filterDataNodeThroughStatus(NodeStatus... status) {
     return nodeInfo.getRegisteredDataNodes(getLoadManager().filterDataNodeThroughStatus(status));
+  }
+
+  /**
+   * Filter DataNodes through the NodeStatus predicate.
+   *
+   * @param statusPredicate The NodeStatus predicate
+   * @return Filtered DataNodes with the predicate
+   */
+  public List<TDataNodeConfiguration> filterDataNodeThroughStatus(
+      Function<NodeStatus, Boolean> statusPredicate) {
+    return nodeInfo.getRegisteredDataNodes(
+        getLoadManager().filterDataNodeThroughStatus(statusPredicate));
   }
 
   /**

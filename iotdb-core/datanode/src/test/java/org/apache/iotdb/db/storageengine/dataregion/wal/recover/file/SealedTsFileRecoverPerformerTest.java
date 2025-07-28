@@ -55,6 +55,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class SealedTsFileRecoverPerformerTest {
   private static final String SG_NAME = "root.recover_sg";
   private static final IDeviceID DEVICE1_NAME =
@@ -113,10 +114,10 @@ public class SealedTsFileRecoverPerformerTest {
     assertNotNull(chunkMetadataList);
     reader.close();
     // check .resource file in memory
-    assertEquals(1, tsFileResource.getStartTime(DEVICE1_NAME));
-    assertEquals(2, tsFileResource.getEndTime(DEVICE1_NAME));
-    assertEquals(3, tsFileResource.getStartTime(DEVICE2_NAME));
-    assertEquals(4, tsFileResource.getEndTime(DEVICE2_NAME));
+    assertEquals(1, ((long) tsFileResource.getStartTime(DEVICE1_NAME).get()));
+    assertEquals(2, ((long) tsFileResource.getEndTime(DEVICE1_NAME).get()));
+    assertEquals(3, ((long) tsFileResource.getStartTime(DEVICE2_NAME).get()));
+    assertEquals(4, ((long) tsFileResource.getEndTime(DEVICE2_NAME).get()));
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
@@ -155,10 +156,10 @@ public class SealedTsFileRecoverPerformerTest {
     assertNotNull(chunkMetadataList);
     reader.close();
     // check .resource file in memory
-    assertEquals(1, tsFileResource.getStartTime(DEVICE1_NAME));
-    assertEquals(2, tsFileResource.getEndTime(DEVICE1_NAME));
-    assertEquals(3, tsFileResource.getStartTime(DEVICE2_NAME));
-    assertEquals(4, tsFileResource.getEndTime(DEVICE2_NAME));
+    assertEquals(1, ((long) tsFileResource.getStartTime(DEVICE1_NAME).get()));
+    assertEquals(2, ((long) tsFileResource.getEndTime(DEVICE1_NAME).get()));
+    assertEquals(3, ((long) tsFileResource.getStartTime(DEVICE2_NAME).get()));
+    assertEquals(4, ((long) tsFileResource.getEndTime(DEVICE2_NAME).get()));
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
@@ -192,10 +193,11 @@ public class SealedTsFileRecoverPerformerTest {
     assertNotNull(chunkMetadataList);
     reader.close();
     // check .resource file in memory
-    assertEquals(1, tsFileResource.getStartTime(DEVICE1_NAME));
-    assertEquals(2, tsFileResource.getEndTime(DEVICE1_NAME));
-    assertEquals(3, tsFileResource.getStartTime(DEVICE2_NAME));
-    assertEquals(4, tsFileResource.getEndTime(DEVICE2_NAME));
+    assertEquals(1, ((long) tsFileResource.getStartTime(DEVICE1_NAME).get()));
+
+    assertEquals(2, ((long) tsFileResource.getEndTime(DEVICE1_NAME).get()));
+    assertEquals(3, ((long) tsFileResource.getStartTime(DEVICE2_NAME).get()));
+    assertEquals(4, ((long) tsFileResource.getEndTime(DEVICE2_NAME).get()));
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
@@ -211,20 +213,20 @@ public class SealedTsFileRecoverPerformerTest {
           new Path(DEVICE2_NAME), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
       writer.registerTimeseries(
           new Path(DEVICE2_NAME), new MeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
-      writer.write(
-          new TSRecord(1, DEVICE1_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE1_NAME, 1)
               .addTuple(new IntDataPoint("s1", 1))
               .addTuple(new LongDataPoint("s2", 1)));
-      writer.write(
-          new TSRecord(2, DEVICE1_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE1_NAME, 2)
               .addTuple(new IntDataPoint("s1", 2))
               .addTuple(new LongDataPoint("s2", 2)));
-      writer.write(
-          new TSRecord(3, DEVICE2_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE2_NAME, 3)
               .addTuple(new FloatDataPoint("s1", 3))
               .addTuple(new DoubleDataPoint("s2", 3)));
-      writer.write(
-          new TSRecord(4, DEVICE2_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE2_NAME, 4)
               .addTuple(new FloatDataPoint("s1", 4))
               .addTuple(new DoubleDataPoint("s2", 4)));
     }
@@ -261,10 +263,10 @@ public class SealedTsFileRecoverPerformerTest {
     assertEquals(3, chunk.getChunkStatistic().getEndTime());
     reader.close();
     // check .resource file in memory
-    assertEquals(1, tsFileResource.getStartTime(DEVICE1_NAME));
-    assertEquals(2, tsFileResource.getEndTime(DEVICE1_NAME));
-    assertEquals(3, tsFileResource.getStartTime(DEVICE2_NAME));
-    assertEquals(3, tsFileResource.getEndTime(DEVICE2_NAME));
+    assertEquals(1, ((long) tsFileResource.getStartTime(DEVICE1_NAME).get()));
+    assertEquals(2, ((long) tsFileResource.getEndTime(DEVICE1_NAME).get()));
+    assertEquals(3, ((long) tsFileResource.getStartTime(DEVICE2_NAME).get()));
+    assertEquals(3, ((long) tsFileResource.getEndTime(DEVICE2_NAME).get()));
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
@@ -281,27 +283,27 @@ public class SealedTsFileRecoverPerformerTest {
           new Path(DEVICE2_NAME), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
       writer.registerTimeseries(
           new Path(DEVICE2_NAME), new MeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
-      writer.write(
-          new TSRecord(1, DEVICE1_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE1_NAME, 1)
               .addTuple(new IntDataPoint("s1", 1))
               .addTuple(new LongDataPoint("s2", 1)));
-      writer.write(
-          new TSRecord(2, DEVICE1_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE1_NAME, 2)
               .addTuple(new IntDataPoint("s1", 2))
               .addTuple(new LongDataPoint("s2", 2)));
-      writer.write(
-          new TSRecord(3, DEVICE2_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE2_NAME, 3)
               .addTuple(new FloatDataPoint("s1", 3))
               .addTuple(new DoubleDataPoint("s2", 3)));
-      writer.flushAllChunkGroups();
+      writer.flush();
       try (FileChannel channel = new FileInputStream(tsFile).getChannel()) {
         truncateSize = channel.size();
       }
-      writer.write(
-          new TSRecord(4, DEVICE2_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE2_NAME, 4)
               .addTuple(new FloatDataPoint("s1", 4))
               .addTuple(new DoubleDataPoint("s2", 4)));
-      writer.flushAllChunkGroups();
+      writer.flush();
       try (FileChannel channel = new FileInputStream(tsFile).getChannel()) {
         truncateSize = (truncateSize + channel.size()) / 2;
       }

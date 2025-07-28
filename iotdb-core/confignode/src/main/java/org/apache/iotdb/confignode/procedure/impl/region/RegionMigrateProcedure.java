@@ -27,8 +27,6 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -42,15 +40,13 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Region migrate procedure */
-public class RegionMigrateProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, RegionTransitionState> {
+public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTransitionState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionMigrateProcedure.class);
 
   /** Wait region migrate finished */
-  private TConsensusGroupId consensusGroupId;
-
   private TDataNodeLocation originalDataNode;
+
   private TDataNodeLocation destDataNode;
   private TDataNodeLocation coordinatorForAddPeer;
   private TDataNodeLocation coordinatorForRemovePeer;
@@ -65,8 +61,7 @@ public class RegionMigrateProcedure
       TDataNodeLocation destDataNode,
       TDataNodeLocation coordinatorForAddPeer,
       TDataNodeLocation coordinatorForRemovePeer) {
-    super();
-    this.consensusGroupId = consensusGroupId;
+    super(consensusGroupId);
     this.originalDataNode = originalDataNode;
     this.destDataNode = destDataNode;
     this.coordinatorForAddPeer = coordinatorForAddPeer;
@@ -75,7 +70,7 @@ public class RegionMigrateProcedure
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, RegionTransitionState state) {
-    if (consensusGroupId == null) {
+    if (regionId == null) {
       return Flow.NO_MORE_STATE;
     }
     RegionMaintainHandler handler = env.getRegionMaintainHandler();
@@ -83,24 +78,25 @@ public class RegionMigrateProcedure
       switch (state) {
         case REGION_MIGRATE_PREPARE:
           LOGGER.info(
-              "[pid{}][MigrateRegion] started, region {} will be migrated from DataNode {} to {}.",
+              "[pid{}][MigrateRegion] started, {} will be migrated from DataNode {} to {}.",
               getProcId(),
-              consensusGroupId.getId(),
-              originalDataNode.getDataNodeId(),
-              destDataNode.getDataNodeId());
+              regionId,
+              RegionMaintainHandler.simplifiedLocation(originalDataNode),
+              RegionMaintainHandler.simplifiedLocation(destDataNode));
+          addChildProcedure(new NotifyRegionMigrationProcedure(regionId, true));
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
           addChildProcedure(
-              new AddRegionPeerProcedure(consensusGroupId, coordinatorForAddPeer, destDataNode));
+              new AddRegionPeerProcedure(regionId, coordinatorForAddPeer, destDataNode));
           setNextState(RegionTransitionState.CHECK_ADD_REGION_PEER);
           break;
         case CHECK_ADD_REGION_PEER:
           if (!env.getConfigManager()
               .getPartitionManager()
-              .isDataNodeContainsRegion(destDataNode.getDataNodeId(), consensusGroupId)) {
+              .isDataNodeContainsRegion(destDataNode.getDataNodeId(), regionId)) {
             LOGGER.warn(
-                "[pid{}][MigrateRegion] sub-procedure AddRegionPeerProcedure fail, RegionMigrateProcedure will not continue",
+                "[pid{}][MigrateRegion] sub-procedure AddRegionPeerProcedure failed, RegionMigrateProcedure will not continue",
                 getProcId());
             return Flow.NO_MORE_STATE;
           }
@@ -108,28 +104,28 @@ public class RegionMigrateProcedure
           break;
         case REMOVE_REGION_PEER:
           addChildProcedure(
-              new RemoveRegionPeerProcedure(
-                  consensusGroupId, coordinatorForRemovePeer, originalDataNode));
+              new RemoveRegionPeerProcedure(regionId, coordinatorForRemovePeer, originalDataNode));
           setNextState(RegionTransitionState.CHECK_REMOVE_REGION_PEER);
           break;
         case CHECK_REMOVE_REGION_PEER:
+          String cleanHint = "";
           if (env.getConfigManager()
               .getPartitionManager()
-              .isDataNodeContainsRegion(originalDataNode.getDataNodeId(), consensusGroupId)) {
-            LOGGER.warn(
-                "[pid{}][MigrateRegion] success, but you may need to manually clean the old region to make everything works fine",
-                getProcId());
-          } else {
-            LOGGER.info(
-                "[pid{}][MigrateRegion] success, region {} has been migrated from DataNode {} to {}. Procedure took {} (started at {})",
-                getProcId(),
-                consensusGroupId.getId(),
-                originalDataNode.getDataNodeId(),
-                destDataNode.getDataNodeId(),
-                CommonDateTimeUtils.convertMillisecondToDurationStr(
-                    System.currentTimeMillis() - getSubmittedTime()),
-                DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
+              .isDataNodeContainsRegion(originalDataNode.getDataNodeId(), regionId)) {
+            cleanHint =
+                "but you may need to restart the related DataNode to make sure everything is cleaned up. ";
           }
+          LOGGER.info(
+              "[pid{}][MigrateRegion] success,{} {} has been migrated from DataNode {} to {}. Procedure took {} (started at {}).",
+              getProcId(),
+              cleanHint,
+              regionId,
+              RegionMaintainHandler.simplifiedLocation(originalDataNode),
+              RegionMaintainHandler.simplifiedLocation(destDataNode),
+              CommonDateTimeUtils.convertMillisecondToDurationStr(
+                  System.currentTimeMillis() - getSubmittedTime()),
+              DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
+          addChildProcedure(new NotifyRegionMigrationProcedure(regionId, false));
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());
@@ -146,38 +142,6 @@ public class RegionMigrateProcedure
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, RegionTransitionState state)
       throws IOException, InterruptedException, ProcedureException {}
-
-  @Override
-  protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    configNodeProcedureEnv.getSchedulerLock().lock();
-    try {
-      if (configNodeProcedureEnv.getRegionMigrateLock().tryLock(this)) {
-        LOGGER.info("procedureId {} acquire lock.", getProcId());
-        return ProcedureLockState.LOCK_ACQUIRED;
-      }
-      configNodeProcedureEnv.getRegionMigrateLock().waitProcedure(this);
-
-      LOGGER.info("procedureId {} wait for lock.", getProcId());
-      return ProcedureLockState.LOCK_EVENT_WAIT;
-    } finally {
-      configNodeProcedureEnv.getSchedulerLock().unlock();
-    }
-  }
-
-  @Override
-  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    configNodeProcedureEnv.getSchedulerLock().lock();
-    try {
-      LOGGER.info("procedureId {} release lock.", getProcId());
-      if (configNodeProcedureEnv.getRegionMigrateLock().releaseLock(this)) {
-        configNodeProcedureEnv
-            .getRegionMigrateLock()
-            .wakeWaitingProcedures(configNodeProcedureEnv.getScheduler());
-      }
-    } finally {
-      configNodeProcedureEnv.getSchedulerLock().unlock();
-    }
-  }
 
   @Override
   protected RegionTransitionState getState(int stateId) {
@@ -200,7 +164,7 @@ public class RegionMigrateProcedure
     super.serialize(stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(originalDataNode, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(destDataNode, stream);
-    ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, stream);
+    ThriftCommonsSerDeUtils.serializeTConsensusGroupId(regionId, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(coordinatorForAddPeer, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(coordinatorForRemovePeer, stream);
   }
@@ -211,7 +175,7 @@ public class RegionMigrateProcedure
     try {
       originalDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
       destDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
-      consensusGroupId = ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(byteBuffer);
+      regionId = ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(byteBuffer);
       coordinatorForAddPeer = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
       coordinatorForRemovePeer = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
@@ -232,17 +196,17 @@ public class RegionMigrateProcedure
           && thatProc.getState() == this.getState()
           && thatProc.originalDataNode.equals(this.originalDataNode)
           && thatProc.destDataNode.equals(this.destDataNode)
-          && thatProc.consensusGroupId.equals(this.consensusGroupId);
+          && thatProc.regionId.equals(this.regionId);
     }
     return false;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.originalDataNode, this.destDataNode, this.consensusGroupId);
+    return Objects.hash(this.originalDataNode, this.destDataNode, this.regionId);
   }
 
-  public TConsensusGroupId getConsensusGroupId() {
-    return consensusGroupId;
+  public TDataNodeLocation getDestDataNode() {
+    return destDataNode;
   }
 }

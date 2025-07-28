@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -25,22 +26,24 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import com.google.common.collect.ImmutableSet;
 import org.junit.Assert;
 
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -66,7 +69,7 @@ public class TestUtils {
           IoTDBConstant.ClientVersion.V_1_0,
           "db",
           IClientSession.SqlDialect.TABLE);
-  public static final Metadata TEST_MATADATA = new TestMatadata();
+  public static final Metadata TEST_MATADATA = new TestMetadata();
   public static final MPPQueryContext QUERY_CONTEXT =
       new MPPQueryContext("only for test", QUERY_ID, SESSION_INFO, null, null);
 
@@ -78,7 +81,7 @@ public class TestUtils {
   public static final List<String> BEIJING_A1_DEVICE_ENTRY = Collections.singletonList(DEVICE_1);
 
   public static void assertTableScan(
-      TableScanNode tableScanNode,
+      DeviceTableScanNode deviceTableScanNode,
       List<String> deviceEntries,
       Ordering ordering,
       long pushLimit,
@@ -87,30 +90,61 @@ public class TestUtils {
       String pushDownFilter) {
     assertEquals(
         deviceEntries,
-        tableScanNode.getDeviceEntries().stream()
+        deviceTableScanNode.getDeviceEntries().stream()
             .map(d -> d.getDeviceID().toString())
             .collect(Collectors.toList()));
-    assertEquals(ordering, tableScanNode.getScanOrder());
-    assertEquals(pushLimit, tableScanNode.getPushDownLimit());
-    assertEquals(pushOffset, tableScanNode.getPushDownOffset());
-    if (tableScanNode.getPushDownLimit() > 0) {
-      assertEquals(pushLimitToEachDevice, tableScanNode.isPushLimitToEachDevice());
+    assertEquals(ordering, deviceTableScanNode.getScanOrder());
+    assertEquals(pushLimit, deviceTableScanNode.getPushDownLimit());
+    assertEquals(pushOffset, deviceTableScanNode.getPushDownOffset());
+    if (deviceTableScanNode.getPushDownLimit() > 0) {
+      assertEquals(pushLimitToEachDevice, deviceTableScanNode.isPushLimitToEachDevice());
     }
     if (!pushDownFilter.isEmpty()) {
-      assert tableScanNode.getPushDownPredicate() != null;
-      assertEquals(pushDownFilter, tableScanNode.getPushDownPredicate().toString());
+      assert deviceTableScanNode.getPushDownPredicate() != null;
+      assertEquals(pushDownFilter, deviceTableScanNode.getPushDownPredicate().toString());
+    }
+  }
+
+  public static void assertTableScanWithoutEntryOrder(
+      DeviceTableScanNode deviceTableScanNode,
+      List<String> deviceEntries,
+      Ordering ordering,
+      long pushLimit,
+      long pushOffset,
+      boolean pushLimitToEachDevice,
+      String pushDownFilter) {
+    assertEquals(
+        ImmutableSet.copyOf(deviceEntries),
+        deviceTableScanNode.getDeviceEntries().stream()
+            .map(d -> d.getDeviceID().toString())
+            .collect(Collectors.toSet()));
+    assertEquals(ordering, deviceTableScanNode.getScanOrder());
+    assertEquals(pushLimit, deviceTableScanNode.getPushDownLimit());
+    assertEquals(pushOffset, deviceTableScanNode.getPushDownOffset());
+    if (deviceTableScanNode.getPushDownLimit() > 0) {
+      assertEquals(pushLimitToEachDevice, deviceTableScanNode.isPushLimitToEachDevice());
+    }
+    if (!pushDownFilter.isEmpty()) {
+      assert deviceTableScanNode.getPushDownPredicate() != null;
+      assertEquals(pushDownFilter, deviceTableScanNode.getPushDownPredicate().toString());
     }
   }
 
   public static void assertTableScan(
-      TableScanNode tableScanNode,
+      DeviceTableScanNode deviceTableScanNode,
       List<String> deviceEntries,
       Ordering ordering,
       long pushLimit,
       long pushOffset,
       boolean pushLimitToEachDevice) {
     assertTableScan(
-        tableScanNode, deviceEntries, ordering, pushLimit, pushOffset, pushLimitToEachDevice, "");
+        deviceTableScanNode,
+        deviceEntries,
+        ordering,
+        pushLimit,
+        pushOffset,
+        pushLimitToEachDevice,
+        "");
   }
 
   public static void assertMergeSortNode(MergeSortNode mergeSortNode) {
@@ -127,8 +161,9 @@ public class TestUtils {
       List<Symbol> rightOutputSymbols) {
     assertEquals(joinType, joinNode.getJoinType());
     assertEquals(joinCriteria, joinNode.getCriteria());
-    assertEquals(leftOutputSymbols, joinNode.getLeftOutputSymbols());
-    assertEquals(rightOutputSymbols, joinNode.getRightOutputSymbols());
+    assertEquals(new HashSet<>(leftOutputSymbols), new HashSet<>(joinNode.getLeftOutputSymbols()));
+    assertEquals(
+        new HashSet<>(rightOutputSymbols), new HashSet<>(joinNode.getRightOutputSymbols()));
   }
 
   public static void assertNodeMatches(PlanNode node, Class... classes) {
@@ -141,7 +176,7 @@ public class TestUtils {
   public static void assertAnalyzeSemanticException(String sql, String message) {
     try {
       SqlParser sqlParser = new SqlParser();
-      Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
+      Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), null);
       SessionInfo session =
           new SessionInfo(
               0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);

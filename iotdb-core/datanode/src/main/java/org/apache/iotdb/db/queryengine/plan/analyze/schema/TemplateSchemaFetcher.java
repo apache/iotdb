@@ -24,7 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 
@@ -43,13 +43,13 @@ import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncodin
 class TemplateSchemaFetcher {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private final DataNodeSchemaCache templateSchemaCache;
+  private final TreeDeviceSchemaCacheManager templateSchemaCache;
 
   private final AutoCreateSchemaExecutor autoCreateSchemaExecutor;
   private final ClusterSchemaFetchExecutor clusterSchemaFetchExecutor;
 
   TemplateSchemaFetcher(
-      DataNodeSchemaCache templateSchemaCache,
+      TreeDeviceSchemaCacheManager templateSchemaCache,
       AutoCreateSchemaExecutor autoCreateSchemaExecutor,
       ClusterSchemaFetchExecutor clusterSchemaFetchExecutor) {
     this.templateSchemaCache = templateSchemaCache;
@@ -142,12 +142,19 @@ class TemplateSchemaFetcher {
       measurements = schemaComputationWithAutoCreation.getMeasurements();
       for (int j = 0; j < measurements.length; j++) {
         if (!template.hasSchema(measurements[j])) {
+          TSDataType dataType = schemaComputationWithAutoCreation.getDataType(j);
+          if (dataType == null) {
+            // the data type is not provided and cannot be inferred (the value is also null),
+            // skip this measurement
+            continue;
+          }
+
           extensionMeasurementMap
               .computeIfAbsent(template.getName(), TemplateExtendInfo::new)
               .addMeasurement(
                   measurements[j],
-                  schemaComputationWithAutoCreation.getDataType(j),
-                  getDefaultEncoding(schemaComputationWithAutoCreation.getDataType(j)),
+                  dataType,
+                  getDefaultEncoding(dataType),
                   TSFileDescriptor.getInstance().getConfig().getCompressor());
         }
       }

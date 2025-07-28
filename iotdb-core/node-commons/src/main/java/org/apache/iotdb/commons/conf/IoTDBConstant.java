@@ -108,6 +108,8 @@ public class IoTDBConstant {
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
+  public static final String SAMPLED_QUERIES_LOGGER_NAME = "SAMPLED_QUERIES";
+
   public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
   public static final String EXPLAIN_ANALYZE_LOGGER_NAME = "EXPLAIN_ANALYZE";
 
@@ -161,6 +163,7 @@ public class IoTDBConstant {
   public static final String COLUMN_CHILD_PATHS_TYPES = "node types";
   public static final String COLUMN_CHILD_NODES = "child nodes";
   public static final String COLUMN_DEVICES = "devices";
+  public static final String COLUMN_DELETED_DEVICE_NUM = "num_of_deleted_devices";
   public static final String COLUMN_COLUMN = "column";
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";
@@ -178,13 +181,26 @@ public class IoTDBConstant {
 
   public static final String COLUMN_SCHEMA_TEMPLATE = "template name";
 
+  // for tree model
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final String FUNCTION_TYPE_BUILTIN_SCALAR = "built-in scalar";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDAF = "external UDAF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
+  // for table model
+  public static final String FUNCTION_TYPE_BUILTIN_SCALAR_FUNC = "built-in scalar function";
+  public static final String FUNCTION_TYPE_BUILTIN_AGG_FUNC = "built-in aggregate function";
+  public static final String FUNCTION_TYPE_BUILTIN_TABLE_FUNC = "built-in table function";
+  public static final String FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC =
+      "user-defined scalar function";
+  public static final String FUNCTION_TYPE_USER_DEFINED_AGG_FUNC =
+      "user-defined aggregate function";
+  public static final String FUNCTION_TYPE_USER_DEFINED_TABLE_FUNC = "user-defined table function";
+  // common
   public static final String FUNCTION_TYPE_UNKNOWN = "UNKNOWN";
+  public static final String FUNCTION_STATE_AVAILABLE = "AVAILABLE";
+  public static final String FUNCTION_STATE_UNAVAILABLE = "UNAVAILABLE";
 
   public static final String COLUMN_TRIGGER_NAME = "trigger name";
   public static final String COLUMN_TRIGGER_STATUS = "status";
@@ -252,6 +268,7 @@ public class IoTDBConstant {
   public static final String TRIGGER_FOLDER_NAME = "trigger";
   public static final String PIPE_FOLDER_NAME = "pipe";
   public static final String TMP_FOLDER_NAME = "tmp";
+  public static final String DELETION_FOLDER_NAME = "deletion";
 
   public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";
@@ -263,6 +280,7 @@ public class IoTDBConstant {
   public static final String MQTT_PORT_NAME = "mqtt_port";
   public static final String MQTT_HANDLER_POOL_SIZE_NAME = "mqtt_handler_pool_size";
   public static final String MQTT_PAYLOAD_FORMATTER_NAME = "mqtt_payload_formatter";
+  public static final String MQTT_DATA_PATH = "mqtt_data_path";
   public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
 
   // thrift

@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -228,7 +230,11 @@ public class Scope {
   public ResolvedField resolveField(Expression expression, QualifiedName name) {
     return tryResolveField(expression, name)
         .orElseThrow(
-            () -> new SemanticException(String.format("Column '%s' cannot be resolved", name)));
+            () ->
+                new SemanticException(
+                    new IoTDBException(
+                        String.format("Column '%s' cannot be resolved", name),
+                        TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode())));
   }
 
   public Optional<ResolvedField> tryResolveField(Expression expression) {

@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.info.IDatabaseDeviceInfo;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 
-public class DatabaseDeviceInfo<N extends IMNode<N>> extends DeviceInfo<N>
+public class DatabaseDeviceInfo<N extends IMNode<N>> extends TreeDeviceInfo<N>
     implements IDatabaseDeviceInfo<N> {
   /**
    * when the data file in a database is older than dataTTL, it is considered invalid and will be

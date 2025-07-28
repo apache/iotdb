@@ -22,8 +22,9 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.CaseWhenThenColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.AbstractCaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
@@ -100,6 +101,21 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.hasFilter = hasFilter;
   }
 
+  public FilterAndProjectOperator(
+      FilterAndProjectOperator filterAndProjectOperator, Operator inputOperator) {
+    this.operatorContext = filterAndProjectOperator.operatorContext;
+    this.filterLeafColumnTransformerList = filterAndProjectOperator.filterLeafColumnTransformerList;
+    this.filterOutputTransformer = filterAndProjectOperator.filterOutputTransformer;
+    this.commonTransformerList = filterAndProjectOperator.commonTransformerList;
+    this.projectLeafColumnTransformerList =
+        filterAndProjectOperator.projectLeafColumnTransformerList;
+    this.projectOutputTransformerList = filterAndProjectOperator.projectOutputTransformerList;
+    this.hasNonMappableUDF = filterAndProjectOperator.hasNonMappableUDF;
+    this.hasFilter = filterAndProjectOperator.hasFilter;
+    this.filterTsBlockBuilder = filterAndProjectOperator.filterTsBlockBuilder;
+    this.inputOperator = inputOperator;
+  }
+
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;
@@ -155,6 +171,9 @@ public class FilterAndProjectOperator implements ProcessOperator {
     if (!hasNonMappableUDF) {
       // get result of calculated common sub expressions
       for (ColumnTransformer columnTransformer : commonTransformerList) {
+        // CASE WHEN clause would clear all its cache
+        // evaluate again to acquire cache
+        columnTransformer.tryEvaluate();
         resultColumns.add(columnTransformer.getColumn());
       }
     }
@@ -366,6 +385,13 @@ public class FilterAndProjectOperator implements ProcessOperator {
                   getMaxLevelOfColumnTransformerTree(
                       ((TernaryColumnTransformer) columnTransformer).getThirdColumnTransformer())));
       return Math.max(4, childMaxLevel);
+    } else if (columnTransformer instanceof MultiColumnTransformer) {
+      int childrenCount = ((MultiColumnTransformer) columnTransformer).getChildren().size();
+      OptionalInt childMaxLevel =
+          ((MultiColumnTransformer) columnTransformer)
+              .getChildren().stream().mapToInt(this::getMaxLevelOfColumnTransformerTree).max();
+
+      return Math.max(childrenCount + 1, childMaxLevel.orElse(childrenCount + 1));
     } else if (columnTransformer instanceof MappableUDFColumnTransformer) {
       int childMaxLevel = 0;
       for (ColumnTransformer c :
@@ -378,11 +404,12 @@ public class FilterAndProjectOperator implements ProcessOperator {
                   .getInputColumnTransformers()
                   .length,
           childMaxLevel);
-    } else if (columnTransformer instanceof CaseWhenThenColumnTransformer) {
+    } else if (columnTransformer instanceof AbstractCaseWhenThenColumnTransformer) {
       int childMaxLevel = 0;
       int childCount = 0;
       for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
-          ((CaseWhenThenColumnTransformer) columnTransformer).getWhenThenColumnTransformers()) {
+          ((AbstractCaseWhenThenColumnTransformer) columnTransformer)
+              .getWhenThenColumnTransformers()) {
         childMaxLevel =
             Math.max(
                 childMaxLevel, getMaxLevelOfColumnTransformerTree(whenThenColumnTransformer.left));
@@ -395,16 +422,12 @@ public class FilterAndProjectOperator implements ProcessOperator {
           Math.max(
               childMaxLevel,
               getMaxLevelOfColumnTransformerTree(
-                  ((CaseWhenThenColumnTransformer) columnTransformer).getElseTransformer()));
+                  ((AbstractCaseWhenThenColumnTransformer) columnTransformer)
+                      .getElseTransformer()));
       childMaxLevel = Math.max(childMaxLevel, childCount + 2);
       return childMaxLevel;
-    } else if (columnTransformer instanceof MultiColumnTransformer) {
-      int childrenCount = ((MultiColumnTransformer) columnTransformer).getChildren().size();
-      OptionalInt childMaxLevel =
-          ((MultiColumnTransformer) columnTransformer)
-              .getChildren().stream().mapToInt(this::getMaxLevelOfColumnTransformerTree).max();
-
-      return Math.max(childrenCount + 1, childMaxLevel.orElse(childrenCount + 1));
+    } else if (columnTransformer instanceof FailFunctionColumnTransformer) {
+      return 0;
     } else {
       throw new UnsupportedOperationException("Unsupported ColumnTransformer");
     }

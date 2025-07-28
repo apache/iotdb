@@ -174,7 +174,7 @@ public class WALWriteUtils {
   public static int write(MeasurementSchema measurementSchema, IWALByteBufferView buffer) {
     int len = 0;
 
-    len += write(measurementSchema.getMeasurementId(), buffer);
+    len += write(measurementSchema.getMeasurementName(), buffer);
 
     len += write(measurementSchema.getType(), buffer);
 
@@ -197,7 +197,7 @@ public class WALWriteUtils {
 
   public static int sizeToWrite(MeasurementSchema measurementSchema) {
     int byteLen = 0;
-    byteLen += ReadWriteIOUtils.sizeToWrite(measurementSchema.getMeasurementId());
+    byteLen += ReadWriteIOUtils.sizeToWrite(measurementSchema.getMeasurementName());
     byteLen += 3 * Byte.BYTES;
 
     Map<String, String> props = measurementSchema.getProps();

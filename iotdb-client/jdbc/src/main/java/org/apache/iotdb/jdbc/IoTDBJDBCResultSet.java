@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -33,6 +34,8 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.sql.rowset.serial.SerialBlob;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -297,12 +300,28 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Blob getBlob(int arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    try {
+      Binary binary = ioTDBRpcDataSet.getBinary(arg0);
+      if (ObjectUtils.isNotEmpty(binary)) {
+        return new SerialBlob(binary.getValues());
+      }
+      return null;
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
   public Blob getBlob(String arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    try {
+      Binary binary = ioTDBRpcDataSet.getBinary(arg0);
+      if (ObjectUtils.isNotEmpty(binary)) {
+        return new SerialBlob(binary.getValues());
+      }
+      return null;
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
@@ -1253,7 +1272,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   protected String getValueByName(String columnName) throws SQLException {
     try {
       return ioTDBRpcDataSet.getString(columnName);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException e) {
       throw new SQLException(e.getMessage());
     }
   }

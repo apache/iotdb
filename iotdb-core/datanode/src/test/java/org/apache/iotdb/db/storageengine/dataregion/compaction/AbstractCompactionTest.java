@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -28,7 +29,6 @@ import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.protocol.rest.StringUtil;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -51,6 +51,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -764,7 +765,7 @@ public class AbstractCompactionTest {
     File file = resource.getTsFile();
     String[] fileInfo = file.getPath().split(FILE_NAME_SEPARATOR);
     fileInfo[1] = String.valueOf(version);
-    String newFileName = StringUtil.join(fileInfo, FILE_NAME_SEPARATOR);
+    String newFileName = StringUtils.join(fileInfo, FILE_NAME_SEPARATOR);
     file.renameTo(new File(newFileName));
 
     resource.setVersion(version);
@@ -775,8 +776,8 @@ public class AbstractCompactionTest {
     file.renameTo(new File(newFileName + TsFileResource.RESOURCE_SUFFIX));
 
     // rename mods file
-    file = new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX);
-    file.renameTo(new File(newFileName + ModificationFile.FILE_SUFFIX));
+    file = ModificationFile.getExclusiveMods(resource.getTsFile());
+    file.renameTo(ModificationFile.getExclusiveMods(new File(newFileName)));
   }
 
   protected TsFileResource generateSingleAlignedSeriesFile(
@@ -842,8 +843,7 @@ public class AbstractCompactionTest {
   protected List<IFullPath> getPaths(List<TsFileResource> resources)
       throws IOException, IllegalPathException {
     Set<IFullPath> paths = new HashSet<>();
-    try (MultiTsFileDeviceIterator deviceIterator =
-        new MultiTsFileDeviceIterator(resources, false)) {
+    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
       while (deviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
         IDeviceID deviceID = iDeviceIDBooleanPair.getLeft();
@@ -856,7 +856,7 @@ public class AbstractCompactionTest {
         }
         List<String> existedMeasurements =
             measurementSchemas.stream()
-                .map(IMeasurementSchema::getMeasurementId)
+                .map(IMeasurementSchema::getMeasurementName)
                 .collect(Collectors.toList());
         IFullPath seriesPath;
         if (isAlign) {

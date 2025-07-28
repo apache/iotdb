@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
@@ -56,6 +56,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -132,14 +133,14 @@ public class HorizontallyConcatOperatorTest {
           Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM, TAggregationType.FIRST_VALUE);
       GroupByTimeParameter groupByTimeParameter =
           new GroupByTimeParameter(0, 10, new TimeDuration(0, 1), new TimeDuration(0, 1), true);
-      List<Aggregator> aggregators = new ArrayList<>();
+      List<TreeAggregator> aggregators = new ArrayList<>();
       AccumulatorFactory.createBuiltinAccumulators(
               aggregationTypes,
               TSDataType.INT32,
               Collections.emptyList(),
               Collections.emptyMap(),
               true)
-          .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
+          .forEach(o -> aggregators.add(new TreeAggregator(o, AggregationStep.SINGLE)));
 
       SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
       scanOptionsBuilder.withAllSensors(allSensors);
@@ -151,7 +152,7 @@ public class HorizontallyConcatOperatorTest {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               aggregators,
-              initTimeRangeIterator(groupByTimeParameter, true, true),
+              initTimeRangeIterator(groupByTimeParameter, true, true, ZoneId.systemDefault()),
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
@@ -174,7 +175,7 @@ public class HorizontallyConcatOperatorTest {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(1),
               aggregators,
-              initTimeRangeIterator(groupByTimeParameter, true, true),
+              initTimeRangeIterator(groupByTimeParameter, true, true, ZoneId.systemDefault()),
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -131,16 +132,18 @@ public class ShowQueriesOperator implements SourceOperator {
       int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
 
       for (IQueryExecution queryExecution : queryExecutions) {
-        timeColumnBuilder.writeLong(
-            TimestampPrecisionUtils.convertToCurrPrecision(
-                queryExecution.getStartExecutionTime(), TimeUnit.MILLISECONDS));
-        columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
-        columnBuilders[1].writeInt(dataNodeId);
-        columnBuilders[2].writeFloat(
-            (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
-        columnBuilders[3].writeBinary(
-            BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
-        builder.declarePosition();
+        if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TREE)) {
+          timeColumnBuilder.writeLong(
+              TimestampPrecisionUtils.convertToCurrPrecision(
+                  queryExecution.getStartExecutionTime(), TimeUnit.MILLISECONDS));
+          columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
+          columnBuilders[1].writeInt(dataNodeId);
+          columnBuilders[2].writeFloat(
+              (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
+          columnBuilders[3].writeBinary(
+              BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
+          builder.declarePosition();
+        }
       }
     }
     return builder.build();

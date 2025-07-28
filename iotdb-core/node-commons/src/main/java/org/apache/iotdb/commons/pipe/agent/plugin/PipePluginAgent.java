@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeConnectorConstructor;
-import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeExtractorConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeProcessorConstructor;
+import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructor;
+import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSourceConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
@@ -37,36 +37,36 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public abstract class PipePluginAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginAgent.class);
 
   protected final PipePluginMetaKeeper pipePluginMetaKeeper;
-  private final PipeExtractorConstructor pipeExtractorConstructor;
+  private final PipeSourceConstructor pipeExtractorConstructor;
   private final PipeProcessorConstructor pipeProcessorConstructor;
-  private final PipeConnectorConstructor pipeConnectorConstructor;
+  private final PipeSinkConstructor pipeSinkConstructor;
 
   protected PipePluginAgent(PipePluginMetaKeeper pipePluginMetaKeeper) {
     this.pipePluginMetaKeeper = pipePluginMetaKeeper;
     pipeExtractorConstructor = createPipeExtractorConstructor(pipePluginMetaKeeper);
     pipeProcessorConstructor = createPipeProcessorConstructor(pipePluginMetaKeeper);
-    pipeConnectorConstructor = createPipeConnectorConstructor(pipePluginMetaKeeper);
+    pipeSinkConstructor = createPipeConnectorConstructor(pipePluginMetaKeeper);
   }
 
-  protected abstract PipeExtractorConstructor createPipeExtractorConstructor(
+  protected abstract PipeSourceConstructor createPipeExtractorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
   protected abstract PipeProcessorConstructor createPipeProcessorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
-  protected abstract PipeConnectorConstructor createPipeConnectorConstructor(
+  protected abstract PipeSinkConstructor createPipeConnectorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
   public final PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
@@ -78,7 +78,7 @@ public abstract class PipePluginAgent {
   }
 
   public final PipeConnector reflectConnector(PipeParameters connectorParameters) {
-    return pipeConnectorConstructor.reflectPlugin(connectorParameters);
+    return pipeSinkConstructor.reflectPlugin(connectorParameters);
   }
 
   public void validate(
@@ -92,7 +92,8 @@ public abstract class PipePluginAgent {
     validateConnector(pipeName, connectorAttributes);
   }
 
-  public void validateExtractor(Map<String, String> extractorAttributes) throws Exception {
+  protected PipeExtractor validateExtractor(Map<String, String> extractorAttributes)
+      throws Exception {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
     final PipeExtractor temporaryExtractor = reflectExtractor(extractorParameters);
     try {
@@ -104,9 +105,11 @@ public abstract class PipePluginAgent {
         LOGGER.warn("Failed to close temporary extractor: {}", e.getMessage(), e);
       }
     }
+    return temporaryExtractor;
   }
 
-  public void validateProcessor(Map<String, String> processorAttributes) throws Exception {
+  protected PipeProcessor validateProcessor(Map<String, String> processorAttributes)
+      throws Exception {
     final PipeParameters processorParameters = new PipeParameters(processorAttributes);
     final PipeProcessor temporaryProcessor = reflectProcessor(processorParameters);
     try {
@@ -118,10 +121,11 @@ public abstract class PipePluginAgent {
         LOGGER.warn("Failed to close temporary processor: {}", e.getMessage(), e);
       }
     }
+    return temporaryProcessor;
   }
 
-  public void validateConnector(String pipeName, Map<String, String> connectorAttributes)
-      throws Exception {
+  protected PipeConnector validateConnector(
+      String pipeName, Map<String, String> connectorAttributes) throws Exception {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
     final PipeConnector temporaryConnector = reflectConnector(connectorParameters);
     try {
@@ -137,6 +141,7 @@ public abstract class PipePluginAgent {
         LOGGER.warn("Failed to close temporary connector: {}", e.getMessage(), e);
       }
     }
+    return temporaryConnector;
   }
 
   /**
@@ -150,7 +155,7 @@ public abstract class PipePluginAgent {
    */
   public final List<String> getSubProcessorNamesWithSpecifiedParent(
       Class<? extends PipeProcessor> parentClass) throws PipeException {
-    return Arrays.stream(pipePluginMetaKeeper.getAllPipePluginMeta())
+    return StreamSupport.stream(pipePluginMetaKeeper.getAllPipePluginMeta().spliterator(), false)
         .map(pipePluginMeta -> pipePluginMeta.getPluginName().toLowerCase())
         .filter(
             pluginName -> {

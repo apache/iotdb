@@ -25,8 +25,15 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
@@ -421,6 +428,52 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
         final TableDeviceAttributeUpdateNode updateTableDeviceAttributePlan,
         final ByteBuffer buffer) {
       return (TableDeviceAttributeUpdateNode) PlanNodeType.deserialize(buffer);
+    }
+
+    @Override
+    public ISchemaRegionPlan visitCommitUpdateTableDeviceAttribute(
+        final TableDeviceAttributeCommitUpdateNode commitUpdateTableDeviceAttributePlan,
+        final ByteBuffer buffer) {
+      return (TableDeviceAttributeCommitUpdateNode) PlanNodeType.deserialize(buffer);
+    }
+
+    @Override
+    public ISchemaRegionPlan visitAddNodeLocation(
+        final TableNodeLocationAddNode addNodeLocationPlan, final ByteBuffer buffer) {
+      return (TableNodeLocationAddNode) PlanNodeType.deserialize(buffer);
+    }
+
+    @Override
+    public ISchemaRegionPlan visitDeleteTableDevice(
+        final DeleteTableDeviceNode deleteTableDevicePlan, final ByteBuffer buffer) {
+      return (DeleteTableDeviceNode) PlanNodeType.deserialize(buffer);
+    }
+
+    @Override
+    public ISchemaRegionPlan visitConstructTableDevicesBlackList(
+        final ConstructTableDevicesBlackListNode constructTableDevicesBlackListPlan,
+        final ByteBuffer buffer) {
+      return (ConstructTableDevicesBlackListNode) PlanNodeType.deserialize(buffer);
+    }
+
+    @Override
+    public ISchemaRegionPlan visitRollbackTableDevicesBlackList(
+        final RollbackTableDevicesBlackListNode rollbackTableDevicesBlackListPlan,
+        final ByteBuffer buffer) {
+      return (RollbackTableDevicesBlackListNode) PlanNodeType.deserialize(buffer);
+    }
+
+    @Override
+    public ISchemaRegionPlan visitDeleteTableDevicesInBlackList(
+        final DeleteTableDevicesInBlackListNode rollbackTableDevicesBlackListPlan,
+        final ByteBuffer buffer) {
+      return (DeleteTableDevicesInBlackListNode) PlanNodeType.deserialize(buffer);
+    }
+
+    @Override
+    public ISchemaRegionPlan visitDropTableAttribute(
+        final TableAttributeColumnDropNode dropTableAttributePlan, final ByteBuffer buffer) {
+      return (TableAttributeColumnDropNode) PlanNodeType.deserialize(buffer);
     }
   }
 }

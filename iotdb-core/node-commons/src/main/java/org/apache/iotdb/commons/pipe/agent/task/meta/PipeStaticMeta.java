@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -29,6 +33,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -81,6 +86,15 @@ public class PipeStaticMeta {
 
   public PipeType getPipeType() {
     return PipeType.getPipeType(pipeName);
+  }
+
+  public boolean isSourceExternal() {
+    return !BuiltinPipePlugin.BUILTIN_SOURCES.contains(
+        extractorParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase());
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -222,5 +236,17 @@ public class PipeStaticMeta {
   public static String generateSubscriptionPipeName(
       final String topicName, final String consumerGroupId) {
     return SUBSCRIPTION_PIPE_PREFIX + topicName + "_" + consumerGroupId;
+  }
+
+  public static boolean isSubscriptionPipe(final String pipeName) {
+    return Objects.nonNull(pipeName) && pipeName.startsWith(SUBSCRIPTION_PIPE_PREFIX);
+  }
+
+  /////////////////////////////////  Tree & Table Isolation  /////////////////////////////////
+
+  public boolean visibleUnder(final boolean isTableModel) {
+    final Visibility visibility =
+        VisibilityUtils.calculateFromExtractorParameters(extractorParameters);
+    return VisibilityUtils.isCompatible(visibility, isTableModel);
   }
 }

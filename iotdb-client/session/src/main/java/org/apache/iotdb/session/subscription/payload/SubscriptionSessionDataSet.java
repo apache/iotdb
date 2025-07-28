@@ -20,11 +20,14 @@
 package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.isession.ISessionDataSet;
+import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 
+import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
@@ -32,24 +35,86 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class SubscriptionSessionDataSet implements ISessionDataSet {
 
   private Tablet tablet;
 
+  @Nullable private final String databaseName;
+
   public Tablet getTablet() {
     return tablet;
   }
 
-  public SubscriptionSessionDataSet(final Tablet tablet) {
+  public SubscriptionSessionDataSet(final Tablet tablet, @Nullable final String databaseName) {
     this.tablet = tablet;
+    this.databaseName = databaseName;
     generateRowIterator();
+  }
+
+  /////////////////////////////// table model ///////////////////////////////
+
+  @TableModel private List<ColumnCategory> columnCategoryList;
+
+  @TableModel
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
+  @TableModel
+  public String getTableName() {
+    return tablet.getTableName();
+  }
+
+  @TableModel
+  public List<ColumnCategory> getColumnCategories() {
+    if (Objects.nonNull(columnCategoryList)) {
+      return columnCategoryList;
+    }
+
+    if (!isTableData()) {
+      return Collections.emptyList();
+    }
+
+    return columnCategoryList =
+        Stream.concat(
+                Stream.of(ColumnCategory.TIME),
+                tablet.getColumnTypes().stream()
+                    .map(
+                        columnCategory -> {
+                          switch (columnCategory) {
+                            case FIELD:
+                              return ColumnCategory.FIELD;
+                            case TAG:
+                              return ColumnCategory.TAG;
+                            case ATTRIBUTE:
+                              return ColumnCategory.ATTRIBUTE;
+                            default:
+                              throw new IllegalArgumentException(
+                                  "Unknown column category: " + columnCategory);
+                          }
+                        }))
+            .collect(Collectors.toList());
+  }
+
+  @TableModel
+  public enum ColumnCategory {
+    TIME,
+    TAG,
+    FIELD,
+    ATTRIBUTE
+  }
+
+  private boolean isTableData() {
+    return Objects.nonNull(databaseName);
   }
 
   /////////////////////////////// override ///////////////////////////////
@@ -63,16 +128,17 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
       return columnNameList;
     }
 
-    columnNameList = new ArrayList<>();
-    columnNameList.add("Time");
-
-    String deviceId = tablet.getDeviceId();
     List<IMeasurementSchema> schemas = tablet.getSchemas();
-    columnNameList.addAll(
-        schemas.stream()
-            .map((schema) -> deviceId + "." + schema.getMeasurementId())
-            .collect(Collectors.toList()));
-    return columnNameList;
+    String deviceId = tablet.getDeviceId();
+    return columnNameList =
+        isTableData()
+            ? Stream.concat(
+                    Stream.of("time"), schemas.stream().map(IMeasurementSchema::getMeasurementName))
+                .collect(Collectors.toList())
+            : Stream.concat(
+                    Stream.of("Time"),
+                    schemas.stream().map(schema -> deviceId + "." + schema.getMeasurementName()))
+                .collect(Collectors.toList());
   }
 
   @Override
@@ -81,13 +147,12 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
       return columnTypeList;
     }
 
-    columnTypeList = new ArrayList<>();
-    columnTypeList.add(TSDataType.INT64.toString());
-
     List<IMeasurementSchema> schemas = tablet.getSchemas();
-    columnTypeList.addAll(
-        schemas.stream().map(schema -> schema.getType().toString()).collect(Collectors.toList()));
-    return columnTypeList;
+    return columnTypeList =
+        Stream.concat(
+                Stream.of(TSDataType.INT64.toString()),
+                schemas.stream().map(schema -> schema.getType().toString()))
+            .collect(Collectors.toList());
   }
 
   public boolean hasNext() {
@@ -103,13 +168,16 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
     final long timestamp = entry.getKey();
     final int rowIndex = entry.getValue();
 
+    BitMap[] bitMaps = tablet.getBitMaps();
     for (int columnIndex = 0; columnIndex < columnSize; ++columnIndex) {
       final Field field;
-      if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
+      if (bitMaps != null
+          && bitMaps[columnIndex] != null
+          && bitMaps[columnIndex].isMarked(rowIndex)) {
         field = new Field(null);
       } else {
         final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
-        field = generateFieldFromTabletValue(dataType, tablet.values[columnIndex], rowIndex);
+        field = generateFieldFromTabletValue(dataType, tablet.getValues()[columnIndex], rowIndex);
       }
       fields.add(field);
     }
@@ -132,7 +200,7 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
 
   private void generateRowIterator() {
     // timestamp -> row index
-    final long[] timestamps = tablet.timestamps;
+    final long[] timestamps = tablet.getTimestamps();
     final TreeMap<Long, Integer> timestampToRowIndex = new TreeMap<>();
     final int rowSize = timestamps.length;
     for (int rowIndex = 0; rowIndex < rowSize; ++rowIndex) {

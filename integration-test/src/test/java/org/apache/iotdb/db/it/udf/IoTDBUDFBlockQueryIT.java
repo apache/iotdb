@@ -152,4 +152,16 @@ public class IoTDBUDFBlockQueryIT {
       fail(throwable.getMessage());
     }
   }
+
+  @Test
+  public void testUntrustedUri() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE FUNCTION two_sum AS 'org.apache.iotdb.db.query.udf.example.TwoSum' USING URI 'https://alioss.timecho.com/upload/library-udf.jar'");
+      fail("should fail");
+    } catch (SQLException throwable) {
+      assertTrue(throwable.getMessage().contains("701: Untrusted uri "));
+    }
+  }
 }

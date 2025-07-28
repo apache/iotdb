@@ -20,6 +20,7 @@
 package org.apache.iotdb.cli;
 
 import org.apache.iotdb.cli.utils.CliContext;
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
@@ -37,7 +38,6 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.jdbc.Config.SQL_DIALECT;
@@ -99,7 +100,8 @@ public abstract class AbstractCli {
   static final String SET_FETCH_SIZE = "set fetch_size";
   static final String SHOW_FETCH_SIZE = "show fetch_size";
   private static final String HELP = "help";
-  static final String IOTDB_CLI_PREFIX = "IoTDB";
+  static final String IOTDB = "IoTDB";
+  static String cliPrefix = IOTDB;
   static final String SCRIPT_HINT = "./start-cli.sh(start-cli.bat if Windows)";
   static final String QUIT_COMMAND = "quit";
   static final String EXIT_COMMAND = "exit";
@@ -143,6 +145,7 @@ public abstract class AbstractCli {
   static int lastProcessStatus = CODE_OK;
 
   static String sqlDialect = "tree";
+  static String usingDatabase = null;
 
   static void init() {
     keywordSet.add("-" + HOST_ARGS);
@@ -160,11 +163,12 @@ public abstract class AbstractCli {
 
   static Options createOptions() {
     Options options = new Options();
-    Option help = new Option(HELP_ARGS, false, "Display help information(optional)");
+    Option help = new Option(HELP_ARGS, false, "Display help information. (optional)");
     help.setRequired(false);
     options.addOption(help);
 
-    Option timeFormat = new Option(ISO8601_ARGS, false, "Display timestamp in number(optional)");
+    Option timeFormat =
+        new Option(ISO8601_ARGS, false, "Display timestamp in numeric format. (optional)");
     timeFormat.setRequired(false);
     options.addOption(timeFormat);
 
@@ -172,7 +176,7 @@ public abstract class AbstractCli {
         Option.builder(HOST_ARGS)
             .argName(HOST_NAME)
             .hasArg()
-            .desc("Host Name (optional, default 127.0.0.1)")
+            .desc("Host Name. Default is 127.0.0.1. (optional)")
             .build();
     options.addOption(host);
 
@@ -180,7 +184,7 @@ public abstract class AbstractCli {
         Option.builder(PORT_ARGS)
             .argName(PORT_NAME)
             .hasArg()
-            .desc("Port (optional, default 6667)")
+            .desc("Port. Default is 6667. (optional)")
             .build();
     options.addOption(port);
 
@@ -188,20 +192,24 @@ public abstract class AbstractCli {
         Option.builder(USERNAME_ARGS)
             .argName(USERNAME_NAME)
             .hasArg()
-            .desc("User name (required)")
+            .desc("User name. (required)")
             .required()
             .build();
     options.addOption(username);
 
     Option password =
-        Option.builder(PW_ARGS).argName(PW_NAME).hasArg().desc("password (optional)").build();
+        Option.builder(PW_ARGS)
+            .argName(PW_NAME)
+            .hasArg()
+            .desc("Password. Default is root. (optional)")
+            .build();
     options.addOption(password);
 
     Option useSSL =
         Option.builder(USE_SSL_ARGS)
             .argName(USE_SSL)
             .hasArg()
-            .desc("use_ssl statement (optional)")
+            .desc("Use SSL statement. (optional)")
             .build();
     options.addOption(useSSL);
 
@@ -209,7 +217,7 @@ public abstract class AbstractCli {
         Option.builder(TRUST_STORE_ARGS)
             .argName(TRUST_STORE)
             .hasArg()
-            .desc("trust_store statement (optional)")
+            .desc("Trust store statement. (optional)")
             .build();
     options.addOption(trustStore);
 
@@ -217,7 +225,7 @@ public abstract class AbstractCli {
         Option.builder(TRUST_STORE_PWD_ARGS)
             .argName(TRUST_STORE_PWD)
             .hasArg()
-            .desc("trust_store_pwd statement (optional)")
+            .desc("Trust store password statement. (optional)")
             .build();
     options.addOption(trustStorePwd);
 
@@ -225,14 +233,14 @@ public abstract class AbstractCli {
         Option.builder(EXECUTE_ARGS)
             .argName(EXECUTE_NAME)
             .hasArg()
-            .desc("execute statement (optional)")
+            .desc("Execute a statement. (optional)")
             .build();
     options.addOption(execute);
 
     Option isRpcCompressed =
         Option.builder(RPC_COMPRESS_ARGS)
             .argName(RPC_COMPRESS_NAME)
-            .desc("Rpc Compression enabled or not")
+            .desc("Enable or disable Rpc Compression. (optional)")
             .build();
     options.addOption(isRpcCompressed);
 
@@ -240,9 +248,7 @@ public abstract class AbstractCli {
         Option.builder(TIMEOUT_ARGS)
             .argName(TIMEOUT_NAME)
             .hasArg()
-            .desc(
-                "The timeout in second. "
-                    + "Using the configuration of server if it's not set (optional)")
+            .desc("The timeout in seconds. Uses the server configuration if not set. (optional)")
             .build();
     options.addOption(queryTimeout);
 
@@ -250,7 +256,7 @@ public abstract class AbstractCli {
         Option.builder(SQL_DIALECT)
             .argName(SQL_DIALECT)
             .hasArg()
-            .desc("currently support tree and table, using tree if it's not set (optional)")
+            .desc("Currently supports tree and table; uses tree if not set. (optional)")
             .build();
     options.addOption(sqlDialect);
     return options;
@@ -267,15 +273,12 @@ public abstract class AbstractCli {
     String str = commandLine.getOptionValue(arg);
     if (str == null) {
       if (isRequired) {
-        String msg =
-            String.format(
-                "%s: Required values for option '%s' not provided", IOTDB_CLI_PREFIX, name);
+        String msg = String.format("%s: Required values for option '%s' not provided", IOTDB, name);
         ctx.getPrinter().println(msg);
         ctx.getPrinter().println("Use -help for more information");
         throw new ArgsErrorException(msg);
       } else if (defaultValue == null) {
-        String msg =
-            String.format("%s: Required values for option '%s' is null.", IOTDB_CLI_PREFIX, name);
+        String msg = String.format("%s: Required values for option '%s' is null.", IOTDB, name);
         throw new ArgsErrorException(msg);
       } else {
         return defaultValue;
@@ -569,6 +572,7 @@ public abstract class AbstractCli {
       ZoneId zoneId = ZoneId.of(connection.getTimeZone());
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
+      long costTime = System.currentTimeMillis() - startTime;
       if (hasResultSet) {
         // print the result
         try (ResultSet resultSet = statement.getResultSet()) {
@@ -578,7 +582,6 @@ public abstract class AbstractCli {
           List<List<String>> lists =
               cacheResult(ctx, resultSet, maxSizeList, columnLength, resultSetMetaData, zoneId);
           output(ctx, lists, maxSizeList);
-          long costTime = System.currentTimeMillis() - startTime;
           ctx.getPrinter().println(String.format("It costs %.3fs", costTime / 1000.0));
           while (!isReachEnd) {
             if (continuePrint) {
@@ -590,9 +593,16 @@ public abstract class AbstractCli {
             }
             ctx.getPrinter()
                 .println("This display 1000 rows. Press ENTER to show more, input 'q' to quit.");
-            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(ctx.getIn()));
             try {
-              if ("".equals(br.readLine())) {
+              String line;
+              if (ctx.isDisableCliHistory()) {
+                line = ctx.getLineReader().readLine();
+              } else {
+                line = br.readLine();
+              }
+              if ("".equals(line)) {
                 maxSizeList = new ArrayList<>(columnLength);
                 lists =
                     cacheResult(
@@ -601,7 +611,7 @@ public abstract class AbstractCli {
               } else {
                 break;
               }
-            } catch (IOException e) {
+            } catch (Exception e) {
               ctx.getPrinter().printException(e);
               executeStatus = CODE_ERROR;
             }
@@ -620,6 +630,8 @@ public abstract class AbstractCli {
       ctx.getPrinter().println("Msg: " + e);
       executeStatus = CODE_ERROR;
     } finally {
+      updateSqlDialectAndUsingDatabase(
+          connection.getParams().getSqlDialect(), connection.getParams().getDb().orElse(null));
       resetArgs();
     }
     return executeStatus;
@@ -880,5 +892,22 @@ public abstract class AbstractCli {
       }
     }
     return true;
+  }
+
+  private static void updateSqlDialectAndUsingDatabase(
+      String sqlDialectOfConnection, String databaseOfConnection) {
+    boolean needUpdateCliPrefix =
+        !Objects.equals(sqlDialect, sqlDialectOfConnection)
+            || !Objects.equals(usingDatabase, databaseOfConnection);
+    sqlDialect = sqlDialectOfConnection;
+    usingDatabase = databaseOfConnection;
+    if (needUpdateCliPrefix) {
+      cliPrefix = IOTDB;
+      if (sqlDialect != null && Model.TABLE.name().equals(sqlDialect.toUpperCase())) {
+        if (databaseOfConnection != null) {
+          cliPrefix += ":" + databaseOfConnection;
+        }
+      }
+    }
   }
 }

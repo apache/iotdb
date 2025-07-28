@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.confignode.manager.load.cache;
 
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.load.cache.detector.FixedDetector;
+import org.apache.iotdb.confignode.manager.load.cache.detector.PhiAccrualDetector;
+
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -32,17 +37,34 @@ public abstract class AbstractLoadCache {
 
   // Max heartbeat cache samples store size
   private static final int MAXIMUM_WINDOW_SIZE = 100;
-  // The Status will be set to Unknown when the response time of heartbeat is more than 20s
-  protected static final long HEARTBEAT_TIMEOUT_TIME_IN_NS = 20_000_000_000L;
 
   // Caching the recent MAXIMUM_WINDOW_SIZE heartbeat sample
   protected final List<AbstractHeartbeatSample> slidingWindow;
   // The current statistics calculated by the latest heartbeat sample
   protected final AtomicReference<AbstractStatistics> currentStatistics;
 
+  protected final IFailureDetector failureDetector;
+
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+
   protected AbstractLoadCache() {
     this.currentStatistics = new AtomicReference<>();
     this.slidingWindow = Collections.synchronizedList(new LinkedList<>());
+    switch (CONF.getFailureDetector()) {
+      case IFailureDetector.PHI_ACCRUAL_DETECTOR:
+        this.failureDetector =
+            new PhiAccrualDetector(
+                CONF.getFailureDetectorPhiThreshold(),
+                CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L,
+                CONF.getHeartbeatIntervalInMs() * 200_000L,
+                IFailureDetector.PHI_COLD_START_THRESHOLD,
+                new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L));
+        break;
+      case IFailureDetector.FIXED_DETECTOR:
+      default:
+        this.failureDetector =
+            new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L);
+    }
   }
 
   /**
@@ -71,14 +93,14 @@ public abstract class AbstractLoadCache {
    *
    * @return The latest heartbeat sample.
    */
-  protected AbstractHeartbeatSample getLastSample() {
+  public AbstractHeartbeatSample getLastSample() {
     return slidingWindow.isEmpty() ? null : slidingWindow.get(slidingWindow.size() - 1);
   }
 
   /**
    * Update currentStatistics based on the latest heartbeat sample that cached in the slidingWindow.
    */
-  public abstract void updateCurrentStatistics();
+  public abstract void updateCurrentStatistics(boolean forceUpdate);
 
   public AbstractStatistics getCurrentStatistics() {
     return currentStatistics.get();

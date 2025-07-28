@@ -25,12 +25,12 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.queryengine.execution.operator.process.FillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.DoubleConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter.FixedIntervalFillFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.IntPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.IntPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import com.google.common.collect.ImmutableList;
@@ -61,7 +61,7 @@ public class FillOperatorTest {
           createFragmentInstanceContext(instanceId, stateMachine);
       DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      driverContext.addOperatorContext(1, planNodeId1, FillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, TreeFillOperator.class.getSimpleName());
 
       IFill[] fillArray =
           new IFill[] {
@@ -69,8 +69,8 @@ public class FillOperatorTest {
             new DoubleConstantFill(520.0),
             new DoubleConstantFill(520.0)
           };
-      FillOperator fillOperator =
-          new FillOperator(
+      TreeFillOperator fillOperator =
+          new TreeFillOperator(
               driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
@@ -245,16 +245,12 @@ public class FillOperatorTest {
           createFragmentInstanceContext(instanceId, stateMachine);
       DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      driverContext.addOperatorContext(1, planNodeId1, FillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, TreeFillOperator.class.getSimpleName());
 
       IFill[] fillArray =
-          new IFill[] {
-            new IntPreviousFill(IFillFilter.TRUE),
-            new IntPreviousFill(IFillFilter.TRUE),
-            new IntPreviousFill(IFillFilter.TRUE)
-          };
-      FillOperator fillOperator =
-          new FillOperator(
+          new IFill[] {new IntPreviousFill(), new IntPreviousFill(), new IntPreviousFill()};
+      TreeFillOperator fillOperator =
+          new TreeFillOperator(
               driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
@@ -422,16 +418,16 @@ public class FillOperatorTest {
           createFragmentInstanceContext(instanceId, stateMachine);
       DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      driverContext.addOperatorContext(1, planNodeId1, FillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, TreeFillOperator.class.getSimpleName());
 
       IFill[] fillArray =
           new IFill[] {
-            new IntPreviousFill(new FixedIntervalFillFilter(2)),
-            new IntPreviousFill(new FixedIntervalFillFilter(100)),
-            new IntPreviousFill(new FixedIntervalFillFilter(1))
+            new IntPreviousFillWithTimeDuration(new FixedIntervalFillFilter(2)),
+            new IntPreviousFillWithTimeDuration(new FixedIntervalFillFilter(100)),
+            new IntPreviousFillWithTimeDuration(new FixedIntervalFillFilter(1))
           };
-      FillOperator fillOperator =
-          new FillOperator(
+      TreeFillOperator fillOperator =
+          new TreeFillOperator(
               driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {

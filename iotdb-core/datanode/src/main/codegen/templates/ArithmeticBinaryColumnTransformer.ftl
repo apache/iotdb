@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 <@pp.dropOutputFile />
 <#list mathematicalOperator.binaryOperators as operator>
 <#list mathematicalDataType.types as first>
@@ -42,6 +41,11 @@ import org.apache.tsfile.utils.DateUtils;
 
 import java.time.ZoneId;
 
+<#if first.instance == "DATE">
+import java.time.format.DateTimeParseException;
+
+import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
+</#if>
 <#if first.dataType == "int" || second.dataType == "int" || first.dataType == "long" || second.dataType == "long">
 import static org.apache.iotdb.rpc.TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE;
 </#if>
@@ -73,6 +77,26 @@ public class ${className} extends BinaryColumnTransformer {
   }
 
   @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection){
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i) && selection[i]) {
+        returnType.write${first.dataType?cap_first}(
+            builder,
+            transform(
+                leftTransformer.getType().get${first.dataType?cap_first}(leftColumn, i),
+                rightTransformer.getType().get${second.dataType?cap_first}(rightColumn, i)));
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  @Override
   protected void checkType() {
     // do nothing
   }
@@ -83,10 +107,21 @@ public class ${className} extends BinaryColumnTransformer {
     <#if first.instance == "DATE">
     <#--Date + int || Date + long-->
     try{
-      long timestamp = Math.addExact(DateTimeUtils.correctPrecision(DateUtils.parseIntToTimestamp(left,zoneId)), right);
-      return DateUtils.parseDateExpressionToInt(DateTimeUtils.convertToLocalDate(timestamp, zoneId));
+      long timestamp =
+          Math.addExact(
+              DateTimeUtils.correctPrecision(DateUtils.parseIntToTimestamp(left,zoneId)), right);
+      return DateUtils.parseDateExpressionToInt(
+          DateTimeUtils.convertToLocalDate(timestamp, zoneId));
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("long ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(
+          String.format("long ${operator.name} overflow: %s + %s", left, right),
+          NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
+          true);
+    }catch (DateTimeParseException e) {
+      throw new IoTDBRuntimeException(
+          "Year must be between 1000 and 9999.",
+          DATE_OUT_OF_RANGE.getStatusCode(),
+          true);
     }
     <#else>
     <#--Timestamp + int || Timestamp + long-->
@@ -101,17 +136,31 @@ public class ${className} extends BinaryColumnTransformer {
     <#if first.instance == "DATE">
     <#--Date - int || Date - long-->
     try{
-      long timestamp = Math.subtractExact(DateTimeUtils.correctPrecision(DateUtils.parseIntToTimestamp(left, zoneId)), right);
-      return DateUtils.parseDateExpressionToInt(DateTimeUtils.convertToLocalDate(timestamp, zoneId));
+      long timestamp =
+          Math.subtractExact(
+              DateTimeUtils.correctPrecision(DateUtils.parseIntToTimestamp(left, zoneId)), right);
+      return DateUtils.parseDateExpressionToInt(
+          DateTimeUtils.convertToLocalDate(timestamp, zoneId));
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("long ${operator.name} overflow: %s - %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(
+          String.format("long ${operator.name} overflow: %s - %s", left, right),
+          NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
+          true);
+    }catch (DateTimeParseException e) {
+      throw new IoTDBRuntimeException(
+          "Year must be between 1000 and 9999.",
+          DATE_OUT_OF_RANGE.getStatusCode(),
+          true);
     }
     <#else>
     <#--Timestamp - int || Timestamp - long-->
     try{
       return Math.subtractExact(left, right);
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("long ${operator.name} overflow: %s - %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(
+          String.format("long ${operator.name} overflow: %s - %s", left, right),
+          NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
+          true);
     }
     </#if>
     <#break>
@@ -135,8 +184,14 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.time.ZoneId;
+<#if second.instance == "DATE">
+import java.time.format.DateTimeParseException;
+</#if>
 
 <#if first.dataType == "int" || second.dataType == "int" || first.dataType == "long" || second.dataType == "long">
+<#if second.instance == "DATE">
+import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
+</#if>
 import static org.apache.iotdb.rpc.TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE;
 </#if>
 
@@ -167,6 +222,26 @@ public class ${className} extends BinaryColumnTransformer {
   }
 
   @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection){
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i) && selection[i]) {
+        returnType.write${second.dataType?cap_first}(
+            builder,
+            transform(
+                leftTransformer.getType().get${first.dataType?cap_first}(leftColumn, i),
+                rightTransformer.getType().get${second.dataType?cap_first}(rightColumn, i)));
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  @Override
   protected void checkType() {
     // do nothing
   }
@@ -177,13 +252,24 @@ public class ${className} extends BinaryColumnTransformer {
       long timestamp = Math.addExact(left,DateTimeUtils.correctPrecision(DateUtils.parseIntToTimestamp(right, zoneId)));
       return DateUtils.parseDateExpressionToInt(DateTimeUtils.convertToLocalDate(timestamp, zoneId));
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("long ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(
+          String.format("long ${operator.name} overflow: %s + %s", left, right),
+          NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
+          true);
+    }catch (DateTimeParseException e) {
+      throw new IoTDBRuntimeException(
+          "Year must be between 1000 and 9999.",
+          DATE_OUT_OF_RANGE.getStatusCode(),
+          true);
     }
     <#else>
     try{
       return Math.addExact(left, right);
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("long ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(
+          String.format("long ${operator.name} overflow: %s + %s", left, right),
+          NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
+          true);
     }
     </#if>
   }
@@ -243,6 +329,26 @@ public class ${className} extends BinaryColumnTransformer {
   }
 
   @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection){
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i) && selection[i]) {
+        returnType.write${resultType?cap_first}(
+            builder,
+            transform(
+                leftTransformer.getType().get${first.dataType?cap_first}(leftColumn, i),
+                rightTransformer.getType().get${second.dataType?cap_first}(rightColumn, i)));
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  @Override
   protected void checkType() {
     // do nothing
   }
@@ -254,27 +360,39 @@ public class ${className} extends BinaryColumnTransformer {
     try{
       return Math.addExact(left, right);
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("${resultType} ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),false);
+      throw new IoTDBRuntimeException(
+          String.format("${resultType} ${operator.name} overflow: %s + %s", left, right),
+          NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
+          false);
     }
     <#break>
     <#case "Subtraction">
     try{
       return Math.subtractExact(left, right);
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("${resultType} ${operator.name} overflow: %s - %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),false);
+      throw new IoTDBRuntimeException(
+          String.format("${resultType} ${operator.name} overflow: %s - %s", left, right),
+          NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
+          false);
     }
     <#break>
     <#case "Multiplication">
     try{
       return Math.multiplyExact(left, right);
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("${resultType} ${operator.name} overflow: %s * %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(
+          String.format("${resultType} ${operator.name} overflow: %s * %s", left, right),
+          NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
+          true);
     }
     <#break>
     <#case "Division">
     try{
       if (left == <#if first.dataType == "int">Integer.MIN_VALUE<#elseif first.dataType == "long">Long.MIN_VALUE</#if> && right == -1) {
-        throw new IoTDBRuntimeException(String.format("${resultType} overflow: %s / %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+        throw new IoTDBRuntimeException(
+          String.format("${resultType} overflow: %s / %s", left, right),
+          NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
+          true);
       }
       return left / right;
     }catch (ArithmeticException e){

@@ -37,6 +37,7 @@ import java.util.Map;
 public class AlterPipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
+  private String userName;
   private boolean ifExistsCondition;
   private Map<String, String> extractorAttributes;
   private Map<String, String> processorAttributes;
@@ -44,8 +45,9 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
   private boolean isReplaceAllExtractorAttributes;
   private boolean isReplaceAllProcessorAttributes;
   private boolean isReplaceAllConnectorAttributes;
+  private boolean isTableModel;
 
-  public AlterPipeStatement(StatementType alterPipeStatement) {
+  public AlterPipeStatement(final StatementType alterPipeStatement) {
     this.statementType = alterPipeStatement;
   }
 
@@ -81,36 +83,52 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
     return isReplaceAllConnectorAttributes;
   }
 
-  public void setPipeName(String pipeName) {
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
+  public String getUserName() {
+    return userName;
+  }
+
+  public void setPipeName(final String pipeName) {
     this.pipeName = pipeName;
   }
 
-  public void setIfExists(boolean ifExistsCondition) {
+  public void setIfExists(final boolean ifExistsCondition) {
     this.ifExistsCondition = ifExistsCondition;
   }
 
-  public void setExtractorAttributes(Map<String, String> extractorAttributes) {
+  public void setExtractorAttributes(final Map<String, String> extractorAttributes) {
     this.extractorAttributes = extractorAttributes;
   }
 
-  public void setProcessorAttributes(Map<String, String> processorAttributes) {
+  public void setProcessorAttributes(final Map<String, String> processorAttributes) {
     this.processorAttributes = processorAttributes;
   }
 
-  public void setConnectorAttributes(Map<String, String> connectorAttributes) {
+  public void setConnectorAttributes(final Map<String, String> connectorAttributes) {
     this.connectorAttributes = connectorAttributes;
   }
 
-  public void setReplaceAllExtractorAttributes(boolean replaceAllExtractorAttributes) {
+  public void setReplaceAllExtractorAttributes(final boolean replaceAllExtractorAttributes) {
     isReplaceAllExtractorAttributes = replaceAllExtractorAttributes;
   }
 
-  public void setReplaceAllProcessorAttributes(boolean replaceAllProcessorAttributes) {
+  public void setReplaceAllProcessorAttributes(final boolean replaceAllProcessorAttributes) {
     isReplaceAllProcessorAttributes = replaceAllProcessorAttributes;
   }
 
-  public void setReplaceAllConnectorAttributes(boolean replaceAllConnectorAttributes) {
+  public void setReplaceAllConnectorAttributes(final boolean replaceAllConnectorAttributes) {
     isReplaceAllConnectorAttributes = replaceAllConnectorAttributes;
+  }
+
+  public void setTableModel(final boolean tableModel) {
+    this.isTableModel = tableModel;
+  }
+
+  public void setUserName(String userName) {
+    this.userName = userName;
   }
 
   @Override
@@ -124,17 +142,17 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE.ordinal()),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE),
         PrivilegeType.USE_PIPE);
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitAlterPipe(this, context);
   }
 }

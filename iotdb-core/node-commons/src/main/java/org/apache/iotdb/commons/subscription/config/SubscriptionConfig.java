@@ -29,7 +29,13 @@ public class SubscriptionConfig {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  /////////////////////////////// Subtask Executor ///////////////////////////////
+  public boolean getSubscriptionEnabled() {
+    return COMMON_CONFIG.getSubscriptionEnabled();
+  }
+
+  public float getSubscriptionCacheMemoryUsagePercentage() {
+    return COMMON_CONFIG.getSubscriptionCacheMemoryUsagePercentage();
+  }
 
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {
     return COMMON_CONFIG.getSubscriptionSubtaskExecutorMaxThreadNum();
@@ -55,8 +61,8 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionPollMaxBlockingTimeMs();
   }
 
-  public int getSubscriptionSerializeMaxBlockingTimeMs() {
-    return COMMON_CONFIG.getSubscriptionSerializeMaxBlockingTimeMs();
+  public int getSubscriptionDefaultTimeoutInMs() {
+    return COMMON_CONFIG.getSubscriptionDefaultTimeoutInMs();
   }
 
   public long getSubscriptionLaunchRetryIntervalMs() {
@@ -79,14 +85,71 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionTsFileDeduplicationWindowSeconds();
   }
 
+  public long getSubscriptionCheckMemoryEnoughIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionCheckMemoryEnoughIntervalMs();
+  }
+
+  public long getSubscriptionEstimatedInsertNodeTabletInsertionEventSize() {
+    return COMMON_CONFIG.getSubscriptionEstimatedInsertNodeTabletInsertionEventSize();
+  }
+
+  public long getSubscriptionEstimatedRawTabletInsertionEventSize() {
+    return COMMON_CONFIG.getSubscriptionEstimatedRawTabletInsertionEventSize();
+  }
+
+  public long getSubscriptionMaxAllowedEventCountInTabletBatch() {
+    return COMMON_CONFIG.getSubscriptionMaxAllowedEventCountInTabletBatch();
+  }
+
+  public long getSubscriptionLogManagerWindowSeconds() {
+    return COMMON_CONFIG.getSubscriptionLogManagerWindowSeconds();
+  }
+
+  public long getSubscriptionLogManagerBaseIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionLogManagerBaseIntervalMs();
+  }
+
+  public boolean getSubscriptionPrefetchEnabled() {
+    return COMMON_CONFIG.getSubscriptionPrefetchEnabled();
+  }
+
+  public float getSubscriptionPrefetchMemoryThreshold() {
+    return COMMON_CONFIG.getSubscriptionPrefetchMemoryThreshold();
+  }
+
+  public float getSubscriptionPrefetchMissingRateThreshold() {
+    return COMMON_CONFIG.getSubscriptionPrefetchMissingRateThreshold();
+  }
+
+  public int getSubscriptionPrefetchEventLocalCountThreshold() {
+    return COMMON_CONFIG.getSubscriptionPrefetchEventLocalCountThreshold();
+  }
+
+  public int getSubscriptionPrefetchEventGlobalCountThreshold() {
+    return COMMON_CONFIG.getSubscriptionPrefetchEventGlobalCountThreshold();
+  }
+
+  public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {
+    return COMMON_CONFIG.getSubscriptionMetaSyncerInitialSyncDelayMinutes();
+  }
+
+  public long getSubscriptionMetaSyncerSyncIntervalMinutes() {
+    return COMMON_CONFIG.getSubscriptionMetaSyncerSyncIntervalMinutes();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
 
   public void printAllConfigs() {
+    LOGGER.info("SubscriptionEnabled: {}", getSubscriptionEnabled());
+
+    LOGGER.info(
+        "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
     LOGGER.info(
         "SubscriptionSubtaskExecutorMaxThreadNum: {}",
         getSubscriptionSubtaskExecutorMaxThreadNum());
+
     LOGGER.info(
         "SubscriptionPrefetchTabletBatchMaxDelayInMs: {}",
         getSubscriptionPrefetchTabletBatchMaxDelayInMs());
@@ -100,8 +163,7 @@ public class SubscriptionConfig {
         "SubscriptionPrefetchTsFileBatchMaxSizeInBytes: {}",
         getSubscriptionPrefetchTsFileBatchMaxSizeInBytes());
     LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
-    LOGGER.info(
-        "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
+    LOGGER.info("SubscriptionDefaultTimeoutInMs: {}", getSubscriptionDefaultTimeoutInMs());
     LOGGER.info("SubscriptionLaunchRetryIntervalMs: {}", getSubscriptionLaunchRetryIntervalMs());
     LOGGER.info(
         "SubscriptionRecycleUncommittedEventIntervalMs: {}",
@@ -111,6 +173,42 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionTsFileDeduplicationWindowSeconds: {}",
         getSubscriptionTsFileDeduplicationWindowSeconds());
+    LOGGER.info(
+        "SubscriptionCheckMemoryEnoughIntervalMs: {}",
+        getSubscriptionCheckMemoryEnoughIntervalMs());
+    LOGGER.info(
+        "SubscriptionEstimatedInsertNodeTabletInsertionEventSize: {}",
+        getSubscriptionEstimatedInsertNodeTabletInsertionEventSize());
+    LOGGER.info(
+        "SubscriptionEstimatedRawTabletInsertionEventSize: {}",
+        getSubscriptionEstimatedRawTabletInsertionEventSize());
+    LOGGER.info(
+        "SubscriptionMaxAllowedEventCountInTabletBatch: {}",
+        getSubscriptionMaxAllowedEventCountInTabletBatch());
+    LOGGER.info(
+        "SubscriptionLogManagerWindowSeconds: {}", getSubscriptionLogManagerWindowSeconds());
+    LOGGER.info(
+        "SubscriptionLogManagerBaseIntervalMs: {}", getSubscriptionLogManagerBaseIntervalMs());
+
+    LOGGER.info("SubscriptionPrefetchEnabled: {}", getSubscriptionPrefetchEnabled());
+    LOGGER.info(
+        "SubscriptionPrefetchMemoryThreshold: {}", getSubscriptionPrefetchMemoryThreshold());
+    LOGGER.info(
+        "SubscriptionPrefetchMissingRateThreshold: {}",
+        getSubscriptionPrefetchMissingRateThreshold());
+    LOGGER.info(
+        "SubscriptionPrefetchEventLocalCountThreshold: {}",
+        getSubscriptionPrefetchEventLocalCountThreshold());
+    LOGGER.info(
+        "SubscriptionPrefetchEventGlobalCountThreshold: {}",
+        getSubscriptionPrefetchEventGlobalCountThreshold());
+
+    LOGGER.info(
+        "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}",
+        getSubscriptionMetaSyncerInitialSyncDelayMinutes());
+    LOGGER.info(
+        "SubscriptionMetaSyncerSyncIntervalMinutes: {}",
+        getSubscriptionMetaSyncerSyncIntervalMinutes());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

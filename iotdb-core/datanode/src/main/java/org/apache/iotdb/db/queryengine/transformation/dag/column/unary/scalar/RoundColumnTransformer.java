@@ -38,40 +38,61 @@ public class RoundColumnTransformer extends BinaryColumnTransformer {
   protected void doTransform(
       Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
     TypeEnum sourceType = leftTransformer.getType().getTypeEnum();
-    Type rightType = rightTransformer.getType();
     for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        int places = rightType.getInt(rightColumn, i);
-        switch (sourceType) {
-          case INT32:
-            builder.writeDouble(
-                Math.rint(leftColumn.getInt(i) * Math.pow(10, places)) / Math.pow(10, places));
-            break;
-          case INT64:
-            builder.writeDouble(
-                Math.rint(leftColumn.getLong(i) * Math.pow(10, places)) / Math.pow(10, places));
-            break;
-          case FLOAT:
-            builder.writeDouble(
-                Math.rint(leftColumn.getFloat(i) * Math.pow(10, places)) / Math.pow(10, places));
-            break;
-          case DOUBLE:
-            builder.writeDouble(
-                Math.rint(leftColumn.getDouble(i) * Math.pow(10, places)) / Math.pow(10, places));
-            break;
-          case DATE:
-          case TEXT:
-          case BOOLEAN:
-          case BLOB:
-          case STRING:
-          case TIMESTAMP:
-          default:
-            throw new UnsupportedOperationException(
-                String.format("Unsupported source dataType: %s", sourceType));
-        }
+        transform(sourceType, leftColumn, rightColumn, builder, i);
       } else {
         builder.appendNull();
       }
+    }
+  }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection) {
+    TypeEnum sourceType = leftTransformer.getType().getTypeEnum();
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i] && !leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        transform(sourceType, leftColumn, rightColumn, builder, i);
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  private void transform(
+      TypeEnum sourceType, Column leftColumn, Column rightColumn, ColumnBuilder builder, int i) {
+    int places = rightTransformer.getType().getInt(rightColumn, i);
+    switch (sourceType) {
+      case INT32:
+        builder.writeDouble(
+            Math.rint(leftColumn.getInt(i) * Math.pow(10, places)) / Math.pow(10, places));
+        break;
+      case INT64:
+        builder.writeDouble(
+            Math.rint(leftColumn.getLong(i) * Math.pow(10, places)) / Math.pow(10, places));
+        break;
+      case FLOAT:
+        builder.writeDouble(
+            Math.rint(leftColumn.getFloat(i) * Math.pow(10, places)) / Math.pow(10, places));
+        break;
+      case DOUBLE:
+        builder.writeDouble(
+            Math.rint(leftColumn.getDouble(i) * Math.pow(10, places)) / Math.pow(10, places));
+        break;
+      case DATE:
+      case TEXT:
+      case BOOLEAN:
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Unsupported source dataType: %s", sourceType));
     }
   }
 

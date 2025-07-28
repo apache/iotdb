@@ -21,18 +21,18 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
@@ -47,10 +47,11 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.isession.SessionConfig;
 
-import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -65,7 +66,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.checkSingleTimeSeries;
 import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.createTableDevice;
 
@@ -271,8 +271,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             new ColumnHeader("d_1", TSDataType.STRING));
     final String attributeName = "attr";
 
-    ISchemaRegion schemaRegion =
-        getSchemaRegion(ROOT + TsFileConstant.PATH_SEPARATOR + database, 0);
+    ISchemaRegion schemaRegion = getSchemaRegion(database, 0);
     createTableDevice(
         schemaRegion,
         tableName,
@@ -284,10 +283,10 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     columnHeaderList.forEach(
         columnHeader ->
             testTable.addColumnSchema(
-                new IdColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
+                new TagColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
     testTable.addColumnSchema(new AttributeColumnSchema(attributeName, TSDataType.STRING));
-    DataNodeTableCache.getInstance().preUpdateTable(database, testTable);
-    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName);
+    DataNodeTableCache.getInstance().preUpdateTable(database, testTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName, null);
 
     schemaRegion.updateTableDeviceAttribute(
         new TableDeviceAttributeUpdateNode(
@@ -296,7 +295,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             tableName,
             Collections.singletonList(
                 Collections.singletonList(
-                    new IdFilter(new InFilter(Collections.singleton("d_1")), 2))),
+                    new TagFilter(new InFilter(Collections.singleton("d_1")), 2))),
             null,
             columnHeaderList,
             null,
@@ -315,6 +314,8 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             Collections.singletonList(
                 columnHeaderList.stream().map(ColumnHeader::getColumnName).toArray(String[]::new)));
     Assert.assertEquals(1, result.size());
-    Assert.assertEquals("value2", result.get(0).getAttributeValue(attributeName));
+    Assert.assertEquals(
+        new Binary("value2", TSFileConfig.STRING_CHARSET),
+        result.get(0).getAttributeValue(attributeName));
   }
 }

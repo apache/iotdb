@@ -49,7 +49,7 @@ public class IoTDBRoundFunctionTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "use " + DATABASE_NAME,
-        "create table table1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 DOUBLE MEASUREMENT, s4 FLOAT MEASUREMENT, s5 BOOLEAN MEASUREMENT, s6 STRING MEASUREMENT)",
+        "create table table1(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 DOUBLE FIELD, s4 FLOAT FIELD, s5 BOOLEAN FIELD, s6 STRING FIELD)",
         "INSERT INTO table1(time,device_id,s1,s2,s3,s4,s5,s6) values(1, 'd1', 2, 3, 0.11234, 101.143445345,true,null)",
         "INSERT INTO table1(time,device_id,s1,s2,s3,s4,s5,s6) values(2, 'd1', 2, 4, 10.11234, 20.1443465345,true,'sss')",
         "INSERT INTO table1(time,device_id,s1,s2,s3,s4,s5,s6) values(3, 'd1', 2, 555, 120.161234, 20.61437245345,true,'sss')",

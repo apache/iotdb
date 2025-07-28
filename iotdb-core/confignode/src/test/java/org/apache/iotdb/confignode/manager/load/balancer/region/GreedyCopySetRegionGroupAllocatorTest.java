@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -54,8 +53,7 @@ public class GreedyCopySetRegionGroupAllocatorTest {
   private static final Random RANDOM = new Random();
   private static final int TEST_DATABASE_NUM = 3;
   private static final int TEST_DATA_NODE_NUM = 21;
-  private static final int DATA_REGION_PER_DATA_NODE =
-      (int) ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerDataNode();
+  private static final int DATA_REGION_PER_DATA_NODE = 5;
   private static final Map<Integer, TDataNodeConfiguration> AVAILABLE_DATA_NODE_MAP =
       new HashMap<>();
   private static final Map<Integer, Double> FREE_SPACE_MAP = new HashMap<>();

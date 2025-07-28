@@ -50,7 +50,7 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
     this.regionGroupMap = new HashMap<>();
   }
 
-  public CreateRegionGroupsPlan(ConfigPhysicalPlanType type) {
+  public CreateRegionGroupsPlan(final ConfigPhysicalPlanType type) {
     super(type);
     this.regionGroupMap = new HashMap<>();
   }
@@ -59,16 +59,17 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
     return regionGroupMap;
   }
 
-  public void addRegionGroup(String database, TRegionReplicaSet regionReplicaSet) {
+  public void addRegionGroup(final String database, final TRegionReplicaSet regionReplicaSet) {
     regionGroupMap
         .computeIfAbsent(database, regionReplicaSets -> new ArrayList<>())
         .add(regionReplicaSet);
   }
 
-  public void planLog(Logger logger) {
-    for (Map.Entry<String, List<TRegionReplicaSet>> regionGroupEntry : regionGroupMap.entrySet()) {
-      String database = regionGroupEntry.getKey();
-      for (TRegionReplicaSet regionReplicaSet : regionGroupEntry.getValue()) {
+  public void planLog(final Logger logger) {
+    for (final Map.Entry<String, List<TRegionReplicaSet>> regionGroupEntry :
+        regionGroupMap.entrySet()) {
+      final String database = regionGroupEntry.getKey();
+      for (final TRegionReplicaSet regionReplicaSet : regionGroupEntry.getValue()) {
         logger.info(
             "[CreateRegionGroups] RegionGroup: {}, belonged database: {}, on DataNodes: {}",
             regionReplicaSet.getRegionId(),
@@ -80,24 +81,24 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
     }
   }
 
-  public void serializeForProcedure(DataOutputStream stream) throws IOException {
+  public void serializeForProcedure(final DataOutputStream stream) throws IOException {
     this.serializeImpl(stream);
   }
 
-  public void deserializeForProcedure(ByteBuffer buffer) throws IOException {
+  public void deserializeForProcedure(final ByteBuffer buffer) throws IOException {
     // to remove the planType of ConfigPhysicalPlanType
     buffer.getShort();
     this.deserializeImpl(buffer);
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
     stream.writeInt(regionGroupMap.size());
-    for (Entry<String, List<TRegionReplicaSet>> entry : regionGroupMap.entrySet()) {
-      String database = entry.getKey();
-      List<TRegionReplicaSet> regionReplicaSets = entry.getValue();
+    for (final Entry<String, List<TRegionReplicaSet>> entry : regionGroupMap.entrySet()) {
+      final String database = entry.getKey();
+      final List<TRegionReplicaSet> regionReplicaSets = entry.getValue();
       BasicStructureSerDeUtil.write(database, stream);
       stream.writeInt(regionReplicaSets.size());
       regionReplicaSets.forEach(
@@ -107,15 +108,15 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    int databaseNum = buffer.getInt();
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
+    final int databaseNum = buffer.getInt();
     for (int i = 0; i < databaseNum; i++) {
-      String database = BasicStructureSerDeUtil.readString(buffer);
+      final String database = BasicStructureSerDeUtil.readString(buffer);
       regionGroupMap.put(database, new ArrayList<>());
 
-      int regionReplicaSetNum = buffer.getInt();
+      final int regionReplicaSetNum = buffer.getInt();
       for (int j = 0; j < regionReplicaSetNum; j++) {
-        TRegionReplicaSet regionReplicaSet =
+        final TRegionReplicaSet regionReplicaSet =
             ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
         regionGroupMap.get(database).add(regionReplicaSet);
       }
@@ -123,7 +124,7 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
@@ -133,7 +134,7 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
     if (!super.equals(o)) {
       return false;
     }
-    CreateRegionGroupsPlan that = (CreateRegionGroupsPlan) o;
+    final CreateRegionGroupsPlan that = (CreateRegionGroupsPlan) o;
     return Objects.equals(regionGroupMap, that.regionGroupMap);
   }
 

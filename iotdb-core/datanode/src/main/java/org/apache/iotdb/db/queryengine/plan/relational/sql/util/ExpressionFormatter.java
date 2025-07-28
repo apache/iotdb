@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Columns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
@@ -38,7 +39,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpres
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
@@ -74,12 +77,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Window;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowSpecification;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -89,6 +97,8 @@ import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_PRECEDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.ReservedIdentifiers.reserved;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter.formatName;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter.formatSql;
@@ -173,6 +183,11 @@ public final class ExpressionFormatter {
       }
 
       return builder.toString();
+    }
+
+    @Override
+    protected String visitExtract(Extract node, Void context) {
+      return "EXTRACT(" + node.getField() + " FROM " + process(node.getExpression(), context) + ")";
     }
 
     @Override
@@ -289,6 +304,10 @@ public final class ExpressionFormatter {
 
       StringBuilder builder = new StringBuilder();
 
+      if (node.getProcessingMode().isPresent()) {
+        builder.append(node.getProcessingMode().get().getMode()).append(" ");
+      }
+
       String arguments = joinExpressions(node.getArguments());
       if (node.getArguments().isEmpty() && "count".equalsIgnoreCase(node.getName().getSuffix())) {
         arguments = "*";
@@ -296,10 +315,23 @@ public final class ExpressionFormatter {
       if (node.isDistinct()) {
         arguments = "DISTINCT " + arguments;
       }
-
-      builder.append(formatName(node.getName())).append('(').append(arguments);
+      // deal with date_bin_gapfill
+      if (QualifiedName.of(DATE_BIN.getFunctionName()).equals(node.getName())
+          && node.getArguments().size() == 5) {
+        arguments = joinExpressions(node.getArguments().subList(0, 5));
+        builder
+            .append(formatName(QualifiedName.of(DATE_BIN.getFunctionName() + "_gapfill")))
+            .append('(')
+            .append(arguments);
+      } else {
+        builder.append(formatName(node.getName())).append('(').append(arguments);
+      }
 
       builder.append(')');
+
+      if (node.getWindow().isPresent()) {
+        builder.append(" OVER ").append(formatWindow(node.getWindow().get()));
+      }
 
       return builder.toString();
     }
@@ -532,6 +564,11 @@ public final class ExpressionFormatter {
       return node.getValue();
     }
 
+    @Override
+    protected String visitColumns(Columns node, Void context) {
+      return "COLUMNS(" + (node.isColumnsAsterisk() ? "*" : node.getPattern()) + ")";
+    }
+
     private String formatBinaryExpression(String operator, Expression left, Expression right) {
       return '(' + process(left, null) + ' ' + operator + ' ' + process(right, null) + ')';
     }
@@ -594,6 +631,72 @@ public final class ExpressionFormatter {
 
   public static String formatSortItems(List<SortItem> sortItems) {
     return sortItems.stream().map(sortItemFormatterFunction()).collect(joining(", "));
+  }
+
+  private static String formatWindow(Window window) {
+    if (window instanceof WindowReference) {
+      return formatExpression(((WindowReference) window).getName());
+    }
+
+    return formatWindowSpecification((WindowSpecification) window);
+  }
+
+  static String formatWindowSpecification(WindowSpecification windowSpecification) {
+    List<String> parts = new ArrayList<>();
+
+    if (windowSpecification.getExistingWindowName().isPresent()) {
+      parts.add(formatExpression(windowSpecification.getExistingWindowName().get()));
+    }
+    if (!windowSpecification.getPartitionBy().isEmpty()) {
+      parts.add(
+          "PARTITION BY "
+              + windowSpecification.getPartitionBy().stream()
+                  .map(ExpressionFormatter::formatExpression)
+                  .collect(joining(", ")));
+    }
+    if (windowSpecification.getOrderBy().isPresent()) {
+      parts.add(formatOrderBy(windowSpecification.getOrderBy().get()));
+    }
+    if (windowSpecification.getFrame().isPresent()) {
+      parts.add(formatFrame(windowSpecification.getFrame().get()));
+    }
+
+    return '(' + Joiner.on(' ').join(parts) + ')';
+  }
+
+  private static String formatFrame(WindowFrame windowFrame) {
+    StringBuilder builder = new StringBuilder();
+
+    builder.append(windowFrame.getType().toString()).append(' ');
+
+    if (windowFrame.getEnd().isPresent()) {
+      builder
+          .append("BETWEEN ")
+          .append(formatFrameBound(windowFrame.getStart()))
+          .append(" AND ")
+          .append(formatFrameBound(windowFrame.getEnd().get()));
+    } else {
+      builder.append(formatFrameBound(windowFrame.getStart()));
+    }
+
+    return builder.toString();
+  }
+
+  private static String formatFrameBound(FrameBound frameBound) {
+    switch (frameBound.getType()) {
+      case UNBOUNDED_PRECEDING:
+        return "UNBOUNDED PRECEDING";
+      case PRECEDING:
+        return formatExpression(frameBound.getValue().get()) + " PRECEDING";
+      case CURRENT_ROW:
+        return "CURRENT ROW";
+      case FOLLOWING:
+        return formatExpression(frameBound.getValue().get()) + " FOLLOWING";
+      case UNBOUNDED_FOLLOWING:
+        return "UNBOUNDED FOLLOWING";
+      default:
+        throw new IllegalArgumentException("Unsupported frame type: " + frameBound.getType());
+    }
   }
 
   static String formatGroupBy(List<GroupingElement> groupingElements) {

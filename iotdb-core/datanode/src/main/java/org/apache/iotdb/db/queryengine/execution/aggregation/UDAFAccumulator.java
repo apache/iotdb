@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDFParametersFactory;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.UDAF;
@@ -90,7 +90,7 @@ public class UDAFAccumulator implements Accumulator {
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes,
       boolean isInputRaw) {
-    udaf = (UDAF) UDFManagementService.getInstance().reflect(functionName);
+    udaf = UDFManagementService.getInstance().reflect(functionName, UDAF.class);
     state = udaf.createState();
 
     final UDFParameters parameters =

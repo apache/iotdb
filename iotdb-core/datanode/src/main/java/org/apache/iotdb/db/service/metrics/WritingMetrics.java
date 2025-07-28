@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -39,7 +40,9 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class WritingMetrics implements IMetricSet {
   private static final WritingMetrics INSTANCE = new WritingMetrics();
@@ -182,9 +185,13 @@ public class WritingMetrics implements IMetricSet {
   public static final String READ_WAL_BUFFER_COST_NS = "read_wal_buffer_cost";
   public static final String WRITE_WAL_BUFFER_COST_NS = "write_wal_buffer_cost";
   public static final String ENTRIES_COUNT = "entries_count";
+  public static final String WAL_ENTRY_NUM_FOR_ONE_TSFILE = "wal_entry_num_for_one_tsfile";
+  public static final String WAL_QUEUE_CURRENT_MEM_COST = "wal_queue_current_mem_cost";
+  public static final String WAL_QUEUE_MAX_MEM_COST = "wal_queue_max_mem_cost";
 
   private Histogram usedRatioHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram entriesCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram walEntryNumForOneTsFileHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram serializedWALBufferSizeHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram wroteWALBufferSizeHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram walCompressCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
@@ -192,6 +199,7 @@ public class WritingMetrics implements IMetricSet {
   private Histogram readWALBufferSizeHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram readWALBufferCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram writeWALBufferCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Gauge walQueueMaxMemSizeGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
 
   private void bindWALMetrics(AbstractMetricService metricService) {
     metricService.createAutoGauge(
@@ -210,6 +218,12 @@ public class WritingMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             ENTRIES_COUNT);
+    walEntryNumForOneTsFileHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.WAL_BUFFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WAL_ENTRY_NUM_FOR_ONE_TSFILE);
 
     serializedWALBufferSizeHistogram =
         metricService.getOrCreateHistogram(
@@ -253,6 +267,20 @@ public class WritingMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             WRITE_WAL_BUFFER_COST_NS);
+    walQueueMaxMemSizeGauge =
+        metricService.getOrCreateGauge(
+            Metric.WAL_QUEUE_MEM_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WAL_QUEUE_MAX_MEM_COST);
+    SystemInfo systemInfo = SystemInfo.getInstance();
+    metricService.createAutoGauge(
+        Metric.WAL_QUEUE_MEM_COST.toString(),
+        MetricLevel.IMPORTANT,
+        systemInfo,
+        (s) -> s.getWalBufferQueueMemoryBlock().getUsedMemoryInBytes(),
+        Tag.NAME.toString(),
+        WAL_QUEUE_CURRENT_MEM_COST);
   }
 
   private void unbindWALMetrics(AbstractMetricService metricService) {
@@ -260,6 +288,7 @@ public class WritingMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE, Metric.WAL_NODE_NUM.toString(), Tag.NAME.toString(), WAL_NODES_NUM);
     usedRatioHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     entriesCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    walEntryNumForOneTsFileHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     Arrays.asList(
             USED_RATIO,
             ENTRIES_COUNT,
@@ -274,6 +303,16 @@ public class WritingMetrics implements IMetricSet {
             name ->
                 metricService.remove(
                     MetricType.HISTOGRAM, Metric.WAL_BUFFER.toString(), Tag.NAME.toString(), name));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.WAL_QUEUE_MEM_COST.toString(),
+        Tag.NAME.toString(),
+        WAL_QUEUE_CURRENT_MEM_COST);
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.WAL_QUEUE_MEM_COST.toString(),
+        Tag.NAME.toString(),
+        WAL_QUEUE_MAX_MEM_COST);
   }
 
   // endregion
@@ -363,7 +402,7 @@ public class WritingMetrics implements IMetricSet {
                     MAKE_CHECKPOINT,
                     Tag.TYPE.toString(),
                     type));
-    Arrays.asList(SERIALIZE_WAL_ENTRY_TOTAL)
+    Collections.singletonList(SERIALIZE_WAL_ENTRY_TOTAL)
         .forEach(
             type ->
                 metricService.remove(
@@ -407,7 +446,6 @@ public class WritingMetrics implements IMetricSet {
   public static final String WAL_FLUSH_MEMTABLE_COUNT = "wal_flush_memtable_count";
   public static final String MANUAL_FLUSH_MEMTABLE_COUNT = "manual_flush_memtable_count";
   public static final String MEM_CONTROL_FLUSH_MEMTABLE_COUNT = "mem_control_flush_memtable_count";
-  public static final String SERIES_FULL_FLUSH_MEMTABLE = "series_full_flush_memtable";
 
   private Gauge flushThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge rejectThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
@@ -416,9 +454,10 @@ public class WritingMetrics implements IMetricSet {
 
   private Counter walFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter timedFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
-  private Counter seriesFullFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter manualFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter memControlFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+
+  private Histogram avgPointHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   public void bindDataRegionMetrics() {
     List<DataRegion> allDataRegions = StorageEngine.getInstance().getAllDataRegions();
@@ -429,7 +468,6 @@ public class WritingMetrics implements IMetricSet {
     createActiveTimePartitionCounterMetrics();
     walFlushMemtableCounter = createWalFlushMemTableCounterMetrics();
     timedFlushMemtableCounter = createTimedFlushMemTableCounterMetrics();
-    seriesFullFlushMemtableCounter = createSeriesFullFlushMemTableCounterMetrics();
     manualFlushMemtableCounter = createManualFlushMemTableCounterMetrics();
     memControlFlushMemtableCounter = createMemControlFlushMemTableCounterMetrics();
 
@@ -462,7 +500,6 @@ public class WritingMetrics implements IMetricSet {
           removeActiveMemtableCounterMetrics(dataRegionId);
         });
     removeActiveTimePartitionCounterMetrics();
-    removeSeriesFullFlushMemTableCounterMetrics();
     removeTimedFlushMemTableCounterMetrics();
     removeWalFlushMemTableCounterMetrics();
     removeManualFlushMemTableCounterMetrics();
@@ -538,13 +575,7 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void createFlushingMemTableStatusMetrics(DataRegionId dataRegionId) {
-    Arrays.asList(
-            MEM_TABLE_SIZE,
-            SERIES_NUM,
-            POINTS_NUM,
-            AVG_SERIES_POINT_NUM,
-            COMPRESSION_RATIO,
-            FLUSH_TSFILE_SIZE)
+    Arrays.asList(MEM_TABLE_SIZE, SERIES_NUM, POINTS_NUM, COMPRESSION_RATIO, FLUSH_TSFILE_SIZE)
         .forEach(
             name ->
                 MetricService.getInstance()
@@ -555,6 +586,15 @@ public class WritingMetrics implements IMetricSet {
                         name,
                         Tag.REGION.toString(),
                         dataRegionId.toString()));
+    avgPointHistogram =
+        MetricService.getInstance()
+            .getOrCreateHistogram(
+                Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.NAME.toString(),
+                AVG_SERIES_POINT_NUM,
+                Tag.REGION.toString(),
+                dataRegionId.toString());
   }
 
   public Counter createWalFlushMemTableCounterMetrics() {
@@ -573,15 +613,6 @@ public class WritingMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
             TIMED_FLUSH_MEMTABLE_COUNT);
-  }
-
-  public Counter createSeriesFullFlushMemTableCounterMetrics() {
-    return MetricService.getInstance()
-        .getOrCreateCounter(
-            Metric.FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.TYPE.toString(),
-            SERIES_FULL_FLUSH_MEMTABLE);
   }
 
   public Counter createManualFlushMemTableCounterMetrics() {
@@ -614,15 +645,6 @@ public class WritingMetrics implements IMetricSet {
   public void createActiveTimePartitionCounterMetrics() {
     MetricService.getInstance()
         .getOrCreateCounter(Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.IMPORTANT);
-  }
-
-  public void removeSeriesFullFlushMemTableCounterMetrics() {
-    MetricService.getInstance()
-        .remove(
-            MetricType.COUNTER,
-            Metric.FLUSH_MEMTABLE_COUNT.toString(),
-            Tag.TYPE.toString(),
-            SERIES_FULL_FLUSH_MEMTABLE);
   }
 
   public void removeTimedFlushMemTableCounterMetrics() {
@@ -693,6 +715,7 @@ public class WritingMetrics implements IMetricSet {
                         name,
                         Tag.REGION.toString(),
                         dataRegionId.toString()));
+    avgPointHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   }
 
   public void recordWALNodeEffectiveInfoRatio(String walNodeId, double ratio) {
@@ -778,15 +801,7 @@ public class WritingMetrics implements IMetricSet {
             POINTS_NUM,
             Tag.REGION.toString(),
             dataRegionId.toString());
-    MetricService.getInstance()
-        .histogram(
-            avgSeriesNum,
-            Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            AVG_SERIES_POINT_NUM,
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+    avgPointHistogram.update(avgSeriesNum);
   }
 
   public void recordFlushTsFileSize(String storageGroup, long size) {
@@ -806,6 +821,9 @@ public class WritingMetrics implements IMetricSet {
   }
 
   private DataRegionId getDataRegionIdFromStorageGroupStr(String storageGroup) {
+    if (Objects.isNull(storageGroup)) {
+      return null;
+    }
     int idx = storageGroup.lastIndexOf('-');
     if (idx == -1) {
       return null;
@@ -909,6 +927,14 @@ public class WritingMetrics implements IMetricSet {
     entriesCountHistogram.update(count);
   }
 
+  public void recordWALEntryNumForOneTsFile(long count) {
+    walEntryNumForOneTsFileHistogram.update(count);
+  }
+
+  public void recordWALQueueMaxMemorySize(long size) {
+    walQueueMaxMemSizeGauge.set(size);
+  }
+
   public void recordFlushThreshold(double flushThreshold) {
     flushThreholdGauge.set((long) flushThreshold);
   }
@@ -927,10 +953,6 @@ public class WritingMetrics implements IMetricSet {
 
   public void recordWalFlushMemTableCount(int number) {
     walFlushMemtableCounter.inc(number);
-  }
-
-  public void recordSeriesFullFlushMemTableCount(int number) {
-    seriesFullFlushMemtableCounter.inc(number);
   }
 
   public void recordManualFlushMemTableCount(int number) {
@@ -978,5 +1000,9 @@ public class WritingMetrics implements IMetricSet {
 
   public static WritingMetrics getInstance() {
     return INSTANCE;
+  }
+
+  public Histogram getAvgPointHistogram() {
+    return avgPointHistogram;
   }
 }

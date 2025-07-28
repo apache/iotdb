@@ -44,9 +44,22 @@ public class ArithmeticNegationColumnTransformer extends UnaryColumnTransformer 
   }
 
   @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        returnType.writeDouble(
+            columnBuilder, -childColumnTransformer.getType().getDouble(column, i));
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
+  @Override
   protected final void checkType() {
     if (!childColumnTransformer.isReturnTypeNumeric()) {
-      throw new UnsupportedOperationException("Unsupported Type: " + returnType.toString());
+      throw new UnsupportedOperationException(
+          "Unsupported Type: " + childColumnTransformer.getType().toString());
     }
   }
 }

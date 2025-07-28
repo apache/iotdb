@@ -20,6 +20,7 @@
 package org.apache.iotdb.tool.tsfile;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
+import org.apache.iotdb.tool.common.ImportTsFileOperation;
 
 import java.io.File;
 import java.nio.file.FileAlreadyExistsException;
@@ -38,11 +39,11 @@ public abstract class ImportTsFileBase implements Runnable {
   private static final LongAdder loadFileFailedNum = new LongAdder();
   private static final LongAdder processingLoadSuccessfulFileSuccessfulNum = new LongAdder();
   private static final LongAdder processingLoadFailedFileSuccessfulNum = new LongAdder();
-
+  private static String timePrecision = "ms";
   private static String successDir;
-  private static ImportTsFile.Operation successOperation;
+  private static ImportTsFileOperation successOperation;
   private static String failDir;
-  private static ImportTsFile.Operation failOperation;
+  private static ImportTsFileOperation failOperation;
 
   @Override
   public void run() {
@@ -232,12 +233,20 @@ public abstract class ImportTsFileBase implements Runnable {
 
   public static void setSuccessAndFailDirAndOperation(
       final String successDir,
-      final ImportTsFile.Operation successOperation,
+      final ImportTsFileOperation successOperation,
       final String failDir,
-      final ImportTsFile.Operation failOperation) {
+      final ImportTsFileOperation failOperation) {
     ImportTsFileBase.successDir = successDir;
     ImportTsFileBase.successOperation = successOperation;
     ImportTsFileBase.failDir = failDir;
     ImportTsFileBase.failOperation = failOperation;
+  }
+
+  protected void setTimePrecision(String timePrecision) {
+    this.timePrecision = timePrecision;
+  }
+
+  protected String getTimePrecision() {
+    return timePrecision;
   }
 }

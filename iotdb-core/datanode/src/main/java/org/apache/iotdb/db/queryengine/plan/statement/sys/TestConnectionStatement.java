@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -57,6 +58,6 @@ public class TestConnectionStatement extends Statement implements IConfigStateme
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    return super.checkPermissionBeforeProcess(userName);
+    return AuthorityChecker.checkSuperUserOrMaintain(userName);
   }
 }

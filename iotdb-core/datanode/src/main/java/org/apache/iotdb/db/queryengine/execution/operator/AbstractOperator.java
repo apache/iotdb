@@ -40,13 +40,19 @@ public abstract class AbstractOperator implements Operator {
     if (maxTupleSizeOfTsBlock != -1) {
       return;
     }
+    // oneTupleSize should be greater than 0 to avoid division by zero
     long oneTupleSize =
-        (tsBlock.getRetainedSizeInBytes() - tsBlock.getTotalInstanceSize())
-            / tsBlock.getPositionCount();
+        Math.max(
+            1,
+            (tsBlock.getSizeInBytes() - tsBlock.getTotalInstanceSize())
+                / tsBlock.getPositionCount());
     if (oneTupleSize > maxReturnSize) {
       // make sure at least one-tuple-at-a-time
       this.maxTupleSizeOfTsBlock = 1;
-      LOGGER.warn("Only one tuple can be sent each time caused by limited memory");
+      LOGGER.warn(
+          "Only one tuple can be sent each time caused by limited memory, oneTupleSize: {}B, maxReturnSize: {}B",
+          oneTupleSize,
+          maxReturnSize);
     } else {
       this.maxTupleSizeOfTsBlock = (int) (maxReturnSize / oneTupleSize);
     }
@@ -58,6 +64,10 @@ public abstract class AbstractOperator implements Operator {
   public TsBlock checkTsBlockSizeAndGetResult() {
     if (resultTsBlock == null) {
       throw new IllegalArgumentException("Result tsBlock cannot be null");
+    } else if (resultTsBlock.isEmpty()) {
+      TsBlock res = resultTsBlock;
+      resultTsBlock = null;
+      return res;
     }
     if (maxTupleSizeOfTsBlock == -1) {
       initializeMaxTsBlockLength(resultTsBlock);

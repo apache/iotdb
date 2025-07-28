@@ -22,7 +22,7 @@ package org.apache.iotdb.subscription.it.local;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.model.Topic;
 
 import org.junit.Assert;
@@ -51,7 +51,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       // create topic
       String topicName = "topic1";
@@ -87,7 +87,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       // create topic if not exits
       String topicName = "topic3";
@@ -142,7 +142,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       // create topic
       String topicName = "topic5";
@@ -163,7 +163,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       // create topic
       String topicName = "topic6";

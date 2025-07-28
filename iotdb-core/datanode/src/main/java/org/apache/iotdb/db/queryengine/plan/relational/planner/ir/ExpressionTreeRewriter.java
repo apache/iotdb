@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
@@ -25,10 +26,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
@@ -49,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedCompari
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
@@ -442,7 +448,8 @@ public final class ExpressionTreeRewriter<C> {
       List<Expression> arguments = rewrite(node.getArguments(), context);
 
       if (!sameElements(node.getArguments(), arguments)) {
-        return new FunctionCall(node.getName(), arguments);
+        return new FunctionCall(
+            node.getName(), node.isDistinct(), node.getProcessingMode(), arguments);
       }
       return node;
     }
@@ -527,9 +534,42 @@ public final class ExpressionTreeRewriter<C> {
     }
 
     @Override
-    protected Expression visitLiteral(Literal node, Context<C> context) {
+    protected Expression visitExists(ExistsPredicate node, Context<C> context) {
       if (!context.isDefaultRewrite()) {
         Expression result =
+            rewriter.rewriteExists(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      Expression subquery = node.getSubquery();
+      subquery = rewrite(subquery, context.get());
+
+      if (subquery != node.getSubquery()) {
+        return new ExistsPredicate(subquery);
+      }
+
+      return node;
+    }
+
+    @Override
+    public Expression visitSubqueryExpression(SubqueryExpression node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteSubqueryExpression(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      // No default rewrite for SubqueryExpression since we do not want to traverse subqueries
+      return node;
+    }
+
+    protected Expression visitLiteral(final Literal node, final Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        final Expression result =
             rewriter.rewriteLiteral(node, context.get(), ExpressionTreeRewriter.this);
         if (result != null) {
           return result;
@@ -587,6 +627,25 @@ public final class ExpressionTreeRewriter<C> {
     }
 
     @Override
+    protected Expression visitExtract(Extract node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteExtract(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      Expression expression = rewrite(node.getExpression(), context.get());
+
+      if (node.getExpression() != expression) {
+        return new Extract(expression, node.getField());
+      }
+
+      return node;
+    }
+
+    @Override
     public Expression visitCast(Cast node, Context<C> context) {
       if (!context.isDefaultRewrite()) {
         Expression result = rewriter.rewriteCast(node, context.get(), ExpressionTreeRewriter.this);
@@ -600,6 +659,32 @@ public final class ExpressionTreeRewriter<C> {
 
       if (node.getExpression() != expression || node.getType() != type) {
         return new Cast(expression, type, node.isSafe());
+      }
+
+      return node;
+    }
+
+    @Override
+    public Expression visitCurrentDatabase(final CurrentDatabase node, final Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        final Expression result =
+            rewriter.rewriteCurrentDatabase(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      return node;
+    }
+
+    @Override
+    public Expression visitCurrentUser(final CurrentUser node, final Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        final Expression result =
+            rewriter.rewriteCurrentUser(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
       }
 
       return node;

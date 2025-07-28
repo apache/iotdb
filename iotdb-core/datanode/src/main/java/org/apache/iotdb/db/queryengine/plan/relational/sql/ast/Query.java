@@ -33,6 +33,7 @@ public class Query extends Statement {
 
   private final Optional<With> with;
   private final QueryBody queryBody;
+  private final Optional<Fill> fill;
   private final Optional<OrderBy> orderBy;
   private final Optional<Offset> offset;
   private final Optional<Node> limit;
@@ -40,22 +41,25 @@ public class Query extends Statement {
   public Query(
       Optional<With> with,
       QueryBody queryBody,
+      Optional<Fill> fill,
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
       Optional<Node> limit) {
-    this(null, with, queryBody, orderBy, offset, limit);
+    this(null, with, queryBody, fill, orderBy, offset, limit);
   }
 
   public Query(
       NodeLocation location,
       Optional<With> with,
       QueryBody queryBody,
+      Optional<Fill> fill,
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
       Optional<Node> limit) {
     super(location);
     requireNonNull(with, "with is null");
     requireNonNull(queryBody, "queryBody is null");
+    requireNonNull(fill, "fill is null");
     requireNonNull(orderBy, "orderBy is null");
     requireNonNull(offset, "offset is null");
     requireNonNull(limit, "limit is null");
@@ -65,6 +69,7 @@ public class Query extends Statement {
 
     this.with = with;
     this.queryBody = queryBody;
+    this.fill = fill;
     this.orderBy = orderBy;
     this.offset = offset;
     this.limit = limit;
@@ -76,6 +81,10 @@ public class Query extends Statement {
 
   public QueryBody getQueryBody() {
     return queryBody;
+  }
+
+  public Optional<Fill> getFill() {
+    return fill;
   }
 
   public Optional<OrderBy> getOrderBy() {
@@ -100,6 +109,7 @@ public class Query extends Statement {
     ImmutableList.Builder<Node> nodes = ImmutableList.builder();
     with.ifPresent(nodes::add);
     nodes.add(queryBody);
+    fill.ifPresent(nodes::add);
     orderBy.ifPresent(nodes::add);
     offset.ifPresent(nodes::add);
     limit.ifPresent(nodes::add);
@@ -111,6 +121,7 @@ public class Query extends Statement {
     return toStringHelper(this)
         .add("with", with.orElse(null))
         .add("queryBody", queryBody)
+        .add("orderBy", fill.orElse(null))
         .add("orderBy", orderBy)
         .add("offset", offset.orElse(null))
         .add("limit", limit.orElse(null))
@@ -129,6 +140,7 @@ public class Query extends Statement {
     Query o = (Query) obj;
     return Objects.equals(with, o.with)
         && Objects.equals(queryBody, o.queryBody)
+        && Objects.equals(fill, o.fill)
         && Objects.equals(orderBy, o.orderBy)
         && Objects.equals(offset, o.offset)
         && Objects.equals(limit, o.limit);
@@ -136,7 +148,7 @@ public class Query extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(with, queryBody, orderBy, offset, limit);
+    return Objects.hash(with, queryBody, fill, orderBy, offset, limit);
   }
 
   @Override

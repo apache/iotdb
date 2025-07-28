@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
 
@@ -32,6 +34,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
@@ -53,7 +56,14 @@ import java.util.stream.LongStream;
  * immutability contract. This prevents unintended modifications to the underlying mutable state
  * from affecting other parts of the program.
  */
-public abstract class ProgressIndex {
+public abstract class ProgressIndex implements Accountable {
+
+  protected static final long LOCK_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ReentrantReadWriteLock.class)
+          + RamUsageEstimator.shallowSizeOfInstance(ReentrantReadWriteLock.ReadLock.class)
+          + RamUsageEstimator.shallowSizeOfInstance(ReentrantReadWriteLock.WriteLock.class)
+          + ((long) RamUsageEstimator.NUM_BYTES_OBJECT_HEADER << 1)
+          + 64;
 
   /** Serialize this progress index to the given byte buffer. */
   public abstract void serialize(ByteBuffer byteBuffer);
@@ -205,7 +215,7 @@ public abstract class ProgressIndex {
    * <p>Notice:TotalOrderSumTuple is an ordered tuple, the larger the subscript the higher the
    * weight of the element when comparing sizes, e.g. (1, 2) is larger than (2, 1).
    */
-  protected static class TotalOrderSumTuple implements Comparable<TotalOrderSumTuple> {
+  public static class TotalOrderSumTuple implements Comparable<TotalOrderSumTuple> {
     private final ImmutableList<Long> tuple;
 
     /**

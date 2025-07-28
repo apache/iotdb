@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -48,6 +49,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -71,6 +73,17 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   public InsertRowNode(PlanNodeId id) {
     super(id);
+  }
+
+  @Override
+  public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
+    List<Integer> index = new ArrayList<>();
+    List<InsertRowNode> insertRowNodes = new ArrayList<>();
+    for (int i = 0; i < insertNodes.size(); i++) {
+      insertRowNodes.add((InsertRowNode) insertNodes.get(i));
+      index.add(i);
+    }
+    return new InsertRowsNode(this.getPlanNodeId(), index, insertRowNodes);
   }
 
   @TestOnly
@@ -138,7 +151,14 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public String toString() {
-    return "InsertRowNode{" + "time=" + time + ", values=" + Arrays.toString(values) + '}';
+    return "InsertRowNode{"
+        + "insertTarget="
+        + targetPath
+        + ", time="
+        + time
+        + ", values="
+        + Arrays.toString(values)
+        + '}';
   }
 
   @Override
@@ -442,7 +462,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       measurementSchemas = new MeasurementSchema[measurementSize];
       for (int i = 0; i < measurementSize; i++) {
         measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
-        measurements[i] = measurementSchemas[i].getMeasurementId();
+        measurements[i] = measurementSchemas[i].getMeasurementName();
       }
     } else {
       for (int i = 0; i < measurementSize; i++) {
@@ -869,10 +889,28 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   public TimeValuePair composeTimeValuePair(int columnIndex) {
-    if (columnIndex >= values.length) {
+    if (columnIndex >= values.length || Objects.isNull(dataTypes[columnIndex])) {
       return null;
     }
     Object value = values[columnIndex];
-    return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
+    return Objects.nonNull(value)
+        ? new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value))
+        : null;
+  }
+
+  public void updateLastCache(String databaseName) {
+    String[] rawMeasurements = getRawMeasurements();
+    TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
+    for (int i = 0; i < rawMeasurements.length; i++) {
+      timeValuePairs[i] = composeTimeValuePair(i);
+    }
+    TreeDeviceSchemaCacheManager.getInstance()
+        .updateLastCacheIfExists(
+            databaseName,
+            getDeviceID(),
+            rawMeasurements,
+            timeValuePairs,
+            isAligned,
+            measurementSchemas);
   }
 }

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
-import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -31,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicLong;
@@ -55,17 +55,21 @@ public class SimpleProgressIndexAssigner {
   private int rebootTimes = 0;
   private final AtomicLong insertionRequestId = new AtomicLong(1);
 
-  public void start() throws StartupException {
+  public void start() {
     isSimpleConsensusEnable =
         IOTDB_CONFIG.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS);
-    LOGGER.info("Start SimpleProgressIndexAssigner ...");
+    LOGGER.info("Starting SimpleProgressIndexAssigner ...");
 
     try {
       makeDirIfNecessary();
       parseRebootTimes();
       recordRebootTimes();
+      LOGGER.info(
+          "SimpleProgressIndexAssigner started successfully. isSimpleConsensusEnable: {}, rebootTimes: {}",
+          isSimpleConsensusEnable,
+          rebootTimes);
     } catch (Exception e) {
-      throw new StartupException(e);
+      LOGGER.error("Cannot start SimpleProgressIndexAssigner because of {}", e.getMessage(), e);
     }
   }
 
@@ -86,15 +90,27 @@ public class SimpleProgressIndexAssigner {
     try {
       String content = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
       rebootTimes = Integer.parseInt(content);
-    } catch (IOException e) {
-      LOGGER.error("Cannot parse reboot times from file {}", file.getAbsolutePath(), e);
-      rebootTimes = 0;
+    } catch (final Exception e) {
+      rebootTimes = (int) (System.currentTimeMillis() / 1000);
+      LOGGER.error(
+          "Cannot parse reboot times from file {}, set the current time in seconds ({}) as the reboot times",
+          file.getAbsolutePath(),
+          rebootTimes);
     }
   }
 
-  private void recordRebootTimes() throws IOException {
-    File file = SystemFileFactory.INSTANCE.getFile(PIPE_SYSTEM_DIR + REBOOT_TIMES_FILE_NAME);
-    FileUtils.writeStringToFile(file, String.valueOf(rebootTimes + 1), StandardCharsets.UTF_8);
+  private void recordRebootTimes() {
+    final File file = SystemFileFactory.INSTANCE.getFile(PIPE_SYSTEM_DIR + REBOOT_TIMES_FILE_NAME);
+    try (final FileOutputStream fos = new FileOutputStream(file, false)) {
+      fos.write(String.valueOf(rebootTimes + 1).getBytes(StandardCharsets.UTF_8));
+      fos.flush();
+      fos.getFD().sync();
+    } catch (final Exception e) {
+      LOGGER.error(
+          "Cannot record reboot times {} to file {}, the reboot times will not be updated",
+          rebootTimes,
+          file.getAbsolutePath());
+    }
   }
 
   public void assignIfNeeded(InsertNode insertNode) {

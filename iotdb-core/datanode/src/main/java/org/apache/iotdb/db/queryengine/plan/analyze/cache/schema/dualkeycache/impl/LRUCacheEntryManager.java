@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This class implements the cache entry manager with LRU policy.
@@ -40,32 +41,39 @@ class LRUCacheEntryManager<FK, SK, V>
 
   @Override
   public LRUCacheEntry<SK, V> createCacheEntry(
-      SK secondKey, V value, ICacheEntryGroup<FK, SK, V, LRUCacheEntry<SK, V>> cacheEntryGroup) {
+      final SK secondKey,
+      final V value,
+      final ICacheEntryGroup<FK, SK, V, LRUCacheEntry<SK, V>> cacheEntryGroup) {
     return new LRUCacheEntry<>(secondKey, value, cacheEntryGroup);
   }
 
   @Override
-  public void access(LRUCacheEntry<SK, V> cacheEntry) {
+  public void access(final LRUCacheEntry<SK, V> cacheEntry) {
     getBelongedList(cacheEntry).moveToHead(cacheEntry);
   }
 
   @Override
-  public void put(LRUCacheEntry<SK, V> cacheEntry) {
+  public void put(final LRUCacheEntry<SK, V> cacheEntry) {
     getBelongedList(cacheEntry).add(cacheEntry);
   }
 
   @Override
-  public void invalid(LRUCacheEntry<SK, V> cacheEntry) {
+  public boolean invalidate(final LRUCacheEntry<SK, V> cacheEntry) {
+    if (cacheEntry.isInvalidated.getAndSet(true)) {
+      return false;
+    }
+
     cacheEntry.next.pre = cacheEntry.pre;
     cacheEntry.pre.next = cacheEntry.next;
     cacheEntry.next = null;
     cacheEntry.pre = null;
+    return true;
   }
 
   @Override
   public LRUCacheEntry<SK, V> evict() {
     int startIndex = idxGenerator.nextInt(SLOT_NUM);
-    LRULinkedList lruLinkedList;
+    LRULinkedList<SK, V> lruLinkedList;
     LRUCacheEntry<SK, V> cacheEntry;
     for (int i = 0; i < SLOT_NUM; i++) {
       if (startIndex == SLOT_NUM) {
@@ -119,6 +127,7 @@ class LRUCacheEntryManager<FK, SK, V>
 
     private LRUCacheEntry<SK, V> pre;
     private LRUCacheEntry<SK, V> next;
+    private final AtomicBoolean isInvalidated = new AtomicBoolean(false);
 
     private LRUCacheEntry(SK secondKey, V value, ICacheEntryGroup cacheEntryGroup) {
       this.secondKey = secondKey;
@@ -166,31 +175,43 @@ class LRUCacheEntryManager<FK, SK, V>
     }
   }
 
-  private static class LRULinkedList {
+  private static class LRULinkedList<SK, V> {
 
     // head.next is the most recently used entry
-    private final LRUCacheEntry head;
-    private final LRUCacheEntry tail;
+    private final LRUCacheEntry<SK, V> head;
+    private final LRUCacheEntry<SK, V> tail;
 
     public LRULinkedList() {
-      head = new LRUCacheEntry(null, null, null);
-      tail = new LRUCacheEntry(null, null, null);
+      head = new LRUCacheEntry<>(null, null, null);
+      tail = new LRUCacheEntry<>(null, null, null);
       head.next = tail;
       tail.pre = head;
     }
 
-    synchronized void add(LRUCacheEntry cacheEntry) {
+    synchronized void add(final LRUCacheEntry<SK, V> cacheEntry) {
+      LRUCacheEntry<SK, V> nextEntry;
+
+      do {
+        nextEntry = head.next;
+      } while (nextEntry.isInvalidated.get());
+
       cacheEntry.next = head.next;
       cacheEntry.pre = head;
       head.next.pre = cacheEntry;
       head.next = cacheEntry;
     }
 
-    synchronized LRUCacheEntry evict() {
-      if (tail.pre == head) {
-        return null;
-      }
-      LRUCacheEntry cacheEntry = tail.pre;
+    synchronized LRUCacheEntry<SK, V> evict() {
+      LRUCacheEntry<SK, V> cacheEntry;
+
+      do {
+        cacheEntry = tail.pre;
+        if (cacheEntry == head) {
+          return null;
+        }
+
+      } while (cacheEntry.isInvalidated.compareAndSet(false, true));
+
       cacheEntry.pre.next = cacheEntry.next;
       cacheEntry.next.pre = cacheEntry.pre;
       cacheEntry.next = null;
@@ -198,8 +219,8 @@ class LRUCacheEntryManager<FK, SK, V>
       return cacheEntry;
     }
 
-    synchronized void moveToHead(LRUCacheEntry cacheEntry) {
-      if (cacheEntry.next == null || cacheEntry.pre == null) {
+    synchronized void moveToHead(final LRUCacheEntry<SK, V> cacheEntry) {
+      if (cacheEntry.isInvalidated.get()) {
         // this cache entry has been evicted
         return;
       }

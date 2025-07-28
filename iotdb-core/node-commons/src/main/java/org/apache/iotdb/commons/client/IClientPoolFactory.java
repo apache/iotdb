@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.client;
 
-import org.apache.commons.pool2.KeyedObjectPool;
+import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
 public interface IClientPoolFactory<K, V> {
 
@@ -30,5 +30,5 @@ public interface IClientPoolFactory<K, V> {
    * @param manager the reference to the clientManager
    * @return A concurrency safe object pool
    */
-  KeyedObjectPool<K, V> createClientPool(ClientManager<K, V> manager);
+  GenericKeyedObjectPool<K, V> createClientPool(ClientManager<K, V> manager);
 }

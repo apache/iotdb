@@ -23,11 +23,11 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
@@ -52,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.ReplaceSubTreeWit
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForExpressionVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForHavingVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatExpressionWithSuffixPathsVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
@@ -488,6 +489,18 @@ public class ExpressionAnalyzer {
             predicate,
             new ConcatDeviceAndBindSchemaForPredicateVisitor.Context(
                 devicePath, schemaTree, isWhere, queryContext));
+  }
+
+  public static List<Expression> concatDeviceAndBindSchemaForHaving(
+      final Expression predicate,
+      final PartialPath devicePath,
+      final ISchemaTree schemaTree,
+      final MPPQueryContext queryContext) {
+    return new ConcatDeviceAndBindSchemaForHavingVisitor()
+        .process(
+            predicate,
+            new ConcatDeviceAndBindSchemaForHavingVisitor.Context(
+                devicePath, schemaTree, queryContext));
   }
 
   /**

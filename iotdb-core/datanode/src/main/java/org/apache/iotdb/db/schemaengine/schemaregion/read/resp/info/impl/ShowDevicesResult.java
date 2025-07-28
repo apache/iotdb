@@ -20,21 +20,24 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
+import org.apache.tsfile.utils.Binary;
+
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 
 public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo {
   private Boolean isAligned;
   private int templateId;
 
-  private Function<String, String> attributeProvider;
+  private Function<String, Binary> attributeProvider;
 
   private String[] rawNodes = null;
 
@@ -60,12 +63,12 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
     return templateId;
   }
 
-  public void setAttributeProvider(final UnaryOperator<String> attributeProvider) {
+  public void setAttributeProvider(final Function<String, Binary> attributeProvider) {
     this.attributeProvider = attributeProvider;
   }
 
   @Override
-  public String getAttributeValue(final String attributeKey) {
+  public Binary getAttributeValue(final String attributeKey) {
     return attributeProvider.apply(attributeKey);
   }
 
@@ -79,14 +82,25 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   }
 
   public static ShowDevicesResult convertDeviceEntry2ShowDeviceResult(
-      final DeviceEntry entry, final List<String> attributeColumns) {
+      final DeviceEntry entry, final List<String> attributeColumns, final int databaseSegmentNum) {
+    final String deviceIdStr = entry.getDeviceID().toString();
     final ShowDevicesResult result =
         new ShowDevicesResult(
-            entry.getDeviceID().toString(), null, -1, (String[]) entry.getDeviceID().getSegments());
-    final Map<String, String> attributeProviderMap = new HashMap<>();
+            deviceIdStr,
+            null,
+            -1,
+            databaseSegmentNum > 0
+                ? Arrays.copyOfRange(
+                    TreeViewSchema.forceSeparateStringToPartialPath(deviceIdStr).getNodes(),
+                    databaseSegmentNum - 1,
+                    TreeViewSchema.forceSeparateStringToPartialPath(deviceIdStr).getNodeLength())
+                : (String[]) entry.getDeviceID().getSegments());
+    final Map<String, Binary> attributeProviderMap = new HashMap<>();
+
     for (int i = 0; i < attributeColumns.size(); ++i) {
-      attributeProviderMap.put(attributeColumns.get(i), entry.getAttributeColumnValues().get(i));
+      attributeProviderMap.put(attributeColumns.get(i), entry.getAttributeColumnValues()[i]);
     }
+
     result.setAttributeProvider(attributeProviderMap::get);
     return result;
   }
@@ -96,7 +110,8 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
     return "ShowDevicesResult{"
         + "name='"
         + path
-        + '\''
+        + ", rawNodes = "
+        + Arrays.toString(rawNodes)
         + ", isAligned = "
         + isAligned
         + ", templateId = "

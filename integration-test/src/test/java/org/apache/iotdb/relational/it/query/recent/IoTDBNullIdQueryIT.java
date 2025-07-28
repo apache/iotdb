@@ -34,12 +34,15 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.db.it.utils.TestUtils.defaultFormatDataTime;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetFuzzyTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -52,9 +55,9 @@ public class IoTDBNullIdQueryIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE testNullId(id1 STRING ID, id2 STRING ID, s1 INT32 MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 DOUBLE MEASUREMENT)",
+        "CREATE TABLE testNullId(id1 STRING TAG, id2 STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD, s3 DOUBLE FIELD)",
         "INSERT INTO testNullId(time,id1,id2,s1,s2,s3) " + "values(1, null, null, 0, false, 11.1)",
-        "CREATE TABLE table1(device_id STRING ID, color STRING ATTRIBUTE, s1 INT32 MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 INT64 MEASUREMENT)",
+        "CREATE TABLE table1(device_id STRING TAG, color STRING ATTRIBUTE, s1 INT32 FIELD, s2 BOOLEAN FIELD, s3 INT64 FIELD)",
         // in seq disk
         "INSERT INTO table1(time,device_id,color,s1,s2,s3) "
             + "values(1, 'd1', 'green', 1, false, 11)",
@@ -461,5 +464,87 @@ public class IoTDBNullIdQueryIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+  }
+
+  @Test
+  public void showStatementTest() {
+    String[] expectedHeader = new String[] {"CurrentSqlDialect"};
+    String[] retArray =
+        new String[] {
+          "TABLE,",
+        };
+    tableResultSetEqualTest("show current_sql_dialect", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"CurrentUser"};
+    retArray =
+        new String[] {
+          "root,",
+        };
+    tableResultSetEqualTest("show current_user", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"CurrentDatabase"};
+    retArray =
+        new String[] {
+          DATABASE_NAME + ",",
+        };
+    tableResultSetEqualTest("show current_database", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"Version", "BuildInfo"};
+    tableResultSetFuzzyTest("show version", expectedHeader, 1, DATABASE_NAME);
+
+    expectedHeader = new String[] {"Variable", "Value"};
+    tableResultSetFuzzyTest("show variables", expectedHeader, 15, DATABASE_NAME);
+
+    expectedHeader = new String[] {"ClusterId"};
+    tableResultSetFuzzyTest("show clusterid", expectedHeader, 1, DATABASE_NAME);
+
+    expectedHeader = new String[] {"ClusterId"};
+    tableResultSetFuzzyTest("show cluster_id", expectedHeader, 1, DATABASE_NAME);
+
+    expectedHeader = new String[] {"CurrentTimestamp"};
+    tableResultSetFuzzyTest("show current_timestamp", expectedHeader, 1, DATABASE_NAME);
+  }
+
+  @Test
+  public void setSqlDialectTest() throws SQLException {
+    createUser("tempuser", "temppw");
+
+    try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+        Statement userStmt = userCon.createStatement()) {
+      assertCurrentSqlDialect(true, userStmt);
+
+      // set Tree to Table
+      userStmt.execute("set sql_dialect=table");
+      assertCurrentSqlDialect(false, userStmt);
+
+      // set Table to Tree
+      userStmt.execute("set sql_dialect=tree");
+      assertCurrentSqlDialect(true, userStmt);
+    }
+  }
+
+  @Test
+  public void setSqlDialectContextCleanTest() throws SQLException {
+    try (Connection userCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement userStmt = userCon.createStatement()) {
+      userStmt.execute("create database test1");
+      userStmt.execute("use test1");
+      userStmt.execute("set sql_dialect=tree");
+      assertCurrentSqlDialect(true, userStmt);
+      userStmt.execute("insert into root.db(time,s1) values (0,1), (1, 3), (2,5)");
+    }
+  }
+
+  public static void assertCurrentSqlDialect(boolean expectedTree, Statement statement)
+      throws SQLException {
+    ResultSet resultSet = statement.executeQuery("show current_sql_dialect");
+    ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+    assertEquals("CurrentSqlDialect", resultSetMetaData.getColumnName(1));
+    int count = 0;
+    while (resultSet.next()) {
+      assertEquals(expectedTree ? "TREE" : "TABLE", resultSet.getString(1));
+      count++;
+    }
+    assertEquals(1, count);
   }
 }

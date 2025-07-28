@@ -46,7 +46,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE sg1(device STRING ID, s1 INT32 MEASUREMENT, s2 DOUBLE MEASUREMENT, s3 STRING MEASUREMENT, s4 DATE MEASUREMENT, s5 TIMESTAMP MEASUREMENT)",
+        "CREATE TABLE sg1(device STRING TAG, s1 INT32 FIELD, s2 DOUBLE FIELD, s3 STRING FIELD, s4 DATE FIELD, s5 TIMESTAMP FIELD)",
         "insert into sg1(time,device,s1,s2,s3,s4,s5) values(0,'d1',0,0,'0','2024-01-01',0)",
         "insert into sg1(time,device,s1,s2,s3,s4,s5) values(1,'d1',1,1,'1','2024-01-02',1)",
         "insert into sg1(time,device,s1,s2) values(2,'d1',2,2)",

@@ -57,5 +57,5 @@ public interface IDriverScheduler {
    *
    * @param instanceId the id of the fragment instance to be aborted.
    */
-  void abortFragmentInstance(FragmentInstanceId instanceId);
+  void abortFragmentInstance(FragmentInstanceId instanceId, Throwable t);
 }

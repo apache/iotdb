@@ -19,24 +19,40 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute;
 
+import org.apache.tsfile.utils.Binary;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * The storage of table device attributes. Note that we pass in the table name only for the metrics
+ * and that does not appear in the real storage.
+ */
 public interface IDeviceAttributeStore {
 
   void clear();
 
   boolean createSnapshot(final File targetDir);
 
-  void loadFromSnapshot(final File snapshotDir, final String sgSchemaDirPath) throws IOException;
+  void loadFromSnapshot(final File snapshotDir) throws IOException;
 
-  int createAttribute(final List<String> nameList, final Object[] valueList);
+  int createAttribute(
+      final List<String> nameList, final Object[] valueList, final String tableName);
 
   // Returns the actually updated map
-  Map<String, String> alterAttribute(
-      final int pointer, final List<String> nameList, final Object[] valueList);
+  Map<String, Binary> alterAttribute(
+      final int pointer,
+      final List<String> nameList,
+      final Object[] valueList,
+      final String tableName);
 
-  String getAttribute(final int pointer, final String name);
+  void removeAttribute(final int pointer, final String tableName);
+
+  void removeAttribute(final int pointer, final String attributeName, final String tableName);
+
+  Map<String, Binary> getAttributes(final int pointer);
+
+  Binary getAttributes(final int pointer, final String name);
 }

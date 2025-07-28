@@ -25,7 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import java.util.Objects;
 
 /** We abstract this class to hide word `ConsensusGroup` for IoTDB StorageEngine/SchemaEngine. */
-public abstract class ConsensusGroupId {
+public abstract class ConsensusGroupId implements Comparable<ConsensusGroupId> {
 
   protected int id;
 
@@ -125,5 +125,10 @@ public abstract class ConsensusGroupId {
         TConsensusGroupId tConsensusGroupId) {
       return create(tConsensusGroupId.getType().getValue(), tConsensusGroupId.getId());
     }
+  }
+
+  @Override
+  public int compareTo(ConsensusGroupId o) {
+    return Integer.compare(id, o.id);
   }
 }

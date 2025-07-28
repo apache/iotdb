@@ -242,6 +242,27 @@ dn_data_dirs=data/datanode/data
 # Datatype: String
 dn_multi_dir_strategy=SequenceStrategy
 
+# load_disk_select_strategy
+# The strategy is used to choose a proper disk for loading tsfile.
+# The info of the two strategies are as follows:
+# 1. MIN_IO_FIRST: the system will try to choose the same disk as tsFileToLoad for loading.
+# 2. INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY: the system will choose one disk according to dn_multi_dir_strategy.
+# If this property is unset, system will use MIN_IO_FIRST as default strategy.
+# effectiveMode: restart
+# Datatype: String
+load_disk_select_strategy=MIN_IO_FIRST
+
+# load_disk_select_strategy_for_pipe_and_iotv2
+# The strategy is used to choose a proper disk for loading tsfile.
+# The info of the three strategies are as follows:
+# 1. MIN_IO_FIRST: the system will try to choose the same disk as tsFileToLoad for loading.
+# 2. INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY: the system will choose one disk according to dn_multi_dir_strategy.
+# 3. INHERIT_LOAD: the system will use the same strategy as load_disk_select_strategy.
+# If this property is unset, system will use INHERIT_LOAD as default strategy.
+# effectiveMode: restart
+# Datatype: String
+load_disk_select_strategy_for_pipe_and_iotv2=INHERIT_LOAD
+
 # consensus dir
 # If this property is unset, system will save the data in the default relative path directory under the IoTDB folder(i.e., %IOTDB_HOME%/data/datanode).
 # If it is absolute, system will save the data in the exact location it points to.
@@ -333,9 +354,33 @@ dn_pipe_receiver_file_dirs=data/datanode/system/pipe/receiver
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 iot_consensus_v2_receiver_file_dirs=data/datanode/system/pipe/consensus/receiver
 
+# iot_consensus_v2_deletion_file_dir
+# If this property is unset, system will save the data in the default relative path directory under the IoTDB folder(i.e., %IOTDB_HOME%/${dn_system_dir}/pipe/consensus/deletion).
+# If it is absolute, system will save the data in the exact location it points to.
+# If it is relative, system will save the data in the relative path directory it indicates under the IoTDB folder.
+# Note: If iot_consensus_v2_deletion_file_dir is assigned an empty string(i.e.,zero-size), it will be handled as a relative path.
+# effectiveMode: restart
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
+# iot_consensus_v2_deletion_file_dir=data\\datanode\\system\\pipe\\consensus\\deletion
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+iot_consensus_v2_deletion_file_dir=data/datanode/system/pipe/consensus/deletion
+
 ####################
 ### Metric Configuration
 ####################
+
+# The base64 encoded username for the prometheus port of both the ConfigNode and the DataNode.
+# If left unset, the prometheus port can be accessed without authentication.
+# effectiveMode: restart
+# Datatype: String
+metric_prometheus_reporter_username=
+
+# The base64 encoded password for the prometheus port of both the ConfigNode and the DataNode.
+# effectiveMode: restart
+# Datatype: String
+metric_prometheus_reporter_password=
 
 # The reporters of metric module to report metrics
 # If there are more than one reporter, please separate them by commas ",".
@@ -348,7 +393,7 @@ cn_metric_reporter_list=
 # Options: [OFF, CORE, IMPORTANT, NORMAL, ALL]
 # effectiveMode: restart
 # Datatype: String
-cn_metric_level=CORE
+cn_metric_level=IMPORTANT
 
 # The period of async collection of some metrics in second
 # effectiveMode: restart
@@ -371,7 +416,7 @@ dn_metric_reporter_list=
 # Options: [OFF, CORE, IMPORTANT, NORMAL, ALL]
 # effectiveMode: restart
 # Datatype: String
-dn_metric_level=CORE
+dn_metric_level=IMPORTANT
 
 # The period of async collection of some metrics in second
 # effectiveMode: restart
@@ -426,7 +471,7 @@ cn_rpc_thrift_compression_enable=false
 # The maximum number of concurrent clients that can be connected to the configNode.
 # effectiveMode: restart
 # Datatype: int
-cn_rpc_max_concurrent_client_num=65535
+cn_rpc_max_concurrent_client_num=3000
 
 # Thrift socket and connection timeout between raft nodes, in milliseconds.
 # effectiveMode: restart
@@ -443,7 +488,7 @@ cn_selector_thread_nums_of_client_manager=1
 # for a while, then ClientManager will throw ClientManagerException if there are no clients after the block time.
 # effectiveMode: restart
 # Datatype: int
-cn_max_client_count_for_each_node_in_client_manager=300
+cn_max_client_count_for_each_node_in_client_manager=1000
 
 # The maximum session idle time. unit: ms
 # Idle sessions are the ones that performs neither query or non-query operations for a period of time
@@ -468,15 +513,10 @@ dn_rpc_advanced_compression_enable=false
 # Datatype: int
 dn_rpc_selector_thread_count=1
 
-# The min number of concurrent clients that can be connected to the dataNode.
-# effectiveMode: restart
-# Datatype: int
-dn_rpc_min_concurrent_client_num=1
-
 # The maximum number of concurrent clients that can be connected to the dataNode.
 # effectiveMode: restart
 # Datatype: int
-dn_rpc_max_concurrent_client_num=65535
+dn_rpc_max_concurrent_client_num=1000
 
 # thrift max frame size, 512MB by default
 # effectiveMode: restart
@@ -503,7 +543,7 @@ dn_selector_thread_count_of_client_manager=1
 # for a while, then ClientManager will throw ClientManagerException if there are no clients after the block time.
 # effectiveMode: restart
 # Datatype: int
-dn_max_client_count_for_each_node_in_client_manager=300
+dn_max_client_count_for_each_node_in_client_manager=1000
 
 ####################
 ### REST Service Configuration
@@ -607,8 +647,8 @@ default_schema_region_group_num_per_database=1
 # Notice: Since each Database requires at least one SchemaRegionGroup to manage its schema,
 # this parameter doesn't limit the upper bound of cluster SchemaRegions when there are too many Databases.
 # effectiveMode: restart
-# Datatype: Double
-schema_region_per_data_node=1.0
+# Datatype: Integer
+schema_region_per_data_node=1
 
 # The policy of extension DataRegionGroup for each Database.
 # These policies are currently supported:
@@ -628,11 +668,12 @@ default_data_region_group_num_per_database=2
 
 # Only take effect when set data_region_group_extension_policy=AUTO.
 # This parameter is the maximum number of DataRegions expected to be managed by each DataNode.
+# Set to 0 means that each node automatically has the number of CPU cores / 2 regions
 # Notice: Since each Database requires at least two DataRegionGroups to manage its data,
 # this parameter doesn't limit the upper bound of cluster DataRegions when there are too many Databases.
 # effectiveMode: restart
-# Datatype: Double
-data_region_per_data_node=5.0
+# Datatype: Integer
+data_region_per_data_node=0
 
 # Whether to enable auto leader balance for Ratis consensus protocol.
 # The ConfigNode-leader will balance the leader of Ratis-RegionGroups by leader_distribution_policy if set true.
@@ -669,6 +710,26 @@ time_partition_interval=604800000
 # effectiveMode: restart
 # Datatype: long
 heartbeat_interval_in_ms=1000
+
+# Default failure detector, enum from {fixed, phi_accrual}
+# effectiveMode: restart
+# Datatype: string
+failure_detector=phi_accrual
+
+# Fixed failure detector threshold of time elapsed without receiving heartbeat replies
+# effectiveMode: restart
+# Datatype: long
+failure_detector_fixed_threshold_in_ms=20000
+
+# Phi accrual: threshold to determine a node is down
+# effectiveMode: restart
+# Datatype: long
+failure_detector_phi_threshold=30
+
+# Phi accrual: acceptable heartbeat pause time (due to JVM GC, etc)
+# effectiveMode: restart
+# Datatype: long
+failure_detector_phi_acceptable_pause_in_ms=10000
 
 # Disk remaining threshold at which DataNode is set to ReadOnly status
 # effectiveMode: restart
@@ -711,25 +772,30 @@ primitive_array_size=64
 # Datatype: double
 chunk_metadata_size_proportion=0.1
 
-# Ratio of write memory for invoking flush disk, 0.4 by default
+# Ratio of memtable memory for invoking flush disk, 0.4 by default
 # If you have extremely high write load (like batch=1000), it can be set lower than the default value like 0.2
 # effectiveMode: restart
 # Datatype: double
 flush_proportion=0.4
 
-# Ratio of write memory allocated for buffered arrays, 0.6 by default
+# Ratio of memtable memory allocated for buffered arrays, 0.6 by default
 # effectiveMode: restart
 # Datatype: double
 buffered_arrays_memory_proportion=0.6
 
-# Ratio of write memory for rejecting insertion, 0.8 by default
+# Ratio of memtable memory for rejecting insertion, 0.8 by default
 # If you have extremely high write load (like batch=1000) and the physical memory size is large enough,
 # it can be set higher than the default value like 0.9
 # effectiveMode: restart
 # Datatype: double
 reject_proportion=0.8
 
-# Ratio of memory for the DevicePathCache. DevicePathCache is the deviceId cache, keep only one copy of the same deviceId in memory
+# Ratio of memtable memory for controlling the max memory size of WAL buffer queues, 0.1 by default
+# effectiveMode: restart
+# Datatype: double
+wal_buffer_queue_proportion=0.1
+
+# Ratio of memtable memory for the DevicePathCache. DevicePathCache is the deviceId cache, keep only one copy of the same deviceId in memory
 # effectiveMode: restart
 # Datatype: double
 device_path_cache_proportion=0.05
@@ -846,8 +912,13 @@ enable_auto_create_schema=true
 # Database level when creating schema automatically is enabled
 # e.g. root.sg0.d1.s2
 #      we will set root.sg0 as the database if database level is 1
+# If the incoming path is shorter than this value, the creation/insertion will fail.
 # effectiveMode: hot_reload
 # Datatype: int
+# Range: [1, Integer.MAX_VALUE]
+# Default: 1
+# When illegal: report an error and change nothing during hot-reload; use the default value in
+# start-up
 default_storage_group_level=1
 
 # ALL data types: BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
@@ -1008,6 +1079,13 @@ sort_buffer_size_in_bytes=1048576
 # Datatype: int
 merge_threshold_of_explain_analyze=10
 
+# The limit of query sampling throughput merge can reach per second
+# 0 means no queries will be recorded
+# negative number means no limit, all queries will be recorded.
+# effectiveMode: hot_reload
+# Datatype: int, Unit: bytes
+query_sample_throughput_bytes_per_sec=160
+
 ####################
 ### TTL Configuration
 ####################
@@ -1044,7 +1122,7 @@ timestamp_precision=ms
 
 # When the timestamp precision check is enabled, the timestamps those are over 13 digits for ms precision, or over 16 digits for us precision are not allowed to be inserted.
 # For all precisions, ms, us and ns, the timestamps cannot exceed the range of [-9223372036854775808, 9223372036854775807], regardless of whether the check is enabled or not.
-# effectiveMode: first_start
+# effectiveMode: hot_reload
 # Datatype: Boolean
 timestamp_precision_check_enabled=true
 
@@ -1111,10 +1189,24 @@ unseq_memtable_flush_check_interval_in_ms=30000
 # effectiveMode: restart
 tvlist_sort_algorithm=TIM
 
-# When the average point number of timeseries in memtable exceeds this, the memtable is flushed to disk. The default threshold is 100000.
-# effectiveMode: restart
+# When point number in the working TVList exceeds this, it is sorted and handover in writable memtable
+# default 0 means it does not handover working tvlist
+# effectiveMode: hot_reload
 # Datatype: int
-avg_series_point_number_threshold=100000
+tvlist_sort_threshold=0
+
+# The target point nums in one chunk in flushing and compaction.
+# If the point number of a timeseries in memtable exceeds this, the data will be flushed to multiple chunks.
+# effectiveMode: restart
+# Datatype: long
+target_chunk_point_num=100000
+
+# The target chunk size in flushing and compaction.
+# If the size of a timeseries in memtable exceeds this, the data will be flushed to multiple chunks.
+# default is 1.6MB
+# effectiveMode: restart
+# Datatype: long, Unit: byte
+target_chunk_size=1600000
 
 # How many threads can concurrently flush. When <= 0, use CPU core number.
 # effectiveMode: restart
@@ -1123,7 +1215,7 @@ flush_thread_count=0
 
 # In one insert (one device, one timestamp, multiple measurements),
 # if enable partial insert, one measurement failure will not impact other measurements
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: boolean
 enable_partial_insert=true
 
@@ -1183,17 +1275,17 @@ enable_auto_repair_compaction=true
 cross_selector=rewrite
 
 # the compaction performer of cross space compaction task
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Options: read_point, fast
 cross_performer=fast
 
 # the selector of inner sequence space compaction task
-# effectiveMode: hod_reload
+# effectiveMode: hot_reload
 # Options: size_tiered_single_target,size_tiered_multi_target
 inner_seq_selector=size_tiered_multi_target
 
 # the performer of inner sequence space compaction task
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Options: read_chunk, fast
 inner_seq_performer=read_chunk
 
@@ -1203,7 +1295,7 @@ inner_seq_performer=read_chunk
 inner_unseq_selector=size_tiered_multi_target
 
 # the performer of inner unsequence space compaction task
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Options: read_point, fast
 inner_unseq_performer=fast
 
@@ -1244,17 +1336,6 @@ inner_compaction_total_file_num_threshold=100
 # effectiveMode: hot_reload
 # Datatype: int
 max_level_gap_in_inner_compaction=2
-
-# The target chunk size in compaction and when memtable reaches this threshold, flush the memtable to disk.
-# default is 1MB
-# effectiveMode: restart
-# Datatype: long, Unit: byte
-target_chunk_size=1048576
-
-# The target point nums in one chunk in compaction
-# effectiveMode: restart
-# Datatype: long
-target_chunk_point_num=100000
 
 # If the chunk size is lower than this threshold, it will be deserialized into points, default is 128 byte
 # effectiveMode: restart
@@ -1389,11 +1470,6 @@ wal_sync_mode_fsync_delay_in_ms=3
 # Datatype: int
 wal_buffer_size_in_byte=33554432
 
-# Blocking queue capacity of each wal buffer, restricts maximum number of WALEdits cached in the blocking queue.
-# effectiveMode: restart
-# Datatype: int
-wal_buffer_queue_capacity=500
-
 # Size threshold of each wal file
 # When a wal file's size exceeds this, the wal file will be closed and a new wal file will be created.
 # If it's a value smaller than 0, use the default value 30 * 1024 * 1024 (30MB).
@@ -1431,10 +1507,10 @@ delete_wal_files_period_in_ms=20000
 
 # The minimum size of wal files when throttle down in IoTConsensus
 # If this value is not set, it will be carefully chosen according to the available disk space.
-# If this value is set smaller than 0, it will default to 50 * 1024 * 1024 * 1024 bytes (50GB).
+# If this value is set smaller than 0, it will default to 200 * 1024 * 1024 * 1024 bytes (200GB).
 # effectiveMode: hot_reload
 # Datatype: long
-iot_consensus_throttle_threshold_in_byte=53687091200
+wal_throttle_threshold_in_byte=214748364800
 
 # Maximum wait time of write cache in IoTConsensus
 # If this value is less than or equal to 0, use the default value 10 * 1000 ms (10s)
@@ -1478,7 +1554,41 @@ data_region_iot_max_memory_ratio_for_queue = 0.6
 # values less than or equal to 0 means no limit
 # effectiveMode: hot_reload
 # Datatype: long
-region_migration_speed_limit_bytes_per_second = 33554432
+region_migration_speed_limit_bytes_per_second = 50331648
+
+####################
+### Blob Allocator Configuration
+####################
+# Whether to enable binary allocator.
+# For scenarios where large binary streams cause severe GC, enabling this parameter significantly improves performance.
+# effectiveMode: hot_reload
+enable_binary_allocator=true
+
+# The size boundaries that allocator is responsible for
+# lower boundary for allocation size
+# unit: bytes
+# Datatype: int
+# effectiveMode: restart
+small_binary_object=4096
+
+# The size boundaries that allocator is responsible for
+# upper boundary for allocation size
+# unit: bytes
+# Datatype: int
+# effectiveMode: restart
+huge_binary_object=1048576
+
+# Number of arena regions in blob allocator, used to control concurrent performance
+# Datatype: int
+# effectiveMode: restart
+arena_num=4
+
+# Control the number of slabs in allocator
+# The number of different sizes in each power-of-2 interval is 2^LOG2_SIZE_CLASS_GROUP
+# For example: if LOG2_SIZE_CLASS_GROUP=3, between 1024-2048 there will be 8 different sizes
+# Datatype: int
+# effectiveMode: restart
+log2_size_class_group=3
 
 ####################
 ### TsFile Configurations
@@ -1553,6 +1663,12 @@ author_cache_size=1000
 # effectiveMode: restart
 # Datatype: int
 author_cache_expire_time=30
+
+# A regex pattern representing trusted uri by system
+# effectiveMode: hot_reload
+# Datatype: regex
+# If you want to allow all URIs, you can specify it as .*
+trusted_uri_pattern=file:.*
 
 ####################
 ### UDF Configuration
@@ -1664,10 +1780,10 @@ continuous_query_min_every_interval_in_ms=1000
 pipe_lib_dir=ext/pipe
 
 # The maximum number of threads that can be used to execute the pipe subtasks in PipeSubtaskExecutor.
-# The actual value will be min(pipe_subtask_executor_max_thread_num, max(1, CPU core number / 2)).
+# When <= 0, use max(5, CPU core number / 2).
 # effectiveMode: restart
 # Datatype: int
-pipe_subtask_executor_max_thread_num=5
+pipe_subtask_executor_max_thread_num=0
 
 # The connection timeout (in milliseconds) for the thrift client.
 # effectiveMode: restart
@@ -1676,14 +1792,16 @@ pipe_sink_timeout_ms=900000
 
 # The maximum number of selectors that can be used in the sink.
 # Recommend to set this value to less than or equal to pipe_sink_max_client_number.
+# When <= 0, use max(4, CPU core number / 2).
 # effectiveMode: restart
 # Datatype: int
-pipe_sink_selector_number=4
+pipe_sink_selector_number=0
 
 # The maximum number of clients that can be used in the sink.
+# When <= 0, use max(16, CPU core number / 2).
 # effectiveMode: restart
 # Datatype: int
-pipe_sink_max_client_number=16
+pipe_sink_max_client_number=0
 
 # Whether to enable receiving pipe data through air gap.
 # The receiver can only return 0 or 1 in tcp mode to indicate whether the data is received successfully.
@@ -1826,6 +1944,26 @@ iot_consensus_v2_pipeline_size=5
 # Datatype: string
 iot_consensus_v2_mode=batch
 
+# Blocking queue capacity of each deletion ahead log buffer for iot consensus v2,
+# restricts maximum number of entry in the blocking queue.
+# effectiveMode: restart
+# Datatype: int
+deletion_ahead_log_buffer_queue_capacity=500
+
+# Interval for check zombie TsFile writer in iot consensus v2
+# time unit is milliseconds.
+# effectiveMode: restart
+# DataType: long
+zombie_tsfile_writer_check_interval=300000
+
+# Threshold for determining whether a TsFile writer is a zombie in iot consensus v2
+# The larger this value is, the longer the synchronization will be stuck when an unexpected situation occurs.
+# The smaller this value is, the greater the possibility of misjudgment, which may cause consistency loss.
+# time unit is milliseconds.
+# effectiveMode: restart
+# DataType: long
+zombie_tsfile_writer_threshold=600000
+
 ####################
 ### Procedure Configuration
 ####################
@@ -1843,7 +1981,7 @@ procedure_completed_clean_interval=30
 # Default ttl of completed procedure, time unit is second
 # effectiveMode: restart
 # Datatype: int
-procedure_completed_evict_ttl=800
+procedure_completed_evict_ttl=60
 
 ####################
 ### MQTT Broker Configuration
@@ -1871,6 +2009,8 @@ mqtt_handler_pool_size=1
 
 # the mqtt message payload formatter.
 # effectiveMode: restart
+# Options: [json, line]
+# The built-in json only supports tree models, and the line only supports table models.
 # Datatype: String
 mqtt_payload_formatter=json
 
@@ -1936,16 +2076,34 @@ load_active_listening_dirs=ext/load/pending
 load_active_listening_fail_dir=ext/load/failed
 
 # The maximum number of threads that can be used to load tsfile actively.
-# The default value, when this parameter is commented out, is the minimum of 8 or the number of CPU cores.
+# The default value, when this parameter is commented out or <= 0, use CPU core number.
 # effectiveMode: restart
 # Datatype: int
-load_active_listening_max_thread_num=8
+load_active_listening_max_thread_num=0
 
 # The interval specified in seconds for the active listening mode to check the directory specified in load_active_listening_dirs.
 # The active listening mode will check the directory every load_active_listening_check_interval_seconds seconds.
 # effectiveMode: restart
 # Datatype: int
 load_active_listening_check_interval_seconds=5
+
+# The operation performed to LastCache when a TsFile is successfully loaded.
+# UPDATE: use the data in the TsFile to update LastCache;
+# UPDATE_NO_BLOB: similar to UPDATE, but will invalidate LastCache for blob series;
+# CLEAN_DEVICE: invalidate LastCache of devices contained in the TsFile;
+# CLEAN_ALL: clean the whole LastCache.
+last_cache_operation_on_load=UPDATE_NO_BLOB
+
+# Whether to cache last values before loading a TsFile. Only effective when
+# last_cache_operation_on_load=UPDATE_NO_BLOB or last_cache_operation_on_load=UPDATE.
+# When set to true, blob series will be ignored even with last_cache_operation_on_load=UPDATE.
+# Enabling this will increase the memory footprint during loading TsFiles.
+cache_last_values_for_load=true
+
+# When cache_last_values_for_load=true, the maximum memory that can be used to cache last values.
+# If this value is exceeded, the cached values will be abandoned and last values will be read from
+# the TsFile in a streaming manner.
+cache_last_values_memory_budget_in_byte=4194304
 
 ####################
 ### Dispatch Retry Configuration

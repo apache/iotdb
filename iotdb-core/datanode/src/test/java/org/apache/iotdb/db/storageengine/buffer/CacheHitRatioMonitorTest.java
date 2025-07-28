@@ -77,11 +77,11 @@ public class CacheHitRatioMonitorTest {
           SystemInfo.getInstance().getTotalMemTableSize(),
           cacheHitRatioMonitor.getTotalMemTableSize());
       assertEquals(
-          SystemInfo.getInstance().getFlushThershold(),
+          SystemInfo.getInstance().getFlushThreshold(),
           cacheHitRatioMonitor.getFlushThershold(),
           delta);
       assertEquals(
-          SystemInfo.getInstance().getRejectThershold(),
+          SystemInfo.getInstance().getRejectThreshold(),
           cacheHitRatioMonitor.getRejectThershold(),
           delta);
       assertEquals(

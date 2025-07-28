@@ -73,11 +73,9 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -85,12 +83,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.PriorityQueue;
-import java.util.Set;
+import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -99,15 +97,11 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.utils.FileUtils.humanReadableByteCountSI;
 
 public class IoTConsensusServerImpl {
 
-  private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
-  private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
   public static final String SNAPSHOT_DIR_NAME = "snapshot";
   private static final Pattern SNAPSHOT_INDEX_PATTEN = Pattern.compile(".*[^\\d](?=(\\d+))");
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
@@ -119,7 +113,7 @@ public class IoTConsensusServerImpl {
   private final Lock stateMachineLock = new ReentrantLock();
   private final Condition stateMachineCondition = stateMachineLock.newCondition();
   private final String storageDir;
-  private final List<Peer> configuration;
+  private final TreeSet<Peer> configuration;
   private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
   private IoTConsensusConfig config;
@@ -132,13 +126,12 @@ public class IoTConsensusServerImpl {
   private final ScheduledExecutorService backgroundTaskService;
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
-  private volatile long lastPinnedSearchIndexForMigration = -1;
-  private volatile long lastPinnedSafeDeletedIndexForMigration = -1;
+  private IndexedConsensusRequest lastConsensusRequest;
 
   public IoTConsensusServerImpl(
       String storageDir,
       Peer thisNode,
-      List<Peer> configuration,
+      TreeSet<Peer> configuration,
       IStateMachine stateMachine,
       ScheduledExecutorService backgroundTaskService,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
@@ -151,25 +144,14 @@ public class IoTConsensusServerImpl {
     this.cacheQueueMap = new ConcurrentHashMap<>();
     this.syncClientManager = syncClientManager;
     this.configuration = configuration;
-    if (configuration.isEmpty()) {
-      recoverConfiguration();
-    } else {
-      persistConfiguration();
-    }
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
     this.consensusGroupId = thisNode.getGroupId().toString();
-    consensusReqReader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
+    this.consensusReqReader =
+        (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
     this.searchIndex = new AtomicLong(consensusReqReader.getCurrentSearchIndex());
     this.ioTConsensusServerMetrics = new IoTConsensusServerMetrics(this);
     this.logDispatcher = new LogDispatcher(this, clientManager);
-    // Since the underlying wal does not persist safelyDeletedSearchIndex, IoTConsensus needs to
-    // update wal with its syncIndex recovered from the consensus layer when initializing.
-    // This prevents wal from being piled up if the safelyDeletedSearchIndex is not updated after
-    // the restart and Leader migration occurs
-    checkAndUpdateSafeDeletedSearchIndex();
-    // see message in logs for details
-    checkAndUpdateSearchIndex();
   }
 
   public IStateMachine getStateMachine() {
@@ -177,6 +159,7 @@ public class IoTConsensusServerImpl {
   }
 
   public void start() {
+    checkAndUpdateIndex();
     MetricService.getInstance().addMetricSet(this.ioTConsensusServerMetrics);
     stateMachine.start();
     logDispatcher.start();
@@ -226,12 +209,14 @@ public class IoTConsensusServerImpl {
           writeToStateMachineStartTime - getStateMachineLockTime);
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
+      lastConsensusRequest = indexedConsensusRequest;
       if (indexedConsensusRequest.getSearchIndex() % 100000 == 0) {
         logger.info(
-            "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
+            "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}, lastConsensusRequest: {}",
             thisNode.getGroupId(),
             getMinSyncIndex(),
-            indexedConsensusRequest.getSearchIndex());
+            indexedConsensusRequest.getSearchIndex(),
+            lastConsensusRequest.getSerializedRequests());
       }
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
       long startWriteTime = System.nanoTime();
@@ -278,10 +263,9 @@ public class IoTConsensusServerImpl {
 
   public void takeSnapshot() throws ConsensusGroupModifyPeerException {
     try {
-      long newSnapshotIndex = getLatestSnapshotIndex() + 1;
       newSnapshotDirName =
           String.format(
-              "%s_%s_%d", SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), newSnapshotIndex);
+              "%s_%s_%s", SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), UUID.randomUUID());
       File snapshotDir = new File(storageDir, newSnapshotDirName);
       if (snapshotDir.exists()) {
         FileUtils.deleteDirectory(snapshotDir);
@@ -373,7 +357,7 @@ public class IoTConsensusServerImpl {
   }
 
   public void receiveSnapshotFragment(
-      String snapshotId, String originalFilePath, ByteBuffer fileChunk)
+      String snapshotId, String originalFilePath, ByteBuffer fileChunk, long fileOffset)
       throws ConsensusGroupModifyPeerException {
     try {
       String targetFilePath = calculateSnapshotPath(snapshotId, originalFilePath);
@@ -384,7 +368,7 @@ public class IoTConsensusServerImpl {
       }
       try (FileOutputStream fos = new FileOutputStream(targetFile.getAbsolutePath(), true);
           FileChannel channel = fos.getChannel()) {
-        channel.write(fileChunk.slice());
+        channel.write(fileChunk.slice(), fileOffset);
       }
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException(
@@ -400,22 +384,6 @@ public class IoTConsensusServerImpl {
               "invalid snapshot file. snapshotId: %s, filePath: %s", snapshotId, originalFilePath));
     }
     return originalFilePath.substring(originalFilePath.indexOf(snapshotId));
-  }
-
-  private long getLatestSnapshotIndex() {
-    long snapShotIndex = 0;
-    File directory = new File(storageDir);
-    File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
-    if (versionFiles == null || versionFiles.length == 0) {
-      return snapShotIndex;
-    }
-    for (File file : versionFiles) {
-      snapShotIndex =
-          Math.max(
-              snapShotIndex,
-              Long.parseLong(SNAPSHOT_INDEX_PATTEN.matcher(file.getName()).replaceAll("")));
-    }
-    return snapShotIndex;
   }
 
   private void clearOldSnapshot() {
@@ -448,26 +416,38 @@ public class IoTConsensusServerImpl {
     R apply(T t) throws Exception;
   }
 
-  public void inactivePeer(Peer peer, boolean forDeletionPurpose)
+  public void inactivatePeer(Peer peer, boolean forDeletionPurpose)
       throws ConsensusGroupModifyPeerException {
-    try (SyncIoTConsensusServiceClient client =
-        syncClientManager.borrowClient(peer.getEndpoint())) {
-      try {
-        TInactivatePeerRes res =
-            client.inactivatePeer(
-                new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId())
-                    .setForDeletionPurpose(forDeletionPurpose));
-        if (!isSuccess(res.status)) {
-          throw new ConsensusGroupModifyPeerException(
-              String.format("error when inactivating %s. %s", peer, res.getStatus()));
+    ConsensusGroupModifyPeerException lastException = null;
+    // In region migration, if the target node restarts before the “addRegionPeer” phase within 1
+    // minutes,
+    // the client in the ClientManager will become invalid.
+    // This PR adds 1 retry at this point to ensure that region migration can still proceed
+    // correctly in such cases.
+    for (int i = 0; i < 2; i++) {
+      try (SyncIoTConsensusServiceClient client =
+          syncClientManager.borrowClient(peer.getEndpoint())) {
+        try {
+          TInactivatePeerRes res =
+              client.inactivatePeer(
+                  new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId())
+                      .setForDeletionPurpose(forDeletionPurpose));
+          if (isSuccess(res.status)) {
+            return;
+          }
+          lastException =
+              new ConsensusGroupModifyPeerException(
+                  String.format("error when inactivating %s. %s", peer, res.getStatus()));
+        } catch (Exception e) {
+          lastException =
+              new ConsensusGroupModifyPeerException(
+                  String.format("error when inactivating %s", peer), e);
         }
-      } catch (Exception e) {
-        throw new ConsensusGroupModifyPeerException(
-            String.format("error when inactivating %s", peer), e);
+      } catch (ClientManagerException e) {
+        lastException = new ConsensusGroupModifyPeerException(e);
       }
-    } catch (ClientManagerException e) {
-      throw new ConsensusGroupModifyPeerException(e);
     }
+    throw lastException;
   }
 
   public void triggerSnapshotLoad(Peer peer) throws ConsensusGroupModifyPeerException {
@@ -516,7 +496,7 @@ public class IoTConsensusServerImpl {
       if (peer.equals(thisNode)) {
         // use searchIndex for thisNode as the initialSyncIndex because targetPeer will load the
         // snapshot produced by thisNode
-        buildSyncLogChannel(targetPeer, lastPinnedSearchIndexForMigration);
+        buildSyncLogChannel(targetPeer, true);
       } else {
         // use RPC to tell other peers to build sync log channel to target peer
         try (SyncIoTConsensusServiceClient client =
@@ -663,29 +643,23 @@ public class IoTConsensusServerImpl {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
-  /**
-   * build SyncLog channel with safeIndex as the default initial sync index.
-   *
-   * @throws ConsensusGroupModifyPeerException
-   */
-  public void buildSyncLogChannel(Peer targetPeer) throws ConsensusGroupModifyPeerException {
-    buildSyncLogChannel(targetPeer, getMinSyncIndex());
+  /** build SyncLog channel with safeIndex as the default initial sync index. */
+  public void buildSyncLogChannel(Peer targetPeer, boolean startNow) {
+    buildSyncLogChannel(targetPeer, getMinSyncIndex(), startNow);
   }
 
-  public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex)
-      throws ConsensusGroupModifyPeerException {
+  public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex, boolean startNow) {
     KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
-    // step 1, build sync channel in LogDispatcher
-    logger.info(
-        "[IoTConsensus] build sync log channel to {} with initialSyncIndex {}",
-        targetPeer,
-        initialSyncIndex);
-    logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex);
-    // step 2, update configuration
     configuration.add(targetPeer);
-    // step 3, persist configuration
-    persistConfiguration();
-    logger.info("[IoTConsensus] persist new configuration: {}", configuration);
+    if (Objects.equals(targetPeer, thisNode)) {
+      return;
+    }
+    logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex, startNow);
+    logger.info(
+        "[IoTConsensus] Successfully build sync log channel to {} with initialSyncIndex {}. {}",
+        targetPeer,
+        initialSyncIndex,
+        startNow ? "Sync log channel has started." : "Sync log channel maybe start later.");
   }
 
   /**
@@ -697,6 +671,7 @@ public class IoTConsensusServerImpl {
     String suggestion = "";
     try {
       logDispatcher.removeLogDispatcherThread(targetPeer);
+      logger.info("[IoTConsensus] log dispatcher to {} removed and cleanup", targetPeer);
     } catch (Exception e) {
       logger.warn(
           "[IoTConsensus] Exception happened during removing log dispatcher thread, but configuration.dat will still be removed.",
@@ -711,90 +686,15 @@ public class IoTConsensusServerImpl {
     // step 2, update configuration
     configuration.remove(targetPeer);
     checkAndUpdateSafeDeletedSearchIndex();
-    // step 3, persist configuration
-    persistConfiguration();
-    logger.info("[IoTConsensus] Configuration updated to {}. {}", this.configuration, suggestion);
+    logger.info(
+        "[IoTConsensus Configuration] Configuration updated to {}. {}",
+        this.configuration,
+        suggestion);
     return !exceptionHappened;
-  }
-
-  public void persistConfiguration() {
-    try {
-      removeDuplicateConfiguration();
-      renameTmpConfigurationFileToRemoveSuffix();
-      serializeConfigurationAndFsyncToDisk();
-      deleteConfiguration();
-      renameTmpConfigurationFileToRemoveSuffix();
-    } catch (IOException e) {
-      // TODO: (xingtanzjr) need to handle the IOException because the IoTConsensus won't
-      // work expectedly
-      //  if the exception occurs
-      logger.error("Unexpected error occurs when persisting configuration", e);
-    }
-  }
-
-  public void recoverConfiguration() {
-    try {
-      Path tmpConfigurationPath =
-          Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
-      Path configurationPath =
-          Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
-      // If the tmpConfigurationPath exists, it means the `persistConfigurationUpdate` is
-      // interrupted
-      // unexpectedly, we need substitute configuration with tmpConfiguration file
-      if (Files.exists(tmpConfigurationPath)) {
-        Files.deleteIfExists(configurationPath);
-        Files.move(tmpConfigurationPath, configurationPath);
-      }
-      if (Files.exists(configurationPath)) {
-        recoverFromOldConfigurationFile(configurationPath);
-      } else {
-        // recover from split configuration file
-        Path dirPath = Paths.get(storageDir);
-        List<Peer> tmpPeerList = getConfiguration(dirPath, CONFIGURATION_TMP_FILE_NAME);
-        configuration.addAll(tmpPeerList);
-        List<Peer> peerList = getConfiguration(dirPath, CONFIGURATION_FILE_NAME);
-        for (Peer peer : peerList) {
-          if (!configuration.contains(peer)) {
-            configuration.add(peer);
-          }
-        }
-        persistConfiguration();
-      }
-      logger.info("Recover IoTConsensus server Impl, configuration: {}", configuration);
-    } catch (IOException e) {
-      logger.error("Unexpected error occurs when recovering configuration", e);
-    }
-  }
-
-  // @Compatibility
-  private void recoverFromOldConfigurationFile(Path oldConfigurationPath) throws IOException {
-    // recover from old configuration file
-    ByteBuffer buffer = ByteBuffer.wrap(Files.readAllBytes(oldConfigurationPath));
-    int size = buffer.getInt();
-    for (int i = 0; i < size; i++) {
-      configuration.add(Peer.deserialize(buffer));
-    }
-    persistConfiguration();
   }
 
   public static String generateConfigurationDatFileName(int nodeId, String suffix) {
     return nodeId + "_" + suffix;
-  }
-
-  private List<Peer> getConfiguration(Path dirPath, String configurationFileName)
-      throws IOException {
-    ByteBuffer buffer;
-    List<Peer> tmpConfiguration = new ArrayList<>();
-    Path[] files =
-        Files.walk(dirPath)
-            .filter(Files::isRegularFile)
-            .filter(filePath -> filePath.getFileName().toString().contains(configurationFileName))
-            .toArray(Path[]::new);
-    for (Path file : files) {
-      buffer = ByteBuffer.wrap(Files.readAllBytes(file));
-      tmpConfiguration.add(Peer.deserialize(buffer));
-    }
-    return tmpConfiguration;
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
@@ -822,9 +722,7 @@ public class IoTConsensusServerImpl {
   }
 
   public long getMinFlushedSyncIndex() {
-    return lastPinnedSafeDeletedIndexForMigration == -1
-        ? logDispatcher.getMinFlushedSyncIndex().orElseGet(searchIndex::get)
-        : lastPinnedSafeDeletedIndexForMigration;
+    return logDispatcher.getMinFlushedSyncIndex().orElseGet(searchIndex::get);
   }
 
   public String getStorageDir() {
@@ -836,7 +734,7 @@ public class IoTConsensusServerImpl {
   }
 
   public List<Peer> getConfiguration() {
-    return configuration;
+    return new ArrayList<>(configuration);
   }
 
   public long getSearchIndex() {
@@ -947,31 +845,25 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  /**
-   * We should set safelyDeletedSearchIndex to searchIndex before addPeer to avoid potential data
-   * lost.
-   */
-  public void checkAndLockSafeDeletedSearchIndex() {
-    lastPinnedSearchIndexForMigration = searchIndex.get();
-    lastPinnedSafeDeletedIndexForMigration = getMinFlushedSyncIndex();
-    consensusReqReader.setSafelyDeletedSearchIndex(getMinFlushedSyncIndex());
-  }
-
-  /**
-   * We should unlock safelyDeletedSearchIndex after addPeer to avoid potential data accumulation.
-   */
-  public void checkAndUnlockSafeDeletedSearchIndex() {
-    lastPinnedSearchIndexForMigration = -1;
-    lastPinnedSafeDeletedIndexForMigration = -1;
+  void checkAndUpdateIndex() {
+    // Since the underlying wal does not persist safelyDeletedSearchIndex, IoTConsensus needs to
+    // update wal with its syncIndex recovered from the consensus layer when initializing.
+    // This prevents wal from being piled up if the safelyDeletedSearchIndex is not updated after
+    // the restart and Leader migration occurs
     checkAndUpdateSafeDeletedSearchIndex();
+    // see message in logs for details
+    checkAndUpdateSearchIndex();
   }
 
   /**
-   * If there is only one replica, set it to Long.MAX_VALUE.、 If there are multiple replicas, get
-   * the latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
+   * If there is only one replica, set it to Long.MAX_VALUE. If there are multiple replicas, get the
+   * latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
    */
-  public void checkAndUpdateSafeDeletedSearchIndex() {
-    if (configuration.size() == 1) {
+  void checkAndUpdateSafeDeletedSearchIndex() {
+    if (configuration.isEmpty()) {
+      logger.error(
+          "Configuration is empty, which is unexpected. Safe deleted search index won't be updated this time.");
+    } else if (configuration.size() == 1) {
       consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
     } else {
       consensusReqReader.setSafelyDeletedSearchIndex(getMinFlushedSyncIndex());
@@ -1005,87 +897,6 @@ public class IoTConsensusServerImpl {
 
   public String getConsensusGroupId() {
     return consensusGroupId;
-  }
-
-  private void serializeConfigurationAndFsyncToDisk() throws IOException {
-    for (Peer peer : configuration) {
-      String peerConfigurationFileName =
-          generateConfigurationDatFileName(peer.getNodeId(), CONFIGURATION_TMP_FILE_NAME);
-      FileOutputStream fileOutputStream =
-          new FileOutputStream(new File(storageDir, peerConfigurationFileName));
-      try (DataOutputStream outputStream = new DataOutputStream(fileOutputStream)) {
-        peer.serialize(outputStream);
-      } finally {
-        try {
-          fileOutputStream.flush();
-          fileOutputStream.getFD().sync();
-        } catch (IOException ignore) {
-          // ignore sync exception
-        }
-      }
-    }
-  }
-
-  private void renameTmpConfigurationFileToRemoveSuffix() throws IOException {
-    try (Stream<Path> stream = Files.list(Paths.get(storageDir))) {
-      List<Path> paths =
-          stream
-              .filter(Files::isRegularFile)
-              .filter(
-                  filePath ->
-                      filePath.getFileName().toString().endsWith(CONFIGURATION_TMP_FILE_NAME))
-              .collect(Collectors.toList());
-      for (Path filePath : paths) {
-        String targetPath =
-            filePath.toString().replace(CONFIGURATION_TMP_FILE_NAME, CONFIGURATION_FILE_NAME);
-        File targetFile = new File(targetPath);
-        if (targetFile.exists()) {
-          try {
-            Files.delete(targetFile.toPath());
-          } catch (IOException e) {
-            logger.error("Unexpected error occurs when delete file: {}", targetPath, e);
-          }
-        }
-        if (!filePath.toFile().renameTo(targetFile)) {
-          logger.error("Unexpected error occurs when rename file: {} -> {}", filePath, targetPath);
-        }
-      }
-    } catch (UncheckedIOException e) {
-      throw e.getCause();
-    }
-  }
-
-  private void deleteConfiguration() throws IOException {
-    try (Stream<Path> stream = Files.list(Paths.get(storageDir))) {
-      stream
-          .filter(Files::isRegularFile)
-          .filter(filePath -> filePath.getFileName().toString().endsWith(CONFIGURATION_FILE_NAME))
-          .forEach(
-              filePath -> {
-                try {
-                  Files.delete(filePath);
-                } catch (IOException e) {
-                  logger.error(
-                      "Unexpected error occurs when deleting old configuration file {}",
-                      filePath,
-                      e);
-                }
-              });
-    } catch (UncheckedIOException e) {
-      throw e.getCause();
-    }
-  }
-
-  public void removeDuplicateConfiguration() {
-    Set<Peer> seen = new HashSet<>();
-    Iterator<Peer> it = configuration.iterator();
-
-    while (it.hasNext()) {
-      Peer peer = it.next();
-      if (!seen.add(peer)) {
-        it.remove();
-      }
-    }
   }
 
   /** This method is used for hot reload of IoTConsensusConfig. */

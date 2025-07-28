@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
-import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
+import org.apache.iotdb.session.util.RetryUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -56,8 +56,11 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
    */
   public synchronized Path deleteFile() throws IOException {
     final Path sourcePath = getPath();
-    Files.delete(sourcePath);
-    return sourcePath;
+    return RetryUtils.retryOnException(
+        () -> {
+          Files.delete(sourcePath);
+          return sourcePath;
+        });
   }
 
   /**
@@ -66,7 +69,7 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
    * @throws IOException if an I/O error occurs
    */
   public synchronized Path moveFile(final String target) throws IOException {
-    return this.moveFile(Paths.get(target));
+    return RetryUtils.retryOnException(() -> this.moveFile(Paths.get(target)));
   }
 
   /**
@@ -78,7 +81,8 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
     if (!Files.exists(target.getParent())) {
       Files.createDirectories(target.getParent());
     }
-    return Files.move(getPath(), target, StandardCopyOption.REPLACE_EXISTING);
+    return RetryUtils.retryOnException(
+        () -> Files.move(getPath(), target, StandardCopyOption.REPLACE_EXISTING));
   }
 
   /**
@@ -87,7 +91,7 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
    * @throws IOException if an I/O error occurs
    */
   public synchronized Path copyFile(final String target) throws IOException {
-    return this.copyFile(Paths.get(target));
+    return RetryUtils.retryOnException(() -> this.copyFile(Paths.get(target)));
   }
 
   /**
@@ -99,13 +103,12 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
     if (!Files.exists(target.getParent())) {
       Files.createDirectories(target.getParent());
     }
-    return Files.copy(
-        getPath(), target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
-  }
-
-  @Override
-  public SubscriptionSessionDataSetsHandler getSessionDataSetsHandler() {
-    throw new SubscriptionIncompatibleHandlerException(
-        "SubscriptionFileHandler do not support getSessionDataSetsHandler().");
+    return RetryUtils.retryOnException(
+        () ->
+            Files.copy(
+                getPath(),
+                target,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.COPY_ATTRIBUTES));
   }
 }

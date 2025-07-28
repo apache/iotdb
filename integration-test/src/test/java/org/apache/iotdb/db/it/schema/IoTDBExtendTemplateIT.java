@@ -142,9 +142,14 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
 
       statement.execute("SET DEVICE TEMPLATE t1 to root.db");
 
+      // single-row insertion
       statement.execute("INSERT INTO root.db.d1(time, s1, s3) values(1, 1, 1)");
       statement.execute("INSERT INTO root.db.d2(time, s4, s5) values(1, 1, 1)");
       statement.execute("INSERT INTO root.db1.d1(time, s2, s3) values(1, 1, 1)");
+
+      // multi-row insertion with null
+      statement.execute(
+          "INSERT INTO root.db.d1(time, s1, s6) values(1, 1, 1), (2, 2, null), (3, 3, 3)");
 
       String[] sqls =
           new String[] {
@@ -159,11 +164,13 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
                     "root.db.d1.s3,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
                     "root.db.d1.s4,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
                     "root.db.d1.s5,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
+                    "root.db.d1.s6,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
                     "root.db.d2.s1,null,root.db,INT64,PLAIN,LZ4,null,null,null,null,BASE,",
                     "root.db.d2.s2,null,root.db,DOUBLE,RLE,LZ4,null,null,null,null,BASE,",
                     "root.db.d2.s3,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
                     "root.db.d2.s4,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
                     "root.db.d2.s5,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
+                    "root.db.d2.s6,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
                     "root.db1.d1.s2,null,root.db1,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
                     "root.db1.d1.s3,null,root.db1,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,"))
           };

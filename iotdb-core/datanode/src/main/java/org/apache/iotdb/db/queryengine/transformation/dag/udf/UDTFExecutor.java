@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.udf;
 
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.queryengine.transformation.dag.adapter.PointCollectorAdaptor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.InputRowUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
@@ -92,7 +92,7 @@ public class UDTFExecutor {
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes) {
 
-    udtf = (UDTF) UDFManagementService.getInstance().reflect(functionName);
+    udtf = UDFManagementService.getInstance().reflect(functionName, UDTF.class);
 
     final UDFParameters parameters =
         UDFParametersFactory.buildUdfParameters(

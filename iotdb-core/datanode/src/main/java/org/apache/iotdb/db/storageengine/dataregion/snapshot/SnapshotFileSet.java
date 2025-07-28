@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.snapshot;
 
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -34,6 +35,7 @@ public class SnapshotFileSet {
       new String[] {
         TsFileConstant.TSFILE_SUFFIX.replace(".", ""),
         TsFileResource.RESOURCE_SUFFIX.replace(".", ""),
+        ModificationFileV1.FILE_SUFFIX.replace(".", ""),
         ModificationFile.FILE_SUFFIX.replace(".", ""),
       };
 

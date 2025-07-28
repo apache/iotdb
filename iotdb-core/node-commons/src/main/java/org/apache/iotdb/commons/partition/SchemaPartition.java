@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -59,6 +60,7 @@ public class SchemaPartition extends Partition {
     return schemaPartitionMap;
   }
 
+  @TestOnly
   public void setSchemaPartitionMap(
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap) {
     this.schemaPartitionMap = schemaPartitionMap;
@@ -79,12 +81,12 @@ public class SchemaPartition extends Partition {
   }
 
   // [root, db, ....]
-  public TRegionReplicaSet getSchemaRegionReplicaSet(IDeviceID deviceID) {
+  public TRegionReplicaSet getSchemaRegionReplicaSet(final IDeviceID deviceID) {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
-    String storageGroup = getStorageGroupByDevice(deviceID);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
+    final String storageGroup = getStorageGroupByDevice(deviceID);
+    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
     if (schemaPartitionMap.get(storageGroup) == null) {
       throw new RuntimeException(
           new IoTDBException("Path does not exist. ", TSStatusCode.PATH_NOT_EXIST.getStatusCode()));
@@ -92,8 +94,8 @@ public class SchemaPartition extends Partition {
     return schemaPartitionMap.get(storageGroup).get(seriesPartitionSlot);
   }
 
-  private String getStorageGroupByDevice(IDeviceID deviceID) {
-    for (String storageGroup : schemaPartitionMap.keySet()) {
+  private String getStorageGroupByDevice(final IDeviceID deviceID) {
+    for (final String storageGroup : schemaPartitionMap.keySet()) {
       if (PathUtils.isStartWith(deviceID, storageGroup)) {
         return storageGroup;
       }

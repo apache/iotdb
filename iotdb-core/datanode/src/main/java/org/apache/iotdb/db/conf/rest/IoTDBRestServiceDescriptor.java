@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf.rest;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 
 import org.slf4j.Logger;
@@ -33,7 +34,6 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Properties;
 
 public class IoTDBRestServiceDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBRestServiceDescriptor.class);
@@ -43,9 +43,9 @@ public class IoTDBRestServiceDescriptor {
   protected IoTDBRestServiceDescriptor() {
     URL systemConfig = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (systemConfig != null) {
-      Properties properties = loadProps(CommonConfig.SYSTEM_CONFIG_NAME);
-      if (properties != null) {
-        loadProps(properties);
+      TrimProperties trimProperties = loadProps(CommonConfig.SYSTEM_CONFIG_NAME);
+      if (trimProperties != null) {
+        loadProps(trimProperties);
       }
     }
   }
@@ -56,7 +56,7 @@ public class IoTDBRestServiceDescriptor {
 
   /** load an property file. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private Properties loadProps(String configName) {
+  private TrimProperties loadProps(String configName) {
     URL url = getPropsUrl(configName);
     if (url == null) {
       logger.warn("Couldn't load the REST Service configuration from any of the known sources.");
@@ -64,9 +64,9 @@ public class IoTDBRestServiceDescriptor {
     }
     try (InputStream inputStream = url.openStream()) {
       logger.info("Start to read config file {}", url);
-      Properties properties = new Properties();
-      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-      return properties;
+      TrimProperties trimProperties = new TrimProperties();
+      trimProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+      return trimProperties;
     } catch (FileNotFoundException e) {
       logger.warn("REST service fail to find config file {}", url, e);
     } catch (IOException e) {
@@ -77,48 +77,51 @@ public class IoTDBRestServiceDescriptor {
     return null;
   }
 
-  private void loadProps(Properties properties) {
+  private void loadProps(TrimProperties trimProperties) {
     conf.setEnableRestService(
         Boolean.parseBoolean(
-            properties.getProperty(
+            trimProperties.getProperty(
                 "enable_rest_service", Boolean.toString(conf.isEnableRestService()))));
     conf.setRestServicePort(
         Integer.parseInt(
-            properties.getProperty(
+            trimProperties.getProperty(
                 "rest_service_port", Integer.toString(conf.getRestServicePort()))));
     conf.setRestQueryDefaultRowSizeLimit(
         Integer.parseInt(
-            properties.getProperty(
+            trimProperties.getProperty(
                 "rest_query_default_row_size_limit",
                 Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
     conf.setEnableSwagger(
         Boolean.parseBoolean(
-            properties.getProperty("enable_swagger", Boolean.toString(conf.isEnableSwagger()))));
+            trimProperties.getProperty(
+                "enable_swagger", Boolean.toString(conf.isEnableSwagger()))));
 
     conf.setEnableHttps(
         Boolean.parseBoolean(
-            properties.getProperty("enable_https", Boolean.toString(conf.isEnableHttps()))));
+            trimProperties.getProperty("enable_https", Boolean.toString(conf.isEnableHttps()))));
     conf.setClientAuth(
         Boolean.parseBoolean(
-            properties.getProperty("client_auth", Boolean.toString(conf.isClientAuth()))));
-    conf.setKeyStorePath(properties.getProperty("key_store_path", conf.getKeyStorePath()));
-    conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePwd()));
-    conf.setTrustStorePath(properties.getProperty("trust_store_path", conf.getTrustStorePath()));
-    conf.setTrustStorePwd(properties.getProperty("trust_store_pwd", conf.getTrustStorePwd()));
+            trimProperties.getProperty("client_auth", Boolean.toString(conf.isClientAuth()))));
+    conf.setKeyStorePath(trimProperties.getProperty("key_store_path", conf.getKeyStorePath()));
+    conf.setKeyStorePwd(trimProperties.getProperty("key_store_pwd", conf.getKeyStorePwd()));
+    conf.setTrustStorePath(
+        trimProperties.getProperty("trust_store_path", conf.getTrustStorePath()));
+    conf.setTrustStorePwd(trimProperties.getProperty("trust_store_pwd", conf.getTrustStorePwd()));
     conf.setIdleTimeoutInSeconds(
         Integer.parseInt(
-            properties.getProperty(
+            trimProperties.getProperty(
                 "idle_timeout_in_seconds", Integer.toString(conf.getIdleTimeoutInSeconds()))));
     conf.setCacheExpireInSeconds(
         Integer.parseInt(
-            properties.getProperty(
+            trimProperties.getProperty(
                 "cache_expire_in_seconds", Integer.toString(conf.getCacheExpireInSeconds()))));
     conf.setCacheInitNum(
         Integer.parseInt(
-            properties.getProperty("cache_init_num", Integer.toString(conf.getCacheInitNum()))));
+            trimProperties.getProperty(
+                "cache_init_num", Integer.toString(conf.getCacheInitNum()))));
     conf.setCacheMaxNum(
         Integer.parseInt(
-            properties.getProperty("cache_max_num", Integer.toString(conf.getCacheMaxNum()))));
+            trimProperties.getProperty("cache_max_num", Integer.toString(conf.getCacheMaxNum()))));
   }
 
   /**

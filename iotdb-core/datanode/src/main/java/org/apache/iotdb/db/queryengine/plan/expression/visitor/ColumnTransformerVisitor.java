@@ -39,8 +39,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.CaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.TreeCaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticDivisionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticModuloColumnTransformer;
@@ -54,6 +54,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareL
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareNonEqualColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LogicAndColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LogicOrColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LongDivisionLongColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LongModulusLongColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
@@ -71,6 +73,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 
+import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;
@@ -82,6 +85,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionType.BETWEEN;
+import static org.apache.tsfile.enums.TSDataType.UNKNOWN;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 /** Responsible for constructing {@link ColumnTransformer} through Expression. */
 public class ColumnTransformerVisitor
@@ -390,7 +395,7 @@ public class ColumnTransformerVisitor
             this.process(caseWhenThenExpression.getElseExpression(), context);
         context.cache.put(
             caseWhenThenExpression,
-            new CaseWhenThenColumnTransformer(
+            new TreeCaseWhenThenColumnTransformer(
                 TypeFactory.getType(context.getType(caseWhenThenExpression)),
                 whenList,
                 thenList,
@@ -443,8 +448,9 @@ public class ColumnTransformerVisitor
         return new ArithmeticNegationColumnTransformer(returnType, childColumnTransformer);
       case LIKE:
         LikeExpression likeExpression = (LikeExpression) expression;
-        return new LikeColumnTransformer(
-            returnType, childColumnTransformer, likeExpression.getPattern());
+        LikePattern pattern =
+            LikePattern.compile(likeExpression.getPattern(), likeExpression.getEscape());
+        return new LikeColumnTransformer(returnType, childColumnTransformer, pattern);
       case REGEXP:
         RegularExpression regularExpression = (RegularExpression) expression;
         return new RegularColumnTransformer(
@@ -471,9 +477,17 @@ public class ColumnTransformerVisitor
         return new ArithmeticMultiplicationColumnTransformer(
             returnType, leftColumnTransformer, rightColumnTransformer);
       case DIVISION:
+        if (returnType == INT64) {
+          return new LongDivisionLongColumnTransformer(
+              returnType, leftColumnTransformer, rightColumnTransformer);
+        }
         return new ArithmeticDivisionColumnTransformer(
             returnType, leftColumnTransformer, rightColumnTransformer);
       case MODULO:
+        if (returnType == INT64) {
+          return new LongModulusLongColumnTransformer(
+              returnType, leftColumnTransformer, rightColumnTransformer);
+        }
         return new ArithmeticModuloColumnTransformer(
             returnType, leftColumnTransformer, rightColumnTransformer);
       case EQUAL_TO:
@@ -582,7 +596,19 @@ public class ColumnTransformerVisitor
       if (typeProvider != null) {
         return typeProvider.getTreeModelType(expression.getOutputSymbol());
       }
-      return expressionTypes.get(NodeRef.of(expression));
+      if (expressionTypes.get(NodeRef.of(expression)) != UNKNOWN) {
+        return expressionTypes.get(NodeRef.of(expression));
+      } else {
+        for (Map.Entry<NodeRef<Expression>, TSDataType> entry : expressionTypes.entrySet()) {
+          if (entry.getKey().getNode().equals(expression) && entry.getValue() != UNKNOWN) {
+            return entry.getValue();
+          }
+        }
+        throw new IllegalStateException(
+            String.format(
+                "Unknown expression type: %s, perhaps it has non existent measurement.",
+                expression.getOutputSymbol()));
+      }
     }
 
     public TypeProvider getTypeProvider() {

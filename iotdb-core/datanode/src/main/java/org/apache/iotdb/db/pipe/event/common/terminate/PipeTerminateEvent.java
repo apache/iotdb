@@ -22,11 +22,14 @@ package org.apache.iotdb.db.pipe.event.common.terminate;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * The {@link PipeTerminateEvent} is an {@link EnrichedEvent} that controls the termination of pipe,
@@ -35,6 +38,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
  * be discarded.
  */
 public class PipeTerminateEvent extends EnrichedEvent {
+
   private final int dataRegionId;
 
   public PipeTerminateEvent(
@@ -42,7 +46,16 @@ public class PipeTerminateEvent extends EnrichedEvent {
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final int dataRegionId) {
-    super(pipeName, creationTime, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        null,
+        null,
+        null,
+        true,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
   }
 
@@ -66,7 +79,10 @@ public class PipeTerminateEvent extends EnrichedEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     // Should record PipeTaskMeta, for the terminateEvent shall report progress to
@@ -91,7 +107,9 @@ public class PipeTerminateEvent extends EnrichedEvent {
 
   @Override
   public void reportProgress() {
-    PipeDataNodeAgent.task().markCompleted(pipeName, dataRegionId);
+    // To avoid deadlock
+    CompletableFuture.runAsync(
+        () -> PipeDataNodeAgent.task().markCompleted(pipeName, dataRegionId));
   }
 
   @Override

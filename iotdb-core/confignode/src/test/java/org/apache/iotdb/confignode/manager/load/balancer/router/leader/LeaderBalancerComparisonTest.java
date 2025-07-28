@@ -57,8 +57,8 @@ public class LeaderBalancerComparisonTest {
   private static FileWriter WRITER;
 
   private static final GreedyLeaderBalancer GREEDY_LEADER_BALANCER = new GreedyLeaderBalancer();
-  private static final MinCostFlowLeaderBalancer MIN_COST_FLOW_LEADER_BALANCER =
-      new MinCostFlowLeaderBalancer();
+  private static final CostFlowSelectionLeaderBalancer MIN_COST_FLOW_LEADER_BALANCER =
+      new CostFlowSelectionLeaderBalancer();
 
   private static final Random RANDOM = new Random();
   private static final int TEST_MAX_DATA_NODE_NUM = 100;

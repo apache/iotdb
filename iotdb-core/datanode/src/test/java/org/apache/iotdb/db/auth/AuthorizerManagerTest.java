@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.db.auth;
 
+import org.apache.iotdb.commons.auth.entity.ModelType;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -38,7 +38,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class AuthorizerManagerTest {
@@ -50,15 +49,14 @@ public class AuthorizerManagerTest {
     User user = new User();
     Role role1 = new Role();
     Role role2 = new Role();
-    List<String> roleList = new ArrayList<>();
-    Set<Integer> privilegesIds = new HashSet<>();
-    Set<Integer> sysPriIds = new HashSet<>();
-    PathPrivilege privilege = new PathPrivilege();
+    Set<String> roleSet = new HashSet<>();
+    Set<PrivilegeType> privilegesIds = new HashSet<>();
+    Set<PrivilegeType> sysPriIds = new HashSet<>();
+    PathPrivilege privilege = new PathPrivilege(new PartialPath("root.ln"));
     List<PathPrivilege> privilegeList = new ArrayList<>();
-    privilegesIds.add(PrivilegeType.READ_DATA.ordinal());
-    sysPriIds.add(PrivilegeType.MAINTAIN.ordinal());
+    privilegesIds.add(PrivilegeType.READ_DATA);
+    sysPriIds.add(PrivilegeType.MAINTAIN);
 
-    privilege.setPath(new PartialPath("root.ln"));
     privilege.setPrivileges(privilegesIds);
     privilegeList.add(privilege);
 
@@ -68,38 +66,22 @@ public class AuthorizerManagerTest {
     role2.setName("role2");
     role2.setPrivilegeList(new ArrayList<>());
 
-    roleList.add("role1");
-    roleList.add("role2");
+    roleSet.add("role1");
+    roleSet.add("role2");
 
     user.setName("user");
     user.setPassword("password");
     user.setPrivilegeList(privilegeList);
     user.setSysPrivilegeSet(sysPriIds);
-    user.setRoleList(roleList);
+    user.setRoleSet(roleSet);
+    user.grantDBPrivilege("test", PrivilegeType.ALTER, false);
+    user.grantTBPrivilege("test", "table", PrivilegeType.SELECT, true);
+    user.grantDBPrivilege("test2", PrivilegeType.SELECT, true);
+    user.grantAnyScopePrivilege(PrivilegeType.ALTER, false);
+    user.grantAnyScopePrivilege(PrivilegeType.SELECT, true);
+
     TPermissionInfoResp result = new TPermissionInfoResp();
-    TUserResp tUserResp = new TUserResp();
-    Map<String, TRoleResp> tRoleRespMap = new HashMap();
-    List<TPathPrivilege> userPrivilegeList = new ArrayList<>();
-    List<TPathPrivilege> rolePrivilegeList = new ArrayList<>();
-    List<Role> roleList1 = new ArrayList<>();
-    roleList1.add(role1);
-    roleList1.add(role2);
-
-    // User permission information
-    for (PathPrivilege pathPrivilege : user.getPathPrivilegeList()) {
-      TPathPrivilege pathPri = new TPathPrivilege();
-      pathPri.setPath(pathPrivilege.getPath().getFullPath());
-      pathPri.setPriSet(pathPrivilege.getPrivileges());
-      pathPri.setPriGrantOpt(pathPrivilege.getGrantOpt());
-      userPrivilegeList.add(pathPri);
-    }
-    tUserResp.setUsername(user.getName());
-    tUserResp.setPassword(user.getPassword());
-    tUserResp.setPrivilegeList(userPrivilegeList);
-    tUserResp.setSysPriSet(user.getSysPrivilege());
-
-    tUserResp.setRoleList(new ArrayList<>());
-    result.setUserInfo(tUserResp);
+    result.setUserInfo(user.getUserInfo(ModelType.ALL));
     result.setRoleInfo(new HashMap<>());
 
     // User authentication permission without role
@@ -108,78 +90,23 @@ public class AuthorizerManagerTest {
         .putUserCache(user.getName(), authorityFetcher.cacheUser(result));
     User user1 = authorityFetcher.getAuthorCache().getUserCache(user.getName());
     assert user1 != null;
-    Assert.assertEquals(user.getName(), user1.getName());
-    Assert.assertEquals(user.getPassword(), user1.getPassword());
-    Assert.assertEquals(user.getPathPrivilegeList(), user1.getPathPrivilegeList());
-    Assert.assertEquals(user.getSysPrivilege(), user1.getSysPrivilege());
-
-    // User has permission
-    Assert.assertEquals(
-        authorityFetcher
-            .checkUserPathPrivileges(
-                "user",
-                Collections.singletonList(new PartialPath("root.ln")),
-                PrivilegeType.READ_DATA.ordinal())
-            .size(),
-        0);
-    // User does not have permission
-    Assert.assertEquals(
-        authorityFetcher
-            .checkUserPathPrivileges(
-                "user",
-                Collections.singletonList(new PartialPath("root.ln")),
-                PrivilegeType.WRITE_DATA.ordinal())
-            .size(),
-        1);
+    Assert.assertEquals(user, user1);
 
     // Authenticate users with roles
     authorityFetcher.getAuthorCache().invalidateCache(user.getName(), "");
-    tUserResp.setPrivilegeList(new ArrayList<>());
-    tUserResp.setRoleList(user.getRoleList());
+    result = new TPermissionInfoResp();
+    result.setUserInfo(user.getUserInfo(ModelType.ALL));
+    result.putToRoleInfo(role1.getName(), role1.getRoleInfo(ModelType.ALL));
+    result.putToRoleInfo(role2.getName(), role2.getRoleInfo(ModelType.ALL));
 
     // Permission information for roles owned by users
-    for (Role role : roleList1) {
-      TRoleResp tRoleResp = new TRoleResp();
-      rolePrivilegeList = new ArrayList<>();
-      tRoleResp.setRoleName(role.getName());
-      for (PathPrivilege pathPrivilege : role.getPathPrivilegeList()) {
-        TPathPrivilege pathPri = new TPathPrivilege();
-        pathPri.setPath(pathPrivilege.getPath().getFullPath());
-        pathPri.setPriSet(pathPrivilege.getPrivileges());
-        pathPri.setPriGrantOpt(pathPrivilege.getGrantOpt());
-        rolePrivilegeList.add(pathPri);
-      }
-      tRoleResp.setPrivilegeList(rolePrivilegeList);
-      tRoleRespMap.put(role.getName(), tRoleResp);
-    }
-    result.setRoleInfo(tRoleRespMap);
     authorityFetcher
         .getAuthorCache()
         .putUserCache(user.getName(), authorityFetcher.cacheUser(result));
     Role role3 = authorityFetcher.getAuthorCache().getRoleCache(role1.getName());
-    Assert.assertEquals(role1.getName(), role3.getName());
-    Assert.assertEquals(role1.getPathPrivilegeList(), role3.getPathPrivilegeList());
+    Assert.assertEquals(role1, role3);
 
-    // role has permission
-    Assert.assertEquals(
-        authorityFetcher
-            .checkUserPathPrivileges(
-                "user",
-                Collections.singletonList(new PartialPath("root.ln")),
-                PrivilegeType.READ_DATA.ordinal())
-            .size(),
-        0);
-    // role does not have permission
-    Assert.assertEquals(
-        authorityFetcher
-            .checkUserPathPrivileges(
-                "user",
-                Collections.singletonList(new PartialPath("root.ln")),
-                PrivilegeType.MANAGE_USER.ordinal())
-            .size(),
-        1);
-
-    authorityFetcher.getAuthorCache().invalidateCache(user.getName(), "");
+    authorityFetcher.getAuthorCache().invalidateCache(user1.getName(), "");
 
     user1 = authorityFetcher.getAuthorCache().getUserCache(user.getName());
     role1 = authorityFetcher.getAuthorCache().getRoleCache(role1.getName());
@@ -190,114 +117,145 @@ public class AuthorizerManagerTest {
 
   @Test
   public void grantOptTest() throws IllegalPathException {
-    User user = new User();
-    Role role = new Role();
+    User user = new User("user1", "123456");
+    Role role = new Role("role1");
 
-    Set<Integer> sysPri = new HashSet<>();
-    sysPri.add(PrivilegeType.MANAGE_DATABASE.ordinal());
-    sysPri.add(PrivilegeType.USE_PIPE.ordinal());
-    user.setSysPrivilegeSet(sysPri);
+    user.grantSysPrivilege(PrivilegeType.MANAGE_DATABASE, false);
+    user.grantSysPrivilege(PrivilegeType.USE_PIPE, true);
 
-    Set<Integer> sysGrantOpt = new HashSet<>();
-    sysGrantOpt.add(PrivilegeType.USE_PIPE.ordinal());
-    user.setSysPriGrantOpt(sysGrantOpt);
+    user.grantPathPrivilege(new PartialPath("root.d1.**"), PrivilegeType.READ_DATA, false);
+    user.grantPathPrivilege(new PartialPath("root.d1.**"), PrivilegeType.WRITE_SCHEMA, true);
 
-    List<PathPrivilege> pathList = new ArrayList<>();
-    PartialPath pathRoot = new PartialPath("root.**");
-    PartialPath path1 = new PartialPath("root.d1.**");
-    PathPrivilege priv1 = new PathPrivilege(path1);
-    priv1.grantPrivilege(PrivilegeType.READ_DATA.ordinal(), false);
-    priv1.grantPrivilege(PrivilegeType.WRITE_SCHEMA.ordinal(), true);
-    pathList.add(priv1);
+    user.grantDBPrivilege("database", PrivilegeType.SELECT, false);
+    user.grantDBPrivilege("database", PrivilegeType.ALTER, true);
+    user.grantTBPrivilege("database", "table", PrivilegeType.DELETE, true);
+    user.grantAnyScopePrivilege(PrivilegeType.ALTER, true);
 
-    user.setPrivilegeList(pathList);
-
-    user.setName("user1");
-    user.setPassword("123456");
+    role.grantSysPrivilege(PrivilegeType.USE_UDF, false);
+    role.grantSysPrivilege(PrivilegeType.USE_CQ, true);
+    role.grantSysPrivilegeGrantOption(PrivilegeType.USE_CQ);
+    role.grantPathPrivilege(new PartialPath("root.t.**"), PrivilegeType.READ_DATA, true);
+    role.grantDBPrivilege("database", PrivilegeType.INSERT, true);
 
     // user's priv:
     // 1. MANAGE_DATABASE
     // 2. USE_PIPE with grant option
     // 3. READ_DATA root.d1.**
     // 4. WRITE_SCHEMA root.d1.** with grant option
+    // 5. SELECT on database, ALTER on database with grant option
+    // 6. DELETE on database.table with grant option
+    // 7. ALTER on any with grant option
 
     // role's priv:
     // 1. USE_UDF
     // 2. USE_CQ with grant option
-    // 3. READ_DATA root.t9.** with grant option
+    // 3. READ_DATA root.t.** with grant option
+    // 4. INSERT on database with grant option
+    user.addRole("role1");
 
-    role.setName("role1");
-    Set<Integer> sysPriRole = new HashSet<>();
-    sysPriRole.add(PrivilegeType.USE_UDF.ordinal());
-    sysPriRole.add(PrivilegeType.USE_CQ.ordinal());
-    role.setSysPrivilegeSet(sysPriRole);
+    TPermissionInfoResp result = new TPermissionInfoResp();
+    TUserResp tUserResp = user.getUserInfo(ModelType.ALL);
+    result.setUserInfo(tUserResp);
+    result.putToRoleInfo(role.getName(), role.getRoleInfo(ModelType.ALL));
 
-    Set<Integer> sysGrantOptRole = new HashSet<>();
-    sysGrantOptRole.add(PrivilegeType.USE_CQ.ordinal());
-    role.setSysPriGrantOpt(sysGrantOptRole);
+    authorityFetcher
+        .getAuthorCache()
+        .putUserCache(user.getName(), authorityFetcher.cacheUser(result));
 
-    PathPrivilege privRole = new PathPrivilege(new PartialPath("root.t9.**"));
-    privRole.grantPrivilege(PrivilegeType.READ_DATA.ordinal(), true);
-    role.setPrivilegeList(Collections.singletonList(privRole));
-    user.setRoleList(Collections.singletonList("role1"));
-
-    authorityFetcher.getAuthorCache().putUserCache("user1", user);
-    authorityFetcher.getAuthorCache().putRoleCache("role1", role);
+    Assert.assertEquals(user, authorityFetcher.getAuthorCache().getUserCache(user.getName()));
+    Assert.assertEquals(role, authorityFetcher.getAuthorCache().getRoleCache(role.getName()));
 
     // for system priv. we have USE_PIPE grant option.
-    Assert.assertTrue(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1", Collections.singletonList(pathRoot), PrivilegeType.USE_PIPE.ordinal()));
-    Assert.assertFalse(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1", Collections.singletonList(pathRoot), PrivilegeType.MANAGE_USER.ordinal()));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorityFetcher.checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_PIPE).getCode());
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        authorityFetcher
+            .checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.MANAGE_USER)
+            .getCode());
 
     // for path priv. we have write_schema on root.d1.** with grant option.
     // require root.d1.** with write_schema, return true
-    Assert.assertTrue(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1", Collections.singletonList(path1), PrivilegeType.WRITE_SCHEMA.ordinal()));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorityFetcher
+            .checkUserPathPrivilegesGrantOpt(
+                "user1",
+                Collections.singletonList(new PartialPath("root.d1.**")),
+                PrivilegeType.WRITE_SCHEMA)
+            .getCode());
     // require root.** with write_schema, return false
-    Assert.assertFalse(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1", Collections.singletonList(pathRoot), PrivilegeType.WRITE_SCHEMA.ordinal()));
-    // reuqire root.d1.d2 with write_schema, return true
-    Assert.assertTrue(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1",
-            Collections.singletonList(new PartialPath(new String("root.d1.d2"))),
-            PrivilegeType.WRITE_SCHEMA.ordinal()));
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        authorityFetcher
+            .checkUserPathPrivilegesGrantOpt(
+                "user1",
+                Collections.singletonList(new PartialPath("root.**")),
+                PrivilegeType.WRITE_SCHEMA)
+            .getCode());
+    // require root.d1.d2 with write_schema, return true
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorityFetcher
+            .checkUserPathPrivilegesGrantOpt(
+                "user1",
+                Collections.singletonList(new PartialPath("root.d1.d2")),
+                PrivilegeType.WRITE_SCHEMA)
+            .getCode());
 
     // require root.d1.d2 with read_schema, return false
-    Assert.assertFalse(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1",
-            Collections.singletonList(new PartialPath(new String("root.d1.d2"))),
-            PrivilegeType.READ_SCHEMA.ordinal()));
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        authorityFetcher
+            .checkUserPathPrivilegesGrantOpt(
+                "user1",
+                Collections.singletonList(new PartialPath("root.d1.d2")),
+                PrivilegeType.READ_SCHEMA)
+            .getCode());
 
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorityFetcher
+            .checkUserDBPrivilegesGrantOpt("user1", "database", PrivilegeType.ALTER)
+            .getCode());
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorityFetcher
+            .checkUserTBPrivilegesGrantOpt("user1", "database", "table", PrivilegeType.INSERT)
+            .getCode());
+
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        authorityFetcher
+            .checkUserTBPrivilegesGrantOpt("user1", "database", "table", PrivilegeType.SELECT)
+            .getCode());
     // role test
-    Assert.assertTrue(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1",
-            Collections.singletonList(new PartialPath(new String("root.t9.**"))),
-            PrivilegeType.READ_DATA.ordinal()));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorityFetcher
+            .checkUserPathPrivilegesGrantOpt(
+                "user1",
+                Collections.singletonList(new PartialPath("root.t.**")),
+                PrivilegeType.READ_DATA)
+            .getCode());
 
-    Assert.assertTrue(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1",
-            Collections.singletonList(new PartialPath(new String("root.t9.t10"))),
-            PrivilegeType.READ_DATA.ordinal()));
-
-    Assert.assertFalse(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1",
-            Collections.singletonList(new PartialPath(new String("root.t9.**"))),
-            PrivilegeType.WRITE_DATA.ordinal()));
-    Assert.assertFalse(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1", Collections.singletonList(pathRoot), PrivilegeType.USE_TRIGGER.ordinal()));
-    Assert.assertTrue(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1", Collections.singletonList(pathRoot), PrivilegeType.USE_CQ.ordinal()));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorityFetcher
+            .checkUserPathPrivilegesGrantOpt(
+                "user1",
+                Collections.singletonList(new PartialPath("root.t.t1")),
+                PrivilegeType.READ_DATA)
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        authorityFetcher
+            .checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_TRIGGER)
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorityFetcher.checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_CQ).getCode());
   }
 }

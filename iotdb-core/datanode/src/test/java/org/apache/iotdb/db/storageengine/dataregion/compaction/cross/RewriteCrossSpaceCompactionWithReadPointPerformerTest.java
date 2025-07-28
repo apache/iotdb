@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
@@ -235,11 +237,11 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
 
     for (TsFileResource resource : seqResources) {
       resource.resetModFile();
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.anyModFileExists());
     }
     for (TsFileResource resource : unseqResources) {
       resource.resetModFile();
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.anyModFileExists());
     }
     for (TsFileResource resource : targetResources) {
       resource.setFile(
@@ -248,8 +250,8 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                   .getTsFilePath()
                   .replace(CROSS_COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
       resource.resetModFile();
-      Assert.assertTrue(resource.getModFile().exists());
-      Assert.assertEquals(4, resource.getModFile().getModifications().size());
+      Assert.assertTrue(resource.anyModFileExists());
+      Assert.assertEquals(4, resource.getAllModEntries().size());
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -463,10 +465,10 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     task.start();
 
     for (TsFileResource resource : seqResources) {
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.anyModFileExists());
     }
     for (TsFileResource resource : unseqResources) {
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.anyModFileExists());
     }
     for (TsFileResource resource : targetResources) {
       resource.setFile(
@@ -477,8 +479,8 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
       if (!resource.getTsFile().exists()) {
         continue;
       }
-      Assert.assertTrue(resource.getModFile().exists());
-      Assert.assertEquals(30, resource.getModFile().getModifications().size());
+      Assert.assertTrue(resource.anyModFileExists());
+      Assert.assertEquals(30, resource.getAllModEntries().size());
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
@@ -581,6 +583,17 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, true, false);
     vsgp.getTsFileResourceManager().addAll(seqResources, true);
     vsgp.getTsFileResourceManager().addAll(unseqResources, false);
+    MeasurementPath path =
+        new MeasurementPath(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
+                + PATH_SEPARATOR
+                + "s0");
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 0, 1000);
+    deleteDataNode.setSearchIndex(0);
     vsgp.deleteByDevice(
         new MeasurementPath(
             COMPACTION_TEST_SG
@@ -589,9 +602,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
                 + PATH_SEPARATOR
                 + "s0"),
-        0,
-        1000,
-        0);
+        deleteDataNode);
 
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -606,6 +617,9 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data in source file during compaction
+    DeleteDataNode deleteDataNode2 =
+        new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path), 0, 1200);
+    deleteDataNode2.setSearchIndex(0);
     vsgp.deleteByDevice(
         new MeasurementPath(
             COMPACTION_TEST_SG
@@ -614,41 +628,35 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
                 + PATH_SEPARATOR
                 + "s0"),
-        0,
-        1200,
-        0);
+        deleteDataNode2);
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();
       if (i < 2) {
         Assert.assertFalse(resource.getCompactionModFile().exists());
-        Assert.assertFalse(resource.getModFile().exists());
+        Assert.assertFalse(resource.anyModFileExists());
       } else if (i == 2) {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
-        Assert.assertTrue(resource.getModFile().exists());
-        Assert.assertEquals(2, resource.getModFile().getModifications().size());
-        Assert.assertEquals(1, resource.getCompactionModFile().getModifications().size());
+        Assert.assertTrue(resource.anyModFileExists());
+        Assert.assertEquals(2, resource.getAllModEntries().size());
       } else {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
-        Assert.assertTrue(resource.getModFile().exists());
-        Assert.assertEquals(1, resource.getModFile().getModifications().size());
-        Assert.assertEquals(1, resource.getCompactionModFile().getModifications().size());
+        Assert.assertTrue(resource.anyModFileExists());
+        Assert.assertEquals(1, resource.getAllModEntries().size());
       }
     }
     for (TsFileResource resource : unseqResources) {
       resource.resetModFile();
       Assert.assertFalse(resource.getCompactionModFile().exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.anyModFileExists());
     }
     task.start();
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.anyModFileExists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     for (TsFileResource resource : unseqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.anyModFileExists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     for (int i = 0; i < seqResources.size(); i++) {
@@ -658,11 +666,9 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
               TsFileNameGenerator.increaseCrossCompactionCnt(seqResource.getTsFile()));
       if (i < 2) {
         Assert.assertFalse(resource.getCompactionModFile().exists());
-        Assert.assertFalse(resource.getModFile().exists());
+        Assert.assertFalse(resource.anyModFileExists());
       } else {
         Assert.assertFalse(resource.getCompactionModFile().exists());
-        Assert.assertTrue(resource.getModFile().exists());
-        Assert.assertEquals(1, resource.getModFile().getModifications().size());
       }
     }
   }
@@ -700,6 +706,18 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, true, false);
     vsgp.getTsFileResourceManager().addAll(seqResources, true);
     vsgp.getTsFileResourceManager().addAll(unseqResources, false);
+
+    MeasurementPath path =
+        new MeasurementPath(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
+                + PATH_SEPARATOR
+                + "s0");
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 0, 1000);
+    deleteDataNode.setSearchIndex(0);
     vsgp.deleteByDevice(
         new MeasurementPath(
             COMPACTION_TEST_SG
@@ -708,9 +726,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
                 + PATH_SEPARATOR
                 + "s0"),
-        0,
-        1000,
-        0);
+        deleteDataNode);
 
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -725,6 +741,9 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data in source file during compaction
+    DeleteDataNode deleteDataNode2 =
+        new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path), 0, 1200);
+    deleteDataNode2.setSearchIndex(0);
     vsgp.deleteByDevice(
         new MeasurementPath(
             COMPACTION_TEST_SG
@@ -733,9 +752,11 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
                 + PATH_SEPARATOR
                 + "s0"),
-        0,
-        1200,
-        0);
+        deleteDataNode2);
+
+    DeleteDataNode deleteDataNode3 =
+        new DeleteDataNode(new PlanNodeId("3"), Collections.singletonList(path), 0, 1800);
+    deleteDataNode3.setSearchIndex(0);
     vsgp.deleteByDevice(
         new MeasurementPath(
             COMPACTION_TEST_SG
@@ -744,41 +765,35 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
                 + PATH_SEPARATOR
                 + "s0"),
-        0,
-        1800,
-        0);
+        deleteDataNode3);
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();
       if (i < 2) {
         Assert.assertFalse(resource.getCompactionModFile().exists());
-        Assert.assertFalse(resource.getModFile().exists());
+        Assert.assertFalse(resource.anyModFileExists());
       } else if (i == 2) {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
-        Assert.assertTrue(resource.getModFile().exists());
-        Assert.assertEquals(3, resource.getModFile().getModifications().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getModifications().size());
+        Assert.assertTrue(resource.anyModFileExists());
+        Assert.assertEquals(3, resource.getAllModEntries().size());
       } else {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
-        Assert.assertTrue(resource.getModFile().exists());
-        Assert.assertEquals(2, resource.getModFile().getModifications().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getModifications().size());
+        Assert.assertTrue(resource.anyModFileExists());
+        Assert.assertEquals(2, resource.getAllModEntries().size());
       }
     }
     for (TsFileResource resource : unseqResources) {
       resource.resetModFile();
       Assert.assertFalse(resource.getCompactionModFile().exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.anyModFileExists());
     }
     task.start();
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.anyModFileExists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     for (TsFileResource resource : unseqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.anyModFileExists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     for (int i = 0; i < seqResources.size(); i++) {
@@ -788,11 +803,9 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
               TsFileNameGenerator.increaseCrossCompactionCnt(seqResource.getTsFile()));
       if (i < 2) {
         Assert.assertFalse(resource.getCompactionModFile().exists());
-        Assert.assertFalse(resource.getModFile().exists());
+        Assert.assertFalse(resource.anyModFileExists());
       } else {
         Assert.assertFalse(resource.getCompactionModFile().exists());
-        Assert.assertTrue(resource.getModFile().exists());
-        Assert.assertEquals(2, resource.getModFile().getModifications().size());
       }
     }
   }

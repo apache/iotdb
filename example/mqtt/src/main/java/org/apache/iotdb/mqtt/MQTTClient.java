@@ -25,6 +25,9 @@ import org.fusesource.mqtt.client.QoS;
 import java.util.Random;
 
 public class MQTTClient {
+
+  private static final String DATABASE = "myMqttTest";
+
   public static void main(String[] args) throws Exception {
     MQTT mqtt = new MQTT();
     mqtt.setHost("127.0.0.1", 1883);
@@ -35,7 +38,14 @@ public class MQTTClient {
 
     BlockingConnection connection = mqtt.blockingConnection();
     connection.connect();
+    // the config mqttPayloadFormatter must be tree-json
+    // jsonPayloadFormatter(connection);
+    // the config mqttPayloadFormatter must be table-line
+    linePayloadFormatter(connection);
+    connection.disconnect();
+  }
 
+  private static void jsonPayloadFormatter(BlockingConnection connection) throws Exception {
     Random random = new Random();
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < 10; i++) {
@@ -58,7 +68,34 @@ public class MQTTClient {
     sb.insert(0, "[");
     sb.replace(sb.lastIndexOf(","), sb.length(), "]");
     connection.publish("root.sg.d1.s1", sb.toString().getBytes(), QoS.AT_LEAST_ONCE, false);
+  }
 
-    connection.disconnect();
+  // The database must be created in advance
+  private static void linePayloadFormatter(BlockingConnection connection) throws Exception {
+
+    String payload =
+        "test1,tag1=t1,tag2=t2 attr3=a5,attr4=a4 field1=\"fieldValue1\",field2=1i,field3=1u 1";
+    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    Thread.sleep(10);
+
+    payload = "test1,tag1=t1,tag2=t2  field4=2,field5=2i32,field6=2f 2";
+    connection.publish(DATABASE, payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    Thread.sleep(10);
+
+    payload =
+        "test1,tag1=t1,tag2=t2  field7=t,field8=T,field9=true 3 \n "
+            + "test1,tag1=t1,tag2=t2  field7=f,field8=F,field9=FALSE 4";
+    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    Thread.sleep(10);
+
+    payload =
+        "test1,tag1=t1,tag2=t2 attr1=a1,attr2=a2 field1=\"fieldValue1\",field2=1i,field3=1u 4 \n "
+            + "test1,tag1=t1,tag2=t2 field4=2,field5=2i32,field6=2f 5";
+    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    Thread.sleep(10);
+
+    payload = "# It's a remark\n " + "test1,tag1=t1,tag2=t2 field4=2,field5=2i32,field6=2f 6";
+    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    Thread.sleep(10);
   }
 }

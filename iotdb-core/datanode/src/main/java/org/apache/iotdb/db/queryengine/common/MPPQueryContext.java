@@ -33,11 +33,11 @@ import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
@@ -72,7 +72,7 @@ public class MPPQueryContext {
 
   private Filter globalTimeFilter;
 
-  private Map<SchemaLockType, Integer> acquiredLockNumMap = new HashMap<>();
+  private final Set<SchemaLockType> acquiredLocks = new HashSet<>();
 
   private boolean isExplainAnalyze = false;
 
@@ -82,7 +82,14 @@ public class MPPQueryContext {
   // constructing some Expression and PlanNode.
   private final MemoryReservationManager memoryReservationManager;
 
-  private boolean isTableQuery = false;
+  private static final int minSizeToUseSampledTimeseriesOperandMemCost = 100;
+  private double avgTimeseriesOperandMemCost = 0;
+  private int numsOfSampledTimeseriesOperand = 0;
+  // When there is no view in a last query and no device exists in multiple regions,
+  // the updateScanNum process in distributed planning can be skipped.
+  private boolean needUpdateScanNumForLastQuery = false;
+
+  private boolean userQuery = false;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -171,6 +178,10 @@ public class MPPQueryContext {
     return session;
   }
 
+  public void setSession(SessionInfo session) {
+    this.session = session;
+  }
+
   public long getStartTime() {
     return startTime;
   }
@@ -203,16 +214,12 @@ public class MPPQueryContext {
     return sql;
   }
 
-  public Map<SchemaLockType, Integer> getAcquiredLockNumMap() {
-    return acquiredLockNumMap;
+  public Set<SchemaLockType> getAcquiredLocks() {
+    return acquiredLocks;
   }
 
-  public void addAcquiredLockNum(SchemaLockType lockType) {
-    if (acquiredLockNumMap.containsKey(lockType)) {
-      acquiredLockNumMap.put(lockType, acquiredLockNumMap.get(lockType) + 1);
-    } else {
-      acquiredLockNumMap.put(lockType, 1);
-    }
+  public boolean addAcquiredLock(final SchemaLockType lockType) {
+    return acquiredLocks.add(lockType);
   }
 
   // used for tree model
@@ -252,10 +259,16 @@ public class MPPQueryContext {
   }
 
   public long getFetchPartitionCost() {
+    if (queryPlanStatistics == null) {
+      return 0;
+    }
     return queryPlanStatistics.getFetchPartitionCost();
   }
 
   public long getFetchSchemaCost() {
+    if (queryPlanStatistics == null) {
+      return 0;
+    }
     return queryPlanStatistics.getFetchSchemaCost();
   }
 
@@ -342,17 +355,39 @@ public class MPPQueryContext {
     this.memoryReservationManager.releaseMemoryCumulatively(bytes);
   }
 
-  // endregion
-
-  public boolean isTableQuery() {
-    return isTableQuery;
+  public boolean useSampledAvgTimeseriesOperandMemCost() {
+    return numsOfSampledTimeseriesOperand >= minSizeToUseSampledTimeseriesOperandMemCost;
   }
 
-  public void setTableQuery(boolean tableQuery) {
-    isTableQuery = tableQuery;
+  public long getAvgTimeseriesOperandMemCost() {
+    return (long) avgTimeseriesOperandMemCost;
+  }
+
+  public void calculateAvgTimeseriesOperandMemCost(long current) {
+    numsOfSampledTimeseriesOperand++;
+    avgTimeseriesOperandMemCost +=
+        (current - avgTimeseriesOperandMemCost) / numsOfSampledTimeseriesOperand;
+  }
+
+  // endregion
+
+  public boolean needUpdateScanNumForLastQuery() {
+    return needUpdateScanNumForLastQuery;
+  }
+
+  public void setNeedUpdateScanNumForLastQuery(boolean needUpdateScanNumForLastQuery) {
+    this.needUpdateScanNumForLastQuery = needUpdateScanNumForLastQuery;
   }
 
   public Optional<String> getDatabaseName() {
     return session.getDatabaseName();
+  }
+
+  public boolean isUserQuery() {
+    return userQuery;
+  }
+
+  public void setUserQuery(boolean userQuery) {
+    this.userQuery = userQuery;
   }
 }

@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -91,7 +92,7 @@ public class PayloadFormatManager {
     }
 
     URL[] jarURLs = getPluginJarURLs(mqttDir);
-    logger.debug("MQTT Plugin jarURLs: {}", jarURLs);
+    logger.debug("MQTT Plugin jarURLs: {}", Arrays.toString(jarURLs));
 
     for (URL jarUrl : jarURLs) {
       ClassLoader classLoader = new URLClassLoader(new URL[] {jarUrl});

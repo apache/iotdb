@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -40,12 +42,15 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
 import org.apache.tsfile.read.reader.page.ValuePageReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,13 +65,16 @@ import java.util.Map;
 import java.util.Set;
 
 public class TsFileResourceUtils {
+
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceUtils.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String VALIDATE_FAILED = "validate failed,";
 
   private TsFileResourceUtils() {
     // util class
   }
 
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   public static boolean validateTsFileResourceCorrectness(TsFileResource resource) {
     if (resource.isDeleted()) {
       return true;
@@ -89,26 +97,9 @@ public class TsFileResourceUtils {
         return false;
       }
       for (IDeviceID device : devices) {
-        long startTime = timeIndex.getStartTime(device);
-        long endTime = timeIndex.getEndTime(device);
-        if (startTime == Long.MAX_VALUE) {
-          logger.error(
-              "{} {} the start time of {} is {}",
-              resource.getTsFilePath(),
-              VALIDATE_FAILED,
-              device,
-              Long.MAX_VALUE);
-          return false;
-        }
-        if (endTime == Long.MIN_VALUE) {
-          logger.error(
-              "{} {} the end time of {} is {}",
-              resource.getTsFilePath(),
-              VALIDATE_FAILED,
-              device,
-              Long.MIN_VALUE);
-          return false;
-        }
+        // iterating the index, must present
+        long startTime = timeIndex.getStartTime(device).get();
+        long endTime = timeIndex.getEndTime(device).get();
         if (startTime > endTime) {
           logger.error(
               "{} {} the start time of {} is greater than end time",
@@ -372,6 +363,7 @@ public class TsFileResourceUtils {
     return offset2ChunkMetadata;
   }
 
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   public static boolean validateTsFileResourcesHasNoOverlap(List<TsFileResource> resources) {
     // deviceID -> <TsFileResource, last end time>
     Map<IDeviceID, Pair<TsFileResource, Long>> lastEndTimeMap = new HashMap<>();
@@ -393,8 +385,9 @@ public class TsFileResourceUtils {
       }
       Set<IDeviceID> devices = timeIndex.getDevices();
       for (IDeviceID device : devices) {
-        long currentStartTime = timeIndex.getStartTime(device);
-        long currentEndTime = timeIndex.getEndTime(device);
+        // iterating the index, must present
+        long currentStartTime = timeIndex.getStartTime(device).get();
+        long currentEndTime = timeIndex.getEndTime(device).get();
         Pair<TsFileResource, Long> lastDeviceInfo =
             lastEndTimeMap.computeIfAbsent(device, x -> new Pair<>(null, Long.MIN_VALUE));
         long lastEndTime = lastDeviceInfo.right;
@@ -421,21 +414,85 @@ public class TsFileResourceUtils {
 
   public static void updateTsFileResource(
       TsFileSequenceReader reader, TsFileResource tsFileResource) throws IOException {
-    updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource);
+    updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource, false);
     tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
     tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
   }
 
   public static void updateTsFileResource(
-      Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata, TsFileResource tsFileResource) {
+      Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata,
+      TsFileResource tsFileResource,
+      boolean cacheLastValue) {
+    // For async recover tsfile, there might be a FileTimeIndex, we need a new newTimeIndex
+    ITimeIndex newTimeIndex =
+        tsFileResource.getTimeIndex().getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE
+            ? config.getTimeIndexLevel().getTimeIndex()
+            : tsFileResource.getTimeIndex();
+    Map<IDeviceID, List<Pair<String, TimeValuePair>>> deviceLastValues =
+        tsFileResource.getLastValues();
+    long lastValueMemCost = 0;
+    if (cacheLastValue && deviceLastValues == null) {
+      deviceLastValues = new HashMap<>(device2Metadata.size());
+    }
     for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
+      List<Pair<String, TimeValuePair>> seriesLastValues = null;
+      if (deviceLastValues != null) {
+        seriesLastValues = new ArrayList<>(entry.getValue().size());
+      }
+
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
-        tsFileResource.updateStartTime(
+        newTimeIndex.updateStartTime(
             entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
-        tsFileResource.updateEndTime(
-            entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
+        newTimeIndex.updateEndTime(entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
+        if (deviceLastValues != null) {
+          if (timeseriesMetaData.getTsDataType() != TSDataType.BLOB) {
+            TsPrimitiveType value;
+            value =
+                TsPrimitiveType.getByType(
+                    timeseriesMetaData.getTsDataType() == TSDataType.VECTOR
+                        ? TSDataType.INT64
+                        : timeseriesMetaData.getTsDataType(),
+                    timeseriesMetaData.getStatistics().getLastValue());
+            seriesLastValues.add(
+                new Pair<>(
+                    timeseriesMetaData.getMeasurementId(),
+                    new TimeValuePair(timeseriesMetaData.getStatistics().getEndTime(), value)));
+          } else {
+            seriesLastValues.add(new Pair<>(timeseriesMetaData.getMeasurementId(), null));
+          }
+        }
+      }
+      if (deviceLastValues != null) {
+        lastValueMemCost += entry.getKey().ramBytesUsed();
+        for (Pair<String, TimeValuePair> lastValue : seriesLastValues) {
+          if (lastValue == null) {
+            continue;
+          }
+          // pair
+          lastValueMemCost += RamUsageEstimator.shallowSizeOf(lastValue);
+          // measurement name
+          lastValueMemCost += RamUsageEstimator.sizeOf(lastValue.left);
+          TimeValuePair right = lastValue.getRight();
+          lastValueMemCost +=
+              right != null ? right.getSize() : RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+        }
+        // ArrayList
+        lastValueMemCost +=
+            (long) seriesLastValues.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF
+                + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+                + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+        lastValueMemCost += RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
+        if (lastValueMemCost <= config.getCacheLastValuesMemoryBudgetInByte()) {
+          deviceLastValues
+              .computeIfAbsent(entry.getKey(), deviceID -> new ArrayList<>())
+              .addAll(seriesLastValues);
+        } else {
+          deviceLastValues = null;
+        }
       }
     }
+    tsFileResource.setTimeIndex(newTimeIndex);
+    tsFileResource.setLastValues(deviceLastValues);
   }
 
   /**

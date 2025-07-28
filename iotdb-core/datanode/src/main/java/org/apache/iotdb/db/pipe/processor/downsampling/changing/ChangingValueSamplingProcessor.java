@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.PartialPathLastObjectCache;
 import org.apache.iotdb.pipe.api.access.Row;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
 
+@TreeModel
 public class ChangingValueSamplingProcessor extends DownSamplingProcessor {
 
   private static final Logger LOGGER =

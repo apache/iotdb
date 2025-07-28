@@ -33,25 +33,14 @@ public class SetProperties extends Statement {
 
   public enum Type {
     TABLE,
-    MATERIALIZED_VIEW
+    MATERIALIZED_VIEW,
+    TREE_VIEW,
   }
 
   private final Type type;
   private final QualifiedName name;
   private final List<Property> properties;
   private final boolean ifExists;
-
-  public SetProperties(
-      final Type type,
-      final QualifiedName name,
-      final List<Property> properties,
-      final boolean ifExists) {
-    super(null);
-    this.type = requireNonNull(type, "type is null");
-    this.name = requireNonNull(name, "name is null");
-    this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
-    this.ifExists = ifExists;
-  }
 
   public SetProperties(
       final @Nonnull NodeLocation location,

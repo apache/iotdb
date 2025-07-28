@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
@@ -17,16 +22,17 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.SimplePlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.AbstractTableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
@@ -37,10 +43,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.AbstractTableDeviceQueryNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.HashMap;
@@ -73,6 +81,12 @@ public class TableModelTypeProviderExtractor {
 
     @Override
     public Void visitPlan(PlanNode node, Void context) {
+      addOutputSymbolsToTypeProvider(node);
+      node.getChildren().forEach(child -> child.accept(this, context));
+      return null;
+    }
+
+    private void addOutputSymbolsToTypeProvider(PlanNode node) {
       for (Symbol symbol : node.getOutputSymbols()) {
         if (!feTypeProvider.isSymbolExist(symbol)) {
           throw new IllegalStateException(
@@ -82,8 +96,6 @@ public class TableModelTypeProviderExtractor {
         }
         beTypeProvider.putTableModelType(symbol, feTypeProvider.getTableModelType(symbol));
       }
-      node.getChildren().forEach(child -> child.accept(this, context));
-      return null;
     }
 
     @Override
@@ -99,6 +111,13 @@ public class TableModelTypeProviderExtractor {
                   beTypeProvider.putTableModelType(k, feTypeProvider.getTableModelType(k));
                 }
               });
+      return null;
+    }
+
+    @Override
+    public Void visitAggregationTableScan(AggregationTableScanNode node, Void context) {
+      addOutputSymbolsToTypeProvider(node);
+      node.getAssignments().forEach((k, v) -> beTypeProvider.putTableModelType(k, v.getType()));
       return null;
     }
 
@@ -152,9 +171,6 @@ public class TableModelTypeProviderExtractor {
     @Override
     public Void visitFilter(FilterNode node, Void context) {
       node.getChild().accept(this, context);
-      // TODO consider complex filter expression
-      beTypeProvider.putTableModelType(
-          new Symbol(node.getPredicate().toString()), BooleanType.BOOLEAN);
       return null;
     }
 
@@ -189,8 +205,26 @@ public class TableModelTypeProviderExtractor {
     }
 
     @Override
+    public Void visitGroup(GroupNode node, Void context) {
+      node.getChild().accept(this, context);
+      return null;
+    }
+
+    @Override
     public Void visitMergeSort(MergeSortNode node, Void context) {
       node.getChildren().forEach(c -> c.accept(this, context));
+      return null;
+    }
+
+    @Override
+    public Void visitFill(FillNode node, Void context) {
+      node.getChild().accept(this, context);
+      return null;
+    }
+
+    @Override
+    public Void visitGapFill(GapFillNode node, Void context) {
+      node.getChild().accept(this, context);
       return null;
     }
 
@@ -207,8 +241,13 @@ public class TableModelTypeProviderExtractor {
     }
 
     @Override
-    public Void visitExchange(ExchangeNode node, Void context) {
+    public Void visitTableExchange(ExchangeNode node, Void context) {
       node.getChildren().forEach(c -> c.accept(this, context));
+      node.getOutputSymbols()
+          .forEach(
+              symbol ->
+                  beTypeProvider.putTableModelType(
+                      symbol, feTypeProvider.getTableModelType(symbol)));
       return null;
     }
 

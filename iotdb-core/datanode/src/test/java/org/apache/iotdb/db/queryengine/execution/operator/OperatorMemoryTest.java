@@ -30,21 +30,21 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.FillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.IntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.LinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowAggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
@@ -103,6 +103,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -252,6 +253,7 @@ public class OperatorMemoryTest {
   public void lastCacheScanOperatorTest() {
     TsBlock tsBlock = Mockito.mock(TsBlock.class);
     Mockito.when(tsBlock.getRetainedSizeInBytes()).thenReturn(1024L);
+    Mockito.when(tsBlock.getSizeInBytes()).thenReturn(1024L);
     LastCacheScanOperator lastCacheScanOperator = new LastCacheScanOperator(null, null, tsBlock);
 
     assertEquals(1024, lastCacheScanOperator.calculateMaxPeekMemory());
@@ -266,8 +268,8 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
-    FillOperator fillOperator =
-        new FillOperator(Mockito.mock(OperatorContext.class), new IFill[] {null, null}, child);
+    TreeFillOperator fillOperator =
+        new TreeFillOperator(Mockito.mock(OperatorContext.class), new IFill[] {null, null}, child);
 
     assertEquals(2048 * 2 + 512, fillOperator.calculateMaxPeekMemory());
     assertEquals(1024, fillOperator.calculateMaxReturnSize());
@@ -382,6 +384,7 @@ public class OperatorMemoryTest {
   public void lastQuerySortOperatorTest() {
     TsBlock tsBlock = Mockito.mock(TsBlock.class);
     Mockito.when(tsBlock.getRetainedSizeInBytes()).thenReturn(16 * 1024L);
+    Mockito.when(tsBlock.getSizeInBytes()).thenReturn(16 * 1024L);
     Mockito.when(tsBlock.getPositionCount()).thenReturn(16);
     List<Operator> children = new ArrayList<>(4);
 
@@ -562,8 +565,8 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
-    LinearFillOperator linearFillOperator =
-        new LinearFillOperator(
+    TreeLinearFillOperator linearFillOperator =
+        new TreeLinearFillOperator(
             Mockito.mock(OperatorContext.class), new LinearFill[] {null, null}, child);
 
     assertEquals(2048 * 3 + 512L, linearFillOperator.calculateMaxPeekMemory());
@@ -685,8 +688,6 @@ public class OperatorMemoryTest {
               driverContext.getOperatorContexts().get(0),
               Mockito.mock(ISchemaSource.class));
 
-      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
-      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
       assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
 
     } finally {
@@ -1004,7 +1005,7 @@ public class OperatorMemoryTest {
           TimeColumn.SIZE_IN_BYTES_PER_POSITION
               + 512 * Byte.BYTES
               + LongColumn.SIZE_IN_BYTES_PER_POSITION;
-      long cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      long cachedRawDataSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1036,7 +1037,7 @@ public class OperatorMemoryTest {
           TimeColumn.SIZE_IN_BYTES_PER_POSITION
               + 512 * Byte.BYTES
               + 2 * LongColumn.SIZE_IN_BYTES_PER_POSITION;
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1079,7 +1080,7 @@ public class OperatorMemoryTest {
               * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
                   + 512 * Byte.BYTES
                   + LongColumn.SIZE_IN_BYTES_PER_POSITION);
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1119,7 +1120,7 @@ public class OperatorMemoryTest {
                   * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
                       + 512 * Byte.BYTES
                       + LongColumn.SIZE_IN_BYTES_PER_POSITION));
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1157,7 +1158,7 @@ public class OperatorMemoryTest {
               typeProvider);
 
       expectedMaxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1193,11 +1194,11 @@ public class OperatorMemoryTest {
     PlanNodeId planNodeId = new PlanNodeId("1");
     driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
         o ->
             aggregators.add(
-                new Aggregator(
+                new TreeAggregator(
                     AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
                         Collections.singletonList(measurementPath.getSeriesType()),
@@ -1206,7 +1207,8 @@ public class OperatorMemoryTest {
                         true),
                     o.getStep())));
 
-    ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, true);
+    ITimeRangeIterator timeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, true, true, ZoneId.systemDefault());
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, typeProvider);
@@ -1249,11 +1251,11 @@ public class OperatorMemoryTest {
                 AggregationStep.FINAL,
                 Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
         o ->
             aggregators.add(
-                new Aggregator(
+                new TreeAggregator(
                     AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
                         Collections.singletonList(measurementPath.getSeriesType()),
@@ -1264,7 +1266,8 @@ public class OperatorMemoryTest {
 
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 1000, new TimeDuration(0, 10), new TimeDuration(0, 10), true);
-    ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, false);
+    ITimeRangeIterator timeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, true, false, ZoneId.systemDefault());
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, typeProvider);
@@ -1322,11 +1325,11 @@ public class OperatorMemoryTest {
                 AggregationStep.FINAL,
                 Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
         o ->
             aggregators.add(
-                new Aggregator(
+                new TreeAggregator(
                     AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
                         Collections.singletonList(measurementPath.getSeriesType()),
@@ -1337,7 +1340,8 @@ public class OperatorMemoryTest {
 
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 1000, new TimeDuration(0, 10), new TimeDuration(0, 5), true);
-    ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, false);
+    ITimeRangeIterator timeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, true, false, ZoneId.systemDefault());
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, typeProvider);
@@ -1351,7 +1355,8 @@ public class OperatorMemoryTest {
             true,
             false,
             groupByTimeParameter,
-            maxReturnSize);
+            maxReturnSize,
+            ZoneId.systemDefault());
 
     long expectedMaxReturnSize =
         200
@@ -1402,11 +1407,11 @@ public class OperatorMemoryTest {
                 AggregationStep.FINAL,
                 Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
         o ->
             aggregators.add(
-                new Aggregator(
+                new TreeAggregator(
                     AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
                         Collections.singletonList(measurementPath.getSeriesType()),
@@ -1417,7 +1422,8 @@ public class OperatorMemoryTest {
 
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 1000, new TimeDuration(0, 10), new TimeDuration(0, 10), true);
-    ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, false);
+    ITimeRangeIterator timeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, true, false, ZoneId.systemDefault());
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, typeProvider);

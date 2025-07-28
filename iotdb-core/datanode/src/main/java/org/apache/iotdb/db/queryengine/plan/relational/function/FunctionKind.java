@@ -19,9 +19,27 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.function;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 public enum FunctionKind {
   SCALAR,
   AGGREGATE,
   WINDOW,
-  TABLE,
+  TABLE;
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(ordinal(), byteBuffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(ordinal(), stream);
+  }
+
+  public static FunctionKind deserialize(ByteBuffer byteBuffer) {
+    return FunctionKind.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+  }
 }

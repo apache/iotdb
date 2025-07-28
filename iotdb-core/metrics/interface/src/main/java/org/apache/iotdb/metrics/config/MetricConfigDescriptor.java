@@ -24,6 +24,7 @@ import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
+import java.util.Optional;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
@@ -111,6 +112,18 @@ public class MetricConfigDescriptor {
                 properties,
                 isConfigNode)));
 
+    loadConfig.setPrometheusReporterUsername(
+        getPropertyWithoutPrefix(
+            "metric_prometheus_reporter_username",
+            loadConfig.getPrometheusReporterUsername(),
+            properties));
+
+    loadConfig.setPrometheusReporterPassword(
+        getPropertyWithoutPrefix(
+            "metric_prometheus_reporter_password",
+            loadConfig.getPrometheusReporterPassword(),
+            properties));
+
     IoTDBReporterConfig reporterConfig = loadConfig.getIoTDBReporterConfig();
     reporterConfig.setHost(
         getProperty(
@@ -174,7 +187,17 @@ public class MetricConfigDescriptor {
   /** Get property from confignode or datanode. */
   private String getProperty(
       String target, String defaultValue, Properties properties, boolean isConfigNode) {
-    return properties.getProperty((isConfigNode ? "cn_" : "dn_") + target, defaultValue);
+    return Optional.ofNullable(
+            properties.getProperty((isConfigNode ? "cn_" : "dn_") + target, defaultValue))
+        .map(String::trim)
+        .orElse(defaultValue);
+  }
+
+  private String getPropertyWithoutPrefix(
+      String target, String defaultValue, Properties properties) {
+    return Optional.ofNullable(properties.getProperty(target, defaultValue))
+        .map(String::trim)
+        .orElse(defaultValue);
   }
 
   private static class MetricConfigDescriptorHolder {

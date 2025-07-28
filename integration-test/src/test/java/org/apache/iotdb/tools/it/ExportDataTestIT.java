@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tools.it;
 
-import org.apache.iotdb.cli.it.AbstractScript;
+import org.apache.iotdb.cli.it.AbstractScriptIT;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.tool.common.Constants;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -40,7 +41,7 @@ import java.util.List;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class ExportDataTestIT extends AbstractScript {
+public class ExportDataTestIT extends AbstractScriptIT {
   private static String ip;
 
   private static String port;
@@ -75,12 +76,12 @@ public class ExportDataTestIT extends AbstractScript {
 
   @Override
   protected void testOnWindows() throws IOException {
-    final String[] output = {"Export completely!"};
+    final String[] output = {Constants.EXPORT_COMPLETELY};
     ProcessBuilder builder =
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-data.bat",
+            toolsPath + File.separator + "windows" + File.separator + "export-data.bat",
             "-h",
             ip,
             "-p",
@@ -89,6 +90,8 @@ public class ExportDataTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
+            "-ft",
+            "csv",
             "-t",
             "target",
             "-q",
@@ -101,12 +104,12 @@ public class ExportDataTestIT extends AbstractScript {
 
     prepareData();
 
-    final String[] output1 = {"Export completely!"};
+    final String[] output1 = {Constants.EXPORT_COMPLETELY};
     ProcessBuilder builder1 =
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-data.bat",
+            toolsPath + File.separator + "windows" + File.separator + "export-data.bat",
             "-h",
             ip,
             "-p",
@@ -115,6 +118,8 @@ public class ExportDataTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
+            "-ft",
+            "csv",
             "-t",
             "target",
             "-q",
@@ -127,12 +132,12 @@ public class ExportDataTestIT extends AbstractScript {
 
     prepareData();
 
-    final String[] output2 = {"Export completely!"};
+    final String[] output2 = {Constants.EXPORT_COMPLETELY};
     ProcessBuilder builder2 =
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-data.bat",
+            toolsPath + File.separator + "windows" + File.separator + "export-data.bat",
             "-h",
             ip,
             "-p",
@@ -143,7 +148,7 @@ public class ExportDataTestIT extends AbstractScript {
             "root",
             "-t",
             "target",
-            "-type",
+            "-ft",
             "sql",
             "-q",
             "select * from root.test.t2 where time > 1 and time < 1000000000000",
@@ -156,7 +161,7 @@ public class ExportDataTestIT extends AbstractScript {
 
   @Override
   protected void testOnUnix() throws IOException {
-    final String[] output = {"Export completely!"};
+    final String[] output = {Constants.EXPORT_COMPLETELY};
     // -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -170,6 +175,8 @@ public class ExportDataTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
+            "-ft",
+            "csv",
             "-t",
             "target",
             "-q",
@@ -179,7 +186,7 @@ public class ExportDataTestIT extends AbstractScript {
 
     prepareData();
 
-    final String[] output1 = {"Export completely!"};
+    final String[] output1 = {Constants.EXPORT_COMPLETELY};
     // -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
     ProcessBuilder builder1 =
         new ProcessBuilder(
@@ -195,6 +202,8 @@ public class ExportDataTestIT extends AbstractScript {
             "root",
             "-t",
             "target",
+            "-ft",
+            "csv",
             "-q",
             "select * from root.**");
     builder1.environment().put("CLASSPATH", libPath);
@@ -202,7 +211,7 @@ public class ExportDataTestIT extends AbstractScript {
 
     prepareData();
 
-    final String[] output2 = {"Export completely!"};
+    final String[] output2 = {Constants.EXPORT_COMPLETELY};
     // -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
     ProcessBuilder builder2 =
         new ProcessBuilder(
@@ -218,7 +227,7 @@ public class ExportDataTestIT extends AbstractScript {
             "root",
             "-t",
             "target",
-            "-type",
+            "-ft",
             "sql",
             "-q",
             "select * from root.test.t2 where time > 1 and time < 1000000000000");

@@ -32,18 +32,19 @@ public class DropPipeTask implements IConfigTask {
 
   private final DropPipeStatement dropPipeStatement;
 
-  public DropPipeTask(DropPipeStatement dropPipeStatement) {
+  public DropPipeTask(final DropPipeStatement dropPipeStatement) {
     this.dropPipeStatement = dropPipeStatement;
   }
 
-  public DropPipeTask(DropPipe node) {
+  public DropPipeTask(final DropPipe node) {
     dropPipeStatement = new DropPipeStatement(StatementType.DROP_PIPE);
     dropPipeStatement.setPipeName(node.getPipeName());
     dropPipeStatement.setIfExists(node.hasIfExistsCondition());
+    dropPipeStatement.setTableModel(true);
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.dropPipe(dropPipeStatement);
   }

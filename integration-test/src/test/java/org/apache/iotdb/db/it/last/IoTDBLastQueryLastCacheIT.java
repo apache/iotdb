@@ -37,7 +37,7 @@ import java.sql.Statement;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.DATA_TYPE_STR;
-import static org.apache.iotdb.itbase.constant.TestConstant.TIMESEIRES_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESERIES_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.VALUE_STR;
 import static org.junit.Assert.fail;
@@ -77,7 +77,9 @@ public class IoTDBLastQueryLastCacheIT {
         "insert into root.ln_1.tb_6141(time,`switch_BOOLEAN`) aligned values(1675995566000,false);",
         "create aligned timeseries root.sg(风机退出_BOOLEAN BOOLEAN encoding=RLE,`NH4-N_DOUBLE` DOUBLE encoding=GORILLA,膜产水状态_BOOLEAN BOOLEAN encoding=RLE,11_TEXT TEXT encoding=PLAIN,产水间歇运行时间设置_DOUBLE DOUBLE encoding=GORILLA,文本_TEXT TEXT encoding=PLAIN, 风机投入_BOOLEAN BOOLEAN encoding=RLE,枚举_INT32 INT32 encoding=RLE,出水TP_DOUBLE DOUBLE encoding=GORILLA,水管流速_DOUBLE DOUBLE encoding=GORILLA,CO2_DOUBLE DOUBLE encoding=GORILLA,`开关量-运行_BOOLEAN` BOOLEAN encoding=RLE,code_DOUBLE DOUBLE encoding=GORILLA);",
         "insert into root.sg(time,code_DOUBLE) aligned values(1679477545000,2.0);",
-        "insert into root.sg(time,`NH4-N_DOUBLE`) aligned values(1679365910000,12.0);"
+        "insert into root.sg(time,`NH4-N_DOUBLE`) aligned values(1679365910000,12.0);",
+        "create timeseries root.sg.d1.s1 with datatype=BLOB;",
+        "insert into root.sg.d1(time,s1) values(1,X'cafebabe')",
       };
 
   @BeforeClass
@@ -102,7 +104,7 @@ public class IoTDBLastQueryLastCacheIT {
   @Test
   public void testLastQuery() {
     String[] expectedHeader =
-        new String[] {TIMESTAMP_STR, TIMESEIRES_STR, VALUE_STR, DATA_TYPE_STR};
+        new String[] {TIMESTAMP_STR, TIMESERIES_STR, VALUE_STR, DATA_TYPE_STR};
     String[] retArray =
         new String[] {
           "1679365910000,root.ln_1.tb_6141.11_TEXT,13,TEXT,",
@@ -126,7 +128,7 @@ public class IoTDBLastQueryLastCacheIT {
   @Test
   public void testLastQueryOrderByTimeDesc() {
     String[] expectedHeader =
-        new String[] {TIMESTAMP_STR, TIMESEIRES_STR, VALUE_STR, DATA_TYPE_STR};
+        new String[] {TIMESTAMP_STR, TIMESERIES_STR, VALUE_STR, DATA_TYPE_STR};
     String[] retArray =
         new String[] {
           "1679365910000,root.ln_1.tb_6141.waterTP_DOUBLE,15.0,DOUBLE,",
@@ -150,7 +152,7 @@ public class IoTDBLastQueryLastCacheIT {
   @Test
   public void testLastQuery1() {
     String[] expectedHeader =
-        new String[] {TIMESTAMP_STR, TIMESEIRES_STR, VALUE_STR, DATA_TYPE_STR};
+        new String[] {TIMESTAMP_STR, TIMESERIES_STR, VALUE_STR, DATA_TYPE_STR};
     String[] retArray =
         new String[] {
           "1679365910000,root.sg.`NH4-N_DOUBLE`,12.0,DOUBLE,",
@@ -169,7 +171,7 @@ public class IoTDBLastQueryLastCacheIT {
   @Test
   public void testLastQuerySortWithLimit() {
     String[] expectedHeader =
-        new String[] {TIMESTAMP_STR, TIMESEIRES_STR, VALUE_STR, DATA_TYPE_STR};
+        new String[] {TIMESTAMP_STR, TIMESERIES_STR, VALUE_STR, DATA_TYPE_STR};
     String[] retArray =
         new String[] {
           "1679477545000,root.ln_1.tb_6141.code_DOUBLE,2.0,DOUBLE,",
@@ -178,5 +180,16 @@ public class IoTDBLastQueryLastCacheIT {
         "select last * from root.ln_1.tb_6141 order by time desc, timeseries desc limit 1;",
         expectedHeader,
         retArray);
+  }
+
+  @Test
+  public void testLastQueryWithBlobType() {
+    String[] expectedHeader =
+        new String[] {TIMESTAMP_STR, TIMESERIES_STR, VALUE_STR, DATA_TYPE_STR};
+    String[] retArray =
+        new String[] {
+          "1,root.sg.d1.s1,0xcafebabe,BLOB,",
+        };
+    resultSetEqualTest("select last s1 from root.sg.d1;", expectedHeader, retArray);
   }
 }

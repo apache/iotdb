@@ -76,7 +76,7 @@ public abstract class AbstractTraverserIterator<N extends IMNode<N>> implements 
       IDeviceMNode<N> node, Map<Integer, Template> templateMap) {
     // new cluster, the used template is directly recorded as template id in device mnode
     if (node.getSchemaTemplateId() != NON_TEMPLATE) {
-      if (skipPreDeletedSchema && node.getAsDeviceMNode().isPreDeactivateTemplate()) {
+      if (skipPreDeletedSchema && node.getAsDeviceMNode().isPreDeactivateSelfOrTemplate()) {
         // skip this pre deactivated template, the invoker will skip this
         return null;
       }

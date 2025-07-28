@@ -80,9 +80,12 @@ public enum ServiceType {
   PIPE_PLUGIN_CLASSLOADER_MANAGER_SERVICE(
       "Pipe Plugin Classloader Manager Service", "PipePluginClassLoader"),
   AINode_RPC_SERVICE("Rpc Service for AINode", "AINodeRPCService"),
+  MEMORY_RUNTIME_AGENT("Memory Runtime Agent", "MemoryRuntimeAgent"),
   PIPE_RUNTIME_DATA_NODE_AGENT("Pipe Runtime Data Node Agent", "PipeRuntimeDataNodeAgent"),
   PIPE_RUNTIME_CONFIG_NODE_AGENT("Pipe Runtime Config Node Agent", "PipeRuntimeConfigNodeAgent"),
   SUBSCRIPTION_RUNTIME_AGENT("Subscription Runtime Agent", "SubscriptionRuntimeAgent"),
+  GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE(
+      "General Region Attribute Security Service", "GeneralRegionAttributeSecurityService"),
 
   SESSION_MANAGER("Session Manager", "RpcSession"),
   CONFIG_NODE("Config Node", "ConfigNode"),

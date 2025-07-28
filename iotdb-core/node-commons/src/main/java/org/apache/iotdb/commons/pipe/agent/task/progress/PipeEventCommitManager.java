@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.progress;
 
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCommitMetrics;
 
@@ -34,6 +35,7 @@ public class PipeEventCommitManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitManager.class);
 
+  private volatile PipeTaskAgent taskAgent;
   private final Map<CommitterKey, PipeEventCommitter> eventCommitterMap = new ConcurrentHashMap<>();
 
   // the restartTimes in the committer key is always -1
@@ -105,7 +107,8 @@ public class PipeEventCommitManager {
     if (Objects.nonNull(commitRateMarker)) {
       try {
         commitRateMarker.accept(
-            event.getPipeName() + '_' + event.getCreationTime(), event.isDataRegionEvent());
+            taskAgent.getPipeNameWithCreationTime(event.getPipeName(), event.getCreationTime()),
+            event.isDataRegionEvent());
       } catch (final Exception e) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
@@ -115,8 +118,28 @@ public class PipeEventCommitManager {
         }
       }
     }
-    if (committerKey == null || event.getCommitId() <= EnrichedEvent.NO_COMMIT_ID) {
+    if (committerKey == null) {
       return;
+    }
+    if (event.hasMultipleCommitIds()) {
+      commitMultipleIds(committerKey, event);
+    } else {
+      commitSingleId(committerKey, event.getCommitId(), event);
+    }
+  }
+
+  private void commitMultipleIds(final CommitterKey committerKey, final EnrichedEvent event) {
+    for (final long commitId : event.getCommitIds()) {
+      if (commitSingleId(committerKey, commitId, event)) {
+        return;
+      }
+    }
+  }
+
+  private boolean commitSingleId(
+      final CommitterKey committerKey, final long commitId, final EnrichedEvent event) {
+    if (commitId <= EnrichedEvent.NO_COMMIT_ID) {
+      return false;
     }
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
 
@@ -124,28 +147,31 @@ public class PipeEventCommitManager {
       final int currentRestartTimes =
           eventCommitterRestartTimesMap.computeIfAbsent(
               generateCommitterRestartTimesKey(committerKey), k -> 0);
-      if (committerKey.getRestartTimes() < currentRestartTimes) {
-        LOGGER.warn(
-            "stale PipeEventCommitter({}) when commit event: {}, current restart times {}",
-            committerKey,
-            event.coreReportMessage(),
-            currentRestartTimes);
-      } else if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "missing PipeEventCommitter({}) when commit event: {}, stack trace: {}",
-            committerKey,
-            event.coreReportMessage(),
-            Thread.currentThread().getStackTrace());
+      if (LOGGER.isDebugEnabled()) {
+        if (committerKey.getRestartTimes() < currentRestartTimes) {
+          LOGGER.debug(
+              "stale PipeEventCommitter({}) when commit event: {}, current restart times {}",
+              committerKey,
+              event.coreReportMessage(),
+              currentRestartTimes);
+        } else {
+          LOGGER.debug(
+              "missing PipeEventCommitter({}) when commit event: {}, stack trace: {}",
+              committerKey,
+              event.coreReportMessage(),
+              Thread.currentThread().getStackTrace());
+        }
       }
-      return;
+      return false;
     }
 
     committer.commit(event);
+    return true;
   }
 
   private CommitterKey generateCommitterKey(
       final String pipeName, final long creationTime, final int regionId) {
-    return new CommitterKey(
+    return taskAgent.getCommitterKey(
         pipeName,
         creationTime,
         regionId,
@@ -163,19 +189,12 @@ public class PipeEventCommitManager {
         committerKey.getPipeName(), committerKey.getCreationTime(), committerKey.getRegionId());
   }
 
-  public void setCommitRateMarker(final BiConsumer<String, Boolean> commitRateMarker) {
-    this.commitRateMarker = commitRateMarker;
+  public void setTaskAgent(final PipeTaskAgent taskAgent) {
+    this.taskAgent = taskAgent;
   }
 
-  public long getGivenConsensusPipeCommitId(
-      final String consensusPipeName, final long creationTime, final int consensusGroupId) {
-    final CommitterKey committerKey =
-        generateCommitterKey(consensusPipeName, creationTime, consensusGroupId);
-    final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
-    if (committer == null) {
-      return 0;
-    }
-    return committer.getCurrentCommitId();
+  public void setCommitRateMarker(final BiConsumer<String, Boolean> commitRateMarker) {
+    this.commitRateMarker = commitRateMarker;
   }
 
   //////////////////////////// singleton ////////////////////////////

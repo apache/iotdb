@@ -71,6 +71,11 @@ public class ${className} implements IFill {
       return new ${type.column}(size, Optional.empty(), array);
     }
   }
+
+  @Override
+  public void reset() {
+    // do nothing
+  }
 }
 
 </#list>

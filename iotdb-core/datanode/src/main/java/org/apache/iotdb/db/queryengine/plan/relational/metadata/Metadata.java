@@ -22,22 +22,28 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinWindowFunction;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
+// All the input databases shall not contain "root"
 public interface Metadata {
 
   boolean tableExists(final QualifiedObjectName name);
@@ -59,6 +65,11 @@ public interface Metadata {
   boolean isAggregationFunction(
       final SessionInfo session, final String functionName, final AccessControl accessControl);
 
+  default boolean isWindowFunction(
+      final SessionInfo session, final String functionName, final AccessControl accessControl) {
+    return TableBuiltinWindowFunction.getBuiltInWindowFunctionName().contains(functionName);
+  }
+
   Type getType(final TypeSignature signature) throws TypeNotFoundException;
 
   boolean canCoerce(final Type from, final Type to);
@@ -73,7 +84,7 @@ public interface Metadata {
    *     index scanning
    * @param attributeColumns attribute column names
    */
-  List<DeviceEntry> indexScan(
+  Map<String, List<DeviceEntry>> indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
@@ -97,6 +108,9 @@ public interface Metadata {
    * <p>The caller need to recheck the dataType of measurement columns to decide whether to do
    * partial insert
    *
+   * @param isStrictIdColumn if true, when the table already exists, the id columns in the existing
+   *     table should be the prefix of those in the input tableSchema, or input id columns be the
+   *     prefix of existing id columns.
    * @return If table doesn't exist and the user have no authority to create table, Optional.empty()
    *     will be returned. The returned table may not include all the columns
    *     in @param{tableSchema}, if the user have no authority to alter table.
@@ -107,7 +121,9 @@ public interface Metadata {
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
-      final boolean allowCreateTable);
+      final boolean allowCreateTable,
+      final boolean isStrictIdColumn)
+      throws LoadAnalyzeTableColumnDisorderException;
 
   /**
    * This method is used for table device validation and should be invoked after column validation.
@@ -184,9 +200,10 @@ public interface Metadata {
   DataPartition getDataPartitionWithUnclosedTimeRange(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
 
+  TableFunction getTableFunction(final String functionName);
+
   /**
-   * @param withTime some function with time can also use Statistics, like first_by, last_by
-   * @return if the Aggregation can use statistics to optimize
+   * @return ModelFetcher
    */
-  boolean canUseStatistics(final String name, boolean withTime);
+  IModelFetcher getModelFetcher();
 }

@@ -31,12 +31,14 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.SingleSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -47,6 +49,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
 public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private List<TsFileResource> seqFiles;
@@ -55,7 +58,6 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private CompactionTsFileWriter currentWriter;
   private long endedFileSize = 0;
   private int currentTargetFileIndex = 0;
-  private boolean ignoreAllNullRows = true;
   // memory budget for file writer is 5% of per compaction task memory budget
   private final long memoryBudgetForFileWriter =
       (long)
@@ -87,8 +89,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           InterruptedException,
           StorageEngineException,
           PageException {
-    try (MultiTsFileDeviceIterator deviceIterator =
-        new MultiTsFileDeviceIterator(seqFiles, ignoreAllNullRows)) {
+    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles)) {
       schema =
           CompactionTableSchemaCollector.collectSchema(seqFiles, deviceIterator.getReaderMap());
       while (deviceIterator.hasNextDevice()) {
@@ -174,11 +175,6 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     this.summary = summary;
   }
 
-  @Override
-  public void setIgnoreAllNullRows(boolean ignoreAllNullRows) {
-    this.ignoreAllNullRows = ignoreAllNullRows;
-  }
-
   private void compactAlignedSeries(
       IDeviceID device,
       TsFileResource targetResource,
@@ -186,15 +182,21 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       MultiTsFileDeviceIterator deviceIterator)
       throws IOException, InterruptedException, IllegalPathException, PageException {
     checkThreadInterrupted();
-    LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
-        deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
+    LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
+        readerAndChunkMetadataList =
+            deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
     if (!checkAlignedSeriesExists(readerAndChunkMetadataList)) {
       return;
     }
     writer.startChunkGroup(device);
     BatchedReadChunkAlignedSeriesCompactionExecutor compactionExecutor =
         new BatchedReadChunkAlignedSeriesCompactionExecutor(
-            device, targetResource, readerAndChunkMetadataList, writer, summary, ignoreAllNullRows);
+            device,
+            targetResource,
+            readerAndChunkMetadataList,
+            writer,
+            summary,
+            device.getTableName().startsWith("root."));
     compactionExecutor.execute();
     for (ChunkMetadata chunkMetadata : writer.getChunkMetadataListOfCurrentDeviceInMemory()) {
       if (chunkMetadata.getMeasurementUid().isEmpty()) {
@@ -214,9 +216,9 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   }
 
   private boolean checkAlignedSeriesExists(
-      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+      LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
           readerAndChunkMetadataList) {
-    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair :
+    for (Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>> readerListPair :
         readerAndChunkMetadataList) {
       if (!readerListPair.right.isEmpty()) {
         return true;
@@ -298,5 +300,10 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   @Override
   public void setSourceFiles(List<TsFileResource> seqFiles) {
     this.seqFiles = seqFiles;
+  }
+
+  @Override
+  public Optional<AbstractInnerSpaceEstimator> getInnerSpaceEstimator() {
+    return Optional.of(new ReadChunkInnerCompactionEstimator());
   }
 }

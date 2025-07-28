@@ -24,6 +24,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFi
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
+import java.util.Optional;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
 /**
@@ -58,15 +60,29 @@ public abstract class LinearFill implements ILinearFill {
     // if this valueColumn doesn't have any null value, record the last value, and then return
     // itself.
     if (!valueColumn.mayHaveNull()) {
-      previousIsNull = false;
-      // update the value using last non-null value
-      previousTime = timeColumn.getLong(timeColumn.getPositionCount() - 1);
-      updatePreviousValue(valueColumn, valueColumn.getPositionCount() - 1);
+      int lastNonNullIndex = -1;
+      if (!timeColumn.mayHaveNull()) {
+        lastNonNullIndex = size - 1;
+      } else {
+        for (int i = size - 1; i >= 0; i--) {
+          if (!timeColumn.isNull(i)) {
+            lastNonNullIndex = i;
+            break;
+          }
+        }
+      }
+      if (lastNonNullIndex != -1) {
+        previousIsNull = false;
+        // update the value using last non-null value
+        previousTime = timeColumn.getLong(lastNonNullIndex);
+        updatePreviousValue(valueColumn, lastNonNullIndex);
+      }
+
       return valueColumn;
     }
 
     // if its values are all null
-    if (valueColumn instanceof RunLengthEncodedColumn) {
+    if ((valueColumn instanceof RunLengthEncodedColumn)) {
       return doWithAllNulls(startRowIndex, size, timeColumn, valueColumn);
     } else {
       Object array = createValueArray(size);
@@ -82,10 +98,12 @@ public abstract class LinearFill implements ILinearFill {
         } else { // current is not null
           // fill value using its own value
           fillValue(valueColumn, i, array);
-          // update previous value
-          previousTime = timeColumn.getLong(i);
-          updatePreviousValue(valueColumn, i);
-          previousIsNull = false;
+          if (!timeColumn.isNull(i)) {
+            // update previous value
+            previousTime = timeColumn.getLong(i);
+            updatePreviousValue(valueColumn, i);
+            previousIsNull = false;
+          }
         }
       }
       return createFilledValueColumn(array, isNull, hasNullValue, size);
@@ -98,16 +116,20 @@ public abstract class LinearFill implements ILinearFill {
     if (previousIsNull || nextRowIndex < startRowIndex) {
       return new RunLengthEncodedColumn(createNullValueColumn(), size);
     } else {
-      prepareForNextValueInCurrentColumn(
-          startRowIndex + timeColumn.getPositionCount() - 1,
-          timeColumn.getPositionCount(),
-          timeColumn,
-          valueColumn);
+      prepareForNextValueInCurrentColumn(startRowIndex + size - 1, size, timeColumn, valueColumn);
       double[] factors = new double[size];
+      boolean[] valueIsNull = new boolean[size];
+      boolean hasNull = false;
       for (int i = 0; i < size; i++) {
-        factors[i] = getFactor(timeColumn.getLong(i));
+        if (timeColumn.isNull(i)) {
+          valueIsNull[i] = true;
+          hasNull = true;
+        } else {
+          factors[i] = getFactor(timeColumn.getLong(i));
+        }
       }
-      return createFilledValueColumn(factors);
+      return createFilledValueColumn(
+          factors, hasNull ? Optional.empty() : Optional.of(valueIsNull));
     }
   }
 
@@ -120,8 +142,8 @@ public abstract class LinearFill implements ILinearFill {
       Object array) {
     long currentRowIndex = startRowIndex + i;
     prepareForNextValueInCurrentColumn(currentRowIndex, i + 1, timeColumn, valueColumn);
-    // we don't fill it, if either previous value or next value is null
-    if (previousIsNull || nextIsNull(currentRowIndex)) {
+    // we don't fill it, if previous value or next value or time column is null
+    if (previousIsNull || timeColumn.isNull(i) || nextIsNull(currentRowIndex)) {
       isNull[i] = true;
       return true;
     } else {
@@ -149,8 +171,11 @@ public abstract class LinearFill implements ILinearFill {
    *     information, and we can directly call fill() function
    */
   @Override
-  public boolean needPrepareForNext(long rowIndex, Column valueColumn) {
-    return nextRowIndex < rowIndex && valueColumn.isNull(valueColumn.getPositionCount() - 1);
+  public boolean needPrepareForNext(
+      long rowIndex, Column valueColumn, int lastRowIndexForNonNullHelperColumn) {
+    return nextRowIndex < rowIndex
+        && lastRowIndexForNonNullHelperColumn >= 0
+        && valueColumn.isNull(lastRowIndexForNonNullHelperColumn);
   }
 
   @Override
@@ -163,8 +188,8 @@ public abstract class LinearFill implements ILinearFill {
       return true;
     }
 
-    for (int i = 0; i < nextValueColumn.getPositionCount(); i++) {
-      if (!nextValueColumn.isNull(i)) {
+    for (int i = 0, size = nextValueColumn.getPositionCount(); i < size; i++) {
+      if (!nextTimeColumn.isNull(i) && !nextValueColumn.isNull(i)) {
         updateNextValue(nextValueColumn, i);
         this.nextTime = nextTimeColumn.getLong(i);
         this.nextRowIndex = startRowIndex + i;
@@ -184,7 +209,7 @@ public abstract class LinearFill implements ILinearFill {
       return;
     }
     for (int i = startIndex; i < valueColumn.getPositionCount(); i++) {
-      if (!valueColumn.isNull(i)) {
+      if (!timeColumn.isNull(i) && !valueColumn.isNull(i)) {
         this.nextRowIndexInCurrentColumn = currentRowIndex + (i - startIndex + 1);
         this.nextTimeInCurrentColumn = timeColumn.getLong(i);
         updateNextValueInCurrentColumn(valueColumn, i);
@@ -198,6 +223,16 @@ public abstract class LinearFill implements ILinearFill {
     updateNextValueInCurrentColumn();
   }
 
+  @Override
+  public void reset() {
+    previousIsNull = true;
+    nextRowIndex = -1;
+    nextRowIndexInCurrentColumn = -1;
+    previousTime = -1;
+    nextTime = -1;
+    nextTimeInCurrentColumn = -1;
+  }
+
   abstract void fillValue(Column column, int index, Object array);
 
   abstract void fillValue(Object array, int index, double factor);
@@ -206,7 +241,7 @@ public abstract class LinearFill implements ILinearFill {
 
   abstract Column createNullValueColumn();
 
-  abstract Column createFilledValueColumn(double[] factors1);
+  abstract Column createFilledValueColumn(double[] factors, Optional<boolean[]> valueIsNull);
 
   abstract Column createFilledValueColumn(
       Object array, boolean[] isNull, boolean hasNullValue, int size);

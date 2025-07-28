@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -32,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.queryengine.plan.udf.TreeUDFUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFInformationInferrer;
@@ -126,7 +126,7 @@ public class FunctionExpression extends Expression {
       functionType = FunctionType.BUILT_IN_AGGREGATION_FUNCTION;
     } else if (BuiltinScalarFunction.getNativeFunctionNames().contains(lowerCaseFunctionName)) {
       functionType = FunctionType.BUILT_IN_SCALAR_FUNCTION;
-    } else if (UDFManagementService.getInstance().isUDAF(functionName)) {
+    } else if (TreeUDFUtils.isUDAF(functionName)) {
       functionType = FunctionType.UDAF;
     } else {
       functionType = FunctionType.UDTF;

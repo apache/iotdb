@@ -33,8 +33,8 @@ import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.TestConnectionUtils;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.confignode.client.async.CnToCnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -62,7 +62,7 @@ public class ClusterManager {
   private final IManager configManager;
   private final ClusterInfo clusterInfo;
 
-  private static final String CONSENSUS_WRITE_ERROR =
+  public static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
 
   public ClusterManager(IManager configManager, ClusterInfo clusterInfo) {
@@ -155,7 +155,7 @@ public class ClusterManager {
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
     DataNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp> dataNodeAsyncRequestContext =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.SUBMIT_TEST_CONNECTION_TASK, nodeLocations, dataNodeLocationMap);
+            CnToDnAsyncRequestType.SUBMIT_TEST_CONNECTION_TASK, nodeLocations, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequest(dataNodeAsyncRequestContext);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
@@ -226,8 +226,9 @@ public class ClusterManager {
         TDataNodeLocation::getDataNodeId,
         TDataNodeLocation::getInternalEndPoint,
         TServiceType.DataNodeInternalService,
-        CnToDnRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<Object, TSStatus, CnToDnRequestType, TDataNodeLocation> handler) ->
+        CnToDnAsyncRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, CnToDnAsyncRequestType, TDataNodeLocation>
+                handler) ->
             CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
   }
 
@@ -248,7 +249,8 @@ public class ClusterManager {
             location -> {
               TEndPoint endPoint = location.getInternalEndPoint();
               TServiceProvider serviceProvider =
-                  new TServiceProvider(endPoint, TServiceType.ConfigNodeInternalService);
+                  new TServiceProvider(
+                      endPoint, TServiceType.ConfigNodeInternalService, location.getConfigNodeId());
               TTestConnectionResult result =
                   new TTestConnectionResult().setServiceProvider(serviceProvider).setSender(sender);
               result.setSuccess(false).setReason(errorMessage);
@@ -260,7 +262,8 @@ public class ClusterManager {
             location -> {
               TEndPoint endPoint = location.getInternalEndPoint();
               TServiceProvider serviceProvider =
-                  new TServiceProvider(endPoint, TServiceType.DataNodeInternalService);
+                  new TServiceProvider(
+                      endPoint, TServiceType.DataNodeInternalService, location.getDataNodeId());
               TTestConnectionResult result =
                   new TTestConnectionResult().setServiceProvider(serviceProvider).setSender(sender);
               result.setSuccess(false).setReason(errorMessage);
@@ -273,7 +276,8 @@ public class ClusterManager {
               location -> {
                 TEndPoint endPoint = location.getMPPDataExchangeEndPoint();
                 TServiceProvider serviceProvider =
-                    new TServiceProvider(endPoint, TServiceType.DataNodeMPPService);
+                    new TServiceProvider(
+                        endPoint, TServiceType.DataNodeMPPService, location.getDataNodeId());
                 TTestConnectionResult result =
                     new TTestConnectionResult()
                         .setServiceProvider(serviceProvider)
@@ -287,7 +291,8 @@ public class ClusterManager {
               location -> {
                 TEndPoint endPoint = location.getClientRpcEndPoint();
                 TServiceProvider serviceProvider =
-                    new TServiceProvider(endPoint, TServiceType.DataNodeExternalService);
+                    new TServiceProvider(
+                        endPoint, TServiceType.DataNodeExternalService, location.getDataNodeId());
                 TTestConnectionResult result =
                     new TTestConnectionResult()
                         .setServiceProvider(serviceProvider)

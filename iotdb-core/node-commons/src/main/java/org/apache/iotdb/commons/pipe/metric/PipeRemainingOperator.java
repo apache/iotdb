@@ -32,6 +32,11 @@ public abstract class PipeRemainingOperator {
   private long lastNonEmptyTimeStamp = System.currentTimeMillis();
   protected boolean isStopped = true;
 
+  protected PipeRemainingOperator(final String pipeName, final long creationTime) {
+    this.pipeName = pipeName;
+    this.creationTime = creationTime;
+  }
+
   //////////////////////////// Tags ////////////////////////////
 
   public String getPipeName() {
@@ -40,13 +45,6 @@ public abstract class PipeRemainingOperator {
 
   public long getCreationTime() {
     return creationTime;
-  }
-
-  //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
-
-  protected void setNameAndCreationTime(final String pipeName, final long creationTime) {
-    this.pipeName = pipeName;
-    this.creationTime = creationTime;
   }
 
   //////////////////////////// Switch ////////////////////////////

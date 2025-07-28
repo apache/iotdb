@@ -171,7 +171,7 @@ public class TierManager {
   private void mkDataDirs(List<String> folders) {
     for (String folder : folders) {
       File file = FSFactoryProducer.getFSFactory().getFile(folder);
-      if (FSUtils.getFSType(file) == FSType.OBJECT_STORAGE) {
+      if (FSUtils.getFSType(folder) == FSType.OBJECT_STORAGE) {
         continue;
       }
       if (file.mkdirs()) {
@@ -188,6 +188,10 @@ public class TierManager {
     return sequence
         ? seqTiers.get(tierLevel).getNextFolder()
         : unSeqTiers.get(tierLevel).getNextFolder();
+  }
+
+  public FolderManager getFolderManager(int tierLevel, boolean sequence) {
+    return sequence ? seqTiers.get(tierLevel) : unSeqTiers.get(tierLevel);
   }
 
   public List<String> getAllFilesFolders() {

@@ -71,9 +71,17 @@ public class ExpressionUtils {
       final MPPQueryContext queryContext) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (PartialPath actualPath : actualPaths) {
-      resultExpressions.add(
-          reserveMemoryForExpression(
-              queryContext, reconstructTimeSeriesOperand(rawExpression, actualPath)));
+      Expression expression = reconstructTimeSeriesOperand(rawExpression, actualPath);
+      long memCost;
+      if (queryContext.useSampledAvgTimeseriesOperandMemCost()) {
+        memCost = queryContext.getAvgTimeseriesOperandMemCost();
+      } else {
+        memCost = expression.ramBytesUsed();
+        queryContext.calculateAvgTimeseriesOperandMemCost(memCost);
+      }
+      queryContext.reserveMemoryForFrontEnd(memCost);
+
+      resultExpressions.add(expression);
     }
     return resultExpressions;
   }
@@ -170,8 +178,8 @@ public class ExpressionUtils {
         resultExpression =
             new LikeExpression(
                 childExpression,
-                ((LikeExpression) rawExpression).getPatternString(),
                 ((LikeExpression) rawExpression).getPattern(),
+                ((LikeExpression) rawExpression).getEscape(),
                 ((LikeExpression) rawExpression).isNot());
         break;
       case LOGIC_NOT:

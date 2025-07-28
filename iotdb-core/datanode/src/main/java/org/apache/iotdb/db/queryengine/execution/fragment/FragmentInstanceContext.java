@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -29,11 +30,14 @@ import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -41,6 +45,8 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegio
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -50,6 +56,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -57,21 +64,30 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
+import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
+import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMPTY_QUERY_DATA_SOURCE;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
+import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
 public class FragmentInstanceContext extends QueryContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
   private static final long END_TIME_INITIAL_VALUE = -1L;
+  // wait over 5s for driver to close is abnormal
+  private static final long LONG_WAIT_DURATION = 5_000_000_000L;
   private final FragmentInstanceId id;
 
   private final FragmentInstanceStateMachine stateMachine;
 
   private final MemoryReservationManager memoryReservationManager;
 
-  private IDataRegionForQuery dataRegion;
+  protected IDataRegionForQuery dataRegion;
   private Filter globalTimeFilter;
 
   // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
@@ -81,7 +97,7 @@ public class FragmentInstanceContext extends QueryContext {
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
 
   // Shared by all scan operators in this fragment instance to avoid memory problem
-  private IQueryDataSource sharedQueryDataSource;
+  protected IQueryDataSource sharedQueryDataSource;
 
   /** closed tsfile used in this fragment instance. */
   private Set<TsFileResource> closedFilePaths;
@@ -95,6 +111,10 @@ public class FragmentInstanceContext extends QueryContext {
   // null for all time partitions
   // empty for zero time partitions
   private List<Long> timePartitions;
+
+  // An optimization during restart changes the time index from FILE TIME INDEX
+  // to DEVICE TIME INDEX, which may cause a related validation false positive.
+  private boolean ignoreNotExistsDevice = false;
 
   private QueryDataSourceType queryDataSourceType = QueryDataSourceType.SERIES_SCAN;
 
@@ -169,7 +189,7 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public static FragmentInstanceContext createFragmentInstanceContextForCompaction(long queryId) {
-    return new FragmentInstanceContext(queryId);
+    return new FragmentInstanceContext(queryId, null, null, null);
   }
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
@@ -182,6 +202,22 @@ public class FragmentInstanceContext extends QueryContext {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(
             id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault()));
+    instanceContext.initialize();
+    instanceContext.start();
+    return instanceContext;
+  }
+
+  @TestOnly
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      MemoryReservationManager memoryReservationManager) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(
+            id,
+            stateMachine,
+            new SessionInfo(1, "test", ZoneId.systemDefault()),
+            memoryReservationManager);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -200,7 +236,10 @@ public class FragmentInstanceContext extends QueryContext {
     this.sessionInfo = sessionInfo;
     this.dataRegion = dataRegion;
     this.globalTimeFilter =
-        globalTimePredicate == null ? null : globalTimePredicate.convertPredicateToTimeFilter();
+        globalTimePredicate == null
+            ? null
+            : globalTimePredicate.convertPredicateToTimeFilter(
+                sessionInfo.getZoneId(), TimestampPrecisionUtils.currPrecision);
     this.dataNodeQueryContextMap = dataNodeQueryContextMap;
     this.dataNodeQueryContext = dataNodeQueryContextMap.get(id.getQueryId());
     this.memoryReservationManager =
@@ -217,6 +256,20 @@ public class FragmentInstanceContext extends QueryContext {
     this.dataNodeQueryContext = null;
     this.memoryReservationManager =
         new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
+  }
+
+  private FragmentInstanceContext(
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
+      MemoryReservationManager memoryReservationManager) {
+    this.id = id;
+    this.stateMachine = stateMachine;
+    this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+    this.sessionInfo = sessionInfo;
+    this.dataNodeQueryContextMap = null;
+    this.dataNodeQueryContext = null;
+    this.memoryReservationManager = memoryReservationManager;
   }
 
   private FragmentInstanceContext(
@@ -242,17 +295,24 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   // used for compaction
-  private FragmentInstanceContext(long queryId) {
+  protected FragmentInstanceContext(
+      long queryId,
+      MemoryReservationManager memoryReservationManager,
+      Filter timeFilter,
+      DataRegion dataRegion) {
     this.queryId = queryId;
     this.id = null;
     this.stateMachine = null;
     this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
-    this.memoryReservationManager = null;
+    this.dataRegion = dataRegion;
+    this.globalTimeFilter = timeFilter;
+    this.memoryReservationManager = memoryReservationManager;
   }
 
   public void start() {
     long now = System.currentTimeMillis();
+    ignoreNotExistsDevice = !StorageEngine.getInstance().isReadyForNonReadWriteFunctions();
     executionStartTime.compareAndSet(null, now);
     startNanos.compareAndSet(0, System.nanoTime());
 
@@ -316,23 +376,6 @@ public class FragmentInstanceContext extends QueryContext {
         .collect(Collectors.toList());
   }
 
-  public Optional<TSStatus> getErrorCode() {
-    return stateMachine.getFailureCauses().stream()
-        .filter(e -> e instanceof IoTDBException || e instanceof IoTDBRuntimeException)
-        .findFirst()
-        .flatMap(
-            t -> {
-              TSStatus status;
-              if (t instanceof IoTDBException) {
-                status = new TSStatus(((IoTDBException) t).getErrorCode());
-              } else {
-                status = new TSStatus(((IoTDBRuntimeException) t).getErrorCode());
-              }
-              status.setMessage(t.getMessage());
-              return Optional.of(status);
-            });
-  }
-
   public void finished() {
     stateMachine.finished();
   }
@@ -371,19 +414,38 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return getErrorCode()
-        .map(
-            s ->
-                new FragmentInstanceInfo(
-                    stateMachine.getState(),
-                    getEndTime(),
-                    getFailedCause(),
-                    getFailureInfoList(),
-                    s))
-        .orElseGet(
-            () ->
-                new FragmentInstanceInfo(
-                    stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList()));
+    FragmentInstanceState state = stateMachine.getState();
+    long endTime = getEndTime();
+    LinkedBlockingQueue<Throwable> failures = stateMachine.getFailureCauses();
+    String failureCause = "";
+    List<FragmentInstanceFailureInfo> failureInfoList = new ArrayList<>();
+    TSStatus status = null;
+
+    for (Throwable t : failures) {
+      Throwable failure = getRootCause(t);
+      if (failureCause.isEmpty() && failure.getMessage() != null) {
+        failureCause = failure.getMessage();
+      }
+      failureInfoList.add(FragmentInstanceFailureInfo.toFragmentInstanceFailureInfo(failure));
+      if (failure instanceof IoTDBException) {
+        status = new TSStatus(((IoTDBException) failure).getErrorCode());
+        status.setMessage(failure.getMessage());
+      } else if (failure instanceof IoTDBRuntimeException) {
+        status = new TSStatus(((IoTDBRuntimeException) failure).getErrorCode());
+        status.setMessage(failure.getMessage());
+      } else if (failure instanceof DateTimeParseException) {
+        status = new TSStatus(DATE_OUT_OF_RANGE.getStatusCode());
+        status.setMessage(failure.getMessage());
+      } else {
+        LOGGER.warn("[Unknown exception]: ", failure);
+      }
+    }
+
+    if (status == null) {
+      return new FragmentInstanceInfo(state, endTime, failureCause, failureInfoList);
+    } else {
+      return new FragmentInstanceInfo(state, endTime, failureCause, failureInfoList, status);
+    }
   }
 
   public FragmentInstanceStateMachine getStateMachine() {
@@ -395,7 +457,11 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public Optional<Throwable> getFailureCause() {
-    return Optional.ofNullable(stateMachine.getFailureCauses().peek());
+    return Optional.ofNullable(
+        stateMachine.getFailureCauses().stream()
+            .filter(e -> e instanceof IoTDBException || e instanceof IoTDBRuntimeException)
+            .findFirst()
+            .orElse(stateMachine.getFailureCauses().peek()));
   }
 
   public Filter getGlobalTimeFilter() {
@@ -406,9 +472,8 @@ public class FragmentInstanceContext extends QueryContext {
     if (globalTimeFilter == null) {
       globalTimeFilter = timeFilter;
     } else {
-      // In join case, there may exist more than one table and time filter, join criteria only
-      // support and condition, so use and to connect these two filters
-      globalTimeFilter = FilterFactory.and(globalTimeFilter, timeFilter);
+      // In join case, there may exist more than one table and time filter
+      globalTimeFilter = FilterFactory.or(globalTimeFilter, timeFilter);
       // throw new IllegalStateException(
       //    "globalTimeFilter in FragmentInstanceContext should only be set once in Table Model!");
     }
@@ -436,24 +501,40 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void initQueryDataSource(List<IFullPath> sourcePaths) throws QueryProcessException {
     long startTime = System.nanoTime();
-    if (sourcePaths == null) {
+    if (sourcePaths == null || sourcePaths.isEmpty()) {
+      this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
       return;
     }
+
+    IDeviceID singleDeviceId = null;
+    if (sourcePaths.size() == 1) {
+      singleDeviceId = sourcePaths.get(0).getDeviceId();
+    } else {
+      Set<IDeviceID> selectedDeviceIdSet = new HashSet<>();
+      for (IFullPath sourcePath : sourcePaths) {
+        if (sourcePath instanceof AlignedFullPath) {
+          singleDeviceId = null;
+          break;
+        } else {
+          singleDeviceId = sourcePath.getDeviceId();
+          selectedDeviceIdSet.add(singleDeviceId);
+          if (selectedDeviceIdSet.size() > 1) {
+            singleDeviceId = null;
+            break;
+          }
+        }
+      }
+    }
+
     dataRegion.readLock();
     try {
-      List<IFullPath> pathList = new ArrayList<>();
-      Set<IDeviceID> selectedDeviceIdSet = new HashSet<>();
-      for (IFullPath path : sourcePaths) {
-        pathList.add(path);
-        selectedDeviceIdSet.add(path.getDeviceId());
-      }
 
       this.sharedQueryDataSource =
           dataRegion.query(
-              pathList,
+              sourcePaths,
               // when all the selected series are under the same device, the QueryDataSource will be
               // filtered according to timeIndex
-              selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
+              singleDeviceId,
               this,
               // time filter may be stateful, so we need to copy it
               globalTimeFilter != null ? globalTimeFilter.copy() : null,
@@ -465,7 +546,7 @@ public class FragmentInstanceContext extends QueryContext {
         closedFilePaths = new HashSet<>();
         unClosedFilePaths = new HashSet<>();
         addUsedFilesForQuery((QueryDataSource) sharedQueryDataSource);
-        ((QueryDataSource) sharedQueryDataSource).setSingleDevice(selectedDeviceIdSet.size() == 1);
+        ((QueryDataSource) sharedQueryDataSource).setSingleDevice(singleDeviceId != null);
       }
     } finally {
       setInitQueryDataSourceCost(System.nanoTime() - startTime);
@@ -633,6 +714,7 @@ public class FragmentInstanceContext extends QueryContext {
 
   @SuppressWarnings("squid:S2142")
   public void releaseResourceWhenAllDriversAreClosed() {
+    long startTime = System.nanoTime();
     while (true) {
       try {
         allDriversClosed.await();
@@ -643,7 +725,47 @@ public class FragmentInstanceContext extends QueryContext {
             "Interrupted when await on allDriversClosed, FragmentInstance Id is {}", this.getId());
       }
     }
+    long duration = System.nanoTime() - startTime;
+    if (duration >= LONG_WAIT_DURATION) {
+      LOGGER.warn("Wait {}ms for all Drivers closed", duration / 1_000_000);
+    }
     releaseResource();
+  }
+
+  /**
+   * It checks all referenced TVList by the query: 1. If current is not the owner, just remove
+   * itself from query context list 2. If current query is the owner and no other query use it now,
+   * release the TVList 3. If current query is the owner and other queries still use it, set the
+   * next query as owner
+   */
+  private void releaseTVListOwnedByQuery() {
+    for (TVList tvList : tvListSet) {
+      tvList.lockQueryList();
+      Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
+      try {
+        queryContextSet.remove(this);
+        if (tvList.getOwnerQuery() == this) {
+          if (queryContextSet.isEmpty()) {
+            LOGGER.debug(
+                "TVList {} is released by the query, FragmentInstance Id is {}",
+                tvList,
+                this.getId());
+            memoryReservationManager.releaseMemoryCumulatively(tvList.calculateRamSize());
+            tvList.clear();
+          } else {
+            FragmentInstanceContext queryContext =
+                (FragmentInstanceContext) queryContextSet.iterator().next();
+            LOGGER.debug(
+                "TVList {} is now owned by another query, FragmentInstance Id is {}",
+                tvList,
+                queryContext.getId());
+            tvList.setOwnerQuery(queryContext);
+          }
+        }
+      } finally {
+        tvList.unlockQueryList();
+      }
+    }
   }
 
   /**
@@ -666,13 +788,28 @@ public class FragmentInstanceContext extends QueryContext {
       unClosedFilePaths = null;
     }
 
+    // release TVList/AlignedTVList owned by current query
+    releaseTVListOwnedByQuery();
+
     dataRegion = null;
     globalTimeFilter = null;
     sharedQueryDataSource = null;
 
     // record fragment instance execution time and metadata get time to metrics
     long durationTime = System.currentTimeMillis() - executionStartTime.get();
+    DriverSchedulerMetricSet.getInstance()
+        .recordTaskQueueTime(BLOCK_QUEUED_TIME, blockQueueTime.get());
+    DriverSchedulerMetricSet.getInstance()
+        .recordTaskQueueTime(READY_QUEUED_TIME, readyQueueTime.get());
+
     QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
+
+    SeriesScanCostMetricSet.getInstance()
+        .recordBloomFilterMetrics(
+            getQueryStatistics().getLoadBloomFilterFromCacheCount().get(),
+            getQueryStatistics().getLoadBloomFilterFromDiskCount().get(),
+            getQueryStatistics().getLoadBloomFilterActualIOSize().get(),
+            getQueryStatistics().getLoadBloomFilterTime().get());
 
     SeriesScanCostMetricSet.getInstance()
         .recordNonAlignedTimeSeriesMetadataCount(
@@ -700,6 +837,14 @@ public class FragmentInstanceContext extends QueryContext {
             getQueryStatistics().getLoadTimeSeriesMetadataAlignedMemUnSeqTime().get());
 
     SeriesScanCostMetricSet.getInstance()
+        .recordTimeSeriesMetadataMetrics(
+            getQueryStatistics().getLoadTimeSeriesMetadataFromCacheCount().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataFromCacheTime().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataFromDiskTime().get());
+
+    SeriesScanCostMetricSet.getInstance()
         .recordConstructChunkReadersCount(
             getQueryStatistics().getConstructAlignedChunkReadersMemCount().get(),
             getQueryStatistics().getConstructAlignedChunkReadersDiskCount().get(),
@@ -711,6 +856,12 @@ public class FragmentInstanceContext extends QueryContext {
             getQueryStatistics().getConstructAlignedChunkReadersDiskTime().get(),
             getQueryStatistics().getConstructNonAlignedChunkReadersMemTime().get(),
             getQueryStatistics().getConstructNonAlignedChunkReadersDiskTime().get());
+
+    SeriesScanCostMetricSet.getInstance()
+        .recordChunkMetrics(
+            getQueryStatistics().getLoadChunkFromCacheCount().get(),
+            getQueryStatistics().getLoadChunkFromDiskCount().get(),
+            getQueryStatistics().getLoadChunkActualIOSize().get());
 
     SeriesScanCostMetricSet.getInstance()
         .recordPageReadersDecompressCount(
@@ -811,5 +962,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   public long getUnclosedSeqFileNum() {
     return unclosedSeqFileNum;
+  }
+
+  public boolean ignoreNotExistsDevice() {
+    return ignoreNotExistsDevice;
   }
 }

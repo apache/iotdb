@@ -47,4 +47,16 @@ public class StrcmpColumnTransformer extends UnaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        Binary currentValue = column.getBinary(i);
+        columnBuilder.writeInt(Integer.compare(currentValue.compareTo(binStr), 0));
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
 }

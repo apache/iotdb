@@ -22,8 +22,6 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 
-import javax.validation.constraints.NotNull;
-
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
@@ -37,12 +35,17 @@ public class PipeHeartbeat {
   private final Map<PipeStaticMeta, Double> remainingTimeMap = new HashMap<>();
 
   public PipeHeartbeat(
-      @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
+      /* @Nullable */ final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
       /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent,
       /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
       /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent) {
+    // Pipe meta may be null for nodes shutting down, return empty heartbeat
+    if (Objects.isNull(pipeMetaByteBufferListFromAgent)) {
+      return;
+    }
     for (int i = 0; i < pipeMetaByteBufferListFromAgent.size(); ++i) {
-      final PipeMeta pipeMeta = PipeMeta.deserialize(pipeMetaByteBufferListFromAgent.get(i));
+      final PipeMeta pipeMeta =
+          PipeMeta.deserialize4TaskAgent(pipeMetaByteBufferListFromAgent.get(i));
       pipeMetaMap.put(pipeMeta.getStaticMeta(), pipeMeta);
       isCompletedMap.put(
           pipeMeta.getStaticMeta(),

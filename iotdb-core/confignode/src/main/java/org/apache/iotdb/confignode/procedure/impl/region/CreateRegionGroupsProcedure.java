@@ -26,6 +26,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
@@ -60,6 +62,7 @@ public class CreateRegionGroupsProcedure
 
   private CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
   private CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   /** key: TConsensusGroupId value: Failed RegionReplicas */
   private Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets = new HashMap<>();
@@ -69,17 +72,18 @@ public class CreateRegionGroupsProcedure
   }
 
   public CreateRegionGroupsProcedure(
-      TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
+      final TConsensusGroupType consensusGroupType,
+      final CreateRegionGroupsPlan createRegionGroupsPlan) {
     this.consensusGroupType = consensusGroupType;
     this.createRegionGroupsPlan = createRegionGroupsPlan;
   }
 
   @TestOnly
   public CreateRegionGroupsProcedure(
-      TConsensusGroupType consensusGroupType,
-      CreateRegionGroupsPlan createRegionGroupsPlan,
-      CreateRegionGroupsPlan persistPlan,
-      Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets) {
+      final TConsensusGroupType consensusGroupType,
+      final CreateRegionGroupsPlan createRegionGroupsPlan,
+      final CreateRegionGroupsPlan persistPlan,
+      final Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets) {
     this.consensusGroupType = consensusGroupType;
     this.createRegionGroupsPlan = createRegionGroupsPlan;
     this.persistPlan = persistPlan;
@@ -87,7 +91,8 @@ public class CreateRegionGroupsProcedure
   }
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, CreateRegionGroupsState state) {
+  protected Flow executeFromState(
+      final ConfigNodeProcedureEnv env, final CreateRegionGroupsState state) {
     switch (state) {
       case CREATE_REGION_GROUPS:
         failedRegionReplicaSets = env.doRegionCreation(consensusGroupType, createRegionGroupsPlan);
@@ -95,7 +100,7 @@ public class CreateRegionGroupsProcedure
         break;
       case SHUNT_REGION_REPLICAS:
         persistPlan = new CreateRegionGroupsPlan();
-        OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
+        final OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
         // Filter those RegionGroups that created successfully
         createRegionGroupsPlan
             .getRegionGroupMap()
@@ -112,11 +117,16 @@ public class CreateRegionGroupsProcedure
                                 "[CreateRegionGroups] All replicas of RegionGroup: {} are created successfully!",
                                 regionReplicaSet.getRegionId());
                           } else {
-                            TRegionReplicaSet failedRegionReplicas =
+                            final TRegionReplicaSet failedRegionReplicas =
                                 failedRegionReplicaSets.get(regionReplicaSet.getRegionId());
 
-                            if (failedRegionReplicas.getDataNodeLocationsSize()
-                                <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
+                            boolean canProvideService =
+                                canRegionGroupProvideService(
+                                    regionReplicaSet.getDataNodeLocationsSize(),
+                                    failedRegionReplicas.getDataNodeLocationsSize(),
+                                    failedRegionReplicas.getRegionId());
+
+                            if (canProvideService) {
                               // A RegionGroup can provide service as long as there are more than
                               // half of the RegionReplicas created successfully
                               persistPlan.addRegionGroup(database, regionReplicaSet);
@@ -161,15 +171,15 @@ public class CreateRegionGroupsProcedure
         env.persistRegionGroup(persistPlan);
         try {
           env.getConfigManager().getConsensusManager().write(offerPlan);
-        } catch (ConsensusException e) {
+        } catch (final ConsensusException e) {
           LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
         }
         setNextState(CreateRegionGroupsState.ACTIVATE_REGION_GROUPS);
         break;
       case ACTIVATE_REGION_GROUPS:
-        long currentTime = System.nanoTime();
+        final long currentTime = System.nanoTime();
         // Build RegionGroupCache immediately to make these successfully built RegionGroup available
-        Map<String, Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>>>
+        final Map<String, Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>>>
             activateRegionGroupMap = new TreeMap<>();
         createRegionGroupsPlan
             .getRegionGroupMap()
@@ -179,16 +189,23 @@ public class CreateRegionGroupsProcedure
                         regionReplicaSet -> {
                           TRegionReplicaSet failedRegionReplicas =
                               failedRegionReplicaSets.get(regionReplicaSet.getRegionId());
-                          if (failedRegionReplicas == null
-                              || failedRegionReplicas.getDataNodeLocationsSize()
-                                  <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
-                            Set<Integer> failedDataNodeIds =
+
+                          boolean canProvideService =
+                              failedRegionReplicas == null
+                                  || canRegionGroupProvideService(
+                                      regionReplicaSet.getDataNodeLocationsSize(),
+                                      failedRegionReplicas.getDataNodeLocationsSize(),
+                                      failedRegionReplicas.getRegionId());
+
+                          if (canProvideService) {
+                            final Set<Integer> failedDataNodeIds =
                                 failedRegionReplicas == null
                                     ? new TreeSet<>()
                                     : failedRegionReplicas.getDataNodeLocations().stream()
                                         .map(TDataNodeLocation::getDataNodeId)
                                         .collect(Collectors.toSet());
-                            Map<Integer, RegionHeartbeatSample> activateSampleMap = new TreeMap<>();
+                            final Map<Integer, RegionHeartbeatSample> activateSampleMap =
+                                new TreeMap<>();
                             regionReplicaSet
                                 .getDataNodeLocations()
                                 .forEach(
@@ -230,18 +247,18 @@ public class CreateRegionGroupsProcedure
 
   @Override
   protected void rollbackState(
-      ConfigNodeProcedureEnv configNodeProcedureEnv,
-      CreateRegionGroupsState createRegionGroupsState) {
+      final ConfigNodeProcedureEnv configNodeProcedureEnv,
+      final CreateRegionGroupsState createRegionGroupsState) {
     // Do nothing
   }
 
   @Override
-  protected CreateRegionGroupsState getState(int stateId) {
+  protected CreateRegionGroupsState getState(final int stateId) {
     return CreateRegionGroupsState.values()[stateId];
   }
 
   @Override
-  protected int getStateId(CreateRegionGroupsState createRegionGroupsState) {
+  protected int getStateId(final CreateRegionGroupsState createRegionGroupsState) {
     return createRegionGroupsState.ordinal();
   }
 
@@ -251,7 +268,7 @@ public class CreateRegionGroupsProcedure
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     // Must serialize CREATE_REGION_GROUPS.getTypeCode() firstly
     stream.writeShort(ProcedureType.CREATE_REGION_GROUPS.getTypeCode());
     super.serialize(stream);
@@ -267,7 +284,7 @@ public class CreateRegionGroupsProcedure
   }
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     this.consensusGroupType = TConsensusGroupType.findByValue(byteBuffer.getInt());
     try {
@@ -275,30 +292,30 @@ public class CreateRegionGroupsProcedure
       failedRegionReplicaSets.clear();
       int failedRegionsSize = byteBuffer.getInt();
       while (failedRegionsSize-- > 0) {
-        TConsensusGroupId groupId =
+        final TConsensusGroupId groupId =
             ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(byteBuffer);
-        TRegionReplicaSet replica =
+        final TRegionReplicaSet replica =
             ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer);
         failedRegionReplicaSets.put(groupId, replica);
       }
       if (byteBuffer.hasRemaining()) {
         persistPlan.deserializeForProcedure(byteBuffer);
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.error("Deserialize meets error in CreateRegionGroupsProcedure", e);
       throw new RuntimeException(e);
     }
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    CreateRegionGroupsProcedure that = (CreateRegionGroupsProcedure) o;
+    final CreateRegionGroupsProcedure that = (CreateRegionGroupsProcedure) o;
     return consensusGroupType == that.consensusGroupType
         && createRegionGroupsPlan.equals(that.createRegionGroupsPlan)
         && persistPlan.equals(that.persistPlan)
@@ -309,5 +326,16 @@ public class CreateRegionGroupsProcedure
   public int hashCode() {
     return Objects.hash(
         consensusGroupType, createRegionGroupsPlan, persistPlan, failedRegionReplicaSets);
+  }
+
+  public boolean canRegionGroupProvideService(
+      int regionGroupNodeNumber, int failedNodeNumber, TConsensusGroupId regionId) {
+    boolean isStrongConsistency = CONF.isConsensusGroupStrongConsistency(regionId);
+    int successNodeNumber = regionGroupNodeNumber - failedNodeNumber;
+    if (isStrongConsistency) {
+      return successNodeNumber > (regionGroupNodeNumber / 2);
+    } else {
+      return successNodeNumber >= 1;
+    }
   }
 }

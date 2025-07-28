@@ -23,7 +23,9 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is used to record statistics within the SchemaRegion in Memory mode. */
@@ -35,8 +37,10 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   // normal series number, not include view and template series
   private final AtomicLong measurementNumber = new AtomicLong(0);
   private final AtomicLong devicesNumber = new AtomicLong(0);
+  private final ConcurrentMap<String, Long> tableDeviceNumber = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Long> tableAttributeMemory = new ConcurrentHashMap<>();
   private final AtomicLong viewNumber = new AtomicLong(0);
-  private final Map<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
 
   private long mLogLength = 0;
 
@@ -93,6 +97,47 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   @Override
   public long getDevicesNumber() {
     return devicesNumber.get();
+  }
+
+  @Override
+  public Map<String, Long> getTable2DevicesNumMap() {
+    return tableDeviceNumber;
+  }
+
+  @Override
+  public long getTableDevicesNumber(final String table) {
+    final Long deviceNumber = tableDeviceNumber.get(table);
+    return Objects.nonNull(deviceNumber) ? deviceNumber : 0;
+  }
+
+  @Override
+  public long getTableAttributeMemory(final String table) {
+    final Long memorySize = tableAttributeMemory.get(table);
+    return Objects.nonNull(memorySize) ? memorySize : 0;
+  }
+
+  public void addTableAttributeMemory(final String table, final long num) {
+    tableAttributeMemory.compute(
+        table, (tableName, size) -> Objects.nonNull(size) ? size + num : num);
+  }
+
+  public void decreaseTableAttributeMemory(final String table, final long num) {
+    tableAttributeMemory.computeIfPresent(table, (tableName, size) -> size - num);
+  }
+
+  public void addTableDevice(final String table) {
+    tableDeviceNumber.compute(table, (tableName, num) -> Objects.nonNull(num) ? num + 1 : 1L);
+  }
+
+  public void decreaseTableDevice(final String table, final long decrease) {
+    tableDeviceNumber.computeIfPresent(table, (tableName, num) -> num - decrease);
+  }
+
+  // Reset table device, will alter the schema statistics as well
+  public void resetTableDevice(final String table) {
+    final long num = tableDeviceNumber.remove(table);
+    devicesNumber.addAndGet(-num);
+    schemaEngineStatistics.deleteDevice(num);
   }
 
   public void addDevice() {

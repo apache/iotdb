@@ -55,7 +55,7 @@ public class NonAlignedFullPath implements IFullPath {
   }
 
   public String getMeasurement() {
-    return measurementSchema.getMeasurementId();
+    return measurementSchema.getMeasurementName();
   }
 
   @Override
@@ -90,6 +90,6 @@ public class NonAlignedFullPath implements IFullPath {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + deviceID.ramBytesUsed()
-        + RamUsageEstimator.sizeOf(measurementSchema.getMeasurementId());
+        + RamUsageEstimator.sizeOf(measurementSchema.getMeasurementName());
   }
 }

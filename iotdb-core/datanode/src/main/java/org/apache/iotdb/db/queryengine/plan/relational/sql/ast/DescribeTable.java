@@ -31,23 +31,38 @@ import static java.util.Objects.requireNonNull;
 
 public class DescribeTable extends Statement {
   private final QualifiedName table;
+  private final boolean isDetails;
 
-  public DescribeTable(QualifiedName table) {
-    super(null);
-    this.table = requireNonNull(table, "table is null");
-  }
+  // true: showCreateView
+  // false: showCreateTable
+  // null: Desc
+  private final Boolean isShowCreateView;
 
-  public DescribeTable(@Nonnull NodeLocation location, QualifiedName table) {
+  public DescribeTable(
+      final @Nonnull NodeLocation location,
+      final QualifiedName table,
+      final boolean isDetails,
+      final Boolean isShowCreateView) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
+    this.isDetails = isDetails;
+    this.isShowCreateView = isShowCreateView;
   }
 
   public QualifiedName getTable() {
     return table;
   }
 
+  public boolean isDetails() {
+    return isDetails;
+  }
+
+  public Boolean getShowCreateView() {
+    return isShowCreateView;
+  }
+
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitDescribeTable(this, context);
   }
 
@@ -57,24 +72,30 @@ public class DescribeTable extends Statement {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DescribeTable that = (DescribeTable) o;
-    return Objects.equals(table, that.table);
+    final DescribeTable that = (DescribeTable) o;
+    return Objects.equals(table, that.table)
+        && isDetails == that.isDetails
+        && Objects.equals(isShowCreateView, that.isShowCreateView);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(table);
+    return Objects.hash(table, isDetails, isShowCreateView);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("table", table).toString();
+    return toStringHelper(this)
+        .add("table", table)
+        .add("isDetails", isDetails)
+        .add("isShowCreateView", isShowCreateView)
+        .toString();
   }
 }

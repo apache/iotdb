@@ -20,19 +20,20 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IUnseqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.DeviceInfo;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-
-import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class CompactionScheduleContext {
   private int submitSeqInnerSpaceCompactionTaskNum = 0;
@@ -45,32 +46,44 @@ public class CompactionScheduleContext {
   private int fullyDirtyFileNum = 0;
 
   private int partiallyDirtyFileNum = 0;
-
-  private boolean isTreeModel = true;
   // end region
 
-  private final Map<TsFileResource, Map<IDeviceID, DeviceInfo>> partitionFileDeviceInfoCache;
+  private final Map<TsFileResource, ArrayDeviceTimeIndex> partitionFileDeviceInfoCache;
+  private long cachedDeviceInfoSize = 0;
+
+  private final Set<Long> timePartitionsDelayInsertionSelection;
 
   public CompactionScheduleContext() {
     this.partitionFileDeviceInfoCache = new HashMap<>();
+    this.timePartitionsDelayInsertionSelection = new HashSet<>();
   }
 
-  public CompactionScheduleContext(boolean isTreeModel) {
-    this();
-    this.isTreeModel = isTreeModel;
+  public void delayInsertionSelection(long timePartitionId) {
+    timePartitionsDelayInsertionSelection.add(timePartitionId);
+  }
+
+  public boolean isInsertionSelectionDelayed(long timePartitionId) {
+    return timePartitionsDelayInsertionSelection.remove(timePartitionId);
   }
 
   public void addResourceDeviceTimeIndex(
-      TsFileResource tsFileResource, Map<IDeviceID, DeviceInfo> deviceInfoMap) {
-    partitionFileDeviceInfoCache.put(tsFileResource, deviceInfoMap);
+      TsFileResource tsFileResource, ArrayDeviceTimeIndex deviceTimeIndex) {
+    partitionFileDeviceInfoCache.put(tsFileResource, deviceTimeIndex);
+    long deviceTimeIndexSize =
+        tsFileResource.getDeviceTimeIndexRamSize().orElse(deviceTimeIndex.calculateRamSize());
+    cachedDeviceInfoSize += deviceTimeIndexSize;
+    CompactionMetrics.getInstance().addSelectionCachedDeviceTimeIndexSize(deviceTimeIndexSize);
   }
 
-  public Map<IDeviceID, DeviceInfo> getResourceDeviceInfo(TsFileResource resource) {
+  public ArrayDeviceTimeIndex getResourceDeviceInfo(TsFileResource resource) {
     return partitionFileDeviceInfoCache.get(resource);
   }
 
   public void clearTimePartitionDeviceInfoCache() {
     partitionFileDeviceInfoCache.clear();
+    CompactionMetrics.getInstance()
+        .decreaseSelectionCachedDeviceTimeIndexSize(cachedDeviceInfoSize);
+    cachedDeviceInfoSize = 0;
   }
 
   public void incrementSubmitTaskNum(CompactionTaskType taskType, int num) {
@@ -135,6 +148,14 @@ public class CompactionScheduleContext {
     return submitSettleCompactionTaskNum;
   }
 
+  public int getSubmitCompactionTaskNum() {
+    return submitSeqInnerSpaceCompactionTaskNum
+        + submitUnseqInnerSpaceCompactionTaskNum
+        + submitCrossSpaceCompactionTaskNum
+        + submitInsertionCrossSpaceCompactionTaskNum
+        + submitSettleCompactionTaskNum;
+  }
+
   public boolean hasSubmitTask() {
     return submitCrossSpaceCompactionTaskNum
             + submitInsertionCrossSpaceCompactionTaskNum
@@ -153,10 +174,10 @@ public class CompactionScheduleContext {
   }
 
   public ISeqCompactionPerformer getSeqCompactionPerformer() {
-    ISeqCompactionPerformer seqCompactionPerformer =
-        IoTDBDescriptor.getInstance().getConfig().getInnerSeqCompactionPerformer().createInstance();
-    seqCompactionPerformer.setIgnoreAllNullRows(isTreeModel);
-    return seqCompactionPerformer;
+    return IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getInnerSeqCompactionPerformer()
+        .createInstance();
   }
 
   public IUnseqCompactionPerformer getUnseqCompactionPerformer() {
@@ -165,18 +186,10 @@ public class CompactionScheduleContext {
             .getConfig()
             .getInnerUnseqCompactionPerformer()
             .createInstance();
-    unseqCompactionPerformer.setIgnoreAllNullRows(isTreeModel);
     return unseqCompactionPerformer;
   }
 
   public ICrossCompactionPerformer getCrossCompactionPerformer() {
-    ICrossCompactionPerformer crossCompactionPerformer =
-        IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer().createInstance();
-    crossCompactionPerformer.setIgnoreAllNullRows(isTreeModel);
-    return crossCompactionPerformer;
-  }
-
-  public boolean isIgnoreAllNullRows() {
-    return isTreeModel;
+    return IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer().createInstance();
   }
 }

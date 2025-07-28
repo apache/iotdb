@@ -42,7 +42,7 @@ public class IoTDBNoSelectExpressionAfterAnalyzedTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE sg(device STRING ID, s1 INT32 MEASUREMENT)",
+        "CREATE TABLE sg(device STRING TAG, s1 INT32 FIELD)",
         "insert into sg(time,device,s1) values(1,'d1',1)",
         "insert into sg(time,device,s1,s2) values(1,'d1',1,1)"
       };
@@ -64,7 +64,7 @@ public class IoTDBNoSelectExpressionAfterAnalyzedTableIT {
     String[] retArray = new String[] {};
     tableAssertTestFail(
         "select s2 from sg where s1>0 order by device",
-        "701: Column 's2' cannot be resolved",
+        "616: Column 's2' cannot be resolved",
         DATABASE_NAME);
 
     // TODO After Aggregation supported
@@ -81,14 +81,14 @@ public class IoTDBNoSelectExpressionAfterAnalyzedTableIT {
 
     tableAssertTestFail(
         "select s1, s2 from sg where s1>0 order by device",
-        "701: Column 's2' cannot be resolved",
+        "616: Column 's2' cannot be resolved",
         DATABASE_NAME);
   }
 
   @Test
   public void testAlignByTime() {
     tableAssertTestFail(
-        "select s2 from sg where s1>0", "701: Column 's2' cannot be resolved", DATABASE_NAME);
+        "select s2 from sg where s1>0", "616: Column 's2' cannot be resolved", DATABASE_NAME);
 
     /*tableResultSetEqualTest("select count(s2) from sg where s1>0", expectedHeader, retArray,DATABASE_NAME);*/
   }

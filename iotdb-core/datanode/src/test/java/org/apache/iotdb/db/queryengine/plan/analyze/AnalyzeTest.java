@@ -23,10 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
@@ -66,7 +66,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.groupByTime;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
@@ -176,9 +176,9 @@ public class AnalyzeTest {
           new DatasetHeader(
               Arrays.asList(
                   new ColumnHeader("root.sg.d1.s1", TSDataType.INT32, null),
-                  new ColumnHeader("root.sg.d1.s1 / 2", TSDataType.DOUBLE, null),
+                  new ColumnHeader("root.sg.d1.s1 / 2", TSDataType.INT64, null),
                   new ColumnHeader("root.sg.d1.s1 * 3", TSDataType.DOUBLE, null),
-                  new ColumnHeader("root.sg.d1.s1 % 4", TSDataType.DOUBLE, null),
+                  new ColumnHeader("root.sg.d1.s1 % 4", TSDataType.INT64, null),
                   new ColumnHeader("root.sg.d1.s1 - 5", TSDataType.DOUBLE, null)),
               false));
       alignByTimeAnalysisEqualTest(actualAnalysis, expectedAnalysis);

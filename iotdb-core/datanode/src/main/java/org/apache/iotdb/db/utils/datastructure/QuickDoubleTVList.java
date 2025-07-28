@@ -18,36 +18,19 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-public class QuickDoubleTVList extends DoubleTVList implements QuickSort {
-  @Override
-  public int compare(int idx1, int idx2) {
-    long t1 = getTime(idx1);
-    long t2 = getTime(idx2);
-    return Long.compare(t1, t2);
+public class QuickDoubleTVList extends DoubleTVList {
+  private final QuickSort policy;
+
+  QuickDoubleTVList() {
+    policy = new QuickSort(this);
   }
 
   @Override
-  public void swap(int p, int q) {
-    double valueP = getDouble(p);
-    long timeP = getTime(p);
-    double valueQ = getDouble(q);
-    long timeQ = getTime(q);
-    set(p, timeQ, valueQ);
-    set(q, timeP, valueP);
-  }
-
-  @Override
-  public void sort() {
+  public synchronized void sort() {
     if (!sorted) {
-      qsort(0, rowCount - 1);
+      policy.qsort(0, rowCount - 1);
     }
     sorted = true;
-  }
-
-  @Override
-  protected void set(int src, int dest) {
-    long srcT = getTime(src);
-    double srcV = getDouble(src);
-    set(dest, srcT, srcV);
+    seqRowCount = rowCount;
   }
 }

@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
@@ -49,6 +52,7 @@ public class TsFileManager {
   // time partition -> double linked list of tsfiles
   private final TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
   private final TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
+  private final TreeMap<Long, ModFileManagement> modFileManagementMap = new TreeMap<>();
 
   private volatile boolean allowCompaction = true;
   private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
@@ -171,7 +175,6 @@ public class TsFileManager {
     try {
       for (TsFileResource resource : tsFileResourceList) {
         remove(resource, sequence);
-        TsFileResourceManager.getInstance().removeTsFileResource(resource);
       }
     } finally {
       writeLock("removeAll");
@@ -184,36 +187,54 @@ public class TsFileManager {
    */
   public void insertToPartitionFileList(
       TsFileResource tsFileResource, long timePartition, boolean sequence, int insertPos) {
+    registerTsFileResourceToResourceManager(tsFileResource);
     writeLock("add");
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
       TsFileResourceList tsFileResources =
           selectedMap.computeIfAbsent(timePartition, o -> new TsFileResourceList());
       tsFileResources.set(insertPos, tsFileResource);
+      if (tsFileResource.getModFileManagement() == null) {
+        tsFileResource.setModFileManagement(
+            modFileManagementMap.computeIfAbsent(
+                timePartition, t -> new PartitionLevelModFileManager()));
+      }
     } finally {
       writeUnlock();
     }
   }
 
   public void add(TsFileResource tsFileResource, boolean sequence) {
+    registerTsFileResourceToResourceManager(tsFileResource);
     writeLock("add");
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
       selectedMap
           .computeIfAbsent(tsFileResource.getTimePartition(), o -> new TsFileResourceList())
           .add(tsFileResource);
+      if (tsFileResource.getModFileManagement() == null) {
+        tsFileResource.setModFileManagement(
+            modFileManagementMap.computeIfAbsent(
+                tsFileResource.getTimePartition(), t -> new PartitionLevelModFileManager()));
+      }
     } finally {
       writeUnlock();
     }
   }
 
   public void keepOrderInsert(TsFileResource tsFileResource, boolean sequence) throws IOException {
+    registerTsFileResourceToResourceManager(tsFileResource);
     writeLock("keepOrderInsert");
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
       selectedMap
           .computeIfAbsent(tsFileResource.getTimePartition(), o -> new TsFileResourceList())
           .keepOrderInsert(tsFileResource);
+      if (tsFileResource.getModFileManagement() == null) {
+        tsFileResource.setModFileManagement(
+            modFileManagementMap.computeIfAbsent(
+                tsFileResource.getTimePartition(), t -> new PartitionLevelModFileManager()));
+      }
     } finally {
       writeUnlock();
     }
@@ -227,6 +248,13 @@ public class TsFileManager {
       }
     } finally {
       writeUnlock();
+    }
+  }
+
+  private void registerTsFileResourceToResourceManager(TsFileResource resource) {
+    TsFileResourceStatus status = resource.getStatus();
+    if (status != TsFileResourceStatus.UNCLOSED && status != TsFileResourceStatus.DELETED) {
+      TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
     }
   }
 
@@ -262,10 +290,27 @@ public class TsFileManager {
                 .keepOrderInsert(resource);
           }
           FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(resource);
+          if (resource.getModFileManagement() == null) {
+            resource.setModFileManagement(
+                modFileManagementMap.computeIfAbsent(
+                    resource.getTimePartition(), t -> new PartitionLevelModFileManager()));
+          }
         }
       }
     } finally {
       writeUnlock();
+    }
+
+    // Currently disable
+    if (false) {
+      PipeDataNodeResourceManager.compaction()
+          .emitResult(
+              storageGroupName,
+              dataRegionId,
+              timePartition,
+              seqFileResources,
+              unseqFileResources,
+              targetFileResources);
     }
   }
 
@@ -318,6 +363,8 @@ public class TsFileManager {
       readUnlock();
     }
   }
+
+  public void getModFileManagement() {}
 
   public void readLock() {
     resourceListLock.readLock().lock();

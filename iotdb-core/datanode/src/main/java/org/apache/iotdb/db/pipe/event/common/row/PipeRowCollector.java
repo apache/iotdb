@@ -21,12 +21,14 @@ package org.apache.iotdb.db.pipe.event.common.row;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.type.Binary;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
@@ -43,10 +45,31 @@ public class PipeRowCollector implements RowCollector {
   private boolean isAligned = false;
   private final PipeTaskMeta pipeTaskMeta; // Used to report progress
   private final EnrichedEvent sourceEvent; // Used to report progress
+  private final String sourceEventDataBaseName;
+  private final Boolean isTableModel;
 
   public PipeRowCollector(PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
+    if (sourceEvent instanceof PipeInsertionEvent) {
+      sourceEventDataBaseName =
+          ((PipeInsertionEvent) sourceEvent).getSourceDatabaseNameFromDataRegion();
+      isTableModel = ((PipeInsertionEvent) sourceEvent).getRawIsTableModelEvent();
+    } else {
+      sourceEventDataBaseName = null;
+      isTableModel = null;
+    }
+  }
+
+  public PipeRowCollector(
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      String sourceEventDataBase,
+      Boolean isTableModel) {
+    this.pipeTaskMeta = pipeTaskMeta;
+    this.sourceEvent = sourceEvent;
+    this.sourceEventDataBaseName = sourceEventDataBase;
+    this.isTableModel = isTableModel;
   }
 
   @Override
@@ -75,33 +98,39 @@ public class PipeRowCollector implements RowCollector {
       isAligned = pipeRow.isAligned();
     }
 
-    final int rowIndex = tablet.rowSize;
+    final int rowIndex = tablet.getRowSize();
     tablet.addTimestamp(rowIndex, row.getTime());
     for (int i = 0; i < row.size(); i++) {
       final Object value = row.getObject(i);
-      if (value instanceof org.apache.iotdb.pipe.api.type.Binary) {
+      if (value instanceof Binary) {
         tablet.addValue(
-            measurementSchemaArray[i].getMeasurementId(),
+            measurementSchemaArray[i].getMeasurementName(),
             rowIndex,
-            PipeBinaryTransformer.transformToBinary((org.apache.iotdb.pipe.api.type.Binary) value));
+            PipeBinaryTransformer.transformToBinary((Binary) value));
       } else {
-        tablet.addValue(measurementSchemaArray[i].getMeasurementId(), rowIndex, value);
+        tablet.addValue(measurementSchemaArray[i].getMeasurementName(), rowIndex, value);
       }
       if (row.isNull(i)) {
-        tablet.bitMaps[i].mark(rowIndex);
+        tablet.getBitMaps()[i].mark(rowIndex);
       }
     }
-    tablet.rowSize++;
 
-    if (tablet.rowSize == tablet.getMaxRowNumber()) {
+    if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
       collectTabletInsertionEvent();
     }
   }
 
   private void collectTabletInsertionEvent() {
     if (tablet != null) {
+      // TODO: non-PipeInsertionEvent sourceEvent is not supported?
+      final PipeInsertionEvent pipeInsertionEvent =
+          sourceEvent instanceof PipeInsertionEvent ? ((PipeInsertionEvent) sourceEvent) : null;
       tabletInsertionEventList.add(
           new PipeRawTabletInsertionEvent(
+              isTableModel,
+              sourceEventDataBaseName,
+              pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawTableModelDataBase(),
+              pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawTreeModelDataBase(),
               tablet,
               isAligned,
               sourceEvent == null ? null : sourceEvent.getPipeName(),

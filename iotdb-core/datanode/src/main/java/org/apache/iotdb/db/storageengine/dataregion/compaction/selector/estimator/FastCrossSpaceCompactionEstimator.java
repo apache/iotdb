@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -32,15 +33,25 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
   protected long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
     // add ChunkMetadata size of MultiTsFileDeviceIterator
+    long maxAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(fileInfo -> fileInfo.maxMemToReadAlignedSeries)
+            .sum();
+    long maxNonAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(
+                fileInfo ->
+                    fileInfo.maxMemToReadNonAlignedSeries * config.getSubCompactionTaskNum())
+            .sum();
     cost +=
         Math.min(
-            taskInfo.getTotalChunkMetadataSize(),
+            Math.max(maxAlignedSeriesMemCost, maxNonAlignedSeriesMemCost),
             taskInfo.getFileInfoList().size()
                 * taskInfo.getMaxChunkMetadataNumInDevice()
                 * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
-    cost += memoryBudgetForFileWriter;
+    cost += fixedMemoryBudget;
 
     return cost;
   }
@@ -73,7 +84,7 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
     long maxConcurrentChunkSizeFromSourceFile =
         (averageChunkSize + tsFileConfig.getPageSizeInByte())
             * maxConcurrentSeriesNum
-            * calculatingMaxOverlapFileNumInSubCompactionTask(taskInfo.getResources());
+            * calculatingMaxOverlapFileNumInSubCompactionTask(null, taskInfo.getResources());
 
     return targetChunkWriterSize
         + maxConcurrentChunkSizeFromSourceFile
@@ -82,28 +93,29 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
 
   @Override
   public long roughEstimateCrossCompactionMemory(
-      List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
+      CompactionScheduleContext context,
+      List<TsFileResource> seqResources,
+      List<TsFileResource> unseqResources)
+      throws IOException {
+    if (config.getCompactionMaxAlignedSeriesNumInOneBatch() <= 0) {
+      return -1L;
+    }
     List<TsFileResource> sourceFiles = new ArrayList<>(seqResources.size() + unseqResources.size());
     sourceFiles.addAll(seqResources);
     sourceFiles.addAll(unseqResources);
 
-    long metadataCost =
-        CompactionEstimateUtils.roughEstimateMetadataCostInCompaction(
+    CompactionTaskMetadataInfo metadataInfo =
+        CompactionEstimateUtils.collectMetadataInfoFromDisk(
             sourceFiles, CompactionType.CROSS_COMPACTION);
-    if (metadataCost < 0) {
-      return metadataCost;
-    }
 
-    int maxConcurrentSeriesNum =
-        Math.max(
-            config.getCompactionMaxAlignedSeriesNumInOneBatch(), config.getSubCompactionTaskNum());
+    int maxConcurrentSeriesNum = metadataInfo.getMaxConcurrentSeriesNum(true);
     long maxChunkSize = config.getTargetChunkSize();
     long maxPageSize = tsFileConfig.getPageSizeInByte();
-    int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(sourceFiles);
+    int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(context, sourceFiles);
     // source files (chunk + uncompressed page) * overlap file num
     // target files (chunk + unsealed page writer)
     return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
-        + memoryBudgetForFileWriter
-        + metadataCost;
+        + fixedMemoryBudget
+        + metadataInfo.metadataMemCost;
   }
 }

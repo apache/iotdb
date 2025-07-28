@@ -902,7 +902,6 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
     return null;
   }
 
-  @TestOnly
   public List<Pair<String, Short>> getKeyOffsetList() {
     short[] offsets = getOffsets();
     List<Pair<String, Short>> res = new ArrayList<>();
@@ -917,7 +916,6 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
     return res;
   }
 
-  @TestOnly
   public short[] getOffsets() {
     ByteBuffer buf = this.buffer.asReadOnlyBuffer();
     short[] ofs = new short[recordNum];

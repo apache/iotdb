@@ -30,6 +30,9 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.encrypt.EncryptUtils;
+import org.apache.tsfile.exception.encrypt.EncryptException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +41,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.function.Supplier;
 
@@ -73,6 +77,10 @@ public class IoTDBStartCheck {
   private static final String MPP_DATA_EXCHANGE_PORT = "dn_mpp_data_exchange_port";
   private static final String SCHEMA_REGION_CONSENSUS_PORT = "dn_schema_region_consensus_port";
   private static final String DATA_REGION_CONSENSUS_PORT = "dn_data_region_consensus_port";
+  private static final String ENCRYPT_MAGIC_STRING = "encrypt_magic_string";
+
+  private static final String magicString = "thisisusedfortsfileencrypt";
+
   // Mutable system parameters
   private static final Map<String, Supplier<String>> variableParamValueTable = new HashMap<>();
 
@@ -108,7 +116,6 @@ public class IoTDBStartCheck {
     return IoTDBConfigCheckHolder.INSTANCE;
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     IoTDBConfigCheckHolder.INSTANCE = new IoTDBStartCheck();
   }
@@ -157,7 +164,6 @@ public class IoTDBStartCheck {
    * accessing same director.
    */
   public void checkDirectory() throws ConfigurationException, IOException {
-    // check data dirs TODO(zhm) only check local directories
     for (String dataDir : config.getLocalDataDirs()) {
       DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
     }
@@ -218,12 +224,15 @@ public class IoTDBStartCheck {
 
     if (systemPropertiesHandler.isFirstStart()) {
       if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-              || config
-                  .getDataRegionConsensusProtocolClass()
-                  .equals(ConsensusFactory.IOT_CONSENSUS_V2))
+              || (config
+                      .getDataRegionConsensusProtocolClass()
+                      .equals(ConsensusFactory.IOT_CONSENSUS_V2)
+                  && config
+                      .getIotConsensusV2Mode()
+                      .equals(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE)))
           && config.getWalMode().equals(WALMode.DISABLE)) {
         throw new ConfigurationException(
-            "Configuring the WALMode as disable is not supported under IoTConsensus");
+            "Configuring the WALMode as disable is not supported under IoTConsensus and IoTConsensusV2 stream mode");
       }
     } else {
       // check whether upgrading from <=v0.9
@@ -297,6 +306,24 @@ public class IoTDBStartCheck {
     systemPropertiesHandler.put(CLUSTER_ID, clusterId);
   }
 
+  public void serializeEncryptMagicString() throws IOException {
+    if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+        && !Objects.equals(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            "org.apache.tsfile.encrypt.UNENCRYPTED")) {
+      String token = System.getenv("user_encrypt_token");
+      if (token == null || token.trim().isEmpty()) {
+        throw new EncryptException(
+            "encryptType is not UNENCRYPTED, but user_encrypt_token is not set. Please set it in the environment variable.");
+      }
+    }
+    String encryptMagicString =
+        EncryptUtils.byteArrayToHexString(
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+    systemProperties.put(ENCRYPT_MAGIC_STRING, () -> encryptMagicString);
+    generateOrOverwriteSystemPropertiesFile();
+  }
+
   public boolean checkConsensusProtocolExists(TConsensusGroupType type) {
     if (type == TConsensusGroupType.DataRegion) {
       return properties.containsKey(DATA_REGION_CONSENSUS_PROTOCOL);
@@ -329,5 +356,14 @@ public class IoTDBStartCheck {
   public void generateOrOverwriteSystemPropertiesFile() throws IOException {
     systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
     systemPropertiesHandler.overwrite(properties);
+  }
+
+  public void checkEncryptMagicString() throws IOException, ConfigurationException {
+    properties = systemPropertiesHandler.read();
+    String encryptMagicString = properties.getProperty("encrypt_magic_string");
+    if (encryptMagicString != null) {
+      byte[] magicBytes = EncryptUtils.hexStringToByteArray(encryptMagicString);
+      TSFileDescriptor.getInstance().getConfig().setEncryptKey(magicBytes);
+    }
   }
 }

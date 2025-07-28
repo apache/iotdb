@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
@@ -48,8 +49,9 @@ public class ShuffleSinkHandleTest {
 
     // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per read.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    MemoryManager memoryManager = Mockito.spy(new MemoryManager(10 * mockTsBlockSize));
     MemoryPool spyMemoryPool =
-        Mockito.spy(new MemoryPool("test", 10 * mockTsBlockSize, 5 * mockTsBlockSize));
+        Mockito.spy(new MemoryPool("test", memoryManager, 5 * mockTsBlockSize));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
     // Construct a mock SinkListener.
     MPPDataExchangeManager.SinkListener mockSinkListener =

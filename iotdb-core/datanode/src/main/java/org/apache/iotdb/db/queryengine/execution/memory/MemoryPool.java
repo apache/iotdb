@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.memory;
 
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
 
@@ -38,7 +41,6 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /** A thread-safe memory pool. */
@@ -112,10 +114,8 @@ public class MemoryPool {
   }
 
   private final String id;
-  private final long maxBytes;
+  private final IMemoryBlock memoryBlock;
   private final long maxBytesPerFragmentInstance;
-
-  private final AtomicLong remainingBytes;
 
   /** queryId -> fragmentInstanceId -> planNodeId -> bytesReserved. */
   private final Map<String, Map<String, Map<String, Long>>> queryMemoryReservations =
@@ -124,17 +124,21 @@ public class MemoryPool {
   private final Queue<MemoryReservationFuture<Void>> memoryReservationFutures =
       new ConcurrentLinkedQueue<>();
 
-  public MemoryPool(String id, long maxBytes, long maxBytesPerFragmentInstance) {
+  public MemoryPool(String id, MemoryManager memoryManager, long maxBytesPerFragmentInstance) {
     this.id = Validate.notNull(id, "id can not be null.");
-    Validate.isTrue(maxBytes > 0L, "max bytes should be greater than zero: %d", maxBytes);
-    this.maxBytes = maxBytes;
+    this.memoryBlock =
+        memoryManager.exactAllocate(memoryManager.getName(), MemoryBlockType.DYNAMIC);
     Validate.isTrue(
-        maxBytesPerFragmentInstance > 0L && maxBytesPerFragmentInstance <= maxBytes,
+        this.memoryBlock.getTotalMemorySizeInBytes() > 0L,
+        "max bytes should be greater than zero: %d",
+        this.memoryBlock.getTotalMemorySizeInBytes());
+    Validate.isTrue(
+        maxBytesPerFragmentInstance > 0L
+            && maxBytesPerFragmentInstance <= this.memoryBlock.getTotalMemorySizeInBytes(),
         "max bytes per FI should be in (0,maxBytes]. maxBytesPerFI: %d, maxBytes: %d",
         maxBytesPerFragmentInstance,
-        maxBytes);
+        this.memoryBlock.getTotalMemorySizeInBytes());
     this.maxBytesPerFragmentInstance = maxBytesPerFragmentInstance;
-    this.remainingBytes = new AtomicLong(maxBytes);
   }
 
   public String getId() {
@@ -142,11 +146,11 @@ public class MemoryPool {
   }
 
   public long getMaxBytes() {
-    return maxBytes;
+    return memoryBlock.getTotalMemorySizeInBytes();
   }
 
   public long getRemainingBytes() {
-    return remainingBytes.get();
+    return memoryBlock.getFreeMemoryInBytes();
   }
 
   public int getQueryMemoryReservationSize() {
@@ -247,7 +251,9 @@ public class MemoryPool {
           maxBytesCanReserve,
           planNodeId);
       throw new IllegalArgumentException(
-          "Query is aborted since it requests more memory than can be allocated.");
+          String.format(
+              "Query is aborted since it requests more memory than can be allocated, bytesToReserve: %sB, maxBytesCanReserve: %sB",
+              bytesToReserve, maxBytesCanReserve));
     }
 
     ListenableFuture<Void> result;
@@ -335,7 +341,7 @@ public class MemoryPool {
       throw new IllegalArgumentException("RelatedMemoryReserved can't be null when freeing memory");
     }
 
-    remainingBytes.addAndGet(bytes);
+    memoryBlock.release(bytes);
 
     if (memoryReservationFutures.isEmpty()) {
       return;
@@ -376,7 +382,7 @@ public class MemoryPool {
   }
 
   public long getReservedBytes() {
-    return maxBytes - remainingBytes.get();
+    return memoryBlock.getUsedMemoryInBytes();
   }
 
   public boolean tryReserve(
@@ -385,14 +391,14 @@ public class MemoryPool {
       String planNodeId,
       long bytesToReserve,
       long maxBytesCanReserve) {
-    long tryRemainingBytes = remainingBytes.addAndGet(-bytesToReserve);
+    long tryUsedBytes = memoryBlock.forceAllocateWithoutLimitation(bytesToReserve);
     long queryRemainingBytes =
         maxBytesCanReserve
             - queryMemoryReservations
                 .get(queryId)
                 .get(fragmentInstanceId)
                 .merge(planNodeId, bytesToReserve, Long::sum);
-    return tryRemainingBytes >= 0 && queryRemainingBytes >= 0;
+    return tryUsedBytes <= memoryBlock.getTotalMemorySizeInBytes() && queryRemainingBytes >= 0;
   }
 
   private void rollbackReserve(
@@ -401,6 +407,6 @@ public class MemoryPool {
         .get(queryId)
         .get(fragmentInstanceId)
         .merge(planNodeId, -bytesToReserve, Long::sum);
-    remainingBytes.addAndGet(bytesToReserve);
+    memoryBlock.release(bytesToReserve);
   }
 }

@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.ComparisonFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
@@ -62,8 +62,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
-import static org.apache.tsfile.common.regexp.LikePattern.getEscapeCharacter;
 
 /**
  * The {@link ConvertSchemaPredicateToFilterVisitor} will convert a predicate to {@link
@@ -120,8 +120,7 @@ public class ConvertSchemaPredicateToFilterVisitor
         new LikeFilter(
             (((StringLiteral) node.getPattern()).getValue()),
             node.getEscape().isPresent()
-                ? getEscapeCharacter(
-                    Optional.ofNullable(((StringLiteral) node.getEscape().get()).getValue()))
+                ? getEscapeCharacter(((StringLiteral) node.getEscape().get()).getValue())
                 : Optional.empty()),
         ((SymbolReference) node.getValue()).getName(),
         context);
@@ -159,12 +158,16 @@ public class ConvertSchemaPredicateToFilterVisitor
     final boolean isOrdered;
     if (node.getLeft() instanceof Literal) {
       value = ((StringLiteral) (node.getLeft())).getValue();
-      checkArgument(isSymbolReference(node.getRight()));
+      if (!isSymbolReference(node.getRight())) {
+        return null;
+      }
       columnName = ((SymbolReference) (node.getRight())).getName();
       isOrdered = false;
     } else if (node.getRight() instanceof Literal) {
       value = ((StringLiteral) (node.getRight())).getValue();
-      checkArgument(isSymbolReference(node.getLeft()));
+      if (!isSymbolReference(node.getLeft())) {
+        return null;
+      }
       columnName = ((SymbolReference) (node.getLeft())).getName();
       isOrdered = true;
     } else {
@@ -239,8 +242,8 @@ public class ConvertSchemaPredicateToFilterVisitor
             .table
             .getColumnSchema(columnName)
             .getColumnCategory()
-            .equals(TsTableColumnCategory.ID)
-        ? new IdFilter(filter, context.idColumnIndexMap.get(columnName))
+            .equals(TsTableColumnCategory.TAG)
+        ? new TagFilter(filter, context.idColumnIndexMap.get(columnName))
         : new AttributeFilter(filter, columnName);
   }
 
@@ -259,7 +262,7 @@ public class ConvertSchemaPredicateToFilterVisitor
       List<TsTableColumnSchema> columnSchemaList = table.getColumnList();
       int idIndex = 0;
       for (TsTableColumnSchema columnSchema : columnSchemaList) {
-        if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+        if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
           map.put(columnSchema.getColumnName(), idIndex);
           idIndex++;
         }

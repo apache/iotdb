@@ -41,6 +41,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -48,6 +49,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,12 +74,77 @@ public class RegionMigrateService implements IService {
   // where different asynchronous tasks are submitted to the same datanode within a single procedure
   private static final ConcurrentHashMap<Long, TRegionMigrateResult> taskResultMap =
       new ConcurrentHashMap<>();
+
   private static final TRegionMigrateResult unfinishedResult = new TRegionMigrateResult();
+
+  private static class RegionMigrationStatusCache {
+
+    private long logicalClock = -1;
+    private long timestamp = -1;
+
+    private List<TConsensusGroupId> currentMigratingConsensusGroupIds = Collections.emptyList();
+
+    private long lastNotifyMigratingTime = Long.MIN_VALUE;
+
+    public synchronized void update(
+        long newLogicalClock, long newTimestamp, List<TConsensusGroupId> currentRegionOperations) {
+      if (newLogicalClock < logicalClock
+          || (newLogicalClock == logicalClock && newTimestamp <= timestamp)) {
+        return;
+      }
+      logicalClock = newLogicalClock;
+      timestamp = newTimestamp;
+
+      currentMigratingConsensusGroupIds = currentRegionOperations;
+
+      if (currentRegionOperations != null && !currentRegionOperations.isEmpty()) {
+        lastNotifyMigratingTime = System.currentTimeMillis();
+      }
+    }
+
+    public synchronized void notifyMigrating() {
+      lastNotifyMigratingTime = System.currentTimeMillis();
+    }
+
+    public synchronized boolean hasMigratingRegions() {
+      return currentMigratingConsensusGroupIds != null
+          && !currentMigratingConsensusGroupIds.isEmpty();
+    }
+
+    public synchronized long getLastNotifyMigratingTime() {
+      return lastNotifyMigratingTime;
+    }
+  }
+
+  private final RegionMigrationStatusCache regionMigrationStatusCache =
+      new RegionMigrationStatusCache();
 
   private RegionMigrateService() {}
 
   public static RegionMigrateService getInstance() {
     return Holder.INSTANCE;
+  }
+
+  public void notifyRegionMigration(TNotifyRegionMigrationReq req) {
+    regionMigrationStatusCache.update(
+        req.getLogicalClock(), req.getTimestamp(), req.getCurrentRegionOperations());
+
+    if (req.isSetIsStart() && req.isSetRegionId()) {
+      regionMigrationStatusCache.notifyMigrating();
+      if (req.isIsStart()) {
+        LOGGER.info("Region {} is notified to begin migrating", req.getRegionId());
+      } else {
+        LOGGER.info("Region {} is notified to finish migrating", req.getRegionId());
+      }
+    }
+  }
+
+  public long getLastNotifyMigratingTime() {
+    return regionMigrationStatusCache.getLastNotifyMigratingTime();
+  }
+
+  public boolean mayHaveMigratingRegions() {
+    return regionMigrationStatusCache.hasMigratingRegions();
   }
 
   /**
@@ -256,42 +323,29 @@ public class RegionMigrateService implements IService {
       TEndPoint destEndpoint = getConsensusEndPoint(destDataNode, regionId);
       boolean addPeerSucceed = true;
       Throwable throwable = null;
-      for (int i = 0; i < MAX_RETRY_NUM; i++) {
-        try {
-          if (!addPeerSucceed) {
-            Thread.sleep(SLEEP_MILLIS);
-          }
-          addRegionPeer(regionId, new Peer(regionId, destDataNode.getDataNodeId(), destEndpoint));
-          addPeerSucceed = true;
-        } catch (PeerAlreadyInConsensusGroupException e) {
-          addPeerSucceed = true;
-        } catch (InterruptedException e) {
-          throwable = e;
-          Thread.currentThread().interrupt();
-        } catch (ConsensusException e) {
-          addPeerSucceed = false;
-          throwable = e;
-          taskLogger.error(
-              "{}, executed addPeer {} for region {} error, retry times: {}",
-              REGION_MIGRATE_PROCESS,
-              destEndpoint,
-              regionId,
-              i,
-              e);
-        } catch (Exception e) {
-          addPeerSucceed = false;
-          throwable = e;
-          taskLogger.warn("Unexpected exception", e);
-        }
-        if (addPeerSucceed || throwable instanceof InterruptedException) {
-          break;
-        }
+      try {
+        addRegionPeer(regionId, new Peer(regionId, destDataNode.getDataNodeId(), destEndpoint));
+      } catch (PeerAlreadyInConsensusGroupException ignore) {
+
+      } catch (ConsensusException e) {
+        addPeerSucceed = false;
+        throwable = e;
+        taskLogger.error(
+            "{}, executed addPeer {} for region {} error",
+            REGION_MIGRATE_PROCESS,
+            destEndpoint,
+            regionId,
+            e);
+      } catch (Exception e) {
+        addPeerSucceed = false;
+        throwable = e;
+        taskLogger.warn("Unexpected exception", e);
       }
 
       if (!addPeerSucceed) {
         String errorMsg =
             String.format(
-                "%s, AddPeer for region error after max retry times, peerId: %s, regionId: %s",
+                "%s, AddPeer for region error, peerId: %s, regionId: %s",
                 REGION_MIGRATE_PROCESS, destEndpoint, regionId);
         taskLogger.error(errorMsg, throwable);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
@@ -568,11 +622,11 @@ public class RegionMigrateService implements IService {
     return result;
   }
 
-  private static boolean isSucceed(TSStatus status) {
+  public static boolean isSucceed(TSStatus status) {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
-  private static boolean isFailed(TSStatus status) {
+  public static boolean isFailed(TSStatus status) {
     return !isSucceed(status);
   }
 

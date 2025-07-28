@@ -23,18 +23,18 @@ import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
+import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -53,7 +53,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
 public class ImportTsFileRemotely extends ImportTsFileBase {
@@ -64,15 +63,17 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
   private static final String LOAD_STRATEGY = "sync";
   private static final Integer MAX_RETRY_COUNT = 3;
 
-  private static final AtomicInteger CONNECTION_TIMEOUT_MS =
-      new AtomicInteger(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
-
   private IoTDBSyncClient client;
 
   private static String host;
   private static String port;
 
-  public ImportTsFileRemotely() {
+  private static String username = SessionConfig.DEFAULT_USER;
+  private static String password = SessionConfig.DEFAULT_PASSWORD;
+  private static boolean validateTsFile;
+
+  public ImportTsFileRemotely(String timePrecision) {
+    setTimePrecision(timePrecision);
     initClient();
     sendHandshake();
   }
@@ -152,8 +153,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
                 client.getIpAddress(), client.getPort(), resp.getStatus()));
         resp =
             client.pipeTransfer(
-                PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
-                    CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+                PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(getTimePrecision()));
       }
 
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -162,7 +162,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
                 "Handshake error with target server ip: %s, port: %s, because: %s.",
                 client.getIpAddress(), client.getPort(), resp.getStatus()));
       } else {
-        client.setTimeout(CONNECTION_TIMEOUT_MS.get());
+        client.setTimeout(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
         IOT_PRINTER.println(
             String.format(
                 "Handshake success. Target server ip: %s, port: %s",
@@ -178,14 +178,17 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
   private Map<String, String> constructParamsMap() {
     final Map<String, String> params = new HashMap<>();
-    params.put(
-        PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
-        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION, getTimePrecision());
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, getClusterId());
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
         Boolean.toString(true));
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, LOAD_STRATEGY);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
+        Boolean.toString(validateTsFile));
     return params;
   }
 
@@ -334,5 +337,17 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
   public static void setPort(final String port) {
     ImportTsFileRemotely.port = port;
+  }
+
+  public static void setUsername(final String username) {
+    ImportTsFileRemotely.username = username;
+  }
+
+  public static void setPassword(final String password) {
+    ImportTsFileRemotely.password = password;
+  }
+
+  public static void setValidateTsFile(final boolean validateTsFile) {
+    ImportTsFileRemotely.validateTsFile = validateTsFile;
   }
 }

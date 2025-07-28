@@ -19,11 +19,11 @@
 package org.apache.iotdb.commons.auth.authorizer;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.nimbusds.jose.JOSEException;
@@ -148,9 +148,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   public boolean login(String token, String password) throws AuthException {
     if (password != null && !password.isEmpty()) {
       logger.error(
-          "JWT Login failed as a non-empty Password was given username (token): {}, password: {}",
-          token,
-          password);
+          "JWT Login failed as a non-empty Password was given username (token): {}", token);
       return false;
     }
     if (token == null || token.isEmpty()) {
@@ -162,7 +160,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     try {
       claims = validateToken(token);
     } catch (JwtException e) {
-      logger.error("Unable to login the user wit jwt {}", password, e);
+      logger.error("Unable to login the user with Username (token) {}", token, e);
       return false;
     }
     logger.debug("JWT was validated successfully!");
@@ -256,13 +254,12 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   }
 
   @Override
-  public boolean checkUserPrivileges(String username, PartialPath path, int privilegeId)
-      throws AuthException {
-    return isAdmin(username);
+  public boolean checkUserPrivileges(String userName, PrivilegeUnion union) throws AuthException {
+    return isAdmin(userName);
   }
 
   @Override
-  public void updateUserPassword(String username, String newPassword) {
+  public void updateUserPassword(String userName, String newPassword) {
     throwUnsupportedOperationException();
   }
 }

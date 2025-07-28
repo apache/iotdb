@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -31,19 +33,21 @@ import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
@@ -51,24 +55,25 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -94,9 +99,13 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.SettableFuture;
 
+import javax.annotation.Nullable;
+
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public interface IConfigTaskExecutor {
 
@@ -110,11 +119,16 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> deleteDatabase(DeleteDatabaseStatement deleteDatabaseStatement);
 
-  SettableFuture<ConfigTaskResult> createFunction(CreateFunctionStatement createFunctionStatement);
+  SettableFuture<ConfigTaskResult> createFunction(
+      Model model,
+      String udfName,
+      String className,
+      Optional<String> stringURI,
+      Class<?> baseClazz);
 
-  SettableFuture<ConfigTaskResult> dropFunction(String udfName);
+  SettableFuture<ConfigTaskResult> dropFunction(Model model, String udfName);
 
-  SettableFuture<ConfigTaskResult> showFunctions();
+  SettableFuture<ConfigTaskResult> showFunctions(Model model);
 
   SettableFuture<ConfigTaskResult> createTrigger(CreateTriggerStatement createTriggerStatement);
 
@@ -126,7 +140,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> dropPipePlugin(DropPipePluginStatement dropPipePluginStatement);
 
-  SettableFuture<ConfigTaskResult> showPipePlugins();
+  SettableFuture<ConfigTaskResult> showPipePlugins(
+      ShowPipePluginsStatement showPipePluginsStatement);
 
   SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName);
 
@@ -138,7 +153,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> clearCache(boolean onCluster);
+  SettableFuture<ConfigTaskResult> clearCache(boolean onCluster, Set<CacheClearOptions> options);
 
   SettableFuture<ConfigTaskResult> setConfiguration(TSetConfigurationReq tSetConfigurationReq);
 
@@ -158,11 +173,14 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement);
 
-  SettableFuture<ConfigTaskResult> showRegion(ShowRegionStatement showRegionStatement);
+  SettableFuture<ConfigTaskResult> showRegion(
+      final ShowRegionStatement showRegionStatement, final boolean isTableModel);
 
-  SettableFuture<ConfigTaskResult> showDataNodes(ShowDataNodesStatement showDataNodesStatement);
+  SettableFuture<ConfigTaskResult> showDataNodes();
 
   SettableFuture<ConfigTaskResult> showConfigNodes();
+
+  SettableFuture<ConfigTaskResult> showAINodes();
 
   SettableFuture<ConfigTaskResult> createSchemaTemplate(
       CreateSchemaTemplateStatement createSchemaTemplateStatement);
@@ -206,6 +224,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showSubscriptions(
       ShowSubscriptionsStatement showSubscriptionsStatement);
 
+  SettableFuture<ConfigTaskResult> dropSubscription(
+      DropSubscriptionStatement dropSubscriptionStatement);
+
   SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement);
 
   SettableFuture<ConfigTaskResult> dropTopic(DropTopicStatement dropTopicStatement);
@@ -237,7 +258,20 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> countTimeSlotList(
       CountTimeSlotListStatement countTimeSlotListStatement);
 
-  SettableFuture<ConfigTaskResult> migrateRegion(MigrateRegionStatement migrateRegionStatement);
+  SettableFuture<ConfigTaskResult> migrateRegion(MigrateRegionTask migrateRegionTask);
+
+  SettableFuture<ConfigTaskResult> reconstructRegion(ReconstructRegionTask reconstructRegionTask);
+
+  SettableFuture<ConfigTaskResult> extendRegion(ExtendRegionTask extendRegionTask);
+
+  SettableFuture<ConfigTaskResult> removeRegion(RemoveRegionTask removeRegionTask);
+
+  SettableFuture<ConfigTaskResult> removeDataNode(RemoveDataNodeStatement removeDataNodeStatement);
+
+  SettableFuture<ConfigTaskResult> removeConfigNode(
+      RemoveConfigNodeStatement removeConfigNodeStatement);
+
+  SettableFuture<ConfigTaskResult> removeAINode(RemoveAINodeStatement removeAINodeStatement);
 
   SettableFuture<ConfigTaskResult> createContinuousQuery(
       CreateContinuousQueryStatement createContinuousQueryStatement, MPPQueryContext context);
@@ -260,46 +294,48 @@ public interface IConfigTaskExecutor {
 
   TThrottleQuotaResp getThrottleQuota();
 
-  SettableFuture<ConfigTaskResult> createModel(
-      CreateModelStatement createModelStatement, MPPQueryContext context);
-
-  SettableFuture<ConfigTaskResult> dropModel(String modelName);
-
-  SettableFuture<ConfigTaskResult> showModels(String modelName);
-
-  SettableFuture<ConfigTaskResult> showAINodes(ShowAINodesStatement showAINodesStatement);
-
   TPipeTransferResp handleTransferConfigPlan(String clientId, TPipeTransferReq req);
 
   void handlePipeConfigClientExit(String clientId);
 
   // =============================== table syntax =========================================
 
-  SettableFuture<ConfigTaskResult> showDatabases(ShowDB showDB);
+  SettableFuture<ConfigTaskResult> showDatabases(
+      final ShowDB showDB, final Predicate<String> canSeenDB);
 
   SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
 
-  SettableFuture<ConfigTaskResult> showRegions(ShowRegions showRegions);
-
-  SettableFuture<ConfigTaskResult> showDataNodes(ShowDataNodes showDataNodes);
-
-  SettableFuture<ConfigTaskResult> showConfigNodes(ShowConfigNodes showConfigNodes);
-
   SettableFuture<ConfigTaskResult> useDatabase(final Use useDB, final IClientSession clientSession);
 
-  SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB);
+  SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB, final IClientSession session);
 
   SettableFuture<ConfigTaskResult> createDatabase(
+      final TDatabaseSchema databaseSchema, final boolean ifNotExists);
+
+  SettableFuture<ConfigTaskResult> alterDatabase(
       final TDatabaseSchema databaseSchema, final boolean ifNotExists);
 
   SettableFuture<ConfigTaskResult> createTable(
       final TsTable table, final String database, final boolean ifNotExists);
 
-  SettableFuture<ConfigTaskResult> describeTable(final String database, final String tableName);
+  SettableFuture<ConfigTaskResult> describeTable(
+      final String database,
+      final String tableName,
+      final boolean isDetails,
+      final Boolean isShowCreateView);
 
-  SettableFuture<ConfigTaskResult> showTables(final String database);
+  SettableFuture<ConfigTaskResult> showTables(
+      final String database, final Predicate<String> canSeenDB, final boolean isDetails);
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
+
+  SettableFuture<ConfigTaskResult> alterTableRenameTable(
+      final String database,
+      final String sourceName,
+      final String targetName,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableAddColumn(
       final String database,
@@ -307,12 +343,92 @@ public interface IConfigTaskExecutor {
       final List<TsTableColumnSchema> columnSchemaList,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists);
+      final boolean columnIfExists,
+      final boolean isView);
+
+  SettableFuture<ConfigTaskResult> alterTableRenameColumn(
+      final String database,
+      final String tableName,
+      final String oldName,
+      final String newName,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists,
+      final boolean isView);
+
+  SettableFuture<ConfigTaskResult> alterTableDropColumn(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableSetProperties(
       final String database,
       final String tableName,
       final Map<String, String> properties,
       final String queryId,
-      final boolean ifExists);
+      final boolean ifExists,
+      final boolean isView);
+
+  SettableFuture<ConfigTaskResult> alterTableCommentTable(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean ifExists,
+      final String comment,
+      final boolean isView);
+
+  SettableFuture<ConfigTaskResult> alterTableCommentColumn(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists,
+      final String comment,
+      final boolean isView);
+
+  SettableFuture<ConfigTaskResult> dropTable(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean ifExists,
+      final boolean isView);
+
+  SettableFuture<ConfigTaskResult> deleteDevice(
+      final DeleteDevice deleteDevice, final String queryId, final SessionInfo sessionInfo);
+
+  SettableFuture<ConfigTaskResult> createTableView(
+      final TsTable table, final String database, final boolean replace);
+
+  SettableFuture<ConfigTaskResult> showVersion();
+
+  SettableFuture<ConfigTaskResult> showCurrentSqlDialect(String sqlDialect);
+
+  SettableFuture<ConfigTaskResult> setSqlDialect(IClientSession.SqlDialect sqlDialect);
+
+  SettableFuture<ConfigTaskResult> showCurrentUser(String currentUser);
+
+  SettableFuture<ConfigTaskResult> showCurrentDatabase(@Nullable String currentDatabase);
+
+  SettableFuture<ConfigTaskResult> showCurrentTimestamp();
+
+  // =============================== AI =========================================
+  SettableFuture<ConfigTaskResult> createModel(String modelId, String uri);
+
+  SettableFuture<ConfigTaskResult> dropModel(String modelId);
+
+  SettableFuture<ConfigTaskResult> showModels(String modelId);
+
+  SettableFuture<ConfigTaskResult> createTraining(
+      String modelId,
+      boolean isTableModel,
+      Map<String, String> parameters,
+      List<List<Long>> timeRanges,
+      String existingModelId,
+      @Nullable String targetSql,
+      @Nullable List<String> pathList);
 }

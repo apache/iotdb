@@ -34,14 +34,14 @@ import java.util.List;
 
 public class DropModelStatement extends Statement implements IConfigStatement {
 
-  private final String modelName;
+  private final String modelId;
 
-  public DropModelStatement(String modelName) {
-    this.modelName = modelName;
+  public DropModelStatement(String modelId) {
+    this.modelId = modelId;
   }
 
-  public String getModelName() {
-    return modelName;
+  public String getModelId() {
+    return modelId;
   }
 
   @Override
@@ -60,7 +60,7 @@ public class DropModelStatement extends Statement implements IConfigStatement {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_MODEL.ordinal()),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_MODEL),
         PrivilegeType.USE_MODEL);
   }
 

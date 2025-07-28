@@ -72,6 +72,10 @@ public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
     return nodeIds;
   }
 
+  public void setNodeIds(List<Integer> nodeIds) {
+    this.nodeIds = nodeIds;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());

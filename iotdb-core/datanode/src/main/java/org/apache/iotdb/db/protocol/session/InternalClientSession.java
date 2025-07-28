@@ -86,9 +86,6 @@ public class InternalClientSession extends IClientSession {
 
   @Override
   public void removeQueryId(Long statementId, Long queryId) {
-    Set<Long> queryIds = statementIdToQueryId.get(statementId);
-    if (queryIds != null) {
-      queryIds.remove(queryId);
-    }
+    ClientSession.removeQueryId(statementIdToQueryId, statementId, queryId);
   }
 }

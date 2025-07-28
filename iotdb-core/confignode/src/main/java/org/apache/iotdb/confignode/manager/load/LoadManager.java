@@ -44,12 +44,14 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSamp
 import org.apache.iotdb.confignode.manager.load.service.EventService;
 import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
 import org.apache.iotdb.confignode.manager.load.service.StatisticsService;
+import org.apache.iotdb.confignode.manager.load.service.TopologyService;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 /**
  * The {@link LoadManager} at ConfigNodeGroup-Leader is active. It proactively implements the
@@ -71,6 +73,7 @@ public class LoadManager {
   protected HeartbeatService heartbeatService;
   private final StatisticsService statisticsService;
   private final EventService eventService;
+  private final TopologyService topologyService;
 
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
@@ -82,7 +85,11 @@ public class LoadManager {
     this.loadCache = new LoadCache();
     setHeartbeatService(configManager, loadCache);
     this.statisticsService = new StatisticsService(loadCache);
-    this.eventService = new EventService(configManager, loadCache, routeBalancer);
+    this.topologyService = new TopologyService(configManager, loadCache::updateTopology);
+    this.eventService = new EventService(loadCache);
+    this.eventService.register(configManager.getPipeManager().getPipeRuntimeCoordinator());
+    this.eventService.register(routeBalancer);
+    this.eventService.register(topologyService);
   }
 
   protected void setHeartbeatService(IManager configManager, LoadCache loadCache) {
@@ -99,7 +106,7 @@ public class LoadManager {
    * @throws DatabaseNotExistsException If some specific StorageGroups don't exist
    */
   public CreateRegionGroupsPlan allocateRegionGroups(
-      Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
+      final Map<String, Integer> allotmentMap, final TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
     return regionBalancer.genRegionGroupsAllocationPlan(allotmentMap, consensusGroupType);
   }
@@ -111,7 +118,7 @@ public class LoadManager {
    * @return Map<DatabaseName, SchemaPartitionTable>, the allocating result
    */
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
+      final Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
       throws NoAvailableRegionGroupException {
     return partitionBalancer.allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
   }
@@ -145,6 +152,7 @@ public class LoadManager {
     statisticsService.startLoadStatisticsService();
     eventService.startEventService();
     partitionBalancer.setupPartitionBalancer();
+    topologyService.startTopologyService();
   }
 
   public void stopLoadServices() {
@@ -154,6 +162,7 @@ public class LoadManager {
     loadCache.clearHeartbeatCache();
     partitionBalancer.clearPartitionBalancer();
     routeBalancer.clearRegionPriority();
+    topologyService.stopTopologyService();
   }
 
   public void clearDataPartitionPolicyTable(String database) {
@@ -210,6 +219,16 @@ public class LoadManager {
   }
 
   /**
+   * Filter DataNodes through the NodeStatus predicate.
+   *
+   * @param statusPredicate The NodeStatus predicate
+   * @return Filtered DataNodes with the predicate
+   */
+  public List<Integer> filterDataNodeThroughStatus(Function<NodeStatus, Boolean> statusPredicate) {
+    return loadCache.filterDataNodeThroughStatus(statusPredicate);
+  }
+
+  /**
    * Get the free disk space of the specified DataNode.
    *
    * @param dataNodeId The index of the specified DataNode
@@ -217,15 +236,6 @@ public class LoadManager {
    */
   public double getFreeDiskSpace(int dataNodeId) {
     return loadCache.getFreeDiskSpace(dataNodeId);
-  }
-
-  /**
-   * Get the loadScore of each DataNode.
-   *
-   * @return Map<DataNodeId, loadScore>
-   */
-  public Map<Integer, Long> getAllDataNodeLoadScores() {
-    return loadCache.getAllDataNodeLoadScores();
   }
 
   /**
@@ -270,7 +280,7 @@ public class LoadManager {
       default:
         break;
     }
-    loadCache.updateNodeStatistics();
+    loadCache.updateNodeStatistics(true);
     eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
   }
 
@@ -282,7 +292,7 @@ public class LoadManager {
    */
   public void removeNodeCache(int nodeId) {
     loadCache.removeNodeCache(nodeId);
-    loadCache.updateNodeStatistics();
+    loadCache.updateNodeStatistics(true);
     eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
   }
 

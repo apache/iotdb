@@ -1,22 +1,29 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultExpressionTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
@@ -81,11 +88,9 @@ public final class SymbolsExtractor {
     return ImmutableSet.copyOf(extractAll(aggregation));
   }
 
-  /*
-  public static Set<Symbol> extractUnique(WindowNode.Function function)
-  {
-      return ImmutableSet.copyOf(extractAll(function));
-  }*/
+  public static Set<Symbol> extractUnique(WindowNode.Function function) {
+    return ImmutableSet.copyOf(extractAll(function));
+  }
 
   public static List<Symbol> extractAll(Expression expression) {
     ImmutableList.Builder<Symbol> builder = ImmutableList.builder();
@@ -104,19 +109,17 @@ public final class SymbolsExtractor {
     return builder.build();
   }
 
-  /*
-  public static List<Symbol> extractAll(WindowNode.Function function)
-  {
-      ImmutableList.Builder<Symbol> builder = ImmutableList.builder();
-      for (Expression argument : function.getArguments()) {
-          builder.addAll(extractAll(argument));
-      }
-      function.getFrame().getEndValue().ifPresent(builder::add);
-      function.getFrame().getSortKeyCoercedForFrameEndComparison().ifPresent(builder::add);
-      function.getFrame().getStartValue().ifPresent(builder::add);
-      function.getFrame().getSortKeyCoercedForFrameStartComparison().ifPresent(builder::add);
-      return builder.build();
-  }*/
+  public static List<Symbol> extractAll(WindowNode.Function function) {
+    ImmutableList.Builder<Symbol> builder = ImmutableList.builder();
+    for (Expression argument : function.getArguments()) {
+      builder.addAll(extractAll(argument));
+    }
+    function.getFrame().getEndValue().ifPresent(builder::add);
+    function.getFrame().getSortKeyCoercedForFrameEndComparison().ifPresent(builder::add);
+    function.getFrame().getStartValue().ifPresent(builder::add);
+    function.getFrame().getSortKeyCoercedForFrameStartComparison().ifPresent(builder::add);
+    return builder.build();
+  }
 
   // to extract qualified name with prefix
   public static Set<QualifiedName> extractNames(

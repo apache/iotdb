@@ -82,13 +82,13 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.MeasurementNode;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -213,12 +213,11 @@ public class StatementGeneratorTest {
   public void testInsertRelationalTablet() throws IllegalPathException {
     List<String> measurements = Arrays.asList("id1", "attr1", "m1");
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE);
-    List<Tablet.ColumnType> tsfileColumnCategories =
-        Arrays.asList(
-            Tablet.ColumnType.ID, Tablet.ColumnType.ATTRIBUTE, Tablet.ColumnType.MEASUREMENT);
+    List<ColumnCategory> tsfileColumnCategories =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
     List<TsTableColumnCategory> columnCategories =
         tsfileColumnCategories.stream()
-            .map(TsTableColumnCategory::fromTsFileColumnType)
+            .map(TsTableColumnCategory::fromTsFileColumnCategory)
             .collect(Collectors.toList());
     TSInsertTabletReq req =
         new TSInsertTabletReq(
@@ -249,7 +248,7 @@ public class StatementGeneratorTest {
 
     ColumnSchema columnSchema =
         new ColumnSchema(
-            "s1", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.ID);
+            "s1", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG);
     insertTabletStatement.insertColumn(insertPos, columnSchema);
     assertEquals(4, insertTabletStatement.getMeasurements().length);
     assertEquals(columnSchema.getName(), insertTabletStatement.getMeasurements()[insertPos]);
@@ -285,10 +284,7 @@ public class StatementGeneratorTest {
     insertPos = 5;
     columnSchema =
         new ColumnSchema(
-            "s3",
-            TypeFactory.getType(TSDataType.BOOLEAN),
-            false,
-            TsTableColumnCategory.MEASUREMENT);
+            "s3", TypeFactory.getType(TSDataType.BOOLEAN), false, TsTableColumnCategory.FIELD);
     insertTabletStatement.insertColumn(insertPos, columnSchema);
     assertEquals(6, insertTabletStatement.getMeasurements().length);
     assertEquals(columnSchema.getName(), insertTabletStatement.getMeasurements()[insertPos]);
@@ -719,12 +715,15 @@ public class StatementGeneratorTest {
 
     // 1. check simple privilege grant to user/role with/without grant option.
     for (PrivilegeType privilege : PrivilegeType.values()) {
+      if (privilege.isRelationalPrivilege()) {
+        continue;
+      }
       testGrant.checkParser(privilege.toString(), name, true, path, true);
       testGrant.checkParser(privilege.toString(), name, true, path, false);
       testGrant.checkParser(privilege.toString(), name, false, path, true);
       testGrant.checkParser(privilege.toString(), name, false, path, false);
       // 2. if grant stmt has system privilege, path should be root.**
-      if (!privilege.isPathRelevant()) {
+      if (!privilege.isPathPrivilege()) {
         assertThrows(
             SemanticException.class,
             () ->
@@ -754,11 +753,14 @@ public class StatementGeneratorTest {
 
     // 3. check simple privilege revoke from user/role on simple path
     for (PrivilegeType type : PrivilegeType.values()) {
+      if (type.isRelationalPrivilege()) {
+        continue;
+      }
       testRevoke.checkParser(type.toString(), name, true, path, false);
       testRevoke.checkParser(type.toString(), name, false, path, false);
 
       // 4. check system privilege revoke from user on wrong paths.
-      if (!type.isPathRelevant()) {
+      if (!type.isPathPrivilege()) {
         assertThrows(
             SemanticException.class,
             () ->
@@ -778,10 +780,16 @@ public class StatementGeneratorTest {
     // 1. test complex privilege on single path :"root.**"
     Set<String> allPriv = new HashSet<>();
     for (PrivilegeType type : PrivilegeType.values()) {
+      if (type.isRelationalPrivilege()) {
+        continue;
+      }
       allPriv.add(type.toString());
     }
 
     for (PrivilegeType type : PrivilegeType.values()) {
+      if (type.isRelationalPrivilege()) {
+        continue;
+      }
       {
         AuthorStatement stmt =
             createAuthDclStmt(

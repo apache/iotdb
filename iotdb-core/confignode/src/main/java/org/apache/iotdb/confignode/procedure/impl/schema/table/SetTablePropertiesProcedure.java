@@ -23,12 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -51,39 +50,31 @@ import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropert
 import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.VALIDATE_TABLE;
 
 public class SetTablePropertiesProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, SetTablePropertiesState> {
+    extends AbstractAlterOrDropTableProcedure<SetTablePropertiesState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SetTablePropertiesProcedure.class);
 
-  private String database;
-
-  private String tableName;
-
-  private String queryId;
-
   private Map<String, String> originalProperties = new HashMap<>();
   private Map<String, String> updatedProperties;
-  private TsTable table;
 
-  public SetTablePropertiesProcedure() {
-    super();
+  public SetTablePropertiesProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public SetTablePropertiesProcedure(
       final String database,
       final String tableName,
       final String queryId,
-      final Map<String, String> properties) {
-    this.database = database;
-    this.tableName = tableName;
-    this.queryId = queryId;
+      final Map<String, String> properties,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.updatedProperties = properties;
   }
 
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final SetTablePropertiesState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -127,36 +118,32 @@ public class SetTablePropertiesProcedure
   }
 
   private void validateTable(final ConfigNodeProcedureEnv env) {
-    final Pair<TSStatus, TsTable> result =
-        env.getConfigManager()
-            .getClusterSchemaManager()
-            .updateTableProperties(database, tableName, originalProperties, updatedProperties);
-    final TSStatus status = result.getLeft();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
-      return;
+    try {
+      final Pair<TSStatus, TsTable> result =
+          env.getConfigManager()
+              .getClusterSchemaManager()
+              .updateTableProperties(
+                  database,
+                  tableName,
+                  originalProperties,
+                  updatedProperties,
+                  this instanceof SetViewPropertiesProcedure);
+      final TSStatus status = result.getLeft();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        setFailure(
+            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        return;
+      }
+      table = result.getRight();
+      setNextState(PRE_RELEASE);
+    } catch (final MetadataException e) {
+      setFailure(new ProcedureException(e));
     }
-    table = result.getRight();
-    setNextState(PRE_RELEASE);
   }
 
-  private void preRelease(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager());
-
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
-      LOGGER.warn(
-          "Failed to pre-release properties info of table {}.{} to DataNode, failure results: {}",
-          database,
-          table.getTableName(),
-          failedResults);
-      setFailure(
-          new ProcedureException(
-              new MetadataException("Pre-release table properties info failed")));
-      return;
-    }
-
+  @Override
+  protected void preRelease(final ConfigNodeProcedureEnv env) {
+    super.preRelease(env);
     setNextState(SET_PROPERTIES);
   }
 
@@ -164,7 +151,11 @@ public class SetTablePropertiesProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .setTableProperties(database, tableName, updatedProperties);
+            .executePlan(
+                this instanceof SetViewPropertiesProcedure
+                    ? new SetViewPropertiesPlan(database, tableName, updatedProperties)
+                    : new SetTablePropertiesPlan(database, tableName, updatedProperties),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -172,16 +163,9 @@ public class SetTablePropertiesProcedure
     }
   }
 
-  private void commitRelease(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
-    if (!failedResults.isEmpty()) {
-      LOGGER.warn(
-          "Failed to commit properties info of table {}.{} to DataNode, failure results: {}",
-          database,
-          table.getTableName(),
-          failedResults);
-    }
+  @Override
+  protected String getActionMessage() {
+    return "set table properties";
   }
 
   @Override
@@ -212,23 +196,6 @@ public class SetTablePropertiesProcedure
     }
   }
 
-  private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.rollbackPreRelease(database, table.getTableName(), env.getConfigManager());
-
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
-      LOGGER.warn(
-          "Failed to rollback properties info of table {}.{} info to DataNode, failure results: {}",
-          database,
-          table.getTableName(),
-          failedResults);
-      setFailure(
-          new ProcedureException(
-              new MetadataException("Rollback pre-release table column extension info failed")));
-    }
-  }
-
   private void rollbackSetProperties(final ConfigNodeProcedureEnv env) {
     if (table == null) {
       return;
@@ -236,7 +203,9 @@ public class SetTablePropertiesProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .setTableProperties(database, tableName, originalProperties);
+            .executePlan(
+                new SetTablePropertiesPlan(database, tableName, originalProperties),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
@@ -257,68 +226,38 @@ public class SetTablePropertiesProcedure
     return VALIDATE_TABLE;
   }
 
-  public String getDatabase() {
-    return database;
-  }
-
-  public String getTableName() {
-    return tableName;
-  }
-
-  public String getQueryId() {
-    return queryId;
-  }
-
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
-    super.serialize(stream);
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode()
+            : ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
+    innerSerialize(stream);
+  }
 
-    ReadWriteIOUtils.write(database, stream);
-    ReadWriteIOUtils.write(tableName, stream);
-    ReadWriteIOUtils.write(queryId, stream);
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
+    super.serialize(stream);
 
     ReadWriteIOUtils.write(originalProperties, stream);
     ReadWriteIOUtils.write(updatedProperties, stream);
-    if (Objects.nonNull(table)) {
-      ReadWriteIOUtils.write(true, stream);
-      table.serialize(stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    this.database = ReadWriteIOUtils.readString(byteBuffer);
-    this.tableName = ReadWriteIOUtils.readString(byteBuffer);
-    this.queryId = ReadWriteIOUtils.readString(byteBuffer);
 
     this.originalProperties = ReadWriteIOUtils.readMap(byteBuffer);
     this.updatedProperties = ReadWriteIOUtils.readMap(byteBuffer);
-    if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      this.table = TsTable.deserialize(byteBuffer);
-    }
   }
 
   @Override
   public boolean equals(final Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof SetTablePropertiesProcedure)) {
-      return false;
-    }
-    final SetTablePropertiesProcedure that = (SetTablePropertiesProcedure) o;
-    return Objects.equals(database, that.database)
-        && Objects.equals(tableName, that.tableName)
-        && Objects.equals(updatedProperties, that.updatedProperties)
-        && Objects.equals(queryId, that.queryId);
+    return super.equals(o)
+        && Objects.equals(updatedProperties, ((SetTablePropertiesProcedure) o).updatedProperties);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, tableName, updatedProperties, queryId);
+    return Objects.hash(super.hashCode(), updatedProperties);
   }
 }

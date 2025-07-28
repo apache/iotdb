@@ -55,7 +55,7 @@ public class IoTDBQueryDemoTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE wf(device STRING ID, status BOOLEAN MEASUREMENT, temperature FLOAT MEASUREMENT, hardware TEXT MEASUREMENT)",
+        "CREATE TABLE wf(device STRING TAG, status BOOLEAN FIELD, temperature FLOAT FIELD, hardware TEXT FIELD)",
         "insert into wf(time,device,status) values(1509465600000,'wt01',true)",
         "insert into wf(time,device,status) values(1509465660000,'wt01',true)",
         "insert into wf(time,device,status) values(1509465720000,'wt01',false)",

@@ -24,12 +24,20 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionIdentifierSemanti
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.read.common.parser.PathVisitor;
 
+import java.util.Objects;
+
 public class IdentifierUtils {
 
   /**
    * refer org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor#parseIdentifier(java.lang.String)
    */
-  public static String parseIdentifier(final String src) {
+  public static String checkAndParseIdentifier(final String src) {
+    if (Objects.isNull(src)) {
+      throw new SubscriptionIdentifierSemanticException("null identifier is not supported");
+    }
+    if (src.isEmpty()) {
+      throw new SubscriptionIdentifierSemanticException("empty identifier is not supported");
+    }
     if (src.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && src.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       return src.substring(1, src.length() - 1)

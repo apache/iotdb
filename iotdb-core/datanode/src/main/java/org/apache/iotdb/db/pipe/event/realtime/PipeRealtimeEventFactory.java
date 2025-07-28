@@ -20,54 +20,57 @@
 package org.apache.iotdb.db.pipe.event.realtime;
 
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpochManager;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpochManager;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 public class PipeRealtimeEventFactory {
-
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      final TsFileResource resource, final boolean isLoaded, final boolean isGeneratedByPipe) {
-    return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
-        new PipeTsFileInsertionEvent(resource, isLoaded, isGeneratedByPipe, false), resource);
+      final Boolean isTableModel,
+      final String databaseNameFromDataRegion,
+      final TsFileResource resource,
+      final boolean isLoaded) {
+    PipeTsFileInsertionEvent tsFileInsertionEvent =
+        new PipeTsFileInsertionEvent(isTableModel, databaseNameFromDataRegion, resource, isLoaded);
+
+    return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(tsFileInsertionEvent, resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      final WALEntryHandler walEntryHandler,
+      final Boolean isTableModel,
+      final String databaseNameFromDataRegion,
       final InsertNode insertNode,
       final TsFileResource resource) {
-    return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
+    final PipeInsertNodeTabletInsertionEvent insertionEvent =
         new PipeInsertNodeTabletInsertionEvent(
-            walEntryHandler,
-            insertNode.getTargetPath(),
-            insertNode.getProgressIndex(),
-            insertNode.isAligned(),
-            insertNode.isGeneratedByPipe()),
-        insertNode,
-        resource);
+            isTableModel, databaseNameFromDataRegion, insertNode);
+
+    return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
+        insertionEvent, insertNode, resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
       final String dataRegionId, final boolean shouldPrintMessage) {
     return new PipeRealtimeEvent(
-        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
+        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null);
   }
 
-  public static PipeRealtimeEvent createRealtimeEvent(final DeleteDataNode node) {
-    return new PipeRealtimeEvent(
-        new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe()), null, null, null);
+  public static PipeRealtimeEvent createRealtimeEvent(final AbstractDeleteDataNode node) {
+    PipeDeleteDataNodeEvent deleteDataNodeEvent =
+        new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe());
+
+    return new PipeRealtimeEvent(deleteDataNodeEvent, null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {
-    return new PipeRealtimeEvent(event, null, null, null);
+    return new PipeRealtimeEvent(event, null, null);
   }
 
   private PipeRealtimeEventFactory() {

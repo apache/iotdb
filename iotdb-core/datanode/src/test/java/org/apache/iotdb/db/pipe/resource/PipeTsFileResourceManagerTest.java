@@ -24,11 +24,10 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -37,6 +36,7 @@ import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.apache.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.tsfile.write.record.datapoint.IntDataPoint;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 import org.junit.After;
@@ -47,9 +47,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.concurrent.TimeUnit;
 
-import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.fail;
 
 public class PipeTsFileResourceManagerTest {
@@ -59,6 +57,7 @@ public class PipeTsFileResourceManagerTest {
       ROOT_DIR + File.separator + IoTDBConstant.SEQUENCE_FOLDER_NAME;
   private static final String TS_FILE_NAME = SEQUENCE_DIR + File.separator + "test.tsfile";
   private static final String MODS_FILE_NAME = TS_FILE_NAME + ".mods";
+  private static final String PIPE_NAME = "pipe";
 
   private PipeTsFileResourceManager pipeTsFileResourceManager;
 
@@ -79,6 +78,9 @@ public class PipeTsFileResourceManagerTest {
 
     Schema schema = new Schema();
     String template = "template";
+    IMeasurementSchema s1 = new MeasurementSchema("sensor1", TSDataType.FLOAT, TSEncoding.RLE);
+    IMeasurementSchema s2 = new MeasurementSchema("sensor2", TSDataType.INT32, TSEncoding.TS_2DIFF);
+    IMeasurementSchema s3 = new MeasurementSchema("sensor3", TSDataType.INT32, TSEncoding.TS_2DIFF);
     schema.extendTemplate(
         template, new MeasurementSchema("sensor1", TSDataType.FLOAT, TSEncoding.RLE));
     schema.extendTemplate(
@@ -87,56 +89,59 @@ public class PipeTsFileResourceManagerTest {
         template, new MeasurementSchema("sensor3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
     TsFileWriter tsFileWriter = new TsFileWriter(file, schema);
+    tsFileWriter.registerDevice("root.lemming.device1", template);
+    tsFileWriter.registerDevice("root.lemming.device2", template);
+    tsFileWriter.registerDevice("root.lemming.device3", template);
 
     // construct TSRecord
-    TSRecord tsRecord = new TSRecord(1617206403001L, "root.lemming.device1");
+    TSRecord tsRecord = new TSRecord("root.lemming.device1", 1617206403001L);
     DataPoint dPoint1 = new FloatDataPoint("sensor1", 1.1f);
     DataPoint dPoint2 = new IntDataPoint("sensor2", 12);
     DataPoint dPoint3 = new IntDataPoint("sensor3", 13);
     tsRecord.addTuple(dPoint1);
     tsRecord.addTuple(dPoint2);
     tsRecord.addTuple(dPoint3);
-    tsFileWriter.write(tsRecord);
-    tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+    tsFileWriter.writeRecord(tsRecord);
+    tsFileWriter.flush(); // flush above data to disk at once
 
-    tsRecord = new TSRecord(1617206403002L, "root.lemming.device2");
+    tsRecord = new TSRecord("root.lemming.device2", 1617206403002L);
     dPoint2 = new IntDataPoint("sensor2", 22);
     tsRecord.addTuple(dPoint2);
-    tsFileWriter.write(tsRecord);
-    tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+    tsFileWriter.writeRecord(tsRecord);
+    tsFileWriter.flush(); // flush above data to disk at once
 
-    tsRecord = new TSRecord(1617206403003L, "root.lemming.device3");
+    tsRecord = new TSRecord("root.lemming.device3", 1617206403003L);
     dPoint1 = new FloatDataPoint("sensor1", 3.1f);
     dPoint2 = new IntDataPoint("sensor2", 32);
     tsRecord.addTuple(dPoint1);
     tsRecord.addTuple(dPoint2);
-    tsFileWriter.write(tsRecord);
-    tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+    tsFileWriter.writeRecord(tsRecord);
+    tsFileWriter.flush(); // flush above data to disk at once
 
-    tsRecord = new TSRecord(1617206403004L, "root.lemming.device1");
+    tsRecord = new TSRecord("root.lemming.device1", 1617206403004L);
     dPoint1 = new FloatDataPoint("sensor1", 4.1f);
     dPoint2 = new IntDataPoint("sensor2", 42);
     dPoint3 = new IntDataPoint("sensor3", 43);
     tsRecord.addTuple(dPoint1);
     tsRecord.addTuple(dPoint2);
     tsRecord.addTuple(dPoint3);
-    tsFileWriter.write(tsRecord);
-    tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+    tsFileWriter.writeRecord(tsRecord);
+    tsFileWriter.flush(); // flush above data to disk at once
 
     // close TsFile
     tsFileWriter.close();
   }
 
   private void creatModsFile(String modsFilePath) throws IllegalPathException {
-    Modification[] modifications =
-        new Modification[] {
-          new Deletion(new MeasurementPath("root.lemming.device1.sensor1"), 2, 1),
-          new Deletion(new MeasurementPath("root.lemming.device1.sensor1"), 3, 2, 5),
-          new Deletion(new MeasurementPath("root.lemming.**"), 11, 1, Long.MAX_VALUE)
+    ModEntry[] modifications =
+        new ModEntry[] {
+          new TreeDeletionEntry(new MeasurementPath("root.lemming.device1.sensor1"), 1),
+          new TreeDeletionEntry(new MeasurementPath("root.lemming.device1.sensor1"), 2, 5),
+          new TreeDeletionEntry(new MeasurementPath("root.lemming.**"), 1, Long.MAX_VALUE)
         };
 
-    try (ModificationFile mFile = new ModificationFile(modsFilePath)) {
-      for (Modification mod : modifications) {
+    try (ModificationFile mFile = new ModificationFile(new File(modsFilePath), false)) {
+      for (ModEntry mod : modifications) {
         mFile.write(mod);
       }
     } catch (IOException e) {
@@ -156,53 +161,55 @@ public class PipeTsFileResourceManagerTest {
   }
 
   @Test
-  public void testIncreaseTsfile() throws IOException {
-    File originTsfile = new File(TS_FILE_NAME);
-    File originModFile = new File(MODS_FILE_NAME);
-    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(originTsfile));
-    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(originModFile));
+  public void testIncreaseTsFile() throws IOException {
+    final File originTsfile = new File(TS_FILE_NAME);
+    final File originModFile = new File(MODS_FILE_NAME);
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(originTsfile, null));
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(originModFile, null));
 
-    File pipeTsfile = pipeTsFileResourceManager.increaseFileReference(originTsfile, true, null);
-    File pipeModFile = pipeTsFileResourceManager.increaseFileReference(originModFile, false, null);
-    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile));
-    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile));
+    final File pipeTsfile =
+        pipeTsFileResourceManager.increaseFileReference(originTsfile, true, PIPE_NAME);
+    final File pipeModFile =
+        pipeTsFileResourceManager.increaseFileReference(originModFile, false, PIPE_NAME);
+    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile, null));
+    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile, null));
     Assert.assertTrue(Files.exists(originTsfile.toPath()));
     Assert.assertTrue(Files.exists(originModFile.toPath()));
     Assert.assertTrue(Files.exists(pipeTsfile.toPath()));
     Assert.assertTrue(Files.exists(pipeModFile.toPath()));
 
-    pipeTsFileResourceManager.increaseFileReference(originTsfile, true, null);
-    pipeTsFileResourceManager.increaseFileReference(originModFile, false, null);
-    Assert.assertEquals(2, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile));
-    Assert.assertEquals(2, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile));
-
-    // test use hardlinkTsFile to increase reference counts
-    pipeTsFileResourceManager.increaseFileReference(pipeTsfile, true, null);
-    Assert.assertEquals(3, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile));
+    // test use assigner's hardlinkTsFile to increase reference counts
+    // test null, shall not reuse the pipe's tsFile
+    pipeTsFileResourceManager.increaseFileReference(pipeTsfile, true, PIPE_NAME);
+    Assert.assertEquals(2, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile, null));
+    Assert.assertEquals(2, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile, PIPE_NAME));
     Assert.assertTrue(Files.exists(originTsfile.toPath()));
     Assert.assertTrue(Files.exists(pipeTsfile.toPath()));
 
     // test use copyFile to increase reference counts
-    pipeTsFileResourceManager.increaseFileReference(pipeModFile, false, null);
-    Assert.assertEquals(3, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile));
+    pipeTsFileResourceManager.increaseFileReference(pipeModFile, false, PIPE_NAME);
+    Assert.assertEquals(2, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile, null));
+    Assert.assertEquals(2, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile, PIPE_NAME));
     Assert.assertTrue(Files.exists(originModFile.toPath()));
     Assert.assertTrue(Files.exists(pipeModFile.toPath()));
   }
 
   @Test
-  public void testDecreaseTsfile() throws IOException {
-    File originFile = new File(TS_FILE_NAME);
-    File originModFile = new File(MODS_FILE_NAME);
+  public void testDecreaseTsFile() throws IOException {
+    final File originFile = new File(TS_FILE_NAME);
+    final File originModFile = new File(MODS_FILE_NAME);
 
-    pipeTsFileResourceManager.decreaseFileReference(originFile);
-    pipeTsFileResourceManager.decreaseFileReference(originModFile);
-    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(originFile));
-    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(originModFile));
+    pipeTsFileResourceManager.decreaseFileReference(originFile, PIPE_NAME);
+    pipeTsFileResourceManager.decreaseFileReference(originModFile, PIPE_NAME);
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(originFile, null));
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(originModFile, null));
 
-    File pipeTsfile = pipeTsFileResourceManager.increaseFileReference(originFile, true, null);
-    File pipeModFile = pipeTsFileResourceManager.increaseFileReference(originModFile, false, null);
-    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile));
-    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile));
+    final File pipeTsfile =
+        pipeTsFileResourceManager.increaseFileReference(originFile, true, PIPE_NAME);
+    final File pipeModFile =
+        pipeTsFileResourceManager.increaseFileReference(originModFile, false, PIPE_NAME);
+    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile, null));
+    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile, null));
     Assert.assertTrue(Files.exists(pipeTsfile.toPath()));
     Assert.assertTrue(Files.exists(pipeModFile.toPath()));
     Assert.assertTrue(Files.exists(pipeTsfile.toPath()));
@@ -213,26 +220,22 @@ public class PipeTsFileResourceManagerTest {
     Assert.assertFalse(Files.exists(originFile.toPath()));
     Assert.assertFalse(Files.exists(originModFile.toPath()));
 
-    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile));
-    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile));
+    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile, PIPE_NAME));
+    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile, null));
+    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile, PIPE_NAME));
+    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile, null));
     Assert.assertFalse(Files.exists(originFile.toPath()));
     Assert.assertFalse(Files.exists(originModFile.toPath()));
     Assert.assertTrue(Files.exists(pipeTsfile.toPath()));
     Assert.assertTrue(Files.exists(pipeModFile.toPath()));
 
-    pipeTsFileResourceManager.decreaseFileReference(pipeTsfile);
-    pipeTsFileResourceManager.decreaseFileReference(pipeModFile);
-    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile));
-    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile));
+    pipeTsFileResourceManager.decreaseFileReference(pipeTsfile, PIPE_NAME);
+    pipeTsFileResourceManager.decreaseFileReference(pipeModFile, PIPE_NAME);
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile, PIPE_NAME));
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile, null));
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile, PIPE_NAME));
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile, null));
     Assert.assertFalse(Files.exists(originFile.toPath()));
     Assert.assertFalse(Files.exists(originModFile.toPath()));
-    // Pipe TsFile will be cleaned by a timed thread, so we wait some time here.
-    await()
-        .atMost(3 * PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS, TimeUnit.MILLISECONDS)
-        .untilAsserted(
-            () -> {
-              Assert.assertFalse(Files.exists(pipeTsfile.toPath()));
-              Assert.assertFalse(Files.exists(pipeModFile.toPath()));
-            });
   }
 }

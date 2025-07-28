@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
+import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.List;
@@ -31,15 +33,25 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
   public long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
     // add ChunkMetadata size of MultiTsFileDeviceIterator
+    long maxAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(fileInfo -> fileInfo.maxMemToReadAlignedSeries)
+            .sum();
+    long maxNonAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(
+                fileInfo ->
+                    fileInfo.maxMemToReadNonAlignedSeries * config.getSubCompactionTaskNum())
+            .sum();
     cost +=
         Math.min(
-            taskInfo.getTotalChunkMetadataSize(),
+            Math.max(maxAlignedSeriesMemCost, maxNonAlignedSeriesMemCost),
             taskInfo.getFileInfoList().size()
                 * taskInfo.getMaxChunkMetadataNumInDevice()
                 * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
-    cost += memoryBudgetForFileWriter;
+    cost += fixedMemoryBudget;
 
     return cost;
   }
@@ -71,7 +83,7 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     long maxConcurrentChunkSizeFromSourceFile =
         (averageChunkSize + tsFileConfig.getPageSizeInByte())
             * maxConcurrentSeriesNum
-            * calculatingMaxOverlapFileNumInSubCompactionTask(taskInfo.getResources());
+            * calculatingMaxOverlapFileNumInSubCompactionTask(null, taskInfo.getResources());
 
     return targetChunkWriterSize
         + maxConcurrentChunkSizeFromSourceFile
@@ -79,27 +91,33 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
   }
 
   @Override
-  public long roughEstimateInnerCompactionMemory(List<TsFileResource> resources)
+  public long roughEstimateInnerCompactionMemory(
+      @Nullable CompactionScheduleContext context, List<TsFileResource> resources)
       throws IOException {
-    long metadataCost =
-        CompactionEstimateUtils.roughEstimateMetadataCostInCompaction(
-            resources,
-            resources.get(0).isSeq()
-                ? CompactionType.INNER_SEQ_COMPACTION
-                : CompactionType.INNER_UNSEQ_COMPACTION);
-    if (metadataCost < 0) {
-      return metadataCost;
+    if (config.getCompactionMaxAlignedSeriesNumInOneBatch() <= 0) {
+      return -1L;
     }
-    int maxConcurrentSeriesNum =
-        Math.max(
-            config.getCompactionMaxAlignedSeriesNumInOneBatch(), config.getSubCompactionTaskNum());
+    CompactionTaskMetadataInfo metadataInfo =
+        CompactionEstimateUtils.collectMetadataInfoFromCachedFileInfo(
+            resources, roughInfoMap, true);
+    int maxConcurrentSeriesNum = metadataInfo.getMaxConcurrentSeriesNum(true);
     long maxChunkSize = config.getTargetChunkSize();
     long maxPageSize = tsFileConfig.getPageSizeInByte();
-    int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(resources);
+    int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(context, resources);
     // source files (chunk + uncompressed page) * overlap file num
     // target file (chunk + unsealed page writer)
     return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
-        + memoryBudgetForFileWriter
-        + metadataCost;
+        + fixedMemoryBudget
+        + metadataInfo.metadataMemCost;
+  }
+
+  @Override
+  protected int calculatingMaxOverlapFileNumInSubCompactionTask(
+      @Nullable CompactionScheduleContext context, List<TsFileResource> resources)
+      throws IOException {
+    if (resources.get(0).isSeq()) {
+      return 1;
+    }
+    return super.calculatingMaxOverlapFileNumInSubCompactionTask(context, resources);
   }
 }

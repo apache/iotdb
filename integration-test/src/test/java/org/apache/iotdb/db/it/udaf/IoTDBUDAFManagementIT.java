@@ -81,7 +81,7 @@ public class IoTDBUDAFManagementIT {
       statement.executeQuery("SELECT udaf(*) FROM root.vehicle");
 
       try (ResultSet resultSet = statement.executeQuery("SHOW FUNCTIONS")) {
-        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
         int count = 0;
         while (resultSet.next()) {
           ++count;
@@ -108,7 +108,7 @@ public class IoTDBUDAFManagementIT {
           ++count;
         }
         Assert.assertEquals(1 + FUNCTIONS_COUNT, count);
-        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
         statement.execute("DROP FUNCTION udaf");
 
         statement.execute(
@@ -122,7 +122,7 @@ public class IoTDBUDAFManagementIT {
           ++count;
         }
         Assert.assertEquals(1 + FUNCTIONS_COUNT, count);
-        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
         statement.execute("DROP FUNCTION udaf");
       }
     } catch (SQLException throwable) {
@@ -222,7 +222,7 @@ public class IoTDBUDAFManagementIT {
           ++count;
         }
         Assert.assertEquals(2 + FUNCTIONS_COUNT, count);
-        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
         statement.execute("DROP FUNCTION udaf1");
         statement.execute("DROP FUNCTION udaf2");
       } catch (Exception e) {
@@ -309,7 +309,7 @@ public class IoTDBUDAFManagementIT {
           "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
 
       try (ResultSet resultSet = statement.executeQuery("SHOW FUNCTIONS")) {
-        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
         int count = 0;
         while (resultSet.next()) {
           StringBuilder stringBuilder = new StringBuilder();
@@ -320,7 +320,7 @@ public class IoTDBUDAFManagementIT {
           if (result.contains(FUNCTION_TYPE_EXTERNAL_UDAF)) {
             Assert.assertEquals(
                 String.format(
-                    "UDAF,%s,org.apache.iotdb.db.query.udf.example.UDAFCount,",
+                    "UDAF,%s,org.apache.iotdb.db.query.udf.example.UDAFCount,AVAILABLE,",
                     FUNCTION_TYPE_EXTERNAL_UDAF),
                 result);
           }

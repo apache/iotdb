@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -47,6 +48,12 @@ public class ContinuousSameSearchIndexSeparatorNode extends SearchNode implement
   public ContinuousSameSearchIndexSeparatorNode(PlanNodeId id) {
     super(id);
     this.searchIndex = -1;
+  }
+
+  @Override
+  public SearchNode merge(List<SearchNode> searchNodes) {
+    throw new UnsupportedOperationException(
+        "ContinuousSameSearchIndexSeparatorNode not support merge");
   }
 
   @Override
@@ -120,5 +127,15 @@ public class ContinuousSameSearchIndexSeparatorNode extends SearchNode implement
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     throw new UnsupportedOperationException(UNSUPPORTED_MESSAGE);
+  }
+
+  @Override
+  public void setProgressIndex(ProgressIndex progressIndex) {
+    throw new UnsupportedOperationException(UNSUPPORTED_MESSAGE);
+  }
+
+  @Override
+  public ProgressIndex getProgressIndex() {
+    return null;
   }
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 public abstract class SourceNode extends PlanNode implements AutoCloseable, IPartitionRelatedNode {
+  protected SourceNode() {}
 
   protected SourceNode(final PlanNodeId id) {
     super(id);

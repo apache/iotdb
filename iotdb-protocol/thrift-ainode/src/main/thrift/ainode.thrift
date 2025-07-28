@@ -25,16 +25,18 @@ struct TDeleteModelReq {
   1: required string modelId
 }
 
-struct TAIHeartbeatReq{
+struct TAIHeartbeatReq {
   1: required i64 heartbeatTimestamp
   2: required bool needSamplingLoad
+  3: optional bool activated
 }
 
-struct TAIHeartbeatResp{
+struct TAIHeartbeatResp {
   1: required i64 heartbeatTimestamp
   2: required string status
   3: optional string statusReason
   4: optional common.TLoadSample loadSample
+  5: optional string activateStatus
 }
 
 struct TRegisterModelReq {
@@ -58,11 +60,8 @@ struct TRegisterModelResp {
 struct TInferenceReq {
   1: required string modelId
   2: required binary dataset
-  3: required list<string> typeList
-  4: required list<string> columnNameList
-  5: required map<string, i32> columnNameIndexMap
-  6: optional TWindowParams windowParams
-  7: optional map<string, string> inferenceAttributes
+  3: optional TWindowParams windowParams
+  4: optional map<string, string> inferenceAttributes
 }
 
 struct TWindowParams {
@@ -72,12 +71,52 @@ struct TWindowParams {
 
 struct TInferenceResp {
   1: required common.TSStatus status
-  2: required list<binary> inferenceResult
+  2: optional list<binary> inferenceResult
+}
+
+struct IDataSchema {
+  1: required string schemaName
+  2: optional list<i64> timeRange
+}
+
+struct TTrainingReq {
+  1: required string dbType
+  2: required string modelId
+  3: required string existingModelId
+  4: optional list<IDataSchema> targetDataSchema;
+  5: optional map<string, string> parameters;
+}
+
+struct TForecastReq {
+  1: required string modelId
+  2: required binary inputData
+  3: required i32 outputLength
+  4: optional map<string, string> options
+}
+
+struct TForecastResp {
+  1: required common.TSStatus status
+  2: optional binary forecastResult
+}
+
+struct TShowModelsReq {
+  1: optional string modelId
+}
+
+struct TShowModelsResp {
+  1: required common.TSStatus status
+  2: optional list<string> modelIdList
+  3: optional map<string, string> modelTypeMap
+  4: optional map<string, string> categoryMap
+  5: optional map<string, string> stateMap
 }
 
 service IAINodeRPCService {
 
   // -------------- For Config Node --------------
+  common.TSStatus stopAINode()
+
+  TShowModelsResp showModels(TShowModelsReq req)
 
   common.TSStatus deleteModel(TDeleteModelReq req)
 
@@ -85,7 +124,11 @@ service IAINodeRPCService {
 
   TAIHeartbeatResp getAIHeartbeat(TAIHeartbeatReq req)
 
+  common.TSStatus createTrainingTask(TTrainingReq req)
+
   // -------------- For Data Node --------------
 
   TInferenceResp inference(TInferenceReq req)
+
+  TForecastResp forecast(TForecastReq req)
 }

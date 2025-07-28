@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.commons.schema;
 
+import org.apache.tsfile.utils.Binary;
+
+import javax.annotation.Nonnull;
+
 public class MemUsageUtil {
 
   private MemUsageUtil() {
     // do nothing
   }
 
-  public static long computeStringMemUsage(String value) {
+  public static long computeStringMemUsage(final String value) {
     return estimateStringSize(value);
   }
 
@@ -41,8 +45,8 @@ public class MemUsageUtil {
    *       </ol>
    * </ol>
    */
-  public static long computeKVMemUsageInMap(String key, String value) {
-    return 40L + estimateStringSize(key) + estimateStringSize(value);
+  public static long computeKVMemUsageInMap(final String key, final @Nonnull Binary value) {
+    return 40L + estimateStringSize(key) + value.ramBytesUsed();
   }
 
   /**
@@ -54,7 +58,7 @@ public class MemUsageUtil {
    *   <li>hash code, 4B
    * </ul>
    */
-  private static long estimateStringSize(String string) {
+  private static long estimateStringSize(final String string) {
     // each char takes 2B in Java
     return string == null ? 0 : 32 + 2L * string.length();
   }

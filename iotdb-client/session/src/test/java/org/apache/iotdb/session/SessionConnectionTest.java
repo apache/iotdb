@@ -84,7 +84,7 @@ public class SessionConnectionTest {
   @Before
   public void setUp() throws IoTDBConnectionException, StatementExecutionException, TException {
     MockitoAnnotations.initMocks(this);
-    sessionConnection = new SessionConnection();
+    sessionConnection = new SessionConnection("tree");
     Whitebox.setInternalState(sessionConnection, "transport", transport);
     Whitebox.setInternalState(sessionConnection, "client", client);
     session =

@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.exception.QueryTimeoutException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
@@ -44,6 +45,9 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.exception.UDFTypeMismatchException;
 
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -52,12 +56,10 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.Objects.requireNonNull;
@@ -190,7 +192,6 @@ public class FragmentInstanceManager {
                       instance.isExplainAnalyze(),
                       exchangeManager);
                 } catch (Throwable t) {
-                  clearFIRelatedResources(instanceId);
                   // deal with
                   if (t instanceof IllegalStateException
                       && TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG.equals(t.getMessage())) {
@@ -201,10 +202,17 @@ public class FragmentInstanceManager {
                             TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()));
                   } else if (t instanceof IoTDBRuntimeException) {
                     stateMachine.failed(t);
+                  } else if (t instanceof UDFTypeMismatchException) {
+                    stateMachine.failed(new SemanticException(t.getMessage()));
+                  } else if (t instanceof UDFException) {
+                    stateMachine.failed(
+                        new IoTDBRuntimeException(
+                            t.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true));
                   } else {
                     logger.warn("error when create FragmentInstanceExecution.", t);
                     stateMachine.failed(t);
                   }
+                  clearFIRelatedResources(instanceId);
                   return null;
                 }
               });
@@ -287,7 +295,6 @@ public class FragmentInstanceManager {
                     false,
                     exchangeManager);
               } catch (Throwable t) {
-                clearFIRelatedResources(instanceId);
                 // deal with
                 if (t instanceof IllegalStateException
                     && TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG.equals(t.getMessage())) {
@@ -296,10 +303,13 @@ public class FragmentInstanceManager {
                       new IoTDBException(
                           TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG,
                           TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()));
+                } else if (t instanceof IoTDBRuntimeException) {
+                  stateMachine.failed(t);
                 } else {
                   logger.warn("Execute error caused by ", t);
                   stateMachine.failed(t);
                 }
+                clearFIRelatedResources(instanceId);
                 return null;
               }
             });
@@ -389,23 +399,7 @@ public class FragmentInstanceManager {
 
   private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {
     FragmentInstanceContext context = instanceContext.get(instanceId);
-    Optional<TSStatus> errorCode = context.getErrorCode();
-    return errorCode
-        .map(
-            tsStatus ->
-                new FragmentInstanceInfo(
-                    FragmentInstanceState.FAILED,
-                    context.getEndTime(),
-                    context.getFailedCause(),
-                    context.getFailureInfoList(),
-                    tsStatus))
-        .orElseGet(
-            () ->
-                new FragmentInstanceInfo(
-                    FragmentInstanceState.FAILED,
-                    context.getEndTime(),
-                    context.getFailedCause(),
-                    context.getFailureInfoList()));
+    return context.getInstanceInfo();
   }
 
   private void removeOldInstances() {
@@ -428,8 +422,10 @@ public class FragmentInstanceManager {
             execution
                 .getStateMachine()
                 .failed(
-                    new TimeoutException(
-                        "Query has executed more than " + execution.getTimeoutInMs() + "ms"));
+                    new QueryTimeoutException(
+                        "Query has executed more than "
+                            + execution.getTimeoutInMs()
+                            + "ms, and now is in flushing state"));
           }
         });
   }

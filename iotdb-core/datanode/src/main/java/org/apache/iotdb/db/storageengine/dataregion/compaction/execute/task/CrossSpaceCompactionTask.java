@@ -81,6 +81,12 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         serialId);
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
+    for (TsFileResource resource : selectedSequenceFiles) {
+      selectedSeqFileSize += resource.getTsFileSize();
+    }
+    for (TsFileResource resource : selectedUnsequenceFiles) {
+      selectedUnseqFileSize += resource.getTsFileSize();
+    }
     this.emptyTargetTsFileResourceList = new ArrayList<>();
     this.performer = performer;
     this.hashCode = this.toString().hashCode();
@@ -145,13 +151,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           dataRegionId);
       return true;
     }
-
-    for (TsFileResource resource : selectedSequenceFiles) {
-      selectedSeqFileSize += resource.getTsFileSize();
-    }
-    for (TsFileResource resource : selectedUnsequenceFiles) {
-      selectedUnseqFileSize += resource.getTsFileSize();
-    }
     LOGGER.info(
         "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files "
             + "and {} unsequence files. "
@@ -186,13 +185,15 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         compactionLogger.logSourceFiles(selectedUnsequenceFiles);
         compactionLogger.logTargetFiles(targetTsfileResourceList);
         compactionLogger.force();
+        CompactionUtils.prepareCompactionModFiles(
+            targetTsfileResourceList, selectedSequenceFiles, selectedUnsequenceFiles);
 
         performer.setSourceFiles(selectedSequenceFiles, selectedUnsequenceFiles);
         performer.setTargetFiles(targetTsfileResourceList);
         performer.setSummary(summary);
         performer.perform();
 
-        CompactionUtils.updateProgressIndex(
+        CompactionUtils.updateProgressIndexAndMark(
             targetTsfileResourceList, selectedSequenceFiles, selectedUnsequenceFiles);
         CompactionUtils.moveTargetFile(
             targetTsfileResourceList,
@@ -228,14 +229,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (!targetResource.isDeleted()) {
-            FileMetrics.getInstance()
-                .addTsFile(
-                    targetResource.getDatabaseName(),
-                    targetResource.getDataRegionId(),
-                    targetResource.getTsFileSize(),
-                    true,
-                    targetResource.getTsFile().getName());
-
+            CompactionUtils.addFilesToFileMetrics(targetResource);
           } else {
             // target resource is empty after compaction, then delete it
             targetResource.remove();
@@ -343,7 +337,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     }
     if (recoverMemoryStatus) {
       FileMetrics.getInstance().deleteTsFile(true, selectedSequenceFiles);
-      FileMetrics.getInstance().deleteTsFile(true, selectedUnsequenceFiles);
+      FileMetrics.getInstance().deleteTsFile(false, selectedUnsequenceFiles);
     }
   }
 
@@ -447,5 +441,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public void setCompactionConfigVersion(long compactionConfigVersion) {
     this.compactionConfigVersion = Math.min(this.compactionConfigVersion, compactionConfigVersion);
+  }
+
+  @Override
+  public long getSelectedFileSize() {
+    return (long) (selectedSeqFileSize + selectedUnseqFileSize);
   }
 }

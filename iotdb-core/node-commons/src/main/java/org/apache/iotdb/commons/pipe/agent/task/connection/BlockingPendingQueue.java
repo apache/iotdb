@@ -29,18 +29,20 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public abstract class BlockingPendingQueue<E extends Event> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BlockingPendingQueue.class);
 
-  private static final long MAX_BLOCKING_TIME_MS =
-      PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
   protected final BlockingQueue<E> pendingQueue;
 
   protected final PipeEventCounter eventCounter;
+
+  protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   protected BlockingPendingQueue(
       final BlockingQueue<E> pendingQueue, final PipeEventCounter eventCounter) {
@@ -49,9 +51,13 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public boolean waitedOffer(final E event) {
+    checkBeforeOffer(event);
     try {
       final boolean offered =
-          pendingQueue.offer(event, MAX_BLOCKING_TIME_MS, TimeUnit.MILLISECONDS);
+          pendingQueue.offer(
+              event,
+              PIPE_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(),
+              TimeUnit.MILLISECONDS);
       if (offered) {
         eventCounter.increaseEventCount(event);
       }
@@ -64,6 +70,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public boolean directOffer(final E event) {
+    checkBeforeOffer(event);
     final boolean offered = pendingQueue.offer(event);
     if (offered) {
       eventCounter.increaseEventCount(event);
@@ -72,6 +79,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public boolean put(final E event) {
+    checkBeforeOffer(event);
     try {
       pendingQueue.put(event);
       eventCounter.increaseEventCount(event);
@@ -92,7 +100,10 @@ public abstract class BlockingPendingQueue<E extends Event> {
   public E waitedPoll() {
     E event = null;
     try {
-      event = pendingQueue.poll(MAX_BLOCKING_TIME_MS, TimeUnit.MILLISECONDS);
+      event =
+          pendingQueue.poll(
+              PIPE_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(),
+              TimeUnit.MILLISECONDS);
       eventCounter.decreaseEventCount(event);
     } catch (final InterruptedException e) {
       LOGGER.info("pending queue poll is interrupted.", e);
@@ -101,7 +112,12 @@ public abstract class BlockingPendingQueue<E extends Event> {
     return event;
   }
 
+  public E peek() {
+    return pendingQueue.peek();
+  }
+
   public void clear() {
+    isClosed.set(true);
     pendingQueue.clear();
     eventCounter.reset();
   }
@@ -112,6 +128,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public void discardAllEvents() {
+    isClosed.set(true);
     pendingQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent) {
@@ -157,5 +174,11 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   public int getPipeHeartbeatEventCount() {
     return eventCounter.getPipeHeartbeatEventCount();
+  }
+
+  protected void checkBeforeOffer(final E event) {
+    if (isClosed.get() && event instanceof EnrichedEvent) {
+      ((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName());
+    }
   }
 }

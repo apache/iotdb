@@ -802,10 +802,10 @@ public class SessionTest {
   public void testInsertTablet() throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.BOOLEAN);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.BOOLEAN);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {1l, 2l};
     boolean[][] values = new boolean[][] {{true, false}, {true, false}};
@@ -821,10 +821,10 @@ public class SessionTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.BOOLEAN);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.BOOLEAN);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {5l, 2l};
     boolean[][] values = new boolean[][] {{true, false}, {true, false}};
@@ -840,10 +840,10 @@ public class SessionTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.INT32);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.INT32);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {1l, 2l};
     int[][] values = new int[][] {{12, 22}, {14, 34}};
@@ -859,10 +859,10 @@ public class SessionTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.INT32);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.INT32);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {1l, 2l};
     int[][] values = new int[][] {{12, 22}, {14, 34}};
@@ -878,10 +878,10 @@ public class SessionTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.INT32);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.INT32);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {2l, 1l};
     int[][] values = new int[][] {{34, 42}, {40, 42}};
@@ -904,10 +904,10 @@ public class SessionTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.FLOAT);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.FLOAT);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {2l, 1l};
     float[][] values = new float[][] {{1.1f, 1.0f}, {1.2f, 1.0f}};
@@ -923,10 +923,10 @@ public class SessionTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.DOUBLE);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.DOUBLE);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {2l, 1l};
     double[][] values = new double[][] {{22.2, 22.0}, {21.5, 23.0}};
@@ -943,10 +943,10 @@ public class SessionTest {
     Whitebox.setInternalState(session, "enableRedirection", false);
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.TEXT);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.TEXT);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {2l, 3l};
     Binary[][] values =
@@ -975,10 +975,10 @@ public class SessionTest {
   public void testTestInsertTablet() throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.BOOLEAN);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.BOOLEAN);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {1l, 2l};
     boolean[][] values = new boolean[][] {{true, false}, {true, false}};
@@ -994,10 +994,10 @@ public class SessionTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.BOOLEAN);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.BOOLEAN);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {1l, 2l};
     boolean[][] values = new boolean[][] {{true, false}, {true, false}};
@@ -1012,10 +1012,10 @@ public class SessionTest {
   public void testTestInsertTablets() throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.BOOLEAN);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.BOOLEAN);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {1l, 2l};
     boolean[][] values = new boolean[][] {{true, false}, {true, false}};
@@ -1031,10 +1031,10 @@ public class SessionTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.BOOLEAN);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.BOOLEAN);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {1l, 2l};
     boolean[][] values = new boolean[][] {{true, false}, {true, false}};

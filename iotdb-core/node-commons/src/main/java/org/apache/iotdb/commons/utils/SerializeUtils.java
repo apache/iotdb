@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
@@ -586,5 +588,24 @@ public class SerializeUtils {
       ret[i] = buffer.getLong();
     }
     return ret;
+  }
+
+  public static void serializePrivilegeTypeSet(
+      Set<PrivilegeType> types, DataOutputStream dataOutputStream) {
+    try {
+      dataOutputStream.writeInt(types.size());
+      for (PrivilegeType type : types) {
+        dataOutputStream.writeInt(type.ordinal());
+      }
+    } catch (IOException e) {
+      //
+    }
+  }
+
+  public static void deserializePrivilegeTypeSet(Set<PrivilegeType> types, ByteBuffer buffer) {
+    int length = buffer.getInt();
+    for (int i = 0; i < length; i++) {
+      types.add(PrivilegeType.values()[buffer.getInt()]);
+    }
   }
 }

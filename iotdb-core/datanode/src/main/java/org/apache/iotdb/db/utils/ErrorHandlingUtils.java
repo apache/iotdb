@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.exception.QuerySchemaFetchFailedException;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
@@ -30,7 +31,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
+import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
+import org.apache.iotdb.db.queryengine.plan.planner.exceptions.RootFIPlacementException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -106,8 +108,20 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()
             || status.getCode() == TSStatusCode.ILLEGAL_PATH.getStatusCode()
             || status.getCode() == TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode()
-            || status.getCode() == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()) {
-          LOGGER.warn(message);
+            || status.getCode() == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()
+            || status.getCode() == TSStatusCode.DATE_OUT_OF_RANGE.getStatusCode()
+            || status.getCode() == TSStatusCode.TABLE_NOT_EXISTS.getStatusCode()
+            || status.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()
+            || status.getCode() == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()
+            || status.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()
+            || status.getCode() == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
+            || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode()
+            || status.getCode() == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()
+            || status.getCode() == TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode()
+            || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()) {
+          LOGGER.info(message);
         } else {
           LOGGER.warn(message, e);
         }
@@ -146,6 +160,10 @@ public class ErrorHandlingUtils {
     } else if (t instanceof QueryInBatchStatementException) {
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + rootCause.getMessage());
+    } else if (t instanceof RootFIPlacementException
+        || t instanceof ReplicaSetUnreachableException
+        || t instanceof QuerySchemaFetchFailedException) {
+      return RpcUtils.getStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION, rootCause.getMessage());
     } else if (t instanceof IoTDBException) {
       return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), rootCause.getMessage());
     } else if (t instanceof TsFileRuntimeException) {
@@ -160,8 +178,6 @@ public class ErrorHandlingUtils {
       return RpcUtils.getStatus(((IoTDBRuntimeException) t).getErrorCode(), t.getMessage());
     } else if (t instanceof ModelException) {
       return RpcUtils.getStatus(((ModelException) t).getStatusCode(), rootCause.getMessage());
-    } else if (t instanceof MemoryNotEnoughException) {
-      return RpcUtils.getStatus(TSStatusCode.QUOTA_MEM_QUERY_NOT_ENOUGH, rootCause.getMessage());
     }
 
     if (t instanceof RuntimeException && rootCause instanceof IoTDBException) {

@@ -52,6 +52,7 @@ public class IoTDBInsertWithQueryIT {
 
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

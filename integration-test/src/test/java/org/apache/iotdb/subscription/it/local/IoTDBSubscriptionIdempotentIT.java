@@ -22,8 +22,8 @@ package org.apache.iotdb.subscription.it.local;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.session.subscription.SubscriptionSession;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -54,8 +54,8 @@ public class IoTDBSubscriptionIdempotentIT extends AbstractSubscriptionLocalIT {
 
     // Subscribe non-existed topic
     final String topicName = "topic1";
-    try (final SubscriptionPullConsumer consumer =
-        new SubscriptionPullConsumer.Builder()
+    try (final SubscriptionTreePullConsumer consumer =
+        new SubscriptionTreePullConsumer.Builder()
             .host(host)
             .port(port)
             .consumerId("c1")
@@ -71,8 +71,8 @@ public class IoTDBSubscriptionIdempotentIT extends AbstractSubscriptionLocalIT {
     }
 
     // Unsubscribe non-existed topic
-    try (final SubscriptionPullConsumer consumer =
-        new SubscriptionPullConsumer.Builder()
+    try (final SubscriptionTreePullConsumer consumer =
+        new SubscriptionTreePullConsumer.Builder()
             .host(host)
             .port(port)
             .consumerId("c1")
@@ -95,7 +95,7 @@ public class IoTDBSubscriptionIdempotentIT extends AbstractSubscriptionLocalIT {
 
     // Create topic
     final String topicName = "topic2";
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       session.createTopic(topicName);
     } catch (final Exception e) {
@@ -103,8 +103,8 @@ public class IoTDBSubscriptionIdempotentIT extends AbstractSubscriptionLocalIT {
       Assert.fail(e.getMessage());
     }
 
-    try (final SubscriptionPullConsumer consumer =
-        new SubscriptionPullConsumer.Builder()
+    try (final SubscriptionTreePullConsumer consumer =
+        new SubscriptionTreePullConsumer.Builder()
             .host(host)
             .port(port)
             .consumerId("c1")
@@ -130,7 +130,7 @@ public class IoTDBSubscriptionIdempotentIT extends AbstractSubscriptionLocalIT {
 
     // Create topic
     final String topicName = "topic3";
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       session.createTopic(topicName);
     } catch (final Exception e) {
@@ -138,8 +138,8 @@ public class IoTDBSubscriptionIdempotentIT extends AbstractSubscriptionLocalIT {
       Assert.fail(e.getMessage());
     }
 
-    try (final SubscriptionPullConsumer consumer =
-        new SubscriptionPullConsumer.Builder()
+    try (final SubscriptionTreePullConsumer consumer =
+        new SubscriptionTreePullConsumer.Builder()
             .host(host)
             .port(port)
             .consumerId("c1")

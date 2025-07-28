@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -52,7 +52,7 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
   // Current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
 
-  private final List<Aggregator> aggregators;
+  private final List<TreeAggregator> aggregators;
 
   // Using for building result tsBlock
   private final TsBlockBuilder resultTsBlockBuilder;
@@ -63,7 +63,7 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
 
   public AggregationOperator(
       OperatorContext operatorContext,
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       List<Operator> children,
       boolean outputEndTime,
@@ -75,7 +75,7 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
     if (outputEndTime) {
       dataTypes.add(TSDataType.INT64);
     }
-    for (Aggregator aggregator : aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
@@ -128,7 +128,7 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
         curTimeRange = timeRangeIterator.nextTimeRange();
 
         // Clear previous aggregation result
-        for (Aggregator aggregator : aggregators) {
+        for (TreeAggregator aggregator : aggregators) {
           aggregator.reset();
         }
       }
@@ -153,7 +153,7 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
 
   private void calculateNextAggregationResult() {
     // Consume current input tsBlocks
-    for (Aggregator aggregator : aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       aggregator.processTsBlocks(inputTsBlocks);
     }
 

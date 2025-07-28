@@ -219,7 +219,7 @@ public class IoTDBSystemPermissionIT {
     executeNonQuery("show queries", "test", "test123");
     assertNonQueryTestFail(
         "kill query 'test'",
-        "305: Please ensure your input <queryId> is correct",
+        "701: Please ensure your input <queryId> is correct",
         "test",
         "test123");
     executeNonQuery("show cluster", "test", "test123");
@@ -247,7 +247,5 @@ public class IoTDBSystemPermissionIT {
         "803: Only the admin user can perform this operation",
         "test",
         "test123");
-    assertTestFail(
-        "show regions", "803: Only the admin user can perform this operation", "test", "test123");
   }
 }

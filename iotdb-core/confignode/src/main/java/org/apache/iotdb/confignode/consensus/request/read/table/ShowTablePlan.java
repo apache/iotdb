@@ -26,12 +26,19 @@ public class ShowTablePlan extends ConfigPhysicalReadPlan {
 
   private final String database;
 
-  public ShowTablePlan(final String database) {
+  private final boolean isDetails;
+
+  public ShowTablePlan(final String database, final boolean isDetails) {
     super(ConfigPhysicalPlanType.ShowTable);
     this.database = database;
+    this.isDetails = isDetails;
   }
 
   public String getDatabase() {
     return database;
+  }
+
+  public boolean isDetails() {
+    return isDetails;
   }
 }

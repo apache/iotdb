@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.auth.entity;
 
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -35,17 +36,18 @@ public class UserTest {
     User user = new User("user", "password");
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
     user.setPrivilegeList(Collections.singletonList(pathPrivilege));
-    user.setPathPrivileges(new PartialPath("root.ln"), Collections.singleton(1));
+    user.setPathPrivileges(
+        new PartialPath("root.ln"), Collections.singleton(PrivilegeType.WRITE_DATA));
     Assert.assertEquals(
-        "User{name='user', password='password', pathPrivilegeList=[root.ln : WRITE_DATA], sysPrivilegeSet=[], roleList=[], "
-            + "isOpenIdUser=false, useWaterMark=false}",
+        "User{name='user', pathPrivilegeList=[root.ln : WRITE_DATA], "
+            + "sysPrivilegeSet=[], AnyScopePrivilegeMap=[], objectPrivilegeMap={}, roleList=[], isOpenIdUser=false}",
         user.toString());
     User user1 = new User("user1", "password1");
     user1.deserialize(user.serialize());
     Assert.assertEquals(
-        "User{name='user', password='password', pathPrivilegeList=[root.ln : WRITE_DATA], sysPrivilegeSet=[], roleList=[], "
-            + "isOpenIdUser=false, useWaterMark=false}",
+        "User{name='user', pathPrivilegeList=[root.ln : WRITE_DATA], "
+            + "sysPrivilegeSet=[], AnyScopePrivilegeMap=[], objectPrivilegeMap={}, roleList=[], isOpenIdUser=false}",
         user1.toString());
-    Assert.assertTrue(user1.equals(user));
+    Assert.assertEquals(user1, user);
   }
 }

@@ -68,13 +68,13 @@ public class IoTDBInsertAlignedValuesTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
       statement.addBatch(
-          "create table wf01 (id1 string id, status boolean measurement, temperature float measurement)");
+          "create table wf01 (tag1 string tag, status boolean field, temperature float field)");
       statement.addBatch(
-          "insert into wf01(id1, time, status, temperature) values ('wt01', 4000, true, 17.1)");
+          "insert into wf01(tag1, time, status, temperature) values ('wt01', 4000, true, 17.1)");
       statement.addBatch(
-          "insert into wf01(id1, time, status, temperature) values ('wt01', 5000, true, 20.1)");
+          "insert into wf01(tag1, time, status, temperature) values ('wt01', 5000, true, 20.1)");
       statement.addBatch(
-          "insert into wf01(id1, time, status, temperature) values ('wt01', 6000, true, 22)");
+          "insert into wf01(tag1, time, status, temperature) values ('wt01', 6000, true, 22)");
       statement.executeBatch();
 
       try (ResultSet resultSet = statement.executeQuery("select time, status from wf01")) {
@@ -117,11 +117,11 @@ public class IoTDBInsertAlignedValuesTableIT {
 
       statement.execute("use \"t1\"");
       statement.addBatch(
-          "create table wf02 (id1 string id, status boolean measurement, temperature float measurement)");
+          "create table wf02 (tag1 string tag, status boolean field, temperature float field)");
       statement.addBatch(
-          "insert into wf02(id1, time, status, temperature) values ('wt01', 4000, true, 17.1)");
-      statement.addBatch("insert into wf02(id1, time, status) values ('wt01', 5000, true)");
-      statement.addBatch("insert into wf02(id1, time, temperature) values ('wt01', 6000, 22)");
+          "insert into wf02(tag1, time, status, temperature) values ('wt01', 4000, true, 17.1)");
+      statement.addBatch("insert into wf02(tag1, time, status) values ('wt01', 5000, true)");
+      statement.addBatch("insert into wf02(tag1, time, temperature) values ('wt01', 6000, 22)");
       statement.executeBatch();
 
       try (ResultSet resultSet = statement.executeQuery("select status from wf02")) {
@@ -164,12 +164,12 @@ public class IoTDBInsertAlignedValuesTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
       statement.addBatch(
-          "create table wf03 (id1 string id, status boolean measurement, temperature float measurement)");
+          "create table wf03 (tag1 string tag, status boolean field, temperature float field)");
       statement.addBatch(
-          "insert into wf03(id1, time, status, temperature) values ('wt01', 4000, true, 17.1)");
-      statement.addBatch("insert into wf03(id1, time, status) values ('wt01', 5000, true)");
-      statement.addBatch("insert into wf03(id1, time, temperature)values ('wt01', 5000, 20.1)");
-      statement.addBatch("insert into wf03(id1, time, temperature)values ('wt01', 6000, 22)");
+          "insert into wf03(tag1, time, status, temperature) values ('wt01', 4000, true, 17.1)");
+      statement.addBatch("insert into wf03(tag1, time, status) values ('wt01', 5000, true)");
+      statement.addBatch("insert into wf03(tag1, time, temperature)values ('wt01', 5000, 20.1)");
+      statement.addBatch("insert into wf03(tag1, time, temperature)values ('wt01', 6000, 22)");
       statement.executeBatch();
 
       try (ResultSet resultSet = statement.executeQuery("select time, status from wf03")) {
@@ -244,10 +244,9 @@ public class IoTDBInsertAlignedValuesTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
-      statement.addBatch(
-          "create table sg3 (id1 string id, s2 double measurement, s1 double measurement)");
-      statement.addBatch("insert into sg3(id1,time,s2) values('d1',1,2)");
-      statement.addBatch("insert into sg3(id1,time,s1) values('d1',1,2)");
+      statement.addBatch("create table sg3 (tag1 string tag, s2 double field, s1 double field)");
+      statement.addBatch("insert into sg3(tag1,time,s2) values('d1',1,2)");
+      statement.addBatch("insert into sg3(tag1,time,s1) values('d1',1,2)");
       statement.executeBatch();
 
       try (ResultSet resultSet = statement.executeQuery("select time, s1, s2 from sg3")) {
@@ -279,9 +278,9 @@ public class IoTDBInsertAlignedValuesTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
       statement.execute(
-          "create table wf04 (id1 string id, status int32, temperature int32 measurement)");
+          "create table wf04 (tag1 string tag, status int32, temperature int32 field)");
       statement.execute(
-          "insert into wf04(id1, time, status, temperature) values('wt01', 11000, 100)");
+          "insert into wf04(tag1, time, status, temperature) values('wt01', 11000, 100)");
       fail();
     } catch (SQLException e) {
       assertEquals(
@@ -295,9 +294,9 @@ public class IoTDBInsertAlignedValuesTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
       statement.execute(
-          "create table wf05 (id1 string id, status int32, temperature int32 measurement)");
+          "create table wf05 (tag1 string tag, status int32, temperature int32 field)");
       statement.execute(
-          "insert into wf05(id1, time, status, temperature) values('wt01', 11000, 100, 300, 400)");
+          "insert into wf05(tag1, time, status, temperature) values('wt01', 11000, 100, 300, 400)");
       fail();
     } catch (SQLException e) {
       assertEquals(
@@ -311,8 +310,8 @@ public class IoTDBInsertAlignedValuesTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
       statement.execute(
-          "create table dev6 (id1 string id, latitude int32 measurement, longitude int32 measurement)");
-      statement.execute("insert into dev6(id1,time,latitude,longitude) values('GPS', 1,1.3,6.7)");
+          "create table dev6 (tag1 string tag, latitude int32 field, longitude int32 field)");
+      statement.execute("insert into dev6(tag1,time,latitude,longitude) values('GPS', 1,1.3,6.7)");
       fail();
     }
   }
@@ -322,9 +321,9 @@ public class IoTDBInsertAlignedValuesTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
-      statement.execute("create table wf07(id1 string id, s3 boolean measurement, status int32)");
+      statement.execute("create table wf07(tag1 string tag, s3 boolean field, status int32)");
       statement.execute(
-          "insert into wf07(id1, time, s3, status, status) values('wt01', 100, true, 20.1, 20.2)");
+          "insert into wf07(tag1, time, s3, status, status) values('wt01', 100, true, 20.1, 20.2)");
       fail();
     } catch (SQLException e) {
       assertTrue(
@@ -338,10 +337,9 @@ public class IoTDBInsertAlignedValuesTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
+      statement.execute("create table sg8 (tag1 string tag, s1 int32 field, s2 int32 field)");
       statement.execute(
-          "create table sg8 (id1 string id, s1 int32 measurement, s2 int32 measurement)");
-      statement.execute(
-          "insert into sg8(id1, time, s1, s2) values('d1', 10, 2, 2), ('d1', 11, 3, '3'), ('d1', 12,12.11,false)");
+          "insert into sg8(tag1, time, s1, s2) values('d1', 10, 2, 2), ('d1', 11, 3, '3'), ('d1', 12,12.11,false)");
       fail();
     } catch (SQLException e) {
       assertTrue(e.getMessage(), e.getMessage().contains("data type is not consistent"));
@@ -353,14 +351,13 @@ public class IoTDBInsertAlignedValuesTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
+      statement.execute("create table sg9 (tag1 string tag, s98 int64 field, s99 int64 field)");
       statement.execute(
-          "create table sg9 (id1 string id, s98 int64 measurement, s99 int64 measurement)");
-      statement.execute(
-          "insert into sg9(id1, time, s98, s99) values('d1', 10, 2, 271840880000000000000000)");
+          "insert into sg9(tag1, time, s98, s99) values('d1', 10, 2, 271840880000000000000000)");
       fail("Exception expected");
     } catch (SQLException e) {
       assertEquals(
-          "700: line 1:58: Invalid numeric literal: 271840880000000000000000", e.getMessage());
+          "700: line 1:59: Invalid numeric literal: 271840880000000000000000", e.getMessage());
     }
   }
 
@@ -370,11 +367,11 @@ public class IoTDBInsertAlignedValuesTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
       statement.execute(
-          "create table dev10 (id1 string id, s1 int32 measurement, s2 int32 measurement, s3 int32 measurement)");
+          "create table dev10 (tag1 string tag, s1 int32 field, s2 int32 field, s3 int32 field)");
       for (int i = 0; i < 100; i++) {
         if (i == 99) {
           statement.addBatch(
-              "insert into dev10(id1,time,s1,s3) values("
+              "insert into dev10(tag1,time,s1,s3) values("
                   + "'GPS'"
                   + ","
                   + i
@@ -385,7 +382,7 @@ public class IoTDBInsertAlignedValuesTableIT {
                   + ")");
         } else {
           statement.addBatch(
-              "insert into dev10(id1, time,s1,s2) values("
+              "insert into dev10(tag1, time,s1,s2) values("
                   + "'GPS'"
                   + ","
                   + i
@@ -443,14 +440,13 @@ public class IoTDBInsertAlignedValuesTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
-      statement.execute(
-          "create table sg11 (id1 string id, s1 string measurement, s2 string measurement)");
+      statement.execute("create table sg11 (tag1 string tag, s1 string field, s2 string field)");
 
-      statement.execute("insert into sg11(id1, time, s1, s2) values('d1', 1,'aa','bb')");
-      statement.execute("insert into sg11(id1, time, s1, s2) values('d1', 1,'aa','bb')");
-      statement.execute("insert into sg11(id1, time, s1, s2) values('d2', 1,'aa','bb')");
+      statement.execute("insert into sg11(tag1, time, s1, s2) values('d1', 1,'aa','bb')");
+      statement.execute("insert into sg11(tag1, time, s1, s2) values('d1', 1,'aa','bb')");
+      statement.execute("insert into sg11(tag1, time, s1, s2) values('d2', 1,'aa','bb')");
       statement.execute("flush");
-      statement.execute("insert into sg11(id1, time, s1, s2) values('d1', 1,'aa','bb')");
+      statement.execute("insert into sg11(tag1, time, s1, s2) values('d1', 1,'aa','bb')");
     }
   }
 
@@ -460,17 +456,16 @@ public class IoTDBInsertAlignedValuesTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
-      statement.addBatch(
-          "create table sg12 (id1 string id, s1 int32 measurement, s2 int32 measurement)");
-      statement.addBatch("insert into sg12(id1, time, s1) values('id1', 3,1)");
-      statement.addBatch("insert into sg12(id1, time, s1) values('id1', 3,1)");
-      statement.addBatch("insert into sg12(id1, time, s1) values('id1', 1,1)");
-      statement.addBatch("insert into sg12(id1, time, s1) values('id1', 2,1)");
-      statement.addBatch("insert into sg12(id1, time, s2) values('id1', 2,2)");
-      statement.addBatch("insert into sg12(id1, time, s2) values('id1', 1,2)");
-      statement.addBatch("insert into sg12(id1, time, s2) values('id1', 3,2)");
-      statement.addBatch("insert into sg12(id1, time, s3) values('id1', 1,3)");
-      statement.addBatch("insert into sg12(id1, time, s3) values('id1', 3,3)");
+      statement.addBatch("create table sg12 (tag1 string tag, s1 int32 field, s2 int32 field)");
+      statement.addBatch("insert into sg12(tag1, time, s1) values('tag1', 3,1)");
+      statement.addBatch("insert into sg12(tag1, time, s1) values('tag1', 3,1)");
+      statement.addBatch("insert into sg12(tag1, time, s1) values('tag1', 1,1)");
+      statement.addBatch("insert into sg12(tag1, time, s1) values('tag1', 2,1)");
+      statement.addBatch("insert into sg12(tag1, time, s2) values('tag1', 2,2)");
+      statement.addBatch("insert into sg12(tag1, time, s2) values('tag1', 1,2)");
+      statement.addBatch("insert into sg12(tag1, time, s2) values('tag1', 3,2)");
+      statement.addBatch("insert into sg12(tag1, time, s3) values('tag1', 1,3)");
+      statement.addBatch("insert into sg12(tag1, time, s3) values('tag1', 3,3)");
       statement.executeBatch();
 
       try (ResultSet resultSet =
@@ -504,11 +499,11 @@ public class IoTDBInsertAlignedValuesTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
       statement.execute(
-          "create table dev13 (id1 string id, s1 int32 measurement, s2 int32 measurement, s3 int32 measurement)");
+          "create table dev13 (tag1 string tag, s1 int32 field, s2 int32 field, s3 int32 field)");
       for (int i = 0; i < 100; i++) {
         if (i >= 49) {
           statement.addBatch(
-              "insert into dev13(id1,time,s1,s2,s3) values("
+              "insert into dev13(tag1,time,s1,s2,s3) values("
                   + "\'GPS\'"
                   + ","
                   + i
@@ -521,7 +516,7 @@ public class IoTDBInsertAlignedValuesTableIT {
                   + ")");
         } else {
           statement.addBatch(
-              "insert into dev13(id1,time,s1,s2) values("
+              "insert into dev13(tag1,time,s1,s2) values("
                   + "\'GPS\'"
                   + ","
                   + i
@@ -573,16 +568,15 @@ public class IoTDBInsertAlignedValuesTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
-      statement.execute(
-          "create table sg14 (id1 string id, s1 string measurement, s2 string measurement)");
-      statement.execute("insert into sg14(id1,time,s1,s2) values('d1',1,'test','test')");
-      statement.execute("insert into sg14(id1,time,s1,s2) values('d1',2,'test','test')");
-      statement.execute("insert into sg14(id1,time,s1,s2) values('d1',3,'test','test')");
-      statement.execute("insert into sg14(id1,time,s1,s2) values('d1',4,'test','test')");
-      statement.execute("insert into sg14(id1,time,s1,s3) values('d1',5,'test','test')");
-      statement.execute("insert into sg14(id1,time,s1,s2) values('d1',6,'test','test')");
+      statement.execute("create table sg14 (tag1 string tag, s1 string field, s2 string field)");
+      statement.execute("insert into sg14(tag1,time,s1,s2) values('d1',1,'test','test')");
+      statement.execute("insert into sg14(tag1,time,s1,s2) values('d1',2,'test','test')");
+      statement.execute("insert into sg14(tag1,time,s1,s2) values('d1',3,'test','test')");
+      statement.execute("insert into sg14(tag1,time,s1,s2) values('d1',4,'test','test')");
+      statement.execute("insert into sg14(tag1,time,s1,s3) values('d1',5,'test','test')");
+      statement.execute("insert into sg14(tag1,time,s1,s2) values('d1',6,'test','test')");
       statement.execute("flush");
-      statement.execute("insert into sg14(id1,time,s1,s3) values('d1',7,'test','test')");
+      statement.execute("insert into sg14(tag1,time,s1,s3) values('d1',7,'test','test')");
       fail();
     } catch (SQLException ignored) {
     }

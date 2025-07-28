@@ -34,11 +34,11 @@ public class FunctionTableResp implements DataSet {
 
   private final TSStatus status;
 
-  private final List<UDFInformation> allUdfInformation;
+  private final List<UDFInformation> udfInformation;
 
-  public FunctionTableResp(TSStatus status, List<UDFInformation> allUdfInformation) {
+  public FunctionTableResp(TSStatus status, List<UDFInformation> udfInformation) {
     this.status = status;
-    this.allUdfInformation = allUdfInformation;
+    this.udfInformation = udfInformation;
   }
 
   @TestOnly
@@ -47,15 +47,15 @@ public class FunctionTableResp implements DataSet {
   }
 
   @TestOnly
-  public List<UDFInformation> getAllUdfInformation() {
-    return allUdfInformation;
+  public List<UDFInformation> getUdfInformation() {
+    return udfInformation;
   }
 
   public TGetUDFTableResp convertToThriftResponse() throws IOException {
     List<ByteBuffer> udfInformationByteBuffers = new ArrayList<>();
 
-    for (UDFInformation udfInformation : allUdfInformation) {
-      udfInformationByteBuffers.add(udfInformation.serialize());
+    for (UDFInformation information : udfInformation) {
+      udfInformationByteBuffers.add(information.serialize());
     }
 
     return new TGetUDFTableResp(status, udfInformationByteBuffers);

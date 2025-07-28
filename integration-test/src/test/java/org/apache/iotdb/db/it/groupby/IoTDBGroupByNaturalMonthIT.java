@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.it.groupby;
 
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -49,6 +51,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.utils.constant.TestConstant.sum;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -75,6 +78,8 @@ public class IoTDBGroupByNaturalMonthIT {
         calendar.add(Calendar.MONTH, 1), i = calendar.getTimeInMillis()) {
       dataSet.add("insert into root.test.d1(timestamp, s1) values (" + i + ", 1)");
     }
+
+    dataSet.add("insert into root.testTimeZone.d1(timestamp, s1) values (1, 1)");
   }
 
   protected static final DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
@@ -412,5 +417,28 @@ public class IoTDBGroupByNaturalMonthIT {
         retArray,
         null,
         currPrecision);
+  }
+
+  @Test
+  public void groupByNaturalMonthWithNonSystemDefaultTimeZone() {
+    try (ISession session =
+        EnvFactory.getEnv().getSessionConnection(TimeZone.getTimeZone("UTC+09:00").toZoneId())) {
+
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement(
+              "select count(s1) from root.testTimeZone.d1 group by([2024-07-01, 2024-08-01), 1mo)");
+
+      int count = 0;
+      while (sessionDataSet.hasNext()) {
+        sessionDataSet.next();
+        count++;
+      }
+      assertEquals(1, count);
+
+      sessionDataSet.closeOperationHandle();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

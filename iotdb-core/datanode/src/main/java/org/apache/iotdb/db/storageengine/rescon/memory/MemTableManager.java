@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.rescon.memory;
 
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;

@@ -83,7 +83,10 @@ public class DriverTaskThread extends AbstractDriverThread {
     ListenableFuture<?> future = driver.processFor(timeSlice);
     // If the future is cancelled, the task is in an error and should be thrown.
     if (future.isCancelled()) {
-      task.setAbortCause(DriverTaskAbortedException.BY_ALREADY_BEING_CANCELLED);
+      task.setAbortCause(
+          new DriverTaskAbortedException(
+              task.getDriverTaskId().getFullId(),
+              DriverTaskAbortedException.BY_ALREADY_BEING_CANCELLED));
       scheduler.toAborted(task);
       return;
     }
