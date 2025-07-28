@@ -258,7 +258,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
     if (addAINode) {
       this.aiNodeWrapperList = new ArrayList<>();
-      startAINode(seedConfigNode, testClassName);
+      startAINode(seedConfigNode, this.dataNodeWrapperList.get(0).getPort(), testClassName);
     }
 
     checkClusterStatusWithoutUnknown();
@@ -307,11 +307,13 @@ public abstract class AbstractEnv implements BaseEnv {
     return dataNodeWrapper;
   }
 
-  private void startAINode(final String seedConfigNode, final String testClassName) {
+  private void startAINode(
+      final String seedConfigNode, final int clusterIngressPort, final String testClassName) {
     final String aiNodeEndPoint;
     final AINodeWrapper aiNodeWrapper =
         new AINodeWrapper(
             seedConfigNode,
+            clusterIngressPort,
             testClassName,
             testMethodName,
             index,
