@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtaskExecutor;
 
@@ -58,7 +58,7 @@ public class PipeConfigNodeSubtaskExecutorTest {
                 new HashMap<String, String>() {
                   {
                     put(
-                        PipeConnectorConstant.CONNECTOR_KEY,
+                        PipeSinkConstant.CONNECTOR_KEY,
                         BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName());
                   }
                 },

@@ -26,8 +26,8 @@ import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -1022,8 +1022,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final String pluginName =
         extractorParameters
             .getStringOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
             .toLowerCase();
 
@@ -1033,14 +1032,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
 
     if (!extractorParameters.hasAnyAttributes(
-        PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY,
-        PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
-        PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
-        PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY)) {
-      replacedExtractorAttributes.put(PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY, userName);
+        PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+        PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY)) {
+      replacedExtractorAttributes.put(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, userName);
     } else if (!extractorParameters.hasAnyAttributes(
-        PipeExtractorConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
-        PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
+        PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
           String.format(
               "Failed to %s pipe %s, in iotdb-source, password must be set when the username is specified.",
@@ -1054,8 +1053,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final String pluginName =
         extractorParameters
             .getStringOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
             .toLowerCase();
 
@@ -1067,17 +1065,17 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     // Use lower case because database + table name are all in lower cases
     extractorParameters.computeAttributeIfExists(
         (k, v) -> v.toLowerCase(Locale.ENGLISH),
-        PipeExtractorConstant.EXTRACTOR_DATABASE_KEY,
-        PipeExtractorConstant.SOURCE_DATABASE_KEY,
-        PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
-        PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY);
+        PipeSourceConstant.EXTRACTOR_DATABASE_KEY,
+        PipeSourceConstant.SOURCE_DATABASE_KEY,
+        PipeSourceConstant.EXTRACTOR_DATABASE_NAME_KEY,
+        PipeSourceConstant.SOURCE_DATABASE_NAME_KEY);
 
     extractorParameters.computeAttributeIfExists(
         (k, v) -> v.toLowerCase(Locale.ENGLISH),
-        PipeExtractorConstant.EXTRACTOR_TABLE_KEY,
-        PipeExtractorConstant.SOURCE_TABLE_KEY,
-        PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY,
-        PipeExtractorConstant.SOURCE_TABLE_NAME_KEY);
+        PipeSourceConstant.EXTRACTOR_TABLE_KEY,
+        PipeSourceConstant.SOURCE_TABLE_KEY,
+        PipeSourceConstant.EXTRACTOR_TABLE_NAME_KEY,
+        PipeSourceConstant.SOURCE_TABLE_NAME_KEY);
   }
 
   public static void checkAndEnrichSinkUserName(
@@ -1089,7 +1087,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final String pluginName =
         connectorParameters
             .getStringOrDefault(
-                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
                 BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
             .toLowerCase();
 
@@ -1099,14 +1097,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
 
     if (!connectorParameters.hasAnyAttributes(
-        PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY,
-        PipeConnectorConstant.SINK_IOTDB_USER_KEY,
-        PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
-        PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY)) {
-      connectorAttributes.put(PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY, userName);
+        PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+        PipeSinkConstant.SINK_IOTDB_USER_KEY,
+        PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+        PipeSinkConstant.SINK_IOTDB_USERNAME_KEY)) {
+      connectorAttributes.put(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY, userName);
     } else if (!connectorParameters.hasAnyAttributes(
-        PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
-        PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY)) {
+        PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY, PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
           String.format(
               "Failed to %s pipe %s, in write-back-sink, password must be set when the username is specified.",

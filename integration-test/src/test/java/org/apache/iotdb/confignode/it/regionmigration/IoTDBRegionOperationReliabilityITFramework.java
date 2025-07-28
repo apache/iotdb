@@ -309,7 +309,7 @@ public class IoTDBRegionOperationReliabilityITFramework {
     }
   }
 
-  protected Set<Integer> getAllDataNodes(Statement statement) throws Exception {
+  public static Set<Integer> getAllDataNodes(Statement statement) throws Exception {
     ResultSet result = statement.executeQuery(SHOW_DATANODES);
     Set<Integer> allDataNodeId = new HashSet<>();
     while (result.next()) {
@@ -455,10 +455,9 @@ public class IoTDBRegionOperationReliabilityITFramework {
     Map<Integer, Pair<Integer, Set<Integer>>> regionMap = new HashMap<>();
     while (showRegionsResult.next()) {
       if (String.valueOf(TConsensusGroupType.DataRegion)
-              .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE))
-          && !showRegionsResult
-              .getString(ColumnHeaderConstant.DATABASE)
-              .equals(SystemConstant.SYSTEM_DATABASE)) {
+          .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE)) && !showRegionsResult
+                .getString(ColumnHeaderConstant.DATABASE)
+                .equals(SystemConstant.SYSTEM_DATABASE)) {
         int regionId = showRegionsResult.getInt(ColumnHeaderConstant.REGION_ID);
         int dataNodeId = showRegionsResult.getInt(ColumnHeaderConstant.DATA_NODE_ID);
         Pair<Integer, Set<Integer>> leaderNodesPair =
