@@ -38,7 +38,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -345,12 +345,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             pipeMeta
                 .getStaticMeta()
                 .getConnectorParameters()
-                .getString(PipeConnectorConstant.SINK_TOPIC_KEY);
+                .getString(PipeSinkConstant.SINK_TOPIC_KEY);
         final String consumerGroupId =
             pipeMeta
                 .getStaticMeta()
                 .getConnectorParameters()
-                .getString(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY);
+                .getString(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY);
         SubscriptionAgent.broker().updateCompletedTopicNames(consumerGroupId, topicName);
       }
     }
@@ -784,12 +784,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     // If the extractor is not hybrid, we do need to allocate memory
     isTSFileParser =
         isTSFileParser
-            || !PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE.equals(
+            || !PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE.equals(
                 connectorParameters.getStringOrDefault(
                     Arrays.asList(
-                        PipeConnectorConstant.CONNECTOR_FORMAT_KEY,
-                        PipeConnectorConstant.SINK_FORMAT_KEY),
-                    PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE));
+                        PipeSinkConstant.CONNECTOR_FORMAT_KEY, PipeSinkConstant.SINK_FORMAT_KEY),
+                    PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE));
 
     if (!isTSFileParser) {
       return 0;
@@ -805,12 +804,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     // If the connector format is tsfile , we need to use batch
     boolean needUseBatch =
-        PipeConnectorConstant.CONNECTOR_FORMAT_TS_FILE_VALUE.equals(
+        PipeSinkConstant.CONNECTOR_FORMAT_TS_FILE_VALUE.equals(
             connectorParameters.getStringOrDefault(
                 Arrays.asList(
-                    PipeConnectorConstant.CONNECTOR_FORMAT_KEY,
-                    PipeConnectorConstant.SINK_FORMAT_KEY),
-                PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE));
+                    PipeSinkConstant.CONNECTOR_FORMAT_KEY, PipeSinkConstant.SINK_FORMAT_KEY),
+                PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE));
 
     if (needUseBatch) {
       return PipeConfig.getInstance().getSinkBatchMemoryTsFile();
@@ -820,9 +818,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     needUseBatch =
         connectorParameters.getBooleanOrDefault(
             Arrays.asList(
-                PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY,
-                PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
-            PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
+                PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY,
+                PipeSinkConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
+            PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
 
     if (!needUseBatch) {
       return 0;
@@ -845,15 +843,14 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     String format =
         connectorParameters.getStringOrDefault(
-            Arrays.asList(
-                PipeConnectorConstant.CONNECTOR_FORMAT_KEY, PipeConnectorConstant.SINK_FORMAT_KEY),
-            PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE);
+            Arrays.asList(PipeSinkConstant.CONNECTOR_FORMAT_KEY, PipeSinkConstant.SINK_FORMAT_KEY),
+            PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE);
 
     // If the connector format is tsfile and hybrid, we need to transfer tsfile
     needTransferTsFile =
         needTransferTsFile
-            || PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE.equals(format)
-            || PipeConnectorConstant.CONNECTOR_FORMAT_TS_FILE_VALUE.equals(format);
+            || PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE.equals(format)
+            || PipeSinkConstant.CONNECTOR_FORMAT_TS_FILE_VALUE.equals(format);
 
     if (!needTransferTsFile) {
       return 0;

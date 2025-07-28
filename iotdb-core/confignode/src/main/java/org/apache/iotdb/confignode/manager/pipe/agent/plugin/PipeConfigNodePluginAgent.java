@@ -20,8 +20,8 @@
 package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
-import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeConnectorConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeProcessorConstructor;
+import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSourceConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 
@@ -44,8 +44,8 @@ public class PipeConfigNodePluginAgent extends PipePluginAgent {
   }
 
   @Override
-  protected PipeConnectorConstructor createPipeConnectorConstructor(
+  protected PipeSinkConstructor createPipeConnectorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper) {
-    return new PipeConfigRegionConnectorConstructor();
+    return new PipeConfigRegionSinkConstructor();
   }
 }
