@@ -99,7 +99,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final String loadTsFileStrategy,
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
-      final boolean isTSFileUsed) {
+      final boolean isTSFileUsed,
+      final String customSendPortStrategy,
+      final int minSendPortRange,
+      final int maxSendPortRange,
+      List<Integer> candidatePorts) {
     super(
         endPoints,
         useLeaderCache,
@@ -108,7 +112,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
         validateTsFile,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        customSendPortStrategy,
+        minSendPortRange,
+        maxSendPortRange,
+        candidatePorts);
 
     endPointSet = new HashSet<>(endPoints);
 

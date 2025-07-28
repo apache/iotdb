@@ -92,10 +92,10 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
         loadTsFileStrategy,
         validateTsFile,
         shouldMarkAsPipeRequest,
-            customSendPortStrategy,
-            minSendPortRange,
-            maxSendPortRange,
-            candidatePorts);
+        customSendPortStrategy,
+        minSendPortRange,
+        maxSendPortRange,
+        candidatePorts);
   }
 
   @Override

@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.commons.client.async.AsyncTEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.PipeConsensusClientProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;

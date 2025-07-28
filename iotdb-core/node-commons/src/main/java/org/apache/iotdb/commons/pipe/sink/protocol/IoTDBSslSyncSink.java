@@ -140,10 +140,10 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
             loadTsFileStrategy,
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
-                customSendPortStrategy,
-                minSendPortRange,
-                maxSendPortRange,
-                candidatePorts);
+            customSendPortStrategy,
+            minSendPortRange,
+            maxSendPortRange,
+            candidatePorts);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(

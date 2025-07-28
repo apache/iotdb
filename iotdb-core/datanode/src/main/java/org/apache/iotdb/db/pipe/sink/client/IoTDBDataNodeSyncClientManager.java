@@ -74,10 +74,10 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         loadTsFileStrategy,
         validateTsFile,
         shouldMarkAsPipeRequest,
-            customSendPortStrategy,
-            minSendPortRange,
-            maxSendPortRange,
-            candidatePorts);
+        customSendPortStrategy,
+        minSendPortRange,
+        maxSendPortRange,
+        candidatePorts);
   }
 
   @Override

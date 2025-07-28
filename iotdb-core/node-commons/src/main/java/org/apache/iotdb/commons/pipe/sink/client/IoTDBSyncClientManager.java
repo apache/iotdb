@@ -91,10 +91,10 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         loadTsFileStrategy,
         validateTsFile,
         shouldMarkAsPipeRequest,
-            customSendPortStrategy,
-            minSendPortRange,
-            maxSendPortRange,
-            candidatePorts);
+        customSendPortStrategy,
+        minSendPortRange,
+        maxSendPortRange,
+        candidatePorts);
 
     this.useSSL = useSSL;
     this.trustStorePath = trustStorePath;
@@ -211,10 +211,10 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
               useSSL,
               trustStorePath,
               trustStorePwd,
-                  customSendPortStrategy,
-                  minSendPortRange,
-                  maxSendPortRange,
-                  candidatePorts));
+              customSendPortStrategy,
+              minSendPortRange,
+              maxSendPortRange,
+              candidatePorts));
       return true;
     } catch (Exception e) {
       endPoint2HandshakeErrorMessage.put(endPoint, e.getMessage());

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.client.util;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.utils.function.Consumer;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
@@ -41,7 +42,7 @@ public class IoTDBConnectorPortBinder {
       final List<Integer> candidatePorts,
       final Consumer<Integer, Exception> consumer) {
     final boolean isRange =
-        PipeConnectorConstant.CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY.equals(
+        PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY.equals(
             customSendPortStrategy);
     boolean portFound = false;
     int index = 0;
