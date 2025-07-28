@@ -30,8 +30,8 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningQueue;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeCopiedFileDirStartupCleaner;
+import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningQueue;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.slf4j.Logger;

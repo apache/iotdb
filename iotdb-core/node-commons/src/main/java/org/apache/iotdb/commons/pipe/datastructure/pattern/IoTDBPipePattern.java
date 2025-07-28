@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -57,7 +57,7 @@ public class IoTDBPipePattern extends PipePattern {
 
   @Override
   public String getDefaultPattern() {
-    return PipeExtractorConstant.EXTRACTOR_PATTERN_IOTDB_DEFAULT_VALUE;
+    return PipeSourceConstant.EXTRACTOR_PATTERN_IOTDB_DEFAULT_VALUE;
   }
 
   @Override
