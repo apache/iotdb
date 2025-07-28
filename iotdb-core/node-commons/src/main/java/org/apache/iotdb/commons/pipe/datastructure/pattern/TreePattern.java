@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -30,14 +30,14 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.Objects;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATH_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATH_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_FORMAT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_KEY;
 
 public abstract class TreePattern {
 
@@ -115,13 +115,13 @@ public abstract class TreePattern {
   public static boolean isTreeModelDataAllowToBeCaptured(final PipeParameters sourceParameters) {
     return sourceParameters.getBooleanOrDefault(
             Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
+                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
         || sourceParameters.getBooleanOrDefault(
             Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-                PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
+                PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+                PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY),
             sourceParameters
                 .getStringOrDefault(
                     SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)

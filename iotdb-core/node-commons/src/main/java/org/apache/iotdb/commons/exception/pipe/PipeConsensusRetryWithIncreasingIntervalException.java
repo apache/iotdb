@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.exception.pipe;
 
 public class PipeConsensusRetryWithIncreasingIntervalException
-    extends PipeRuntimeConnectorRetryTimesConfigurableException {
+    extends PipeRuntimeSinkRetryTimesConfigurableException {
 
   public PipeConsensusRetryWithIncreasingIntervalException(String message, int retryTimes) {
     super(message, retryTimes);
