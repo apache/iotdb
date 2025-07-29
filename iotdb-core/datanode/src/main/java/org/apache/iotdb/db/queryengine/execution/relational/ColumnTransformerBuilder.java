@@ -1022,6 +1022,14 @@ public class ColumnTransformerBuilder
       Type returnType = columnTransformers.get(0).getType();
       return AbstractGreatestLeastColumnTransformer.getLeastColumnTransformer(
           returnType, columnTransformers);
+    } else if (TableBuiltinScalarFunction.TO_BASE64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar
+            .ToBase64ColumnTransformer(org.apache.tsfile.read.common.type.StringType.STRING, first);
+      }
     } else {
       // user defined function
       if (TableUDFUtils.isScalarFunction(functionName)) {
