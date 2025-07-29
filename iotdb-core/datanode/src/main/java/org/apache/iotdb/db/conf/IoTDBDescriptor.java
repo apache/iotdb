@@ -1080,11 +1080,8 @@ public class IoTDBDescriptor {
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
 
     // The buffer for sort operator to calculate
-    conf.setSortBufferSize(
-        Long.parseLong(
-            properties
-                .getProperty("sort_buffer_size_in_bytes", Long.toString(conf.getSortBufferSize()))
-                .trim()));
+
+    loadSortBuffer(properties);
 
     // tmp filePath for sort operator
     conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
@@ -1107,6 +1104,23 @@ public class IoTDBDescriptor {
     loadQuerySampleThroughput(properties);
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
+  }
+
+  private void loadSortBuffer(TrimProperties properties) {
+    long defaultValue = calculateDefaultSortBufferSize();
+    long sortBufferSize =
+        Long.parseLong(
+            properties.getProperty("sort_buffer_size_in_bytes", Long.toString(defaultValue)));
+    if (sortBufferSize <= 0) {
+      sortBufferSize = defaultValue;
+    }
+    // The buffer for sort operator to calculate
+    conf.setSortBufferSize(sortBufferSize);
+  }
+
+  public static long calculateDefaultSortBufferSize() {
+    return Math.min(
+        32 * 1024 * 1024L, conf.getAllocateMemoryForOperators() / conf.getQueryThreadCount() / 2);
   }
 
   private void reloadConsensusProps(TrimProperties properties) throws IOException {
@@ -2042,6 +2056,9 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "tvlist_sort_threshold",
                   ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
+
+      // sort_buffer_size_in_bytes
+      loadSortBuffer(properties);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
