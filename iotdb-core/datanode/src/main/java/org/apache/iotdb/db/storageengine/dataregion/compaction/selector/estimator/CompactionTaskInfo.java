@@ -34,7 +34,6 @@ public class CompactionTaskInfo {
   private long modificationFileSize = 0;
   private long totalFileSize = 0;
   private long totalChunkNum = 0;
-  private long totalChunkMetadataSize = 0;
 
   protected CompactionTaskInfo(List<TsFileResource> resources, List<FileInfo> fileInfoList) {
     this.fileInfoList = fileInfoList;
@@ -55,7 +54,6 @@ public class CompactionTaskInfo {
           Math.max(maxChunkMetadataNumInDevice, fileInfo.maxDeviceChunkNum);
       maxChunkMetadataSize = Math.max(maxChunkMetadataSize, fileInfo.averageChunkMetadataSize);
       totalChunkNum += fileInfo.totalChunkNum;
-      totalChunkMetadataSize += fileInfo.totalChunkNum * fileInfo.averageChunkMetadataSize;
     }
   }
 
@@ -93,9 +91,5 @@ public class CompactionTaskInfo {
 
   public List<TsFileResource> getResources() {
     return resources;
-  }
-
-  public long getTotalChunkMetadataSize() {
-    return totalChunkMetadataSize;
   }
 }
